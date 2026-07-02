@@ -1,6 +1,6 @@
 ---
 title: Connect Private Postgres via Bastion Host
-description: Learn how to connect your private postgres database to Neosync via a Bastion Host.
+description: Learn how to connect your private postgres database to Husonym via a Bastion Host.
 id: postgres-bastion-host
 hide_title: false
 slug: /guides/connect-private-postgres-via-bastion-host
@@ -9,11 +9,11 @@ slug: /guides/connect-private-postgres-via-bastion-host
 
 ## Introduction
 
-Neosync supports connecting a Postgres database that lives within a private VPC/network via a Bastion Host.
+Husonym supports connecting a Postgres database that lives within a private VPC/network via a Bastion Host.
 
-We'll go through how to create a Bastion Host on AWS with Terraform, along with how to connect it directly into Neosync.
+We'll go through how to create a Bastion Host on AWS with Terraform, along with how to connect it directly into Husonym.
 
-This guide assumes that you have already created a database in your private network and only covers setting up a Bastion Host and configuring it in Neosync.
+This guide assumes that you have already created a database in your private network and only covers setting up a Bastion Host and configuring it in Husonym.
 
 ## What is a Bastion Host?
 
@@ -24,18 +24,18 @@ Bastion Hosts are typically very minimal installations and are highly secured an
 
 It's important for Bastion Hosts to have good logging and monitoring, as well as have strict isolation and access control.
 
-## Why do we need one for Neosync?
+## Why do we need one for Husonym?
 
 Databases are typically one of the most locked down and secured pieces of running software within a network. They for the most part are not publicly accessible to the internet.
-Therefore, Neosync Cloud will be unable to communicate with your database without the ability to tunnel into your private network in some capacity.
+Therefore, Husonym Cloud will be unable to communicate with your database without the ability to tunnel into your private network in some capacity.
 
 ## AWS Bastion Host Setup
 
 This next section will showcase how to set up a Bastion Host via Terraform on AWS. If you're not using either of those technologies, you'll need to google around to figure out how to set up a server.
 
-### Creating a SSH key for use with Neosync
+### Creating a SSH key for use with Husonym
 
-You may generate a SSH key in any way that is comfortable to you. Neosync does not require any specific algorithm, but a few different options are detailed below.
+You may generate a SSH key in any way that is comfortable to you. Husonym does not require any specific algorithm, but a few different options are detailed below.
 
 #### ED25519
 
@@ -61,9 +61,9 @@ We'll need both of these at various points throughout the rest of this guide.
 There is a great terraform module available on the public registry [Guimove/bastion/aws](https://registry.terraform.io/modules/Guimove/bastion/aws/latest).
 This module is designed to create a secure SSH bastion on AWS, and it also comes with auditing and logging out of the gate!
 
-Here is an example of a minimal install, and is not dissimilar from a setup we use internal at Neosync.
+Here is an example of a minimal install, and is not dissimilar from a setup we use internal at Husonym.
 
-The example below already contains the NeosyncCloud IP Addresses that can be used to isolate the Bastion Host to only be accessed via NeosyncCloud servers.
+The example below already contains the HusonymCloud IP Addresses that can be used to isolate the Bastion Host to only be accessed via HusonymCloud servers.
 This is generally very important for security and compliance as you don't want a bastion host accessible over the general internet.
 
 Those IP Addresses are as follows:
@@ -74,12 +74,12 @@ Those IP Addresses are as follows:
 35.84.248.98
 ```
 
-The code below also sets up the Bastion host to only allow ingress from NeosyncCloud on port 22, and egress may only be port 5432 directly to the subnets that the database live in.
+The code below also sets up the Bastion host to only allow ingress from HusonymCloud on port 22, and egress may only be port 5432 directly to the subnets that the database live in.
 This is just a default example and may need to be changed to facilitate a real setup.
 
-Note the variable `ssh_users`, this is where you assign the user and associate it with the public key we created earlier. This will be used by Neosync to tunnel through this host to gain access to the database.
+Note the variable `ssh_users`, this is where you assign the user and associate it with the public key we created earlier. This will be used by Husonym to tunnel through this host to gain access to the database.
 
-The username can be named whatever you want, but `neosync` could be a good choice.
+The username can be named whatever you want, but `husonym` could be a good choice.
 
 To quickly copy the SSH key, if your file was named `id_ed25519`:
 
@@ -179,12 +179,12 @@ resource "aws_security_group_rule" "egress_postgres" {
 }
 ```
 
-## Configuring Neosync to use the Bastion Host
+## Configuring Husonym to use the Bastion Host
 
 I'm going to use a personal account in links going forward, which may need to change if you're configuring this for a team account.
 
-Navigate to [Create a new Postgres Connection](https://app.neosync.dev/personal/new/connection/postgres).
-Otherwise, go to [Neosync Cloud](https://app.neosync.dev), navigate to Connections -> New Connection -> Postgres.
+Navigate to [Create a new Postgres Connection](https://app.husonym.allopneus.com/personal/new/connection/postgres).
+Otherwise, go to [Husonym Cloud](https://app.husonym.allopneus.com), navigate to Connections -> New Connection -> Postgres.
 
 Set a connection name and drop in your database url.
 
@@ -194,11 +194,11 @@ Open the Bastion Host Configuration Section.
 
 This is where you'll drop in the host configuration that we created above.
 
-The host will be the load balancer url that was created above, port 22, the "neosync" ssh user, the private key along with the optional key password.
+The host will be the load balancer url that was created above, port 22, the "husonym" ssh user, the private key along with the optional key password.
 You can also connect the known host public key to be even more explicit about security.
 
 Once all of that has been configured, click Test connection to try it out!
 
 ## Conclusion
 
-You should now be able to have Neosync communicate directly with your database in an internal VPC/network, and doing so in a very secure manner!
+You should now be able to have Husonym communicate directly with your database in an internal VPC/network, and doing so in a very secure manner!

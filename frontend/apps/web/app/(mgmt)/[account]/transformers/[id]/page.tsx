@@ -10,7 +10,7 @@ import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
 import {
   GetUserDefinedTransformerByIdResponseSchema,
   TransformersService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
 import RemoveTransformerButton from './components/RemoveTransformerButton';
 import UpdateTransformerForm from './components/UpdateTransformerForm';

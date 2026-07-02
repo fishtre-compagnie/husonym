@@ -2,7 +2,7 @@ import FastTable from '@/components/FastTable/FastTable';
 import { CardDescription, CardTitle } from '@/components/ui/card';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
-import { JobMapping } from '@neosync/sdk';
+import { JobMapping } from '@husonym/sdk';
 import {
   ColumnDef,
   getCoreRowModel,

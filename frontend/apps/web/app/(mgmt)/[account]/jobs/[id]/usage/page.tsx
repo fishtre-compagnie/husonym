@@ -12,7 +12,7 @@ import {
   periodToDateRange,
 } from '@/components/usage/util';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { RangedMetricName } from '@neosync/sdk';
+import { RangedMetricName } from '@husonym/sdk';
 import { format } from 'date-fns';
 import { ReactElement, use, useState } from 'react';
 
@@ -30,7 +30,7 @@ export default function UsagePage(props: PageProps): ReactElement {
         <Alert variant="warning">
           <AlertTitle>Metrics are not currently enabled</AlertTitle>
           <AlertDescription>
-            To enable them, please update Neosync configuration or contact your
+            To enable them, please update Husonym configuration or contact your
             system administrator.
           </AlertDescription>
         </Alert>

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	neosynclogger "github.com/Groupe-Hevea/neosync/backend/pkg/logger"
-	serve_connect "github.com/Groupe-Hevea/neosync/worker/internal/cmds/worker/serve"
+	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
+	serve_connect "github.com/fishtre-compagnie/husonym/worker/internal/cmds/worker/serve"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -16,7 +16,7 @@ func Execute() {
 
 	rootCmd := &cobra.Command{
 		Use:   "worker",
-		Short: "Terminal app that is used to boot up the Neosync worker.",
+		Short: "Terminal app that is used to boot up the Husonym worker.",
 		Long:  "",
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			cmd.SilenceErrors = true
@@ -28,7 +28,7 @@ func Execute() {
 	// Wire up subcommands here
 	rootCmd.AddCommand(serve_connect.NewCmd())
 
-	logger, _ := neosynclogger.NewLoggers()
+	logger, _ := husonymlogger.NewLoggers()
 
 	err := rootCmd.Execute()
 	if err != nil {

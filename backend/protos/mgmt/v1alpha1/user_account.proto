@@ -54,7 +54,7 @@ message ConvertPersonalToTeamAccountRequest {
 message ConvertPersonalToTeamAccountResponse {
   // The id of the team account (will be the same identifier as the personal account)
   string account_id = 1;
-  // If NeosyncCloud, will respond with a checkout session url so they can setup billing
+  // If HusonymCloud, will respond with a checkout session url so they can setup billing
   optional string checkout_session_url = 2;
   // The identifier of the newly created personal account
   string new_personal_account_id = 3;
@@ -111,7 +111,7 @@ message CreateTeamAccountRequest {
 message CreateTeamAccountResponse {
   // The unique identifier of the team account that was created.
   string account_id = 1;
-  // If NeosyncCloud, will respond with a checkout session url so they can setup billing
+  // If HusonymCloud, will respond with a checkout session url so they can setup billing
   optional string checkout_session_url = 2;
 }
 
@@ -211,9 +211,9 @@ message GetSystemInformationResponse {
   string version = 1;
   // The Git commit
   string commit = 2;
-  // The Go compiler flag that was used to build this version of Neosync
+  // The Go compiler flag that was used to build this version of Husonym
   string compiler = 3;
-  // The Go platform flag that was used to build this version of Neosync
+  // The Go platform flag that was used to build this version of Husonym
   string platform = 4;
   // The time when the build was created
   google.protobuf.Timestamp build_date = 5;
@@ -226,8 +226,8 @@ message SystemLicense {
   bool is_valid = 1;
   // The time when the license expires
   google.protobuf.Timestamp expires_at = 2;
-  // Whether or not the license is for NeosyncCloud
-  bool is_neosync_cloud = 3;
+  // Whether or not the license is for HusonymCloud
+  bool is_husonym_cloud = 3;
 }
 
 message GetAccountOnboardingConfigRequest {

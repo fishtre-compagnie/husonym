@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  summary: Neosync API
+  summary: Husonym API
   version: "0.5"
-  termsOfService: "https://www.neosync.dev/terms-of-service"
+  termsOfService: "https://www.husonym.allopneus.com/terms-of-service"
   contact:
-    name: Neosync Support
-    email: support@neosync.dev
+    name: Husonym Support
+    email: support@husonym.allopneus.com
   license:
     name: MIT
-    url: https://github.com/Groupe-Hevea/neosync/blob/main/LICENSE.md
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.neosync.allopneus.com/api
+  url: https://docs.husonym.allopneus.com/api
 servers:
-  - url: https://neosync-api.svcs.neosync.dev
-    description: Neosync Cloud
+  - url: https://husonym-api.svcs.husonym.allopneus.com
+    description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
     variables:
@@ -235,7 +235,7 @@ paths:
       tags:
         - mgmt.v1alpha1.AuthService
       summary: LoginCli
-      description: Used by the CLI to login to Neosync with OAuth.
+      description: Used by the CLI to login to Husonym with OAuth.
       operationId: mgmt.v1alpha1.AuthService.LoginCli
       parameters:
         - name: Connect-Protocol-Version
@@ -272,7 +272,7 @@ paths:
         - mgmt.v1alpha1.AuthService
       summary: RefreshCli
       description: |-
-        Used by the CLI to refresh an expired Neosync accesss token.
+        Used by the CLI to refresh an expired Husonym accesss token.
          This should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.
       operationId: mgmt.v1alpha1.AuthService.RefreshCli
       parameters:
@@ -417,5 +417,5 @@ paths:
 tags:
   - name: mgmt.v1alpha1.AuthService
     description: |-
-      Service that handles generic Authentication for Neosync
+      Service that handles generic Authentication for Husonym
        Today this is mostly used by the CLI to receive authentication information

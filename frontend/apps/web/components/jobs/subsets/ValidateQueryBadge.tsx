@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { CheckSqlQueryResponse } from '@neosync/sdk';
+import { CheckSqlQueryResponse } from '@husonym/sdk';
 import { ReactElement } from 'react';
 
 interface Props {

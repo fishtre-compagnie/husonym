@@ -9,20 +9,20 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
-	authjwt "github.com/Groupe-Hevea/neosync/backend/internal/auth/jwt"
-	"github.com/Groupe-Hevea/neosync/backend/internal/auth/tokenctx"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/backend/internal/version"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/billing"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	authjwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/tokenctx"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/version"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/billing"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v81"
 	"golang.org/x/sync/errgroup"
@@ -39,20 +39,20 @@ func (s *Service) GetUser(
 		apiTokenCtxData, _ := auth_apikey.GetTokenDataFromCtx(ctx)
 		if apiTokenCtxData != nil {
 			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-				UserId: neosyncdb.UUIDString(apiTokenCtxData.ApiKey.UserID),
+				UserId: husonymdb.UUIDString(apiTokenCtxData.ApiKey.UserID),
 			}), nil
 		}
 		user, err := s.db.Q.GetAnonymousUser(ctx, s.db.Db)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, nucleuserrors.New(err)
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			user, err = s.db.Q.SetAnonymousUser(ctx, s.db.Db)
 			if err != nil {
 				return nil, err
 			}
 		}
 		return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-			UserId: neosyncdb.UUIDString(user.ID),
+			UserId: husonymdb.UUIDString(user.ID),
 		}), nil
 	}
 
@@ -65,7 +65,7 @@ func (s *Service) GetUser(
 		if tokenctxResp.ApiKeyContextData.ApiKeyType == apikey.AccountApiKey &&
 			tokenctxResp.ApiKeyContextData.ApiKey != nil {
 			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-				UserId: neosyncdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID),
+				UserId: husonymdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID),
 			}), nil
 		} else if tokenctxResp.ApiKeyContextData.ApiKeyType == apikey.WorkerApiKey {
 			return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
@@ -80,14 +80,14 @@ func (s *Service) GetUser(
 		)
 	} else if tokenctxResp.JwtContextData != nil {
 		user, err := s.db.Q.GetUserAssociationByProviderSub(ctx, s.db.Db, tokenctxResp.JwtContextData.AuthUserId)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, nucleuserrors.New(err)
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nil, nucleuserrors.NewNotFound("unable to find user")
 		}
 
 		return connect.NewResponse(&mgmtv1alpha1.GetUserResponse{
-			UserId: neosyncdb.UUIDString(user.UserID),
+			UserId: husonymdb.UUIDString(user.UserID),
 		}), nil
 	}
 	return nil, nucleuserrors.NewUnauthenticated(
@@ -105,7 +105,7 @@ func (s *Service) SetUser(
 		apiTokenCtxData, _ := auth_apikey.GetTokenDataFromCtx(ctx)
 		if apiTokenCtxData != nil {
 			return connect.NewResponse(&mgmtv1alpha1.SetUserResponse{
-				UserId: neosyncdb.UUIDString(apiTokenCtxData.ApiKey.UserID),
+				UserId: husonymdb.UUIDString(apiTokenCtxData.ApiKey.UserID),
 			}), nil
 		}
 		user, err := s.db.Q.SetAnonymousUser(ctx, s.db.Db)
@@ -113,7 +113,7 @@ func (s *Service) SetUser(
 			return nil, err
 		}
 		return connect.NewResponse(&mgmtv1alpha1.SetUserResponse{
-			UserId: neosyncdb.UUIDString(user.ID),
+			UserId: husonymdb.UUIDString(user.ID),
 		}), nil
 	}
 
@@ -123,7 +123,7 @@ func (s *Service) SetUser(
 	}
 	if tokenctxResp.ApiKeyContextData != nil {
 		return connect.NewResponse(&mgmtv1alpha1.SetUserResponse{
-			UserId: neosyncdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID),
+			UserId: husonymdb.UUIDString(tokenctxResp.ApiKeyContextData.ApiKey.UserID),
 		}), nil
 	} else if tokenctxResp.JwtContextData != nil {
 		tokenCtxData, err := authjwt.GetTokenDataFromCtx(ctx)
@@ -137,7 +137,7 @@ func (s *Service) SetUser(
 		}
 
 		return connect.NewResponse(&mgmtv1alpha1.SetUserResponse{
-			UserId: neosyncdb.UUIDString(user.ID),
+			UserId: husonymdb.UUIDString(user.ID),
 		}), nil
 	}
 	return nil, nucleuserrors.NewUnauthenticated(
@@ -153,7 +153,7 @@ func (s *Service) GetUserAccounts(
 	if err != nil {
 		return nil, err
 	}
-	userId, err := neosyncdb.ToUuid(user.Msg.GetUserId())
+	userId, err := husonymdb.ToUuid(user.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -181,9 +181,9 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			"unable to convert personal account to team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsNeosyncCloud && s.billingclient == nil {
+	if s.cfg.IsHusonymCloud && s.billingclient == nil {
 		return nil, nucleuserrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Neosync Cloud environments. Please contact us to create a team account.",
+			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
 		)
 	}
 
@@ -193,7 +193,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	if err != nil {
 		return nil, err
 	}
-	userId, err := neosyncdb.ToUuid(user.Msg.GetUserId())
+	userId, err := husonymdb.ToUuid(user.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -204,15 +204,15 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			"account id was not provided during personal->team conversion. Attempting to find personal account",
 		)
 		accounts, err := s.db.Q.GetAccountsByUser(ctx, s.db.Db, userId)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, err
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nil, nucleuserrors.NewNotFound("user has no accounts")
 		}
 
 		for idx := range accounts {
-			if accounts[idx].AccountType == int16(neosyncdb.AccountType_Personal) {
-				personalAccountId = neosyncdb.UUIDString(accounts[idx].ID)
+			if accounts[idx].AccountType == int16(husonymdb.AccountType_Personal) {
+				personalAccountId = husonymdb.UUIDString(accounts[idx].ID)
 				logger.Debug(
 					"found personal account to convert to team account",
 					"personalAccountId",
@@ -222,7 +222,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			}
 		}
 	} else {
-		personalAccountUuid, err := neosyncdb.ToUuid(personalAccountId)
+		personalAccountUuid, err := husonymdb.ToUuid(personalAccountId)
 		if err != nil {
 			return nil, err
 		}
@@ -240,18 +240,18 @@ func (s *Service) ConvertPersonalToTeamAccount(
 		if err != nil {
 			return nil, err
 		}
-		if account.AccountType != int16(neosyncdb.AccountType_Personal) {
+		if account.AccountType != int16(husonymdb.AccountType_Personal) {
 			return nil, nucleuserrors.NewNotFound("account is not a personal account")
 		}
 	}
 
-	personalAccountUuid, err := neosyncdb.ToUuid(personalAccountId)
+	personalAccountUuid, err := husonymdb.ToUuid(personalAccountId)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := s.db.ConvertPersonalToTeamAccount(
 		ctx,
-		&neosyncdb.ConvertPersonalToTeamAccountRequest{
+		&husonymdb.ConvertPersonalToTeamAccountRequest{
 			UserId:            userId,
 			PersonalAccountId: personalAccountUuid,
 			TeamName:          req.Msg.GetName(),
@@ -262,7 +262,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 		return nil, err
 	}
 
-	newPersonalAccountId := neosyncdb.UUIDString(resp.PersonalAccount.ID)
+	newPersonalAccountId := husonymdb.UUIDString(resp.PersonalAccount.ID)
 	if err := s.rbacClient.SetupNewAccount(ctx, newPersonalAccountId, logger); err != nil {
 		// note: if this fails the account is kind of in a broken state...
 		return nil, fmt.Errorf(
@@ -285,7 +285,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	}
 
 	var checkoutSessionUrl *string
-	if s.cfg.IsNeosyncCloud && !resp.TeamAccount.StripeCustomerID.Valid && s.billingclient != nil {
+	if s.cfg.IsHusonymCloud && !resp.TeamAccount.StripeCustomerID.Valid && s.billingclient != nil {
 		account, err := s.db.UpsertStripeCustomerId(
 			ctx,
 			resp.TeamAccount.ID,
@@ -313,8 +313,8 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.ConvertPersonalToTeamAccountResponse{
-		AccountId:            neosyncdb.UUIDString(resp.TeamAccount.ID),
-		NewPersonalAccountId: neosyncdb.UUIDString(resp.PersonalAccount.ID),
+		AccountId:            husonymdb.UUIDString(resp.TeamAccount.ID),
+		NewPersonalAccountId: husonymdb.UUIDString(resp.PersonalAccount.ID),
 		CheckoutSessionUrl:   checkoutSessionUrl,
 	}), nil
 }
@@ -328,7 +328,7 @@ func (s *Service) SetPersonalAccount(
 		return nil, err
 	}
 
-	userId, err := neosyncdb.ToUuid(user.Msg.GetUserId())
+	userId, err := husonymdb.ToUuid(user.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -341,12 +341,12 @@ func (s *Service) SetPersonalAccount(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With(
 		"accountId",
-		neosyncdb.UUIDString(account.ID),
+		husonymdb.UUIDString(account.ID),
 		"userId",
 		user.Msg.GetUserId(),
 	)
 
-	if err := s.rbacClient.SetupNewAccount(ctx, neosyncdb.UUIDString(account.ID), logger); err != nil {
+	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
 		// note: if this fails the account is kind of in a broken state...
 		return nil, fmt.Errorf(
 			"unable to setup new account, please reach out to support for further assistance: %w",
@@ -357,7 +357,7 @@ func (s *Service) SetPersonalAccount(
 	if err := s.rbacClient.SetAccountRole(
 		ctx,
 		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(neosyncdb.UUIDString(account.ID)),
+		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -368,7 +368,7 @@ func (s *Service) SetPersonalAccount(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.SetPersonalAccountResponse{
-		AccountId: neosyncdb.UUIDString(account.ID),
+		AccountId: husonymdb.UUIDString(account.ID),
 	}), nil
 }
 
@@ -381,11 +381,11 @@ func (s *Service) IsUserInAccount(
 		return nil, err
 	}
 
-	userId, err := neosyncdb.ToUuid(user.Msg.UserId)
+	userId, err := husonymdb.ToUuid(user.Msg.UserId)
 	if err != nil {
 		return nil, err
 	}
-	accountId, err := neosyncdb.ToUuid(req.Msg.AccountId)
+	accountId, err := husonymdb.ToUuid(req.Msg.AccountId)
 	if err != nil {
 		return nil, err
 	}
@@ -427,9 +427,9 @@ func (s *Service) CreateTeamAccount(
 			"unable to create team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsNeosyncCloud && s.billingclient == nil {
+	if s.cfg.IsHusonymCloud && s.billingclient == nil {
 		return nil, nucleuserrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Neosync Cloud environments. Please contact us to create a team account.",
+			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
 		)
 	}
 
@@ -437,7 +437,7 @@ func (s *Service) CreateTeamAccount(
 	if err != nil {
 		return nil, err
 	}
-	userId, err := neosyncdb.ToUuid(user.Msg.GetUserId())
+	userId, err := husonymdb.ToUuid(user.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -447,10 +447,10 @@ func (s *Service) CreateTeamAccount(
 		return nil, err
 	}
 
-	logger = logger.With("accountId", neosyncdb.UUIDString(account.ID))
+	logger = logger.With("accountId", husonymdb.UUIDString(account.ID))
 
 	var checkoutSessionUrl *string
-	if s.cfg.IsNeosyncCloud && !account.StripeCustomerID.Valid && s.billingclient != nil {
+	if s.cfg.IsHusonymCloud && !account.StripeCustomerID.Valid && s.billingclient != nil {
 		account, err = s.db.UpsertStripeCustomerId(
 			ctx,
 			account.ID,
@@ -476,7 +476,7 @@ func (s *Service) CreateTeamAccount(
 		checkoutSessionUrl = &session.URL
 	}
 
-	if err := s.rbacClient.SetupNewAccount(ctx, neosyncdb.UUIDString(account.ID), logger); err != nil {
+	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
 		// note: if this fails the account is kind of in a broken state...
 		return nil, fmt.Errorf(
 			"unable to setup new account, please reach out to support for further assistance: %w",
@@ -487,7 +487,7 @@ func (s *Service) CreateTeamAccount(
 	if err := s.rbacClient.SetAccountRole(
 		ctx,
 		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(neosyncdb.UUIDString(account.ID)),
+		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -498,7 +498,7 @@ func (s *Service) CreateTeamAccount(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.CreateTeamAccountResponse{
-		AccountId:          neosyncdb.UUIDString(account.ID),
+		AccountId:          husonymdb.UUIDString(account.ID),
 		CheckoutSessionUrl: checkoutSessionUrl,
 	}), nil
 }
@@ -506,8 +506,8 @@ func (s *Service) CreateTeamAccount(
 func (s *Service) getCreateStripeAccountFunction(
 	userId string,
 	logger *slog.Logger,
-) func(ctx context.Context, account db_queries.NeosyncApiAccount) (string, error) {
-	return func(ctx context.Context, account db_queries.NeosyncApiAccount) (string, error) {
+) func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
+	return func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
 		email := s.getEmailFromToken(ctx, logger)
 		if email == nil {
 			return "", errors.New(
@@ -517,7 +517,7 @@ func (s *Service) getCreateStripeAccountFunction(
 		customer, err := s.billingclient.NewCustomer(&billing.CustomerRequest{
 			Email:     *email,
 			Name:      account.AccountSlug,
-			AccountId: neosyncdb.UUIDString(account.ID),
+			AccountId: husonymdb.UUIDString(account.ID),
 			UserId:    userId,
 		})
 		if err != nil {
@@ -572,7 +572,7 @@ func (s *Service) GetTeamAccountMembers(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.AccountId)
+	accountUuid, err := husonymdb.ToUuid(req.Msg.AccountId)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +594,7 @@ func (s *Service) GetTeamAccountMembers(
 	userRoles := s.rbacClient.GetUserRoles(
 		ctx,
 		rbacUsers,
-		rbac.NewAccountIdEntity(neosyncdb.UUIDString(accountUuid)),
+		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
 		logger,
 	)
 	logger.Debug(fmt.Sprintf("found %d users with roles", len(userRoles)))
@@ -606,14 +606,14 @@ func (s *Service) GetTeamAccountMembers(
 		user := userIdentities[i]
 		group.Go(func() error {
 			dtoUsers[i] = &mgmtv1alpha1.AccountUser{
-				Id: neosyncdb.UUIDString(user.UserID),
+				Id: husonymdb.UUIDString(user.UserID),
 			}
 			role, ok := userRoles[rbac.NewPgUserIdEntity(user.UserID).String()]
 			if ok {
 				logger.Debug(
 					fmt.Sprintf(
 						"found role for user: %s - %s",
-						neosyncdb.UUIDString(user.UserID),
+						husonymdb.UUIDString(user.UserID),
 						role.String(),
 					),
 				)
@@ -625,7 +625,7 @@ func (s *Service) GetTeamAccountMembers(
 				logger.Warn(
 					fmt.Sprintf(
 						"unable to find provider sub associated with user id: %q",
-						neosyncdb.UUIDString(user.UserID),
+						husonymdb.UUIDString(user.UserID),
 					),
 				)
 				return nil
@@ -665,7 +665,7 @@ func (s *Service) RemoveTeamAccountMember(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -673,7 +673,7 @@ func (s *Service) RemoveTeamAccountMember(
 	if err := s.verifyTeamAccount(ctx, accountUuid); err != nil {
 		return nil, err
 	}
-	memberUserId, err := neosyncdb.ToUuid(req.Msg.UserId)
+	memberUserId, err := husonymdb.ToUuid(req.Msg.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -681,14 +681,14 @@ func (s *Service) RemoveTeamAccountMember(
 		AccountId: accountUuid,
 		UserId:    memberUserId,
 	})
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to remove account user from db: %w", err)
 	}
 
 	if err := s.rbacClient.RemoveAccountUser(
 		ctx,
 		rbac.NewPgUserIdEntity(memberUserId),
-		rbac.NewAccountIdEntity(neosyncdb.UUIDString(accountUuid)),
+		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
 	); err != nil {
 		return nil, fmt.Errorf("unable to remove account user from rbac engine: %w", err)
 	}
@@ -709,7 +709,7 @@ func (s *Service) InviteUserToTeamAccount(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +719,7 @@ func (s *Service) InviteUserToTeamAccount(
 	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
-	expiresAt, err := neosyncdb.ToTimestamp(tomorrow)
+	expiresAt, err := husonymdb.ToTimestamp(tomorrow)
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +759,7 @@ func (s *Service) GetTeamAccountInvites(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -769,9 +769,9 @@ func (s *Service) GetTeamAccountInvites(
 	}
 
 	invites, err := s.db.Q.GetActiveAccountInvites(ctx, s.db.Db, accountUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.New(err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.GetTeamAccountInvitesResponse{
 			Invites: []*mgmtv1alpha1.AccountInvite{},
 		}), nil
@@ -791,14 +791,14 @@ func (s *Service) RemoveTeamAccountInvite(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.RemoveTeamAccountInviteRequest],
 ) (*connect.Response[mgmtv1alpha1.RemoveTeamAccountInviteResponse], error) {
-	inviteId, err := neosyncdb.ToUuid(req.Msg.GetId())
+	inviteId, err := husonymdb.ToUuid(req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 	invite, err := s.db.Q.GetAccountInvite(ctx, s.db.Db, inviteId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.New(err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.RemoveTeamAccountInviteResponse{}), nil
 	}
 
@@ -809,7 +809,7 @@ func (s *Service) RemoveTeamAccountInvite(
 	}
 	if err := user.EnforceAccount(
 		ctx,
-		userdata.NewIdentifier(neosyncdb.UUIDString(invite.AccountID)),
+		userdata.NewIdentifier(husonymdb.UUIDString(invite.AccountID)),
 		rbac.AccountAction_Edit,
 	); err != nil {
 		return nil, err
@@ -820,7 +820,7 @@ func (s *Service) RemoveTeamAccountInvite(
 	}
 
 	err = s.db.Q.RemoveAccountInvite(ctx, s.db.Db, inviteId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.New(err)
 	}
 
@@ -835,7 +835,7 @@ func (s *Service) AcceptTeamAccountInvite(
 	if err != nil {
 		return nil, err
 	}
-	userUuid, err := neosyncdb.ToUuid(user.Msg.GetUserId())
+	userUuid, err := husonymdb.ToUuid(user.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -879,7 +879,7 @@ func (s *Service) AcceptTeamAccountInvite(
 	if err := s.rbacClient.SetAccountRole(
 		ctx,
 		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(neosyncdb.UUIDString(validateResp.AccountId)),
+		rbac.NewAccountIdEntity(husonymdb.UUIDString(validateResp.AccountId)),
 		validateResp.Role,
 	); err != nil {
 		return nil, fmt.Errorf(
@@ -916,12 +916,12 @@ func (s *Service) SetUserRole(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
-	requestingUserUuid, err := neosyncdb.ToUuid(req.Msg.GetUserId())
+	requestingUserUuid, err := husonymdb.ToUuid(req.Msg.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -955,8 +955,8 @@ func (s *Service) verifyTeamAccount(ctx context.Context, accountId pgtype.UUID) 
 	if err != nil {
 		return err
 	}
-	if account.AccountType != int16(neosyncdb.AccountType_Team) &&
-		account.AccountType != int16(neosyncdb.AccountType_Enterprise) {
+	if account.AccountType != int16(husonymdb.AccountType_Team) &&
+		account.AccountType != int16(husonymdb.AccountType_Enterprise) {
 		return nucleuserrors.NewForbidden("account is not a team account")
 	}
 	return nil
@@ -980,7 +980,7 @@ func (s *Service) GetSystemInformation(
 		License: &mgmtv1alpha1.SystemLicense{
 			IsValid:        s.licenseclient.IsValid(),
 			ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
-			IsNeosyncCloud: s.cfg.IsNeosyncCloud,
+			IsHusonymCloud: s.cfg.IsHusonymCloud,
 		},
 	}), nil
 }

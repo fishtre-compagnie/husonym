@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { AccountHookEvent } from '@neosync/sdk';
+import { AccountHookEvent } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import AccountHookSlackForm from './AccountHookSlackForm';
 import AccountHookWebhookForm from './AccountHookWebhookForm';

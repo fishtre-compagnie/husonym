@@ -1,12 +1,12 @@
 package schemainit_workflow_register
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	initschema_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/activities/init-schema"
-	reconcileschema_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/activities/reconcile-schema"
-	schemainit_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/workflow"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	initschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/init-schema"
+	reconcileschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/reconcile-schema"
+	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
 )
 
 type Worker interface {

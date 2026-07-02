@@ -1,6 +1,6 @@
 import { ConnectionConfigCase } from '@/app/(mgmt)/[account]/connections/util';
 import { SubsetFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
-import { Job, JobMapping } from '@neosync/sdk';
+import { Job, JobMapping } from '@husonym/sdk';
 import { SubsetTableRow } from './SubsetTable/Columns';
 
 // Valid ConnectionConfigCase types. Using Extract here to ensure they stay consistent with what is available in ConnectionConfigCase

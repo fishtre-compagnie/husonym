@@ -11,14 +11,14 @@ import (
 	"sync"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	dbconnectconfig "github.com/Groupe-Hevea/neosync/backend/pkg/dbconnect-config"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlretry"
-	tun "github.com/Groupe-Hevea/neosync/internal/sshtunnel"
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel/connectors/mssqltunconnector"
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel/connectors/mysqltunconnector"
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel/connectors/postgrestunconnector"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlretry"
+	tun "github.com/fishtre-compagnie/husonym/internal/sshtunnel"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mssqltunconnector"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mysqltunconnector"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/postgrestunconnector"
 )
 
 // interface used by SqlConnector to abstract away the opening and closing of a sqldb that includes tunnelingff

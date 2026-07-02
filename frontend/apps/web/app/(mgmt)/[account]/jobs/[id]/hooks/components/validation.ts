@@ -12,7 +12,7 @@ import {
   JobHookTimingPreSyncSchema,
   NewJobHook,
   NewJobHookSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import * as yup from 'yup';
 
 const SqlTimingFormValue = yup

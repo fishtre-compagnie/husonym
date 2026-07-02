@@ -1,5 +1,5 @@
 import { useQuery } from '@connectrpc/connect-query';
-import { MetricsService, RangedMetricName } from '@neosync/sdk';
+import { MetricsService, RangedMetricName } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { useAccount } from '../providers/account-provider';
 import {

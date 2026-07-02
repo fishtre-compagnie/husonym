@@ -6,7 +6,7 @@ authors:
   - evis
 ---
 
-1. Update default GPT models in Neosync
+1. Update default GPT models in Husonym
 2. Added initial support for SQL Server
 3. Added support for ConsistentReads in DynamoDB
 4. Support seeds for all transformers for deterministic outputs

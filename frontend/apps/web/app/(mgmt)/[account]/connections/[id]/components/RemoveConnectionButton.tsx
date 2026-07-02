@@ -4,7 +4,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { ConnectionService } from '@neosync/sdk';
+import { ConnectionService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { ReactElement } from 'react';

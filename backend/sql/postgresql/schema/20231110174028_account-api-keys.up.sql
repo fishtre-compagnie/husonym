@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS neosync_api.account_api_keys (
+CREATE TABLE IF NOT EXISTS husonym_api.account_api_keys (
 	id uuid NOT NULL DEFAULT gen_random_uuid(),
   account_id uuid NOT NULL,
 
@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS neosync_api.account_api_keys (
 
   CONSTRAINT account_api_keys_pkey PRIMARY KEY (id),
   CONSTRAINT account_api_keys_account_id_key_value UNIQUE(account_id, key_value),
-  CONSTRAINT fk_account_api_keys_accounts_id FOREIGN KEY (account_id) REFERENCES neosync_api.accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_account_api_keys_created_by_id FOREIGN KEY (created_by_id) REFERENCES neosync_api.users(id),
-  CONSTRAINT fk_account_api_keys_updated_by_id FOREIGN KEY (updated_by_id) REFERENCES neosync_api.users(id)
+  CONSTRAINT fk_account_api_keys_accounts_id FOREIGN KEY (account_id) REFERENCES husonym_api.accounts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_account_api_keys_created_by_id FOREIGN KEY (created_by_id) REFERENCES husonym_api.users(id),
+  CONSTRAINT fk_account_api_keys_updated_by_id FOREIGN KEY (updated_by_id) REFERENCES husonym_api.users(id)
 );
 

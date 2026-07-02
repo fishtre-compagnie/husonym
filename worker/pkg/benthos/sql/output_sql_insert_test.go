@@ -1,10 +1,10 @@
-package neosync_benthos_sql
+package husonym_benthos_sql
 
 import (
 	"context"
 	"testing"
 
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/redpanda-data/benthos/v4/public/service"
 	"github.com/stretchr/testify/require"
 )

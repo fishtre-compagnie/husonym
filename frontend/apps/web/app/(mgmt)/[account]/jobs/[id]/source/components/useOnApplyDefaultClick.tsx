@@ -10,7 +10,7 @@ import {
   JobMappingTransformerSchema,
   PassthroughSchema,
   TransformerConfigSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 
 interface Props {
   getMappings(): JobMappingFormValues[];

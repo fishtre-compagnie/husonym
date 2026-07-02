@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 )
 
 // Used by sql connector and other modules that need to interact with the database along with other methods on the sql.DB object

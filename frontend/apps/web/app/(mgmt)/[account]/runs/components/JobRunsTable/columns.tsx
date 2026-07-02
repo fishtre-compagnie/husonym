@@ -4,7 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { JobRun } from '@neosync/sdk';
+import { JobRun } from '@husonym/sdk';
 import NextLink from 'next/link';
 import JobRunStatus from '../JobRunStatus';
 import { DataTableColumnHeader } from './data-table-column-header';

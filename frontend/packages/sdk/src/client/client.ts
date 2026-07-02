@@ -14,10 +14,10 @@ import { JobService } from './mgmt/v1alpha1/job_pb.js';
 import { MetricsService } from './mgmt/v1alpha1/metrics_pb.js';
 import { TransformersService } from './mgmt/v1alpha1/transformer_pb.js';
 import { UserAccountService } from './mgmt/v1alpha1/user_account_pb.js';
-export type NeosyncClient = NeosyncV1alpha1Client;
+export type HusonymClient = HusonymV1alpha1Client;
 export type ClientVersion = 'v1alpha1' | 'latest';
 
-export interface NeosyncV1alpha1Client {
+export interface HusonymV1alpha1Client {
   connections: Client<typeof ConnectionService>;
   users: Client<typeof UserAccountService>;
   jobs: Client<typeof JobService>;
@@ -36,7 +36,7 @@ export type GetAccessTokenFn = () => string | Promise<string>;
 
 export interface ClientConfig {
   /**
-   * Return the access token to be used for authenticating against Neosync API
+   * Return the access token to be used for authenticating against Husonym API
    * This will either be a JWT, or an API Key
    * It will be used to construct the Authorization Header in the format: Authorization: Bearer <access token>
    */
@@ -49,37 +49,37 @@ export interface ClientConfig {
 }
 
 /**
- * Returns the latest version of the Neosync Client
+ * Returns the latest version of the Husonym Client
  */
-export function getNeosyncClient(config: ClientConfig): NeosyncClient;
+export function getHusonymClient(config: ClientConfig): HusonymClient;
 /**
- * Returns the latest version of the Neosync Client
+ * Returns the latest version of the Husonym Client
  */
-export function getNeosyncClient(
+export function getHusonymClient(
   config: ClientConfig,
   version: 'latest'
-): NeosyncClient;
+): HusonymClient;
 /**
- * Returns the v1alpha1 version of the Neosync Client
+ * Returns the v1alpha1 version of the Husonym Client
  */
-export function getNeosyncClient(
+export function getHusonymClient(
   config: ClientConfig,
   version: 'v1alpha1'
-): NeosyncV1alpha1Client;
-export function getNeosyncClient(
+): HusonymV1alpha1Client;
+export function getHusonymClient(
   config: ClientConfig,
   _version?: ClientVersion
-): NeosyncClient {
-  return getNeosyncV1alpha1Client(config);
+): HusonymClient {
+  return getHusonymV1alpha1Client(config);
 }
 
 /**
- * Returns the v1alpha1 version of the Neosync client
+ * Returns the v1alpha1 version of the Husonym client
  * @returns
  */
-export function getNeosyncV1alpha1Client(
+export function getHusonymV1alpha1Client(
   config: ClientConfig
-): NeosyncV1alpha1Client {
+): HusonymV1alpha1Client {
   const interceptors = config.getAccessToken
     ? [getAuthInterceptor(config.getAccessToken)]
     : [];

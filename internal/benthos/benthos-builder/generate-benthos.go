@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
 
 func (b *BenthosConfigManager) GenerateBenthosConfigs(
@@ -82,8 +82,8 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 			metrics.NewEqLabel(metrics.AccountIdLabel, b.job.AccountId),
 			metrics.NewEqLabel(metrics.JobIdLabel, b.job.Id),
 			metrics.NewEqLabel(
-				metrics.NeosyncDateLabel,
-				bb_shared.WithEnvInterpolation(metrics.NeosyncDateEnvKey),
+				metrics.HusonymDateLabel,
+				bb_shared.WithEnvInterpolation(metrics.HusonymDateEnvKey),
 			),
 		}
 		for key, val := range b.metricLabelKeyVals {
@@ -91,8 +91,8 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		}
 		for _, resp := range sourceConfigs {
 			joinedLabels := append(labels, resp.Metriclabels...) //nolint:gocritic
-			resp.Config.Metrics = &neosync_benthos.Metrics{
-				OtelCollector: &neosync_benthos.MetricsOtelCollector{},
+			resp.Config.Metrics = &husonym_benthos.Metrics{
+				OtelCollector: &husonym_benthos.MetricsOtelCollector{},
 				Mapping:       joinedLabels.ToBenthosMeta(),
 			}
 		}

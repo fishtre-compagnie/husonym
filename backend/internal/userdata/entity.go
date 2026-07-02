@@ -1,8 +1,8 @@
 package userdata
 
 import (
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -50,8 +50,8 @@ func NewWildcardDomainEntity(accountId string) DomainEntity {
 // Helper function that can be used when dealing with the DB entities instead of the domain entities
 func NewDbDomainEntity(accountId, id pgtype.UUID) DomainEntity {
 	return &DomainEntityImpl{
-		id:        neosyncdb.UUIDString(id),
-		accountId: neosyncdb.UUIDString(accountId),
+		id:        husonymdb.UUIDString(id),
+		accountId: husonymdb.UUIDString(accountId),
 	}
 }
 

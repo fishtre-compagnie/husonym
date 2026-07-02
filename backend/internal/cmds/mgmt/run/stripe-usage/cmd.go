@@ -10,11 +10,11 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	neosynclogger "github.com/Groupe-Hevea/neosync/backend/pkg/logger"
-	neosyncotel "github.com/Groupe-Hevea/neosync/internal/otel"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
+	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,14 +36,14 @@ func NewCmd() *cobra.Command {
 }
 
 func run(ctx context.Context) error {
-	slogger, _ := neosynclogger.NewLoggers()
+	slogger, _ := husonymlogger.NewLoggers()
 
 	neoenv := viper.GetString("NUCLEUS_ENV")
 	if neoenv != "" {
 		slogger = slogger.With(
 			"nucleusEnv", neoenv,
 			"env", neoenv,
-			"neosyncEnv", neoenv,
+			"husonymEnv", neoenv,
 		)
 	}
 
@@ -65,12 +65,12 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("unable to calculate ingest date: %w", err)
 	}
 
-	neosyncurl := shared.GetNeosyncUrl()
-	httpclient := shared.GetNeosyncHttpClient()
+	husonymurl := shared.GetHusonymUrl()
+	httpclient := shared.GetHusonymHttpClient()
 
 	clientInterceptors := []connect.Interceptor{}
 
-	otelconfig := neosyncotel.GetOtelConfigFromViperEnv()
+	otelconfig := husonymotel.GetOtelConfigFromViperEnv()
 	if otelconfig.IsEnabled {
 		otelinterceptors, otelshutdown, err := getOtelConfig(ctx, otelconfig, slogger)
 		if err != nil {
@@ -89,12 +89,12 @@ func run(ctx context.Context) error {
 
 	usersclient := mgmtv1alpha1connect.NewUserAccountServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connect.WithInterceptors(clientInterceptors...),
 	)
 	metricsclient := mgmtv1alpha1connect.NewMetricsServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connect.WithInterceptors(clientInterceptors...),
 	)
 
@@ -140,23 +140,23 @@ func run(ctx context.Context) error {
 
 func getOtelConfig(
 	ctx context.Context,
-	otelconfig neosyncotel.OtelEnvConfig,
+	otelconfig husonymotel.OtelEnvConfig,
 	logger *slog.Logger,
 ) (interceptors []connect.Interceptor, shutdown func(context.Context) error, err error) {
 	logger.DebugContext(ctx, "otel is enabled")
-	tmPropagator := neosyncotel.NewDefaultPropagator()
+	tmPropagator := husonymotel.NewDefaultPropagator()
 	otelconnopts := []otelconnect.Option{
 		otelconnect.WithoutServerPeerAttributes(),
 		otelconnect.WithPropagator(tmPropagator),
 	}
 
-	meterProviders := []neosyncotel.MeterProvider{}
-	traceProviders := []neosyncotel.TracerProvider{}
+	meterProviders := []husonymotel.MeterProvider{}
+	traceProviders := []husonymotel.TracerProvider{}
 
-	meterprovider, err := neosyncotel.NewMeterProvider(ctx, &neosyncotel.MeterProviderConfig{
+	meterprovider, err := husonymotel.NewMeterProvider(ctx, &husonymotel.MeterProviderConfig{
 		Exporter:   otelconfig.MeterExporter,
 		AppVersion: otelconfig.ServiceVersion,
-		Opts: neosyncotel.MeterExporterOpts{
+		Opts: husonymotel.MeterExporterOpts{
 			Otlp:    []otlpmetricgrpc.Option{},
 			Console: []stdoutmetric.Option{stdoutmetric.WithPrettyPrint()},
 		},
@@ -172,9 +172,9 @@ func getOtelConfig(
 		otelconnopts = append(otelconnopts, otelconnect.WithoutMetrics())
 	}
 
-	traceprovider, err := neosyncotel.NewTraceProvider(ctx, &neosyncotel.TraceProviderConfig{
+	traceprovider, err := husonymotel.NewTraceProvider(ctx, &husonymotel.TraceProviderConfig{
 		Exporter: otelconfig.TraceExporter,
-		Opts: neosyncotel.TraceExporterOpts{
+		Opts: husonymotel.TraceExporterOpts{
 			Otlp:    []otlptracegrpc.Option{},
 			Console: []stdouttrace.Option{stdouttrace.WithPrettyPrint()},
 		},
@@ -195,7 +195,7 @@ func getOtelConfig(
 		return nil, nil, err
 	}
 
-	otelshutdown := neosyncotel.SetupOtelSdk(&neosyncotel.SetupConfig{
+	otelshutdown := husonymotel.SetupOtelSdk(&husonymotel.SetupConfig{
 		TraceProviders:    traceProviders,
 		MeterProviders:    meterProviders,
 		Logger:            logr.FromSlogHandler(logger.Handler()),

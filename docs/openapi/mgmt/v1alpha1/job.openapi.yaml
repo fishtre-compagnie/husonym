@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  summary: Neosync API
+  summary: Husonym API
   version: "0.5"
-  termsOfService: "https://www.neosync.dev/terms-of-service"
+  termsOfService: "https://www.husonym.allopneus.com/terms-of-service"
   contact:
-    name: Neosync Support
-    email: support@neosync.dev
+    name: Husonym Support
+    email: support@husonym.allopneus.com
   license:
     name: MIT
-    url: https://github.com/Groupe-Hevea/neosync/blob/main/LICENSE.md
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.neosync.allopneus.com/api
+  url: https://docs.husonym.allopneus.com/api
 servers:
-  - url: https://neosync-api.svcs.neosync.dev
-    description: Neosync Cloud
+  - url: https://husonym-api.svcs.husonym.allopneus.com
+    description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
     variables:
@@ -354,7 +354,7 @@ components:
           type: string
           title: ai_connection_id
           format: uuid
-          description: The connection id that corresponds with an AI-based Neosync connection
+          description: The connection id that corresponds with an AI-based Husonym connection
         schemas:
           type: array
           items:
@@ -2496,7 +2496,7 @@ components:
           type: string
           title: connection_id
           format: uuid
-          description: Unique identifier of the Neosync connection to run this hook for. Must be a connection id that is present in the job.
+          description: Unique identifier of the Husonym connection to run this hook for. Must be a connection id that is present in the job.
         timing:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing'
@@ -3279,12 +3279,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy'
           title: column_removal_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+          description: Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
         newColumnAdditionStrategy:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy'
           title: new_column_addition_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+          description: Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
       title: MssqlSourceConnectionOptions
       additionalProperties: false
     mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy:
@@ -3581,12 +3581,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy'
           title: column_removal_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+          description: Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
         newColumnAdditionStrategy:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy'
           title: new_column_addition_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+          description: Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
       title: MysqlSourceConnectionOptions
       additionalProperties: false
     mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy:
@@ -3964,7 +3964,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.PiiAnonymizer.Transform'
           title: transform
-          description: Configures the anonymizer to use a Neosync configured transformer
+          description: Configures the anonymizer to use a Husonym configured transformer
       title: PiiAnonymizer
       additionalProperties: false
     mgmt.v1alpha1.PiiAnonymizer.Hash:
@@ -4303,12 +4303,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy'
           title: new_column_addition_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+          description: Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
         columnRemovalStrategy:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy'
           title: column_removal_strategy
-          description: Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+          description: Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
       title: PostgresSourceConnectionOptions
       additionalProperties: false
     mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy:
@@ -4535,7 +4535,7 @@ components:
           type: string
           title: job_run_id
           minLength: 1
-          description: The Neosync Run ID
+          description: The Husonym Run ID
         externalId:
           type: string
           title: external_id
@@ -4545,7 +4545,7 @@ components:
           type: string
           title: account_id
           minLength: 1
-          description: The Neosync Account ID
+          description: The Husonym Account ID
       title: RunContextKey
       additionalProperties: false
     mgmt.v1alpha1.SetJobHookEnabledRequest:
@@ -5111,7 +5111,7 @@ components:
              If not provided, the default_anonymizer will be used.
       title: TransformPiiText
       additionalProperties: false
-      description: NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+      description: HusonymCloud/Enterprise only transformer for anonymizing PII Text
     mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry:
       type: object
       properties:
@@ -5729,7 +5729,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformPiiText'
           title: transform_pii_text_config
-          description: NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+          description: HusonymCloud/Enterprise only transformer for anonymizing PII Text
         generateBusinessNameConfig:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.GenerateBusinessName'

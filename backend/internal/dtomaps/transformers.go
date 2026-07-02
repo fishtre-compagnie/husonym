@@ -3,14 +3,14 @@ package dtomaps
 import (
 	"fmt"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToUserDefinedTransformerDto(
-	input *db_queries.NeosyncApiTransformer,
+	input *db_queries.HusonymApiTransformer,
 	systemTransformers map[mgmtv1alpha1.TransformerSource]*mgmtv1alpha1.SystemTransformer,
 ) (*mgmtv1alpha1.UserDefinedTransformer, error) {
 	if _, ok := mgmtv1alpha1.TransformerSource_name[input.Source]; !ok {
@@ -29,7 +29,7 @@ func ToUserDefinedTransformerDto(
 		return nil, err
 	}
 	return &mgmtv1alpha1.UserDefinedTransformer{
-		Id:          neosyncdb.UUIDString(input.ID),
+		Id:          husonymdb.UUIDString(input.ID),
 		Name:        input.Name,
 		Description: input.Description,
 		Source:      source,
@@ -38,6 +38,6 @@ func ToUserDefinedTransformerDto(
 		Config:      dto,
 		CreatedAt:   timestamppb.New(input.CreatedAt.Time),
 		UpdatedAt:   timestamppb.New(input.UpdatedAt.Time),
-		AccountId:   neosyncdb.UUIDString(input.AccountID),
+		AccountId:   husonymdb.UUIDString(input.AccountID),
 	}, nil
 }

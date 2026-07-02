@@ -27,8 +27,8 @@ func Test_parsePublicKey(t *testing.T) {
 }
 
 const (
-	// generated using the gen-cust-license shell script with the neosync cloud private key
-	// ./scripts/gen-cust-license.sh ./neosync_cloud_ca.key license.json | pbcopy
+	// generated using the gen-cust-license shell script with the husonym cloud private key
+	// ./scripts/gen-cust-license.sh ./husonym_cloud_ca.key license.json | pbcopy
 	validExpiredTestLicense = "eyJsaWNlbnNlIjoiZXdvZ0lDQWdJblpsY25OcGIyNGlPaUFpZGpFaUxBb2dJQ0FnSW1sa0lqb2dJbVk0TW1aaVlXWmtMVFppTnpVdE5HSXpaUzFoWmpRekxUZGhaRFF3TldNNFpEUTRZaUlzQ2lBZ0lDQWlhWE56ZFdWa1gzUnZJam9nSWtGamJXVWdRMjh1SWl3S0lDQWdJQ0pwYzNOMVpXUmZZWFFpT2lBaU1qQXlNaTB4TWkwek1WUXhNam93TURvd01Gb2lMQW9nSUNBZ0ltVjRjR2x5WlhOZllYUWlPaUFpTWpBeU15MHhNaTB6TVZReE1qb3dNRG93TUZvaUNuMEsiLCJzaWduYXR1cmUiOiJEd1JlZXQyVSthaGFxRXVmc0pZZFBtLzBLVFZDRW9PVXk2Q09sZ3VMV2ZmbkZNWW43WmRTOXFGbHFlZFR2VnlKeERGU3hZTHdoWEFyN0F1anNBdkVEZz09In0K"
 )
 

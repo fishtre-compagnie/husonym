@@ -6,13 +6,13 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 
-	benthosbuilder_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	http_client "github.com/Groupe-Hevea/neosync/internal/http/client"
-	neosync_redis "github.com/Groupe-Hevea/neosync/internal/redis"
+	benthosbuilder_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
+	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
 	"github.com/spf13/viper"
 )
 
@@ -54,22 +54,22 @@ type WorkflowMetadata struct {
 // Holds the environment variable name and the connection id that should replace it at runtime when the Sync activity is launched
 type BenthosDsn struct {
 	EnvVarKey string
-	// Neosync Connection Id
+	// Husonym Connection Id
 	ConnectionId string
 }
 
-// Returns the neosync url found in the environment, otherwise defaults to localhost
-func GetNeosyncUrl() string {
-	neosyncUrl := viper.GetString("NEOSYNC_URL")
-	if neosyncUrl == "" {
+// Returns the husonym url found in the environment, otherwise defaults to localhost
+func GetHusonymUrl() string {
+	husonymUrl := viper.GetString("HUSONYM_URL")
+	if husonymUrl == "" {
 		return "http://localhost:8080"
 	}
-	return neosyncUrl
+	return husonymUrl
 }
 
-// Returns an instance of *http.Client that includes the Neosync API Token if one was found in the environment
-func GetNeosyncHttpClient() *http.Client {
-	apikey := viper.GetString("NEOSYNC_API_KEY")
+// Returns an instance of *http.Client that includes the Husonym API Token if one was found in the environment
+func GetHusonymHttpClient() *http.Client {
+	apikey := viper.GetString("HUSONYM_API_KEY")
 	return http_client.NewWithBearerAuth(&apikey)
 }
 
@@ -168,7 +168,7 @@ func GetSchemaTablesMapFromMappings(mappings []*mgmtv1alpha1.JobMapping) map[str
 	return output
 }
 
-func GetRedisConfig() *neosync_redis.RedisConfig {
+func GetRedisConfig() *husonym_redis.RedisConfig {
 	redisUrl := viper.GetString("REDIS_URL")
 	if redisUrl == "" {
 		return nil
@@ -188,11 +188,11 @@ func GetRedisConfig() *neosync_redis.RedisConfig {
 	if masterEv != "" {
 		master = &masterEv
 	}
-	return &neosync_redis.RedisConfig{
+	return &husonym_redis.RedisConfig{
 		Url:    redisUrl,
 		Kind:   kind,
 		Master: master,
-		Tls: &neosync_redis.RedisTlsConfig{
+		Tls: &husonym_redis.RedisTlsConfig{
 			Enabled:               viper.GetBool("REDIS_TLS_ENABLED"),
 			SkipCertVerify:        viper.GetBool("REDIS_TLS_SKIP_CERT_VERIFY"),
 			EnableRenegotiation:   viper.GetBool("REDIS_TLS_ENABLE_RENEGOTIATION"),

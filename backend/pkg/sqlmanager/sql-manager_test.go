@@ -3,12 +3,12 @@ package sqlmanager
 import (
 	"testing"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	mssql_queries "github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/connection-manager/providers/sqlprovider"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
 	"github.com/stretchr/testify/require"
 )
 

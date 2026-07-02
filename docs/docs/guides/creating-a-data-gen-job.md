@@ -1,6 +1,6 @@
 ---
 title: Creating a Data Generation Job
-description: Learn how to create a data generation job in Neosync which allows you to generate synthetic data from scratch
+description: Learn how to create a data generation job in Husonym which allows you to generate synthetic data from scratch
 id: creating-a-data-gen-job
 hide_title: false
 slug: /guides/creating-a-data-gen-job
@@ -20,7 +20,7 @@ In order to create a data generation job:
 
 1. On the **Jobs** page, click on the **+ New Job** button.
 
-![jobs](https://assets.Groupe-Hevea.com/neosync/docs/jobs-page.png)
+![jobs](https://assets.fishtre-compagnie.com/husonym/docs/jobs-page.png)
 
 2. Select the **Data Generation** job type.
 
@@ -28,13 +28,13 @@ In order to create a data generation job:
 
 3. Then give your job a **Name**. Next, if you want your job to run on a schedule, click on the schedule switch to expose an input where you can provide a cron string. Your job will run on this schedule. Lastly, activate the **Initiate Job Run** switch if you want to immediately trigger a single job run once the job is completed. Click **Next** once you're ready.
 
-![job-define](https://assets.Groupe-Hevea.com/neosync/docs/new-data-gen-job-define.png)
+![job-define](https://assets.fishtre-compagnie.com/husonym/docs/new-data-gen-job-define.png)
 
 4. Select your destination(s) connection. You may also configure your destination with the provided configuration options.
 
-![job-connect](https://assets.Groupe-Hevea.com/neosync/docs/new-data-gen-job-connect.png)
+![job-connect](https://assets.fishtre-compagnie.com/husonym/docs/new-data-gen-job-connect.png)
 
-5. Next is the Schema page. Here you can select how you want to transform your tables and columns with [**Transformers**](/core-concepts#transformers). Select your schema and the table you want to transform and then the number of rows you want to generate. There are a number of [transformers](/transformers/system) that Neosync ships with out of the box or you can create your own custom transformer. Once you're done, you can click **Next**.
+5. Next is the Schema page. Here you can select how you want to transform your tables and columns with [**Transformers**](/core-concepts#transformers). Select your schema and the table you want to transform and then the number of rows you want to generate. There are a number of [transformers](/transformers/system) that Husonym ships with out of the box or you can create your own custom transformer. Once you're done, you can click **Next**.
 
 ![job-schema](/img/fourth.png)
 

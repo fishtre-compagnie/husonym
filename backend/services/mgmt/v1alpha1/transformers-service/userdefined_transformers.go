@@ -6,15 +6,15 @@ import (
 	"regexp"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/dop251/goja"
 )
 
@@ -34,7 +34,7 @@ func (s *Service) GetUserDefinedTransformers(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (s *Service) GetUserDefinedTransformers(
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to map user defined transformer %s with source %d: %w",
-				neosyncdb.UUIDString(transformer.ID),
+				husonymdb.UUIDString(transformer.ID),
 				transformer.Source,
 				err,
 			)
@@ -71,15 +71,15 @@ func (s *Service) GetUserDefinedTransformerById(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetUserDefinedTransformerByIdRequest],
 ) (*connect.Response[mgmtv1alpha1.GetUserDefinedTransformerByIdResponse], error) {
-	tId, err := neosyncdb.ToUuid(req.Msg.GetTransformerId())
+	tId, err := husonymdb.ToUuid(req.Msg.GetTransformerId())
 	if err != nil {
 		return nil, err
 	}
 
 	transformer, err := s.db.Q.GetUserDefinedTransformerById(ctx, s.db.Db, tId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find transformer by id")
 	}
 
@@ -87,7 +87,7 @@ func (s *Service) GetUserDefinedTransformerById(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to map user defined transformer %s with source %d: %w",
-			neosyncdb.UUIDString(transformer.ID),
+			husonymdb.UUIDString(transformer.ID),
 			transformer.Source,
 			err,
 		)
@@ -127,7 +127,7 @@ func (s *Service) CreateUserDefinedTransformer(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (s *Service) CreateUserDefinedTransformer(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to map user defined transformer %s with source %d: %w",
-			neosyncdb.UUIDString(ct.ID),
+			husonymdb.UUIDString(ct.ID),
 			ct.Source,
 			err,
 		)
@@ -176,15 +176,15 @@ func (s *Service) DeleteUserDefinedTransformer(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("transformerId", req.Msg.GetTransformerId())
 
-	tId, err := neosyncdb.ToUuid(req.Msg.GetTransformerId())
+	tId, err := husonymdb.ToUuid(req.Msg.GetTransformerId())
 	if err != nil {
 		return nil, err
 	}
 
 	transformer, err := s.db.Q.GetUserDefinedTransformerById(ctx, s.db.Db, tId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.DeleteUserDefinedTransformerResponse{}), nil
 	}
 
@@ -194,7 +194,7 @@ func (s *Service) DeleteUserDefinedTransformer(
 	}
 	err = user.EnforceJob(
 		ctx,
-		userdata.NewWildcardDomainEntity(neosyncdb.UUIDString(transformer.AccountID)),
+		userdata.NewWildcardDomainEntity(husonymdb.UUIDString(transformer.AccountID)),
 		rbac.JobAction_Delete,
 	)
 	if err != nil {
@@ -202,9 +202,9 @@ func (s *Service) DeleteUserDefinedTransformer(
 	}
 
 	err = s.db.Q.DeleteUserDefinedTransformerById(ctx, s.db.Db, transformer.ID)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		logger.Debug("transformer not found or has already been removed")
 	}
 
@@ -215,14 +215,14 @@ func (s *Service) UpdateUserDefinedTransformer(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.UpdateUserDefinedTransformerRequest],
 ) (*connect.Response[mgmtv1alpha1.UpdateUserDefinedTransformerResponse], error) {
-	tUuid, err := neosyncdb.ToUuid(req.Msg.TransformerId)
+	tUuid, err := husonymdb.ToUuid(req.Msg.TransformerId)
 	if err != nil {
 		return nil, err
 	}
 	transformer, err := s.db.Q.GetUserDefinedTransformerById(ctx, s.db.Db, tUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find transformer by id")
 	}
 
@@ -232,7 +232,7 @@ func (s *Service) UpdateUserDefinedTransformer(
 	}
 	err = user.EnforceJob(
 		ctx,
-		userdata.NewWildcardDomainEntity(neosyncdb.UUIDString(transformer.AccountID)),
+		userdata.NewWildcardDomainEntity(husonymdb.UUIDString(transformer.AccountID)),
 		rbac.JobAction_Edit,
 	)
 	if err != nil {
@@ -264,7 +264,7 @@ func (s *Service) UpdateUserDefinedTransformer(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to map user defined transformer %s with source %d: %w",
-			neosyncdb.UUIDString(updatedTransformer.ID),
+			husonymdb.UUIDString(updatedTransformer.ID),
 			updatedTransformer.Source,
 			err,
 		)
@@ -291,7 +291,7 @@ func (s *Service) IsTransformerNameAvailable(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}

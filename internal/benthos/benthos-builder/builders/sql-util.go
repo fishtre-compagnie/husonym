@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	job_util "github.com/Groupe-Hevea/neosync/internal/job"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -78,7 +78,7 @@ func getUniqueColMappingsMap(
 ) map[string]map[string]struct{} {
 	tableColMappings := map[string]map[string]struct{}{}
 	for _, mapping := range mappings {
-		key := neosync_benthos.BuildBenthosTable(mapping.Schema, mapping.Table)
+		key := husonym_benthos.BuildBenthosTable(mapping.Schema, mapping.Table)
 		if _, ok := tableColMappings[key]; ok {
 			tableColMappings[key][mapping.Column] = struct{}{}
 		} else {
@@ -152,7 +152,7 @@ func groupSqlJobSourceOptionsByTable(
 	for _, schemaOpt := range sqlSourceOpts.SchemaOpt {
 		for tidx := range schemaOpt.Tables {
 			tableOpt := schemaOpt.Tables[tidx]
-			key := neosync_benthos.BuildBenthosTable(schemaOpt.Schema, tableOpt.Table)
+			key := husonym_benthos.BuildBenthosTable(schemaOpt.Schema, tableOpt.Table)
 			groupedMappings[key] = &sqlSourceTableOptions{
 				WhereClause: tableOpt.WhereClause,
 			}
@@ -206,7 +206,7 @@ func groupMappingsByTable(
 	groupedMappings := map[string][]*mgmtv1alpha1.JobMapping{}
 
 	for _, mapping := range mappings {
-		key := neosync_benthos.BuildBenthosTable(mapping.Schema, mapping.Table)
+		key := husonym_benthos.BuildBenthosTable(mapping.Schema, mapping.Table)
 		groupedMappings[key] = append(groupedMappings[key], mapping)
 	}
 
@@ -225,7 +225,7 @@ func groupMappingsByTable(
 func getTableMappingsMap(groupedMappings []*tableMapping) map[string]*tableMapping {
 	groupedTableMapping := map[string]*tableMapping{}
 	for _, tm := range groupedMappings {
-		groupedTableMapping[neosync_benthos.BuildBenthosTable(tm.Schema, tm.Table)] = tm
+		groupedTableMapping[husonym_benthos.BuildBenthosTable(tm.Schema, tm.Table)] = tm
 	}
 	return groupedTableMapping
 }
@@ -415,8 +415,8 @@ func getColumnDefaultProperties(
 	cols []string,
 	colInfo map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	colTransformers map[string]*mgmtv1alpha1.JobMappingTransformer,
-) (map[string]*neosync_benthos.ColumnDefaultProperties, error) {
-	colDefaults := map[string]*neosync_benthos.ColumnDefaultProperties{}
+) (map[string]*husonym_benthos.ColumnDefaultProperties, error) {
+	colDefaults := map[string]*husonym_benthos.ColumnDefaultProperties{}
 	for _, cName := range cols {
 		info, ok := colInfo[cName]
 		if !ok {
@@ -449,7 +449,7 @@ func getColumnDefaultProperties(
 		if !needsReset && !needsOverride && !hasDefaultTransformer {
 			continue
 		}
-		colDefaults[cName] = &neosync_benthos.ColumnDefaultProperties{
+		colDefaults[cName] = &husonym_benthos.ColumnDefaultProperties{
 			NeedsReset:            needsReset,
 			NeedsOverride:         needsOverride,
 			HasDefaultTransformer: hasDefaultTransformer,
@@ -1537,7 +1537,7 @@ func extractMysqlTypeParams(dataType string) []string {
 }
 
 func shouldOverrideColumnDefault(
-	columnDefaults map[string]*neosync_benthos.ColumnDefaultProperties,
+	columnDefaults map[string]*husonym_benthos.ColumnDefaultProperties,
 ) bool {
 	for _, cd := range columnDefaults {
 		if cd != nil && !cd.HasDefaultTransformer && cd.NeedsOverride {
@@ -1551,28 +1551,28 @@ func getSqlBatchProcessors(
 	driver string,
 	columns []string,
 	columnDataTypes map[string]string,
-	columnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties,
-) (*neosync_benthos.BatchProcessor, error) {
+	columnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties,
+) (*husonym_benthos.BatchProcessor, error) {
 	switch driver {
 	case sqlmanager_shared.PostgresDriver:
-		return &neosync_benthos.BatchProcessor{
-			NeosyncToPgx: &neosync_benthos.NeosyncToPgxConfig{
+		return &husonym_benthos.BatchProcessor{
+			HusonymToPgx: &husonym_benthos.HusonymToPgxConfig{
 				Columns:                 columns,
 				ColumnDataTypes:         columnDataTypes,
 				ColumnDefaultProperties: columnDefaultProperties,
 			},
 		}, nil
 	case sqlmanager_shared.MysqlDriver:
-		return &neosync_benthos.BatchProcessor{
-			NeosyncToMysql: &neosync_benthos.NeosyncToMysqlConfig{
+		return &husonym_benthos.BatchProcessor{
+			HusonymToMysql: &husonym_benthos.HusonymToMysqlConfig{
 				Columns:                 columns,
 				ColumnDataTypes:         columnDataTypes,
 				ColumnDefaultProperties: columnDefaultProperties,
 			},
 		}, nil
 	case sqlmanager_shared.MssqlDriver:
-		return &neosync_benthos.BatchProcessor{
-			NeosyncToMssql: &neosync_benthos.NeosyncToMssqlConfig{
+		return &husonym_benthos.BatchProcessor{
+			HusonymToMssql: &husonym_benthos.HusonymToMssqlConfig{
 				Columns:                 columns,
 				ColumnDataTypes:         columnDataTypes,
 				ColumnDefaultProperties: columnDefaultProperties,

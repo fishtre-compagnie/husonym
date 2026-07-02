@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"os"
 
-	neomigrate "github.com/Groupe-Hevea/neosync/internal/migrate"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -108,7 +108,7 @@ func getDbUrl() (string, error) {
 		dbOptions = &val
 	}
 
-	return neosyncdb.GetDbUrl(&neosyncdb.ConnectConfig{
+	return husonymdb.GetDbUrl(&husonymdb.ConnectConfig{
 		Host:                  dbHost,
 		Port:                  dbPort,
 		Database:              dbName,

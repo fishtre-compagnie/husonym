@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

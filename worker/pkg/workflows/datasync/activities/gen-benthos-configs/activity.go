@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	benthosbuilder "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder"
-	temporallogger "github.com/Groupe-Hevea/neosync/worker/internal/temporal-logger"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
+	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )

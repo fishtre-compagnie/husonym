@@ -1,8 +1,8 @@
 ALTER TABLE
-  neosync_api.transformers
+  husonym_api.transformers
 ADD COLUMN IF NOT EXISTS source_case text NULL;
 
-UPDATE neosync_api.transformers
+UPDATE husonym_api.transformers
 SET source_case =
   CASE source
     WHEN 0 THEN ''
@@ -52,24 +52,24 @@ SET source_case =
     ELSE ''
   END;
 
-  UPDATE neosync_api.transformers
+  UPDATE husonym_api.transformers
   SET source_case = ''
   WHERE source_case IS NULL;
 
-  ALTER TABLE neosync_api.transformers
+  ALTER TABLE husonym_api.transformers
   ALTER COLUMN source_case SET NOT NULL;
 
   ALTER TABLE
-    neosync_api.transformers
+    husonym_api.transformers
   DROP COLUMN IF EXISTS source;
 
   ALTER TABLE
-    neosync_api.transformers
+    husonym_api.transformers
   RENAME COLUMN source_case TO source;
 
 
 -- This was destructive so we need to set the default to empty string so we can revert back to the column existing in a good state
-ALTER TABLE neosync_api.transformers
+ALTER TABLE husonym_api.transformers
   ADD COLUMN IF NOT EXISTS type text not null default '';
 
 -- Revert the job mappings back to their string equivalent
@@ -132,11 +132,11 @@ WITH updated_mappings AS (
             )
         ) AS new_mappings
     FROM
-        neosync_api.jobs,
+        husonym_api.jobs,
         jsonb_array_elements(mappings) AS obj
     GROUP BY id
 )
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET mappings = updated_mappings.new_mappings
 FROM updated_mappings
-WHERE neosync_api.jobs.id = updated_mappings.id;
+WHERE husonym_api.jobs.id = updated_mappings.id;

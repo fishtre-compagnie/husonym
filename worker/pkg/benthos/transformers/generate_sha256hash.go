@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/google/uuid"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 )
 
-// +neosyncTransformerBuilder:generate:generateSHA256Hash
+// +husonymTransformerBuilder:generate:generateSHA256Hash
 
 func init() {
 	spec := bloblang.NewPluginSpec().

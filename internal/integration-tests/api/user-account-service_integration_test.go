@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	integrationtests_test "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/authmgmt"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/temporal/clientmanager"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -121,8 +121,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountTemporalConfig_
 	requireConnectError(s.T(), err, connect.CodePermissionDenied)
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountTemporalConfig_NeosyncCloud() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountTemporalConfig_HusonymCloud() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -143,8 +143,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_SetAccountTemporalConfig_
 	requireConnectError(s.T(), err, connect.CodePermissionDenied)
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_SetAccountTemporalConfig_NeosyncCloud() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_SetAccountTemporalConfig_HusonymCloud() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -243,8 +243,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_CreateTeamAccount_Auth() 
 	require.NotEmpty(s.T(), resp.Msg.GetAccountId())
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_CreateTeamAccount_NeosyncCloud() {
-	client := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_CreateTeamAccount_HusonymCloud() {
+	client := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, client)
@@ -444,8 +444,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetSystemInformation() {
 	requireNoErrResp(s.T(), resp, err)
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_NeosyncCloud_Personal() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymCloud_Personal() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -483,8 +483,8 @@ func (t *testSubscriptionIter) Err() error {
 	return nil
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_NeosyncCloud_Billed() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymCloud_Billed() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -561,8 +561,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_OSS_Pers
 	)
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_NeosyncCloud_Personal() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_HusonymCloud_Personal() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -585,8 +585,8 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Neos
 	)
 }
 
-func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_NeosyncCloud_Billed() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_HusonymCloud_Billed() {
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -722,7 +722,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Neos
 }
 
 func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingCheckoutSession() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -757,7 +757,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingCheckout
 		requireErrResp(s.T(), resp, err)
 	})
 
-	t.Run("non-neosynccloud - disallowed", func(t *testing.T) {
+	t.Run("non-husonymcloud - disallowed", func(t *testing.T) {
 		personalAccountId := s.createPersonalAccount(
 			s.ctx,
 			s.OSSUnauthenticatedLicensedClients.Users(),
@@ -773,7 +773,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingCheckout
 }
 
 func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingPortalSession() {
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient)
@@ -807,7 +807,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingPortalSe
 		requireErrResp(s.T(), resp, err)
 	})
 
-	t.Run("non-neosynccloud - disallowed", func(t *testing.T) {
+	t.Run("non-husonymcloud - disallowed", func(t *testing.T) {
 		personalAccountId := s.createPersonalAccount(
 			s.ctx,
 			s.OSSUnauthenticatedLicensedClients.Users(),
@@ -834,18 +834,18 @@ func (s *IntegrationTestSuite) createBilledTeamAccount(
 }
 
 func (s *IntegrationTestSuite) Test_GetBillingAccounts() {
-	userclient1 := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient1 := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient1)
 
-	userclient2 := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient2 := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId2),
 	)
 	s.setUser(s.ctx, userclient2)
 
 	workerapikey := apikey.NewV1WorkerKey()
-	workeruserclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	workeruserclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(workerapikey),
 	)
 
@@ -948,7 +948,7 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 	})
 
 	t.Run("cloud billing success", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(s.ctx, userclient)
@@ -972,7 +972,7 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 	})
 
 	t.Run("cloud success unspecified account", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(s.ctx, userclient)
@@ -994,13 +994,13 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 }
 
 func (s *IntegrationTestSuite) Test_SetBillingMeterEvent() {
-	userclient1 := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient1 := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	s.setUser(s.ctx, userclient1)
 
 	workerapikey := apikey.NewV1WorkerKey()
-	workeruserclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	workeruserclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(workerapikey),
 	)
 

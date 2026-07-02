@@ -6,7 +6,7 @@ services:
       - 8008:8000
     restart: always
     networks:
-      - neosync-network
+      - husonym-network
 
   test-stage-db-dynamo:
     container_name: test-stage-db-dynamo
@@ -15,4 +15,4 @@ services:
       - 8009:8000
     restart: always
     networks:
-      - neosync-network
+      - husonym-network

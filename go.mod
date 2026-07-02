@@ -1,4 +1,4 @@
-module github.com/Groupe-Hevea/neosync
+module github.com/fishtre-compagnie/husonym
 
 go 1.26.4
 

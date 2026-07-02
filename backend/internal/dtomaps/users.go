@@ -1,14 +1,14 @@
 package dtomaps
 
 import (
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ToAccountTypeDto(aType neosyncdb.AccountType) mgmtv1alpha1.UserAccountType {
+func ToAccountTypeDto(aType husonymdb.AccountType) mgmtv1alpha1.UserAccountType {
 	switch aType {
 	case 0:
 		return mgmtv1alpha1.UserAccountType_USER_ACCOUNT_TYPE_PERSONAL
@@ -21,11 +21,11 @@ func ToAccountTypeDto(aType neosyncdb.AccountType) mgmtv1alpha1.UserAccountType 
 	}
 }
 
-func ToAccountInviteDto(input *db_queries.NeosyncApiAccountInvite) *mgmtv1alpha1.AccountInvite {
+func ToAccountInviteDto(input *db_queries.HusonymApiAccountInvite) *mgmtv1alpha1.AccountInvite {
 	return &mgmtv1alpha1.AccountInvite{
-		Id:           neosyncdb.UUIDString(input.ID),
-		AccountId:    neosyncdb.UUIDString(input.AccountID),
-		SenderUserId: neosyncdb.UUIDString(input.SenderUserID),
+		Id:           husonymdb.UUIDString(input.ID),
+		AccountId:    husonymdb.UUIDString(input.AccountID),
+		SenderUserId: husonymdb.UUIDString(input.SenderUserID),
 		Email:        input.Email,
 		Token:        input.Token,
 		Accepted:     input.Accepted.Bool,
@@ -42,11 +42,11 @@ func toRoleDto(role pgtype.Int4) mgmtv1alpha1.AccountRole {
 	}
 	return mgmtv1alpha1.AccountRole(role.Int32)
 }
-func ToUserAccount(input *db_queries.NeosyncApiAccount) *mgmtv1alpha1.UserAccount {
+func ToUserAccount(input *db_queries.HusonymApiAccount) *mgmtv1alpha1.UserAccount {
 	return &mgmtv1alpha1.UserAccount{
-		Id:                  neosyncdb.UUIDString(input.ID),
+		Id:                  husonymdb.UUIDString(input.ID),
 		Name:                input.AccountSlug,
-		Type:                ToAccountTypeDto(neosyncdb.AccountType(input.AccountType)),
+		Type:                ToAccountTypeDto(husonymdb.AccountType(input.AccountType)),
 		HasStripeCustomerId: hasStripeCustomerId(input.StripeCustomerID),
 	}
 }

@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTimeMilliseconds } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { JobRunEvent, JobRunEventTaskError } from '@neosync/sdk';
+import { JobRunEvent, JobRunEventTaskError } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { getJobSyncMetadata } from './data-table';
 import { DataTableRowActions } from './data-table-row-actions';

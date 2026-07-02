@@ -35,7 +35,7 @@ import {
   ConnectionConfigSchema,
   ConnectionSchema,
   ConnectionService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { Cross2Icon, PlusIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';

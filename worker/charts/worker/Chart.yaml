@@ -1,10 +1,10 @@
 apiVersion: v2
 name: worker
-description: A Helm chart for the Neosync Temporal Worker
-home: https://www.neosync.dev
+description: A Helm chart for the Husonym Temporal Worker
+home: https://www.husonym.allopneus.com
 sources:
-  - https://github.com/Groupe-Hevea/neosync
-icon: https://assets.Groupe-Hevea.com/neosync/newbrand/logo_small.png
+  - https://github.com/fishtre-compagnie/husonym
+icon: https://assets.fishtre-compagnie.com/husonym/newbrand/logo_small.png
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

@@ -590,8 +590,8 @@ const file_mgmt_v1alpha1_metrics_proto_rawDesc = "" +
 	"!RANGED_METRIC_NAME_INPUT_RECEIVED\x10\x012\xe7\x01\n" +
 	"\x0eMetricsService\x12q\n" +
 	"\x13GetDailyMetricCount\x12).mgmt.v1alpha1.GetDailyMetricCountRequest\x1a*.mgmt.v1alpha1.GetDailyMetricCountResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x0eGetMetricCount\x12$.mgmt.v1alpha1.GetMetricCountRequest\x1a%.mgmt.v1alpha1.GetMetricCountResponse\"\x03\x90\x02\x01B\xc8\x01\n" +
-	"\x11com.mgmt.v1alpha1B\fMetricsProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x0eGetMetricCount\x12$.mgmt.v1alpha1.GetMetricCountRequest\x1a%.mgmt.v1alpha1.GetMetricCountResponse\"\x03\x90\x02\x01B\xcd\x01\n" +
+	"\x11com.mgmt.v1alpha1B\fMetricsProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_metrics_proto_rawDescOnce sync.Once

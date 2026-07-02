@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 )
 
 var getDatabaseSchemaTmpl = `-- name: GetDatabaseSchema :many

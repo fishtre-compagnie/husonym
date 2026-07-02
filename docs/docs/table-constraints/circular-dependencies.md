@@ -1,6 +1,6 @@
 ---
 title: Circular Dependencies
-description: Learn how Neosync handles circular dependencies when anonymizing and subsetting data
+description: Learn how Husonym handles circular dependencies when anonymizing and subsetting data
 id: circular-dependencies
 hide_title: false
 slug: /table-constraints/circular-dependencies
@@ -8,7 +8,7 @@ slug: /table-constraints/circular-dependencies
 
 ## Introduction
 
-Circular dependencies occur when a table references 1 or more other tables which eventually reference the original table. They can also occur when a column references another column in the same table. Neosync can handle both cases. Let's look at how we generally handling circular dependencies.
+Circular dependencies occur when a table references 1 or more other tables which eventually reference the original table. They can also occur when a column references another column in the same table. Husonym can handle both cases. Let's look at how we generally handling circular dependencies.
 
 ## Circular Dependencies
 
@@ -16,7 +16,7 @@ Circular dependencies occur when a table references 1 or more other tables which
 
 Circular dependencies across tables are pretty common in most databases and can come in a lot of difference shapes and sizes. Sometimes, it's two tables referencing each other, other times, the circular dependency can be many tables long.
 
-Neosync tries to handle all circular dependencies natively using the following algorithm:
+Husonym tries to handle all circular dependencies natively using the following algorithm:
 
 1. Create a DAG of the circular dependency to understand which tables rely on each other.
 2. Find the starting point and insert primary keys and data into that table besides any foreign key references. Note that the foreign key column in the child **must** be nullable.
@@ -39,16 +39,16 @@ Handling circular dependencies in a Sync Job involves a few key concepts:
 
 ### Generate Job
 
-In Neosync, handling circular dependencies in a Generate Job involves a few key concepts:
+In Husonym, handling circular dependencies in a Generate Job involves a few key concepts:
 
 **Support for Circular Dependencies**: Generate jobs currently do not handle circular dependencies. If the schema has a self referencing circular dependency and that column is nullable then use the `Null` transformer.
 
 ## CLI - Sync cmd
 
-In Neosync, handling circular dependencies in a CLI Sync cmd involves a few key concepts:
+In Husonym, handling circular dependencies in a CLI Sync cmd involves a few key concepts:
 
-**Support for Circular Dependencies**: The CLI sync feature in Neosync is capable of managing both self-referencing circular dependencies and those involving multiple tables.
-In scenarios where the source data is not from a SQL database (like AWS S3) but the destination is a SQL database, Neosync utilizes the foreign key constraints of the destination
+**Support for Circular Dependencies**: The CLI sync feature in Husonym is capable of managing both self-referencing circular dependencies and those involving multiple tables.
+In scenarios where the source data is not from a SQL database (like AWS S3) but the destination is a SQL database, Husonym utilizes the foreign key constraints of the destination
 SQL database to effectively insert data. This approach ensures data integrity and respects the relational structure of the SQL database.
 
 **Nullable Columns:** For circular dependencies to work, at least one table involved in the dependency must have a column that is nullable.

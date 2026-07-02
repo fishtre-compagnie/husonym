@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { LogLevel } from '@neosync/sdk';
+import { LogLevel } from '@husonym/sdk';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];

@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-//go:embed neosync_ee_pub.pem
+//go:embed husonym_ee_pub.pem
 var publicKeyPEM string
 
 const (

@@ -3,10 +3,10 @@ repositories:
     url: https://charts.bitnami.com/bitnami
 
 releases:
-  - name: neosync-postgresql
+  - name: husonym-postgresql
     chart: bitnami/postgresql
     version: 12.10.0
-    namespace: neosync
+    namespace: husonym
     createNamespace: false
 
     values:
@@ -15,6 +15,6 @@ releases:
           database: nucleus
         primary:
           persistence:
-            mountPath: "/neosync/neosync-postgres"
-            existingClaim: neosync-postgres # see pvc in ../yaml/neosync-postgres-pvc.yaml
-        postgresqlDataDir: "/neosync/neosync-postgres/data"
+            mountPath: "/husonym/husonym-postgres"
+            existingClaim: husonym-postgres # see pvc in ../yaml/husonym-postgres-pvc.yaml
+        postgresqlDataDir: "/husonym/husonym-postgres/data"

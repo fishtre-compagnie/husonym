@@ -10,19 +10,19 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	dbconnectconfig "github.com/Groupe-Hevea/neosync/backend/pkg/dbconnect-config"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	dbconnectconfig "github.com/fishtre-compagnie/husonym/backend/pkg/dbconnect-config"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/ssh"
@@ -262,7 +262,7 @@ func (s *Service) IsConnectionNameAvailable(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (s *Service) GetConnections(
 		canViewSensitive = false
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -348,15 +348,15 @@ func (s *Service) GetConnection(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetConnectionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
-	idUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	idUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	connection, err := s.db.Q.GetConnectionById(ctx, s.db.Db, idUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find connection by id")
 	}
 
@@ -415,20 +415,20 @@ func (s *Service) CreateConnection(
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -463,14 +463,14 @@ func (s *Service) UpdateConnection(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.UpdateConnectionRequest],
 ) (*connect.Response[mgmtv1alpha1.UpdateConnectionResponse], error) {
-	connectionUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	connectionUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 	connection, err := s.db.Q.GetConnectionById(ctx, s.db.Db, connectionUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find connection by id")
 	}
 
@@ -480,19 +480,19 @@ func (s *Service) UpdateConnection(
 	}
 	switch cfg := req.Msg.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config, *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
-		if err := user.EnforceLicense(ctx, neosyncdb.UUIDString(connection.AccountID)); err != nil {
+		if err := user.EnforceLicense(ctx, husonymdb.UUIDString(connection.AccountID)); err != nil {
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsNeosyncCloud); err != nil {
+		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	}
@@ -532,15 +532,15 @@ func (s *Service) DeleteConnection(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.DeleteConnectionRequest],
 ) (*connect.Response[mgmtv1alpha1.DeleteConnectionResponse], error) {
-	idUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	idUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	connection, err := s.db.Q.GetConnectionById(ctx, s.db.Db, idUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.DeleteConnectionResponse{}), nil
 	}
 
@@ -600,7 +600,7 @@ func (s *Service) CheckSqlQuery(
 	if err != nil {
 		return nil, err
 	}
-	defer neosyncdb.HandleSqlRollback(tx, logger)
+	defer husonymdb.HandleSqlRollback(tx, logger)
 
 	_, err = tx.PrepareContext(ctx, req.Msg.GetQuery())
 	var errorMsg *string
@@ -699,9 +699,9 @@ type urlEnvVarConfig interface {
 	GetUrlFromEnv() string
 }
 
-func checkUrlEnvVar(cfg urlEnvVarConfig, isNeosyncCloud bool) error {
-	if cfg.GetUrlFromEnv() != "" && isNeosyncCloud {
-		return nucleuserrors.NewBadRequest("url env var is not supported in neosync cloud")
+func checkUrlEnvVar(cfg urlEnvVarConfig, isHusonymCloud bool) error {
+	if cfg.GetUrlFromEnv() != "" && isHusonymCloud {
+		return nucleuserrors.NewBadRequest("url env var is not supported in husonym cloud")
 	}
 	return nil
 }

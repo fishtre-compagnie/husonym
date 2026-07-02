@@ -3,7 +3,7 @@ export interface SystemAppConfig {
   publicAppBaseUrl: string;
   posthog: PosthogConfig;
   unify: UnifyConfig;
-  isNeosyncCloud: boolean;
+  isHusonymCloud: boolean;
   isStripeEnabled: boolean;
   enableRunLogs: boolean;
   signInProviderId?: string;
@@ -16,9 +16,9 @@ export interface SystemAppConfig {
   calendlyUpgradeLink: string;
   isGcpCloudStorageConnectionsEnabled: boolean;
   // server-side base url
-  neosyncApiBaseUrl: string;
+  husonymApiBaseUrl: string;
   // public (client-side) base url;
-  publicNeosyncApiBaseUrl: string;
+  publicHusonymApiBaseUrl: string;
   isRbacEnabled: boolean;
   isPiiDetectionJobEnabled: boolean;
 }

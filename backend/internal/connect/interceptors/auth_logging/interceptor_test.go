@@ -8,15 +8,15 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
-	auth_jwt "github.com/Groupe-Hevea/neosync/backend/internal/auth/jwt"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,12 +25,12 @@ import (
 func Test_Interceptor_WrapUnary_JwtContextData_ValidUser(t *testing.T) {
 	logger := testutil.GetTestLogger(t)
 
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
-	genuuid, _ := neosyncdb.ToUuid(uuid.NewString())
+	genuuid, _ := husonymdb.ToUuid(uuid.NewString())
 	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.NeosyncApiUser{ID: genuuid}, nil)
+		Return(db_queries.HusonymApiUser{ID: genuuid}, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle(mgmtv1alpha1connect.UserAccountServiceGetUserProcedure, connect.NewUnaryHandler(
@@ -41,7 +41,7 @@ func Test_Interceptor_WrapUnary_JwtContextData_ValidUser(t *testing.T) {
 		connect.WithInterceptors(
 			logger_interceptor.NewInterceptor(logger),
 			&mockAuthInterceptor{data: &auth_jwt.TokenContextData{AuthUserId: "auth-user-id"}},
-			NewInterceptor(neosyncdb.New(mockDbtx, mockQuerier)),
+			NewInterceptor(husonymdb.New(mockDbtx, mockQuerier)),
 		),
 	))
 
@@ -57,7 +57,7 @@ func Test_Interceptor_WrapUnary_JwtContextData_ValidUser(t *testing.T) {
 func Test_Interceptor_WrapUnary_JwtContextData_NoUser_NoFail(t *testing.T) {
 	logger := testutil.GetTestLogger(t)
 
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	mux := http.NewServeMux()
@@ -68,7 +68,7 @@ func Test_Interceptor_WrapUnary_JwtContextData_NoUser_NoFail(t *testing.T) {
 		},
 		connect.WithInterceptors(
 			logger_interceptor.NewInterceptor(logger),
-			NewInterceptor(neosyncdb.New(mockDbtx, mockQuerier)),
+			NewInterceptor(husonymdb.New(mockDbtx, mockQuerier)),
 		),
 	))
 
@@ -117,18 +117,18 @@ func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
 }
 
 func Test_getAuthValues_NoTokenCtx(t *testing.T) {
-	vals := getAuthValues(context.Background(), &neosyncdb.NeosyncDb{})
+	vals := getAuthValues(context.Background(), &husonymdb.HusonymDb{})
 	require.Empty(t, vals)
 }
 
 func Test_getAuthValues_Valid_Jwt(t *testing.T) {
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	uuidstr := uuid.NewString()
-	genuuid, _ := neosyncdb.ToUuid(uuidstr)
+	genuuid, _ := husonymdb.ToUuid(uuidstr)
 	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.NeosyncApiUser{ID: genuuid}, nil)
+		Return(db_queries.HusonymApiUser{ID: genuuid}, nil)
 
 	ctx := context.WithValue(
 		context.Background(),
@@ -138,7 +138,7 @@ func Test_getAuthValues_Valid_Jwt(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, neosyncdb.New(mockDbtx, mockQuerier))
+	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"authUserId", "auth-user-id", "userId", uuidstr},
@@ -147,11 +147,11 @@ func Test_getAuthValues_Valid_Jwt(t *testing.T) {
 }
 
 func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.NeosyncApiUser{}, errors.New("test err"))
+		Return(db_queries.HusonymApiUser{}, errors.New("test err"))
 
 	ctx := context.WithValue(
 		context.Background(),
@@ -161,7 +161,7 @@ func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, neosyncdb.New(mockDbtx, mockQuerier))
+	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"authUserId", "auth-user-id"},
@@ -170,23 +170,23 @@ func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
 }
 
 func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	apikeyid := uuid.NewString()
 	accountid := uuid.NewString()
 	userid := uuid.NewString()
 
-	apikeyuuid, _ := neosyncdb.ToUuid(apikeyid)
-	accountiduuid, _ := neosyncdb.ToUuid(accountid)
-	useriduuid, _ := neosyncdb.ToUuid(userid)
+	apikeyuuid, _ := husonymdb.ToUuid(apikeyid)
+	accountiduuid, _ := husonymdb.ToUuid(accountid)
+	useriduuid, _ := husonymdb.ToUuid(userid)
 
 	ctx := context.WithValue(
 		context.Background(),
 		auth_apikey.TokenContextKey{},
 		&auth_apikey.TokenContextData{
 			ApiKeyType: apikey.AccountApiKey,
-			ApiKey: &db_queries.NeosyncApiAccountApiKey{
+			ApiKey: &db_queries.HusonymApiAccountApiKey{
 				ID:        apikeyuuid,
 				AccountID: accountiduuid,
 				UserID:    useriduuid,
@@ -194,7 +194,7 @@ func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, neosyncdb.New(mockDbtx, mockQuerier))
+	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{
@@ -212,7 +212,7 @@ func Test_getAuthValues_Valid_ApiKey(t *testing.T) {
 }
 
 func Test_getAuthValues_Valid_ApiKey_No_Apikey(t *testing.T) {
-	mockDbtx := neosyncdb.NewMockDBTX(t)
+	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	ctx := context.WithValue(
@@ -223,7 +223,7 @@ func Test_getAuthValues_Valid_ApiKey_No_Apikey(t *testing.T) {
 		},
 	)
 
-	vals := getAuthValues(ctx, neosyncdb.New(mockDbtx, mockQuerier))
+	vals := getAuthValues(ctx, husonymdb.New(mockDbtx, mockQuerier))
 	require.Equal(
 		t,
 		[]any{"apiKeyType", apikey.AccountApiKey},

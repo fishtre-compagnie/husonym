@@ -609,8 +609,8 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\n" +
 	"CheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x00\x12e\n" +
 	"\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\x03\x90\x02\x01\x12_\n" +
-	"\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\x03\x90\x02\x01B\xc5\x01\n" +
-	"\x11com.mgmt.v1alpha1B\tAuthProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\x03\x90\x02\x01B\xca\x01\n" +
+	"\x11com.mgmt.v1alpha1B\tAuthProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_auth_proto_rawDescOnce sync.Once

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	schemamanager_shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 	"github.com/doug-martin/goqu/v9"
 )
 

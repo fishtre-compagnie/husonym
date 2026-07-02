@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
 
 type awsS3SyncBuilder struct {
@@ -57,7 +57,7 @@ func (b *awsS3SyncBuilder) BuildDestinationConfig(
 		"workflows",
 		params.JobRunId,
 		"activities",
-		neosync_benthos.BuildBenthosTable(benthosConfig.TableSchema, benthosConfig.TableName),
+		husonym_benthos.BuildBenthosTable(benthosConfig.TableSchema, benthosConfig.TableName),
 		"data",
 		`records-${!count("files")}-${!timestamp_unix_nano()}.jsonl.gz`,
 	)
@@ -81,23 +81,23 @@ func (b *awsS3SyncBuilder) BuildDestinationConfig(
 		storageClass = convertToS3StorageClass(destinationOpts.GetStorageClass()).String()
 	}
 
-	config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
-		Fallback: []neosync_benthos.Outputs{
+	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
+		Fallback: []husonym_benthos.Outputs{
 			{
-				AwsS3: &neosync_benthos.AwsS3Insert{
+				AwsS3: &husonym_benthos.AwsS3Insert{
 					Bucket:       connAwsS3Config.Bucket,
 					MaxInFlight:  int(batchingConfig.MaxInFlight),
 					Timeout:      timeout,
 					StorageClass: storageClass,
 					Path:         strings.Join(s3pathpieces, "/"),
 					ContentType:  "application/gzip",
-					Batching: &neosync_benthos.Batching{
+					Batching: &husonym_benthos.Batching{
 						Count:  batchingConfig.BatchCount,
 						Period: batchingConfig.BatchPeriod,
-						Processors: []*neosync_benthos.BatchProcessor{
-							{NeosyncToJson: &neosync_benthos.NeosyncToJsonConfig{}},
-							{Archive: &neosync_benthos.ArchiveProcessor{Format: "lines"}},
-							{Compress: &neosync_benthos.CompressProcessor{Algorithm: "gzip"}},
+						Processors: []*husonym_benthos.BatchProcessor{
+							{HusonymToJson: &husonym_benthos.HusonymToJsonConfig{}},
+							{Archive: &husonym_benthos.ArchiveProcessor{Format: "lines"}},
+							{Compress: &husonym_benthos.CompressProcessor{Algorithm: "gzip"}},
 						},
 					},
 					Credentials: buildBenthosS3Credentials(connAwsS3Config.Credentials),
@@ -106,9 +106,9 @@ func (b *awsS3SyncBuilder) BuildDestinationConfig(
 				},
 			},
 			// kills activity depending on error
-			{Error: &neosync_benthos.ErrorOutputConfig{
+			{Error: &husonym_benthos.ErrorOutputConfig{
 				ErrorMsg: `${! meta("fallback_error")}`,
-				Batching: &neosync_benthos.Batching{
+				Batching: &husonym_benthos.Batching{
 					Period: batchingConfig.BatchPeriod,
 					Count:  batchingConfig.BatchCount,
 				},

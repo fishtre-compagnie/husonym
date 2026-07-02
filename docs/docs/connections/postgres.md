@@ -1,6 +1,6 @@
 ---
 title: PostgreSQL
-description: Postgres is one of the most commonly used databases in the world and Neosync natively supports most postgres-compatible databases.
+description: Postgres is one of the most commonly used databases in the world and Husonym natively supports most postgres-compatible databases.
 id: postgres
 hide_title: false
 slug: /connections/postgres
@@ -9,13 +9,13 @@ slug: /connections/postgres
 
 ## Introduction
 
-Postgres is one of the most commonly used databases in the world and Neosync natively supports most postgres-compatible databases.
+Postgres is one of the most commonly used databases in the world and Husonym natively supports most postgres-compatible databases.
 
 The following guide will show you how to configure and test your Postgres Connection.
 
 ## Things to watch out for
 
-1. Neosync can sync data between two physical Postgres databases that are exposed through two different ports. Alternatively, Neosync can sync data across two or virtual Postgres databases that are located in the same physical Postgres database. In both cases, the database schema and table schemas must be the same in the source and destination.
+1. Husonym can sync data between two physical Postgres databases that are exposed through two different ports. Alternatively, Husonym can sync data across two or virtual Postgres databases that are located in the same physical Postgres database. In both cases, the database schema and table schemas must be the same in the source and destination.
 
 Case 1: Two physical databases:
 
@@ -28,7 +28,7 @@ Physical Postgres Server (server1):
   - public (schema)
     - table1 (table)
 
-Neosync will still work if the database names (in this case Database1) are different, i.e. Database1 & Database2 as long as you provide the database name in the connection URL and the database and table schemas are the same.
+Husonym will still work if the database names (in this case Database1) are different, i.e. Database1 & Database2 as long as you provide the database name in the connection URL and the database and table schemas are the same.
 
 Case 2: Two virtual databases:
 
@@ -69,10 +69,10 @@ To connect using the environment variable, simply paste the environment variable
 
 The value of the environment variable must be in the `Connection URL` format.
 
-This is only available in the OSS version of Neosync. The environment variable must begin with `USER_DEFINED_`.
-This is for safety and is to limit the class of environment variables a user of Neosync may configure.
+This is only available in the OSS version of Husonym. The environment variable must begin with `USER_DEFINED_`.
+This is for safety and is to limit the class of environment variables a user of Husonym may configure.
 
-For full support, the environment variable must live on both the `neosync-api` as well as `neosync-worker`.
+For full support, the environment variable must live on both the `husonym-api` as well as `husonym-worker`.
 
 ### Discrete Host Parameters
 
@@ -93,14 +93,14 @@ Complete the fields in order to connect to your Postgres Database.
 
 ## TLS
 
-Neosync has support for Regular TLS (one-way) as well as mTLS (two-way).
+Husonym has support for Regular TLS (one-way) as well as mTLS (two-way).
 
 This is configured via the `Client TLS Certificates` section on the database configuration page.
 
 If you simply wish to verify the server certificate, only the `Root certificate` is required.
 
 If wishing to have the client present a certificate, you must specify both the `Client key` as well as the `Client certificate`.
-If only one of these is provided, the Neosync will reject the configuration.
+If only one of these is provided, the Husonym will reject the configuration.
 
 The following TLS/SSL modes are available for Postgres via the `sslMode` query parameter.
 
@@ -119,13 +119,13 @@ The `server name` _must_ be provided if using `verify-full` otherwise the client
 
 ## Go Postgres Driver
 
-Neosync uses the `jackc/pgx` driver for Postgres support. You can find information about this by visiting their [Readme](https://github.com/jackc/pgx).
+Husonym uses the `jackc/pgx` driver for Postgres support. You can find information about this by visiting their [Readme](https://github.com/jackc/pgx).
 
-Neosync expects Postgres urls to be in the standard URI format. If using the Host view, this is converted to a URI when use at runtime.
+Husonym expects Postgres urls to be in the standard URI format. If using the Host view, this is converted to a URI when use at runtime.
 
 ## Permissions
 
-This section details the Postgres role permissions necessary for Neosync to function properly.
+This section details the Postgres role permissions necessary for Husonym to function properly.
 
 This will vary based on the connection, and this section details the minimum permissions required for a source and/or destination connection.
 You'll be able to validate your role checks by testing your connection, which can be seen in the below section.
@@ -143,7 +143,7 @@ Example:
 GRANT SELECT ON public.users TO myrole;
 ```
 
-Note: Depending on your database configuration, if Neosync is returning permission denied or unable to access any tables, you may need to grant usage on the schema in question.
+Note: Depending on your database configuration, if Husonym is returning permission denied or unable to access any tables, you may need to grant usage on the schema in question.
 This can be done for your schema, similar to the example below:
 
 ```sql
@@ -159,7 +159,7 @@ This requires slightly more permissions, but you can get away with more or less 
 At a bare minimum, this connection requires `CREATE, UPDATE` on all tables that will be written to.
 You will also need to grant permissions to any `sequences`, `triggers`, or `functions` that may be invoked during the insertion or update process.
 
-> **NB:** If any sequences exist in your database, Neosync will need to be invoked as the owner of those Sequences. Neosync resets sequences after truncation and during the post-table sync in order for them to be in a good state for future insertions. Postgres has a limitation that only the Sequence owner may do this. This is not an issue if using Neosync to create your schemas, but will arise if those sequences were created via a role other than the one being used by Neosync.
+> **NB:** If any sequences exist in your database, Husonym will need to be invoked as the owner of those Sequences. Husonym resets sequences after truncation and during the post-table sync in order for them to be in a good state for future insertions. Postgres has a limitation that only the Sequence owner may do this. This is not an issue if using Husonym to create your schemas, but will arise if those sequences were created via a role other than the one being used by Husonym.
 
 Example:
 
@@ -170,19 +170,19 @@ GRANT USAGE ON FUNCTION <name> TO myrole; -- optional if you have functions
 GRANT USAGE ON SEQUENCE <name> TO myrole; -- optional if you have sequences
 ```
 
-If you are planning to allow Neosync to truncate data prior to a job run, then the `TRUNCATE` permissions will need to be added.
+If you are planning to allow Husonym to truncate data prior to a job run, then the `TRUNCATE` permissions will need to be added.
 
 ```sql
 GRANT TRUNCATE on public.users TO myrole;
 ```
 
-Neosync will attempt to create schemas that do not exist. If you plan on allowing Neosync to do this, you will need to grant the `CREATE` permission on the schema.
+Husonym will attempt to create schemas that do not exist. If you plan on allowing Husonym to do this, you will need to grant the `CREATE` permission on the schema.
 
 ```sql
 GRANT CREATE ON DATABASE mydatabase TO myrole;
 ```
 
-If you are planning to allow Neosync to initialize tables within a schema, you will need to grant more permissions in order to do so.
+If you are planning to allow Husonym to initialize tables within a schema, you will need to grant more permissions in order to do so.
 
 ```sql
 GRANT CREATE ON SCHEMA public TO myrole;
@@ -194,10 +194,10 @@ Once you've configured your connection either using the connection parameters or
 
 When you click **Test Connection**, the following tasks are done:
 
-1. Neosync attempts to simply connect and ping the database to ensure a valid connection
-2. Neosync queries the `information_schema` to return a view of what the configured role is able to access.
+1. Husonym attempts to simply connect and ping the database to ensure a valid connection
+2. Husonym queries the `information_schema` to return a view of what the configured role is able to access.
 
-You should validate that Neosync can see all of the schemas and tables that you'd like to work with. Otherwise, you may have to update your permissions or use a different role.
+You should validate that Husonym can see all of the schemas and tables that you'd like to work with. Otherwise, you may have to update your permissions or use a different role.
 
 Based on the connection type (source or destination) - you may see varying values here. Consult the permissions section above for more information on what you should expect to see based on how the role has been configured.
 

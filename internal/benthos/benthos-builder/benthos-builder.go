@@ -5,16 +5,16 @@ import (
 	"log/slog"
 	"sync"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_conns "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/builders"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	tablesync_shared "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_conns "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/builders"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 )
 
 // BenthosConfigResponse represents a complete Benthos data pipeline configuration for a specific table,
@@ -23,12 +23,12 @@ type BenthosConfigResponse struct {
 	DependsOn []*runconfigs.DependsOn
 
 	// TODO refactor these out
-	Config                  *neosync_benthos.BenthosConfig
+	Config                  *husonym_benthos.BenthosConfig
 	TableSchema             string
 	TableName               string
 	Columns                 []string
 	RunType                 runconfigs.RunType
-	ColumnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties
+	ColumnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties
 	RedisDependsOn          map[string][]string
 	BenthosDsns             []*bb_shared.BenthosDsn
 	RedisConfig             []*bb_shared.BenthosRedisConfig
@@ -425,7 +425,7 @@ func NewCliSourceBuilderProvider(
 	}
 	jobType := bb_internal.GetJobType(config.Job)
 
-	builder := bb_conns.NewNeosyncConnectionDataSyncBuilder(
+	builder := bb_conns.NewHusonymConnectionDataSyncBuilder(
 		config.Connectiondataclient,
 		config.Sqlmanagerclient,
 		config.SourceJobRunId,

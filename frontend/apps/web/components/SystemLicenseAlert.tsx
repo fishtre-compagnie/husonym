@@ -1,5 +1,5 @@
 import { useQuery } from '@connectrpc/connect-query';
-import { UserAccountService } from '@neosync/sdk';
+import { UserAccountService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';

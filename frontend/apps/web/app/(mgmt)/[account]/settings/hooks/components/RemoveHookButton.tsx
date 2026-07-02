@@ -2,7 +2,7 @@ import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { AccountHook, AccountHookService } from '@neosync/sdk';
+import { AccountHook, AccountHookService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';

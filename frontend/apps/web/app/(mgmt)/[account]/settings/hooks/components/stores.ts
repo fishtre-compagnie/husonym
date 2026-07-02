@@ -1,5 +1,5 @@
 import { BaseHookStore } from '@/util/zustand.stores.util';
-import { AccountHookEvent } from '@neosync/sdk';
+import { AccountHookEvent } from '@husonym/sdk';
 import { create } from 'zustand';
 import {
   EditAccountHookFormValues,

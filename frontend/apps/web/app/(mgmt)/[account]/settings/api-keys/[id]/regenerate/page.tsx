@@ -45,7 +45,7 @@ import {
   ApiKeyService,
   GetAccountApiKeyResponseSchema,
   RegenerateAccountApiKeyRequestSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { CalendarIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { addDays, endOfDay, format, startOfDay } from 'date-fns';

@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { create } from '@bufbuild/protobuf';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
-import { ConnectionService, Job, JobSchema, JobService } from '@neosync/sdk';
+import { ConnectionService, Job, JobSchema, JobService } from '@husonym/sdk';
 import { ReactElement, ReactNode, useMemo } from 'react';
 import { MdWebhook } from 'react-icons/md';
 import { getConnectionIdFromSource } from '../../source/components/util';

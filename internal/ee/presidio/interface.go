@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// Slimmed down Presidio Analyze Interface for use in Neosync systems
+// Slimmed down Presidio Analyze Interface for use in Husonym systems
 type AnalyzeInterface interface {
 	PostAnalyzeWithResponse(
 		ctx context.Context,
@@ -13,7 +13,7 @@ type AnalyzeInterface interface {
 	) (*PostAnalyzeResponse, error)
 }
 
-// Slimmed down Presidio Anonymize Interface for use in Neosync systems
+// Slimmed down Presidio Anonymize Interface for use in Husonym systems
 type AnonymizeInterface interface {
 	PostAnonymizeWithResponse(
 		ctx context.Context,
@@ -22,7 +22,7 @@ type AnonymizeInterface interface {
 	) (*PostAnonymizeResponse, error)
 }
 
-// Slimmed down Presidio Entity Interface for use in Neosync systems
+// Slimmed down Presidio Entity Interface for use in Husonym systems
 type EntityInterface interface {
 	GetSupportedentitiesWithResponse(
 		ctx context.Context,

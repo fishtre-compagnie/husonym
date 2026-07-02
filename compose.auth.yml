@@ -1,19 +1,19 @@
-name: neosync
+name: husonym
 
 services:
   app:
     environment:
       - AUTH_ENABLED=true
-      - AUTH_ISSUER=http://keycloak:8080/realms/neosync
-      - AUTH_EXPECTED_ISSUER=http://localhost:8083/realms/neosync
-      - AUTH_AUTHORIZE_URL=http://localhost:8083/realms/neosync/protocol/openid-connect/auth
-      - AUTH_USERINFO_URL=http://keycloak:8080/realms/neosync/protocol/openid-connect/userinfo
-      - AUTH_TOKEN_URL=http://keycloak:8080/realms/neosync/protocol/openid-connect/token
-      - AUTH_LOGOUT_URL=http://localhost:8083/realms/neosync/protocol/openid-connect/logout
+      - AUTH_ISSUER=http://keycloak:8080/realms/husonym
+      - AUTH_EXPECTED_ISSUER=http://localhost:8083/realms/husonym
+      - AUTH_AUTHORIZE_URL=http://localhost:8083/realms/husonym/protocol/openid-connect/auth
+      - AUTH_USERINFO_URL=http://keycloak:8080/realms/husonym/protocol/openid-connect/userinfo
+      - AUTH_TOKEN_URL=http://keycloak:8080/realms/husonym/protocol/openid-connect/token
+      - AUTH_LOGOUT_URL=http://localhost:8083/realms/husonym/protocol/openid-connect/logout
 
-      - AUTH_CLIENT_ID=neosync-app
+      - AUTH_CLIENT_ID=husonym-app
       - AUTH_CLIENT_SECRET=72alWGzhHInDskRHduTQ8BjB4Lgn0n3a
-      - AUTH_AUDIENCE=neosync
+      - AUTH_AUDIENCE=husonym
       - AUTH_SCOPE=openid email profile offline_access
       - AUTH_PROVIDER_ID=keycloak
       - AUTH_PROVIDER_NAME=Keycloak
@@ -24,16 +24,16 @@ services:
   api:
     environment:
       - AUTH_ENABLED=true
-      - AUTH_AUDIENCE=neosync
-      - AUTH_BASEURL=http://keycloak:8080/realms/neosync
-      - AUTH_EXPECTED_ISS=http://localhost:8083/realms/neosync
-      - AUTH_CLI_CLIENT_ID=neosync-cli
-      - AUTH_CLI_AUDIENCE=neosync
-      - AUTH_CLIENTID_SECRET={"neosync-cli":"GkVsthDzDvBfzb2vT4UO95xbXrwoXE5w"}
+      - AUTH_AUDIENCE=husonym
+      - AUTH_BASEURL=http://keycloak:8080/realms/husonym
+      - AUTH_EXPECTED_ISS=http://localhost:8083/realms/husonym
+      - AUTH_CLI_CLIENT_ID=husonym-cli
+      - AUTH_CLI_AUDIENCE=husonym
+      - AUTH_CLIENTID_SECRET={"husonym-cli":"GkVsthDzDvBfzb2vT4UO95xbXrwoXE5w"}
       - AUTH_SIGNATURE_ALGORITHM=RS256
-      - AUTH_API_CLIENT_ID=neosync-api
+      - AUTH_API_CLIENT_ID=husonym-api
       - AUTH_API_CLIENT_SECRET=PufiCKGRDISEokPZ9VwB6T86aDKj33f4
-      - AUTH_API_BASEURL=http://keycloak:8080/admin/realms/neosync
+      - AUTH_API_BASEURL=http://keycloak:8080/admin/realms/husonym
       - AUTH_API_PROVIDER=keycloak
 
     networks:
@@ -44,7 +44,7 @@ services:
       - kc-network
 
   keycloak:
-    container_name: neosync-auth-keycloak
+    container_name: husonym-auth-keycloak
     image: quay.io/keycloak/keycloak
     ports:
       - 8083:8080

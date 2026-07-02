@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 var (

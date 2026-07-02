@@ -8,5 +8,5 @@ import (
 	_ "github.com/redpanda-data/connect/v4/public/components/aws"
 	_ "github.com/redpanda-data/connect/v4/public/components/gcp"
 
-	_ "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	_ "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )

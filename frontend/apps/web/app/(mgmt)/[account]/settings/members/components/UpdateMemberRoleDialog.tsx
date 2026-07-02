@@ -10,7 +10,7 @@ import {
 import { getErrorMessage } from '@/util/util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
 import { useMutation } from '@connectrpc/connect-query';
-import { AccountUser, UserAccountService } from '@neosync/sdk';
+import { AccountUser, UserAccountService } from '@husonym/sdk';
 import { ReactElement, ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import UpdateMemberRoleForm from './UpdateMemberRoleForm';

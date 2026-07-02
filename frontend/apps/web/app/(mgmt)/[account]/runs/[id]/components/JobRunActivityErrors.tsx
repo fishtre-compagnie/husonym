@@ -8,7 +8,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@connectrpc/connect-query';
-import { Code, Connection, ConnectionService, JobService } from '@neosync/sdk';
+import { Code, Connection, ConnectionService, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
 

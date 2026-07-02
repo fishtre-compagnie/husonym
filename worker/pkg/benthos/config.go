@@ -1,4 +1,4 @@
-package neosync_benthos
+package husonym_benthos
 
 type BenthosConfig struct {
 	StreamConfig `json:",inline" yaml:",inline"`
@@ -36,11 +36,11 @@ type Inputs struct {
 	OpenAiGenerate        *OpenAiGenerate        `json:"openai_generate,omitempty"         yaml:"openai_generate,omitempty"`
 	PooledMongoDB         *InputMongoDb          `json:"pooled_mongodb,omitempty"          yaml:"pooled_mongodb,omitempty"`
 	AwsDynamoDB           *InputAwsDynamoDB      `json:"aws_dynamodb,omitempty"            yaml:"aws_dynamodb,omitempty"`
-	NeosyncConnectionData *NeosyncConnectionData `json:"neosync_connection_data,omitempty" yaml:"neosync_connection_data,omitempty"`
+	HusonymConnectionData *HusonymConnectionData `json:"husonym_connection_data,omitempty" yaml:"husonym_connection_data,omitempty"`
 	Broker                *InputBrokerConfig     `json:"broker,omitempty"                  yaml:"broker,omitempty"`
 }
 
-type NeosyncConnectionData struct {
+type HusonymConnectionData struct {
 	ConnectionId   string  `json:"connection_id"        yaml:"connection_id"`
 	ConnectionType string  `json:"connection_type"      yaml:"connection_type"`
 	JobId          *string `json:"job_id,omitempty"     yaml:"job_id,omitempty"`
@@ -145,21 +145,21 @@ type PipelineConfig struct {
 
 type ProcessorConfig struct {
 	Mutation                  *string                          `json:"mutation,omitempty"                    yaml:"mutation,omitempty"`
-	NeosyncJavascript         *NeosyncJavascriptConfig         `json:"neosync_javascript,omitempty"          yaml:"neosync_javascript,omitempty"`
+	HusonymJavascript         *HusonymJavascriptConfig         `json:"husonym_javascript,omitempty"          yaml:"husonym_javascript,omitempty"`
 	Branch                    *BranchConfig                    `json:"branch,omitempty"                      yaml:"branch,omitempty"`
 	Mapping                   *string                          `json:"mapping,omitempty"                     yaml:"mapping,omitempty"`
 	Redis                     *RedisProcessorConfig            `json:"redis,omitempty"                       yaml:"redis,omitempty"`
 	Error                     *ErrorProcessorConfig            `json:"error,omitempty"                       yaml:"error,omitempty"`
 	Catch                     []*ProcessorConfig               `json:"catch,omitempty"                       yaml:"catch,omitempty"`
-	NeosyncDefaultTransformer *NeosyncDefaultTransformerConfig `json:"neosync_default_transformer,omitempty" yaml:"neosync_default_transformer,omitempty"`
+	HusonymDefaultTransformer *HusonymDefaultTransformerConfig `json:"husonym_default_transformer,omitempty" yaml:"husonym_default_transformer,omitempty"`
 }
 
-type NeosyncDefaultTransformerConfig struct {
+type HusonymDefaultTransformerConfig struct {
 	JobSourceOptionsString string   `json:"job_source_options_string" yaml:"job_source_options_string"`
 	MappedKeys             []string `json:"mapped_keys"               yaml:"mapped_keys"`
 }
 
-type NeosyncJavascriptConfig struct {
+type HusonymJavascriptConfig struct {
 	Code string `json:"code" yaml:"code"`
 }
 
@@ -311,31 +311,31 @@ type Batching struct {
 type BatchProcessor struct {
 	Archive        *ArchiveProcessor     `json:"archive,omitempty"          yaml:"archive,omitempty"`
 	Compress       *CompressProcessor    `json:"compress,omitempty"         yaml:"compress,omitempty"`
-	NeosyncToJson  *NeosyncToJsonConfig  `json:"neosync_to_json,omitempty"  yaml:"neosync_to_json,omitempty"`
-	NeosyncToPgx   *NeosyncToPgxConfig   `json:"neosync_to_pgx,omitempty"   yaml:"neosync_to_pgx,omitempty"`
-	NeosyncToMysql *NeosyncToMysqlConfig `json:"neosync_to_mysql,omitempty" yaml:"neosync_to_mysql,omitempty"`
-	NeosyncToMssql *NeosyncToMssqlConfig `json:"neosync_to_mssql,omitempty" yaml:"neosync_to_mssql,omitempty"`
+	HusonymToJson  *HusonymToJsonConfig  `json:"husonym_to_json,omitempty"  yaml:"husonym_to_json,omitempty"`
+	HusonymToPgx   *HusonymToPgxConfig   `json:"husonym_to_pgx,omitempty"   yaml:"husonym_to_pgx,omitempty"`
+	HusonymToMysql *HusonymToMysqlConfig `json:"husonym_to_mysql,omitempty" yaml:"husonym_to_mysql,omitempty"`
+	HusonymToMssql *HusonymToMssqlConfig `json:"husonym_to_mssql,omitempty" yaml:"husonym_to_mssql,omitempty"`
 }
 
-type NeosyncToPgxConfig struct {
+type HusonymToPgxConfig struct {
 	Columns                 []string                            `json:"columns"                   yaml:"columns"`
 	ColumnDataTypes         map[string]string                   `json:"column_data_types"         yaml:"column_data_types"`
 	ColumnDefaultProperties map[string]*ColumnDefaultProperties `json:"column_default_properties" yaml:"column_default_properties"`
 }
 
-type NeosyncToMysqlConfig struct {
+type HusonymToMysqlConfig struct {
 	Columns                 []string                            `json:"columns"                   yaml:"columns"`
 	ColumnDataTypes         map[string]string                   `json:"column_data_types"         yaml:"column_data_types"`
 	ColumnDefaultProperties map[string]*ColumnDefaultProperties `json:"column_default_properties" yaml:"column_default_properties"`
 }
 
-type NeosyncToMssqlConfig struct {
+type HusonymToMssqlConfig struct {
 	Columns                 []string                            `json:"columns"                   yaml:"columns"`
 	ColumnDataTypes         map[string]string                   `json:"column_data_types"         yaml:"column_data_types"`
 	ColumnDefaultProperties map[string]*ColumnDefaultProperties `json:"column_default_properties" yaml:"column_default_properties"`
 }
 
-type NeosyncToJsonConfig struct{}
+type HusonymToJsonConfig struct{}
 
 type ArchiveProcessor struct {
 	Format string  `json:"format"         yaml:"format"`

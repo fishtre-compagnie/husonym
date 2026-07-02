@@ -4,7 +4,7 @@ description: Learn how to create a data sync job to anonymize and transform data
 id: syncing-data-in-mongodb
 hide_title: false
 slug: /guides/syncing-data-in-mongodb
-# cSpell:words Neosync,mongodb
+# cSpell:words Husonym,mongodb
 ---
 
 ## Introduction
@@ -31,11 +31,11 @@ To create a new connection, go to **Connections** -> **+ New Connection** -> **M
 Then fill out the form fields:
 
 - **Connection Name**: Enter a unique name for this connection that you'll easily recognize. This is just a label and does not affect the connection itself.
-- **URL**: Enter your database connection url that will be used to connect to Mongo. Neosync supports both `mongodb` and `mongodb+srv` protocols.
+- **URL**: Enter your database connection url that will be used to connect to Mongo. Husonym supports both `mongodb` and `mongodb+srv` protocols.
 
 In the image above, I've connected to my local MongoDB instance using the `mongodb://host.docker.internal:27117` connection string. For a hosted instance of MongoDB, you'll want to use the connection string provided to you by MongoDB. You can also configure TLS here as well.
 
-Once you've configured your Connection, you can test to make sure that it works by pressing the **Test Connection** button. If Neosync is able to connect to it, then you should see something like:
+Once you've configured your Connection, you can test to make sure that it works by pressing the **Test Connection** button. If Husonym is able to connect to it, then you should see something like:
 
 ![mongo-test-conn](/img/mongotest.png)
 

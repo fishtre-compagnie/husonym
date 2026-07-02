@@ -1,13 +1,13 @@
 package tablesync_workflow_register
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	benthosstream "github.com/Groupe-Hevea/neosync/internal/benthos-stream"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	neosync_benthos_mongodb "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/mongodb"
-	neosync_benthos_sql "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/sql"
-	sync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/activities/sync"
-	tablesync_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/workflow"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	benthosstream "github.com/fishtre-compagnie/husonym/internal/benthos-stream"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
+	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
+	tablesync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/metric"
 	"go.temporal.io/sdk/client"
@@ -22,8 +22,8 @@ func Register(
 	w Worker,
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	jobclient mgmtv1alpha1connect.JobServiceClient,
-	sqlconnmanager connectionmanager.Interface[neosync_benthos_sql.SqlDbtx],
-	mongoconnmanager connectionmanager.Interface[neosync_benthos_mongodb.MongoClient],
+	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
+	mongoconnmanager connectionmanager.Interface[husonym_benthos_mongodb.MongoClient],
 	meter metric.Meter, // optional
 	benthosStreamManager benthosstream.BenthosStreamManagerClient,
 	temporalclient client.Client,

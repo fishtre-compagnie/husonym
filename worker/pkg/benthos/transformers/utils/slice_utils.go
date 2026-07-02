@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 )
 
 const alphanumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"

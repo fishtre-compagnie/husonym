@@ -1,7 +1,7 @@
 package serve
 
 import (
-	serve_connect "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/serve/connect"
+	serve_connect "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/serve/connect"
 	"github.com/spf13/cobra"
 )
 

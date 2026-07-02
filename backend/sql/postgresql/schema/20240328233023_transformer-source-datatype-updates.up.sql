@@ -2,10 +2,10 @@
 -- It then drops the source column and renames source_id to source.
 -- This migration also converts the source key in the job mappings to its integer equivalent
 ALTER TABLE
-  neosync_api.transformers
+  husonym_api.transformers
 ADD COLUMN IF NOT EXISTS source_id int NULL;
 
-UPDATE neosync_api.transformers
+UPDATE husonym_api.transformers
 SET source_id =
   CASE source
     WHEN 'unspecified' THEN 0
@@ -58,22 +58,22 @@ SET source_id =
   END;
 
 -- incase we missed any, just set it to unspecified to ensure there are no nulls
-UPDATE neosync_api.transformers
+UPDATE husonym_api.transformers
 SET source = 0
 WHERE source IS NULL;
 
-ALTER TABLE neosync_api.transformers
+ALTER TABLE husonym_api.transformers
 ALTER COLUMN source_id SET NOT NULL;
 
 ALTER TABLE
-  neosync_api.transformers
+  husonym_api.transformers
 DROP COLUMN IF EXISTS source;
 
 ALTER TABLE
-  neosync_api.transformers
+  husonym_api.transformers
 RENAME COLUMN source_id TO source;
 
-ALTER TABLE neosync_api.transformers
+ALTER TABLE husonym_api.transformers
   DROP COLUMN IF EXISTS type;
 
 -- Update job mappings
@@ -139,11 +139,11 @@ WITH updated_mappings AS (
             )
         ) AS new_mappings
     FROM
-        neosync_api.jobs,
+        husonym_api.jobs,
         jsonb_array_elements(mappings) AS obj
     GROUP BY id
 )
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET mappings = updated_mappings.new_mappings
 FROM updated_mappings
-WHERE neosync_api.jobs.id = updated_mappings.id;
+WHERE husonym_api.jobs.id = updated_mappings.id;

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel/connectors/mysqltunconnector"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mysqltunconnector"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/testcontainers/testcontainers-go"
 	testmysql "github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/testcontainers/testcontainers-go/wait"

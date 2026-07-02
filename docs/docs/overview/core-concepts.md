@@ -1,6 +1,6 @@
 ---
 title: Core Concepts
-description: The best way to learn about Neosync is to understand the core concepts of the platform.
+description: The best way to learn about Husonym is to understand the core concepts of the platform.
 id: core-concepts
 hide_title: false
 slug: /core-concepts
@@ -8,13 +8,13 @@ slug: /core-concepts
 
 ## Introduction
 
-The best way to learn about Neosync is to understand the core concepts of the platform.
+The best way to learn about Husonym is to understand the core concepts of the platform.
 
 ### Jobs
 
-![job](https://assets.Groupe-Hevea.com/neosync/docs/jobs-page.png)
+![job](https://assets.fishtre-compagnie.com/husonym/docs/jobs-page.png)
 
-Jobs are async workflows that transform data and sync it between source and destination systems. They can run on a set schedule or run ad-hoc and can be paused at any time. Under the covers, Neosync uses [Temporal](https://github.com/temporalio/temporal) as our job scheduling and execution engine and [Benthos](https://github.com/benthosdev/benthos) as our data transformation engine. Temporal handles all of the execution, retries, backoffs and the coordination of tasks within a job. While Benthos handle the data sync'ing and transformation.
+Jobs are async workflows that transform data and sync it between source and destination systems. They can run on a set schedule or run ad-hoc and can be paused at any time. Under the covers, Husonym uses [Temporal](https://github.com/temporalio/temporal) as our job scheduling and execution engine and [Benthos](https://github.com/benthosdev/benthos) as our data transformation engine. Temporal handles all of the execution, retries, backoffs and the coordination of tasks within a job. While Benthos handle the data sync'ing and transformation.
 
 Jobs also have <strong>types</strong>. Today, we support two types:
 
@@ -25,10 +25,10 @@ You can create multiple jobs with different schedules, schemas and settings. You
 
 ### Runs
 
-![runs](https://assets.Groupe-Hevea.com/neosync/docs/runs-page.png)
+![runs](https://assets.fishtre-compagnie.com/husonym/docs/runs-page.png)
 
 <strong>Runs</strong> are instances of a job that have been executed. Runs can
-be paused and restarted at any time. Neosync exposes a lot of useful metadata
+be paused and restarted at any time. Husonym exposes a lot of useful metadata
 for each run which can help you understand if a run completed successfully and
 if not, what exactly went wrong. Runs also provide an audit trail of activity
 that you can track to see what jobs executed and their status.{' '}
@@ -43,6 +43,6 @@ We plan to continue to expand the number of connections we offer so that we can 
 
 ### Transformers
 
-![transformers](https://assets.Groupe-Hevea.com/neosync/docs/udt-home.png)
+![transformers](https://assets.fishtre-compagnie.com/husonym/docs/udt-home.png)
 
-Transformers are data-type specific modules that anonymize or generate data. Transformers are defined in the job workflow and are applied to every piece of data in the column they are assigned. Neosync ships with a number of transformers already built that handle common data types such as email, physical addresses, ssn, strings, integers and more. You can also create your own custom transformers.
+Transformers are data-type specific modules that anonymize or generate data. Transformers are defined in the job workflow and are applied to every piece of data in the column they are assigned. Husonym ships with a number of transformers already built that handle common data types such as email, physical addresses, ssn, strings, integers and more. You can also create your own custom transformers.

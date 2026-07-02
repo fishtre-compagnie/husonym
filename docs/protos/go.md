@@ -1,6 +1,6 @@
 ---
-title: Neosync for Go
-description: Learn about Neosync's Go SDK and how you can use it to anonymize data and generate synthetic data
+title: Husonym for Go
+description: Learn about Husonym's Go SDK and how you can use it to anonymize data and generate synthetic data
 id: go
 hide_title: false
 slug: /go
@@ -8,17 +8,17 @@ slug: /go
 
 ## Introduction
 
-The Neosync Go SDK is publicly available and can be added to any Go project. With the Neosync Go SDK, you can:
+The Husonym Go SDK is publicly available and can be added to any Go project. With the Husonym Go SDK, you can:
 
 1. Anonymize structured data and generate synthetic data
 2. Anonymize free-form text data
-3. Create resources in Neosync such as Jobs, Connections, Transformers and more
+3. Create resources in Husonym such as Jobs, Connections, Transformers and more
 
 ## Installation
 
-You can add the Neosync Go SDK using:
+You can add the Husonym Go SDK using:
 
-`go get github.com/Groupe-Hevea/neosync`.
+`go get github.com/fishtre-compagnie/husonym`.
 
 ## Prerequisites
 
@@ -26,15 +26,15 @@ There are a few prerequisites that the SDK needs in order to be properly configu
 
 | **Properties** | **Details**                                                                                                                                                                 |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **API URL**    | Production: `https://neosync-api.svcs.neosync.dev`<br /> Local: `http://localhost:8080`                                                                                     |
-| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Neosync App                                       |
-| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Neosync environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |
+| **API URL**    | Production: `https://husonym-api.svcs.husonym.allopneus.com`<br /> Local: `http://localhost:8080`                                                                                     |
+| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Husonym App                                       |
+| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Husonym environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |
 
 ## Authentication
 
-If you are using Neosync locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
+If you are using Husonym locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
 
-If you are using Neosync locally in `auth mode` or using Neosync Cloud, you can authenticate with the Neosync server using an API URL and API Key. There are two ways to provide the authentication header.
+If you are using Husonym locally in `auth mode` or using Husonym Cloud, you can authenticate with the Husonym server using an API URL and API Key. There are two ways to provide the authentication header.
 
 1. Attaching to the HTTP client
 2. Providing an interceptor to the SDK Clients that patch in the header on every request.
@@ -50,8 +50,8 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 )
 
 func main() {
@@ -96,16 +96,16 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 ## Getting started
 
-In this section, we're going to walk through two examples that show you how to make an API call using Neosync's GO SDK. For a complete list of the APIs, check out the APIs in the `Services` section of our [protos](/api/mgmt/v1alpha1/job.proto#jobservice).
+In this section, we're going to walk through two examples that show you how to make an API call using Husonym's GO SDK. For a complete list of the APIs, check out the APIs in the `Services` section of our [protos](/api/mgmt/v1alpha1/job.proto#jobservice).
 
-Neosync is made up of a number of different services that live inside of the same process. In order to connect to the Neosync API and use the services, we make two packages available:
+Husonym is made up of a number of different services that live inside of the same process. In order to connect to the Husonym API and use the services, we make two packages available:
 
-- `github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1`
-- `github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect`
+- `github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1`
+- `github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect`
 
 The first package is made up of the generated types. This includes all of the request, response, and DTO types.
 
-The second package are where the client and server structs live for use with either creating a Neosync Client, or Neosync Server.
+The second package are where the client and server structs live for use with either creating a Husonym Client, or Husonym Server.
 
 ### Anonymizing Structured Data
 
@@ -128,7 +128,7 @@ A straightforward use case is to anonymize sensitive data in an API request. Let
 
 Our input object is a simple user's object that we may get through a user sign up flow. In this object, we have a few sensitive fields that we want to anonymize: `name`, `email`, `address` and `phone`. We can leave the `favorites` as-is for now.
 
-In order to anonymize this object, you can use Neosync's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
+In order to anonymize this object, you can use Husonym's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
 
 Here's how you do it:
 
@@ -142,8 +142,8 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 )
 
 // define our User struct and use json tags to structure our json
@@ -260,7 +260,7 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -284,7 +284,7 @@ The best part is that all you have to do is change a transformer, that's it! Her
   },
 ```
 
-Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Neosync's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.neosync.allopneus.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
+Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Husonym's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.husonym.allopneus.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
 
 ```go
 package main
@@ -296,8 +296,8 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 )
 
 // define our User struct and use json tags to structure our json
@@ -377,7 +377,7 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -390,7 +390,7 @@ As you can see, we've identified and redacted the PII in the original message an
 
 ### Triggering a Job Run
 
-Another common use case is to create resources in Neosync such as Jobs, Connections, Runs, Transformers and more. In this example, we'll trigger a Job which will create a Job Run. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
+Another common use case is to create resources in Husonym such as Jobs, Connections, Runs, Transformers and more. In this example, we'll trigger a Job which will create a Job Run. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
 
 Let's augment our code from above to call the `CreateJobRun` API.
 
@@ -442,4 +442,4 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 ## Moving forward
 
-Now that you've seen how to anonymize data, generate synthetic data and create resources in Neosync, you can use the Neosync Go SDK to do much more! And if you have any questions, we're always available in Discord to help.
+Now that you've seen how to anonymize data, generate synthetic data and create resources in Husonym, you can use the Husonym Go SDK to do much more! And if you have any questions, we're always available in Discord to help.

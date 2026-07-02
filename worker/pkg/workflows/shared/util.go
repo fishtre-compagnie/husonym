@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	accounthook_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { getStorageClassString } from '@/util/util';
 import { AwsS3DestinationOptionsFormValues } from '@/yup-validations/jobs';
-import { AwsS3DestinationConnectionOptions_StorageClass } from '@neosync/sdk';
+import { AwsS3DestinationConnectionOptions_StorageClass } from '@husonym/sdk';
 import { ReactElement, ReactNode } from 'react';
 import { FieldErrors } from 'react-hook-form';
 
@@ -150,7 +150,7 @@ function Header(): ReactElement {
     <div>
       <h2 className="text-md font-semibold tracking-tight">S3 Configuration</h2>
       <p className="text-sm tracking-tight">
-        Change how Neosync handles sending records to the bucket.
+        Change how Husonym handles sending records to the bucket.
       </p>
     </div>
   );

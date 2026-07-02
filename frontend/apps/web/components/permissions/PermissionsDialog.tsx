@@ -10,7 +10,7 @@ import {
 import {
   CheckConnectionConfigByIdResponse,
   CheckConnectionConfigResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import {
   CheckCircledIcon,
   ExclamationTriangleIcon,
@@ -58,8 +58,8 @@ export default function PermissionsDialog(props: Props): ReactElement {
             {isValidating ? <Spinner /> : null}
           </div>
           <DialogDescription className="text-muted-foreground text-sm">
-            Review the permissions that Neosync needs for your connection.{' '}
-            <LearnMoreLink href="https://docs.neosync.allopneus.com/connections/postgres#permissions" />{' '}
+            Review the permissions that Husonym needs for your connection.{' '}
+            <LearnMoreLink href="https://docs.husonym.allopneus.com/connections/postgres#permissions" />{' '}
           </DialogDescription>
         </DialogHeader>
         <PermissionsDataTable

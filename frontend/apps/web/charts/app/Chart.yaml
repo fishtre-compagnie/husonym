@@ -1,10 +1,10 @@
 apiVersion: v2
 name: app
-description: A Helm chart for the Neosync App
-home: https://www.neosync.dev
+description: A Helm chart for the Husonym App
+home: https://www.husonym.allopneus.com
 sources:
-  - https://github.com/Groupe-Hevea/neosync
-icon: https://raw.githubusercontent.com/Groupe-Hevea/neosync/main/docs/static/img/neosync_just_logo.png
+  - https://github.com/fishtre-compagnie/husonym
+icon: https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/docs/static/img/husonym_just_logo.png
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

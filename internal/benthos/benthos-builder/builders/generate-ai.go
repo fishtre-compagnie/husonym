@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
 type generateAIBuilder struct {
@@ -169,11 +169,11 @@ func buildBenthosAiGenerateSourceConfigResponses(
 		if userBatchSize != nil && *userBatchSize > 0 {
 			batchSize = *userBatchSize
 		}
-		bc := &neosync_benthos.BenthosConfig{
-			StreamConfig: neosync_benthos.StreamConfig{
-				Input: &neosync_benthos.InputConfig{
-					Inputs: neosync_benthos.Inputs{
-						OpenAiGenerate: &neosync_benthos.OpenAiGenerate{
+		bc := &husonym_benthos.BenthosConfig{
+			StreamConfig: husonym_benthos.StreamConfig{
+				Input: &husonym_benthos.InputConfig{
+					Inputs: husonym_benthos.Inputs{
+						OpenAiGenerate: &husonym_benthos.OpenAiGenerate{
 							ApiUrl:     openaiconfig.ApiUrl,
 							ApiKey:     openaiconfig.ApiKey,
 							UserPrompt: userPrompt,
@@ -185,15 +185,15 @@ func buildBenthosAiGenerateSourceConfigResponses(
 						},
 					},
 				},
-				Pipeline: &neosync_benthos.PipelineConfig{
+				Pipeline: &husonym_benthos.PipelineConfig{
 					Threads:    -1,
-					Processors: []neosync_benthos.ProcessorConfig{},
+					Processors: []husonym_benthos.ProcessorConfig{},
 				},
-				Output: &neosync_benthos.OutputConfig{
-					Outputs: neosync_benthos.Outputs{
-						Broker: &neosync_benthos.OutputBrokerConfig{
+				Output: &husonym_benthos.OutputConfig{
+					Outputs: husonym_benthos.Outputs{
+						Broker: &husonym_benthos.OutputBrokerConfig{
 							Pattern: "fan_out",
-							Outputs: []neosync_benthos.Outputs{},
+							Outputs: []husonym_benthos.Outputs{},
 						},
 					},
 				},
@@ -201,7 +201,7 @@ func buildBenthosAiGenerateSourceConfigResponses(
 		}
 
 		responses = append(responses, &bb_internal.BenthosSourceConfig{
-			Name: neosync_benthos.BuildBenthosTable(
+			Name: husonym_benthos.BuildBenthosTable(
 				tableMapping.Schema,
 				tableMapping.Table,
 			), // todo: may need to expand on this
@@ -234,7 +234,7 @@ func (b *generateAIBuilder) BuildDestinationConfig(
 		return nil, fmt.Errorf("unable to parse destination options: %w", err)
 	}
 
-	processorConfigs := []neosync_benthos.ProcessorConfig{}
+	processorConfigs := []husonym_benthos.ProcessorConfig{}
 	for _, pc := range benthosConfig.Processors {
 		processorConfigs = append(processorConfigs, *pc)
 	}
@@ -243,17 +243,17 @@ func (b *generateAIBuilder) BuildDestinationConfig(
 		config.BenthosDsns,
 		&bb_shared.BenthosDsn{ConnectionId: params.DestConnection.Id},
 	)
-	config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
+	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
 		// retry processor and output several times
-		Retry: &neosync_benthos.RetryConfig{
-			InlineRetryConfig: neosync_benthos.InlineRetryConfig{
+		Retry: &husonym_benthos.RetryConfig{
+			InlineRetryConfig: husonym_benthos.InlineRetryConfig{
 				MaxRetries: 1,
 			},
-			Output: neosync_benthos.OutputConfig{
-				Outputs: neosync_benthos.Outputs{
-					Fallback: []neosync_benthos.Outputs{
+			Output: husonym_benthos.OutputConfig{
+				Outputs: husonym_benthos.Outputs{
+					Fallback: []husonym_benthos.Outputs{
 						{
-							PooledSqlInsert: &neosync_benthos.PooledSqlInsert{
+							PooledSqlInsert: &husonym_benthos.PooledSqlInsert{
 								ConnectionId:        params.DestConnection.GetId(),
 								Schema:              benthosConfig.TableSchema,
 								Table:               benthosConfig.TableName,
@@ -261,7 +261,7 @@ func (b *generateAIBuilder) BuildDestinationConfig(
 								OnConflictDoUpdate:  destOpts.OnConflictDoUpdate,
 								TruncateOnRetry:     destOpts.Truncate,
 
-								Batching: &neosync_benthos.Batching{
+								Batching: &husonym_benthos.Batching{
 									Period: destOpts.BatchPeriod,
 									Count:  destOpts.BatchCount,
 								},
@@ -269,9 +269,9 @@ func (b *generateAIBuilder) BuildDestinationConfig(
 							},
 						},
 						{ // kills activity depending on error
-							Error: &neosync_benthos.ErrorOutputConfig{
+							Error: &husonym_benthos.ErrorOutputConfig{
 								ErrorMsg: `${! meta("fallback_error")}`,
-								Batching: &neosync_benthos.Batching{
+								Batching: &husonym_benthos.Batching{
 									Period: destOpts.BatchPeriod,
 									Count:  destOpts.BatchCount,
 								},

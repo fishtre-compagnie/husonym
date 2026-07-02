@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

@@ -43,7 +43,7 @@ import {
   CreateJobDestinationSchema,
   GetConnectionSchemaMapsResponseSchema,
   JobService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { Cross1Icon, PlusIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use } from 'react';

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	integrationtests_test "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	piidetect_table_activities "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -139,24 +139,24 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 	})
 
 	t.Run("Cloud", func(t *testing.T) {
-		client := s.NeosyncCloudAuthenticatedLicensedClients.Jobs(
+		client := s.HusonymCloudAuthenticatedLicensedClients.Jobs(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(
 			ctx,
-			s.NeosyncCloudAuthenticatedLicensedClients.Users(
+			s.HusonymCloudAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 		accountId := s.createPersonalAccount(
 			ctx,
-			s.NeosyncCloudAuthenticatedLicensedClients.Users(
+			s.HusonymCloudAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 
 		srcconn := s.createPostgresConnection(
-			s.NeosyncCloudAuthenticatedLicensedClients.Connections(
+			s.HusonymCloudAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -164,7 +164,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 			"test",
 		)
 		destconn := s.createPostgresConnection(
-			s.NeosyncCloudAuthenticatedLicensedClients.Connections(
+			s.HusonymCloudAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -752,7 +752,7 @@ func (s *IntegrationTestSuite) Test_ValidateSchema() {
 	s.T().Run("Ok", func(t *testing.T) {
 		Mappings := []*mgmtv1alpha1.JobMapping{
 			{
-				Schema: "neosync_api",
+				Schema: "husonym_api",
 				Table:  "users",
 				Column: "id",
 				Transformer: &mgmtv1alpha1.JobMappingTransformer{

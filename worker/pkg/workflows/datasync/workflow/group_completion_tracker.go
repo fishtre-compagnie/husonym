@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	benthosbuilder "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 )
 
 // GroupCompletionTracker tracks the completion of execution groups.

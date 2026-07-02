@@ -1,12 +1,12 @@
 export const siteConfig = {
-  name: 'neosync',
-  url: 'https://app.neosync.dev',
+  name: 'husonym',
+  url: 'https://app.husonym.allopneus.com',
   ogImage: 'https://ui.shadcn.com/og.jpg',
   description:
     'Beautifully designed components built with Radix UI and Tailwind CSS.',
   links: {
     discord: 'https://discord.com/invite/MFAMgnp4HF',
-    github: 'https://github.com/Groupe-Hevea/neosync',
-    docs: 'https://docs.neosync.allopneus.com',
+    github: 'https://github.com/fishtre-compagnie/husonym',
+    docs: 'https://docs.husonym.allopneus.com',
   },
 };

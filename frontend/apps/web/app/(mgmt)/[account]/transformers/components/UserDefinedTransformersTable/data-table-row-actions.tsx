@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { TransformersService, UserDefinedTransformer } from '@neosync/sdk';
+import { TransformersService, UserDefinedTransformer } from '@husonym/sdk';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';

@@ -1,13 +1,13 @@
-import { withNeosyncContext } from '@/api-only/neosync-context';
+import { withHusonymContext } from '@/api-only/husonym-context';
 import { create } from '@bufbuild/protobuf';
 import {
   SetPersonalAccountRequestSchema,
   SetUserRequestSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  return withNeosyncContext(async (ctx) => {
+  return withHusonymContext(async (ctx) => {
     const setUserResp = await ctx.client.users.setUser(
       create(SetUserRequestSchema, {})
     );

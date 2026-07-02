@@ -1,7 +1,7 @@
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService, LogLevel, LogWindow } from '@neosync/sdk';
+import { JobService, LogLevel, LogWindow } from '@husonym/sdk';
 import { ReloadIcon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { getColumns } from './JobRunLogsTable/columns';

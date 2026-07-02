@@ -11,7 +11,7 @@ services:
       MYSQL_USER: myuser
       MYSQL_PASSWORD: mypassword
     networks:
-      - neosync-network
+      - husonym-network
 
   test-stage-db-mysql:
     container_name: test-stage-db-mysql
@@ -25,4 +25,4 @@ services:
       MYSQL_USER: myuser
       MYSQL_PASSWORD: mypassword
     networks:
-      - neosync-network
+      - husonym-network

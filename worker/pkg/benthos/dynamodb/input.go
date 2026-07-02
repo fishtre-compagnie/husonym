@@ -1,14 +1,14 @@
-package neosync_benthos_dynamodb
+package husonym_benthos_dynamodb
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	awsmanager "github.com/Groupe-Hevea/neosync/internal/aws"
-	database_record_mapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	dynamodbmapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/dynamodb"
-	neosync_benthos_metadata "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/metadata"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
+	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -179,7 +179,7 @@ func (d *dynamodbInput) ReadBatch(
 		}
 
 		msg := service.NewMessage(nil)
-		msg.MetaSetMut(neosync_benthos_metadata.MetaTypeMapStr, keyTypeMap)
+		msg.MetaSetMut(husonym_benthos_metadata.MetaTypeMapStr, keyTypeMap)
 		msg.SetStructuredMut(resMap)
 		batch = append(batch, msg)
 	}
@@ -261,7 +261,7 @@ func getAwsCredentialsConfigFromParsedConf(
 	roleExternalId, _ := credsConf.FieldString("role_external_id")
 	output.RoleExternalId = roleExternalId
 
-	output.RoleSessionName = "neosync"
+	output.RoleSessionName = "husonym"
 
 	return output
 }

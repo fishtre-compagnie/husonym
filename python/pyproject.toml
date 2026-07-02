@@ -3,12 +3,12 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "neosync"
+name = "husonym"
 dynamic = ["version"]
 authors = [
-  { name = "Neosync Dev Team", email="infra@allopneus.com"}
+  { name = "Husonym Dev Team", email="infra@allopneus.com"}
 ]
-description = "Neosync Python SDK"
+description = "Husonym Python SDK"
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = [
@@ -28,7 +28,7 @@ classifiers = [
   "Topic :: Utilities",
 ]
 keywords = [
-  "neosync",
+  "husonym",
   "data",
   "privacy",
   "anonymization",
@@ -42,9 +42,9 @@ keywords = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Groupe-Hevea/neosync"
-Issues = "https://github.com/Groupe-Hevea/neosync/issues"
-Documentation = "https://docs.neosync.allopneus.com/api/python"
+Homepage = "https://github.com/fishtre-compagnie/husonym"
+Issues = "https://github.com/fishtre-compagnie/husonym/issues"
+Documentation = "https://docs.husonym.allopneus.com/api/python"
 
 
 [tool.hatch.version]

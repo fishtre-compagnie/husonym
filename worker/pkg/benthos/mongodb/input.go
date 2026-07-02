@@ -1,4 +1,4 @@
-package neosync_benthos_mongodb
+package husonym_benthos_mongodb
 
 import (
 	"context"
@@ -10,9 +10,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
-	database_record_mapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	mongodbmapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/mongodb"
-	neosync_benthos_metadata "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/metadata"
+	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	mongodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/mongodb"
+	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 
@@ -98,7 +98,7 @@ func newMongoInput(
 		sort             map[string]int
 	)
 
-	neosyncConnectionId, err := conf.FieldString(commonFieldClientConnectionId)
+	husonymConnectionId, err := conf.FieldString(commonFieldClientConnectionId)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func newMongoInput(
 		}
 	}
 
-	mClient, err := clientProvider.GetClient(context.Background(), neosyncConnectionId)
+	mClient, err := clientProvider.GetClient(context.Background(), husonymConnectionId)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (m *mongoInput) ReadBatch(ctx context.Context) (service.MessageBatch, servi
 				msg.MetaSet("key_type_map", string(keyTypeMapJSON))
 			}
 
-			msg.MetaSetMut(neosync_benthos_metadata.MetaTypeMapStr, keyTypeMap)
+			msg.MetaSetMut(husonym_benthos_metadata.MetaTypeMapStr, keyTypeMap)
 			msg.SetStructuredMut(standardMap)
 		}
 

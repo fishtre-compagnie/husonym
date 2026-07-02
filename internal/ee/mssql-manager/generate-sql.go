@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	mssql_queries "github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier"
+	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
 )
 
 // Creates idempotent create table statement

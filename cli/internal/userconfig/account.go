@@ -10,7 +10,7 @@ const (
 )
 
 func GetAccountId() (string, error) {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return "", err
 	}
@@ -23,7 +23,7 @@ func GetAccountId() (string, error) {
 }
 
 func SetAccountId(id string) error {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return err
 	}

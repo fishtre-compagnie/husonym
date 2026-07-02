@@ -39,7 +39,7 @@ import {
   TransformerConfigSchema,
   TransformerSource,
   TransformersService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';

@@ -1,11 +1,11 @@
 -- name: GetRunContextByKey :one
-SELECT * from neosync_api.runcontexts
+SELECT * from husonym_api.runcontexts
 WHERE workflow_id = sqlc.arg('workflowId')
   AND external_id = sqlc.arg('externalId')
   AND account_id = sqlc.arg('accountId');
 
 -- name: SetRunContext :exec
-INSERT INTO neosync_api.runcontexts (
+INSERT INTO husonym_api.runcontexts (
     workflow_id,
     external_id,
     "value",
@@ -27,7 +27,7 @@ DO UPDATE SET
     updated_by_id = EXCLUDED.updated_by_id;
 
 -- name: GetRunContextsByExternalIdSuffix :many
-SELECT * from neosync_api.runcontexts
+SELECT * from husonym_api.runcontexts
 WHERE workflow_id = sqlc.arg('workflowId')
   AND external_id LIKE '%' || sqlc.arg('externalIdSuffix')::text
   AND account_id = sqlc.arg('accountId');

@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	jsonanonymizer "github.com/Groupe-Hevea/neosync/internal/json-anonymizer"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -35,7 +35,7 @@ func (s *Service) AnonymizeMany(
 	if !s.license.IsValid() {
 		return nil, nucleuserrors.NewNotImplemented(
 			fmt.Sprintf(
-				"%s is not implemented in the OSS version of Neosync.",
+				"%s is not implemented in the OSS version of Husonym.",
 				strings.TrimPrefix(
 					mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
 					"/",
@@ -53,7 +53,7 @@ func (s *Service) AnonymizeMany(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (s *Service) AnonymizeMany(
 	if err != nil {
 		return nil, err
 	}
-	if account.AccountType == int16(neosyncdb.AccountType_Personal) {
+	if account.AccountType == int16(husonymdb.AccountType_Personal) {
 		return nil, nucleuserrors.NewForbidden(
 			fmt.Sprintf(
 				"%s is not implemented for personal accounts",
@@ -181,7 +181,7 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 	if !s.license.IsValid() ||
-		(s.cfg.IsNeosyncCloud && account.AccountType == int16(neosyncdb.AccountType_Personal)) {
+		(s.cfg.IsHusonymCloud && account.AccountType == int16(husonymdb.AccountType_Personal)) {
 		for _, mapping := range req.Msg.GetTransformerMappings() {
 			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
 				return nil, nucleuserrors.NewForbidden(
@@ -298,8 +298,8 @@ func getMetricLabels(ctx context.Context, requestName, accountId string) []attri
 		attribute.String(metrics.ApiRequestId, requestId),
 		attribute.String(metrics.ApiRequestName, requestName),
 		attribute.String(
-			metrics.NeosyncDateLabel,
-			time.Now().UTC().Format(metrics.NeosyncDateFormat),
+			metrics.HusonymDateLabel,
+			time.Now().UTC().Format(metrics.HusonymDateFormat),
 		),
 	}
 }

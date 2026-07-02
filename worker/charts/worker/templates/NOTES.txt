@@ -1,1 +1,1 @@
-Neosync Worker Successfully installed!
+Husonym Worker Successfully installed!

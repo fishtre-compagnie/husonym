@@ -2,7 +2,7 @@ import FormErrorMessage from '@/components/FormErrorMessage';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import FormHeader from './FormHeader';
 import JobConfigSqlForm from './JobConfigSqlForm';

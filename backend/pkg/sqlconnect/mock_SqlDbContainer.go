@@ -3,7 +3,7 @@
 package sqlconnect
 
 import (
-	sqldbtx "github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx"
+	sqldbtx "github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
 	mock "github.com/stretchr/testify/mock"
 )
 

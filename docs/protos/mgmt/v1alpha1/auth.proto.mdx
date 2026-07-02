@@ -66,16 +66,16 @@ _**package** mgmt.v1alpha1_
 
 ### `AuthService`
 
-Service that handles generic Authentication for Neosync
+Service that handles generic Authentication for Husonym
 Today this is mostly used by the CLI to receive authentication information
 
 
 #### `LoginCli`
-<ProtoServiceMethod key={'LoginCli-0'} method={{"name":"LoginCli","description":"Used by the CLI to login to Neosync with OAuth.","requestType":"LoginCliRequest","requestLongType":"LoginCliRequest","requestFullType":"mgmt.v1alpha1.LoginCliRequest","requestStreaming":false,"responseType":"LoginCliResponse","responseLongType":"LoginCliResponse","responseFullType":"mgmt.v1alpha1.LoginCliResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/auth.proto#loginclirequest","responseTypeLink":"/api/mgmt/v1alpha1/auth.proto#logincliresponse"}} />
+<ProtoServiceMethod key={'LoginCli-0'} method={{"name":"LoginCli","description":"Used by the CLI to login to Husonym with OAuth.","requestType":"LoginCliRequest","requestLongType":"LoginCliRequest","requestFullType":"mgmt.v1alpha1.LoginCliRequest","requestStreaming":false,"responseType":"LoginCliResponse","responseLongType":"LoginCliResponse","responseFullType":"mgmt.v1alpha1.LoginCliResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/auth.proto#loginclirequest","responseTypeLink":"/api/mgmt/v1alpha1/auth.proto#logincliresponse"}} />
 
 
 #### `RefreshCli`
-<ProtoServiceMethod key={'RefreshCli-1'} method={{"name":"RefreshCli","description":"Used by the CLI to refresh an expired Neosync accesss token.\nThis should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.","requestType":"RefreshCliRequest","requestLongType":"RefreshCliRequest","requestFullType":"mgmt.v1alpha1.RefreshCliRequest","requestStreaming":false,"responseType":"RefreshCliResponse","responseLongType":"RefreshCliResponse","responseFullType":"mgmt.v1alpha1.RefreshCliResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/auth.proto#refreshclirequest","responseTypeLink":"/api/mgmt/v1alpha1/auth.proto#refreshcliresponse"}} />
+<ProtoServiceMethod key={'RefreshCli-1'} method={{"name":"RefreshCli","description":"Used by the CLI to refresh an expired Husonym accesss token.\nThis should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.","requestType":"RefreshCliRequest","requestLongType":"RefreshCliRequest","requestFullType":"mgmt.v1alpha1.RefreshCliRequest","requestStreaming":false,"responseType":"RefreshCliResponse","responseLongType":"RefreshCliResponse","responseFullType":"mgmt.v1alpha1.RefreshCliResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/auth.proto#refreshclirequest","responseTypeLink":"/api/mgmt/v1alpha1/auth.proto#refreshcliresponse"}} />
 
 
 #### `CheckToken`

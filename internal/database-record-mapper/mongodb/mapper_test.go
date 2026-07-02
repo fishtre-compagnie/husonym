@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -20,7 +20,7 @@ func Test_UnmarshalPrimitives(t *testing.T) {
 		"int":    42,
 		"bool":   true,
 	}
-	expectedKTM := map[string]neosync_types.KeyType{}
+	expectedKTM := map[string]husonym_types.KeyType{}
 
 	mapper := NewMongoBuilder()
 
@@ -45,11 +45,11 @@ func Test_UnmarshalPrimitives(t *testing.T) {
 		"objectID":  objectId,
 		"timestamp": primitive.Timestamp{T: 1, I: 1},
 	}
-	expectedKTM = map[string]neosync_types.KeyType{
-		"decimal":   neosync_types.Decimal128,
-		"binary":    neosync_types.Binary,
-		"objectID":  neosync_types.ObjectID,
-		"timestamp": neosync_types.Timestamp,
+	expectedKTM = map[string]husonym_types.KeyType{
+		"decimal":   husonym_types.Decimal128,
+		"binary":    husonym_types.Binary,
+		"objectID":  husonym_types.ObjectID,
+		"timestamp": husonym_types.Timestamp,
 	}
 
 	t.Run("BSON types", func(t *testing.T) {
@@ -72,42 +72,42 @@ func Test_ParsePrimitives(t *testing.T) {
 		name        string
 		key         string
 		value       any
-		expectedKTM map[string]neosync_types.KeyType
+		expectedKTM map[string]husonym_types.KeyType
 		expected    any
 	}{
 		{
 			name:        "Decimal128",
 			key:         "decimal",
 			value:       dec128,
-			expectedKTM: map[string]neosync_types.KeyType{"decimal": neosync_types.Decimal128},
+			expectedKTM: map[string]husonym_types.KeyType{"decimal": husonym_types.Decimal128},
 			expected:    getBigFloat(dec128.String()),
 		},
 		{
 			name:        "Binary",
 			key:         "binary",
 			value:       primitive.Binary{Data: []byte("test")},
-			expectedKTM: map[string]neosync_types.KeyType{"binary": neosync_types.Binary},
+			expectedKTM: map[string]husonym_types.KeyType{"binary": husonym_types.Binary},
 			expected:    primitive.Binary{Data: []byte("test")},
 		},
 		{
 			name:        "ObjectID",
 			key:         "objectID",
 			value:       objectId,
-			expectedKTM: map[string]neosync_types.KeyType{"objectID": neosync_types.ObjectID},
+			expectedKTM: map[string]husonym_types.KeyType{"objectID": husonym_types.ObjectID},
 			expected:    objectId,
 		},
 		{
 			name:        "Timestamp",
 			key:         "timestamp",
 			value:       primitive.Timestamp{T: 1, I: 1},
-			expectedKTM: map[string]neosync_types.KeyType{"timestamp": neosync_types.Timestamp},
+			expectedKTM: map[string]husonym_types.KeyType{"timestamp": husonym_types.Timestamp},
 			expected:    primitive.Timestamp{T: 1, I: 1},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ktm := make(map[string]neosync_types.KeyType)
+			ktm := make(map[string]husonym_types.KeyType)
 			result, err := parsePrimitives(tc.key, tc.value, ktm)
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedKTM, ktm)

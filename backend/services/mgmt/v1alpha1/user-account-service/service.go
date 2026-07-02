@@ -1,19 +1,19 @@
 package v1alpha1_useraccountservice
 
 import (
-	auth_client "github.com/Groupe-Hevea/neosync/backend/internal/auth/client"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/internal/authmgmt"
-	"github.com/Groupe-Hevea/neosync/internal/billing"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	"github.com/Groupe-Hevea/neosync/internal/temporal/clientmanager"
+	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
+	"github.com/fishtre-compagnie/husonym/internal/billing"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 )
 
 type Service struct {
 	cfg                    *Config
-	db                     *neosyncdb.NeosyncDb
+	db                     *husonymdb.HusonymDb
 	temporalConfigProvider clientmanager.ConfigProvider
 	authclient             auth_client.Interface
 	authadminclient        authmgmt.Interface
@@ -24,13 +24,13 @@ type Service struct {
 
 type Config struct {
 	IsAuthEnabled            bool
-	IsNeosyncCloud           bool
+	IsHusonymCloud           bool
 	DefaultMaxAllowedRecords *int64
 }
 
 func New(
 	cfg *Config,
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	temporalConfigProvider clientmanager.ConfigProvider,
 	authclient auth_client.Interface,
 	authadminclient authmgmt.Interface,

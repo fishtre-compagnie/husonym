@@ -3,7 +3,7 @@ package mssql_queries
 import (
 	"context"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 )
 
 type Querier interface {

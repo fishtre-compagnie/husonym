@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	tsql_parser "github.com/Groupe-Hevea/neosync/worker/pkg/select-query-builder/tsql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"

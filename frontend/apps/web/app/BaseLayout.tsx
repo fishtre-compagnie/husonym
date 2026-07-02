@@ -17,10 +17,10 @@ interface Props {
 export default async function BaseLayout(props: Props): Promise<ReactElement> {
   const { children } = props;
   const session = await auth();
-  const { publicNeosyncApiBaseUrl } = getSystemAppConfig();
+  const { publicHusonymApiBaseUrl } = getSystemAppConfig();
 
   return (
-    <ConnectProvider apiBaseUrl={publicNeosyncApiBaseUrl}>
+    <ConnectProvider apiBaseUrl={publicHusonymApiBaseUrl}>
       <TanstackQueryProvider>
         <SessionProvider session={session}>
           <AccountProvider>

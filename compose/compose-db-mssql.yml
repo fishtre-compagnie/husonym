@@ -9,7 +9,7 @@ services:
       - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
       - MSSQL_PID=Developer
     networks:
-      - neosync-network
+      - husonym-network
 
   test-stage-db-mssql:
     container_name: test-stage-db-mssql
@@ -21,4 +21,4 @@ services:
       - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
       - MSSQL_PID=Developer
     networks:
-      - neosync-network
+      - husonym-network

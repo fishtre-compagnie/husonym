@@ -4,7 +4,7 @@ import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { JobService, JobStatus } from '@neosync/sdk';
+import { JobService, JobStatus } from '@husonym/sdk';
 import { PauseIcon, PlayIcon } from '@radix-ui/react-icons';
 import { ReactElement, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';

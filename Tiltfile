@@ -1,10 +1,10 @@
-allow_k8s_contexts('kind-neosync-dev')
+allow_k8s_contexts('kind-husonym-dev')
 
 backend = [
-  'neosync-api',
+  'husonym-api',
 ]
 frontend = [
-  'neosync-app',
+  'husonym-app',
 ]
 
 groups = {

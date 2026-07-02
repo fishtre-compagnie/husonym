@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func Test_TransformPiiText(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		mockanalyze := presidioapi.NewMockAnalyzeInterface(t)
 		mockanon := presidioapi.NewMockAnonymizeInterface(t)
-		mockneosync := NewMockNeosyncOperatorApi(t)
+		mockhusonym := NewMockHusonymOperatorApi(t)
 
 		mockanalyze.On("PostAnalyzeWithResponse", mock.Anything, mock.Anything).
 			Return(&presidioapi.PostAnalyzeResponse{
@@ -46,7 +46,7 @@ func Test_TransformPiiText(t *testing.T) {
 			ctx,
 			mockanalyze,
 			mockanon,
-			mockneosync,
+			mockhusonym,
 			config,
 			"foo",
 			testutil.GetTestLogger(t),
@@ -191,11 +191,11 @@ func Test_buildAnonymizers(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, presidioapi.Sha256, *hash.HashType)
 
-		dateTime, ok := output["NEOSYNC_DATE_TIME"]
+		dateTime, ok := output["HUSONYM_DATE_TIME"]
 		require.True(t, ok)
 		dtReplace, err := dateTime.AsReplace()
 		require.NoError(t, err)
-		require.Equal(t, "{{NEOSYNC_DATE_TIME}}", dtReplace.NewValue)
+		require.Equal(t, "{{HUSONYM_DATE_TIME}}", dtReplace.NewValue)
 	})
 }
 

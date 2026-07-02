@@ -16,7 +16,7 @@ import {
   TransformerConfig,
   ValidateUserJavascriptCodeRequestSchema,
   ValidateUserJavascriptCodeResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { UseMutateAsyncFunction } from '@tanstack/react-query';
 import * as Yup from 'yup';
 
@@ -387,7 +387,7 @@ const transformCharacterScrambleConfig = Yup.object().shape({
 const EMPTY_TRANSFORMER_VALUE_CONFIG = Yup.object({});
 
 // Using this "as const" allows typescript to infer the types based on the shape we've described in the Yup object
-// Ideally we can more explicitly type this in the future based on the Transformer types we get from @neosync/sdk
+// Ideally we can more explicitly type this in the future based on the Transformer types we get from @husonym/sdk
 const TRANSFORMER_SCHEMA_CONFIGS = {
   generateBoolConfig: EMPTY_TRANSFORMER_VALUE_CONFIG,
   generateCityConfig: EMPTY_TRANSFORMER_VALUE_CONFIG,

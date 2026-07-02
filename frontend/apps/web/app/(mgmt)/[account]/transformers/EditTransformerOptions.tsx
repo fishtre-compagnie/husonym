@@ -35,7 +35,7 @@ import {
   TransformerConfigSchema,
   TransformerSource,
   TransformersService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import {
   EyeOpenIcon,
   MixerHorizontalIcon,
@@ -239,8 +239,8 @@ export function constructDocsLink(source: TransformerSource): string {
     source == TransformerSource.GENERATE_JAVASCRIPT ||
     source == TransformerSource.TRANSFORM_JAVASCRIPT
   ) {
-    return `https://docs.neosync.allopneus.com/guides/custom-code-transformers`;
+    return `https://docs.husonym.allopneus.com/guides/custom-code-transformers`;
   } else {
-    return `https://docs.neosync.allopneus.com/transformers/system#${name}`;
+    return `https://docs.husonym.allopneus.com/transformers/system#${name}`;
   }
 }

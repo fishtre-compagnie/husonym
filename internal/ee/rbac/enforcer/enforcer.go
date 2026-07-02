@@ -28,7 +28,7 @@ func NewActiveEnforcer(
 func newEnforcer(
 	adapter persist.Adapter,
 ) (casbin.IEnforcer, error) {
-	m, err := model.NewModelFromString(neosyncRbacModel)
+	m, err := model.NewModelFromString(husonymRbacModel)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize casbin model from string: %w", err)
 	}
@@ -42,7 +42,7 @@ func newEnforcer(
 	) // seems to do this automatically but it doesn't hurt
 	enforcer.StartAutoLoadPolicy(
 		time.Second * 10,
-	) // allows HA between neosync-api instances or backend changes to RBAC policies to be picked up.
+	) // allows HA between husonym-api instances or backend changes to RBAC policies to be picked up.
 	return enforcer, nil
 }
 

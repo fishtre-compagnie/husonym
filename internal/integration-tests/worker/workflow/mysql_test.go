@@ -9,21 +9,21 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	sqlmanager_mysql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mysql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	tcmysql "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/mysql"
-	testutil_testdata "github.com/Groupe-Hevea/neosync/internal/testutil/testdata"
-	mysql_alltypes "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/alltypes"
-	mysql_complex "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/complex"
-	mysql_composite_keys "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/composite-keys"
-	mysql_edgecases "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/edgecases"
-	mysql_human_resources "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/humanresources"
-	mysql_schemainit "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mysql/schema-init"
-	reconcileschema_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/activities/reconcile-schema"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	tcmysql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mysql"
+	testutil_testdata "github.com/fishtre-compagnie/husonym/internal/testutil/testdata"
+	mysql_alltypes "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/alltypes"
+	mysql_complex "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/complex"
+	mysql_composite_keys "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/composite-keys"
+	mysql_edgecases "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/edgecases"
+	mysql_human_resources "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/humanresources"
+	mysql_schemainit "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mysql/schema-init"
+	reconcileschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/reconcile-schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -148,12 +148,12 @@ func test_mysql_types(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	alltypesSchema := "alltypes"
 
 	errgrp, errctx := errgroup.WithContext(ctx)
@@ -171,7 +171,7 @@ func test_mysql_types(
 	err := errgrp.Wait()
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	alltypesMappings := mysql_alltypes.GetDefaultSyncJobMappings(alltypesSchema)
 
@@ -187,7 +187,7 @@ func test_mysql_types(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -259,12 +259,12 @@ func test_mysql_edgecases(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "mysqledgecases"
 	schema2 := "mysqledgecasesother"
 
@@ -291,7 +291,7 @@ func test_mysql_edgecases(
 	err := errgrp.Wait()
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	mappings := mysql_edgecases.GetDefaultSyncJobMappings(schema)
 	mappings2 := mysql_edgecases.GetDefaultSyncJobMappings(schema2)
@@ -308,7 +308,7 @@ func test_mysql_edgecases(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -374,12 +374,12 @@ func test_mysql_composite_keys(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "mysqlcompositekeys"
 
 	errgrp, errctx := errgroup.WithContext(ctx)
@@ -402,7 +402,7 @@ func test_mysql_composite_keys(
 	err := errgrp.Wait()
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	mappings := mysql_composite_keys.GetDefaultSyncJobMappings(schema)
 
@@ -418,7 +418,7 @@ func test_mysql_composite_keys(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -459,12 +459,12 @@ func test_mysql_on_conflict_do_update(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "human_resources"
 
 	errgrp, errctx := errgroup.WithContext(ctx)
@@ -500,7 +500,7 @@ func test_mysql_on_conflict_do_update(
 	_, err = mysql.Source.DB.ExecContext(ctx, updateStmt)
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	mappings := mysql_human_resources.GetDefaultSyncJobMappings(schema)
 
@@ -517,7 +517,7 @@ func test_mysql_on_conflict_do_update(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -573,12 +573,12 @@ func test_mysql_complex(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "complex"
 
 	err := mysql.Source.RunCreateStmtsInDatabase(
@@ -589,7 +589,7 @@ func test_mysql_complex(
 	)
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	mappings := mysql_complex.GetDefaultSyncJobMappings(schema)
 
@@ -608,7 +608,7 @@ func test_mysql_complex(
 
 	testworkflow := NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithMaxIterations(10),
 		WithPageLimit(100),
@@ -879,13 +879,13 @@ func test_mysql_schema_reconciliation(
 	t *testing.T,
 	ctx context.Context,
 	mysql *tcmysql.MysqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 	shouldTruncate bool,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := fmt.Sprintf("reconcile_%v", shouldTruncate)
 
 	err := mysql.Source.RunCreateStmtsInDatabase(
@@ -896,7 +896,7 @@ func test_mysql_schema_reconciliation(
 	)
 	require.NoError(t, err)
 
-	neosyncApi.MockTemporalForCreateJob("test-mysql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mysql-sync")
 
 	mappings := mysql_schemainit.GetDefaultSyncJobMappings(schema)
 
@@ -916,7 +916,7 @@ func test_mysql_schema_reconciliation(
 
 	testworkflow := NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithMaxIterations(100),
 		WithPageLimit(1000),
@@ -995,7 +995,7 @@ func test_mysql_schema_reconciliation(
 
 	testworkflow = NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithMaxIterations(100),
 		WithPageLimit(1000),

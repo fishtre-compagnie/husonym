@@ -1,6 +1,6 @@
 ---
 title: User Defined Transformers
-description: Learn about Neosync's user defined transformers and how you can create one to implement custom anonymization logic
+description: Learn about Husonym's user defined transformers and how you can create one to implement custom anonymization logic
 id: user-defined
 hide_title: false
 slug: /transformers/user-defined
@@ -8,7 +8,7 @@ slug: /transformers/user-defined
 
 ## Introduction
 
-![udt](https://assets.Groupe-Hevea.com/neosync/docs/user-defined-transformers-home.png)
+![udt](https://assets.fishtre-compagnie.com/husonym/docs/user-defined-transformers-home.png)
 
 User defined Transformers are a great way to configure a system transformer with your own presets and publish it everywhere. User defined transformers are saved at the account level and
 can be used across multiple jobs, saving you time during the schema configuration process. There are two ways to create User Defined Transformers:
@@ -20,7 +20,7 @@ The following sections will walk through how you can create both types of User D
 
 ## Cloning System Transformers
 
-Neosync ships with a number of system defined transformers that you can clone, update the configurations and then save it as a User Defined Transformer. This is helpful if you want to ensure that some transformers have certain configurations. For example, you may want to enforce that every column that uses a `generate_int64` transformer only produces positive integers. Below we show how to clone a system transformer and use that transformer within a schema mapping.
+Husonym ships with a number of system defined transformers that you can clone, update the configurations and then save it as a User Defined Transformer. This is helpful if you want to ensure that some transformers have certain configurations. For example, you may want to enforce that every column that uses a `generate_int64` transformer only produces positive integers. Below we show how to clone a system transformer and use that transformer within a schema mapping.
 
 ### Creating a User Defined Transformer
 
@@ -29,11 +29,11 @@ In order to create a user defined transformer, follow these steps:
 1. Navigate to the **Transformers** page and click on **+ New Transformer**.
 2. You'll be brought to the new transformer page where you can select a base transformer. A base transformer serves as the blueprint for the user defined transformer. Select the base transformer for your user defined transformer.
 
-![udt](https://assets.Groupe-Hevea.com/neosync/docs/udt-new.png)
+![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new.png)
 
 3. Once you've selected a base transformer, you'll be prompted to give the transformer a name and description. Additionally, you can preset custom default configurations depending on the transformer. Fill out the details and click **save**.
 
-![udt](https://assets.Groupe-Hevea.com/neosync/docs/udt-new-float.png)
+![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new-float.png)
 
 ### Using a User Defined Transformer
 
@@ -42,7 +42,7 @@ In order to create a user defined transformer, follow these steps:
 
 In the transformers table under the User Defined Transformer tab.
 
-![udt](https://assets.Groupe-Hevea.com/neosync/docs/udt-new-float-home-page.png)
+![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new-float-home-page.png)
 
 In the Schema configuration page in the transformer select.
 
@@ -52,7 +52,7 @@ Now we can finish the rest of our job configuration and the newly created user d
 
 ## Custom Code Transformers
 
-Neosync supports the ability to write your own custom logic using JavaScript.
+Husonym supports the ability to write your own custom logic using JavaScript.
 
 There exist two different transformers that enable this. One of them is input-free, while the other is input-full, and allows you to transform incoming values.
 

@@ -7,39 +7,39 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
-	auth_jwt "github.com/Groupe-Hevea/neosync/backend/internal/auth/jwt"
-	auth_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/auth"
-	accounthooks "github.com/Groupe-Hevea/neosync/backend/internal/ee/hooks/accounts"
-	jobhooks "github.com/Groupe-Hevea/neosync/backend/internal/ee/hooks/jobs"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/backend/internal/utils"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/mongoconnect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	v1alpha1_accounthookservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/account-hooks-service"
-	v1alpha_anonymizationservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/anonymization-service"
-	v1alpha1_connectiondataservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/connection-data-service"
-	v1alpha1_connectionservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/connection-service"
-	v1alpha1_jobservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/job-service"
-	v1alpha1_transformersservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/transformers-service"
-	v1alpha1_useraccountservice "github.com/Groupe-Hevea/neosync/backend/services/mgmt/v1alpha1/user-account-service"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/authmgmt"
-	awsmanager "github.com/Groupe-Hevea/neosync/internal/aws"
-	"github.com/Groupe-Hevea/neosync/internal/billing"
-	"github.com/Groupe-Hevea/neosync/internal/connectiondata"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac/enforcer"
-	neosync_gcp "github.com/Groupe-Hevea/neosync/internal/gcp"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	tcpostgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
+	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
+	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
+	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
+	v1alpha_anonymizationservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/anonymization-service"
+	v1alpha1_connectiondataservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-data-service"
+	v1alpha1_connectionservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-service"
+	v1alpha1_jobservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/job-service"
+	v1alpha1_transformersservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
+	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	"github.com/fishtre-compagnie/husonym/internal/billing"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
+	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -76,17 +76,17 @@ const (
 	// OSS, Unauthenticated, Unlicensed
 	openSourceUnauthenticatedUnlicensedPostfix = "/oss-unauthenticated-unlicensed"
 	// NeoCloud, Licensed, Authenticated
-	neoCloudAuthenticatedLicensedPostfix = "/neosynccloud-authenticated"
+	neoCloudAuthenticatedLicensedPostfix = "/husonymcloud-authenticated"
 )
 
-func (s *NeosyncApiTestClient) setupOssUnauthenticatedLicensedMux(
+func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := false
-	isNeosyncCloud := false
+	isHusonymCloud := false
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
@@ -95,20 +95,20 @@ func (s *NeosyncApiTestClient) setupOssUnauthenticatedLicensedMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isNeosyncCloud,
+		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
 	)
 }
 
-func (s *NeosyncApiTestClient) setupOssLicensedAuthMux(
+func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := true
-	isNeosyncCloud := false
+	isHusonymCloud := false
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
@@ -117,38 +117,38 @@ func (s *NeosyncApiTestClient) setupOssLicensedAuthMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isNeosyncCloud,
+		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
 	)
 }
 
-func (s *NeosyncApiTestClient) setupOssUnlicensedMux(
+func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isLicensed := false
 	isAuthEnabled := false
-	isNeosyncCloud := false
+	isHusonymCloud := false
 	permissiveRbacClient := rbac.NewAllowAllClient()
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isNeosyncCloud,
+		isHusonymCloud,
 		permissiveRbacClient,
 		logger,
 	)
 }
 
-func (s *NeosyncApiTestClient) setupNeoCloudMux(
+func (s *HusonymApiTestClient) setupNeoCloudMux(
 	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := true
-	isNeosyncCloud := true
+	isHusonymCloud := true
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
@@ -157,21 +157,21 @@ func (s *NeosyncApiTestClient) setupNeoCloudMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isNeosyncCloud,
+		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
 	)
 }
 
-func (s *NeosyncApiTestClient) setupMux(
+func (s *HusonymApiTestClient) setupMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	isAuthEnabled bool,
 	isLicensed bool,
-	isNeosyncCloud bool,
+	isHusonymCloud bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isPresidioEnabled := isLicensed || isNeosyncCloud
+	isPresidioEnabled := isLicensed || isHusonymCloud
 
 	maxAllowed := int64(10000)
 	var license *testutil.FakeEELicense
@@ -181,10 +181,10 @@ func (s *NeosyncApiTestClient) setupMux(
 		license = testutil.NewFakeEELicense()
 	}
 
-	neosyncDb := neosyncdb.New(pgcontainer.DB, db_queries.New())
+	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
 
 	var billingclient billing.Interface
-	if isNeosyncCloud {
+	if isHusonymCloud {
 		billingclient = s.Mocks.Billingclient
 	} else {
 		billingclient = nil
@@ -193,10 +193,10 @@ func (s *NeosyncApiTestClient) setupMux(
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
 			IsAuthEnabled:            isAuthEnabled,
-			IsNeosyncCloud:           isNeosyncCloud,
+			IsHusonymCloud:           isHusonymCloud,
 			DefaultMaxAllowedRecords: &maxAllowed,
 		},
-		neosyncdb.New(pgcontainer.DB, db_queries.New()),
+		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.TemporalConfigProvider,
 		s.Mocks.Authclient,
 		s.Mocks.Authmanagerclient,
@@ -210,7 +210,7 @@ func (s *NeosyncApiTestClient) setupMux(
 		&v1alpha1_transformersservice.Config{
 			IsPresidioEnabled: isPresidioEnabled,
 		},
-		neosyncdb.New(pgcontainer.DB, db_queries.New()),
+		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.Presidio.Entities,
 		userclient,
 		license,
@@ -219,8 +219,8 @@ func (s *NeosyncApiTestClient) setupMux(
 	sqlmanagerclient := NewTestSqlManagerClient()
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsNeosyncCloud: isNeosyncCloud},
-		neosyncDb,
+		&v1alpha1_connectionservice.Config{IsHusonymCloud: isHusonymCloud},
+		husonymDb,
 		userclient,
 		mongoconnect.NewConnector(),
 		awsmanager.New(),
@@ -231,13 +231,13 @@ func (s *NeosyncApiTestClient) setupMux(
 	var jobhookService *jobhooks.Service
 	if isLicensed {
 		jobhookService = jobhooks.New(
-			neosyncDb,
+			husonymDb,
 			userclient,
 			jobhooks.WithEnabled(),
 		)
 	} else {
 		jobhookService = jobhooks.New(
-			neosyncDb,
+			husonymDb,
 			userclient,
 		)
 	}
@@ -248,8 +248,8 @@ func (s *NeosyncApiTestClient) setupMux(
 	mysqlquerier := mysql_queries.New()
 	mongoconnector := mongoconnect.NewConnector()
 	sqlmanager := sqlmanagerclient
-	gcpmanager := neosync_gcp.NewManager()
-	neosynctyperegistry := neosynctypes.NewTypeRegistry(logger)
+	gcpmanager := husonym_gcp.NewManager()
+	husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
 
 	connectiondatabuilder := connectiondata.NewConnectionDataBuilder(
 		sqlConnector,
@@ -259,12 +259,12 @@ func (s *NeosyncApiTestClient) setupMux(
 		awsManager,
 		gcpmanager,
 		mongoconnector,
-		neosynctyperegistry,
+		husonymtyperegistry,
 	)
 
 	jobService := v1alpha1_jobservice.New(
-		&v1alpha1_jobservice.Config{IsAuthEnabled: isAuthEnabled, IsNeosyncCloud: isNeosyncCloud},
-		neosyncDb,
+		&v1alpha1_jobservice.Config{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+		husonymDb,
 		s.Mocks.TemporalClientManager,
 		connectionService,
 		sqlmanagerclient,
@@ -280,7 +280,7 @@ func (s *NeosyncApiTestClient) setupMux(
 		&v1alpha_anonymizationservice.Config{
 			IsPresidioEnabled: isPresidioEnabled,
 			IsAuthEnabled:     isAuthEnabled,
-			IsNeosyncCloud:    isNeosyncCloud,
+			IsHusonymCloud:    isHusonymCloud,
 		},
 		nil, // meter
 		userclient,
@@ -288,7 +288,7 @@ func (s *NeosyncApiTestClient) setupMux(
 		transformerService,
 		presAnalyzeClient,
 		presAnonClient,
-		neosyncDb,
+		husonymDb,
 		license,
 	)
 
@@ -300,7 +300,7 @@ func (s *NeosyncApiTestClient) setupMux(
 
 	accountHookService := v1alpha1_accounthookservice.New(
 		accounthooks.New(
-			neosyncDb,
+			husonymDb,
 			userclient,
 			accounthooks.WithSlackClient(s.Mocks.Slackclient),
 		),
@@ -354,14 +354,14 @@ func (s *NeosyncApiTestClient) setupMux(
 	return mux, nil
 }
 
-func (s *NeosyncApiTestClient) getEnforcedRbacClient(
+func (s *HusonymApiTestClient) getEnforcedRbacClient(
 	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 ) (rbac.Interface, error) {
 	rbacenforcer, err := enforcer.NewActiveEnforcer(
 		ctx,
 		stdlib.OpenDBFromPool(pgcontainer.DB),
-		"neosync_api.casbin_rule",
+		"husonym_api.casbin_rule",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rbac enforcer: %w", err)

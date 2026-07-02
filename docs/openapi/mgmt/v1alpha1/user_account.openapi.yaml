@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  summary: Neosync API
+  summary: Husonym API
   version: "0.5"
-  termsOfService: "https://www.neosync.dev/terms-of-service"
+  termsOfService: "https://www.husonym.allopneus.com/terms-of-service"
   contact:
-    name: Neosync Support
-    email: support@neosync.dev
+    name: Husonym Support
+    email: support@husonym.allopneus.com
   license:
     name: MIT
-    url: https://github.com/Groupe-Hevea/neosync/blob/main/LICENSE.md
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.neosync.allopneus.com/api
+  url: https://docs.husonym.allopneus.com/api
 servers:
-  - url: https://neosync-api.svcs.neosync.dev
-    description: Neosync Cloud
+  - url: https://husonym-api.svcs.husonym.allopneus.com
+    description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
     variables:
@@ -349,7 +349,7 @@ components:
         checkoutSessionUrl:
           type: string
           title: checkout_session_url
-          description: If NeosyncCloud, will respond with a checkout session url so they can setup billing
+          description: If HusonymCloud, will respond with a checkout session url so they can setup billing
         newPersonalAccountId:
           type: string
           title: new_personal_account_id
@@ -391,7 +391,7 @@ components:
         checkoutSessionUrl:
           type: string
           title: checkout_session_url
-          description: If NeosyncCloud, will respond with a checkout session url so they can setup billing
+          description: If HusonymCloud, will respond with a checkout session url so they can setup billing
       title: CreateTeamAccountResponse
       additionalProperties: false
     mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest:
@@ -563,11 +563,11 @@ components:
         compiler:
           type: string
           title: compiler
-          description: The Go compiler flag that was used to build this version of Neosync
+          description: The Go compiler flag that was used to build this version of Husonym
         platform:
           type: string
           title: platform
-          description: The Go platform flag that was used to build this version of Neosync
+          description: The Go platform flag that was used to build this version of Husonym
         buildDate:
           allOf:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
@@ -1054,10 +1054,10 @@ components:
             - $ref: '#/components/schemas/google.protobuf.Timestamp'
           title: expires_at
           description: The time when the license expires
-        isNeosyncCloud:
+        isHusonymCloud:
           type: boolean
-          title: is_neosync_cloud
-          description: Whether or not the license is for NeosyncCloud
+          title: is_husonym_cloud
+          description: Whether or not the license is for HusonymCloud
       title: SystemLicense
       additionalProperties: false
     mgmt.v1alpha1.UserAccount:

@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  summary: Neosync API
+  summary: Husonym API
   version: "0.5"
-  termsOfService: "https://www.neosync.dev/terms-of-service"
+  termsOfService: "https://www.husonym.allopneus.com/terms-of-service"
   contact:
-    name: Neosync Support
-    email: support@neosync.dev
+    name: Husonym Support
+    email: support@husonym.allopneus.com
   license:
     name: MIT
-    url: https://github.com/Groupe-Hevea/neosync/blob/main/LICENSE.md
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.neosync.allopneus.com/api
+  url: https://docs.husonym.allopneus.com/api
 servers:
-  - url: https://neosync-api.svcs.neosync.dev
-    description: Neosync Cloud
+  - url: https://husonym-api.svcs.husonym.allopneus.com
+    description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
     variables:
@@ -959,7 +959,7 @@ paths:
       tags:
         - mgmt.v1alpha1.AccountHookService
       summary: GetSlackConnectionUrl
-      description: Retrieves the Slack connection url that allows a user to connect their Slack workspace to Neosync.
+      description: Retrieves the Slack connection url that allows a user to connect their Slack workspace to Husonym.
       operationId: mgmt.v1alpha1.AccountHookService.GetSlackConnectionUrl
       parameters:
         - name: Connect-Protocol-Version

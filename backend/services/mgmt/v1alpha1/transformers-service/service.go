@@ -1,15 +1,15 @@
 package v1alpha1_transformersservice
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type Service struct {
 	cfg            *Config
-	db             *neosyncdb.NeosyncDb
+	db             *husonymdb.HusonymDb
 	entityclient   presidioapi.EntityInterface
 	userdataclient userdata.Interface
 	license        license.EEInterface
@@ -21,7 +21,7 @@ type Config struct {
 
 func New(
 	cfg *Config,
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	recognizerclient presidioapi.EntityInterface,
 	userdataclient userdata.Interface,
 	licenseClient license.EEInterface,

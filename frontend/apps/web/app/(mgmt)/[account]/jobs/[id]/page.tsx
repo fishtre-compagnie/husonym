@@ -10,7 +10,7 @@ import {
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { create } from '@bufbuild/protobuf';
 import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
-import { GetJobResponseSchema, JobService } from '@neosync/sdk';
+import { GetJobResponseSchema, JobService } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, use } from 'react';
 import ActivitySyncOptionsCard from './components/ActivitySyncOptionsCard';

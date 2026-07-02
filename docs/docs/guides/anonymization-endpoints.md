@@ -4,7 +4,7 @@ description: Guide to Using the Anonymization Service Endpoints
 id: anonymization-service-endpoints
 hide_title: false
 slug: /guides/anonymization-service-endpoints
-# cSpell:words Neosync,Protos,cmedicine
+# cSpell:words Husonym,Protos,cmedicine
 ---
 
 ## Introduction
@@ -192,7 +192,7 @@ The Anonymization endpoint uses a Named Entity Recognition model under the cover
 If you just want to use the base entities then you can leave the entities field blank. If you want to customize them, then you can see base list of entities that we support by calling the `getTransformPiiEntities` endpoint like this:
 
 ```typescript
-const neosyncClient = getNeosyncClient({
+const husonymClient = getHusonymClient({
   getAccessToken: () => {
     return api_key; // this is your api_key
   },
@@ -205,7 +205,7 @@ const neosyncClient = getNeosyncClient({
   },
 });
 
-const entities = await neosyncClient.transformers.getTransformPiiEntities({
+const entities = await husonymClient.transformers.getTransformPiiEntities({
   accountId: accountId, // this is your account Id
 });
 ```
@@ -223,7 +223,7 @@ In the following example, we will filter out the `DATE_TIME` entity from the bas
 
 // ...
 
-const entities = await neosyncClient.transformers.getTransformPiiEntities({
+const entities = await husonymClient.transformers.getTransformPiiEntities({
   accountId: accountId,
 });
 

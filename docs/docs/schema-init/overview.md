@@ -1,6 +1,6 @@
 ---
 title: Schema Initialization Overview
-description: Learn how Neosync handles schema initialization
+description: Learn how Husonym handles schema initialization
 id: schema-initialization-overview
 hide_title: false
 slug: /schema-init/overview

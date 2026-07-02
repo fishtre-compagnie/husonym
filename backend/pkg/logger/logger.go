@@ -1,4 +1,4 @@
-package neosynclogger
+package husonymlogger
 
 import (
 	"log"

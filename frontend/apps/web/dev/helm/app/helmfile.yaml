@@ -1,14 +1,14 @@
 releases:
-  - name: neosync-app
+  - name: husonym-app
     chart: ../../../charts/app
     version: 'v0.0.0'
-    namespace: neosync
+    namespace: husonym
     createNamespace: false
 
     values:
       -
         image:
-          repository: neosync-app
+          repository: husonym-app
 
         serviceAccount:
           create: true
@@ -18,8 +18,8 @@ releases:
         servicePort: 80
         containerPort: 3000
 
-        neosyncApi:
-          url: http://neosync-api
+        husonymApi:
+          url: http://husonym-api
 
         auth:
           enabled: false

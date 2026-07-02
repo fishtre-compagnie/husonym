@@ -8,7 +8,7 @@ Most of these save for compose-metrics.yml (as it hasn't been fully updated yet)
 
 ## compose-db.yml
 
-Stands up two separate postgres databases that can be used for testing Neosync.
+Stands up two separate postgres databases that can be used for testing Husonym.
 This is enabled by default.
 
 ## compose-db-mongo.yml
@@ -37,7 +37,7 @@ Grafana is used by all of them to surface metrics or logs. This local copy does 
 OpenTelemtry, Prometheus are used to retrieve worker metrics.
 Otel is used to retrieve the metrics from the worker. These are then exported to Prometheus.
 
-Neosync API can be configured to retrieve these metrics via the metrics service.
+Husonym API can be configured to retrieve these metrics via the metrics service.
 
 ### Logs
 
@@ -47,4 +47,4 @@ Promtail scrapes the docker container logs files and pushes them into Loki.
 
 Loki can be configured as a datasource in Grafana to surface logs.
 
-Loki can also be wired up to Neosync API to surface logs to the app dashboard.
+Loki can also be wired up to Husonym API to surface logs to the app dashboard.

@@ -1,8 +1,8 @@
 package schemainit_workflow
 
 import (
-	initschema_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/activities/init-schema"
-	reconcileschema_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/activities/reconcile-schema"
+	initschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/init-schema"
+	reconcileschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/reconcile-schema"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 )

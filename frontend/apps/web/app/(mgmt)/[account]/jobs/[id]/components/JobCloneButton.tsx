@@ -2,7 +2,7 @@
 import ButtonText from '@/components/ButtonText';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
-import { Job, UserAccount } from '@neosync/sdk';
+import { Job, UserAccount } from '@husonym/sdk';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { ReactElement } from 'react';

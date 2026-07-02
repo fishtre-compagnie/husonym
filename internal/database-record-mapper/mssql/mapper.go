@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	mssql "github.com/microsoft/go-mssqldb"
 )
 
@@ -23,7 +23,7 @@ func NewMSSQLBuilder() *builder.Builder[*sql.Rows] {
 
 func (m *MSSQLMapper) MapRecordWithKeyType(
 	rows *sql.Rows,
-) (valuemap map[string]any, typemap map[string]neosync_types.KeyType, err error) {
+) (valuemap map[string]any, typemap map[string]husonym_types.KeyType, err error) {
 	return nil, nil, errors.ErrUnsupported
 }
 
@@ -68,7 +68,7 @@ func parseRowValues(values []any, columnNames, columnDbTypes []string) (map[stri
 		colType := columnDbTypes[i]
 		switch t := v.(type) {
 		case time.Time:
-			dt, err := neosynctypes.NewDateTimeFromMssql(t)
+			dt, err := husonymtypes.NewDateTimeFromMssql(t)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert time.Time to DateTime for column %s: %w", col, err)
 			}
@@ -78,13 +78,13 @@ func parseRowValues(values []any, columnNames, columnDbTypes []string) (map[stri
 		case []byte:
 			switch {
 			case strings.EqualFold(colType, "binary"):
-				binary, err := neosynctypes.NewBinaryFromMssql(t)
+				binary, err := husonymtypes.NewBinaryFromMssql(t)
 				if err != nil {
 					return nil, fmt.Errorf("failed to convert binary data for column %s: %w", col, err)
 				}
 				jObj[col] = binary
 			case strings.EqualFold(colType, "varbinary"):
-				bits, err := neosynctypes.NewBitsFromMssql(t)
+				bits, err := husonymtypes.NewBitsFromMssql(t)
 				if err != nil {
 					return nil, fmt.Errorf("failed to convert varbinary data for column %s: %w", col, err)
 				}

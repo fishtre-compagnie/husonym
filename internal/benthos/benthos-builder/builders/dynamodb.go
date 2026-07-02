@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"slices"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	awsmanager "github.com/Groupe-Hevea/neosync/internal/aws"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
 
 type dyanmodbSyncBuilder struct {
@@ -56,11 +56,11 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 	benthosConfigs := []*bb_internal.BenthosSourceConfig{}
 	// todo: may need to filter here based on the destination config mappings if there is no source->destination table map
 	for _, tableMapping := range groupedMappings {
-		bc := &neosync_benthos.BenthosConfig{
-			StreamConfig: neosync_benthos.StreamConfig{
-				Input: &neosync_benthos.InputConfig{
-					Inputs: neosync_benthos.Inputs{
-						AwsDynamoDB: &neosync_benthos.InputAwsDynamoDB{
+		bc := &husonym_benthos.BenthosConfig{
+			StreamConfig: husonym_benthos.StreamConfig{
+				Input: &husonym_benthos.InputConfig{
+					Inputs: husonym_benthos.Inputs{
+						AwsDynamoDB: &husonym_benthos.InputAwsDynamoDB{
 							Table: tableMapping.Table,
 							Where: getWhereFromSourceTableOption(
 								tableOptsMap[tableMapping.Table],
@@ -74,15 +74,15 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 						},
 					},
 				},
-				Pipeline: &neosync_benthos.PipelineConfig{
+				Pipeline: &husonym_benthos.PipelineConfig{
 					Threads:    -1,
-					Processors: []neosync_benthos.ProcessorConfig{},
+					Processors: []husonym_benthos.ProcessorConfig{},
 				},
-				Output: &neosync_benthos.OutputConfig{
-					Outputs: neosync_benthos.Outputs{
-						Broker: &neosync_benthos.OutputBrokerConfig{
+				Output: &husonym_benthos.OutputConfig{
+					Outputs: husonym_benthos.Outputs{
+						Broker: &husonym_benthos.OutputBrokerConfig{
 							Pattern: "fan_out",
-							Outputs: []neosync_benthos.Outputs{},
+							Outputs: []husonym_benthos.Outputs{},
 						},
 					},
 				},
@@ -190,14 +190,14 @@ func (b *dyanmodbSyncBuilder) BuildDestinationConfig(
 			benthosConfig.TableName,
 		)
 	}
-	config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
-		AwsDynamoDB: &neosync_benthos.OutputAwsDynamoDB{
+	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
+		AwsDynamoDB: &husonym_benthos.OutputAwsDynamoDB{
 			Table: mappedTable,
 			JsonMapColumns: map[string]string{
 				"": ".",
 			},
 
-			Batching: &neosync_benthos.Batching{
+			Batching: &husonym_benthos.Batching{
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchWriteItem.html
 				// A single call to BatchWriteItem can transmit up to 16MB of data over the network, consisting of up to 25 item put or delete operations
 				// Specifying the count here may not be enough if the overall data is above 16MB.
@@ -234,11 +234,11 @@ func toDynamoDbSourceTableOptionMap(
 
 func buildBenthosS3Credentials(
 	mgmtCreds *mgmtv1alpha1.AwsS3Credentials,
-) *neosync_benthos.AwsCredentials {
+) *husonym_benthos.AwsCredentials {
 	if mgmtCreds == nil {
 		return nil
 	}
-	creds := &neosync_benthos.AwsCredentials{}
+	creds := &husonym_benthos.AwsCredentials{}
 	if mgmtCreds.Profile != nil {
 		creds.Profile = *mgmtCreds.Profile
 	}

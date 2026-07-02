@@ -4,7 +4,7 @@ import { FormDescription, FormLabel } from '@/components/ui/form';
 import FormErrorMessage from '@/components/FormErrorMessage';
 import { Switch } from '@/components/ui/switch';
 import { create } from '@bufbuild/protobuf';
-import { GenerateGender, GenerateGenderSchema } from '@neosync/sdk';
+import { GenerateGender, GenerateGenderSchema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 

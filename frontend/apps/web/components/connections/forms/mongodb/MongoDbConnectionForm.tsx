@@ -2,7 +2,7 @@ import { buildConnectionConfigMongo } from '@/app/(mgmt)/[account]/connections/u
 import { MongoDbFormValues } from '@/yup-validations/connections';
 
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
-import { Connection, MongoConnectionConfig } from '@neosync/sdk';
+import { Connection, MongoConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { ConnectionFormProps } from '../types';
 import { useConnection } from '../useConnection';

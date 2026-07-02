@@ -14,33 +14,33 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	aws_manager "github.com/Groupe-Hevea/neosync/internal/aws"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type AwsS3ConnectionDataService struct {
 	logger              *slog.Logger
-	awsmanager          aws_manager.NeosyncAwsManagerClient
-	neosynctyperegistry neosynctypes.NeosyncTypeRegistry
+	awsmanager          aws_manager.HusonymAwsManagerClient
+	husonymtyperegistry husonymtypes.HusonymTypeRegistry
 	connection          *mgmtv1alpha1.Connection
 	connconfig          *mgmtv1alpha1.AwsS3ConnectionConfig
 }
 
 func NewAwsS3ConnectionDataService(
 	logger *slog.Logger,
-	awsmanager aws_manager.NeosyncAwsManagerClient,
-	neosynctyperegistry neosynctypes.NeosyncTypeRegistry,
+	awsmanager aws_manager.HusonymAwsManagerClient,
+	husonymtyperegistry husonymtypes.HusonymTypeRegistry,
 	connection *mgmtv1alpha1.Connection,
 ) *AwsS3ConnectionDataService {
 	return &AwsS3ConnectionDataService{
 		logger:              logger,
 		awsmanager:          awsmanager,
-		neosynctyperegistry: neosynctyperegistry,
+		husonymtyperegistry: husonymtyperegistry,
 		connection:          connection,
 		connconfig:          connection.GetConnectionConfig().GetAwsS3Config(),
 	}
@@ -166,10 +166,10 @@ func (s *AwsS3ConnectionDataService) StreamData(
 				}
 
 				for k, v := range rowData {
-					newVal, err := s.neosynctyperegistry.Unmarshal(v)
+					newVal, err := s.husonymtyperegistry.Unmarshal(v)
 					if err != nil {
 						return fmt.Errorf(
-							"unable to unmarshal row value using neosync type registry: %w",
+							"unable to unmarshal row value using husonym type registry: %w",
 							err,
 						)
 					}

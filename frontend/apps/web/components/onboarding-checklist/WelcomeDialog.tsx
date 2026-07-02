@@ -15,7 +15,7 @@ import {
 import {
   GetAccountOnboardingConfigResponseSchema,
   UserAccountService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useEffect, useState, type JSX } from 'react';
 import { toast } from 'sonner';

@@ -11,7 +11,7 @@ import { ReactElement, Suspense } from 'react';
 import BaseLayout from './BaseLayout';
 
 export const metadata: Metadata = {
-  title: 'Neosync',
+  title: 'Husonym',
   description: 'Open Source Data Anonymization and Synthetic Data',
   icons: [{ rel: 'icon', url: '/favicon.ico' }],
 };

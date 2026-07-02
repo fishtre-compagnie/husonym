@@ -1,8 +1,8 @@
 package selectquerybuilder
 
 import (
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	runcfg "github.com/Groupe-Hevea/neosync/internal/runconfigs"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	runcfg "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 )
 
 // BuildSelectQueryMap builds a map of SelectQuery objects for each RunConfig.

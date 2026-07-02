@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
 )

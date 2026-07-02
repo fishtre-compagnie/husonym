@@ -1,12 +1,12 @@
 apiVersion: ctlptl.dev/v1alpha1
 kind: Registry
-name: neosync-dev-registry
+name: husonym-dev-registry
 ---
 apiVersion: ctlptl.dev/v1alpha1
 kind: Cluster
 product: kind
-registry: neosync-dev-registry
-name: kind-neosync-dev # must have kind- prefix
+registry: husonym-dev-registry
+name: kind-husonym-dev # must have kind- prefix
 kindV1Alpha4Cluster:
   nodes:
   - role: control-plane
@@ -17,5 +17,5 @@ kindV1Alpha4Cluster:
         kubeletExtraArgs:
           node-labels: "ingress-ready=true"
     extraMounts:
-    - hostPath: {NEOSYNC_DEV_HOSTPATH}
-      containerPath: /neosync
+    - hostPath: {HUSONYM_DEV_HOSTPATH}
+      containerPath: /husonym

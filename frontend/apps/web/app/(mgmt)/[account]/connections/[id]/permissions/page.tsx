@@ -22,7 +22,7 @@ import {
   ConnectionConfigSchema,
   ConnectionRolePrivilege,
   ConnectionService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { UpdateIcon } from '@radix-ui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
 import Error from 'next/error';
@@ -186,8 +186,8 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-row justify-between items-center w-full">
         <div className="text-muted-foreground text-sm">
-          Review the permissions that Neosync needs for your connection.{' '}
-          <LearnMoreLink href="https://docs.neosync.allopneus.com/connections/postgres#permissions" />
+          Review the permissions that Husonym needs for your connection.{' '}
+          <LearnMoreLink href="https://docs.husonym.allopneus.com/connections/postgres#permissions" />
         </div>
       </div>
 

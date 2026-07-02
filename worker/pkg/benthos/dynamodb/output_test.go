@@ -1,4 +1,4 @@
-package neosync_benthos_dynamodb
+package husonym_benthos_dynamodb
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -512,49 +512,49 @@ func Test_MarshalToAttributeValue(t *testing.T) {
 		name       string
 		key        string
 		root       any
-		keyTypeMap map[string]neosync_types.KeyType
+		keyTypeMap map[string]husonym_types.KeyType
 		want       types.AttributeValue
 	}{
 		{
 			name:       "String",
 			key:        "StrKey",
 			root:       "value",
-			keyTypeMap: map[string]neosync_types.KeyType{},
+			keyTypeMap: map[string]husonym_types.KeyType{},
 			want:       &types.AttributeValueMemberS{Value: "value"},
 		},
 		{
 			name:       "Number",
 			key:        "NumKey",
 			root:       123,
-			keyTypeMap: map[string]neosync_types.KeyType{},
+			keyTypeMap: map[string]husonym_types.KeyType{},
 			want:       &types.AttributeValueMemberN{Value: "123"},
 		},
 		{
 			name:       "Boolean",
 			key:        "BoolKey",
 			root:       true,
-			keyTypeMap: map[string]neosync_types.KeyType{},
+			keyTypeMap: map[string]husonym_types.KeyType{},
 			want:       &types.AttributeValueMemberBOOL{Value: true},
 		},
 		{
 			name:       "Null",
 			key:        "NullKey",
 			root:       nil,
-			keyTypeMap: map[string]neosync_types.KeyType{},
+			keyTypeMap: map[string]husonym_types.KeyType{},
 			want:       &types.AttributeValueMemberNULL{Value: true},
 		},
 		{
 			name:       "StringSet",
 			key:        "SSKey",
 			root:       []string{"a", "b"},
-			keyTypeMap: map[string]neosync_types.KeyType{"SSKey": neosync_types.StringSet},
+			keyTypeMap: map[string]husonym_types.KeyType{"SSKey": husonym_types.StringSet},
 			want:       &types.AttributeValueMemberSS{Value: []string{"a", "b"}},
 		},
 		{
 			name:       "NumberSet",
 			key:        "NSKey",
 			root:       []int{1, 2},
-			keyTypeMap: map[string]neosync_types.KeyType{"NSKey": neosync_types.NumberSet},
+			keyTypeMap: map[string]husonym_types.KeyType{"NSKey": husonym_types.NumberSet},
 			want:       &types.AttributeValueMemberNS{Value: []string{"1", "2"}},
 		},
 	}

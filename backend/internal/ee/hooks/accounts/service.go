@@ -7,23 +7,23 @@ import (
 	"log/slog"
 	"time"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	ee_slack "github.com/Groupe-Hevea/neosync/internal/ee/slack"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/slack-go/slack"
 )
 
 type Service struct {
 	cfg            *config
-	db             *neosyncdb.NeosyncDb
+	db             *husonymdb.HusonymDb
 	userdataclient userdata.Interface
 }
 
@@ -102,7 +102,7 @@ func WithAppBaseUrl(appBaseUrl string) Option {
 }
 
 func New(
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	userdataclient userdata.Interface,
 	opts ...Option,
 ) *Service {
@@ -129,15 +129,15 @@ func (s *Service) GetAccountHooks(
 		return nil, err
 	}
 
-	accountId, err := neosyncdb.ToUuid(req.GetAccountId())
+	accountId, err := husonymdb.ToUuid(req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	hooks, err := s.db.Q.GetAccountHooksByAccount(ctx, s.db.Db, accountId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return &mgmtv1alpha1.GetAccountHooksResponse{
 			Hooks: []*mgmtv1alpha1.AccountHook{},
 		}, nil
@@ -161,15 +161,15 @@ func (s *Service) GetAccountHook(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
-	hookuuid, err := neosyncdb.ToUuid(req.GetId())
+	hookuuid, err := husonymdb.ToUuid(req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	hook, err := s.db.Q.GetAccountHookById(ctx, s.db.Db, hookuuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find account hook by id")
 	}
 
@@ -177,7 +177,7 @@ func (s *Service) GetAccountHook(
 	if err != nil {
 		return nil, err
 	}
-	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(neosyncdb.UUIDString(hook.AccountID)), rbac.AccountAction_View); err != nil {
+	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(husonymdb.UUIDString(hook.AccountID)), rbac.AccountAction_View); err != nil {
 		return nil, err
 	}
 
@@ -205,20 +205,20 @@ func (s *Service) DeleteAccountHook(
 		return nil, err
 	}
 
-	hookuuid, err := neosyncdb.ToUuid(req.GetId())
+	hookuuid, err := husonymdb.ToUuid(req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	hook, err := s.db.Q.GetAccountHookById(ctx, s.db.Db, hookuuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		logger.Debug("unable to find hook during deletion")
 		return &mgmtv1alpha1.DeleteAccountHookResponse{}, nil
 	}
 
-	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(neosyncdb.UUIDString(hook.AccountID)), rbac.AccountAction_Edit); err != nil {
+	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(husonymdb.UUIDString(hook.AccountID)), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
 	logger.Debug("attempting to remove hook")
@@ -244,7 +244,7 @@ func (s *Service) IsAccountHookNameAvailable(
 		return nil, err
 	}
 
-	accountId, err := neosyncdb.ToUuid(req.GetAccountId())
+	accountId, err := husonymdb.ToUuid(req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (s *Service) SetAccountHookEnabled(
 		}, nil
 	}
 
-	hookuuid, err := neosyncdb.ToUuid(getResp.GetHook().GetId())
+	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (s *Service) GetActiveAccountHooksByEvent(
 		return nil, err
 	}
 
-	accountId, err := neosyncdb.ToUuid(req.GetAccountId())
+	accountId, err := husonymdb.ToUuid(req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (s *Service) CreateAccountHook(
 		return nil, fmt.Errorf("unable to map config to valid json for db storage: %w", err)
 	}
 
-	accountId, err := neosyncdb.ToUuid(req.GetAccountId())
+	accountId, err := husonymdb.ToUuid(req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +461,7 @@ func (s *Service) joinSlackChannel(
 		return
 	}
 	channelId := slackConfig.GetChannelId()
-	accountId, err := neosyncdb.ToUuid(hook.GetAccountId())
+	accountId, err := husonymdb.ToUuid(hook.GetAccountId())
 	if err != nil {
 		logger.Error(
 			"unable to parse account id when attempting to join slack channel",
@@ -523,7 +523,7 @@ func (s *Service) UpdateAccountHook(
 		return nil, fmt.Errorf("unable to map config to valid json for db storage: %w", err)
 	}
 
-	hookuuid, err := neosyncdb.ToUuid(getResp.GetHook().GetId())
+	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +620,7 @@ func (s *Service) HandleSlackOAuthCallback(
 		req.GetState(),
 		user.Id(),
 		func(ctx context.Context, userId, accountId string) (bool, error) {
-			parsedAccountUuid, err := neosyncdb.ToUuid(accountId)
+			parsedAccountUuid, err := husonymdb.ToUuid(accountId)
 			if err != nil {
 				return false, err
 			}
@@ -655,7 +655,7 @@ func (s *Service) HandleSlackOAuthCallback(
 		return nil, fmt.Errorf("unable to marshal slack oauth response: %w", err)
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(oauthState.AccountId)
+	accountUuid, err := husonymdb.ToUuid(oauthState.AccountId)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert account id to uuid: %w", err)
 	}
@@ -698,7 +698,7 @@ func (s *Service) TestSlackConnection(
 		return nil, err
 	}
 
-	accountId, err := neosyncdb.ToUuid(req.GetAccountId())
+	accountId, err := husonymdb.ToUuid(req.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -706,9 +706,9 @@ func (s *Service) TestSlackConnection(
 	logger.Debug("retrieving slack access token")
 
 	accessToken, err := s.db.Q.GetSlackAccessToken(ctx, s.db.Db, accountId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to get slack access token: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		msg := "slack oauth connection not found"
 		return &mgmtv1alpha1.TestSlackConnectionResponse{
 			HasConfiguration: false,
@@ -783,15 +783,15 @@ func (s *Service) SendSlackMessage(
 	}
 	slackChannelId := slackHook.GetChannelId()
 
-	accountId, err := neosyncdb.ToUuid(hook.GetHook().GetAccountId())
+	accountId, err := husonymdb.ToUuid(hook.GetHook().GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	accessToken, err := s.db.Q.GetSlackAccessToken(ctx, s.db.Db, accountId)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to get slack access token: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("slack oauth connection not found")
 	}
 

@@ -1,8 +1,8 @@
-# Neosync Architecture Overview
+# Husonym Architecture Overview
 
 ## Project Purpose
 
-Neosync is an open-source, developer-first platform for **data anonymization and synthetic data orchestration**. It enables developers to:
+Husonym is an open-source, developer-first platform for **data anonymization and synthetic data orchestration**. It enables developers to:
 
 - Anonymize production data for safe local testing
 - Generate synthetic data for lower environments
@@ -15,7 +15,7 @@ Neosync is an open-source, developer-first platform for **data anonymization and
 
 ## High-Level Architecture
 
-Neosync consists of **three main components** that work together:
+Husonym consists of **three main components** that work together:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -74,7 +74,7 @@ Neosync consists of **three main components** that work together:
 
 ## Component Deep-Dive
 
-### 1. **Backend Service** (`/workspaces/neosync/backend`)
+### 1. **Backend Service** (`/workspaces/husonym/backend`)
 
 The backend is a **Connect RPC (gRPC-web compatible) service** written in Go.
 
@@ -125,7 +125,7 @@ The backend is a **Connect RPC (gRPC-web compatible) service** written in Go.
 
 ---
 
-### 2. **Worker Service** (`/workspaces/neosync/worker`)
+### 2. **Worker Service** (`/workspaces/husonym/worker`)
 
 The worker **executes Temporal workflows** that perform the actual data synchronization.
 
@@ -203,7 +203,7 @@ Each transformer is a **Bloblang function** registered with Benthos.
 
 ---
 
-### 3. **Frontend Application** (`/workspaces/neosync/frontend`)
+### 3. **Frontend Application** (`/workspaces/husonym/frontend`)
 
 React-based UI for job configuration and monitoring.
 
@@ -241,19 +241,19 @@ Response deserialized to React state
 
 ---
 
-### 4. **CLI** (`/workspaces/neosync/cli`)
+### 4. **CLI** (`/workspaces/husonym/cli`)
 
 Command-line interface for automation and local development.
 
 #### Commands:
-- `neosync login` - Authenticate via OAuth flow
-- `neosync job <command>` - List, create, execute jobs
-- `neosync connection <command>` - Manage connections
-- `neosync transform <command>` - Test transformers
+- `husonym login` - Authenticate via OAuth flow
+- `husonym job <command>` - List, create, execute jobs
+- `husonym connection <command>` - Manage connections
+- `husonym transform <command>` - Test transformers
 
 #### Architecture:
 - Uses Connect RPC to communicate with backend
-- Stores auth tokens in local config (`~/.neosync/`)
+- Stores auth tokens in local config (`~/.husonym/`)
 - Supports API key auth for CI/CD pipelines
 
 ---
@@ -393,9 +393,9 @@ Command-line interface for automation and local development.
 - **Event history**: Complete audit trail
 - **Visibility**: Dashboard for monitoring
 
-### Workflow Concepts in Neosync:
+### Workflow Concepts in Husonym:
 
-| Concept | Example in Neosync |
+| Concept | Example in Husonym |
 |---------|-------------------|
 | **Workflow** | `datasync_workflow` - Main job orchestrator |
 | **Activity** | `GenerateBenthosConfigs` - Single unit of work |
@@ -413,7 +413,7 @@ Command-line interface for automation and local development.
 ```javascript
 // Frontend code example
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService } from '@neosync/sdk/proto';
+import { JobService } from '@husonym/sdk/proto';
 
 export function JobRunMonitor({ jobId }) {
   const { data: jobRun } = useQuery(

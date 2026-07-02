@@ -1,0 +1,37 @@
+apiVersion: v2
+name: husonym
+description: A Helm chart for Husonym that contains the api, app, and worker
+home: https://www.husonym.allopneus.com
+sources:
+  - https://github.com/fishtre-compagnie/husonym
+icon: https://assets.fishtre-compagnie.com/husonym/newbrand/logo_small.png
+# A chart can be either an 'application' or a 'library' chart.
+#
+# Application charts are a collection of templates that can be packaged into versioned archives
+# to be deployed.
+#
+# Library charts provide useful utilities or functions for the chart developer. They're included as
+# a dependency of application charts to inject those utilities and functions into the rendering
+# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+type: application
+# This is the chart version.
+#
+# This is changed automatically to the tag by the github workflow.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: "v0"
+
+appVersion: "v0"
+
+dependencies:
+  - name: api
+    repository: file://../../backend/charts/api
+    version: "v0"
+    condition: api.enabled
+  - name: app
+    repository: file://../../frontend/apps/web/charts/app
+    version: "v0"
+    condition: app.enabled
+  - name: worker
+    repository: file://../../worker/charts/worker
+    version: "v0"
+    condition: worker.enabled

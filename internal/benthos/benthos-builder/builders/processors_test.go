@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/dop251/goja"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -63,21 +63,21 @@ func Test_buildProcessorConfigsJavascript(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
-	require.NotNil(t, res[0].NeosyncJavascript)
-	require.NotNil(t, res[0].NeosyncJavascript.Code)
+	require.NotNil(t, res[0].HusonymJavascript)
+	require.NotNil(t, res[0].HusonymJavascript.Code)
 
 	wrappedCode := fmt.Sprintf(`
 let programOutput = undefined;
 const benthos = {
   v0_msg_as_structured: () => ({address: "world", extra: "foobar"}),
 };
-const neosync = {
+const husonym = {
   patchStructuredMessage: (val) => {
     programOutput = val;
   }
 };
 %s
-	`, res[0].NeosyncJavascript.Code)
+	`, res[0].HusonymJavascript.Code)
 
 	program, err := goja.Compile("test.js", wrappedCode, true)
 	require.NoError(t, err)
@@ -136,21 +136,21 @@ func Test_buildProcessorConfigsGenerateJavascript(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
-	require.NotNil(t, res[0].NeosyncJavascript)
-	require.NotNil(t, res[0].NeosyncJavascript.Code)
+	require.NotNil(t, res[0].HusonymJavascript)
+	require.NotNil(t, res[0].HusonymJavascript.Code)
 
 	wrappedCode := fmt.Sprintf(`
 let programOutput = undefined;
 const benthos = {
   v0_msg_as_structured: () => ({}),
 };
-const neosync = {
+const husonym = {
   patchStructuredMessage: (val) => {
     programOutput = val;
   }
 };
 %s
-	`, res[0].NeosyncJavascript.Code)
+	`, res[0].HusonymJavascript.Code)
 
 	program, err := goja.Compile("test.js", wrappedCode, true)
 	require.NoError(t, err)
@@ -229,21 +229,21 @@ func Test_buildProcessorConfigsJavascriptMultiple(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
-	require.NotNil(t, res[0].NeosyncJavascript)
-	require.NotNil(t, res[0].NeosyncJavascript.Code)
+	require.NotNil(t, res[0].HusonymJavascript)
+	require.NotNil(t, res[0].HusonymJavascript.Code)
 
 	wrappedCode := fmt.Sprintf(`
 let programOutput = undefined;
 const benthos = {
   v0_msg_as_structured: () => ({"name": "world", "age": 2}),
 };
-const neosync = {
+const husonym = {
   patchStructuredMessage: (val) => {
     programOutput = val;
   }
 };
 %s
-	`, res[0].NeosyncJavascript.Code)
+	`, res[0].HusonymJavascript.Code)
 
 	program, err := goja.Compile("test.js", wrappedCode, true)
 	require.NoError(t, err)
@@ -323,21 +323,21 @@ func Test_buildProcessorConfigsTransformAndGenerateJavascript(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
-	require.NotNil(t, res[0].NeosyncJavascript)
-	require.NotNil(t, res[0].NeosyncJavascript.Code)
+	require.NotNil(t, res[0].HusonymJavascript)
+	require.NotNil(t, res[0].HusonymJavascript.Code)
 
 	wrappedCode := fmt.Sprintf(`
 let programOutput = undefined;
 const benthos = {
   v0_msg_as_structured: () => ({"name": "world"}),
 };
-const neosync = {
+const husonym = {
   patchStructuredMessage: (val) => {
     programOutput = val;
   }
 };
 %s
-	`, res[0].NeosyncJavascript.Code)
+	`, res[0].HusonymJavascript.Code)
 
 	program, err := goja.Compile("test.js", wrappedCode, true)
 	require.NoError(t, err)
@@ -397,21 +397,21 @@ func Test_buildProcessorConfigsJavascript_DeepKeys(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
-	require.NotNil(t, res[0].NeosyncJavascript)
-	require.NotNil(t, res[0].NeosyncJavascript.Code)
+	require.NotNil(t, res[0].HusonymJavascript)
+	require.NotNil(t, res[0].HusonymJavascript.Code)
 
 	wrappedCode := fmt.Sprintf(`
 let programOutput = undefined;
 const benthos = {
   v0_msg_as_structured: () => ({foo: {bar: {baz: "world"}}}),
 };
-const neosync = {
+const husonym = {
   patchStructuredMessage: (val) => {
     programOutput = val;
   }
 };
 %s
-	`, res[0].NeosyncJavascript.Code)
+	`, res[0].HusonymJavascript.Code)
 
 	program, err := goja.Compile("test.js", wrappedCode, true)
 	require.NoError(t, err)
@@ -538,8 +538,8 @@ func Test_buildIdentityCursors(t *testing.T) {
 		require.Len(t, cursors, 2)
 
 		// Verify cursors exist for both columns
-		usersIdToken := neosync_benthos.ToSha256("public.users.id")
-		ordersUserIdToken := neosync_benthos.ToSha256("public.orders.user_id")
+		usersIdToken := husonym_benthos.ToSha256("public.users.id")
+		ordersUserIdToken := husonym_benthos.ToSha256("public.orders.user_id")
 
 		require.NotNil(t, cursors[usersIdToken])
 		require.NotNil(t, cursors[ordersUserIdToken])
@@ -593,7 +593,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, cursors, 1)
 
-			usersIdToken := neosync_benthos.ToSha256("public.users.id")
+			usersIdToken := husonym_benthos.ToSha256("public.users.id")
 			require.NotNil(t, cursors[usersIdToken])
 		},
 	)

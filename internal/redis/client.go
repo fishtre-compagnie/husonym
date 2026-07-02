@@ -1,4 +1,4 @@
-package neosync_redis
+package husonym_redis
 
 import (
 	"crypto/tls"

@@ -6,25 +6,25 @@ helpers = load_dynamic("../tilt/extensions/Tiltfile")
 helmfile_with_local_chart = helpers['helmfile_with_local_chart']
 helmfile = helpers['helmfile']
 
-allow_k8s_contexts('kind-neosync-dev')
+allow_k8s_contexts('kind-husonym-dev')
 
 # when debugging can be handy to disable scrub
 secret_settings(disable_scrub=True)
 
-namespace_create('neosync', allow_duplicates=True)
+namespace_create('husonym', allow_duplicates=True)
 
 base_dir = os.path.dirname(__file__)
 helmfileDir = base_dir + '/apps/web/dev/helm/app'
-k8s_yaml(helmfile_with_local_chart('neosync-app', base_dir + '/apps/web/charts/app', helmfileDir=helmfileDir))
+k8s_yaml(helmfile_with_local_chart('husonym-app', base_dir + '/apps/web/charts/app', helmfileDir=helmfileDir))
 # References the deployment
 k8s_resource(
-  'neosync-app',
+  'husonym-app',
   labels=['frontend'],
   port_forwards='3000:3000',
 )
 
 docker_build(
-  ref='neosync-app',
+  ref='husonym-app',
   context='.',
   dockerfile='apps/web/dev/build/Dockerfile.dev',
   # secret='id=npmrc,src=%s' % npmrc,

@@ -12,7 +12,7 @@ authors:
 3. Optimize GenerateFullName transformer for speed
 4. Upgrade Generate Job to apply passthrough on apply default transformers
 5. Optimize SQL disconnections and busy signals during sync
-6. Upgrade Neosync Cloud Logs UI to include more information like activity, table, schema
+6. Upgrade Husonym Cloud Logs UI to include more information like activity, table, schema
 7. Show init schema run context on Runs page
 8. Support creating Postgres extensions within the init schema
 9. Add new error codes to job mappings validator response

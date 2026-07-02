@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	pkg_utils "github.com/Groupe-Hevea/neosync/backend/pkg/utils"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 func (s *Service) GetAccountApiKeys(
@@ -28,7 +28,7 @@ func (s *Service) GetAccountApiKeys(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -53,15 +53,15 @@ func (s *Service) GetAccountApiKey(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountApiKeyRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountApiKeyResponse], error) {
-	apiKeyUuid, err := neosyncdb.ToUuid(req.Msg.GetId())
+	apiKeyUuid, err := husonymdb.ToUuid(req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	apiKey, err := s.db.Q.GetAccountApiKeyById(ctx, s.db.Db, apiKeyUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find api key")
 	}
 
@@ -71,7 +71,7 @@ func (s *Service) GetAccountApiKey(
 	}
 	if err := user.EnforceAccount(
 		ctx,
-		userdata.NewIdentifier(neosyncdb.UUIDString(apiKey.AccountID)),
+		userdata.NewIdentifier(husonymdb.UUIDString(apiKey.AccountID)),
 		rbac.AccountAction_View,
 	); err != nil {
 		return nil, err
@@ -99,12 +99,12 @@ func (s *Service) CreateAccountApiKey(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
-	expiresAt, err := neosyncdb.ToTimestamp(req.Msg.GetExpiresAt().AsTime())
+	expiresAt, err := husonymdb.ToTimestamp(req.Msg.GetExpiresAt().AsTime())
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (s *Service) CreateAccountApiKey(
 		clearKeyValue,
 	)
 
-	newApiKey, err := s.db.CreateAccountApikey(ctx, &neosyncdb.CreateAccountApiKeyRequest{
+	newApiKey, err := s.db.CreateAccountApikey(ctx, &husonymdb.CreateAccountApiKeyRequest{
 		KeyName:           req.Msg.Name,
 		KeyValue:          hashedKeyValue,
 		AccountUuid:       accountUuid,
@@ -133,15 +133,15 @@ func (s *Service) RegenerateAccountApiKey(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.RegenerateAccountApiKeyRequest],
 ) (*connect.Response[mgmtv1alpha1.RegenerateAccountApiKeyResponse], error) {
-	apiKeyUuid, err := neosyncdb.ToUuid(req.Msg.GetId())
+	apiKeyUuid, err := husonymdb.ToUuid(req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	apiKey, err := s.db.Q.GetAccountApiKeyById(ctx, s.db.Db, apiKeyUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("account api key not found")
 	}
 
@@ -156,7 +156,7 @@ func (s *Service) RegenerateAccountApiKey(
 
 	if err := user.EnforceAccount(
 		ctx,
-		userdata.NewIdentifier(neosyncdb.UUIDString(apiKey.AccountID)),
+		userdata.NewIdentifier(husonymdb.UUIDString(apiKey.AccountID)),
 		rbac.AccountAction_Edit,
 	); err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (s *Service) RegenerateAccountApiKey(
 	hashedKeyValue := pkg_utils.ToSha256(
 		clearKeyValue,
 	)
-	expiresAt, err := neosyncdb.ToTimestamp(req.Msg.GetExpiresAt().AsTime())
+	expiresAt, err := husonymdb.ToTimestamp(req.Msg.GetExpiresAt().AsTime())
 	if err != nil {
 		return nil, err
 	}
@@ -192,15 +192,15 @@ func (s *Service) DeleteAccountApiKey(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.DeleteAccountApiKeyRequest],
 ) (*connect.Response[mgmtv1alpha1.DeleteAccountApiKeyResponse], error) {
-	apiKeyUuid, err := neosyncdb.ToUuid(req.Msg.GetId())
+	apiKeyUuid, err := husonymdb.ToUuid(req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	apiKey, err := s.db.Q.GetAccountApiKeyById(ctx, s.db.Db, apiKeyUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.DeleteAccountApiKeyResponse{}), nil
 	}
 
@@ -213,14 +213,14 @@ func (s *Service) DeleteAccountApiKey(
 	}
 	if err := user.EnforceAccount(
 		ctx,
-		userdata.NewIdentifier(neosyncdb.UUIDString(apiKey.AccountID)),
+		userdata.NewIdentifier(husonymdb.UUIDString(apiKey.AccountID)),
 		rbac.AccountAction_Edit,
 	); err != nil {
 		return nil, err
 	}
 
 	err = s.db.Q.RemoveAccountApiKey(ctx, s.db.Db, apiKeyUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	}
 

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	ee_transformer_fns "github.com/Groupe-Hevea/neosync/internal/ee/transformers/functions"
-	"github.com/Groupe-Hevea/neosync/internal/javascript"
-	javascript_userland "github.com/Groupe-Hevea/neosync/internal/javascript/userland"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
+	"github.com/fishtre-compagnie/husonym/internal/javascript"
+	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 	"github.com/dop251/goja"
 )
 
@@ -32,7 +32,7 @@ type transformPiiTextConfig struct {
 	analyze   presidioapi.AnalyzeInterface
 	anonymize presidioapi.AnonymizeInterface
 
-	neosyncOperatorApi ee_transformer_fns.NeosyncOperatorApi
+	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi
 
 	defaultLanguage *string
 }
@@ -40,14 +40,14 @@ type transformPiiTextConfig struct {
 func WithTransformPiiTextConfig(
 	analyze presidioapi.AnalyzeInterface,
 	anonymize presidioapi.AnonymizeInterface,
-	neosyncOperatorApi ee_transformer_fns.NeosyncOperatorApi,
+	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi,
 	defaultLanguage *string,
 ) TransformerExecutorOption {
 	return func(c *TransformerExecutorConfig) {
 		c.transformPiiText = &transformPiiTextConfig{
 			analyze:            analyze,
 			anonymize:          anonymize,
-			neosyncOperatorApi: neosyncOperatorApi,
+			husonymOperatorApi: husonymOperatorApi,
 			defaultLanguage:    defaultLanguage,
 		}
 	}
@@ -117,7 +117,7 @@ func InitializeTransformerByConfigType(
 			execCfg.logger.Debug("configuring using transform pii text api in generate javascript")
 			transformPiiTextApi = newFromExecConfig(
 				execCfg.transformPiiText,
-				execCfg.transformPiiText.neosyncOperatorApi,
+				execCfg.transformPiiText.husonymOperatorApi,
 				execCfg.logger,
 			)
 		}
@@ -163,7 +163,7 @@ func InitializeTransformerByConfigType(
 			execCfg.logger.Debug("configuring using transform pii text api in transform javascript")
 			transformPiiTextApi = newFromExecConfig(
 				execCfg.transformPiiText,
-				execCfg.transformPiiText.neosyncOperatorApi,
+				execCfg.transformPiiText.husonymOperatorApi,
 				execCfg.logger,
 			)
 		}
@@ -752,7 +752,7 @@ func InitializeTransformerByConfigType(
 
 		transformPiiTextApi := newFromExecConfig(
 			execCfg.transformPiiText,
-			execCfg.transformPiiText.neosyncOperatorApi,
+			execCfg.transformPiiText.husonymOperatorApi,
 			execCfg.logger,
 		)
 

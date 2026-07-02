@@ -4,18 +4,18 @@ import (
 	"context"
 	"testing"
 
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	tcdynamodb "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/dynamodb"
-	tcmongodb "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/mongodb"
-	tcmysql "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/mysql"
-	tcpostgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
-	tcredis "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/redis"
-	tcmssql "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/sqlserver"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	tcdynamodb "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/dynamodb"
+	tcmongodb "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mongodb"
+	tcmysql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mysql"
+	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
+	tcredis "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/redis"
+	tcmssql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/sqlserver"
 	"github.com/stretchr/testify/require"
 )
 
-const neosyncDbMigrationsPath = "../../../../backend/sql/postgresql/schema"
+const husonymDbMigrationsPath = "../../../../backend/sql/postgresql/schema"
 
 func Test_Workflow(t *testing.T) {
 	t.Parallel()
@@ -25,20 +25,20 @@ func Test_Workflow(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	neosyncApi, err := tcneosyncapi.NewNeosyncApiTestClient(
+	husonymApi, err := tchusonymapi.NewHusonymApiTestClient(
 		ctx,
 		t,
-		tcneosyncapi.WithMigrationsDirectory(neosyncDbMigrationsPath),
+		tchusonymapi.WithMigrationsDirectory(husonymDbMigrationsPath),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	connclient := neosyncApi.OSSUnauthenticatedLicensedClients.Connections()
-	accountId := tcneosyncapi.CreatePersonalAccount(
+	connclient := husonymApi.OSSUnauthenticatedLicensedClients.Connections()
+	accountId := tchusonymapi.CreatePersonalAccount(
 		ctx,
 		t,
-		neosyncApi.OSSUnauthenticatedLicensedClients.Users(),
+		husonymApi.OSSUnauthenticatedLicensedClients.Users(),
 	)
 	dbManagers := NewTestDatabaseManagers(t)
 
@@ -53,7 +53,7 @@ func Test_Workflow(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sourceConn := tcneosyncapi.CreatePostgresConnection(
+		sourceConn := tchusonymapi.CreatePostgresConnection(
 			ctx,
 			t,
 			connclient,
@@ -61,7 +61,7 @@ func Test_Workflow(t *testing.T) {
 			"postgres-source",
 			postgres.Source.URL,
 		)
-		destConn := tcneosyncapi.CreatePostgresConnection(
+		destConn := tchusonymapi.CreatePostgresConnection(
 			ctx,
 			t,
 			connclient,
@@ -80,7 +80,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -94,7 +94,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -108,7 +108,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -122,7 +122,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -136,7 +136,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -150,7 +150,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -164,7 +164,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -182,7 +182,7 @@ func Test_Workflow(t *testing.T) {
 				ctx,
 				postgres,
 				redis,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -201,7 +201,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -215,7 +215,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -229,7 +229,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -245,7 +245,7 @@ func Test_Workflow(t *testing.T) {
 					t,
 					ctx,
 					postgres,
-					neosyncApi,
+					husonymApi,
 					dbManagers,
 					accountId,
 					sourceConn,
@@ -259,7 +259,7 @@ func Test_Workflow(t *testing.T) {
 					t,
 					ctx,
 					postgres,
-					neosyncApi,
+					husonymApi,
 					dbManagers,
 					accountId,
 					sourceConn,
@@ -276,7 +276,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				postgres,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				destConn,
@@ -294,7 +294,7 @@ func Test_Workflow(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
 		t.Log("Starting mysql tests")
 		t.Parallel()
-		runMysqlWorkflowTests(t, ctx, neosyncApi, dbManagers, accountId, "mysql", nil)
+		runMysqlWorkflowTests(t, ctx, husonymApi, dbManagers, accountId, "mysql", nil)
 	})
 
 	t.Run("mariadb", func(t *testing.T) {
@@ -303,7 +303,7 @@ func Test_Workflow(t *testing.T) {
 		runMysqlWorkflowTests(
 			t,
 			ctx,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			accountId,
 			"mariadb",
@@ -318,7 +318,7 @@ func Test_Workflow(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sourceConn := tcneosyncapi.CreateMssqlConnection(
+		sourceConn := tchusonymapi.CreateMssqlConnection(
 			ctx,
 			t,
 			connclient,
@@ -326,7 +326,7 @@ func Test_Workflow(t *testing.T) {
 			"mssql-source",
 			mssql.Source.URL,
 		)
-		destConn := tcneosyncapi.CreateMssqlConnection(
+		destConn := tchusonymapi.CreateMssqlConnection(
 			ctx,
 			t,
 			connclient,
@@ -337,7 +337,7 @@ func Test_Workflow(t *testing.T) {
 
 		t.Run("types", func(t *testing.T) {
 			t.Parallel()
-			test_mssql_types(t, ctx, mssql, neosyncApi, dbManagers, accountId, sourceConn, destConn)
+			test_mssql_types(t, ctx, mssql, husonymApi, dbManagers, accountId, sourceConn, destConn)
 		})
 
 		t.Run("cross_schema_foreign_keys", func(t *testing.T) {
@@ -346,7 +346,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				mssql,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -360,7 +360,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				mssql,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -374,7 +374,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				mssql,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -402,7 +402,7 @@ func Test_Workflow(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sourceConn := tcneosyncapi.CreateDynamoDBConnection(
+		sourceConn := tchusonymapi.CreateDynamoDBConnection(
 			ctx,
 			t,
 			connclient,
@@ -411,7 +411,7 @@ func Test_Workflow(t *testing.T) {
 			dynamo.Source.URL,
 			dynamo.Source.Credentials,
 		)
-		destConn := tcneosyncapi.CreateDynamoDBConnection(
+		destConn := tchusonymapi.CreateDynamoDBConnection(
 			ctx,
 			t,
 			connclient,
@@ -427,7 +427,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				dynamo,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -441,7 +441,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				dynamo,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -455,7 +455,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				dynamo,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -479,7 +479,7 @@ func Test_Workflow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		sourceConn := tcneosyncapi.CreateMongodbConnection(
+		sourceConn := tchusonymapi.CreateMongodbConnection(
 			ctx,
 			t,
 			connclient,
@@ -487,7 +487,7 @@ func Test_Workflow(t *testing.T) {
 			"mongodb-source",
 			mongodb.Source.URL,
 		)
-		destConn := tcneosyncapi.CreateMongodbConnection(
+		destConn := tchusonymapi.CreateMongodbConnection(
 			ctx,
 			t,
 			connclient,
@@ -502,7 +502,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				mongodb,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -516,7 +516,7 @@ func Test_Workflow(t *testing.T) {
 				t,
 				ctx,
 				mongodb,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -533,7 +533,7 @@ func Test_Workflow(t *testing.T) {
 	})
 
 	t.Cleanup(func() {
-		err = neosyncApi.TearDown(ctx)
+		err = husonymApi.TearDown(ctx)
 		if err != nil {
 			panic(err)
 		}
@@ -545,18 +545,18 @@ func Test_Workflow(t *testing.T) {
 func runMysqlWorkflowTests(
 	t *testing.T,
 	ctx context.Context,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	connPrefix string,
 	containerOpts []tcmysql.Option,
 ) {
-	connclient := neosyncApi.OSSUnauthenticatedLicensedClients.Connections()
+	connclient := husonymApi.OSSUnauthenticatedLicensedClients.Connections()
 	mysql, err := tcmysql.NewMysqlTestSyncContainer(ctx, containerOpts, containerOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sourceConn := tcneosyncapi.CreateMysqlConnection(
+	sourceConn := tchusonymapi.CreateMysqlConnection(
 		ctx,
 		t,
 		connclient,
@@ -564,7 +564,7 @@ func runMysqlWorkflowTests(
 		connPrefix+"-source",
 		mysql.Source.URL,
 	)
-	destConn := tcneosyncapi.CreateMysqlConnection(
+	destConn := tchusonymapi.CreateMysqlConnection(
 		ctx,
 		t,
 		connclient,
@@ -575,7 +575,7 @@ func runMysqlWorkflowTests(
 
 	t.Run("types", func(t *testing.T) {
 		t.Parallel()
-		test_mysql_types(t, ctx, mysql, neosyncApi, dbManagers, accountId, sourceConn, destConn)
+		test_mysql_types(t, ctx, mysql, husonymApi, dbManagers, accountId, sourceConn, destConn)
 	})
 
 	t.Run("edgecases", func(t *testing.T) {
@@ -584,7 +584,7 @@ func runMysqlWorkflowTests(
 			t,
 			ctx,
 			mysql,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			accountId,
 			sourceConn,
@@ -598,7 +598,7 @@ func runMysqlWorkflowTests(
 			t,
 			ctx,
 			mysql,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			accountId,
 			sourceConn,
@@ -611,7 +611,7 @@ func runMysqlWorkflowTests(
 			t,
 			ctx,
 			mysql,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			accountId,
 			sourceConn,
@@ -627,7 +627,7 @@ func runMysqlWorkflowTests(
 				t,
 				ctx,
 				mysql,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -641,7 +641,7 @@ func runMysqlWorkflowTests(
 				t,
 				ctx,
 				mysql,
-				neosyncApi,
+				husonymApi,
 				dbManagers,
 				accountId,
 				sourceConn,
@@ -657,7 +657,7 @@ func runMysqlWorkflowTests(
 			t,
 			ctx,
 			mysql,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			accountId,
 			sourceConn,

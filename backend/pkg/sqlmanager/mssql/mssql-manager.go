@@ -9,12 +9,12 @@ import (
 	"slices"
 	"strings"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	mssql_queries "github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	ee_sqlmanager_mssql "github.com/Groupe-Hevea/neosync/internal/ee/mssql-manager"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	ee_sqlmanager_mssql "github.com/fishtre-compagnie/husonym/internal/ee/mssql-manager"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
@@ -49,9 +49,9 @@ func (m *Manager) GetDatabaseSchema(
 	ctx context.Context,
 ) ([]*sqlmanager_shared.DatabaseSchemaRow, error) {
 	dbSchemas, err := m.querier.GetDatabaseSchema(ctx, m.db)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return []*sqlmanager_shared.DatabaseSchemaRow{}, nil
 	}
 
@@ -151,9 +151,9 @@ func (m *Manager) GetDatabaseTableSchemasBySchemasAndTables(
 	}
 
 	dbSchemas, err := m.querier.GetDatabaseTableSchemasBySchemasAndTables(ctx, m.db, schematables)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return []*sqlmanager_shared.DatabaseSchemaRow{}, nil
 	}
 
@@ -241,9 +241,9 @@ func (m *Manager) GetTableConstraintsBySchema(
 	constraints := []*mssql_queries.GetTableConstraintsBySchemasRow{}
 	errgrp.Go(func() error {
 		rows, err := m.querier.GetTableConstraintsBySchemas(ctx, m.db, schemas)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return err
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nil
 		}
 		constraints = rows
@@ -373,9 +373,9 @@ func isInvalidCircularSelfReferencingFk(
 
 func (m *Manager) GetRolePermissionsMap(ctx context.Context) (map[string][]string, error) {
 	rows, err := m.querier.GetRolePermissions(ctx, m.db)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to retrieve mssql role permissions: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return map[string][]string{}, nil
 	}
 

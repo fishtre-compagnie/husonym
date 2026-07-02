@@ -1,6 +1,6 @@
 ---
 title: Job Hooks
-description: Learn how to use Job Hooks to add further customization to your Neosync jobs
+description: Learn how to use Job Hooks to add further customization to your Husonym jobs
 id: job-hooks
 hide_title: false
 slug: /guides/job-hooks
@@ -9,18 +9,18 @@ slug: /guides/job-hooks
 
 ## Introduction
 
-Job Hooks are a way to add further customization to your Neosync jobs.
+Job Hooks are a way to add further customization to your Husonym jobs.
 
-## Neosync Version Availability
+## Husonym Version Availability
 
-Job Hooks are available for all accounts in Neosync Cloud.
+Job Hooks are available for all accounts in Husonym Cloud.
 
 For OSS users, Job Hooks are only available with a valid Enterprise license.
 
 ## How to configure Job Hooks
 
-This section will cover how to configure hooks in the Neosync UI.
-They can also be configured via the API as well as via the Neosync Terraform provider.
+This section will cover how to configure hooks in the Husonym UI.
+They can also be configured via the API as well as via the Husonym Terraform provider.
 
 ### Getting there
 
@@ -49,7 +49,7 @@ Furthermore, the timing of when the hook runs may also be configured. Today, the
 
 Any SQL connection configured in the job (source or destination) will be available to the hook.
 
-SQL queries are run in an `Exec` manner, meaning that their results are not returned and are ignored. Today, Neosync only checks for errors. This is planned to change in the future where Neosync can handle the returned results to allow users to perform further actions like result verification.
+SQL queries are run in an `Exec` manner, meaning that their results are not returned and are ignored. Today, Husonym only checks for errors. This is planned to change in the future where Husonym can handle the returned results to allow users to perform further actions like result verification.
 
 ## Execution order strategy
 

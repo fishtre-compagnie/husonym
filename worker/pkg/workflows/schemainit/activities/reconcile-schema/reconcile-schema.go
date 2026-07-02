@@ -7,15 +7,15 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	schemamanager "github.com/Groupe-Hevea/neosync/internal/schema-manager"
-	schemamanager_shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	schemamanager "github.com/fishtre-compagnie/husonym/internal/schema-manager"
+	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
 type reconcileSchemaBuilder struct {

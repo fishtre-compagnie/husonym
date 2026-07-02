@@ -1,7 +1,7 @@
 package run_cmd
 
 import (
-	run_stripe_usage_cmd "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/run/stripe-usage"
+	run_stripe_usage_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/run/stripe-usage"
 	"github.com/spf13/cobra"
 )
 

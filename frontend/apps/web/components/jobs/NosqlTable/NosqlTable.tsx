@@ -14,7 +14,7 @@ import {
   JobMappingFormValues,
   JobMappingTransformerForm,
 } from '@/yup-validations/jobs';
-import { GetConnectionSchemaResponse, JobMapping } from '@neosync/sdk';
+import { GetConnectionSchemaResponse, JobMapping } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { nanoid } from 'nanoid';

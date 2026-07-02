@@ -3,7 +3,7 @@ package v1alpha1_authservice
 import (
 	"context"
 
-	auth_client "github.com/Groupe-Hevea/neosync/backend/internal/auth/client"
+	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
 )
 
 type Service struct {

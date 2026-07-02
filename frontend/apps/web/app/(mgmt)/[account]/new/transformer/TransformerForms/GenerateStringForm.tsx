@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 
 import FormErrorMessage from '@/components/FormErrorMessage';
 import { create } from '@bufbuild/protobuf';
-import { GenerateString, GenerateStringSchema } from '@neosync/sdk';
+import { GenerateString, GenerateStringSchema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 

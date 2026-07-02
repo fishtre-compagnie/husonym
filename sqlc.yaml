@@ -11,65 +11,65 @@ sql:
         emit_interface: true
         emit_methods_with_db_argument: true
         overrides:
-          - column: neosync_api.connections.connection_config
+          - column: husonym_api.connections.connection_config
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: ConnectionConfig
               pointer: true
-          - column: neosync_api.jobs.mappings
+          - column: husonym_api.jobs.mappings
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: JobMapping
               pointer: true
               slice: true
-          - column: neosync_api.jobs.virtual_foreign_keys
+          - column: husonym_api.jobs.virtual_foreign_keys
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: VirtualForeignConstraint
               pointer: true
               slice: true
-          - column: neosync_api.jobs.connection_options
+          - column: husonym_api.jobs.connection_options
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: JobSourceOptions
               pointer: true
-          - column: neosync_api.job_destination_connection_associations.options
+          - column: husonym_api.job_destination_connection_associations.options
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: JobDestinationOptions
               pointer: true
-          - column: neosync_api.transformers.transformer_config
+          - column: husonym_api.transformers.transformer_config
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: TransformerConfig
               pointer: true
-          - column: neosync_api.accounts.temporal_config
+          - column: husonym_api.accounts.temporal_config
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: TemporalConfig
               pointer: true
-          - column: neosync_api.jobs.sync_options
+          - column: husonym_api.jobs.sync_options
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: ActivityOptions
               pointer: true
-          - column: neosync_api.jobs.workflow_options
+          - column: husonym_api.jobs.workflow_options
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: WorkflowOptions
               pointer: true
-          - column: neosync_api.accounts.onboarding_config
+          - column: husonym_api.accounts.onboarding_config
             go_type:
-              import: github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
               package: pg_models
               type: AccountOnboardingConfig
               pointer: true

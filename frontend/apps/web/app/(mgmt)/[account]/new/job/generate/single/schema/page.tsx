@@ -49,7 +49,7 @@ import {
   ConnectionService,
   JobService,
   ValidateJobMappingsResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';

@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac/enforcer"
-	neomigrate "github.com/Groupe-Hevea/neosync/internal/migrate"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	testcontainers_postgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	testcontainers_postgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func TestRbac(t *testing.T) {
 	rbacenforcer, err := enforcer.NewActiveEnforcer(
 		ctx,
 		stdlib.OpenDBFromPool(container.DB),
-		"neosync_api.casbin_rule",
+		"husonym_api.casbin_rule",
 	)
 	require.NoError(t, err)
 

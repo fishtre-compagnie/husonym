@@ -40,7 +40,7 @@ import {
   TransformersService,
   ValidateUserJavascriptCodeRequestSchema,
   ValidateUserJavascriptCodeResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { UseMutateAsyncFunction } from '@tanstack/react-query';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';

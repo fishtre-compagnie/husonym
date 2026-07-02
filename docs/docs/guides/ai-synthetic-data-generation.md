@@ -16,7 +16,7 @@ Let's go through a walk-through.
 
 In order to get started, you'll need the following:
 
-1. A Neosync account which you can sign up for free [here](https://www.neosync.dev)
+1. A Husonym account which you can sign up for free [here](https://www.husonym.allopneus.com)
 2. Access to an LLM hosted at an endpoint. I'll be using OpenAI but you can use any other LLM as long as it's available at a REST endpoint.
 3. A database to store your data. I'm going to use Neon but either Postgres or Mysql works.
 
@@ -48,13 +48,13 @@ Nice! DB set up is complete.
 
 Last thing we'll need to do is to just get the connection URL that we'll use to connect to our database. Go to **Dashboard** and select the `cust-gen` DB and click on the copy button to copy the connection URL.
 
-Hang on to this for a minute and we can move onto setting up Neosync.
+Hang on to this for a minute and we can move onto setting up Husonym.
 
 # Creating a Connection
 
-Now that we have our database set up, we can connect Neosync to it.
+Now that we have our database set up, we can connect Husonym to it.
 
-To get started here, login to your Neosync account and click on **Connections** -> **+ New Connection** -> **Neon**.
+To get started here, login to your Husonym account and click on **Connections** -> **+ New Connection** -> **Neon**.
 
 Let's name our connection `cust-gen-db` and then in the **Connection URL** field, paste in the connection string we copied earlier. Click on **Test Connection** to see validate your connection. You should see a modal pop up like so:
 

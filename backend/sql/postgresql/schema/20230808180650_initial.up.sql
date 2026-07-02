@@ -1,1 +1,1 @@
-CREATE SCHEMA IF NOT EXISTS neosync_api;
+CREATE SCHEMA IF NOT EXISTS husonym_api;

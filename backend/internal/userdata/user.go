@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -34,7 +34,7 @@ type User struct {
 }
 
 func (u *User) Id() string {
-	return neosyncdb.UUIDString(u.id)
+	return husonymdb.UUIDString(u.id)
 }
 func (u *User) PgId() pgtype.UUID {
 	return u.id
@@ -68,7 +68,7 @@ func (u *User) IsLicensed(ctx context.Context, accountId string) (bool, error) {
 		return false, err
 	}
 
-	// todo: check account type for Neosync Cloud Cloud?
+	// todo: check account type for Husonym Cloud Cloud?
 	// if: personal, then check if free trial is active
 	// if: pro, then no? or maybe still do a trial check?
 	// if: enterprise, then check for valid license
@@ -88,7 +88,7 @@ func enforceAccountAccess(ctx context.Context, user *User, accountId string) err
 		// We first want to check to make sure the api key is valid and that it says it's in the account
 		// However, we still want to make a DB request to ensure the DB still says it's in the account
 		if user.apiKeyData.ApiKey == nil ||
-			neosyncdb.UUIDString(user.apiKeyData.ApiKey.AccountID) != accountId {
+			husonymdb.UUIDString(user.apiKeyData.ApiKey.AccountID) != accountId {
 			return nucleuserrors.NewUnauthorized("api key is not valid for account")
 		}
 	}

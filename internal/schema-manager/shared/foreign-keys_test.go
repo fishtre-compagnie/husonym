@@ -3,8 +3,8 @@ package schemamanager_shared
 import (
 	"testing"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
