@@ -6,7 +6,7 @@ It is recommended to use the latest version of Husonym to ensure you are up-to-d
 
 ## Reporting a Vulnerability
 
-If you believe to have uncovered a vulnerability, please email security@husonym.allopneus.com.
+If you believe to have uncovered a vulnerability, please email security@husonym.com.
 
 In the message, please provide as much detail as you can to give our engineers an easy path to reproducing the issue such that we may swiftly fix it.
 

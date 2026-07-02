@@ -90,7 +90,7 @@ const (
 	`
 
 	loginPageSuccess = `
-  <div class='nav'><a href="https://www.husonym.allopneus.com"><img class='husonymLogo' src="https://assets.fishtre-compagnie.com/husonym/newbrand/logo_light_mode.svg"></a></div>
+  <div class='nav'><a href="https://www.husonym.com"><img class='husonymLogo' src="https://assets.fishtre-compagnie.com/husonym/newbrand/logo_light_mode.svg"></a></div>
   <div class='successText'>
       <h1>Login Success!</h1>
       <p>You've successfully logged in to Husonym CLI.</p>
@@ -102,7 +102,7 @@ const (
 	`
 
 	loginPageError = `
-    <div><a href="https://www.husonym.allopneus.com"><img class='husonymLogo' src="https://assets.fishtre-compagnie.com/husonym/newbrand/logo_light_mode.svg"></a></div>
+    <div><a href="https://www.husonym.com"><img class='husonymLogo' src="https://assets.fishtre-compagnie.com/husonym/newbrand/logo_light_mode.svg"></a></div>
     <div class='successText'>
         <h1>There was a problem logging you in!</h1>
         <p class="error-text">Error Code: {{ .ErrorCode }}</p>

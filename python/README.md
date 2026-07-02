@@ -8,4 +8,4 @@ This is the Python SDK for the Husonym API.
 pip install husonym
 ```
 
-For more details and examples, see the [docs](https://docs.husonym.allopneus.com/api/python).
+For more details and examples, see the [docs](https://docs.husonym.com/api/python).

@@ -16,7 +16,7 @@ Let's go through a walk-through.
 
 In order to get started, you'll need the following:
 
-1. A Husonym account which you can sign up for free [here](https://www.husonym.allopneus.com)
+1. A Husonym account which you can sign up for free [here](https://www.husonym.com)
 2. Access to an LLM hosted at an endpoint. I'll be using OpenAI but you can use any other LLM as long as it's available at a REST endpoint.
 3. A database to store your data. I'm going to use Neon but either Postgres or Mysql works.
 

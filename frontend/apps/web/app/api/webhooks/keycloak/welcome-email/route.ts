@@ -26,7 +26,7 @@ Example register event for username/password
     "auth_type": "code",
     "register_method": "form",
     "last_name": "Zelei",
-    "redirect_uri": "https://app.stage.husonym.allopneus.com/api/auth/callback/husonym",
+    "redirect_uri": "https://app.stage.husonym.com/api/auth/callback/husonym",
     "first_name": "Nick",
     "code_id": "3cd8d025-d5d4-4ff2-82d3-a9c552ba422c",
     "email": "nick@example.com",

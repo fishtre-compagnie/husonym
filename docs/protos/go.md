@@ -26,7 +26,7 @@ There are a few prerequisites that the SDK needs in order to be properly configu
 
 | **Properties** | **Details**                                                                                                                                                                 |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **API URL**    | Production: `https://husonym-api.svcs.husonym.allopneus.com`<br /> Local: `http://localhost:8080`                                                                                     |
+| **API URL**    | Production: `https://husonym-api.svcs.husonym.com`<br /> Local: `http://localhost:8080`                                                                                     |
 | **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Husonym App                                       |
 | **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Husonym environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |
 
@@ -284,7 +284,7 @@ The best part is that all you have to do is change a transformer, that's it! Her
   },
 ```
 
-Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Husonym's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.husonym.allopneus.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
+Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Husonym's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.husonym.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
 
 ```go
 package main

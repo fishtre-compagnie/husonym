@@ -2,16 +2,16 @@ openapi: 3.1.0
 info:
   summary: Husonym API
   version: '0.5'
-  termsOfService: https://www.husonym.allopneus.com/terms-of-service
+  termsOfService: https://www.husonym.com/terms-of-service
   contact:
     name: Husonym Support
-    email: support@husonym.allopneus.com
+    email: support@husonym.com
   license:
     name: MIT
     url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 servers:
-  - url: https://husonym-api.svcs.husonym.allopneus.com
+  - url: https://husonym-api.svcs.husonym.com
     description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
@@ -61,7 +61,7 @@ tags:
     x-displayName: mgmt.v1alpha1.UserAccountService
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.husonym.allopneus.com/api
+  url: https://docs.husonym.com/api
 paths:
   /mgmt.v1alpha1.AccountHookService/GetAccountHooks:
     post:

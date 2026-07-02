@@ -100,7 +100,7 @@ The following environment variables are as follows:
 
 - `AUTH_API_BASEURL` - This is the base url for the Admin API. Auth0 calls this the Management API, while Keycloak the Admin API.
   - For auth0, this is almost always your raw tenant url as custom domains do not work with Auth0 management API access. Example: `https://nucleus-cloud-staging.us.auth0.com`
-  - For keycloak, this url will look something like this: `https://auth.svcs.stage.husonym.allopneus.com/admin/realms/husonym-stage`. The pattern is: `<baseurl>/admin/realms/<realm>`
+  - For keycloak, this url will look something like this: `https://auth.svcs.stage.husonym.com/admin/realms/husonym-stage`. The pattern is: `<baseurl>/admin/realms/<realm>`
 - `AUTH_API_CLIENT_ID` - The service account's client id
 - `AUTH_API_CLIENT_SECRET` - The client id secret
 

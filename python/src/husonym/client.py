@@ -26,7 +26,7 @@ from husonym.mgmt.v1alpha1 import (
 GetAccessTokenFn = Callable[[], Union[str, None]]
 
 # Default gRPC URL for Husonym Cloud API
-_DEFAULT_HUSONYM_CLOUD_API_URL = "husonym-api.svcs.husonym.allopneus.com:443"
+_DEFAULT_HUSONYM_CLOUD_API_URL = "husonym-api.svcs.husonym.com:443"
 
 
 class Husonym:
@@ -40,7 +40,7 @@ class Husonym:
         access_token (Optional[str]): A static bearer token for API authentication.
             Mutually exclusive with get_access_token.
         api_url (Optional[str]): The URL of the Husonym API endpoint.
-            Defaults to "husonym-api.svcs.husonym.allopneus.com:443".
+            Defaults to "husonym-api.svcs.husonym.com:443".
         get_access_token (Optional[GetAccessTokenFn]): A callback function that returns
             a bearer token for API authentication. Mutually exclusive with access_token.
         insecure (Optional[bool]): If True, creates an insecure channel without TLS.

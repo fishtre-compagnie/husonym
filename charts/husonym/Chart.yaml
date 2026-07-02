@@ -1,7 +1,7 @@
 apiVersion: v2
 name: husonym
 description: A Helm chart for Husonym that contains the api, app, and worker
-home: https://www.husonym.allopneus.com
+home: https://www.husonym.com
 sources:
   - https://github.com/fishtre-compagnie/husonym
 icon: https://assets.fishtre-compagnie.com/husonym/newbrand/logo_small.png

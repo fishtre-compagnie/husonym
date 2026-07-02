@@ -183,8 +183,8 @@ resource "aws_security_group_rule" "egress_postgres" {
 
 I'm going to use a personal account in links going forward, which may need to change if you're configuring this for a team account.
 
-Navigate to [Create a new Postgres Connection](https://app.husonym.allopneus.com/personal/new/connection/postgres).
-Otherwise, go to [Husonym Cloud](https://app.husonym.allopneus.com), navigate to Connections -> New Connection -> Postgres.
+Navigate to [Create a new Postgres Connection](https://app.husonym.com/personal/new/connection/postgres).
+Otherwise, go to [Husonym Cloud](https://app.husonym.com), navigate to Connections -> New Connection -> Postgres.
 
 Set a connection name and drop in your database url.
 

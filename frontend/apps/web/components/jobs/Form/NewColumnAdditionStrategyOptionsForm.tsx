@@ -25,7 +25,7 @@ export default function NewColumnAdditionStrategyOptionsForm(
           Determine what happens when a new column is detected during a job run.
         </FormDescription>
         <Link
-          href="https://docs.husonym.allopneus.com/guides/new-column-addition-strategies"
+          href="https://docs.husonym.com/guides/new-column-addition-strategies"
           target="_blank"
           className="hover:underline inline-flex gap-1 flex-row items-center tracking-tight text-[0.8rem] text-muted-foreground"
         >

@@ -187,7 +187,7 @@ function PermissionsPageContainer(props: PermissionsPageContainerProps) {
       <div className="flex flex-row justify-between items-center w-full">
         <div className="text-muted-foreground text-sm">
           Review the permissions that Husonym needs for your connection.{' '}
-          <LearnMoreLink href="https://docs.husonym.allopneus.com/connections/postgres#permissions" />
+          <LearnMoreLink href="https://docs.husonym.com/connections/postgres#permissions" />
         </div>
       </div>
 

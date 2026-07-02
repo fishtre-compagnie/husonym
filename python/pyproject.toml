@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "husonym"
 dynamic = ["version"]
 authors = [
-  { name = "Husonym Dev Team", email="infra@allopneus.com"}
+  { name = "Husonym Dev Team", email="infra@husonym.com"}
 ]
 description = "Husonym Python SDK"
 requires-python = ">=3.9"
@@ -44,7 +44,7 @@ keywords = [
 [project.urls]
 Homepage = "https://github.com/fishtre-compagnie/husonym"
 Issues = "https://github.com/fishtre-compagnie/husonym/issues"
-Documentation = "https://docs.husonym.allopneus.com/api/python"
+Documentation = "https://docs.husonym.com/api/python"
 
 
 [tool.hatch.version]

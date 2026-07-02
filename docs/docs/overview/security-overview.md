@@ -16,7 +16,7 @@ This page is mostly relevant to Husonym Cloud.
 
 All of the Husonym code is open source and can be found on our [Github](https://github.com/fishtre-compagnie/husonym).
 If you find a security vulnerability, please refer to our [Security.md](https://github.com/fishtre-compagnie/husonym/blob/main/SECURITY.md) for what to do.
-If all else fails, please email `security@husonym.allopneus.com` directly.
+If all else fails, please email `security@husonym.com` directly.
 
 Otherwise, the code that is found in our repo is the same code that we deploy on our servers.
 This is done directly with the helm charts that we publish to the Github Container Registry.

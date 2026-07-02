@@ -52,10 +52,10 @@ spec:
         tags.datadoghq.com/version: {{ .Values.image.tag | default .Chart.AppVersion  }}
         {{- end }}
         {{- if .Values.nucleusEnv }}
-        tags.husonym.allopneus.com/env: {{ .Values.nucleusEnv }}
+        tags.husonym.com/env: {{ .Values.nucleusEnv }}
         {{- end }}
-        tags.husonym.allopneus.com/service: {{ template "husonym-api.fullname" . }}
-        tags.husonym.allopneus.com/version: {{ .Values.image.tag | default .Chart.AppVersion  }}
+        tags.husonym.com/service: {{ template "husonym-api.fullname" . }}
+        tags.husonym.com/version: {{ .Values.image.tag | default .Chart.AppVersion  }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -186,11 +186,11 @@ spec:
             - name: OTEL_SERVICE_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.labels['tags.husonym.allopneus.com/service']
+                  fieldPath: metadata.labels['tags.husonym.com/service']
             - name: OTEL_SERVICE_VERSION
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.labels['tags.husonym.allopneus.com/version']
+                  fieldPath: metadata.labels['tags.husonym.com/version']
 
             {{- with .Values.extraEnvVars }}
             {{- range .}}

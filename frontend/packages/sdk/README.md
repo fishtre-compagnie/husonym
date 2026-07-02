@@ -13,7 +13,7 @@ npm install @husonym/sdk @bufbuild/protobuf
 
 This README shows the basics of how to use the SDK.
 
-For more detailed docs, go [here](https://docs.husonym.allopneus.com/api/typescript).
+For more detailed docs, go [here](https://docs.husonym.com/api/typescript).
 
 ## Usage
 

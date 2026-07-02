@@ -2,7 +2,7 @@
 
 A Helm chart for Husonym that contains the api, app, and worker
 
-**Homepage:** <https://www.husonym.allopneus.com>
+**Homepage:** <https://www.husonym.com>
 
 ## Source Code
 

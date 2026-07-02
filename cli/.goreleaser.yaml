@@ -53,7 +53,7 @@ changelog:
 #       owner: fishtre-compagnie
 #       name: homebrew-tap
 #     directory: Formula
-#     homepage: https://www.husonym.allopneus.com
+#     homepage: https://www.husonym.com
 #     description: CLI for interfacing with Husonym
 #     license: MIT
 # archives:
@@ -63,7 +63,7 @@ changelog:
 #         format: zip
 
 # aurs:
-#   - homepage: https://www.husonym.allopneus.com
+#   - homepage: https://www.husonym.com
 #     description: CLI for interfacing with Husonym
 #     maintainers:
 #       - Devops <devops@fishtre-compagnie.com>

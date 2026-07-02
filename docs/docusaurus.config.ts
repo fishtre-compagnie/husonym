@@ -19,7 +19,7 @@ const config: Config = {
     },
   ],
   // Set the production url of your s here
-  url: 'https://docs.husonym.allopneus.com',
+  url: 'https://docs.husonym.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',

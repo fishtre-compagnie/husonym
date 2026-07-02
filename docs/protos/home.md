@@ -22,7 +22,7 @@ There are a few inputs that any SDK needs in order to be properly configured.
 
 ### API Url
 
-If using Husonym Cloud, the backend api url is: `https://husonym-api.svcs.husonym.allopneus.com`
+If using Husonym Cloud, the backend api url is: `https://husonym-api.svcs.husonym.com`
 
 The standard localhost url is: `http://localhost:8080`
 
