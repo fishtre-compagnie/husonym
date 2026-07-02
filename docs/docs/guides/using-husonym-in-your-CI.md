@@ -13,12 +13,23 @@ It's easy enough to spin up a Postgres or other kind of database using Github Ac
 
 For this reason, we built the [husonym sync](../cli/sync.md) command to enable synchronizing a connection configured in Husonym to a locally hosted database, or any other database that may not otherwise be available over the internet easily.
 
-Getting the CLI installed into a Github Action is task in itself, however. This is why we are offering a first class way to install the Husonym CLI.
+Getting the CLI installed into a Github Action is a task in itself, however. The Husonym CLI is published as pre-built binaries on the [GitHub Releases page](https://github.com/fishtre-compagnie/husonym/releases), which makes it easy to install in any CI environment.
 
-## Husonym CLI Github Action
+## Installing the Husonym CLI
 
-We've built the [Setup Husonym CLI Action](https://github.com/nucleuscloud/setup-husonym-cli-action) Github Action that can be easily dropped into any job to immediately get setup with the Husonym CLI.
-The README for that action gives detailed instructions on how to get that set up. Afterwards, any `husonym` command can be run in subsequent jobs.
+You can install the CLI in a Github Action by downloading the release archive that matches the runner's OS and architecture. For example, on a standard `ubuntu-latest` runner:
+
+```yaml
+- name: Set up Husonym CLI
+  run: |
+    HUSONYM_VERSION=<version> # e.g. 1.0.0
+    curl -fsSL "https://github.com/fishtre-compagnie/husonym/releases/download/v${HUSONYM_VERSION}/husonym_${HUSONYM_VERSION}_linux_amd64.tar.gz" -o husonym.tar.gz
+    tar -xzf husonym.tar.gz husonym
+    sudo mv husonym /usr/local/bin/husonym
+    husonym version
+```
+
+Afterwards, any `husonym` command can be run in subsequent steps.
 
 ## Setup a Github Action to sync remote data to a CI Postgres Database
 
@@ -68,7 +79,11 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d husonym -c 'SELECT * from husonym.employees;'
 ​
       - name: Set up Husonym CLI
-        uses: nucleuscloud/setup-husonym-cli-action@v1
+        run: |
+          HUSONYM_VERSION=<version> # e.g. 1.0.0
+          curl -fsSL "https://github.com/fishtre-compagnie/husonym/releases/download/v${HUSONYM_VERSION}/husonym_${HUSONYM_VERSION}_linux_amd64.tar.gz" -o husonym.tar.gz
+          tar -xzf husonym.tar.gz husonym
+          sudo mv husonym /usr/local/bin/husonym
 ​
       - name: Husonym sync command
         run: husonym sync --api-key ${{ secrets.HUSONYM_API_KEY }} --connection-id <connection-uuid> --destination-driver postgres --destination-connection-url "postgresql://postgres:postgres@localhost:5432/husonym?sslmode=disable"
