@@ -1,5 +1,5 @@
 <p align="center">
-  <!-- <img alt="husonymbanner" src="https://assets.fishtre-compagnie.com/husonym/docs/husonym-header.svg" > -->
+  <!-- <img alt="husonymbanner" src="https://assets.fishtre.io/husonym/docs/husonym-header.svg" > -->
   <picture>
   <source
     srcset="https://assets.fishtre-compagnie.com/husonym/docs/husonym-header.svg"
