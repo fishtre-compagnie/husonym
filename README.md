@@ -14,15 +14,15 @@
 </p>
 
 <p align="center" style="font-size: 24px;font-weight: 500;">
-Open Source Data Anonymization and Synthetic Data Orchestration
+Data Anonymization and Synthetic Data Orchestration
 <p>
 
 <div align='center'>
- | <a href="https://www.husonym.allopneus.com">Website</a>
- | <a href="https://docs.husonym.allopneus.com">Docs</a>
+ | <a href="https://www.husonym..com">Website</a>
+ | <a href="https://docs.husonym..com">Docs</a>
  | <a href="https://discord.com/invite/MFAMgnp4HF">Discord</a>
- | <a href="https://www.husonym.allopneus.com/blog">Blog</a>
- | <a href="https://docs.husonym.allopneus.com/changelog">Changelog</a>
+ | <a href="https://www.husonym..com/blog">Blog</a>
+ | <a href="https://docs.husonym..com/changelog">Changelog</a>
  | <a href="https://husonym.productlane.com/roadmap">Roadmap</a>
 </div>
 
@@ -50,11 +50,10 @@ Open Source Data Anonymization and Synthetic Data Orchestration
   </a>
 </div>
 
-> **⚠️ Disclaimer:** **Husonym has been acquired by [Grow Therapy](https://www.growtherapy.com). As a result, this repository is no longer actively maintained. Thank you to all of our OSS and Cloud supporters over the years.**
 
 ## Introduction
 
-[Husonym](https://www.husonym.allopneus.com) is an open-source, developer-first way to anonymize PII, generate synthetic data and sync environments for better testing, debugging and developer experience.
+[Husonym](https://www.husonym..com) is an way to anonymize PII, generate synthetic data and sync environments for better testing, debugging and developer experience.
 
 Companies use Husonym to:
 
@@ -102,13 +101,13 @@ The production compose pre-seeds with connections and jobs to get you started! S
 
 ## Kubernetes, Auth Mode and more
 
-For more in-depth details on environment variables, Kubernetes deployments, and a production-ready guide, check out the [Deploy Husonym](https://docs.husonym.allopneus.com/deploy/introduction) section of our Docs.
+For more in-depth details on environment variables, Kubernetes deployments, and a production-ready guide, check out the [Deploy Husonym](https://docs.husonym..com/deploy/introduction) section of our Docs.
 
 ## Resources
 
 Some resources to help you along the way:
 
-- [Docs](https://docs.husonym.allopneus.com) for comprehensive documentation and guides
+- [Docs](https://docs.husonym..com) for comprehensive documentation and guides
 - [Discord](https://discord.com/invite/MFAMgnp4HF) for discussion with the community and Husonym team
 - [X](https://x.com/husonymcloud) for the latest updates
 
@@ -117,7 +116,7 @@ Some resources to help you along the way:
 We love contributions big and small. Here are just a few ways that you can contribute to Husonym.
 
 - Join our [Discord](https://discord.com/invite/MFAMgnp4HF) channel and ask us any questions there
-- Open a PR (see our instructions on [developing with Husonym locally](https://docs.husonym.allopneus.com/guides/husonym-local-dev))
+- Open a PR (see our instructions on [developing with Husonym locally](https://docs.husonym..com/guides/husonym-local-dev))
 - Submit a [feature request](https://github.com/fishtre-compagnie/husonym/issues/new?assignees=&labels=enhancement%2C+feature&template=feature_request.md) or [bug report](https://github.com/fishtre-compagnie/husonym/issues/new?assignees=&labels=bug&template=bug_report.md)
 
 ## Licensing
