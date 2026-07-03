@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
-	tsqlparser "github.com/nucleuscloud/go-antlrv4-parser/tsql"
+	tsqlparser "github.com/fishtre-compagnie/husonym/internal/tsqlparser"
 )
 
 /*
@@ -173,7 +173,7 @@ func isTableTokenSet(ctx *tsqlparser.Full_column_nameContext) bool {
 /*
  the following are parser events that are activated by walking the parsed tree
  renaming these functions will break the parser
- available listeners can be found at https://github.com/nucleuscloud/go-antlrv4-parser/blob/main/tsql/tsqlparser_base_listener.go
+ available listeners can be found in internal/tsqlparser/tsqlparser_base_listener.go
 */
 
 // parser listener event when we enter where clause

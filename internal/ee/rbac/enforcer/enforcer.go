@@ -9,7 +9,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	sqladapter "github.com/nucleuscloud/sql-adapter"
+	sqladapter "github.com/fishtre-compagnie/husonym/internal/ee/rbac/sqladapter"
 )
 
 // The default casbin enforcer with a SQL-enabled backend

@@ -55,7 +55,11 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Vet
-        run: go vet ./...
+        # Désactive l'analyseur "unreachable" : le parseur T-SQL généré par ANTLR
+        # (internal/tsqlparser) contient du code injoignable attendu, remonté par
+        # `go vet` via les packages qui l'importent. Le code écrit à la main reste
+        # couvert par golangci-lint (qui ignore le généré via `generated: lax`).
+        run: go vet -unreachable=false ./...
 
   # Ensures that go generate runs and has no working directory changes afterwards
   generate:

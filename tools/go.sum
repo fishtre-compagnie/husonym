@@ -102,8 +102,6 @@ github.com/nexus-rpc/sdk-go v0.6.0 h1:QRgnP2zTbxEbiyWG/aXH8uSC5LV/Mg1fqb19jb4DBl
 github.com/nexus-rpc/sdk-go v0.6.0/go.mod h1:FHdPfVQwRuJFZFTF0Y2GOAxCrbIBNrcPna9slkGKPYk=
 github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac h1:4YV96Dzy2csSnhzl14/Qk5YsSrKAQusGsIADDn/4/g8=
 github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac/go.mod h1:mpRZBD8SJ55OIICQ3iWH0Yz3cjzA61JdqMLoWXeB2+8=
-github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5 h1:MRc2C7I88nGhKbk1VRT3nnr6XtpClkHT35lhKbg6kD4=
-github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5/go.mod h1:MtI3ufP40Bql/YkhZFvDcR9h479JKb+hEUElwweQMzo=
 github.com/pelletier/go-toml/v2 v2.3.1 h1:MYEvvGnQjeNkRF1qUuGolNtNExTDwct51yp7olPtrEc=
 github.com/pelletier/go-toml/v2 v2.3.1/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/pganalyze/pg_query_go/v5 v5.1.0 h1:MlxQqHZnvA3cbRQYyIrjxEjzo560P6MyTgtlaf3pmXg=

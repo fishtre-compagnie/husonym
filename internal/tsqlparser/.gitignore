@@ -1,0 +1,6 @@
+# Jar ANTLR téléchargé par gen.sh (ne pas versionner)
+antlr-*-complete.jar
+
+# Artefacts de génération inutiles au runtime
+*.interp
+*.tokens
