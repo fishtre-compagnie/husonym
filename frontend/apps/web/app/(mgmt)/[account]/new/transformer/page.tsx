@@ -39,8 +39,9 @@ import {
   TransformerConfigSchema,
   TransformerSource,
   TransformersService,
+  TransformJavascriptSchema,
 } from '@husonym/sdk';
-import { CheckIcon } from '@radix-ui/react-icons';
+import { CheckIcon, InfoCircledIcon } from '@radix-ui/react-icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
@@ -48,6 +49,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CreateUserDefinedTransformerFormValues } from '../../../../../yup-validations/transformer-validations';
 import { constructDocsLink } from '../../transformers/EditTransformerOptions';
+import { useTransformerProposalPrefillStore } from './proposal-prefill-store';
 import TransformerForm from './TransformerForms/TransformerForm';
 
 function getTransformerSource(sourceStr: string): TransformerSource {
@@ -66,9 +68,17 @@ export default function NewTransformer(): ReactElement {
   );
   const transformers = data?.transformers ?? [];
 
-  const sourceIdToCloneQueryParam = useSearchParams().get('transformer');
+  const searchParams = useSearchParams();
+  const sourceIdToCloneQueryParam = searchParams.get('transformer');
+  const isAiProposal = searchParams.get('aiProposal') === '1';
   const transformerSource = getTransformerSource(
     sourceIdToCloneQueryParam ?? TransformerSource.GENERATE_BOOL.toString()
+  );
+  const proposalPrefill = useTransformerProposalPrefillStore(
+    (state) => state.prefill
+  );
+  const clearProposalPrefill = useTransformerProposalPrefillStore(
+    (state) => state.clearPrefill
   );
   const { mutateAsync: isTransformerNameAvailableAsync } = useMutation(
     TransformersService.method.isTransformerNameAvailable
@@ -78,6 +88,10 @@ export default function NewTransformer(): ReactElement {
   );
 
   const [openBaseSelect, setOpenBaseSelect] = useState(false);
+  // The AI banner is tied to an actually-applied prefill, not just the query
+  // param: a hard refresh after the store was cleared must not show it over
+  // an empty form.
+  const [aiPrefillApplied, setAiPrefillApplied] = useState(false);
   const posthog = usePostHog();
 
   const form = useForm({
@@ -174,11 +188,59 @@ export default function NewTransformer(): ReactElement {
     });
   }, [isLoading, sourceIdToCloneQueryParam]);
 
+  // Prefill the form from an AI-generated transformer proposal (the "Create
+  // this transformer" action in RecommendationsReviewSheet.tsx, see
+  // plans/assistant-ia-config-anonymisation.md §4.4). Runs after the base
+  // source-clone effect above so the generated code overrides the empty
+  // TransformJavascript template.
+  useEffect(() => {
+    if (!isAiProposal || !proposalPrefill) {
+      return;
+    }
+    form.setValue('name', proposalPrefill.name, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    form.setValue('description', proposalPrefill.description, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+    form.setValue(
+      'config',
+      convertTransformerConfigToForm(
+        create(TransformerConfigSchema, {
+          config: {
+            case: 'transformJavascriptConfig',
+            value: create(TransformJavascriptSchema, {
+              code: proposalPrefill.javascriptCode,
+            }),
+          },
+        })
+      ),
+      { shouldDirty: true, shouldTouch: true, shouldValidate: true }
+    );
+    setAiPrefillApplied(true);
+    // Prefill is single-use: clear it so navigating back to this page fresh
+    // (without the query param flow) doesn't resurface stale AI content.
+    clearProposalPrefill();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAiProposal, proposalPrefill]);
+
   return (
     <OverviewContainer
       Header={<PageHeader header="Create a New Transformer" />}
       containerClassName="px-12 md:px-24 lg:px-32"
     >
+      {isAiProposal && aiPrefillApplied && (
+        <div className="flex flex-row items-center gap-2 rounded-md border border-yellow-400/50 bg-yellow-50 dark:bg-yellow-950 px-4 py-3 mb-4 text-sm text-yellow-800 dark:text-yellow-200">
+          <InfoCircledIcon className="h-4 w-4 shrink-0" />
+          <span>
+            AI-generated code — review carefully before saving. Test it
+            against sample values below before creating this transformer.
+          </span>
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <FormField

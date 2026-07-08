@@ -10425,6 +10425,34 @@
           ]
         },
         {
+          "name": "DetectorKind",
+          "longName": "DetectionEvidence.DetectorKind",
+          "fullName": "mgmt.v1alpha1.DetectionEvidence.DetectorKind",
+          "description": "The kind of detector that produced a piece of evidence",
+          "values": [
+            {
+              "name": "DETECTOR_KIND_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "DETECTOR_KIND_REGEX",
+              "number": "1",
+              "description": ""
+            },
+            {
+              "name": "DETECTOR_KIND_DICTIONARY",
+              "number": "2",
+              "description": ""
+            },
+            {
+              "name": "DETECTOR_KIND_LLM",
+              "number": "3",
+              "description": ""
+            }
+          ]
+        },
+        {
           "name": "Timing",
           "longName": "GetActiveJobHooksByTimingRequest.Timing",
           "fullName": "mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.Timing",
@@ -10525,6 +10553,34 @@
               "name": "JOB_STATUS_DISABLED",
               "number": "4",
               "description": ""
+            }
+          ]
+        },
+        {
+          "name": "SamplingMode",
+          "longName": "JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode",
+          "fullName": "mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode",
+          "description": "The mode used to determine what, if any, sampled data is sent to the LLM for PII detection",
+          "values": [
+            {
+              "name": "SAMPLING_MODE_UNSPECIFIED",
+              "number": "0",
+              "description": "Unspecified falls back to the legacy is_enabled boolean (true maps to SAMPLING_MODE_RAW)."
+            },
+            {
+              "name": "SAMPLING_MODE_NONE",
+              "number": "1",
+              "description": "No sampling is performed. Only column names and types are considered."
+            },
+            {
+              "name": "SAMPLING_MODE_PROFILE",
+              "number": "2",
+              "description": "Rows are sampled locally and reduced to anonymous shape profiles (patterns, stats, local detector verdicts) before being sent."
+            },
+            {
+              "name": "SAMPLING_MODE_RAW",
+              "number": "3",
+              "description": "Raw sampled values (capped) are sent as-is."
             }
           ]
         },
@@ -11834,6 +11890,54 @@
           "fields": []
         },
         {
+          "name": "DetectionEvidence",
+          "longName": "DetectionEvidence",
+          "fullName": "mgmt.v1alpha1.DetectionEvidence",
+          "description": "A single piece of evidence that contributed to a detection/recommendation",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "kind",
+              "description": "The kind of detector that produced this evidence",
+              "label": "",
+              "type": "DetectorKind",
+              "longType": "DetectionEvidence.DetectorKind",
+              "fullType": "mgmt.v1alpha1.DetectionEvidence.DetectorKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "detail",
+              "description": "A human readable detail describing the evidence (e.g. \"regex `(^|_)email` matched on column name\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "confidence",
+              "description": "The confidence of this piece of evidence from 0.0-1.0",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "DynamoDBDestinationConnectionOptions",
           "longName": "DynamoDBDestinationConnectionOptions",
           "fullName": "mgmt.v1alpha1.DynamoDBDestinationConnectionOptions",
@@ -12344,6 +12448,90 @@
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJobMappingRecommendationsRequest",
+          "longName": "GetJobMappingRecommendationsRequest",
+          "fullName": "mgmt.v1alpha1.GetJobMappingRecommendationsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection to derive recommendations for",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "Optional job id. When provided, allows the server to take existing job mappings into account when building recommendations.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_job_id",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJobMappingRecommendationsResponse",
+          "longName": "GetJobMappingRecommendationsResponse",
+          "fullName": "mgmt.v1alpha1.GetJobMappingRecommendationsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "recommendations",
+              "description": "The list of recommended transformer configurations, one per detected column",
+              "label": "repeated",
+              "type": "TransformerRecommendation",
+              "longType": "TransformerRecommendation",
+              "fullType": "mgmt.v1alpha1.TransformerRecommendation",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "report_run_id",
+              "description": "The identifier of the pii detection report run that was used to build these recommendations, if any",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_report_run_id",
               "defaultValue": ""
             }
           ]
@@ -14830,11 +15018,23 @@
           "fields": [
             {
               "name": "is_enabled",
-              "description": "Whether to enable data sampling",
+              "description": "Whether to enable data sampling.\nDeprecated: use mode instead. If mode is unspecified, this field is used for backwards compatibility (true maps to SAMPLING_MODE_RAW).",
               "label": "",
               "type": "bool",
               "longType": "bool",
               "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mode",
+              "description": "The sampling mode to use. If unspecified, falls back to the legacy is_enabled boolean for backwards compatibility.",
+              "label": "",
+              "type": "SamplingMode",
+              "longType": "JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode",
+              "fullType": "mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -16039,6 +16239,66 @@
               "type": "uint32",
               "longType": "uint32",
               "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "NewTransformerProposal",
+          "longName": "NewTransformerProposal",
+          "fullName": "mgmt.v1alpha1.NewTransformerProposal",
+          "description": "A proposal to create a new user-defined transformer for a column whose format does not match any system transformer",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "name",
+              "description": "The proposed name for the new transformer",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "description",
+              "description": "The proposed description for the new transformer",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "javascript_code",
+              "description": "The proposed draft javascript code for the new transformer, intended for use with TransformJavascript",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rationale",
+              "description": "The rationale explaining why no system transformer was suitable and why this code was proposed",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -17396,6 +17656,114 @@
           "fields": []
         },
         {
+          "name": "TransformerRecommendation",
+          "longName": "TransformerRecommendation",
+          "fullName": "mgmt.v1alpha1.TransformerRecommendation",
+          "description": "A recommended transformer configuration for a specific column, along with the evidence that led to the recommendation",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "The schema of the table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The name of the table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The name of the column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "category",
+              "description": "The detected PII category for the column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "recommended_config",
+              "description": "The recommended transformer configuration for the column",
+              "label": "",
+              "type": "TransformerConfig",
+              "longType": "TransformerConfig",
+              "fullType": "mgmt.v1alpha1.TransformerConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "confidence",
+              "description": "The confidence of the recommendation from 0.0-1.0",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "evidence",
+              "description": "The evidence that was used to build this recommendation",
+              "label": "repeated",
+              "type": "DetectionEvidence",
+              "longType": "DetectionEvidence",
+              "fullType": "mgmt.v1alpha1.DetectionEvidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "proposal",
+              "description": "A proposal to create a new user-defined transformer, present only when no system transformer passes the validity filter with a semantic match",
+              "label": "optional",
+              "type": "NewTransformerProposal",
+              "longType": "NewTransformerProposal",
+              "fullType": "mgmt.v1alpha1.NewTransformerProposal",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_proposal",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "UpdateJobDestinationConnectionRequest",
           "longName": "UpdateJobDestinationConnectionRequest",
           "fullName": "mgmt.v1alpha1.UpdateJobDestinationConnectionRequest",
@@ -18676,6 +19044,21 @@
               "responseType": "GetPiiDetectionReportResponse",
               "responseLongType": "GetPiiDetectionReportResponse",
               "responseFullType": "mgmt.v1alpha1.GetPiiDetectionReportResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetJobMappingRecommendations",
+              "description": "Returns transformer recommendations for the columns of a connection, derived from the most recent pii detection report",
+              "requestType": "GetJobMappingRecommendationsRequest",
+              "requestLongType": "GetJobMappingRecommendationsRequest",
+              "requestFullType": "mgmt.v1alpha1.GetJobMappingRecommendationsRequest",
+              "requestStreaming": false,
+              "responseType": "GetJobMappingRecommendationsResponse",
+              "responseLongType": "GetJobMappingRecommendationsResponse",
+              "responseFullType": "mgmt.v1alpha1.GetJobMappingRecommendationsResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

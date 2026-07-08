@@ -1,0 +1,102 @@
+{
+  "language": "it",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "clienti",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["4001", "4002", "4003"]
+        },
+        {
+          "name": "nome",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Mario", "Giulia", "Luca", "Francesca"]
+        },
+        {
+          "name": "cognome",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Rossi", "Bianchi", "Ferrari", "Russo"]
+        },
+        {
+          "name": "data_nascita",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1985-08-01", "1992-03-19", "1978-10-27"]
+        },
+        {
+          "name": "email",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["mario.rossi@example.it", "giulia.b@example.it", "luca.f@example.it"]
+        },
+        {
+          "name": "cellulare",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+39 340 123 4567", "+39 347 765 4321"]
+        },
+        {
+          "name": "indirizzo",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["Via Roma 12", "Corso Italia 3", "Piazza Duomo 7"]
+        },
+        {
+          "name": "cap",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "note": "local abbreviation for codice di avviamento postale",
+          "samples": ["00184", "20121", "80100"]
+        },
+        {
+          "name": "codice_fiscale",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["RSSMRA85M01H501Z", "BNCGLI92C59F205X"]
+        },
+        {
+          "name": "conto_corrente",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["IT60X0542811101000000123456", "IT12A0300203280123456789012"]
+        },
+        {
+          "name": "password",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$qazwsxedcrfvtgbyhnujmi", "$2b$12$plokmijnuhbygvtfcrdxes"]
+        },
+        {
+          "name": "note",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Consegna in magazzino", "Richiamare domani", "Cliente abituale"]
+        },
+        {
+          "name": "riferimento",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "structured business reference, pseudonymous",
+          "samples": ["ORD-2024-00123", "ORD-2024-00987", "ORD-2025-00042"]
+        }
+      ]
+    }
+  ]
+}

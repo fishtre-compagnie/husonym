@@ -6,6 +6,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	ee_recommendations "github.com/fishtre-compagnie/husonym/internal/ee/recommendations"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 )
@@ -21,6 +22,13 @@ type Service struct {
 
 	hookService           jobhooks.Interface
 	connectiondatabuilder connectiondata.ConnectionDataBuilder
+
+	// codegenClient is the OpenAI-compatible client used to draft AI
+	// transformer proposals (plans/assistant-ia-config-anonymisation.md
+	// §4.4). May be nil, in which case proposal generation is disabled but
+	// GetJobMappingRecommendations still works.
+	codegenClient ee_recommendations.OpenAiCompletionsClient
+	codegenModel  string
 }
 
 type RunLogType string
@@ -47,6 +55,9 @@ type Config struct {
 	IsAuthEnabled  bool
 	IsHusonymCloud bool
 
+	// Enables the EE-licensed GetJobMappingRecommendations RPC
+	IsJobMappingRecommendationsEnabled bool
+
 	RunLogConfig *RunLogConfig
 }
 
@@ -66,8 +77,9 @@ func New(
 	jobhookService jobhooks.Interface,
 	userdataclient userdata.Interface,
 	connectiondatabuilder connectiondata.ConnectionDataBuilder,
+	opts ...Option,
 ) *Service {
-	return &Service{
+	svc := &Service{
 		cfg:                   cfg,
 		db:                    db,
 		temporalmgr:           temporalWfManager,
@@ -76,5 +88,24 @@ func New(
 		hookService:           jobhookService,
 		userdataclient:        userdataclient,
 		connectiondatabuilder: connectiondatabuilder,
+	}
+	for _, opt := range opts {
+		opt(svc)
+	}
+	return svc
+}
+
+// Option configures optional Service dependencies that aren't required for
+// the core RPCs to function.
+type Option func(*Service)
+
+// WithCodegenClient enables AI transformer proposal generation
+// (plans/assistant-ia-config-anonymisation.md §4.4) for
+// GetJobMappingRecommendations. model may be empty, in which case
+// recommendations.DefaultProposalModel is used.
+func WithCodegenClient(client ee_recommendations.OpenAiCompletionsClient, model string) Option {
+	return func(s *Service) {
+		s.codegenClient = client
+		s.codegenModel = model
 	}
 }

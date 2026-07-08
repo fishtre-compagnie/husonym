@@ -24,7 +24,7 @@ func Test_New(t *testing.T) {
 	mockConnDataBuilder := connectiondata.NewMockConnectionDataBuilder(t)
 	mockJobClient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
 
-	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient)
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "")
 	assert.NotNil(t, activities)
 }
 
@@ -68,7 +68,7 @@ func Test_GetColumnData_Success(t *testing.T) {
 			},
 		}), nil)
 
-	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient)
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "")
 
 	env.RegisterActivity(activities)
 
@@ -102,7 +102,7 @@ func Test_DetectPiiRegex_Success(t *testing.T) {
 	mockConnDataBuilder := connectiondata.NewMockConnectionDataBuilder(t)
 	mockJobClient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
 
-	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient)
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "")
 
 	env.RegisterActivity(activities)
 
@@ -166,7 +166,7 @@ func Test_DetectPiiLLM_Success(t *testing.T) {
 		},
 	}, nil)
 
-	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient)
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "")
 
 	env.RegisterActivity(activities)
 
@@ -197,6 +197,106 @@ func Test_DetectPiiLLM_Success(t *testing.T) {
 	assert.Equal(t, float32(0.95), report.Confidence)
 }
 
+func Test_DetectPiiLLM_SkippedWhenNoClient(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+	env := testSuite.NewTestActivityEnvironment()
+
+	mockConnClient := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
+	mockConnDataBuilder := connectiondata.NewMockConnectionDataBuilder(t)
+	mockJobClient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
+
+	// nil LLM client: the activity must no-op instead of failing
+	activities := New(mockConnClient, nil, mockConnDataBuilder, mockJobClient, "")
+
+	env.RegisterActivity(activities)
+
+	val, err := env.ExecuteActivity(activities.DetectPiiLLM, &DetectPiiLLMRequest{
+		TableSchema:  "public",
+		TableName:    "users",
+		SamplingMode: SamplingModeRaw,
+		ConnectionId: "test-conn",
+		ColumnData: []*ColumnData{
+			{Column: "email", DataType: "varchar", IsNullable: true},
+		},
+	})
+	require.NoError(t, err)
+	res := &DetectPiiLLMResponse{}
+	err = val.Get(res)
+	require.NoError(t, err)
+
+	assert.NotNil(t, res)
+	assert.Empty(t, res.PiiColumns)
+}
+
+func Test_DetectPiiLLM_ProfileMode(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+	env := testSuite.NewTestActivityEnvironment()
+
+	mockConnClient := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
+	mockOpenAIClient := NewMockOpenAiCompletionsClient(t)
+	mockConnData := connectiondata.NewMockConnectionDataService(t)
+	mockConnDataBuilder := connectiondata.NewMockConnectionDataBuilder(t)
+	mockJobClient := mgmtv1alpha1connect.NewMockJobServiceClient(t)
+
+	mockConnDataBuilder.EXPECT().
+		NewDataConnection(mock.Anything, mock.Anything).
+		Return(mockConnData, nil)
+	mockConnData.EXPECT().
+		SampleData(mock.Anything, mock.Anything, "public", "users", uint(5)).
+		Return(nil)
+
+	mockConnClient.EXPECT().
+		GetConnection(mock.Anything, mock.Anything).
+		Return(connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
+			Connection: &mgmtv1alpha1.Connection{
+				Id: "test-conn",
+			},
+		}), nil)
+
+	// Verify the configured model and the json_schema constrained output are used
+	mockOpenAIClient.EXPECT().
+		New(mock.Anything, mock.MatchedBy(func(params openai.ChatCompletionNewParams) bool {
+			return params.Model == "custom-local-model" &&
+				params.ResponseFormat.OfJSONSchema != nil &&
+				params.ResponseFormat.OfJSONSchema.JSONSchema.Name == "pii_detection"
+		})).
+		Return(&openai.ChatCompletion{
+			Choices: []openai.ChatCompletionChoice{
+				{
+					Message: openai.ChatCompletionMessage{
+						Content: "{\"output\": [{\"field_name\": \"num_secu\", \"category\": \"national_id\", \"confidence\": 0.9}]}",
+					},
+				},
+			},
+		}, nil)
+
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "custom-local-model")
+
+	env.RegisterActivity(activities)
+
+	val, err := env.ExecuteActivity(activities.DetectPiiLLM, &DetectPiiLLMRequest{
+		TableSchema:  "public",
+		TableName:    "users",
+		SamplingMode: SamplingModeProfile,
+		ConnectionId: "test-conn",
+		ColumnData: []*ColumnData{
+			{Column: "num_secu", DataType: "varchar", IsNullable: true},
+		},
+	})
+	require.NoError(t, err)
+	res := &DetectPiiLLMResponse{}
+	err = val.Get(res)
+	require.NoError(t, err)
+
+	require.Len(t, res.PiiColumns, 1)
+	report, ok := res.PiiColumns["num_secu"]
+	require.True(t, ok)
+	assert.Equal(t, PiiCategoryNationalId, report.Category)
+	assert.Equal(t, float32(0.9), report.Confidence)
+}
+
 func Test_SaveTablePiiDetectReport_Success(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
@@ -211,7 +311,7 @@ func Test_SaveTablePiiDetectReport_Success(t *testing.T) {
 		SetRunContext(mock.Anything, mock.Anything).
 		Return(connect.NewResponse(&mgmtv1alpha1.SetRunContextResponse{}), nil)
 
-	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient)
+	activities := New(mockConnClient, mockOpenAIClient, mockConnDataBuilder, mockJobClient, "")
 
 	env.RegisterActivity(activities)
 

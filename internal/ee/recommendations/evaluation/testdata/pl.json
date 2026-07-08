@@ -1,0 +1,101 @@
+{
+  "language": "pl",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "klienci",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["7001", "7002", "7003"]
+        },
+        {
+          "name": "imie",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Jan", "Anna", "Piotr", "Katarzyna"]
+        },
+        {
+          "name": "nazwisko",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Kowalski", "Nowak", "Wiśniewski", "Wójcik"]
+        },
+        {
+          "name": "data_urodzenia",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1984-05-14", "1990-10-02", "1975-03-30"]
+        },
+        {
+          "name": "adres_email",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["jan.kowalski@example.pl", "anna.n@example.pl", "piotr.w@example.pl"]
+        },
+        {
+          "name": "telefon",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+48 601 234 567", "+48 22 123 45 67"]
+        },
+        {
+          "name": "ulica",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["ul. Marszałkowska 12", "ul. Długa 3", "al. Jerozolimskie 45"]
+        },
+        {
+          "name": "kod_pocztowy",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["00-950", "31-042", "80-855"]
+        },
+        {
+          "name": "pesel",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["44051401359", "02070803628"]
+        },
+        {
+          "name": "numer_konta",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["PL61109010140000071219812874", "PL27114020040000300201355387"]
+        },
+        {
+          "name": "haslo",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$zaqwsxcderfvbgtyhnmjuk", "$2b$12$kjmnhytgbvfredcxswqaz"]
+        },
+        {
+          "name": "uwagi",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Dostawa do magazynu", "Oddzwonić rano", "Stały klient"]
+        },
+        {
+          "name": "znacznik",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "structured business reference, pseudonymous",
+          "samples": ["ZAM-2024-00123", "ZAM-2024-00987", "ZAM-2025-00042"]
+        }
+      ]
+    }
+  ]
+}

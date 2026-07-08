@@ -353,8 +353,16 @@ export type TableScanFilterFormValue = Yup.InferType<
   typeof TableScanFilterFormValue
 >;
 
+const DataSamplingModeFormValue = Yup.string()
+  .required()
+  .oneOf(['none', 'profile', 'raw'])
+  .default('profile');
+export type DataSamplingModeFormValue = Yup.InferType<
+  typeof DataSamplingModeFormValue
+>;
+
 const DataSamplingFormValue = Yup.object().shape({
-  isEnabled: Yup.boolean().required().default(true),
+  mode: DataSamplingModeFormValue,
 });
 export type DataSamplingFormValue = Yup.InferType<typeof DataSamplingFormValue>;
 

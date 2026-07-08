@@ -1,0 +1,102 @@
+{
+  "language": "es",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "clientes",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["3001", "3002", "3003"]
+        },
+        {
+          "name": "nombre",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["María", "José", "Carmen", "Antonio"]
+        },
+        {
+          "name": "apellidos",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["García López", "Martínez Ruiz", "Sánchez Gil"]
+        },
+        {
+          "name": "fecha_nacimiento",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1986-04-12", "1994-09-28", "1972-11-03"]
+        },
+        {
+          "name": "correo",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["maria.garcia@example.es", "jose.m@example.es", "carmen.s@example.es"]
+        },
+        {
+          "name": "movil",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+34 612 345 678", "+34 698 765 432"]
+        },
+        {
+          "name": "direccion",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["Calle Mayor 12", "Avenida del Sol 3", "Plaza España 7"]
+        },
+        {
+          "name": "codigo_postal",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["28001", "08002", "41003"]
+        },
+        {
+          "name": "dni",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["12345678Z", "87654321X", "X1234567L"]
+        },
+        {
+          "name": "nomina",
+          "data_type": "numeric",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["28500", "31200", "26800"]
+        },
+        {
+          "name": "contrasena",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$asdfghjklqwertyuiopzxc", "$2b$12$poiuytrewqlkjhgfdsamnb"]
+        },
+        {
+          "name": "observaciones",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Entrega en almacén", "Llamar por la mañana", "Cliente habitual"]
+        },
+        {
+          "name": "documento",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": false,
+          "note": "ambiguous name: DNI/NIE-shaped values reveal the nature",
+          "samples": ["23456789D", "Y7654321R", "34567890H"]
+        }
+      ]
+    }
+  ]
+}

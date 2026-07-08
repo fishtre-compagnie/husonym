@@ -643,10 +643,22 @@ class JobTypeConfig(_message.Message):
             is_enabled: bool
             def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
         class DataSampling(_message.Message):
-            __slots__ = ("is_enabled",)
+            __slots__ = ("is_enabled", "mode")
+            class SamplingMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+                __slots__ = ()
+                SAMPLING_MODE_UNSPECIFIED: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode]
+                SAMPLING_MODE_NONE: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode]
+                SAMPLING_MODE_PROFILE: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode]
+                SAMPLING_MODE_RAW: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode]
+            SAMPLING_MODE_UNSPECIFIED: JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode
+            SAMPLING_MODE_NONE: JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode
+            SAMPLING_MODE_PROFILE: JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode
+            SAMPLING_MODE_RAW: JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode
             IS_ENABLED_FIELD_NUMBER: _ClassVar[int]
+            MODE_FIELD_NUMBER: _ClassVar[int]
             is_enabled: bool
-            def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
+            mode: JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode
+            def __init__(self, is_enabled: _Optional[bool] = ..., mode: _Optional[_Union[JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode, str]] = ...) -> None: ...
         class TableScanFilter(_message.Message):
             __slots__ = ("include_all", "include", "exclude")
             INCLUDE_ALL_FIELD_NUMBER: _ClassVar[int]
@@ -1779,3 +1791,73 @@ class PiiDetectionReport(_message.Message):
     TABLES_FIELD_NUMBER: _ClassVar[int]
     tables: _containers.RepeatedCompositeFieldContainer[PiiDetectionReport.TableReport]
     def __init__(self, tables: _Optional[_Iterable[_Union[PiiDetectionReport.TableReport, _Mapping]]] = ...) -> None: ...
+
+class GetJobMappingRecommendationsRequest(_message.Message):
+    __slots__ = ("account_id", "connection_id", "job_id")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    connection_id: str
+    job_id: str
+    def __init__(self, account_id: _Optional[str] = ..., connection_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
+
+class GetJobMappingRecommendationsResponse(_message.Message):
+    __slots__ = ("recommendations", "report_run_id")
+    RECOMMENDATIONS_FIELD_NUMBER: _ClassVar[int]
+    REPORT_RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    recommendations: _containers.RepeatedCompositeFieldContainer[TransformerRecommendation]
+    report_run_id: str
+    def __init__(self, recommendations: _Optional[_Iterable[_Union[TransformerRecommendation, _Mapping]]] = ..., report_run_id: _Optional[str] = ...) -> None: ...
+
+class TransformerRecommendation(_message.Message):
+    __slots__ = ("schema", "table", "column", "category", "recommended_config", "confidence", "evidence", "proposal")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    RECOMMENDED_CONFIG_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    EVIDENCE_FIELD_NUMBER: _ClassVar[int]
+    PROPOSAL_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    column: str
+    category: str
+    recommended_config: _transformer_pb2.TransformerConfig
+    confidence: float
+    evidence: _containers.RepeatedCompositeFieldContainer[DetectionEvidence]
+    proposal: NewTransformerProposal
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., category: _Optional[str] = ..., recommended_config: _Optional[_Union[_transformer_pb2.TransformerConfig, _Mapping]] = ..., confidence: _Optional[float] = ..., evidence: _Optional[_Iterable[_Union[DetectionEvidence, _Mapping]]] = ..., proposal: _Optional[_Union[NewTransformerProposal, _Mapping]] = ...) -> None: ...
+
+class DetectionEvidence(_message.Message):
+    __slots__ = ("kind", "detail", "confidence")
+    class DetectorKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        DETECTOR_KIND_UNSPECIFIED: _ClassVar[DetectionEvidence.DetectorKind]
+        DETECTOR_KIND_REGEX: _ClassVar[DetectionEvidence.DetectorKind]
+        DETECTOR_KIND_DICTIONARY: _ClassVar[DetectionEvidence.DetectorKind]
+        DETECTOR_KIND_LLM: _ClassVar[DetectionEvidence.DetectorKind]
+    DETECTOR_KIND_UNSPECIFIED: DetectionEvidence.DetectorKind
+    DETECTOR_KIND_REGEX: DetectionEvidence.DetectorKind
+    DETECTOR_KIND_DICTIONARY: DetectionEvidence.DetectorKind
+    DETECTOR_KIND_LLM: DetectionEvidence.DetectorKind
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    DETAIL_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    kind: DetectionEvidence.DetectorKind
+    detail: str
+    confidence: float
+    def __init__(self, kind: _Optional[_Union[DetectionEvidence.DetectorKind, str]] = ..., detail: _Optional[str] = ..., confidence: _Optional[float] = ...) -> None: ...
+
+class NewTransformerProposal(_message.Message):
+    __slots__ = ("name", "description", "javascript_code", "rationale")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    JAVASCRIPT_CODE_FIELD_NUMBER: _ClassVar[int]
+    RATIONALE_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    description: str
+    javascript_code: str
+    rationale: str
+    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., javascript_code: _Optional[str] = ..., rationale: _Optional[str] = ...) -> None: ...

@@ -1,0 +1,85 @@
+{{- if .Values.llm.server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "husonym-worker.fullname" . }}-llm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "husonym-worker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-server
+  {{- if .Values.deploymentAnnotations }}
+  annotations:
+    {{- range $key, $value := .Values.deploymentAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "husonym-worker.fullname" . }}-llm
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.podAnnotations }}
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+      labels:
+        {{- include "husonym-worker.labels" . | nindent 8 }}
+        app: {{ include "husonym-worker.fullname" . }}-llm
+        app.kubernetes.io/component: llm-server
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: llm-server
+          image: '{{ .Values.llm.server.repository }}:{{ .Values.llm.server.tag }}'
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: {{ .Values.llm.server.port }}
+              name: http
+              protocol: TCP
+          args:
+            - "-m"
+            - "/models/{{ .Values.llm.server.modelFile }}"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "{{ .Values.llm.server.port }}"
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+              readOnly: true
+          resources:
+            requests:
+              cpu: {{ .Values.llm.server.resources.requests.cpu }}
+              memory: {{ .Values.llm.server.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.llm.server.resources.limits.cpu }}
+              memory: {{ .Values.llm.server.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.llm.server.port }}
+            periodSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.llm.server.port }}
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+            initialDelaySeconds: 30
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.llm.server.modelPvcClaim }}
+            readOnly: true
+{{- end }}

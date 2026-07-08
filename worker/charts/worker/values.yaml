@@ -166,3 +166,42 @@ sidecarContainers: []
 tableSync:
   # -- The number of tables to sync concurrently
   maxConcurrency: 3
+
+# Configure optional LLM integration for AI-assisted anonymization
+llm:
+  # -- Whether or not to enable LLM integration in the worker
+  enabled: false
+  # -- The base URL for the LLM API (e.g., http://<release>-llm:8080/v1 for local llama.cpp, https://api.openai.com/v1 for external)
+  # When using local llama.cpp server (server.enabled: true), set this to http://<release>-llm:8080/v1
+  baseUrl:
+  # -- The API key for the LLM service (optional for local LLM, required for external APIs like OpenAI)
+  apiKey:
+  # -- The model name to use (e.g., qwen for local llama.cpp, gpt-4o-mini for OpenAI)
+  model:
+
+  # Configure optional in-cluster llama.cpp server deployment
+  server:
+    # -- Whether to deploy an in-cluster llama.cpp server
+    enabled: false
+    # -- The Docker image repository for llama.cpp server
+    repository: ghcr.io/ggml-org/llama.cpp
+    # -- The Docker image tag for llama.cpp server
+    tag: server
+    # -- Name of the existing PersistentVolumeClaim holding the GGUF model file (required when server.enabled is true)
+    modelPvcClaim:
+    # -- The path/filename of the GGUF model file within the PVC (e.g., model.gguf)
+    modelFile: model.gguf
+    # -- The port the llama.cpp server will listen on
+    port: 8080
+    # Set requests and limits for the llama.cpp server container
+    resources:
+      requests:
+        # -- CPU request for llama.cpp server (recommended 4 CPU minimum for good performance)
+        cpu: "4"
+        # -- Memory request for llama.cpp server (recommended 6Gi minimum, depends on model size)
+        memory: "6Gi"
+      limits:
+        # -- CPU limit for llama.cpp server
+        cpu: "8"
+        # -- Memory limit for llama.cpp server
+        memory: "12Gi"
