@@ -25,6 +25,7 @@ import {
 } from '@husonym/sdk';
 import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
 import { useState } from 'react';
+import AiSuggestionsButton from './AiSuggestionsButton';
 import ApplyDefaultTransformersButton from './ApplyDefaultTransformersButton';
 import ExportJobMappingsButton from './ExportJobMappingsButton';
 import ImportJobMappingsButton, {
@@ -48,6 +49,9 @@ interface DataTableToolbarProps<TData> {
   isApplyDefaultButtonDisabled: boolean;
   onApplyDefaultClick(override: boolean): void;
 
+  isAiSuggestionsLoading?: boolean;
+  onAiSuggestionsClick?(): void;
+
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
 }
@@ -64,6 +68,8 @@ export function SchemaTableToolbar<TData>({
   displayApplyDefaultTransformersButton,
   isApplyDefaultButtonDisabled,
   onApplyDefaultClick,
+  isAiSuggestionsLoading,
+  onAiSuggestionsClick,
   hasMissingSourceColumnMappings,
   onRemoveMissingSourceColumnMappings,
 }: DataTableToolbarProps<TData>) {
@@ -177,6 +183,13 @@ export function SchemaTableToolbar<TData>({
             <ApplyDefaultTransformersButton
               isDisabled={isApplyDefaultButtonDisabled}
               onClick={onApplyDefaultClick}
+            />
+          )}
+          {onAiSuggestionsClick && (
+            <AiSuggestionsButton
+              isDisabled={isApplyDefaultButtonDisabled}
+              isLoading={!!isAiSuggestionsLoading}
+              onClick={onAiSuggestionsClick}
             />
           )}
           <ImportJobMappingsButton onImport={onImportMappingsClick} />

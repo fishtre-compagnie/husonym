@@ -127,4 +127,15 @@ HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
 EE_LICENSE: {{ .Values.ee.license | quote }}
 {{- end }}
 TABLESYNC_MAX_CONCURRENCY: {{ .Values.tableSync.maxConcurrency | quote }}
+{{- if and .Values.llm .Values.llm.enabled }}
+{{- if .Values.llm.baseUrl }}
+LLM_BASE_URL: {{ .Values.llm.baseUrl }}
+{{- end }}
+{{- if .Values.llm.apiKey }}
+LLM_API_KEY: {{ .Values.llm.apiKey }}
+{{- end }}
+{{- if .Values.llm.model }}
+LLM_MODEL: {{ .Values.llm.model }}
+{{- end }}
+{{- end }}
 {{- end -}}

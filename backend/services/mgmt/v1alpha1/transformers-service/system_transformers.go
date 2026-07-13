@@ -978,6 +978,17 @@ func init() {
 	}
 }
 
+// GetSystemTransformerCatalog returns the system transformer catalog so that
+// other services (e.g. the job mapping recommendations engine) can reuse the
+// single source of truth for transformer data type compatibility instead of
+// duplicating the list.
+func GetSystemTransformerCatalog(includeEeTransformers bool) []*mgmtv1alpha1.SystemTransformer {
+	if includeEeTransformers {
+		return allSystemTransformers
+	}
+	return baseSystemTransformers
+}
+
 func (s *Service) GetSystemTransformers(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetSystemTransformersRequest],

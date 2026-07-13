@@ -318,18 +318,20 @@ func (s *Service) ValidateUserJavascriptCode(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.ValidateUserJavascriptCodeRequest],
 ) (*connect.Response[mgmtv1alpha1.ValidateUserJavascriptCodeResponse], error) {
-	js := constructJavascriptCode(req.Msg.GetCode())
-
-	_, err := goja.Compile("test", js, true)
-	if err != nil {
-		return connect.NewResponse(&mgmtv1alpha1.ValidateUserJavascriptCodeResponse{
-			Valid: false,
-		}), nil
-	}
-
 	return connect.NewResponse(&mgmtv1alpha1.ValidateUserJavascriptCodeResponse{
-		Valid: true,
+		Valid: IsUserJavascriptCodeValid(req.Msg.GetCode()),
 	}), nil
+}
+
+// IsUserJavascriptCodeValid compiles a user-defined transformer's javascript
+// body the same way ValidateUserJavascriptCode does, without going over the
+// network. It is exported so that other server-side code paths (e.g. the AI
+// transformer proposal generator in internal/ee/recommendations) can validate
+// a draft before ever surfacing it to a caller.
+func IsUserJavascriptCodeValid(jsCode string) bool {
+	js := constructJavascriptCode(jsCode)
+	_, err := goja.Compile("test", js, true)
+	return err == nil
 }
 
 func constructJavascriptCode(jsCode string) string {

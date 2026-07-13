@@ -75,6 +75,8 @@ import {
   JobSourceSqlSubetSchemas,
   JobSourceSqlSubetSchemasSchema,
   JobTypeConfig_JobTypePiiDetect,
+  JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode,
+  JobTypeConfig_JobTypePiiDetect_DataSamplingSchema,
   JobTypeConfig_JobTypePiiDetect_IncludeAllSchema,
   JobTypeConfig_JobTypePiiDetect_TablePatternsSchema,
   JobTypeConfig_JobTypePiiDetect_TableScanFilter,
@@ -132,6 +134,7 @@ import {
   CreatePiiDetectionJobFormValues,
   CreateSingleTableAiGenerateJobFormValues,
   CreateSingleTableGenerateJobFormValues,
+  DataSamplingModeFormValue,
   DefineFormValues,
   PiiDetectionConnectFormValues,
   PiiDetectionSchemaFormValues,
@@ -434,11 +437,30 @@ export function toPiiDetectJobTypeConfig(
   values: PiiDetectionSchemaFormValues
 ): JobTypeConfig_JobTypePiiDetect {
   return create(JobTypeConfig_JobTypePiiDetectSchema, {
-    dataSampling: values.dataSampling,
+    dataSampling: create(JobTypeConfig_JobTypePiiDetect_DataSamplingSchema, {
+      // legacy boolean kept in sync so older readers of is_enabled stay coherent;
+      // is_enabled=true means raw sampling, so only 'raw' maps to true — 'profile'
+      // must degrade to no sampling for legacy readers, never to raw
+      isEnabled: values.dataSampling.mode === 'raw',
+      mode: toSamplingModeEnum(values.dataSampling.mode),
+    }),
     userPrompt: values.userPrompt,
     tableScanFilter: toPiiDetectTableScanFilter(values.tableScanFilter),
     incremental: values.incremental,
   });
+}
+
+function toSamplingModeEnum(
+  mode: DataSamplingModeFormValue
+): JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode {
+  switch (mode) {
+    case 'none':
+      return JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.NONE;
+    case 'profile':
+      return JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.PROFILE;
+    case 'raw':
+      return JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.RAW;
+  }
 }
 
 function toPiiDetectTableScanFilter(

@@ -75,8 +75,10 @@ import (
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
+	ee_recommendations "github.com/fishtre-compagnie/husonym/internal/ee/recommendations"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+	"github.com/fishtre-compagnie/husonym/internal/llm"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
@@ -673,9 +675,22 @@ func serve(ctx context.Context) error {
 	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
-		RunLogConfig:   runLogConfig,
+		IsAuthEnabled:                      isAuthEnabled,
+		IsHusonymCloud:                     ncloudlicense.IsValid(),
+		IsJobMappingRecommendationsEnabled: cascadelicense.IsValid(),
+		RunLogConfig:                       runLogConfig,
+	}
+	jobServiceOpts := []v1alpha1_jobservice.Option{}
+	if cascadelicense.IsValid() {
+		codegenClient, codegenModel, ok := getCodegenClient()
+		if ok {
+			slogger.Debug("codegen LLM client is enabled, transformer proposal generation is available")
+			jobServiceOpts = append(jobServiceOpts, v1alpha1_jobservice.WithCodegenClient(codegenClient, codegenModel))
+		} else {
+			slogger.Debug(
+				"no codegen LLM configured (LLM_BASE_URL, LLM_API_KEY/OPENAI_API_KEY are unset), transformer proposal generation disabled",
+			)
+		}
 	}
 	jobService := v1alpha1_jobservice.New(
 		jobServiceConfig,
@@ -686,6 +701,7 @@ func serve(ctx context.Context) error {
 		jobhookService,
 		userdataclient,
 		connectiondatabuilder,
+		jobServiceOpts...,
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewJobServiceHandler(
@@ -1317,6 +1333,28 @@ func getPresidioClient(endpoint string) (*presidioapi.ClientWithResponses, bool,
 	}
 
 	return client, true, nil
+}
+
+// getCodegenClient builds an OpenAI-compatible client from LLM_BASE_URL and
+// LLM_API_KEY (falling back to OPENAI_API_KEY). It is used to draft AI
+// transformer proposals (plans/assistant-ia-config-anonymisation.md §4.4).
+// Returns (nil, "", false) when nothing is configured, in which case
+// proposal generation is disabled but recommendations still work.
+func getCodegenClient() (client ee_recommendations.OpenAiCompletionsClient, model string, ok bool) {
+	openaiClient, ok := llm.NewOpenAIClientFromEnv()
+	if !ok {
+		return nil, "", false
+	}
+
+	model = viper.GetString("LLM_CODEGEN_MODEL")
+	if model == "" {
+		model = viper.GetString("LLM_MODEL")
+	}
+	if model == "" {
+		model = ee_recommendations.DefaultProposalModel
+	}
+
+	return &openaiClient.Chat.Completions, model, true
 }
 
 func getPresidioAnalyzeEndpoint() string {

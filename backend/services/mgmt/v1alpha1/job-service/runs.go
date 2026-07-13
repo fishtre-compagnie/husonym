@@ -1189,6 +1189,33 @@ func (s *Service) GetPiiDetectionReport(
 		return nil, err
 	}
 
+	reports, err := s.getTablePiiReportsForRun(ctx, jobRun, accountUuid, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	reportDtos := getTableReportDtos(reports)
+
+	logger.Debug("got report dtos", "count", len(reportDtos))
+
+	return connect.NewResponse(&mgmtv1alpha1.GetPiiDetectionReportResponse{
+		Report: &mgmtv1alpha1.PiiDetectionReport{
+			Tables: reportDtos,
+		},
+	}), nil
+}
+
+// getTablePiiReportsForRun loads the per-table pii detection reports produced
+// by a given piidetect job run. It first attempts to resolve the table
+// reports through the job-level report run context, then falls back to
+// querying the table-level reports directly (which covers runs that are
+// still in progress and haven't published a job-level report yet).
+func (s *Service) getTablePiiReportsForRun(
+	ctx context.Context,
+	jobRun *mgmtv1alpha1.JobRun,
+	accountUuid pgtype.UUID,
+	logger *slog.Logger,
+) ([]*piidetect_table_activities.TableReport, error) {
 	tableRunContexts, err := s.getTableRunContextsFromJobReport(ctx, jobRun, accountUuid)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get table run contexts from job report: %w", err)
@@ -1226,16 +1253,7 @@ func (s *Service) GetPiiDetectionReport(
 	if err != nil {
 		return nil, fmt.Errorf("unable to get reports from table contexts: %w", err)
 	}
-
-	reportDtos := getTableReportDtos(reports)
-
-	logger.Debug("got report dtos", "count", len(reportDtos))
-
-	return connect.NewResponse(&mgmtv1alpha1.GetPiiDetectionReportResponse{
-		Report: &mgmtv1alpha1.PiiDetectionReport{
-			Tables: reportDtos,
-		},
-	}), nil
+	return reports, nil
 }
 
 func (s *Service) getTableRunContextsFromJobReport(

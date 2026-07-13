@@ -21,6 +21,7 @@ export interface SystemAppConfig {
   publicHusonymApiBaseUrl: string;
   isRbacEnabled: boolean;
   isPiiDetectionJobEnabled: boolean;
+  isJobMappingRecommendationsEnabled: boolean;
 }
 
 interface PosthogConfig {

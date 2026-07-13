@@ -3,6 +3,7 @@ import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/Conn
 import SourceOptionsForm from '@/components/jobs/Form/SourceOptionsForm';
 import NosqlTable from '@/components/jobs/NosqlTable/NosqlTable';
 import { OnTableMappingUpdateRequest } from '@/components/jobs/NosqlTable/TableMappings/Columns';
+import RecommendationsReviewSheet from '@/components/jobs/SchemaTable/RecommendationsReviewSheet';
 import {
   SchemaTable,
   getAllFormErrors,
@@ -15,6 +16,14 @@ import {
 } from '@/components/jobs/SchemaTable/util';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -30,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import { splitConnections } from '@/libs/utils';
 import { getErrorMessage, getTransformerFromField } from '@/util/util';
@@ -91,11 +101,13 @@ import {
   MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
   PostgresSourceConnectionOptions,
   PostgresSourceConnectionOptionsSchema,
+  TransformerRecommendation,
   ValidateJobMappingsResponse,
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
 } from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -125,6 +137,7 @@ interface Props {
 
 export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   const { account } = useAccount();
+  const { data: systemAppConfig } = useGetSystemAppConfig();
   const {
     data,
     refetch: mutate,
@@ -608,6 +621,62 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     },
   });
 
+  const {
+    mutateAsync: getJobMappingRecommendationsAsync,
+    isPending: isGetRecommendationsPending,
+  } = useMutation(JobService.method.getJobMappingRecommendations);
+  const [recommendations, setRecommendations] = useState<
+    TransformerRecommendation[]
+  >([]);
+  const [recommendationsFetchCount, setRecommendationsFetchCount] =
+    useState(0);
+  const [isRecommendationsSheetOpen, setIsRecommendationsSheetOpen] =
+    useState(false);
+  const [isNoReportDialogOpen, setIsNoReportDialogOpen] = useState(false);
+
+  async function onAiSuggestionsClick(): Promise<void> {
+    if (!account?.id || !sourceConnectionId) {
+      return;
+    }
+    try {
+      const resp = await getJobMappingRecommendationsAsync({
+        accountId: account.id,
+        connectionId: sourceConnectionId,
+        jobId: data?.job?.id,
+      });
+      setRecommendationsFetchCount((c) => c + 1);
+      if (resp.recommendations.length === 0) {
+        setRecommendations([]);
+        setIsNoReportDialogOpen(true);
+        return;
+      }
+      setRecommendations(resp.recommendations);
+      setIsRecommendationsSheetOpen(true);
+    } catch (err) {
+      toast.error('Unable to fetch AI suggestions', {
+        description: getErrorMessage(err),
+      });
+    }
+  }
+
+  function onApplyRecommendations(
+    updates: { index: number; transformer: JobMappingTransformerForm }[]
+  ): void {
+    if (updates.length === 0) {
+      return;
+    }
+    updates.forEach(({ index, transformer }) => {
+      onTransformerUpdate(index, transformer);
+    });
+    setTimeout(() => {
+      form.trigger('mappings');
+      validateMappings(form.getValues('mappings'));
+    }, 0);
+    toast.success(
+      `Applied ${updates.length} AI-suggested transformer${updates.length > 1 ? 's' : ''}`
+    );
+  }
+
   const missingSourceColumns = useMemo(() => {
     if (!validateMappingsResponse?.columnWarnings) {
       return [];
@@ -966,6 +1035,13 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               onTransformerBulkUpdate={onTransformerBulkUpdate}
               hasMissingSourceColumnMappings={missingSourceColumns.length > 0}
               onRemoveMissingSourceColumnMappings={onRemoveMissingSourceColumns}
+              onAiSuggestionsClick={
+                systemAppConfig?.isJobMappingRecommendationsEnabled
+                  ? onAiSuggestionsClick
+                  : undefined
+              }
+              isAiSuggestionsLoading={isGetRecommendationsPending}
+              recommendations={recommendations}
             />
           )}
           <div className="flex flex-row items-center justify-end w-full mt-4">
@@ -973,6 +1049,46 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
           </div>
         </div>
       </form>
+      <RecommendationsReviewSheet
+        key={recommendationsFetchCount}
+        open={isRecommendationsSheetOpen}
+        onOpenChange={setIsRecommendationsSheetOpen}
+        recommendations={recommendations}
+        mappings={formMappings}
+        getTransformerFromFieldValue={(fvalue) =>
+          getTransformerFromField(handler, fvalue)
+        }
+        onApply={onApplyRecommendations}
+      />
+      <Dialog
+        open={isNoReportDialogOpen}
+        onOpenChange={setIsNoReportDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No PII detection report found</DialogTitle>
+            <DialogDescription>
+              AI suggestions are built from a PII detection report for this
+              connection, and none was found. Run a PII detection job against
+              this connection first, then come back here to get suggestions.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsNoReportDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button type="button" asChild>
+              <Link href={`/${account?.name}/new/job`}>
+                Create a PII Detection Job
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }

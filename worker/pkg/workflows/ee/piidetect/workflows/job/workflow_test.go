@@ -30,7 +30,7 @@ func Test_JobPiiDetect(t *testing.T) {
 		env.RegisterWorkflow(wf.JobPiiDetect)
 
 		// Register child workflow
-		tableWf := piidetect_table_workflow.New()
+		tableWf := piidetect_table_workflow.New(nil)
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
 		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -129,7 +129,7 @@ func Test_JobPiiDetect(t *testing.T) {
 
 		wf := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 		env.RegisterWorkflow(wf.JobPiiDetect)
-		tableWf := piidetect_table_workflow.New()
+		tableWf := piidetect_table_workflow.New(nil)
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
 		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -240,7 +240,7 @@ func Test_JobPiiDetect(t *testing.T) {
 
 		wf := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 		env.RegisterWorkflow(wf.JobPiiDetect)
-		tableWf := piidetect_table_workflow.New()
+		tableWf := piidetect_table_workflow.New(nil)
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
 		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -324,7 +324,7 @@ func Test_JobPiiDetect(t *testing.T) {
 
 		wf := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 		env.RegisterWorkflow(wf.JobPiiDetect)
-		tableWf := piidetect_table_workflow.New()
+		tableWf := piidetect_table_workflow.New(nil)
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
 		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -446,7 +446,7 @@ func Test_JobPiiDetect(t *testing.T) {
 
 		wf := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 		env.RegisterWorkflow(wf.JobPiiDetect)
-		tableWf := piidetect_table_workflow.New()
+		tableWf := piidetect_table_workflow.New(nil)
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
 		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).

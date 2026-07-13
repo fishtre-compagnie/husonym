@@ -18,6 +18,7 @@ import AttributesCell from './AttributesCell';
 import ConstraintsCell from './ConstraintsCell';
 import DataTypeCell from './DataTypeCell';
 import IndeterminateCheckbox from './IndeterminateCheckbox';
+import PiiRecommendationBadge from './PiiRecommendationBadge';
 
 export interface JobMappingRow {
   schema: string;
@@ -28,6 +29,9 @@ export interface JobMappingRow {
   isNullable: boolean;
   attributes: RowAttribute;
   transformer: JobMappingTransformerForm;
+  // Present when an AI recommendation flagged this column as PII while it is still
+  // mapped to the Passthrough transformer.
+  piiWarning?: { category: string };
 }
 
 interface RowAttribute {
@@ -193,8 +197,9 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
           table.options.meta?.jmTable?.getTransformerFromField(row.index) ??
           create(SystemTransformerSchema);
         const transformerForm = row.original.transformer;
+        const piiWarning = row.original.piiWarning;
         return (
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row items-center gap-2">
             <div>
               <TransformerSelect
                 getTransformers={() =>
@@ -230,6 +235,9 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
                 disabled={isInvalidTransformer(transformer)}
               />
             </div>
+            {piiWarning && (
+              <PiiRecommendationBadge category={piiWarning.category} />
+            )}
           </div>
         );
       },

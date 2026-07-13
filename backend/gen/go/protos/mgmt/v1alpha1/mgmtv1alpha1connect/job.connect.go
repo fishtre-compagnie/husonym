@@ -143,6 +143,9 @@ const (
 	// JobServiceGetPiiDetectionReportProcedure is the fully-qualified name of the JobService's
 	// GetPiiDetectionReport RPC.
 	JobServiceGetPiiDetectionReportProcedure = "/mgmt.v1alpha1.JobService/GetPiiDetectionReport"
+	// JobServiceGetJobMappingRecommendationsProcedure is the fully-qualified name of the JobService's
+	// GetJobMappingRecommendations RPC.
+	JobServiceGetJobMappingRecommendationsProcedure = "/mgmt.v1alpha1.JobService/GetJobMappingRecommendations"
 )
 
 // JobServiceClient is a client for the mgmt.v1alpha1.JobService service.
@@ -229,6 +232,8 @@ type JobServiceClient interface {
 	// Returns job hooks that are enabled by a specific timing. They will be sorted by priority, created_at, and id ascending.
 	GetActiveJobHooksByTiming(context.Context, *connect.Request[v1alpha1.GetActiveJobHooksByTimingRequest]) (*connect.Response[v1alpha1.GetActiveJobHooksByTimingResponse], error)
 	GetPiiDetectionReport(context.Context, *connect.Request[v1alpha1.GetPiiDetectionReportRequest]) (*connect.Response[v1alpha1.GetPiiDetectionReportResponse], error)
+	// Returns transformer recommendations for the columns of a connection, derived from the most recent pii detection report
+	GetJobMappingRecommendations(context.Context, *connect.Request[v1alpha1.GetJobMappingRecommendationsRequest]) (*connect.Response[v1alpha1.GetJobMappingRecommendationsResponse], error)
 }
 
 // NewJobServiceClient constructs a client for the mgmt.v1alpha1.JobService service. By default, it
@@ -502,6 +507,13 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getJobMappingRecommendations: connect.NewClient[v1alpha1.GetJobMappingRecommendationsRequest, v1alpha1.GetJobMappingRecommendationsResponse](
+			httpClient,
+			baseURL+JobServiceGetJobMappingRecommendationsProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("GetJobMappingRecommendations")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -548,6 +560,7 @@ type jobServiceClient struct {
 	setJobHookEnabled                *connect.Client[v1alpha1.SetJobHookEnabledRequest, v1alpha1.SetJobHookEnabledResponse]
 	getActiveJobHooksByTiming        *connect.Client[v1alpha1.GetActiveJobHooksByTimingRequest, v1alpha1.GetActiveJobHooksByTimingResponse]
 	getPiiDetectionReport            *connect.Client[v1alpha1.GetPiiDetectionReportRequest, v1alpha1.GetPiiDetectionReportResponse]
+	getJobMappingRecommendations     *connect.Client[v1alpha1.GetJobMappingRecommendationsRequest, v1alpha1.GetJobMappingRecommendationsResponse]
 }
 
 // GetJobs calls mgmt.v1alpha1.JobService.GetJobs.
@@ -755,6 +768,11 @@ func (c *jobServiceClient) GetPiiDetectionReport(ctx context.Context, req *conne
 	return c.getPiiDetectionReport.CallUnary(ctx, req)
 }
 
+// GetJobMappingRecommendations calls mgmt.v1alpha1.JobService.GetJobMappingRecommendations.
+func (c *jobServiceClient) GetJobMappingRecommendations(ctx context.Context, req *connect.Request[v1alpha1.GetJobMappingRecommendationsRequest]) (*connect.Response[v1alpha1.GetJobMappingRecommendationsResponse], error) {
+	return c.getJobMappingRecommendations.CallUnary(ctx, req)
+}
+
 // JobServiceHandler is an implementation of the mgmt.v1alpha1.JobService service.
 type JobServiceHandler interface {
 	// Returns a list of jobs by either account or job
@@ -839,6 +857,8 @@ type JobServiceHandler interface {
 	// Returns job hooks that are enabled by a specific timing. They will be sorted by priority, created_at, and id ascending.
 	GetActiveJobHooksByTiming(context.Context, *connect.Request[v1alpha1.GetActiveJobHooksByTimingRequest]) (*connect.Response[v1alpha1.GetActiveJobHooksByTimingResponse], error)
 	GetPiiDetectionReport(context.Context, *connect.Request[v1alpha1.GetPiiDetectionReportRequest]) (*connect.Response[v1alpha1.GetPiiDetectionReportResponse], error)
+	// Returns transformer recommendations for the columns of a connection, derived from the most recent pii detection report
+	GetJobMappingRecommendations(context.Context, *connect.Request[v1alpha1.GetJobMappingRecommendationsRequest]) (*connect.Response[v1alpha1.GetJobMappingRecommendationsResponse], error)
 }
 
 // NewJobServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1108,6 +1128,13 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServiceGetJobMappingRecommendationsHandler := connect.NewUnaryHandler(
+		JobServiceGetJobMappingRecommendationsProcedure,
+		svc.GetJobMappingRecommendations,
+		connect.WithSchema(jobServiceMethods.ByName("GetJobMappingRecommendations")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.JobService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case JobServiceGetJobsProcedure:
@@ -1192,6 +1219,8 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceGetActiveJobHooksByTimingHandler.ServeHTTP(w, r)
 		case JobServiceGetPiiDetectionReportProcedure:
 			jobServiceGetPiiDetectionReportHandler.ServeHTTP(w, r)
+		case JobServiceGetJobMappingRecommendationsProcedure:
+			jobServiceGetJobMappingRecommendationsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1363,4 +1392,8 @@ func (UnimplementedJobServiceHandler) GetActiveJobHooksByTiming(context.Context,
 
 func (UnimplementedJobServiceHandler) GetPiiDetectionReport(context.Context, *connect.Request[v1alpha1.GetPiiDetectionReportRequest]) (*connect.Response[v1alpha1.GetPiiDetectionReportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetPiiDetectionReport is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) GetJobMappingRecommendations(context.Context, *connect.Request[v1alpha1.GetJobMappingRecommendationsRequest]) (*connect.Response[v1alpha1.GetJobMappingRecommendationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetJobMappingRecommendations is not implemented"))
 }

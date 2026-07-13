@@ -1,0 +1,145 @@
+{
+  "language": "fr",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "clients",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "uuid",
+          "expected_category": "",
+          "samples": ["7b8e9c1a-0f2d-4e3b-9a5c-1d2e3f4a5b6c", "2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f"]
+        },
+        {
+          "name": "prenom",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Jean", "Marie", "Camille", "Lucas", "Chloé"]
+        },
+        {
+          "name": "nom",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Dupont", "Martin", "Bernard", "Petit", "Durand"]
+        },
+        {
+          "name": "courriel",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["jean.dupont@example.fr", "marie.martin@example.fr", "camille.b@example.fr"]
+        },
+        {
+          "name": "telephone",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+33 6 12 34 56 78", "+33 7 98 76 54 32", "01 23 45 67 89"]
+        },
+        {
+          "name": "date_naissance",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1984-03-17", "1990-11-02", "1975-06-30"]
+        },
+        {
+          "name": "adresse",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["12 rue de la Paix", "3 avenue des Champs", "45 boulevard Victor Hugo"]
+        },
+        {
+          "name": "cp",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "note": "local abbreviation for code postal",
+          "samples": ["75116", "13008", "69003"]
+        },
+        {
+          "name": "ville",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["Paris", "Marseille", "Lyon"]
+        },
+        {
+          "name": "nir",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["184037511600123", "273051234567890", "195082607800456"]
+        },
+        {
+          "name": "iban",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["FR7630006000011234567890189", "FR1420041010050500013M02606"]
+        },
+        {
+          "name": "mdp",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$abcdefghijklmnopqrstuv", "$2b$12$zyxwvutsrqponmlkjihgfe"]
+        },
+        {
+          "name": "contact_id",
+          "data_type": "uuid",
+          "expected_category": "",
+          "note": "false friend: technical key, not contact data",
+          "samples": ["9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d", "1f2e3d4c-5b6a-7f8e-9d0c-1b2a3f4e5d6c"]
+        },
+        {
+          "name": "commentaire",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Livraison au dépôt", "Rappeler avant midi", "Client fidèle depuis 2019"]
+        }
+      ]
+    },
+    {
+      "schema": "public",
+      "table": "tickets_support",
+      "columns": [
+        {
+          "name": "col_17",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": false,
+          "note": "opaque name: only the values reveal emails",
+          "samples": ["paul.leroy@example.fr", "s.moreau@example.fr", "a.girard@example.fr"]
+        },
+        {
+          "name": "data",
+          "data_type": "jsonb",
+          "expected_category": "",
+          "note": "hard case: generic name, non-personal content",
+          "samples": ["{\"theme\":\"sombre\"}", "{\"langue\":\"fr\"}", "{\"notifications\":false}"]
+        },
+        {
+          "name": "reference",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "structured business reference, pseudonymous",
+          "samples": ["CMD-2024-00123", "CMD-2024-00987", "CMD-2025-00042"]
+        },
+        {
+          "name": "identifiant_personne",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": false,
+          "note": "ambiguous name: only the values (French NIR) reveal the nature",
+          "samples": ["184037511600123", "273051234567890", "255014201900321"]
+        }
+      ]
+    }
+  ]
+}

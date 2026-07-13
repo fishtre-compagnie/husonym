@@ -32,10 +32,12 @@ type OpenAiCompletionsClient interface {
 }
 
 type Activities struct {
-	connclient            mgmtv1alpha1connect.ConnectionServiceClient
+	connclient mgmtv1alpha1connect.ConnectionServiceClient
+	// openaiclient may be nil when no LLM is configured; the LLM stage is then skipped.
 	openaiclient          OpenAiCompletionsClient
 	connectiondatabuilder connectiondata.ConnectionDataBuilder
 	jobclient             mgmtv1alpha1connect.JobServiceClient
+	llmModel              string
 }
 
 func New(
@@ -43,12 +45,17 @@ func New(
 	openaiclient OpenAiCompletionsClient,
 	connectiondatabuilder connectiondata.ConnectionDataBuilder,
 	jobclient mgmtv1alpha1connect.JobServiceClient,
+	llmModel string,
 ) *Activities {
+	if llmModel == "" {
+		llmModel = defaultLLMModel
+	}
 	return &Activities{
 		connclient:            connclient,
 		openaiclient:          openaiclient,
 		connectiondatabuilder: connectiondatabuilder,
 		jobclient:             jobclient,
+		llmModel:              llmModel,
 	}
 }
 
@@ -254,10 +261,12 @@ func (a *Activities) DetectPiiRegex(
 }
 
 type DetectPiiLLMRequest struct {
-	TableSchema  string
-	TableName    string
-	ColumnData   []*ColumnData
+	TableSchema string
+	TableName   string
+	ColumnData  []*ColumnData
+	// ShouldSample is the legacy sampling toggle; used only when SamplingMode is unspecified.
 	ShouldSample bool
+	SamplingMode SamplingMode
 	ConnectionId string
 	UserPrompt   string
 }
@@ -275,10 +284,27 @@ type RegexPiiDetectReport struct {
 	Category PiiCategory `json:"category"`
 }
 
-type CombinedPiiDetectReport struct {
-	Regex *RegexPiiDetectReport `json:"regex"`
-	LLM   *LLMPiiDetectReport   `json:"llm"`
+type DictionaryPiiDetectReport struct {
+	Category PiiCategory `json:"category"`
+	// Token is the normalized column-name token that matched the dictionary.
+	Token      string  `json:"token"`
+	Confidence float32 `json:"confidence"`
 }
+
+type CombinedPiiDetectReport struct {
+	Regex      *RegexPiiDetectReport      `json:"regex"`
+	Dictionary *DictionaryPiiDetectReport `json:"dictionary,omitempty"`
+	LLM        *LLMPiiDetectReport        `json:"llm"`
+}
+
+// Stage-1 (metadata-based) detection confidences, compared against the
+// configured confidence threshold to decide which columns reach the LLM stage.
+const (
+	// RegexMatchConfidence is the confidence assigned to a column-name regex match.
+	RegexMatchConfidence = float32(1.0)
+	// DictionaryMatchConfidence is the confidence assigned to a dictionary token match.
+	DictionaryMatchConfidence = float32(0.9)
+)
 
 type sampleDataStream struct {
 	records Records
@@ -407,34 +433,63 @@ func (a *Activities) getSampleData(
 	return collector.GetRecords(), nil
 }
 
-const piiDetectionPrompt = `You are a data classification expert tasked with identifying if database fields contain Personally Identifiable Information (PII).
-Classify each field based on its name into one of these categories: {{.Categories}}
+const piiDetectionPrompt = `Classify database columns that contain Personally Identifiable Information (PII).
+Categories: {{.Categories}}
+Return one entry per PII column; omit columns that contain no PII. Column names may be in any language.
 
-Provide your response as a JSON object that has the key called "output", where the value is an array of objects, each with the following keys:
-- "field_name": The name of the field.
-- "category": The most likely category.
-- "confidence": A number between 0 and 1 indicating your confidence in this classification (1 being the most confident).
+Examples (column name -> category):
+- email, courriel, e_mail -> contact
+- geburtsdatum, date_naissance, fecha_nacimiento -> personal
+- codice_fiscale, pesel, num_secu, nino -> national_id
+- codigo_postal, plz, anschrift, indirizzo -> location
+- iban, kontonummer, numero_carte -> financial
+- mot_de_passe, wachtwoord, contraseña -> authentication
 
-Here is the table name: {{.TableName}}
-
-{{if .UserPrompt}}{{.UserPrompt}}{{end}}
-
-Here are the fields and (optionally) values: {{.RecordData}}`
+Table name: {{.TableName}}
+{{if .UserPrompt}}{{.UserPrompt}}
+{{end}}{{.DataSection}}`
 
 var piiDetectionPromptTmpl = template.Must(
 	template.New("pii_detection_prompt").Parse(piiDetectionPrompt),
 )
 
 const (
-	systemMessage = "You are a helpful assistant that classifies database fields for PII."
-	model         = openai.ChatModelGPT4oMini
-	maxTokenLimit = 10_000 // dependent on model used
+	systemMessage   = "You are a helpful assistant that classifies database fields for PII."
+	defaultLLMModel = openai.ChatModelGPT4oMini
+	maxTokenLimit   = 10_000 // dependent on model used
 )
 
-func countPromptTokens(prompt string) (int, error) {
+// piiDetectionResponseSchema constrains the LLM output to the expected JSON structure.
+var piiDetectionResponseSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"output": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"field_name": map[string]any{"type": "string"},
+					"category":   map[string]any{"type": "string", "enum": GetAllPiiCategoriesAsStrings()},
+					"confidence": map[string]any{"type": "number"},
+				},
+				"required":             []string{"field_name", "category", "confidence"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"output"},
+	"additionalProperties": false,
+}
+
+func countPromptTokens(prompt, model string) (int, error) {
 	codec, err := tokenizer.ForModel(tokenizer.Model(model))
 	if err != nil {
-		return -1, err
+		// Unknown model (e.g. a local model behind an OpenAI-compatible API):
+		// fall back to a common encoding for budgeting purposes.
+		codec, err = tokenizer.Get(tokenizer.Cl100kBase)
+		if err != nil {
+			return -1, err
+		}
 	}
 	tokens, err := codec.Count(prompt)
 	if err != nil {
@@ -443,7 +498,33 @@ func countPromptTokens(prompt string) (int, error) {
 	return tokens, nil
 }
 
-func getPrompt(records Records, tableName, userPrompt string, maxRecords uint) (string, error) {
+func buildPrompt(tableName, userPrompt, dataSection string) (string, error) {
+	var promptBuf bytes.Buffer
+	err := piiDetectionPromptTmpl.Execute(&promptBuf, map[string]any{
+		"Categories":  GetAllPiiCategoriesAsStrings(),
+		"TableName":   tableName,
+		"DataSection": dataSection,
+		"UserPrompt":  userPrompt,
+	})
+	if err != nil {
+		return "", err
+	}
+	return promptBuf.String(), nil
+}
+
+func isPromptWithinTokenBudget(prompt, model string) (bool, error) {
+	totalTokens := 0
+	for _, text := range []string{systemMessage, prompt} {
+		tokens, err := countPromptTokens(text, model)
+		if err != nil {
+			return false, fmt.Errorf("failed to count tokens: %w", err)
+		}
+		totalTokens += tokens
+	}
+	return totalTokens <= maxTokenLimit, nil
+}
+
+func getPrompt(records Records, tableName, userPrompt, model string, maxRecords uint) (string, error) {
 	// Try with initial maxRecords and keep reducing until we find a working size
 	for currentMaxRecords := maxRecords; ; currentMaxRecords-- {
 		recordPromptStr, err := records.ToPromptString(currentMaxRecords)
@@ -451,31 +532,20 @@ func getPrompt(records Records, tableName, userPrompt string, maxRecords uint) (
 			return "", err
 		}
 
-		var promptBuf bytes.Buffer
-		err = piiDetectionPromptTmpl.Execute(&promptBuf, map[string]any{
-			"Categories": GetAllPiiCategoriesAsStrings(),
-			"TableName":  tableName,
-			"RecordData": recordPromptStr,
-			"UserPrompt": userPrompt,
-		})
+		prompt, err := buildPrompt(
+			tableName,
+			userPrompt,
+			"Columns and (optionally) sample values: "+recordPromptStr,
+		)
 		if err != nil {
 			return "", err
 		}
 
-		prompt := promptBuf.String()
-
-		// Count tokens for both system message and prompt
-		totalTokens := 0
-		for _, text := range []string{systemMessage, prompt} {
-			tokens, err := countPromptTokens(text)
-			if err != nil {
-				return "", fmt.Errorf("failed to count tokens: %w", err)
-			}
-			totalTokens += tokens
+		withinBudget, err := isPromptWithinTokenBudget(prompt, model)
+		if err != nil {
+			return "", err
 		}
-
-		// If we're within token limit, return this prompt
-		if totalTokens <= maxTokenLimit {
+		if withinBudget {
 			return prompt, nil
 		}
 
@@ -489,6 +559,23 @@ func getPrompt(records Records, tableName, userPrompt string, maxRecords uint) (
 	}
 }
 
+func getProfilePrompt(profiles []*ColumnProfile, tableName, userPrompt, model string) (string, error) {
+	dataSection := "Column profiles (locally computed from sampled rows; shapes use 9=digit, A=uppercase, a=lowercase):\n" +
+		FormatColumnProfiles(profiles)
+	prompt, err := buildPrompt(tableName, userPrompt, dataSection)
+	if err != nil {
+		return "", err
+	}
+	withinBudget, err := isPromptWithinTokenBudget(prompt, model)
+	if err != nil {
+		return "", err
+	}
+	if !withinBudget {
+		return "", fmt.Errorf("profile prompt exceeds token limit (%d)", maxTokenLimit)
+	}
+	return prompt, nil
+}
+
 func (a *Activities) DetectPiiLLM(
 	ctx context.Context,
 	req *DetectPiiLLMRequest,
@@ -496,30 +583,60 @@ func (a *Activities) DetectPiiLLM(
 	logger := activity.GetLogger(ctx)
 	slogger := temporallogger.NewSlogger(logger)
 
-	records, err := a.getDataRecordsForLLM(ctx, req, slogger)
-	if err != nil {
-		return nil, err
+	if a.openaiclient == nil {
+		logger.Info("no LLM client configured, skipping LLM PII detection")
+		return &DetectPiiLLMResponse{PiiColumns: map[string]LLMPiiDetectReport{}}, nil
 	}
 
-	userMessage, err := getPrompt(records, req.TableName, req.UserPrompt, maxDataSamples)
+	if len(req.ColumnData) == 0 {
+		return &DetectPiiLLMResponse{PiiColumns: map[string]LLMPiiDetectReport{}}, nil
+	}
+
+	userMessage, err := a.getLLMPrompt(ctx, req, slogger)
 	if err != nil {
 		return nil, err
 	}
 	logger.Debug("LLM PII detection prompt", "prompt", userMessage)
 
-	chatResp, err := a.openaiclient.New(ctx, openai.ChatCompletionNewParams{
-		Temperature: openai.Float(0.0),
-		Model:       model,
-		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
-			OfJSONObject: &openai.ResponseFormatJSONObjectParam{},
+	newParams := func(responseFormat openai.ChatCompletionNewParamsResponseFormatUnion) openai.ChatCompletionNewParams {
+		return openai.ChatCompletionNewParams{
+			Temperature:    openai.Float(0.0),
+			Model:          a.llmModel,
+			ResponseFormat: responseFormat,
+			Messages: []openai.ChatCompletionMessageParamUnion{
+				openai.SystemMessage(systemMessage),
+				openai.UserMessage(userMessage),
+			},
+		}
+	}
+
+	chatResp, err := a.openaiclient.New(ctx, newParams(openai.ChatCompletionNewParamsResponseFormatUnion{
+		OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+			JSONSchema: openai.ResponseFormatJSONSchemaJSONSchemaParam{
+				Name:        "pii_detection",
+				Description: openai.String("PII classification of database columns"),
+				Schema:      piiDetectionResponseSchema,
+				Strict:      openai.Bool(true),
+			},
 		},
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(systemMessage),
-			openai.UserMessage(userMessage),
-		},
-	})
+	}))
 	if err != nil {
-		return nil, err
+		// OpenAI-compatible endpoints (llama.cpp, older vLLM, Ollama…) may reject
+		// strict json_schema structured output; fall back to plain json_object.
+		logger.Warn(
+			"structured json_schema output rejected by LLM endpoint, retrying with json_object",
+			"error", err,
+		)
+		chatResp, err = a.openaiclient.New(ctx, newParams(openai.ChatCompletionNewParamsResponseFormatUnion{
+			OfJSONObject: &openai.ResponseFormatJSONObjectParam{},
+		}))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(chatResp.Choices) == 0 {
+		return nil, fmt.Errorf("LLM returned no completion choices")
 	}
 
 	var openAiResp openAiResponse
@@ -542,26 +659,73 @@ func (a *Activities) DetectPiiLLM(
 	}, nil
 }
 
-// Returns the data record for use with the LLM prompt.
-// If shouldSample is true and connectionId is not empty, it will sample data from the database.
-// Otherwise, it will return an empty record for each column.
-// In other words, at a minimum, it will return a record that contains just the column names, but no data.
-func (a *Activities) getDataRecordsForLLM(
+// getLLMPrompt builds the user prompt according to the effective sampling mode:
+// NONE sends column names only, PROFILE sends locally computed shape profiles,
+// RAW sends raw sampled values (explicit opt-in).
+func (a *Activities) getLLMPrompt(
 	ctx context.Context,
 	req *DetectPiiLLMRequest,
 	slogger *slog.Logger,
-) (Records, error) {
-	if req.ShouldSample && req.ConnectionId != "" {
-		return a.getSampleData(ctx, req, slogger)
+) (string, error) {
+	mode := resolveEffectiveSamplingMode(req.SamplingMode, req.ShouldSample)
+	if req.ConnectionId == "" {
+		mode = SamplingModeNone
 	}
 
-	records := Records{}
-	for _, col := range req.ColumnData {
-		records = append(records, map[string]any{
-			col.Column: map[string]any{},
-		})
+	switch mode {
+	case SamplingModeProfile:
+		records, err := a.getSampleData(ctx, req, slogger)
+		if err != nil {
+			return "", err
+		}
+		profiles := BuildColumnProfiles(records, columnNames(req.ColumnData))
+		return getProfilePrompt(profiles, req.TableName, req.UserPrompt, a.llmModel)
+	case SamplingModeRaw:
+		records, err := a.getSampleData(ctx, req, slogger)
+		if err != nil {
+			return "", err
+		}
+		records = filterRecordsToColumns(records, req.ColumnData)
+		return getPrompt(records, req.TableName, req.UserPrompt, a.llmModel, maxDataSamples)
+	default:
+		// Column names only, no data.
+		records := Records{}
+		for _, col := range req.ColumnData {
+			records = append(records, map[string]any{
+				col.Column: map[string]any{},
+			})
+		}
+		return getPrompt(records, req.TableName, req.UserPrompt, a.llmModel, maxDataSamples)
 	}
-	return records, nil
+}
+
+func columnNames(columnData []*ColumnData) []string {
+	names := make([]string, len(columnData))
+	for i, col := range columnData {
+		names[i] = col.Column
+	}
+	return names
+}
+
+// filterRecordsToColumns keeps only the requested columns in each sampled record,
+// so that columns already classified by stage 1 are never sent to the LLM.
+func filterRecordsToColumns(records Records, columnData []*ColumnData) Records {
+	requested := make(map[string]struct{}, len(columnData))
+	for _, col := range columnData {
+		requested[col.Column] = struct{}{}
+	}
+
+	filtered := make(Records, 0, len(records))
+	for _, record := range records {
+		filteredRecord := make(map[string]any)
+		for colName, value := range record {
+			if _, ok := requested[colName]; ok {
+				filteredRecord[colName] = value
+			}
+		}
+		filtered = append(filtered, filteredRecord)
+	}
+	return filtered
 }
 
 type SaveTablePiiDetectReportRequest struct {

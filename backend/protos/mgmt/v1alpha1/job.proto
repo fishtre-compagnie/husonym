@@ -614,8 +614,23 @@ message JobTypeConfig {
 
     // The configuration for data sampling
     message DataSampling {
-      // Whether to enable data sampling
+      // Whether to enable data sampling.
+      // Deprecated: use mode instead. If mode is unspecified, this field is used for backwards compatibility (true maps to SAMPLING_MODE_RAW).
       bool is_enabled = 1;
+      // The sampling mode to use. If unspecified, falls back to the legacy is_enabled boolean for backwards compatibility.
+      SamplingMode mode = 2;
+
+      // The mode used to determine what, if any, sampled data is sent to the LLM for PII detection
+      enum SamplingMode {
+        // Unspecified falls back to the legacy is_enabled boolean (true maps to SAMPLING_MODE_RAW).
+        SAMPLING_MODE_UNSPECIFIED = 0;
+        // No sampling is performed. Only column names and types are considered.
+        SAMPLING_MODE_NONE = 1;
+        // Rows are sampled locally and reduced to anonymous shape profiles (patterns, stats, local detector verdicts) before being sent.
+        SAMPLING_MODE_PROFILE = 2;
+        // Raw sampled values (capped) are sent as-is.
+        SAMPLING_MODE_RAW = 3;
+      }
     }
 
     // Filter configuration for table scanning
@@ -1724,6 +1739,71 @@ message PiiDetectionReport {
   }
 }
 
+message GetJobMappingRecommendationsRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the connection to derive recommendations for
+  string connection_id = 2 [(buf.validate.field).string.uuid = true];
+  // Optional job id. When provided, allows the server to take existing job mappings into account when building recommendations.
+  optional string job_id = 3;
+}
+message GetJobMappingRecommendationsResponse {
+  // The list of recommended transformer configurations, one per detected column
+  repeated TransformerRecommendation recommendations = 1;
+  // The identifier of the pii detection report run that was used to build these recommendations, if any
+  optional string report_run_id = 2;
+}
+
+// A recommended transformer configuration for a specific column, along with the evidence that led to the recommendation
+message TransformerRecommendation {
+  // The schema of the table
+  string schema = 1;
+  // The name of the table
+  string table = 2;
+  // The name of the column
+  string column = 3;
+  // The detected PII category for the column
+  string category = 4;
+  // The recommended transformer configuration for the column
+  TransformerConfig recommended_config = 5;
+  // The confidence of the recommendation from 0.0-1.0
+  float confidence = 6;
+  // The evidence that was used to build this recommendation
+  repeated DetectionEvidence evidence = 7;
+  // A proposal to create a new user-defined transformer, present only when no system transformer passes the validity filter with a semantic match
+  optional NewTransformerProposal proposal = 8;
+}
+
+// A single piece of evidence that contributed to a detection/recommendation
+message DetectionEvidence {
+  // The kind of detector that produced this evidence
+  DetectorKind kind = 1;
+  // A human readable detail describing the evidence (e.g. "regex `(^|_)email` matched on column name")
+  string detail = 2;
+  // The confidence of this piece of evidence from 0.0-1.0
+  float confidence = 3;
+
+  // The kind of detector that produced a piece of evidence
+  enum DetectorKind {
+    DETECTOR_KIND_UNSPECIFIED = 0;
+    DETECTOR_KIND_REGEX = 1;
+    DETECTOR_KIND_DICTIONARY = 2;
+    DETECTOR_KIND_LLM = 3;
+  }
+}
+
+// A proposal to create a new user-defined transformer for a column whose format does not match any system transformer
+message NewTransformerProposal {
+  // The proposed name for the new transformer
+  string name = 1;
+  // The proposed description for the new transformer
+  string description = 2;
+  // The proposed draft javascript code for the new transformer, intended for use with TransformJavascript
+  string javascript_code = 3;
+  // The rationale explaining why no system transformer was suitable and why this code was proposed
+  string rationale = 4;
+}
+
 // Service that handles jobs, runs, and hooks
 service JobService {
   // Returns a list of jobs by either account or job
@@ -1837,6 +1917,10 @@ service JobService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetPiiDetectionReport(GetPiiDetectionReportRequest) returns (GetPiiDetectionReportResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Returns transformer recommendations for the columns of a connection, derived from the most recent pii detection report
+  rpc GetJobMappingRecommendations(GetJobMappingRecommendationsRequest) returns (GetJobMappingRecommendationsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

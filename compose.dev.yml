@@ -9,6 +9,7 @@ include:
   # - path: ./compose/compose-db-mongo.yml
   # - path: ./compose/compose-db-dynamo.yml
   # - path: ./compose/compose-db-mssql.yml
+  # - path: ./compose/compose-llm.yml
 
 services:
   app:
@@ -29,6 +30,9 @@ services:
       - POSTHOG_KEY=phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip
 
       - AUTH_ENABLED=false
+      # Shows the AI Suggestions button; requires the api to run with a valid
+      # EE license and an LLM configured.
+      # - JOB_MAPPING_RECOMMENDATIONS_ENABLED=true
 
     env_file:
       - path: ./.env.app.local
@@ -130,6 +134,9 @@ services:
       - TABLESYNC_MAX_CONCURRENCY=3
       - LOG_LEVEL=DEBUG
       - DB_LOG_LEVEL=ERROR
+      # - LLM_BASE_URL=http://husonym-llm:8080/v1
+      # - LLM_API_KEY=unused-for-local-llm
+      # - LLM_MODEL=qwen
     env_file:
       - path: ./.env.worker.local
         required: false

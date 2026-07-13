@@ -8,6 +8,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
+	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
 	workflow_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared"
 	"github.com/spf13/viper"
 	"go.temporal.io/sdk/log"
@@ -166,7 +167,7 @@ func executeWorkflow(
 		tablesToScanResp,
 		req.JobId,
 		jobDetailsResp.SourceConnectionId,
-		piiDetectConfig.GetDataSampling().GetIsEnabled(),
+		piidetect_table_activities.ResolveSamplingMode(piiDetectConfig.GetDataSampling()),
 		piiDetectConfig.GetUserPrompt(),
 		logger,
 	)
@@ -235,13 +236,13 @@ func orchestrateTables(
 	tablesToScanResp *piidetect_job_activities.GetTablesToPiiScanResponse,
 	jobId string,
 	connectionId string,
-	shouldSampleData bool,
+	samplingMode piidetect_table_activities.SamplingMode,
 	userPrompt string,
 	logger log.Logger,
 ) *piidetect_job_activities.JobPiiDetectReport {
 	maxConcurrency := getTablePiiDetectMaxConcurrency()
 
-	tableWf := piidetect_table_workflow.New()
+	tableWf := piidetect_table_workflow.New(nil)
 	wfInfo := workflow.GetInfo(ctx)
 
 	tableResultKeys := []*piidetect_job_activities.TableReport{}
@@ -333,7 +334,8 @@ func orchestrateTables(
 						TableSchema:        work.table.Schema,
 						TableName:          work.table.Table,
 						ParentExecutionId:  &wfInfo.WorkflowExecution.ID,
-						ShouldSampleData:   shouldSampleData,
+						ShouldSampleData:   samplingMode == piidetect_table_activities.SamplingModeRaw,
+						SamplingMode:       samplingMode,
 						UserPrompt:         userPrompt,
 						PreviousResultsKey: previousResultsKey,
 					},

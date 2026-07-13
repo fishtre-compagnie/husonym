@@ -29,6 +29,7 @@ import { ReactElement, useCallback, useMemo } from 'react';
 import ConnectionSelectContent from '../../connect/ConnectionSelectContent';
 import {
   DataSamplingFormValue,
+  DataSamplingModeFormValue,
   FilterPatternTableIdentifier,
   IncrementalFormValue,
   TableScanFilterModeFormValue,
@@ -132,6 +133,13 @@ interface DataSamplingProps {
   onChange(value: DataSamplingFormValue): void;
 }
 
+const SAMPLING_MODE_DESCRIPTIONS: Record<DataSamplingModeFormValue, string> = {
+  none: 'No data is sampled. Only column names and types are used to detect PII.',
+  profile:
+    'Rows are sampled and reduced to anonymous shape profiles (patterns, statistics, format checks) computed locally. No raw values leave the database. Recommended.',
+  raw: 'Raw sampled values are sent to the configured LLM. Most accurate for free-text columns, but exposes real data — use only when profiles are not enough.',
+};
+
 export function DataSampling(props: DataSamplingProps): ReactElement {
   const { errors, value, onChange } = props;
 
@@ -139,22 +147,29 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
     <div className="flex flex-col gap-4">
       <FormHeader
         title="Data Sampling"
-        description="Allow the job to sample data from the source. If disabled, only the table DDLs will be used to detect PII. For more accurate results, enable data sampling."
-        isErrored={!!errors?.['isEnabled']}
+        description="Controls what column data, if any, is sampled from the source to improve PII detection."
+        isErrored={!!errors?.['dataSampling.mode']}
         labelClassName="text-lg"
       />
       <ToggleGroup
         className="flex justify-start"
         type="single"
-        onValueChange={(value) => {
-          onChange({ isEnabled: value === 'enabled' });
+        onValueChange={(newValue) => {
+          if (!newValue) {
+            return;
+          }
+          onChange({ mode: newValue as DataSamplingModeFormValue });
         }}
-        value={value.isEnabled ? 'enabled' : 'disabled'}
+        value={value.mode}
       >
-        <ToggleGroupItem value="enabled">Enabled</ToggleGroupItem>
-        <ToggleGroupItem value="disabled">Disabled</ToggleGroupItem>
+        <ToggleGroupItem value="none">Disabled</ToggleGroupItem>
+        <ToggleGroupItem value="profile">Profile (recommended)</ToggleGroupItem>
+        <ToggleGroupItem value="raw">Raw values</ToggleGroupItem>
       </ToggleGroup>
-      <FormErrorMessage message={errors?.['isEnabled']} />
+      <p className="text-sm text-muted-foreground">
+        {SAMPLING_MODE_DESCRIPTIONS[value.mode]}
+      </p>
+      <FormErrorMessage message={errors?.['dataSampling.mode']} />
     </div>
   );
 }

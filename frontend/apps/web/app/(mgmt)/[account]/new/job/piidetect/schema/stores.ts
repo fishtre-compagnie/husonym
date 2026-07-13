@@ -1,9 +1,14 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { BaseHookStore } from '@/util/zustand.stores.util';
-import { Job } from '@husonym/sdk';
+import {
+  Job,
+  JobTypeConfig_JobTypePiiDetect_DataSampling,
+  JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode,
+} from '@husonym/sdk';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StorageValue } from 'zustand/middleware';
 import {
+  DataSamplingModeFormValue,
   EditPiiDetectionJobFormValues,
   PiiDetectionSchemaFormValues,
   TableScanFilterFormValue,
@@ -12,7 +17,7 @@ import {
 function getInitialFormState(): PiiDetectionSchemaFormValues {
   return {
     dataSampling: {
-      isEnabled: true,
+      mode: 'profile',
     },
     tableScanFilter: {
       mode: 'include_all',
@@ -146,19 +151,7 @@ export function setInitialFormStateFromJob(
 
 function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
   if (!job || job.jobType?.jobType.case !== 'piiDetect') {
-    return {
-      dataSampling: {
-        isEnabled: true,
-      },
-      tableScanFilter: {
-        mode: 'include_all',
-        patterns: { schemas: [], tables: [] },
-      },
-      userPrompt: '',
-      incremental: {
-        isEnabled: false,
-      },
-    };
+    return getInitialFormState();
   }
 
   const jobTypeConfig = job.jobType.jobType.value;
@@ -184,7 +177,7 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
 
   return {
     dataSampling: {
-      isEnabled: jobTypeConfig.dataSampling?.isEnabled ?? true,
+      mode: getSamplingModeFormValue(jobTypeConfig.dataSampling),
     },
     tableScanFilter: tableScanFilter,
     userPrompt: jobTypeConfig.userPrompt ?? '',
@@ -192,4 +185,23 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
       isEnabled: jobTypeConfig.incremental?.isEnabled ?? false,
     },
   };
+}
+
+// Mirrors the server-side fallback (ResolveSamplingMode): when the enum is
+// unspecified, the legacy is_enabled boolean is authoritative and true maps
+// to raw sampling. Existing jobs must keep their stored semantics when
+// re-opened in the edit form.
+function getSamplingModeFormValue(
+  dataSampling: JobTypeConfig_JobTypePiiDetect_DataSampling | undefined
+): DataSamplingModeFormValue {
+  switch (dataSampling?.mode) {
+    case JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.NONE:
+      return 'none';
+    case JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.PROFILE:
+      return 'profile';
+    case JobTypeConfig_JobTypePiiDetect_DataSampling_SamplingMode.RAW:
+      return 'raw';
+    default:
+      return dataSampling?.isEnabled ? 'raw' : 'none';
+  }
 }

@@ -1,0 +1,101 @@
+{
+  "language": "pt",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "clientes",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["6001", "6002", "6003"]
+        },
+        {
+          "name": "nome",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["João", "Ana", "Pedro", "Inês"]
+        },
+        {
+          "name": "sobrenome",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Silva", "Santos", "Ferreira", "Oliveira"]
+        },
+        {
+          "name": "data_nascimento",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1987-02-25", "1993-07-11", "1976-12-19"]
+        },
+        {
+          "name": "email",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["joao.silva@example.pt", "ana.s@example.pt", "pedro.f@example.pt"]
+        },
+        {
+          "name": "telemovel",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+351 912 345 678", "+351 936 789 012"]
+        },
+        {
+          "name": "morada",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["Rua Augusta 12", "Avenida da Liberdade 3", "Praça do Comércio 7"]
+        },
+        {
+          "name": "codigo_postal",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["1000-001", "4000-123", "8000-456"]
+        },
+        {
+          "name": "nif",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["212345678", "298765432"]
+        },
+        {
+          "name": "nib",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["003503730000539815092", "001000005612345678900"]
+        },
+        {
+          "name": "senha",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$qweasdzxcrtyfghvbnuiop", "$2b$12$mklpoijnbhuygvcftredxs"]
+        },
+        {
+          "name": "notas",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Entrega no armazém", "Ligar de manhã", "Cliente habitual"]
+        },
+        {
+          "name": "processo",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "structured business reference, pseudonymous",
+          "samples": ["PROC-2024-00123", "PROC-2024-00987", "PROC-2025-00042"]
+        }
+      ]
+    }
+  ]
+}

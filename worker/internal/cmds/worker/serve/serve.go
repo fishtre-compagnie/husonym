@@ -32,6 +32,7 @@ import (
 	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+	"github.com/fishtre-compagnie/husonym/internal/llm"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
@@ -39,8 +40,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
@@ -422,7 +421,12 @@ func serve(ctx context.Context) error {
 		logger.Debug("ee license is valid, registering account hook activities")
 		accounthook_workflow_register.Register(w, accounthookclient)
 
-		openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
+		llmclient, llmClientOk := llm.NewOpenAIClientFromEnv()
+		if !llmClientOk {
+			logger.Info(
+				"no LLM configured (LLM_BASE_URL, LLM_API_KEY and OPENAI_API_KEY are unset), pii detect LLM stage disabled",
+			)
+		}
 
 		husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
 		conndatabuilder := connectiondata.NewConnectionDataBuilder(
@@ -440,10 +444,14 @@ func serve(ctx context.Context) error {
 			w,
 			connclient,
 			jobclient,
-			&openaiclient,
+			llmclient,
 			conndatabuilder,
 			cascadelicense,
 			temporalClient.ScheduleClient(),
+			&piidetect_workflow_register.Config{
+				LLMModel:            viper.GetString("LLM_MODEL"),
+				ConfidenceThreshold: getPiiDetectConfidenceThreshold(),
+			},
 		)
 	}
 
@@ -534,6 +542,12 @@ func getPprofMux(prefix string) *http.ServeMux {
 	mux.Handle(prefix+"/pprof/block", pprof.Handler("block"))
 
 	return mux
+}
+
+// getPiiDetectConfidenceThreshold reads PII_DETECT_CONFIDENCE_THRESHOLD;
+// values <= 0 (including unset) fall back to the workflow default (0.8).
+func getPiiDetectConfidenceThreshold() float32 {
+	return float32(viper.GetFloat64("PII_DETECT_CONFIDENCE_THRESHOLD"))
 }
 
 func getTemporalAuthCertificate() ([]tls.Certificate, error) {

@@ -99,8 +99,7 @@
     "jackc"
   ],
   "flagWords": ["hte"],
-  "files": ["blog/**/*.md*", "docs/**/*.md*"],
-  "useGitignore": true,
+  "files": ["blog/**/*.md*", "docs/**/*.md*"],  "useGitignore": true,
   "dictionaries": [
     "en_US",
     "companies",

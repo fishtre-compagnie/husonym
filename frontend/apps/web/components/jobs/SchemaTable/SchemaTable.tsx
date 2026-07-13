@@ -23,6 +23,7 @@ import {
 import {
   GetConnectionSchemaResponse,
   JobMapping,
+  TransformerRecommendation,
   ValidateJobMappingsResponse,
 } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
@@ -79,6 +80,9 @@ interface Props {
   onApplyDefaultClick(override: boolean): void;
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
+  isAiSuggestionsLoading?: boolean;
+  onAiSuggestionsClick?(): void;
+  recommendations?: TransformerRecommendation[];
 }
 
 export function SchemaTable(props: Props): ReactElement {
@@ -105,7 +109,21 @@ export function SchemaTable(props: Props): ReactElement {
     onTransformerBulkUpdate,
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
+    isAiSuggestionsLoading,
+    onAiSuggestionsClick,
+    recommendations,
   } = props;
+
+  const recommendationsByColumn = useMemo(() => {
+    const map = new Map<string, TransformerRecommendation>();
+    (recommendations ?? []).forEach((r) => {
+      if (r.category) {
+        map.set(`${r.schema}.${r.table}.${r.column}`, r);
+      }
+    });
+    return map;
+  }, [recommendations]);
+
   const tableData = useMemo((): JobMappingRow[] => {
     return data.map((d): JobMappingRow => {
       const colKey = {
@@ -113,6 +131,9 @@ export function SchemaTable(props: Props): ReactElement {
         table: d.table,
         column: d.column,
       };
+      const recommendation = recommendationsByColumn.get(
+        `${d.schema}.${d.table}.${d.column}`
+      );
       const isPrimaryKey = constraintHandler.getIsPrimaryKey(colKey);
       const [isForeignKey, fkCols] = constraintHandler.getIsForeignKey(colKey);
       const [isVirtualForeignKey, vfkCols] =
@@ -169,9 +190,13 @@ export function SchemaTable(props: Props): ReactElement {
         },
         isNullable: constraintHandler.getIsNullable(colKey),
         transformer: d.transformer,
+        piiWarning:
+          recommendation && d.transformer.config.case === 'passthroughConfig'
+            ? { category: recommendation.category }
+            : undefined,
       };
     });
-  }, [data, constraintHandler]);
+  }, [data, constraintHandler, recommendationsByColumn]);
 
   const virtualForeignKeyColumns = useMemo(() => {
     return getVirtualForeignKeysColumns({ removeVirtualForeignKey });
@@ -248,6 +273,8 @@ export function SchemaTable(props: Props): ReactElement {
               getTransformerFromFieldValue={getTransformerFromFieldValue}
               onTransformerBulkUpdate={onTransformerBulkUpdate}
               onApplyDefaultClick={onApplyDefaultClick}
+              isAiSuggestionsLoading={isAiSuggestionsLoading}
+              onAiSuggestionsClick={onAiSuggestionsClick}
               onDeleteRow={() =>
                 console.warn('on delete row is not implemented')
               }
@@ -296,6 +323,8 @@ export function SchemaTable(props: Props): ReactElement {
           getTransformerFromFieldValue={getTransformerFromFieldValue}
           onTransformerBulkUpdate={onTransformerBulkUpdate}
           onApplyDefaultClick={onApplyDefaultClick}
+          isAiSuggestionsLoading={isAiSuggestionsLoading}
+          onAiSuggestionsClick={onAiSuggestionsClick}
           onDeleteRow={() => console.warn('on delete row is not implemented')}
           onDuplicateRow={() =>
             console.warn('on duplicate row is not implemented')

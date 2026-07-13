@@ -36,6 +36,9 @@ interface Props<TData, TValue> {
   displayApplyDefaultTransformersButton: boolean;
   onApplyDefaultClick(override: boolean): void;
 
+  isAiSuggestionsLoading?: boolean;
+  onAiSuggestionsClick?(): void;
+
   onExportMappingsClick(selected: Row<TData>[], shouldFormat: boolean): void;
   onImportMappingsClick(
     jobmappings: JobMapping[],
@@ -87,6 +90,8 @@ export default function JobMappingTable<TData, TValue>(
     isApplyDefaultTransformerButtonDisabled,
     displayApplyDefaultTransformersButton,
     onApplyDefaultClick,
+    isAiSuggestionsLoading,
+    onAiSuggestionsClick,
     onTransformerBulkUpdate,
     onDeleteRow,
     onDuplicateRow,
@@ -138,6 +143,8 @@ export default function JobMappingTable<TData, TValue>(
           getAllowedTransformers={getAvalableTransformersForBulk}
           getTransformerFromField={getTransformerFromFieldValue}
           onApplyDefaultClick={onApplyDefaultClick}
+          isAiSuggestionsLoading={isAiSuggestionsLoading}
+          onAiSuggestionsClick={onAiSuggestionsClick}
           onBulkUpdate={onTransformerBulkUpdate}
           onExportMappingsClick={(shouldFormat) =>
             onExportMappingsClick(

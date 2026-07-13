@@ -1,0 +1,128 @@
+{
+  "language": "en",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "users",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["1001", "1002", "1003"]
+        },
+        {
+          "name": "first_name",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["John", "Emma", "Liam", "Olivia"]
+        },
+        {
+          "name": "last_name",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Smith", "Johnson", "Brown", "Taylor"]
+        },
+        {
+          "name": "email",
+          "data_type": "text",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["john.smith@example.com", "emma.j@example.com", "liam.b@example.com"]
+        },
+        {
+          "name": "phone_number",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+1 555 123 4567", "+44 20 7946 0958", "555-987-6543"]
+        },
+        {
+          "name": "ssn",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["987-65-4321", "876-54-3210"]
+        },
+        {
+          "name": "dob",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1988-07-21", "1993-02-14", "1979-12-05"]
+        },
+        {
+          "name": "zip_code",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["90210", "10001", "SW1A 1AA"]
+        },
+        {
+          "name": "ip_address",
+          "data_type": "inet",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["203.0.113.42", "198.51.100.7"]
+        },
+        {
+          "name": "password",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$argon2id$v=19$m=65536$c2FsdA", "$argon2id$v=19$m=65536$b3RoZXI"]
+        },
+        {
+          "name": "salary",
+          "data_type": "numeric",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["52000", "61500", "48750"]
+        },
+        {
+          "name": "account_status",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "false friend: close to account_number but not PII",
+          "samples": ["active", "suspended", "active"]
+        },
+        {
+          "name": "company_name",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "false friend: contains 'name' but is not personal data",
+          "samples": ["Acme Corp", "Globex Ltd", "Initech"]
+        }
+      ]
+    },
+    {
+      "schema": "public",
+      "table": "audit_log",
+      "columns": [
+        {
+          "name": "notes",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Bulk import completed", "Retry scheduled", "Manual review requested"]
+        },
+        {
+          "name": "payload",
+          "data_type": "jsonb",
+          "expected_category": "",
+          "samples": ["{\"action\":\"login\"}", "{\"action\":\"export\"}", "{\"action\":\"delete\"}"]
+        },
+        {
+          "name": "card",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": false,
+          "note": "ambiguous name: Luhn-valid values reveal payment cards",
+          "samples": ["4111111111111111", "5105105105105100", "4012888888881881"]
+        }
+      ]
+    }
+  ]
+}

@@ -78,6 +78,15 @@ components:
         - DATABASE_ERROR_CODE_UNSUPPORTED_CIRCULAR_DEPENDENCY_AT_LEAST_ONE_NULLABLE
         - DATABASE_ERROR_CODE_VFK_COLUMN_MISMATCH
       description: An enumeration of database error codes
+    mgmt.v1alpha1.DetectionEvidence.DetectorKind:
+      type: string
+      title: DetectorKind
+      enum:
+        - DETECTOR_KIND_UNSPECIFIED
+        - DETECTOR_KIND_REGEX
+        - DETECTOR_KIND_DICTIONARY
+        - DETECTOR_KIND_LLM
+      description: The kind of detector that produced a piece of evidence
     mgmt.v1alpha1.GenerateEmailType:
       type: string
       title: GenerateEmailType
@@ -137,6 +146,15 @@ components:
         - JOB_STATUS_ENABLED
         - JOB_STATUS_PAUSED
         - JOB_STATUS_DISABLED
+    mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode:
+      type: string
+      title: SamplingMode
+      enum:
+        - SAMPLING_MODE_UNSPECIFIED
+        - SAMPLING_MODE_NONE
+        - SAMPLING_MODE_PROFILE
+        - SAMPLING_MODE_RAW
+      description: The mode used to determine what, if any, sampled data is sent to the LLM for PII detection
     mgmt.v1alpha1.LogLevel:
       type: string
       title: LogLevel
@@ -941,6 +959,26 @@ components:
       type: object
       title: DeleteJobRunResponse
       additionalProperties: false
+    mgmt.v1alpha1.DetectionEvidence:
+      type: object
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.DetectionEvidence.DetectorKind'
+          title: kind
+          description: The kind of detector that produced this evidence
+        detail:
+          type: string
+          title: detail
+          description: A human readable detail describing the evidence (e.g. "regex `(^|_)email` matched on column name")
+        confidence:
+          type: number
+          title: confidence
+          format: float
+          description: The confidence of this piece of evidence from 0.0-1.0
+      title: DetectionEvidence
+      additionalProperties: false
+      description: A single piece of evidence that contributed to a detection/recommendation
     mgmt.v1alpha1.DynamoDBDestinationConnectionOptions:
       type: object
       properties:
@@ -1672,6 +1710,70 @@ components:
           title: hooks
           description: The list of hooks found attached to the job
       title: GetJobHooksResponse
+      additionalProperties: false
+    mgmt.v1alpha1.GetJobMappingRecommendationsRequest:
+      type: object
+      allOf:
+        - anyOf:
+            - required:
+                - jobId
+            - not:
+                anyOf:
+                  - required:
+                      - jobId
+      anyOf:
+        - required:
+            - jobId
+        - not:
+            anyOf:
+              - required:
+                  - jobId
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to derive recommendations for
+        jobId:
+          type: string
+          title: job_id
+          description: Optional job id. When provided, allows the server to take existing job mappings into account when building recommendations.
+      title: GetJobMappingRecommendationsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetJobMappingRecommendationsResponse:
+      type: object
+      allOf:
+        - anyOf:
+            - required:
+                - reportRunId
+            - not:
+                anyOf:
+                  - required:
+                      - reportRunId
+      anyOf:
+        - required:
+            - reportRunId
+        - not:
+            anyOf:
+              - required:
+                  - reportRunId
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.TransformerRecommendation'
+          title: recommendations
+          description: The list of recommended transformer configurations, one per detected column
+        reportRunId:
+          type: string
+          title: report_run_id
+          description: The identifier of the pii detection report run that was used to build these recommendations, if any
+      title: GetJobMappingRecommendationsResponse
       additionalProperties: false
     mgmt.v1alpha1.GetJobNextRunsRequest:
       type: object
@@ -3069,7 +3171,14 @@ components:
         isEnabled:
           type: boolean
           title: is_enabled
-          description: Whether to enable data sampling
+          description: |-
+            Whether to enable data sampling.
+             Deprecated: use mode instead. If mode is unspecified, this field is used for backwards compatibility (true maps to SAMPLING_MODE_RAW).
+        mode:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.SamplingMode'
+          title: mode
+          description: The sampling mode to use. If unspecified, falls back to the legacy is_enabled boolean for backwards compatibility.
       title: DataSampling
       additionalProperties: false
       description: The configuration for data sampling
@@ -3805,6 +3914,28 @@ components:
              Tie Breaking is determined by the following: (priority, created_at, id) in ascending order.
       title: NewJobHook
       additionalProperties: false
+    mgmt.v1alpha1.NewTransformerProposal:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: The proposed name for the new transformer
+        description:
+          type: string
+          title: description
+          description: The proposed description for the new transformer
+        javascriptCode:
+          type: string
+          title: javascript_code
+          description: The proposed draft javascript code for the new transformer, intended for use with TransformJavascript
+        rationale:
+          type: string
+          title: rationale
+          description: The rationale explaining why no system transformer was suitable and why this code was proposed
+      title: NewTransformerProposal
+      additionalProperties: false
+      description: A proposal to create a new user-defined transformer for a column whose format does not match any system transformer
     mgmt.v1alpha1.Null:
       type: object
       title: "Null"
@@ -5750,6 +5881,64 @@ components:
       title: TransformerConfig
       additionalProperties: false
       description: The configuration for a transformer. This determines what type of transformation or generation is performed.
+    mgmt.v1alpha1.TransformerRecommendation:
+      type: object
+      allOf:
+        - anyOf:
+            - required:
+                - proposal
+            - not:
+                anyOf:
+                  - required:
+                      - proposal
+      anyOf:
+        - required:
+            - proposal
+        - not:
+            anyOf:
+              - required:
+                  - proposal
+      properties:
+        schema:
+          type: string
+          title: schema
+          description: The schema of the table
+        table:
+          type: string
+          title: table
+          description: The name of the table
+        column:
+          type: string
+          title: column
+          description: The name of the column
+        category:
+          type: string
+          title: category
+          description: The detected PII category for the column
+        recommendedConfig:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerConfig'
+          title: recommended_config
+          description: The recommended transformer configuration for the column
+        confidence:
+          type: number
+          title: confidence
+          format: float
+          description: The confidence of the recommendation from 0.0-1.0
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.DetectionEvidence'
+          title: evidence
+          description: The evidence that was used to build this recommendation
+        proposal:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.NewTransformerProposal'
+          title: proposal
+          description: A proposal to create a new user-defined transformer, present only when no system transformer passes the validity filter with a semantic match
+      title: TransformerRecommendation
+      additionalProperties: false
+      description: A recommended transformer configuration for a specific column, along with the evidence that led to the recommendation
     mgmt.v1alpha1.UpdateJobDestinationConnectionRequest:
       type: object
       properties:
@@ -7594,6 +7783,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetPiiDetectionReportResponse'
+  /mgmt.v1alpha1.JobService/GetJobMappingRecommendations:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: GetJobMappingRecommendations
+      description: Returns transformer recommendations for the columns of a connection, derived from the most recent pii detection report
+      operationId: mgmt.v1alpha1.JobService.GetJobMappingRecommendations
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetJobMappingRecommendationsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetJobMappingRecommendationsResponse'
 tags:
   - name: mgmt.v1alpha1.JobService
     description: Service that handles jobs, runs, and hooks

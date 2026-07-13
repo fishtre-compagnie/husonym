@@ -216,6 +216,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guides/ai-assisted-anonymization',
+      label: 'AI-Assisted Anonymization',
+    },
+    {
+      type: 'doc',
       id: 'guides/initializing-your-schema',
       label: 'Initializing your Schema',
     },

@@ -1,0 +1,103 @@
+{
+  "language": "de",
+  "tables": [
+    {
+      "schema": "public",
+      "table": "kunden",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "expected_category": "",
+          "samples": ["2001", "2002", "2003"]
+        },
+        {
+          "name": "vorname",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Hans", "Anna", "Lukas", "Mia"]
+        },
+        {
+          "name": "nachname",
+          "data_type": "text",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["Müller", "Schmidt", "Schneider", "Fischer"]
+        },
+        {
+          "name": "geburtsdatum",
+          "data_type": "date",
+          "expected_category": "personal",
+          "stage1_expected": true,
+          "samples": ["1982-05-09", "1991-08-23", "1977-01-15"]
+        },
+        {
+          "name": "telefonnummer",
+          "data_type": "varchar",
+          "expected_category": "contact",
+          "stage1_expected": true,
+          "samples": ["+49 30 123456", "+49 89 987654", "0170 1234567"]
+        },
+        {
+          "name": "anschrift",
+          "data_type": "text",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "samples": ["Hauptstraße 12", "Bahnhofstraße 3", "Gartenweg 45"]
+        },
+        {
+          "name": "plz",
+          "data_type": "varchar",
+          "expected_category": "location",
+          "stage1_expected": true,
+          "note": "local abbreviation for Postleitzahl",
+          "samples": ["80331", "10115", "50667"]
+        },
+        {
+          "name": "steuernummer",
+          "data_type": "varchar",
+          "expected_category": "national_id",
+          "stage1_expected": true,
+          "samples": ["12 345 678 901", "98 765 432 109"]
+        },
+        {
+          "name": "kontonummer",
+          "data_type": "varchar",
+          "expected_category": "financial",
+          "stage1_expected": true,
+          "samples": ["DE89370400440532013000", "DE02120300000000202051"]
+        },
+        {
+          "name": "passwort",
+          "data_type": "text",
+          "expected_category": "authentication",
+          "stage1_expected": true,
+          "samples": ["$2b$12$qwertzuiopasdfghjklyxc", "$2b$12$mnbvcxylkjhgfdsapoiuzt"]
+        },
+        {
+          "name": "kundennummer",
+          "data_type": "varchar",
+          "expected_category": "",
+          "note": "pseudonymous customer identifier",
+          "samples": ["KD-100234", "KD-100235", "KD-100236"]
+        },
+        {
+          "name": "bemerkung",
+          "data_type": "text",
+          "expected_category": "",
+          "note": "free text without personal content",
+          "samples": ["Lieferung ans Lager", "Rückruf erbeten", "Stammkunde"]
+        },
+        {
+          "name": "kennung",
+          "data_type": "varchar",
+          "expected_category": "authentication",
+          "stage1_expected": false,
+          "note": "ambiguous name: the values reveal access tokens",
+          "samples": ["sk_live_4eC39HqLyjWDarjtT1zdp7dc", "sk_live_7gF21KpMxnVBcqjuU2yeq8ef"]
+        }
+      ]
+    }
+  ]
+}

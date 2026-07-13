@@ -45,6 +45,8 @@ export function getSystemAppConfig(): SystemAppConfig {
       conversion: process.env.GTAG_CONVERSION,
     },
     isPiiDetectionJobEnabled: process.env.PII_DETECTION_JOB_ENABLED === 'true',
+    isJobMappingRecommendationsEnabled:
+      process.env.JOB_MAPPING_RECOMMENDATIONS_ENABLED === 'true',
   };
 }
 
