@@ -31,7 +31,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
@@ -46,7 +46,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
@@ -108,7 +108,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
@@ -122,7 +122,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
@@ -174,7 +174,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
@@ -188,7 +188,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
@@ -238,7 +238,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
@@ -252,7 +252,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
@@ -339,7 +339,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
@@ -353,7 +353,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
@@ -440,7 +440,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
@@ -455,7 +455,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
@@ -544,7 +544,7 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
@@ -559,7 +559,7 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.3
         with:
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
