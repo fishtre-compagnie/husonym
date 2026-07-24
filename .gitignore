@@ -45,3 +45,6 @@ neosync_cloud_ca.key
 .env.app.local
 .env.api.local
 .env.worker.local
+
+# Bac à sable local Athanor (deux MySQL de test, non versionné)
+athanor-local-demo/
