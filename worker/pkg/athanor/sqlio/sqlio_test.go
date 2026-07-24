@@ -102,6 +102,40 @@ func TestPipeline_EndToEnd(t *testing.T) {
 	// store (RFC §8.3), pas du déterminisme cryptographique.
 }
 
+// Scénario réel : deux sources représentant le même contenu logique, l'une en
+// string (façon PostgreSQL), l'autre en []byte (façon MySQL). Après passage dans
+// le Pipeline (donc après normalisation), l'anonymisation doit être IDENTIQUE.
+func TestPipeline_CrossDriverConsistency(t *testing.T) {
+	dom := consistency.New([]byte("clé-test"), "org").Domain("person.email")
+	dict := []string{"u1@anon.test", "u2@anon.test", "u3@anon.test", "u4@anon.test"}
+	makeSpec := func() engine.Spec {
+		return engine.Spec{Values: []engine.ValueBinding{
+			{Column: "email", T: native.NewDictFaker(dom, dict)},
+		}}
+	}
+
+	pgReader := &fakeReader{cols: []string{"email"}, data: [][]any{
+		{"alice@x.fr"}, {"bob@x.fr"},
+	}}
+	myReader := &fakeReader{cols: []string{"email"}, data: [][]any{
+		{[]byte("alice@x.fr")}, {[]byte("bob@x.fr")}, // même contenu, type driver différent
+	}}
+
+	pgOut, myOut := &captureWriter{}, &captureWriter{}
+	if err := Pipeline(transform.Background(), pgReader, 10, makeSpec(), pgOut); err != nil {
+		t.Fatalf("pipeline pg: %v", err)
+	}
+	if err := Pipeline(transform.Background(), myReader, 10, makeSpec(), myOut); err != nil {
+		t.Fatalf("pipeline my: %v", err)
+	}
+
+	for i := range pgOut.rows {
+		if pgOut.rows[i][0] != myOut.rows[i][0] {
+			t.Fatalf("ligne %d : anonymisation divergente pg=%v my=%v", i, pgOut.rows[i][0], myOut.rows[i][0])
+		}
+	}
+}
+
 func TestPipeline_CompileErrorPropagates(t *testing.T) {
 	reader := &fakeReader{cols: []string{"id"}, data: [][]any{{int64(1)}}}
 	spec := engine.Spec{Values: []engine.ValueBinding{{Column: "colonne_absente", T: nil}}}

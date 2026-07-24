@@ -33,6 +33,19 @@ type RowWriter interface {
 	WriteBatch(columns []string, rows [][]any) error
 }
 
+// Option configure le Pipeline.
+type Option func(*config)
+
+type config struct {
+	norm *Normalizer
+}
+
+// WithNormalizer surcharge le normaliseur de types (par défaut : mode Auto pour
+// toutes les colonnes, ce qui suffit dans la plupart des cas).
+func WithNormalizer(n *Normalizer) Option {
+	return func(c *config) { c.norm = n }
+}
+
 // Pipeline lit la source par batches, compile la Spec contre le schéma réel de
 // la source, exécute le plan sur chaque batch, puis écrit le résultat. Erreurs
 // remontées fidèlement (contrairement au streaming en mémoire pure).
@@ -42,9 +55,14 @@ func Pipeline(
 	batchSize int,
 	spec engine.Spec,
 	w RowWriter,
+	opts ...Option,
 ) (err error) {
 	if batchSize <= 0 {
 		return fmt.Errorf("sqlio: batchSize doit être > 0")
+	}
+	cfg := config{norm: NewNormalizer()} // normalisation Auto par défaut
+	for _, o := range opts {
+		o(&cfg)
 	}
 	defer func() {
 		if cerr := r.Close(); cerr != nil && err == nil {
@@ -75,6 +93,16 @@ func Pipeline(
 			}
 			if serr := r.Scan(ptrs...); serr != nil {
 				return fmt.Errorf("sqlio: scan d'une ligne: %w", serr)
+			}
+			// Normalisation vers types Go canoniques : indispensable pour que la
+			// même valeur logique produise la même graine de cohérence quel que
+			// soit le driver source (ex. []byte MySQL -> string).
+			for i := range vals {
+				nv, nerr := cfg.norm.Normalize(cols[i], vals[i])
+				if nerr != nil {
+					return fmt.Errorf("sqlio: normalisation colonne %q: %w", cols[i], nerr)
+				}
+				vals[i] = nv
 			}
 			data = append(data, vals)
 		}
