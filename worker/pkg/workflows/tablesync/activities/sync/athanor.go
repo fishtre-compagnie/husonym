@@ -18,9 +18,24 @@ import (
 	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/runner"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
+	"github.com/google/uuid"
 )
 
 const athanorBatchSize = 1000
+
+// jobIDFromRunID extrait le jobId d'un JobRunId de forme "<jobId>-<timestamp>",
+// où jobId est un UUID (36 caractères).
+func jobIDFromRunID(runID string) (string, error) {
+	const uuidLen = 36
+	if len(runID) < uuidLen {
+		return "", fmt.Errorf("athanor: JobRunId inattendu %q", runID)
+	}
+	id := runID[:uuidLen]
+	if _, err := uuid.Parse(id); err != nil {
+		return "", fmt.Errorf("athanor: impossible d'extraire le jobId de %q: %w", runID, err)
+	}
+	return id, nil
+}
 
 func (a *Activity) runAthanor(
 	ctx context.Context,
@@ -30,19 +45,16 @@ func (a *Activity) runAthanor(
 	getConnectionById func(connectionId string) (connectionmanager.ConnectionInput, error),
 	logger *slog.Logger,
 ) error {
-	// 1) Job + mappings : JobRunId -> JobRun -> JobId -> Job.
-	runResp, err := a.jobclient.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
-		JobRunId:  req.JobRunId,
-		AccountId: req.AccountId,
-	}))
+	// 1) Job + mappings. Le JobRunId a la forme "<jobId>-<timestamp>" ; on en
+	// extrait le jobId et on lit le job directement (GetJob = lecture en base),
+	// sans passer par GetJobRun (qui interroge Temporal et échoue en cours de run).
+	jobID, err := jobIDFromRunID(req.JobRunId)
 	if err != nil {
-		return fmt.Errorf("athanor: récupération du job run: %w", err)
+		return err
 	}
-	jobResp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{
-		Id: runResp.Msg.GetJobRun().GetJobId(),
-	}))
+	jobResp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
 	if err != nil {
-		return fmt.Errorf("athanor: récupération du job: %w", err)
+		return fmt.Errorf("athanor: récupération du job %q: %w", jobID, err)
 	}
 	job := jobResp.Msg.GetJob()
 	mappings := job.GetMappings()
