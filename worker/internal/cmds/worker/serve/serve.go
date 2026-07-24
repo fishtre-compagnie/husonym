@@ -385,6 +385,7 @@ func serve(ctx context.Context) error {
 	if pageLimit <= 0 {
 		pageLimit = 100_000
 	}
+	enableAthanor := viper.GetBool("ENABLE_ATHANOR_ENGINE")
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
 		w,
@@ -398,6 +399,7 @@ func serve(ctx context.Context) error {
 		maxIterations,
 		anonymizationclient,
 		redisclient,
+		enableAthanor,
 	)
 
 	schemainit_workflow_register.Register(

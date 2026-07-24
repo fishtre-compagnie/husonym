@@ -157,6 +157,7 @@ func NewTestDataSyncWorkflowEnv(
 		workflowEnv.maxIterations,
 		anonymizationclient,
 		workflowEnv.Redisclient,
+		false, // enableAthanor : chemin Benthos par défaut dans les tests d'intégration
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {
