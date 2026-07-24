@@ -3,10 +3,10 @@ package sync_activity
 // athanor.go — aiguillage vers le moteur d'anonymisation Athanor, en alternative
 // au stream Benthos, activé par le flag ENABLE_ATHANOR_ENGINE.
 //
-// Portée volontairement bornée pour ce premier câblage : table complète, une
-// seule destination, source et destination de MÊME SGBD (PostgreSQL ou MySQL),
-// sans subsetting (WHERE) ni upsert/onConflict. Ces éléments — déjà gérés par le
-// chemin Benthos — seront ajoutés lors de la migration par route.
+// Portée volontairement bornée pour ce premier câblage : une seule destination,
+// source et destination de MÊME SGBD (PostgreSQL ou MySQL). Le subsetting (WHERE)
+// est géré ; restent à porter l'upsert/onConflict, les destinations multiples et
+// les SGBD hétérogènes.
 
 import (
 	"context"
@@ -95,15 +95,19 @@ func (a *Activity) runAthanor(
 		return fmt.Errorf("athanor: ouverture de la destination: %w", err)
 	}
 
+	// Subsetting : clause WHERE éventuelle configurée pour cette table.
+	where := runner.WhereForTable(job.GetSource(), metadata.Schema, metadata.Table)
+
 	logger.Info("moteur=athanor : anonymisation de table",
 		"schema", metadata.Schema,
 		"table", metadata.Table,
 		"colonnes", len(mappings),
 		"srcConn", srcConnID,
 		"dstConn", dstConnID,
+		"where", where,
 	)
 
-	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, athanorBatchSize)
+	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize)
 }
 
 // sourceConnectionID extrait l'id de connexion source selon le dialecte du job.

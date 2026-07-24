@@ -67,15 +67,56 @@ func TestSpecForTable_NoMapping(t *testing.T) {
 }
 
 func TestBuildSelect(t *testing.T) {
-	got := buildSelect(sqlio.PostgresDialect{}, "public", "clients", []string{"id", "age"})
+	got := buildSelect(sqlio.PostgresDialect{}, "public", "clients", []string{"id", "age"}, "")
 	want := `SELECT "id", "age" FROM "public"."clients"`
 	if got != want {
 		t.Fatalf("buildSelect:\n  obtenu %q\n  voulu  %q", got, want)
 	}
 
-	got = buildSelect(sqlio.MySQLDialect{}, "", "clients", []string{"id"})
+	got = buildSelect(sqlio.MySQLDialect{}, "", "clients", []string{"id"}, "")
 	want = "SELECT `id` FROM `clients`"
 	if got != want {
 		t.Fatalf("buildSelect mysql:\n  obtenu %q\n  voulu  %q", got, want)
+	}
+
+	// Avec subsetting : la clause WHERE est ajoutée telle quelle.
+	got = buildSelect(sqlio.PostgresDialect{}, "public", "clients", []string{"id"}, "id > 100 AND actif = true")
+	want = `SELECT "id" FROM "public"."clients" WHERE id > 100 AND actif = true`
+	if got != want {
+		t.Fatalf("buildSelect where:\n  obtenu %q\n  voulu  %q", got, want)
+	}
+}
+
+func TestWhereForTable(t *testing.T) {
+	where := "age >= 18"
+	source := &mgmtv1alpha1.JobSource{
+		Options: &mgmtv1alpha1.JobSourceOptions{
+			Config: &mgmtv1alpha1.JobSourceOptions_Mysql{
+				Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{
+					Schemas: []*mgmtv1alpha1.MysqlSourceSchemaOption{
+						{
+							Schema: "demo",
+							Tables: []*mgmtv1alpha1.MysqlSourceTableOption{
+								{Table: "clients", WhereClause: &where},
+								{Table: "commandes"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if got := WhereForTable(source, "demo", "clients"); got != where {
+		t.Fatalf("clients: attendu %q, obtenu %q", where, got)
+	}
+	if got := WhereForTable(source, "demo", "commandes"); got != "" {
+		t.Fatalf("commandes: attendu \"\", obtenu %q", got)
+	}
+	if got := WhereForTable(source, "demo", "inconnue"); got != "" {
+		t.Fatalf("table inconnue: attendu \"\", obtenu %q", got)
+	}
+	if got := WhereForTable(nil, "demo", "clients"); got != "" {
+		t.Fatalf("source nil: attendu \"\", obtenu %q", got)
 	}
 }

@@ -23,16 +23,16 @@ type Querier interface {
 // destination, en flux par batches. src et dst peuvent être deux bases
 // différentes (prod → staging).
 //
-// Portée volontairement bornée pour ce premier câblage : table complète, sans
-// subsetting (WHERE) ni upsert/onConflict. Ces éléments — déjà gérés par le
-// chemin Benthos — seront ajoutés au fur et à mesure de la migration par route.
+// Le subsetting est géré via `where` (clause SQL sans le mot-clé WHERE). Restent
+// à porter, par rapport au chemin Benthos : upsert/onConflict, destinations
+// multiples, SGBD hétérogènes source/destination.
 func RunTable(
 	ctx context.Context,
 	src Querier,
 	dst sqlio.Execer,
 	dialect sqlio.Dialect,
 	mappings []*mgmtv1alpha1.JobMapping,
-	schema, table string,
+	schema, table, where string,
 	batchSize int,
 	opts ...te.TransformerExecutorOption,
 ) error {
@@ -41,7 +41,7 @@ func RunTable(
 		return err
 	}
 
-	query := buildSelect(dialect, schema, table, cols)
+	query := buildSelect(dialect, schema, table, cols, where)
 	rows, err := src.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("runner: lecture de %s.%s: %w", schema, table, err)
@@ -52,8 +52,11 @@ func RunTable(
 	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w)
 }
 
-// buildSelect construit le SELECT de lecture, identifiants quotés selon le dialecte.
-func buildSelect(d sqlio.Dialect, schema, table string, cols []string) string {
+// buildSelect construit le SELECT de lecture, identifiants quotés selon le
+// dialecte. where est la clause de subsetting (sans le mot-clé WHERE) ; vide = pas
+// de filtre. Elle n'est PAS paramétrée : elle provient de la config du job et doit
+// être valide telle quelle (contrat Neosync, cf. proto where_clause).
+func buildSelect(d sqlio.Dialect, schema, table string, cols []string, where string) string {
 	quoted := make([]string, len(cols))
 	for i, c := range cols {
 		quoted[i] = d.QuoteIdent(c)
@@ -62,5 +65,9 @@ func buildSelect(d sqlio.Dialect, schema, table string, cols []string) string {
 	if schema != "" {
 		ref = d.QuoteIdent(schema) + "." + ref
 	}
-	return fmt.Sprintf("SELECT %s FROM %s", strings.Join(quoted, ", "), ref)
+	q := fmt.Sprintf("SELECT %s FROM %s", strings.Join(quoted, ", "), ref)
+	if strings.TrimSpace(where) != "" {
+		q += " WHERE " + where
+	}
+	return q
 }
