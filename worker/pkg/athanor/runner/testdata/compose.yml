@@ -1,0 +1,35 @@
+# Dispositif de validation bout-en-bout du moteur Athanor : deux bases MySQL
+# indépendantes (source anonymisée -> cible), montées pour le test d'intégration.
+#   docker compose -f compose.yml up -d
+#   go test -tags integration ./worker/pkg/athanor/runner/
+#   docker compose -f compose.yml down -v
+services:
+  athanor-src:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: appdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./source-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  athanor-dst:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: appdb
+    ports:
+      - "3308:3306"
+    volumes:
+      - ./target-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
