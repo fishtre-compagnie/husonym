@@ -98,6 +98,9 @@ func (a *Activity) runAthanor(
 	// Subsetting : clause WHERE éventuelle configurée pour cette table.
 	where := runner.WhereForTable(job.GetSource(), metadata.Schema, metadata.Table)
 
+	// Gestion des conflits de clé (onConflict) dérivée des options de destination.
+	wc := writeConfigForDest(dests[0])
+
 	logger.Info("moteur=athanor : anonymisation de table",
 		"schema", metadata.Schema,
 		"table", metadata.Table,
@@ -105,9 +108,10 @@ func (a *Activity) runAthanor(
 		"srcConn", srcConnID,
 		"dstConn", dstConnID,
 		"where", where,
+		"onConflict", wc.OnConflict,
 	)
 
-	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize)
+	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize, wc)
 }
 
 // sourceConnectionID extrait l'id de connexion source selon le dialecte du job.
@@ -151,4 +155,45 @@ func dialectFor(conn connectionmanager.ConnectionInput) (sqlio.Dialect, error) {
 	default:
 		return nil, fmt.Errorf("athanor: dialecte non supporté (seuls PostgreSQL et MySQL le sont)")
 	}
+}
+
+// writeConfigForDest dérive la politique d'écriture (gestion des conflits de clé)
+// des options de la destination du job. Le truncate éventuel est géré en amont
+// par l'activité d'init de schéma, indépendamment du moteur.
+func writeConfigForDest(dst *mgmtv1alpha1.JobDestination) runner.WriteConfig {
+	opts := dst.GetOptions()
+	switch {
+	case opts.GetMysqlOptions() != nil:
+		return runner.WriteConfig{OnConflict: conflictFromMysql(opts.GetMysqlOptions().GetOnConflict())}
+	case opts.GetPostgresOptions() != nil:
+		return runner.WriteConfig{OnConflict: conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict())}
+	default:
+		return runner.WriteConfig{}
+	}
+}
+
+func conflictFromMysql(oc *mgmtv1alpha1.MysqlOnConflictConfig) sqlio.ConflictAction {
+	if oc == nil {
+		return sqlio.ConflictNone
+	}
+	if oc.GetUpdate() != nil {
+		return sqlio.ConflictDoUpdate
+	}
+	if oc.GetNothing() != nil || oc.GetDoNothing() {
+		return sqlio.ConflictDoNothing
+	}
+	return sqlio.ConflictNone
+}
+
+func conflictFromPostgres(oc *mgmtv1alpha1.PostgresOnConflictConfig) sqlio.ConflictAction {
+	if oc == nil {
+		return sqlio.ConflictNone
+	}
+	if oc.GetUpdate() != nil {
+		return sqlio.ConflictDoUpdate
+	}
+	if oc.GetNothing() != nil || oc.GetDoNothing() {
+		return sqlio.ConflictDoNothing
+	}
+	return sqlio.ConflictNone
 }

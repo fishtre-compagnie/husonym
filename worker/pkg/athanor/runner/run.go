@@ -18,14 +18,23 @@ type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
+// WriteConfig porte la politique d'écriture en destination : gestion des conflits
+// de clé (do nothing / upsert). Sa valeur zéro = INSERT simple (comportement
+// historique). PKColumns n'est requis que pour l'upsert Postgres.
+type WriteConfig struct {
+	OnConflict sqlio.ConflictAction
+	PKColumns  []string
+}
+
 // RunTable exécute l'anonymisation d'une table via le moteur Athanor :
 // SELECT sur la source → plan compilé depuis les mappings → INSERT sur la
 // destination, en flux par batches. src et dst peuvent être deux bases
 // différentes (prod → staging).
 //
-// Le subsetting est géré via `where` (clause SQL sans le mot-clé WHERE). Restent
-// à porter, par rapport au chemin Benthos : upsert/onConflict, destinations
-// multiples, SGBD hétérogènes source/destination.
+// Le subsetting est géré via `where` (clause SQL sans le mot-clé WHERE) et la
+// gestion des conflits de clé via `wc` (do nothing / upsert). Restent à porter,
+// par rapport au chemin Benthos : destinations multiples, SGBD hétérogènes
+// source/destination, et l'upsert Postgres (nécessite les colonnes PK).
 func RunTable(
 	ctx context.Context,
 	src Querier,
@@ -34,6 +43,7 @@ func RunTable(
 	mappings []*mgmtv1alpha1.JobMapping,
 	schema, table, where string,
 	batchSize int,
+	wc WriteConfig,
 	opts ...te.TransformerExecutorOption,
 ) error {
 	cols, spec, err := SpecForTable(mappings, schema, table, opts...)
@@ -48,7 +58,8 @@ func RunTable(
 	}
 	// rows (*sql.Rows) satisfait sqlio.RowReader ; Pipeline le referme.
 
-	w := sqlio.NewSQLWriter(ctx, dst, dialect, schema, table)
+	w := sqlio.NewSQLWriter(ctx, dst, dialect, schema, table,
+		sqlio.WithOnConflict(wc.OnConflict, wc.PKColumns))
 	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w)
 }
 

@@ -3,6 +3,7 @@ package sqlio
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 )
 
@@ -56,6 +57,47 @@ func TestSQLWriter_MySQL(t *testing.T) {
 	want := "INSERT INTO `clients` (`id`) VALUES (?), (?)"
 	if e.query != want {
 		t.Fatalf("SQL:\n  obtenu %q\n  voulu  %q", e.query, want)
+	}
+}
+
+func TestSQLWriter_MySQL_OnConflictDoNothing(t *testing.T) {
+	e := &fakeExecer{}
+	w := NewSQLWriter(context.Background(), e, MySQLDialect{}, "demo", "clients",
+		WithOnConflict(ConflictDoNothing, nil))
+
+	if err := w.WriteBatch([]string{"id"}, [][]any{{int64(1)}}); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	if !strings.Contains(e.query, "INSERT IGNORE") {
+		t.Fatalf("MySQL do-nothing attendu (INSERT IGNORE), obtenu: %q", e.query)
+	}
+}
+
+func TestSQLWriter_MySQL_OnConflictDoUpdate(t *testing.T) {
+	e := &fakeExecer{}
+	// MySQL n'a pas besoin des colonnes PK : ON DUPLICATE KEY UPDATE se déclenche
+	// sur toute clé unique en conflit.
+	w := NewSQLWriter(context.Background(), e, MySQLDialect{}, "demo", "clients",
+		WithOnConflict(ConflictDoUpdate, nil))
+
+	if err := w.WriteBatch([]string{"id", "prenom"}, [][]any{{int64(1), "léa"}}); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	if !strings.Contains(e.query, "ON DUPLICATE KEY UPDATE") {
+		t.Fatalf("MySQL upsert attendu (ON DUPLICATE KEY UPDATE), obtenu: %q", e.query)
+	}
+}
+
+func TestSQLWriter_Postgres_OnConflictDoNothing(t *testing.T) {
+	e := &fakeExecer{}
+	w := NewSQLWriter(context.Background(), e, PostgresDialect{}, "public", "clients",
+		WithOnConflict(ConflictDoNothing, nil))
+
+	if err := w.WriteBatch([]string{"id"}, [][]any{{int64(1)}}); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	if !strings.Contains(e.query, "ON CONFLICT") || !strings.Contains(e.query, "DO NOTHING") {
+		t.Fatalf("Postgres do-nothing attendu (ON CONFLICT DO NOTHING), obtenu: %q", e.query)
 	}
 }
 
