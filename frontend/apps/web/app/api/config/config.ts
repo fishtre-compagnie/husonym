@@ -45,6 +45,7 @@ export function getSystemAppConfig(): SystemAppConfig {
       conversion: process.env.GTAG_CONVERSION,
     },
     isPiiDetectionJobEnabled: process.env.PII_DETECTION_JOB_ENABLED === 'true',
+    isAthanorEngineEnabled: process.env.ENABLE_ATHANOR_ENGINE === 'true',
   };
 }
 
