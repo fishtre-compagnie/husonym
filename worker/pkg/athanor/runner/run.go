@@ -51,6 +51,17 @@ func RunTable(
 		return err
 	}
 
+	// Upsert (do update) : il faut les colonnes de conflit. Postgres et SQL Server
+	// les exigent explicitement ; on les introspecte si le job ne les fournit pas.
+	// (MySQL n'en a pas besoin — ON DUPLICATE KEY se déclenche sur toute clé unique.)
+	pkColumns := wc.PKColumns
+	if wc.OnConflict == sqlio.ConflictDoUpdate && len(pkColumns) == 0 {
+		pkColumns, err = primaryKeyColumns(ctx, src, dialect, schema, table)
+		if err != nil {
+			return fmt.Errorf("runner: introspection des clés primaires de %s.%s: %w", schema, table, err)
+		}
+	}
+
 	query := buildSelect(dialect, schema, table, cols, where)
 	rows, err := src.QueryContext(ctx, query)
 	if err != nil {
@@ -59,8 +70,41 @@ func RunTable(
 	// rows (*sql.Rows) satisfait sqlio.RowReader ; Pipeline le referme.
 
 	w := sqlio.NewSQLWriter(ctx, dst, dialect, schema, table,
-		sqlio.WithOnConflict(wc.OnConflict, wc.PKColumns))
+		sqlio.WithOnConflict(wc.OnConflict, pkColumns))
 	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w)
+}
+
+// primaryKeyColumns introspecte les colonnes de clé primaire d'une table via
+// information_schema — portable sur PostgreSQL, MySQL et SQL Server. La requête
+// est paramétrée (placeholders du dialecte). Les colonnes sont renvoyées dans
+// l'ordre de la clé. Introspecte la SOURCE : source et destination partageant le
+// même schéma (contrainte d'homogénéité actuelle), sa PK vaut pour la destination.
+func primaryKeyColumns(ctx context.Context, q Querier, d sqlio.Dialect, schema, table string) ([]string, error) {
+	query := fmt.Sprintf(`SELECT kcu.column_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+  ON tc.constraint_name = kcu.constraint_name
+ AND tc.table_schema = kcu.table_schema
+ AND tc.table_name = kcu.table_name
+WHERE tc.constraint_type = 'PRIMARY KEY'
+  AND tc.table_schema = %s AND tc.table_name = %s
+ORDER BY kcu.ordinal_position`, d.Placeholder(1), d.Placeholder(2))
+
+	rows, err := q.QueryContext(ctx, query, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cols []string
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			return nil, err
+		}
+		cols = append(cols, c)
+	}
+	return cols, rows.Err()
 }
 
 // buildSelect construit le SELECT de lecture, identifiants quotés selon le
