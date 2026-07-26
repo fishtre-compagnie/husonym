@@ -152,8 +152,10 @@ func dialectFor(conn connectionmanager.ConnectionInput) (sqlio.Dialect, error) {
 		return sqlio.PostgresDialect{}, nil
 	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
 		return sqlio.MySQLDialect{}, nil
+	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
+		return sqlio.MSSQLDialect{}, nil
 	default:
-		return nil, fmt.Errorf("athanor: dialecte non supporté (seuls PostgreSQL et MySQL le sont)")
+		return nil, fmt.Errorf("athanor: dialecte non supporté (seuls PostgreSQL, MySQL et SQL Server le sont)")
 	}
 }
 
@@ -167,6 +169,8 @@ func writeConfigForDest(dst *mgmtv1alpha1.JobDestination) runner.WriteConfig {
 		return runner.WriteConfig{OnConflict: conflictFromMysql(opts.GetMysqlOptions().GetOnConflict())}
 	case opts.GetPostgresOptions() != nil:
 		return runner.WriteConfig{OnConflict: conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict())}
+	case opts.GetMssqlOptions() != nil:
+		return runner.WriteConfig{OnConflict: conflictFromMssql(opts.GetMssqlOptions().GetOnConflict())}
 	default:
 		return runner.WriteConfig{}
 	}
@@ -193,6 +197,18 @@ func conflictFromPostgres(oc *mgmtv1alpha1.PostgresOnConflictConfig) sqlio.Confl
 		return sqlio.ConflictDoUpdate
 	}
 	if oc.GetNothing() != nil || oc.GetDoNothing() {
+		return sqlio.ConflictDoNothing
+	}
+	return sqlio.ConflictNone
+}
+
+// conflictFromMssql : SQL Server ne propose que « do nothing » (pas de MERGE/upsert
+// dans le query-builder partagé, comme le chemin Benthos).
+func conflictFromMssql(oc *mgmtv1alpha1.MssqlOnConflictConfig) sqlio.ConflictAction {
+	if oc == nil {
+		return sqlio.ConflictNone
+	}
+	if oc.GetDoNothing() {
 		return sqlio.ConflictDoNothing
 	}
 	return sqlio.ConflictNone

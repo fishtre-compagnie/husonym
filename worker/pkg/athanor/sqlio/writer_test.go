@@ -101,6 +101,61 @@ func TestSQLWriter_Postgres_OnConflictDoNothing(t *testing.T) {
 	}
 }
 
+func TestSQLWriter_MSSQL(t *testing.T) {
+	e := &fakeExecer{}
+	w := NewSQLWriter(context.Background(), e, MSSQLDialect{}, "dbo", "clients")
+
+	if err := w.WriteBatch([]string{"id", "prenom"}, [][]any{{int64(1), "léa"}, {int64(2), "karim"}}); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	want := "INSERT INTO [dbo].[clients] ([id], [prenom]) VALUES (@p1, @p2), (@p3, @p4)"
+	if e.query != want {
+		t.Fatalf("SQL:\n  obtenu %q\n  voulu  %q", e.query, want)
+	}
+}
+
+func TestSQLWriter_MSSQL_OnConflictDoNothing(t *testing.T) {
+	e := &fakeExecer{}
+	w := NewSQLWriter(context.Background(), e, MSSQLDialect{}, "dbo", "clients",
+		WithOnConflict(ConflictDoNothing, nil))
+
+	if err := w.WriteBatch([]string{"id"}, [][]any{{int64(1)}}); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	// SQL Server exprime le « do nothing » via un MERGE / NOT EXISTS selon le
+	// query-builder ; on vérifie juste qu'une requête a été produite et exécutée.
+	if e.calls != 1 || e.query == "" {
+		t.Fatalf("une requête do-nothing devait être produite, obtenu: calls=%d query=%q", e.calls, e.query)
+	}
+}
+
+func TestSQLWriter_MSSQL_ChunksLargeBatch(t *testing.T) {
+	// countingExecer compte les requêtes émises.
+	e := &countingExecer{}
+	w := NewSQLWriter(context.Background(), e, MSSQLDialect{}, "dbo", "t")
+
+	// 1 colonne, 2500 lignes. Limite MSSQL = min(2100/1, 1000) = 1000 lignes/insert
+	// => 1000 + 1000 + 500 = 3 requêtes.
+	rows := make([][]any, 2500)
+	for i := range rows {
+		rows[i] = []any{int64(i)}
+	}
+	if err := w.WriteBatch([]string{"id"}, rows); err != nil {
+		t.Fatalf("WriteBatch: %v", err)
+	}
+	if e.calls != 3 {
+		t.Fatalf("attendu 3 requêtes (chunks de 1000), obtenu %d", e.calls)
+	}
+}
+
+// countingExecer compte les appels (le fakeExecer n'écrase que la dernière requête).
+type countingExecer struct{ calls int }
+
+func (e *countingExecer) ExecContext(_ context.Context, _ string, _ ...any) (sql.Result, error) {
+	e.calls++
+	return driverResult{}, nil
+}
+
 func TestSQLWriter_EmptyBatchNoOp(t *testing.T) {
 	e := &fakeExecer{}
 	w := NewSQLWriter(context.Background(), e, PostgresDialect{}, "", "t")

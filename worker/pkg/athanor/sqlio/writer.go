@@ -34,6 +34,10 @@ type Dialect interface {
 	Placeholder(n int) string // n est 1-indexé
 	QuoteIdent(s string) string
 	Driver() string // identifiant driver attendu par le query-builder (pgx, mysql…)
+	// MaxRowsPerInsert borne le nombre de lignes d'un INSERT multi-lignes selon
+	// les limites du SGBD (nb max de paramètres, de tuples VALUES…), en fonction
+	// du nombre de colonnes. Le writer découpe les batches en conséquence.
+	MaxRowsPerInsert(numCols int) int
 }
 
 // PostgresDialect : placeholders $1, $2… et identifiants entre guillemets doubles.
@@ -45,6 +49,9 @@ func (PostgresDialect) QuoteIdent(s string) string {
 }
 func (PostgresDialect) Driver() string { return sqlmanager_shared.PostgresDriver }
 
+// PostgreSQL : limite de 65535 paramètres liés par requête.
+func (PostgresDialect) MaxRowsPerInsert(numCols int) int { return maxRowsForParams(65535, numCols) }
+
 // MySQLDialect : placeholders ? et identifiants entre accents graves.
 type MySQLDialect struct{}
 
@@ -53,6 +60,43 @@ func (MySQLDialect) QuoteIdent(s string) string {
 	return "`" + strings.ReplaceAll(s, "`", "``") + "`"
 }
 func (MySQLDialect) Driver() string { return sqlmanager_shared.MysqlDriver }
+
+// MySQL : limite de 65535 paramètres (placeholders) par requête préparée.
+func (MySQLDialect) MaxRowsPerInsert(numCols int) int { return maxRowsForParams(65535, numCols) }
+
+// MSSQLDialect : SQL Server — placeholders @p1, @p2… (ordinaux, mappés
+// positionnellement par go-mssqldb) et identifiants entre crochets.
+type MSSQLDialect struct{}
+
+func (MSSQLDialect) Placeholder(n int) string { return "@p" + strconv.Itoa(n) }
+func (MSSQLDialect) QuoteIdent(s string) string {
+	return "[" + strings.ReplaceAll(s, "]", "]]") + "]"
+}
+func (MSSQLDialect) Driver() string { return sqlmanager_shared.MssqlDriver }
+
+// SQL Server : max 2100 paramètres par requête ET max 1000 tuples par clause
+// VALUES. On budgète 2000 paramètres (marge sous 2100 : la limite inclut un léger
+// overhead interne, exactement 2100 est déjà refusé).
+func (MSSQLDialect) MaxRowsPerInsert(numCols int) int {
+	byParams := maxRowsForParams(2000, numCols)
+	if byParams > 1000 {
+		return 1000
+	}
+	return byParams
+}
+
+// maxRowsForParams renvoie le nombre de lignes tenant sous une limite de
+// paramètres, au moins 1 (une ligne large peut à elle seule dépasser la limite —
+// on l'émet quand même et on laisse le SGBD trancher).
+func maxRowsForParams(maxParams, numCols int) int {
+	if numCols <= 0 {
+		return 1
+	}
+	if r := maxParams / numCols; r > 0 {
+		return r
+	}
+	return 1
+}
 
 // ConflictAction décrit quoi faire quand une ligne insérée entre en conflit avec
 // une clé (PK/unique) existante en destination.
@@ -124,17 +168,43 @@ func NewSQLWriter(ctx context.Context, db Execer, dialect Dialect, schema, table
 	return w
 }
 
-// WriteBatch insère toutes les lignes du lot. Sans stratégie de conflit, un seul
-// INSERT groupé « maison » (chemin rapide historique). Avec stratégie, la requête
-// est construite par le query-builder partagé.
+// WriteBatch insère toutes les lignes du lot, en découpant si besoin pour
+// respecter les limites du SGBD (MaxRowsPerInsert : nb de paramètres/tuples).
+// Chaque sous-lot part en INSERT « maison » (chemin rapide) ou, si une stratégie
+// de conflit est configurée, via le query-builder partagé.
 func (w *SQLWriter) WriteBatch(columns []string, rows [][]any) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	if w.conflict != ConflictNone {
-		return w.writeBatchOnConflict(columns, rows)
+
+	chunk := w.dialect.MaxRowsPerInsert(len(columns))
+	if chunk <= 0 || chunk > len(rows) {
+		chunk = len(rows)
 	}
 
+	for start := 0; start < len(rows); start += chunk {
+		end := start + chunk
+		if end > len(rows) {
+			end = len(rows)
+		}
+		sub := rows[start:end]
+
+		var err error
+		if w.conflict != ConflictNone {
+			err = w.writeBatchOnConflict(columns, sub)
+		} else {
+			err = w.writeBatchPlain(columns, sub)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeBatchPlain émet un unique INSERT multi-lignes (sans gestion de conflit).
+// L'appelant garantit que len(rows) respecte déjà MaxRowsPerInsert.
+func (w *SQLWriter) writeBatchPlain(columns []string, rows [][]any) error {
 	quoted := make([]string, len(columns))
 	for i, c := range columns {
 		quoted[i] = w.dialect.QuoteIdent(c)
