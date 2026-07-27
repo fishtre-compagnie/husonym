@@ -12,6 +12,7 @@ package native
 // et déterministe, suffisante pour l'anonymisation. Le FPE reste un raffinement.
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 
@@ -69,3 +70,33 @@ func (f *PhoneFaker) TransformValue(_ transform.Ctx, in any) (any, error) {
 }
 
 var _ transform.ValueTransformer = (*PhoneFaker)(nil)
+
+// FullNameFaker compose un nom complet déterministe « Prénom Nom » à partir de
+// deux dictionnaires. Les deux indices sont dérivés de moitiés distinctes de la
+// graine, pour que prénom et nom varient indépendamment tout en restant
+// déterministes pour une même entrée.
+type FullNameFaker struct {
+	domain      *consistency.Domain
+	first, last []string
+}
+
+// NewFullNameFaker construit un faker de nom complet sur un domaine de cohérence
+// et les dictionnaires de prénoms/noms.
+func NewFullNameFaker(domain *consistency.Domain, first, last []string) *FullNameFaker {
+	return &FullNameFaker{domain: domain, first: first, last: last}
+}
+
+func (f *FullNameFaker) TransformValue(_ transform.Ctx, in any) (any, error) {
+	if in == nil {
+		return nil, nil
+	}
+	if len(f.first) == 0 || len(f.last) == 0 {
+		return nil, fmt.Errorf("native: dictionnaire prénom/nom vide")
+	}
+	b := f.domain.Seed(fmt.Sprint(in)).Bytes()
+	fi := binary.BigEndian.Uint64(b[0:8]) % uint64(len(f.first))
+	li := binary.BigEndian.Uint64(b[8:16]) % uint64(len(f.last))
+	return f.first[fi] + " " + f.last[li], nil
+}
+
+var _ transform.ValueTransformer = (*FullNameFaker)(nil)

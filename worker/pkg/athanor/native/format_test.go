@@ -33,6 +33,22 @@ func TestEmailFaker_DeterministicAndValid(t *testing.T) {
 	}
 }
 
+func TestFullNameFaker_DeterministicComposite(t *testing.T) {
+	dom := consistency.New([]byte("clé-test"), "org").Domain("person.full_name")
+	f := NewFullNameFaker(dom, []string{"Alice", "Bob", "Chloe"}, []string{"Martin", "Durand", "Petit"})
+	ctx := transform.Background()
+
+	a, _ := f.TransformValue(ctx, "Jean Dupont")
+	b, _ := f.TransformValue(ctx, "Jean Dupont")
+	if a != b {
+		t.Fatalf("même entrée -> même sortie attendu, obtenu %v puis %v", a, b)
+	}
+	re := regexp.MustCompile(`^(Alice|Bob|Chloe) (Martin|Durand|Petit)$`)
+	if !re.MatchString(a.(string)) {
+		t.Fatalf("nom complet invalide: %v", a)
+	}
+}
+
 func TestPhoneFaker_DeterministicAndValid(t *testing.T) {
 	dom := consistency.New([]byte("clé-test"), "org").Domain("person.phone")
 	f := NewPhoneFaker(dom)

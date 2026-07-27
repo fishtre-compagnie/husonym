@@ -42,8 +42,20 @@ func deterministicValueTransformer(
 		return native.NewDictFaker(d.Domain("person.first_name"), ds.FirstNames), true
 	case cfg.GetGenerateLastNameConfig() != nil || cfg.GetTransformLastNameConfig() != nil:
 		return native.NewDictFaker(d.Domain("person.last_name"), ds.LastNames), true
+	case cfg.GetGenerateFullNameConfig() != nil || cfg.GetTransformFullNameConfig() != nil:
+		return native.NewFullNameFaker(d.Domain("person.full_name"), ds.FirstNames, ds.LastNames), true
 	case cfg.GetGenerateCityConfig() != nil:
 		return native.NewDictFaker(d.Domain("geo.city"), ds.Address_Citys), true
+	case cfg.GetGenerateStateConfig() != nil:
+		return native.NewDictFaker(d.Domain("geo.state"), ds.UsStates), true
+	case cfg.GetGenerateZipcodeConfig() != nil:
+		return native.NewDictFaker(d.Domain("geo.postal_code"), ds.Address_ZipCodes), true
+	case cfg.GetGenerateStreetAddressConfig() != nil:
+		return native.NewDictFaker(d.Domain("geo.street_address"), ds.Address_Address1s), true
+	case cfg.GetGenerateCountryConfig() != nil:
+		return native.NewDictFaker(d.Domain("geo.country"), ds.Countrys), true
+	case cfg.GetGenerateBusinessNameConfig() != nil:
+		return native.NewDictFaker(d.Domain("company.name"), ds.BusinessNames), true
 	case cfg.GetGenerateEmailConfig() != nil || cfg.GetTransformEmailConfig() != nil:
 		return native.NewEmailFaker(d.Domain("person.email"), ds.EmailDomains), true
 	case cfg.GetTransformPhoneNumberConfig() != nil ||
