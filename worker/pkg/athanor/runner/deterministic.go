@@ -20,20 +20,15 @@ import (
 	ds "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/data-sets"
 )
 
-// dictBinding = un type sémantique (clé de domaine de cohérence) et son
-// dictionnaire faker versionné.
-type dictBinding struct {
-	semanticType string
-	dict         []string
-}
-
-// deterministicValueTransformer renvoie un transformer déterministe (DictFaker)
-// pour les configs reconnues, sinon (nil, false) — l'appelant retombe alors sur
+// deterministicValueTransformer renvoie un transformer déterministe pour les
+// configs reconnues, sinon (nil, false) — l'appelant retombe alors sur
 // l'adaptateur Benthos aléatoire. Un deriver nil désactive tout (comportement
 // historique).
 //
 // On traite ensemble les variantes Generate* et Transform* : sous Athanor, toutes
-// deviennent une fonction déterministe de la valeur d'entrée (RFC §8).
+// deviennent une fonction déterministe de la valeur d'entrée (RFC §8). Les
+// dictionnaires (prénom, nom, ville) passent par DictFaker ; les formats
+// quasi-uniques (email, téléphone) par des fakers dédiés dérivés de la graine.
 func deterministicValueTransformer(
 	d *consistency.Deriver,
 	cfg *mgmtv1alpha1.TransformerConfig,
@@ -42,17 +37,20 @@ func deterministicValueTransformer(
 		return nil, false
 	}
 
-	var b dictBinding
 	switch {
 	case cfg.GetGenerateFirstNameConfig() != nil || cfg.GetTransformFirstNameConfig() != nil:
-		b = dictBinding{"person.first_name", ds.FirstNames}
+		return native.NewDictFaker(d.Domain("person.first_name"), ds.FirstNames), true
 	case cfg.GetGenerateLastNameConfig() != nil || cfg.GetTransformLastNameConfig() != nil:
-		b = dictBinding{"person.last_name", ds.LastNames}
+		return native.NewDictFaker(d.Domain("person.last_name"), ds.LastNames), true
 	case cfg.GetGenerateCityConfig() != nil:
-		b = dictBinding{"geo.city", ds.Address_Citys}
+		return native.NewDictFaker(d.Domain("geo.city"), ds.Address_Citys), true
+	case cfg.GetGenerateEmailConfig() != nil || cfg.GetTransformEmailConfig() != nil:
+		return native.NewEmailFaker(d.Domain("person.email"), ds.EmailDomains), true
+	case cfg.GetTransformPhoneNumberConfig() != nil ||
+		cfg.GetTransformE164PhoneNumberConfig() != nil ||
+		cfg.GetGenerateE164PhoneNumberConfig() != nil:
+		return native.NewPhoneFaker(d.Domain("person.phone")), true
 	default:
 		return nil, false
 	}
-
-	return native.NewDictFaker(d.Domain(b.semanticType), b.dict), true
 }
