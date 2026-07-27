@@ -93,7 +93,7 @@ func TestIntegration_MySQL_RunTable(t *testing.T) {
 	}
 
 	// EXÉCUTION DU MOTEUR ATHANOR, source -> cible, batch de 2.
-	if err := RunTable(ctx, src, dst, sqlio.MySQLDialect{}, mappings(), "appdb", "clients", "", 2, WriteConfig{}); err != nil {
+	if err := RunTable(ctx, src, dst, sqlio.MySQLDialect{}, mappings(), "appdb", "clients", "", 2, WriteConfig{}, nil); err != nil {
 		t.Fatalf("RunTable: %v", err)
 	}
 

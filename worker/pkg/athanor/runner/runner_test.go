@@ -4,9 +4,22 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/engine"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/native"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
 )
+
+func generateFirstName() *mgmtv1alpha1.JobMappingTransformer {
+	return &mgmtv1alpha1.JobMappingTransformer{
+		Config: &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_GenerateFirstNameConfig{
+				GenerateFirstNameConfig: &mgmtv1alpha1.GenerateFirstName{},
+			},
+		},
+	}
+}
 
 func passthrough() *mgmtv1alpha1.JobMappingTransformer {
 	return &mgmtv1alpha1.JobMappingTransformer{
@@ -39,7 +52,7 @@ func TestSpecForTable(t *testing.T) {
 		{Schema: "public", Table: "autre", Column: "x", Transformer: transformInt64()}, // autre table : ignorée
 	}
 
-	cols, spec, err := SpecForTable(mappings, "public", "clients")
+	cols, spec, err := SpecForTable(mappings, "public", "clients", nil)
 	if err != nil {
 		t.Fatalf("SpecForTable: %v", err)
 	}
@@ -59,8 +72,48 @@ func TestSpecForTable(t *testing.T) {
 	}
 }
 
+// Avec un deriver, un GenerateFirstName est routé vers un DictFaker DÉTERMINISTE :
+// la même entrée donne toujours la même sortie (RFC §8), et la valeur est bien
+// anonymisée.
+func TestSpecForTable_Deterministic(t *testing.T) {
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "public", Table: "clients", Column: "prenom", Transformer: generateFirstName()},
+	}
+	d := consistency.New([]byte("clé-test"), "org")
+	_, spec, err := SpecForTable(mappings, "public", "clients", d)
+	if err != nil {
+		t.Fatalf("SpecForTable: %v", err)
+	}
+	if _, ok := spec.Values[0].T.(*native.DictFaker); !ok {
+		t.Fatalf("attendu un DictFaker déterministe, obtenu %T", spec.Values[0].T)
+	}
+	ctx := transform.Background()
+	a, _ := spec.Values[0].T.TransformValue(ctx, "Jean")
+	b, _ := spec.Values[0].T.TransformValue(ctx, "Jean")
+	if a != b {
+		t.Fatalf("même entrée -> même sortie attendu, obtenu %v puis %v", a, b)
+	}
+	if a == "Jean" || a == "" {
+		t.Fatalf("la valeur doit être anonymisée, obtenu %v", a)
+	}
+}
+
+// Sans deriver, on retombe sur l'adaptateur Benthos (aléatoire) — pas un DictFaker.
+func TestSpecForTable_NoDeriverFallsBack(t *testing.T) {
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "public", Table: "clients", Column: "prenom", Transformer: generateFirstName()},
+	}
+	_, spec, err := SpecForTable(mappings, "public", "clients", nil)
+	if err != nil {
+		t.Fatalf("SpecForTable: %v", err)
+	}
+	if _, ok := spec.Values[0].T.(*native.DictFaker); ok {
+		t.Fatal("sans deriver, ne doit pas être un DictFaker")
+	}
+}
+
 func TestSpecForTable_NoMapping(t *testing.T) {
-	_, _, err := SpecForTable(nil, "public", "vide")
+	_, _, err := SpecForTable(nil, "public", "vide", nil)
 	if err == nil {
 		t.Fatal("aucun mapping pour la table doit être une erreur")
 	}

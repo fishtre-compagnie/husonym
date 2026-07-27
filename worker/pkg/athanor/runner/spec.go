@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/engine"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
 	te "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
@@ -20,11 +21,15 @@ import (
 // engine.Spec, et renvoie la liste ordonnée des colonnes (le schéma du batch).
 //
 // Les colonnes en Passthrough ne reçoivent PAS de binding : elles sont recopiées
-// telles quelles. Les options te.TransformerExecutorOption (résolveur de
-// transformers user-defined, config PII text…) sont propagées à l'adaptateur.
+// telles quelles. Si un deriver de cohérence est fourni, les transformers
+// reconnus (prénom, nom, ville…) sont routés vers un DictFaker DÉTERMINISTE
+// (RFC §8) ; sinon on retombe sur l'adaptateur Benthos aléatoire. Les options
+// te.TransformerExecutorOption (résolveur user-defined, PII text…) ne concernent
+// que ce dernier chemin.
 func SpecForTable(
 	mappings []*mgmtv1alpha1.JobMapping,
 	schema, table string,
+	deriver *consistency.Deriver,
 	opts ...te.TransformerExecutorOption,
 ) (cols []string, spec engine.Spec, err error) {
 	for _, m := range mappings {
@@ -44,6 +49,13 @@ func SpecForTable(
 		}
 		if cfg.GetPassthroughConfig() != nil {
 			continue // colonne conservée : aucun binding nécessaire
+		}
+
+		// Cohérence déterministe (RFC §8) : chemin prioritaire pour les types
+		// reconnus. À défaut, adaptateur Benthos aléatoire.
+		if vt, ok := deterministicValueTransformer(deriver, cfg); ok {
+			spec.Values = append(spec.Values, engine.ValueBinding{Column: col, T: vt})
+			continue
 		}
 
 		vt, werr := transform.WrapNeosyncConfig(cfg, opts...)

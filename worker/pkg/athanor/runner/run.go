@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
 	te "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
@@ -44,9 +45,10 @@ func RunTable(
 	schema, table, where string,
 	batchSize int,
 	wc WriteConfig,
+	deriver *consistency.Deriver,
 	opts ...te.TransformerExecutorOption,
 ) error {
-	cols, spec, err := SpecForTable(mappings, schema, table, opts...)
+	cols, spec, err := SpecForTable(mappings, schema, table, deriver, opts...)
 	if err != nil {
 		return err
 	}

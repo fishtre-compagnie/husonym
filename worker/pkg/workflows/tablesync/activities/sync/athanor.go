@@ -12,10 +12,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
 	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
+	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/runner"
 	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
 	"github.com/google/uuid"
@@ -101,6 +103,10 @@ func (a *Activity) runAthanor(
 	// Gestion des conflits de clé (onConflict) dérivée des options de destination.
 	wc := writeConfigForDest(dests[0])
 
+	// Cohérence déterministe (RFC §8) : dériveur construit pour ce run. La même
+	// valeur d'entrée produira la même sortie, sur toutes les lignes/tables/runs.
+	deriver := consistencyDeriver()
+
 	logger.Info("moteur=athanor : anonymisation de table",
 		"schema", metadata.Schema,
 		"table", metadata.Table,
@@ -109,9 +115,10 @@ func (a *Activity) runAthanor(
 		"dstConn", dstConnID,
 		"where", where,
 		"onConflict", wc.OnConflict,
+		"cohérence", "déterministe",
 	)
 
-	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize, wc)
+	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize, wc, deriver)
 }
 
 // sourceConnectionID extrait l'id de connexion source selon le dialecte du job.
@@ -157,6 +164,18 @@ func dialectFor(conn connectionmanager.ConnectionInput) (sqlio.Dialect, error) {
 	default:
 		return nil, fmt.Errorf("athanor: dialecte non supporté (seuls PostgreSQL, MySQL et SQL Server le sont)")
 	}
+}
+
+// consistencyDeriver construit le dériveur de cohérence déterministe (RFC §8).
+// La clé de projet vient de ATHANOR_CONSISTENCY_KEY ; à défaut, une clé de démo
+// (bouchon en attendant le Key Service, RFC §8.4). Scope "org" = cohérence
+// maximale (même valeur → même sortie dans toute l'organisation, inter-runs).
+func consistencyDeriver() *consistency.Deriver {
+	key := os.Getenv("ATHANOR_CONSISTENCY_KEY")
+	if key == "" {
+		key = "husonym-athanor-demo-key"
+	}
+	return consistency.New([]byte(key), "org")
 }
 
 // writeConfigForDest dérive la politique d'écriture (gestion des conflits de clé)
