@@ -39,6 +39,31 @@ func jobIDFromRunID(runID string) (string, error) {
 	return id, nil
 }
 
+// useAthanorForJob décide, PAR JOB, si Athanor doit traiter ce run. Priorité au
+// champ `engine` du job (réglé dans l'UI, WorkflowOptions) ; à défaut
+// (UNSPECIFIED) ou en cas d'échec de lecture, on retombe sur la policy de
+// déploiement (AthanorPolicy, variables d'env).
+func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string, logger *slog.Logger) bool {
+	jobID, _ := jobIDFromRunID(jobRunID)
+	deploymentDefault := a.athanorPolicy.EnabledFor(jobID)
+	if jobID == "" {
+		return deploymentDefault
+	}
+	resp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
+	if err != nil {
+		logger.Warn("athanor: lecture du moteur du job impossible, repli sur le défaut", "error", err)
+		return deploymentDefault
+	}
+	switch resp.Msg.GetJob().GetWorkflowOptions().GetEngine() {
+	case mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR:
+		return true
+	case mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS:
+		return false
+	default: // JOB_ENGINE_UNSPECIFIED : suit le défaut de déploiement
+		return deploymentDefault
+	}
+}
+
 func (a *Activity) runAthanor(
 	ctx context.Context,
 	req *SyncTableRequest,

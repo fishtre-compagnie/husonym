@@ -30,7 +30,7 @@ func Register(
 	maxIterations int,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
 	redisclient redis.UniversalClient,
-	enableAthanor bool,
+	athanorPolicy sync_activity.AthanorPolicy,
 ) {
 	tsWf := tablesync_workflow.New(maxIterations)
 	w.RegisterWorkflow(tsWf.TableSync)
@@ -45,7 +45,7 @@ func Register(
 		temporalclient,
 		anonymizationClient,
 		redisclient,
-		enableAthanor,
+		athanorPolicy,
 	)
 
 	w.RegisterActivity(syncActivity.Sync)

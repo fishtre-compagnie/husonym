@@ -115,6 +115,17 @@ components:
         - INVALID_EMAIL_ACTION_PASSTHROUGH
         - INVALID_EMAIL_ACTION_GENERATE
       description: Action enumeration that dictates what the transform_email transformer should do in the case that it encounters an email that does not conform to RFC 5322
+    mgmt.v1alpha1.JobEngine:
+      type: string
+      title: JobEngine
+      enum:
+        - JOB_ENGINE_UNSPECIFIED
+        - JOB_ENGINE_ATHANOR
+        - JOB_ENGINE_BENTHOS
+      description: |-
+        Config that contains various timeouts that are configured in the underlying temporal workflow
+         More options will come in the future as needed
+         Which transformation engine runs a job.
     mgmt.v1alpha1.JobRunStatus:
       type: string
       title: JobRunStatus
@@ -6123,11 +6134,13 @@ components:
           description: |-
             The timeout for a single workflow run.
              Measured in seconds
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobEngine'
+          title: engine
+          description: Which transformation engine runs this job. Unspecified = deployment default.
       title: WorkflowOptions
       additionalProperties: false
-      description: |-
-        Config that contains various timeouts that are configured in the underlying temporal workflow
-         More options will come in the future as needed
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

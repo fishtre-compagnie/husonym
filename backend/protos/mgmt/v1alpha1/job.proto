@@ -654,6 +654,16 @@ message JobTypeConfig {
 
 // Config that contains various timeouts that are configured in the underlying temporal workflow
 // More options will come in the future as needed
+// Which transformation engine runs a job.
+enum JobEngine {
+  // Defer to the deployment default (ENABLE_ATHANOR_ENGINE / per-worker policy).
+  JOB_ENGINE_UNSPECIFIED = 0;
+  // New vectorized engine (deterministic consistency, native referential integrity).
+  JOB_ENGINE_ATHANOR = 1;
+  // Original row-by-row streaming engine (Benthos/redpanda-connect).
+  JOB_ENGINE_BENTHOS = 2;
+}
+
 message WorkflowOptions {
   reserved 1;
   reserved 2;
@@ -665,6 +675,8 @@ message WorkflowOptions {
   // The timeout for a single workflow run.
   // Measured in seconds
   optional int64 run_timeout = 8;
+  // Which transformation engine runs this job. Unspecified = deployment default.
+  JobEngine engine = 9;
 }
 
 // Config that contains various timeouts that are configured in the underlying temporal workflow(s) and activities

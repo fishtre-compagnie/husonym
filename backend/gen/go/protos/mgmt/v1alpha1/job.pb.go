@@ -23,6 +23,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Config that contains various timeouts that are configured in the underlying temporal workflow
+// More options will come in the future as needed
+// Which transformation engine runs a job.
+type JobEngine int32
+
+const (
+	// Defer to the deployment default (ENABLE_ATHANOR_ENGINE / per-worker policy).
+	JobEngine_JOB_ENGINE_UNSPECIFIED JobEngine = 0
+	// New vectorized engine (deterministic consistency, native referential integrity).
+	JobEngine_JOB_ENGINE_ATHANOR JobEngine = 1
+	// Original row-by-row streaming engine (Benthos/redpanda-connect).
+	JobEngine_JOB_ENGINE_BENTHOS JobEngine = 2
+)
+
+// Enum value maps for JobEngine.
+var (
+	JobEngine_name = map[int32]string{
+		0: "JOB_ENGINE_UNSPECIFIED",
+		1: "JOB_ENGINE_ATHANOR",
+		2: "JOB_ENGINE_BENTHOS",
+	}
+	JobEngine_value = map[string]int32{
+		"JOB_ENGINE_UNSPECIFIED": 0,
+		"JOB_ENGINE_ATHANOR":     1,
+		"JOB_ENGINE_BENTHOS":     2,
+	}
+)
+
+func (x JobEngine) Enum() *JobEngine {
+	p := new(JobEngine)
+	*p = x
+	return p
+}
+
+func (x JobEngine) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (JobEngine) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_job_proto_enumTypes[0].Descriptor()
+}
+
+func (JobEngine) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[0]
+}
+
+func (x JobEngine) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use JobEngine.Descriptor instead.
+func (JobEngine) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{0}
+}
+
 type JobStatus int32
 
 const (
@@ -59,11 +114,11 @@ func (x JobStatus) String() string {
 }
 
 func (JobStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[0].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[1].Descriptor()
 }
 
 func (JobStatus) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[0]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[1]
 }
 
 func (x JobStatus) Number() protoreflect.EnumNumber {
@@ -72,7 +127,7 @@ func (x JobStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use JobStatus.Descriptor instead.
 func (JobStatus) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{0}
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{1}
 }
 
 type ActivityStatus int32
@@ -114,11 +169,11 @@ func (x ActivityStatus) String() string {
 }
 
 func (ActivityStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[1].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[2].Descriptor()
 }
 
 func (ActivityStatus) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[1]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[2]
 }
 
 func (x ActivityStatus) Number() protoreflect.EnumNumber {
@@ -127,7 +182,7 @@ func (x ActivityStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ActivityStatus.Descriptor instead.
 func (ActivityStatus) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{1}
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{2}
 }
 
 // An enumeration of job run statuses.
@@ -191,11 +246,11 @@ func (x JobRunStatus) String() string {
 }
 
 func (JobRunStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[2].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[3].Descriptor()
 }
 
 func (JobRunStatus) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[2]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[3]
 }
 
 func (x JobRunStatus) Number() protoreflect.EnumNumber {
@@ -204,7 +259,7 @@ func (x JobRunStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use JobRunStatus.Descriptor instead.
 func (JobRunStatus) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{2}
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{3}
 }
 
 type LogWindow int32
@@ -243,11 +298,11 @@ func (x LogWindow) String() string {
 }
 
 func (LogWindow) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[3].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[4].Descriptor()
 }
 
 func (LogWindow) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[3]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[4]
 }
 
 func (x LogWindow) Number() protoreflect.EnumNumber {
@@ -256,7 +311,7 @@ func (x LogWindow) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogWindow.Descriptor instead.
 func (LogWindow) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{3}
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{4}
 }
 
 type LogLevel int32
@@ -298,11 +353,11 @@ func (x LogLevel) String() string {
 }
 
 func (LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[4].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[5].Descriptor()
 }
 
 func (LogLevel) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[4]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[5]
 }
 
 func (x LogLevel) Number() protoreflect.EnumNumber {
@@ -311,7 +366,7 @@ func (x LogLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogLevel.Descriptor instead.
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{4}
+	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{5}
 }
 
 type AwsS3DestinationConnectionOptions_StorageClass int32
@@ -362,11 +417,11 @@ func (x AwsS3DestinationConnectionOptions_StorageClass) String() string {
 }
 
 func (AwsS3DestinationConnectionOptions_StorageClass) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[5].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[6].Descriptor()
 }
 
 func (AwsS3DestinationConnectionOptions_StorageClass) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[5]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[6]
 }
 
 func (x AwsS3DestinationConnectionOptions_StorageClass) Number() protoreflect.EnumNumber {
@@ -451,11 +506,11 @@ func (x ColumnError_ColumnErrorCode) String() string {
 }
 
 func (ColumnError_ColumnErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[6].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[7].Descriptor()
 }
 
 func (ColumnError_ColumnErrorCode) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[6]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[7]
 }
 
 func (x ColumnError_ColumnErrorCode) Number() protoreflect.EnumNumber {
@@ -504,11 +559,11 @@ func (x ColumnWarning_ColumnWarningCode) String() string {
 }
 
 func (ColumnWarning_ColumnWarningCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[7].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[8].Descriptor()
 }
 
 func (ColumnWarning_ColumnWarningCode) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[7]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[8]
 }
 
 func (x ColumnWarning_ColumnWarningCode) Number() protoreflect.EnumNumber {
@@ -557,11 +612,11 @@ func (x DatabaseError_DatabaseErrorCode) String() string {
 }
 
 func (DatabaseError_DatabaseErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[8].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[9].Descriptor()
 }
 
 func (DatabaseError_DatabaseErrorCode) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[8]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[9]
 }
 
 func (x DatabaseError_DatabaseErrorCode) Number() protoreflect.EnumNumber {
@@ -622,11 +677,11 @@ func (x TableError_TableErrorCode) String() string {
 }
 
 func (TableError_TableErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[9].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[10].Descriptor()
 }
 
 func (TableError_TableErrorCode) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[9]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[10]
 }
 
 func (x TableError_TableErrorCode) Number() protoreflect.EnumNumber {
@@ -674,11 +729,11 @@ func (x GetActiveJobHooksByTimingRequest_Timing) String() string {
 }
 
 func (GetActiveJobHooksByTimingRequest_Timing) Descriptor() protoreflect.EnumDescriptor {
-	return file_mgmt_v1alpha1_job_proto_enumTypes[10].Descriptor()
+	return file_mgmt_v1alpha1_job_proto_enumTypes[11].Descriptor()
 }
 
 func (GetActiveJobHooksByTimingRequest_Timing) Type() protoreflect.EnumType {
-	return &file_mgmt_v1alpha1_job_proto_enumTypes[10]
+	return &file_mgmt_v1alpha1_job_proto_enumTypes[11]
 }
 
 func (x GetActiveJobHooksByTimingRequest_Timing) Number() protoreflect.EnumNumber {
@@ -3704,13 +3759,13 @@ func (*JobTypeConfig_Sync) isJobTypeConfig_JobType() {}
 
 func (*JobTypeConfig_PiiDetect) isJobTypeConfig_JobType() {}
 
-// Config that contains various timeouts that are configured in the underlying temporal workflow
-// More options will come in the future as needed
 type WorkflowOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The timeout for a single workflow run.
 	// Measured in seconds
-	RunTimeout    *int64 `protobuf:"varint,8,opt,name=run_timeout,json=runTimeout,proto3,oneof" json:"run_timeout,omitempty"`
+	RunTimeout *int64 `protobuf:"varint,8,opt,name=run_timeout,json=runTimeout,proto3,oneof" json:"run_timeout,omitempty"`
+	// Which transformation engine runs this job. Unspecified = deployment default.
+	Engine        JobEngine `protobuf:"varint,9,opt,name=engine,proto3,enum=mgmt.v1alpha1.JobEngine" json:"engine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3750,6 +3805,13 @@ func (x *WorkflowOptions) GetRunTimeout() int64 {
 		return *x.RunTimeout
 	}
 	return 0
+}
+
+func (x *WorkflowOptions) GetEngine() JobEngine {
+	if x != nil {
+		return x.Engine
+	}
+	return JobEngine_JOB_ENGINE_UNSPECIFIED
 }
 
 // Config that contains various timeouts that are configured in the underlying temporal workflow(s) and activities
@@ -12758,10 +12820,11 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x05table\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05tableB\x0e\n" +
 	"\f_user_promptB\x0e\n" +
 	"\f_incrementalB\x11\n" +
-	"\bjob_type\x12\x05\xbaH\x02\b\x00\"q\n" +
+	"\bjob_type\x12\x05\xbaH\x02\b\x00\"\xa3\x01\n" +
 	"\x0fWorkflowOptions\x12$\n" +
 	"\vrun_timeout\x18\b \x01(\x03H\x00R\n" +
-	"runTimeout\x88\x01\x01B\x0e\n" +
+	"runTimeout\x88\x01\x01\x120\n" +
+	"\x06engine\x18\t \x01(\x0e2\x18.mgmt.v1alpha1.JobEngineR\x06engineB\x0e\n" +
 	"\f_run_timeoutJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aJ\x04\b\a\x10\b\"\x95\x02\n" +
 	"\x0fActivityOptions\x12G\n" +
 	"\x19schedule_to_close_timeout\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x00R\x16scheduleToCloseTimeout\x88\x01\x01\x12A\n" +
@@ -13258,7 +13321,11 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"confidence\x18\x02 \x01(\x02R\n" +
 	"confidenceB\x0f\n" +
 	"\r_regex_reportB\r\n" +
-	"\v_llm_report*o\n" +
+	"\v_llm_report*W\n" +
+	"\tJobEngine\x12\x1a\n" +
+	"\x16JOB_ENGINE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12JOB_ENGINE_ATHANOR\x10\x01\x12\x16\n" +
+	"\x12JOB_ENGINE_BENTHOS\x10\x02*o\n" +
 	"\tJobStatus\x12\x1a\n" +
 	"\x16JOB_STATUS_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12JOB_STATUS_ENABLED\x10\x01\x12\x15\n" +
@@ -13350,519 +13417,521 @@ func file_mgmt_v1alpha1_job_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_job_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_job_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_mgmt_v1alpha1_job_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
 var file_mgmt_v1alpha1_job_proto_msgTypes = make([]protoimpl.MessageInfo, 204)
 var file_mgmt_v1alpha1_job_proto_goTypes = []any{
-	(JobStatus)(0),      // 0: mgmt.v1alpha1.JobStatus
-	(ActivityStatus)(0), // 1: mgmt.v1alpha1.ActivityStatus
-	(JobRunStatus)(0),   // 2: mgmt.v1alpha1.JobRunStatus
-	(LogWindow)(0),      // 3: mgmt.v1alpha1.LogWindow
-	(LogLevel)(0),       // 4: mgmt.v1alpha1.LogLevel
-	(AwsS3DestinationConnectionOptions_StorageClass)(0),                       // 5: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.StorageClass
-	(ColumnError_ColumnErrorCode)(0),                                          // 6: mgmt.v1alpha1.ColumnError.ColumnErrorCode
-	(ColumnWarning_ColumnWarningCode)(0),                                      // 7: mgmt.v1alpha1.ColumnWarning.ColumnWarningCode
-	(DatabaseError_DatabaseErrorCode)(0),                                      // 8: mgmt.v1alpha1.DatabaseError.DatabaseErrorCode
-	(TableError_TableErrorCode)(0),                                            // 9: mgmt.v1alpha1.TableError.TableErrorCode
-	(GetActiveJobHooksByTimingRequest_Timing)(0),                              // 10: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.Timing
-	(*GetJobsRequest)(nil),                                                    // 11: mgmt.v1alpha1.GetJobsRequest
-	(*GetJobsResponse)(nil),                                                   // 12: mgmt.v1alpha1.GetJobsResponse
-	(*JobSource)(nil),                                                         // 13: mgmt.v1alpha1.JobSource
-	(*JobSourceOptions)(nil),                                                  // 14: mgmt.v1alpha1.JobSourceOptions
-	(*CreateJobDestination)(nil),                                              // 15: mgmt.v1alpha1.CreateJobDestination
-	(*JobDestination)(nil),                                                    // 16: mgmt.v1alpha1.JobDestination
-	(*AiGenerateSourceOptions)(nil),                                           // 17: mgmt.v1alpha1.AiGenerateSourceOptions
-	(*AiGenerateSourceSchemaOption)(nil),                                      // 18: mgmt.v1alpha1.AiGenerateSourceSchemaOption
-	(*AiGenerateSourceTableOption)(nil),                                       // 19: mgmt.v1alpha1.AiGenerateSourceTableOption
-	(*GenerateSourceOptions)(nil),                                             // 20: mgmt.v1alpha1.GenerateSourceOptions
-	(*GenerateSourceSchemaOption)(nil),                                        // 21: mgmt.v1alpha1.GenerateSourceSchemaOption
-	(*GenerateSourceTableOption)(nil),                                         // 22: mgmt.v1alpha1.GenerateSourceTableOption
-	(*MongoDBSourceConnectionOptions)(nil),                                    // 23: mgmt.v1alpha1.MongoDBSourceConnectionOptions
-	(*DynamoDBSourceConnectionOptions)(nil),                                   // 24: mgmt.v1alpha1.DynamoDBSourceConnectionOptions
-	(*DynamoDBSourceUnmappedTransformConfig)(nil),                             // 25: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig
-	(*DynamoDBSourceTableOption)(nil),                                         // 26: mgmt.v1alpha1.DynamoDBSourceTableOption
-	(*PostgresSourceConnectionOptions)(nil),                                   // 27: mgmt.v1alpha1.PostgresSourceConnectionOptions
-	(*PostgresSourceSchemaOption)(nil),                                        // 28: mgmt.v1alpha1.PostgresSourceSchemaOption
-	(*PostgresSourceTableOption)(nil),                                         // 29: mgmt.v1alpha1.PostgresSourceTableOption
-	(*MysqlSourceConnectionOptions)(nil),                                      // 30: mgmt.v1alpha1.MysqlSourceConnectionOptions
-	(*MysqlSourceSchemaOption)(nil),                                           // 31: mgmt.v1alpha1.MysqlSourceSchemaOption
-	(*MysqlSourceTableOption)(nil),                                            // 32: mgmt.v1alpha1.MysqlSourceTableOption
-	(*MssqlSourceConnectionOptions)(nil),                                      // 33: mgmt.v1alpha1.MssqlSourceConnectionOptions
-	(*MssqlSourceSchemaOption)(nil),                                           // 34: mgmt.v1alpha1.MssqlSourceSchemaOption
-	(*MssqlSourceTableOption)(nil),                                            // 35: mgmt.v1alpha1.MssqlSourceTableOption
-	(*AwsS3SourceConnectionOptions)(nil),                                      // 36: mgmt.v1alpha1.AwsS3SourceConnectionOptions
-	(*JobDestinationOptions)(nil),                                             // 37: mgmt.v1alpha1.JobDestinationOptions
-	(*MongoDBDestinationConnectionOptions)(nil),                               // 38: mgmt.v1alpha1.MongoDBDestinationConnectionOptions
-	(*GcpCloudStorageDestinationConnectionOptions)(nil),                       // 39: mgmt.v1alpha1.GcpCloudStorageDestinationConnectionOptions
-	(*DynamoDBDestinationConnectionOptions)(nil),                              // 40: mgmt.v1alpha1.DynamoDBDestinationConnectionOptions
-	(*DynamoDBDestinationTableMapping)(nil),                                   // 41: mgmt.v1alpha1.DynamoDBDestinationTableMapping
-	(*PostgresDestinationConnectionOptions)(nil),                              // 42: mgmt.v1alpha1.PostgresDestinationConnectionOptions
-	(*PostgresOnConflictConfig)(nil),                                          // 43: mgmt.v1alpha1.PostgresOnConflictConfig
-	(*PostgresTruncateTableConfig)(nil),                                       // 44: mgmt.v1alpha1.PostgresTruncateTableConfig
-	(*MysqlDestinationConnectionOptions)(nil),                                 // 45: mgmt.v1alpha1.MysqlDestinationConnectionOptions
-	(*MysqlTruncateTableConfig)(nil),                                          // 46: mgmt.v1alpha1.MysqlTruncateTableConfig
-	(*MysqlOnConflictConfig)(nil),                                             // 47: mgmt.v1alpha1.MysqlOnConflictConfig
-	(*MssqlDestinationConnectionOptions)(nil),                                 // 48: mgmt.v1alpha1.MssqlDestinationConnectionOptions
-	(*MssqlTruncateTableConfig)(nil),                                          // 49: mgmt.v1alpha1.MssqlTruncateTableConfig
-	(*MssqlOnConflictConfig)(nil),                                             // 50: mgmt.v1alpha1.MssqlOnConflictConfig
-	(*AwsS3DestinationConnectionOptions)(nil),                                 // 51: mgmt.v1alpha1.AwsS3DestinationConnectionOptions
-	(*BatchConfig)(nil),                                                       // 52: mgmt.v1alpha1.BatchConfig
-	(*CreateJobRequest)(nil),                                                  // 53: mgmt.v1alpha1.CreateJobRequest
-	(*JobTypeConfig)(nil),                                                     // 54: mgmt.v1alpha1.JobTypeConfig
-	(*WorkflowOptions)(nil),                                                   // 55: mgmt.v1alpha1.WorkflowOptions
-	(*ActivityOptions)(nil),                                                   // 56: mgmt.v1alpha1.ActivityOptions
-	(*RetryPolicy)(nil),                                                       // 57: mgmt.v1alpha1.RetryPolicy
-	(*CreateJobResponse)(nil),                                                 // 58: mgmt.v1alpha1.CreateJobResponse
-	(*JobMappingTransformer)(nil),                                             // 59: mgmt.v1alpha1.JobMappingTransformer
-	(*JobMapping)(nil),                                                        // 60: mgmt.v1alpha1.JobMapping
-	(*GetJobRequest)(nil),                                                     // 61: mgmt.v1alpha1.GetJobRequest
-	(*GetJobResponse)(nil),                                                    // 62: mgmt.v1alpha1.GetJobResponse
-	(*UpdateJobScheduleRequest)(nil),                                          // 63: mgmt.v1alpha1.UpdateJobScheduleRequest
-	(*UpdateJobScheduleResponse)(nil),                                         // 64: mgmt.v1alpha1.UpdateJobScheduleResponse
-	(*PauseJobRequest)(nil),                                                   // 65: mgmt.v1alpha1.PauseJobRequest
-	(*PauseJobResponse)(nil),                                                  // 66: mgmt.v1alpha1.PauseJobResponse
-	(*UpdateJobSourceConnectionRequest)(nil),                                  // 67: mgmt.v1alpha1.UpdateJobSourceConnectionRequest
-	(*UpdateJobSourceConnectionResponse)(nil),                                 // 68: mgmt.v1alpha1.UpdateJobSourceConnectionResponse
-	(*PostgresSourceSchemaSubset)(nil),                                        // 69: mgmt.v1alpha1.PostgresSourceSchemaSubset
-	(*MysqlSourceSchemaSubset)(nil),                                           // 70: mgmt.v1alpha1.MysqlSourceSchemaSubset
-	(*DynamoDBSourceSchemaSubset)(nil),                                        // 71: mgmt.v1alpha1.DynamoDBSourceSchemaSubset
-	(*MssqlSourceSchemaSubset)(nil),                                           // 72: mgmt.v1alpha1.MssqlSourceSchemaSubset
-	(*JobSourceSqlSubetSchemas)(nil),                                          // 73: mgmt.v1alpha1.JobSourceSqlSubetSchemas
-	(*SetJobSourceSqlConnectionSubsetsRequest)(nil),                           // 74: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest
-	(*SetJobSourceSqlConnectionSubsetsResponse)(nil),                          // 75: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse
-	(*UpdateJobDestinationConnectionRequest)(nil),                             // 76: mgmt.v1alpha1.UpdateJobDestinationConnectionRequest
-	(*UpdateJobDestinationConnectionResponse)(nil),                            // 77: mgmt.v1alpha1.UpdateJobDestinationConnectionResponse
-	(*DeleteJobDestinationConnectionRequest)(nil),                             // 78: mgmt.v1alpha1.DeleteJobDestinationConnectionRequest
-	(*DeleteJobDestinationConnectionResponse)(nil),                            // 79: mgmt.v1alpha1.DeleteJobDestinationConnectionResponse
-	(*CreateJobDestinationConnectionsRequest)(nil),                            // 80: mgmt.v1alpha1.CreateJobDestinationConnectionsRequest
-	(*CreateJobDestinationConnectionsResponse)(nil),                           // 81: mgmt.v1alpha1.CreateJobDestinationConnectionsResponse
-	(*DeleteJobRequest)(nil),                                                  // 82: mgmt.v1alpha1.DeleteJobRequest
-	(*DeleteJobResponse)(nil),                                                 // 83: mgmt.v1alpha1.DeleteJobResponse
-	(*IsJobNameAvailableRequest)(nil),                                         // 84: mgmt.v1alpha1.IsJobNameAvailableRequest
-	(*IsJobNameAvailableResponse)(nil),                                        // 85: mgmt.v1alpha1.IsJobNameAvailableResponse
-	(*GetJobRunsRequest)(nil),                                                 // 86: mgmt.v1alpha1.GetJobRunsRequest
-	(*GetJobRunsResponse)(nil),                                                // 87: mgmt.v1alpha1.GetJobRunsResponse
-	(*GetJobRunRequest)(nil),                                                  // 88: mgmt.v1alpha1.GetJobRunRequest
-	(*GetJobRunResponse)(nil),                                                 // 89: mgmt.v1alpha1.GetJobRunResponse
-	(*CreateJobRunRequest)(nil),                                               // 90: mgmt.v1alpha1.CreateJobRunRequest
-	(*CreateJobRunResponse)(nil),                                              // 91: mgmt.v1alpha1.CreateJobRunResponse
-	(*CancelJobRunRequest)(nil),                                               // 92: mgmt.v1alpha1.CancelJobRunRequest
-	(*CancelJobRunResponse)(nil),                                              // 93: mgmt.v1alpha1.CancelJobRunResponse
-	(*Job)(nil),                                                               // 94: mgmt.v1alpha1.Job
-	(*JobRecentRun)(nil),                                                      // 95: mgmt.v1alpha1.JobRecentRun
-	(*GetJobRecentRunsRequest)(nil),                                           // 96: mgmt.v1alpha1.GetJobRecentRunsRequest
-	(*GetJobRecentRunsResponse)(nil),                                          // 97: mgmt.v1alpha1.GetJobRecentRunsResponse
-	(*JobNextRuns)(nil),                                                       // 98: mgmt.v1alpha1.JobNextRuns
-	(*GetJobNextRunsRequest)(nil),                                             // 99: mgmt.v1alpha1.GetJobNextRunsRequest
-	(*GetJobNextRunsResponse)(nil),                                            // 100: mgmt.v1alpha1.GetJobNextRunsResponse
-	(*GetJobStatusRequest)(nil),                                               // 101: mgmt.v1alpha1.GetJobStatusRequest
-	(*GetJobStatusResponse)(nil),                                              // 102: mgmt.v1alpha1.GetJobStatusResponse
-	(*JobStatusRecord)(nil),                                                   // 103: mgmt.v1alpha1.JobStatusRecord
-	(*GetJobStatusesRequest)(nil),                                             // 104: mgmt.v1alpha1.GetJobStatusesRequest
-	(*GetJobStatusesResponse)(nil),                                            // 105: mgmt.v1alpha1.GetJobStatusesResponse
-	(*ActivityFailure)(nil),                                                   // 106: mgmt.v1alpha1.ActivityFailure
-	(*PendingActivity)(nil),                                                   // 107: mgmt.v1alpha1.PendingActivity
-	(*JobRun)(nil),                                                            // 108: mgmt.v1alpha1.JobRun
-	(*JobRunEventTaskError)(nil),                                              // 109: mgmt.v1alpha1.JobRunEventTaskError
-	(*JobRunEventTask)(nil),                                                   // 110: mgmt.v1alpha1.JobRunEventTask
-	(*JobRunSyncMetadata)(nil),                                                // 111: mgmt.v1alpha1.JobRunSyncMetadata
-	(*JobRunEventMetadata)(nil),                                               // 112: mgmt.v1alpha1.JobRunEventMetadata
-	(*JobRunEvent)(nil),                                                       // 113: mgmt.v1alpha1.JobRunEvent
-	(*GetJobRunEventsRequest)(nil),                                            // 114: mgmt.v1alpha1.GetJobRunEventsRequest
-	(*GetJobRunEventsResponse)(nil),                                           // 115: mgmt.v1alpha1.GetJobRunEventsResponse
-	(*DeleteJobRunRequest)(nil),                                               // 116: mgmt.v1alpha1.DeleteJobRunRequest
-	(*DeleteJobRunResponse)(nil),                                              // 117: mgmt.v1alpha1.DeleteJobRunResponse
-	(*TerminateJobRunRequest)(nil),                                            // 118: mgmt.v1alpha1.TerminateJobRunRequest
-	(*TerminateJobRunResponse)(nil),                                           // 119: mgmt.v1alpha1.TerminateJobRunResponse
-	(*GetJobRunLogsStreamRequest)(nil),                                        // 120: mgmt.v1alpha1.GetJobRunLogsStreamRequest
-	(*GetJobRunLogsStreamResponse)(nil),                                       // 121: mgmt.v1alpha1.GetJobRunLogsStreamResponse
-	(*GetJobRunLogsRequest)(nil),                                              // 122: mgmt.v1alpha1.GetJobRunLogsRequest
-	(*GetJobRunLogsResponse)(nil),                                             // 123: mgmt.v1alpha1.GetJobRunLogsResponse
-	(*SetJobWorkflowOptionsRequest)(nil),                                      // 124: mgmt.v1alpha1.SetJobWorkflowOptionsRequest
-	(*SetJobWorkflowOptionsResponse)(nil),                                     // 125: mgmt.v1alpha1.SetJobWorkflowOptionsResponse
-	(*SetJobSyncOptionsRequest)(nil),                                          // 126: mgmt.v1alpha1.SetJobSyncOptionsRequest
-	(*SetJobSyncOptionsResponse)(nil),                                         // 127: mgmt.v1alpha1.SetJobSyncOptionsResponse
-	(*ValidateJobMappingsRequest)(nil),                                        // 128: mgmt.v1alpha1.ValidateJobMappingsRequest
-	(*ColumnError)(nil),                                                       // 129: mgmt.v1alpha1.ColumnError
-	(*ColumnWarning)(nil),                                                     // 130: mgmt.v1alpha1.ColumnWarning
-	(*DatabaseError)(nil),                                                     // 131: mgmt.v1alpha1.DatabaseError
-	(*TableError)(nil),                                                        // 132: mgmt.v1alpha1.TableError
-	(*ValidateJobMappingsResponse)(nil),                                       // 133: mgmt.v1alpha1.ValidateJobMappingsResponse
-	(*ValidateSchemaRequest)(nil),                                             // 134: mgmt.v1alpha1.ValidateSchemaRequest
-	(*ValidateSchemaResponse)(nil),                                            // 135: mgmt.v1alpha1.ValidateSchemaResponse
-	(*VirtualForeignKey)(nil),                                                 // 136: mgmt.v1alpha1.VirtualForeignKey
-	(*VirtualForeignConstraint)(nil),                                          // 137: mgmt.v1alpha1.VirtualForeignConstraint
-	(*RunContextKey)(nil),                                                     // 138: mgmt.v1alpha1.RunContextKey
-	(*GetRunContextRequest)(nil),                                              // 139: mgmt.v1alpha1.GetRunContextRequest
-	(*GetRunContextResponse)(nil),                                             // 140: mgmt.v1alpha1.GetRunContextResponse
-	(*SetRunContextRequest)(nil),                                              // 141: mgmt.v1alpha1.SetRunContextRequest
-	(*SetRunContextResponse)(nil),                                             // 142: mgmt.v1alpha1.SetRunContextResponse
-	(*SetRunContextsRequest)(nil),                                             // 143: mgmt.v1alpha1.SetRunContextsRequest
-	(*SetRunContextsResponse)(nil),                                            // 144: mgmt.v1alpha1.SetRunContextsResponse
-	(*JobHook)(nil),                                                           // 145: mgmt.v1alpha1.JobHook
-	(*NewJobHook)(nil),                                                        // 146: mgmt.v1alpha1.NewJobHook
-	(*JobHookConfig)(nil),                                                     // 147: mgmt.v1alpha1.JobHookConfig
-	(*JobHookTimingPreSync)(nil),                                              // 148: mgmt.v1alpha1.JobHookTimingPreSync
-	(*JobHookTimingPostSync)(nil),                                             // 149: mgmt.v1alpha1.JobHookTimingPostSync
-	(*GetJobHooksRequest)(nil),                                                // 150: mgmt.v1alpha1.GetJobHooksRequest
-	(*GetJobHooksResponse)(nil),                                               // 151: mgmt.v1alpha1.GetJobHooksResponse
-	(*GetJobHookRequest)(nil),                                                 // 152: mgmt.v1alpha1.GetJobHookRequest
-	(*GetJobHookResponse)(nil),                                                // 153: mgmt.v1alpha1.GetJobHookResponse
-	(*CreateJobHookRequest)(nil),                                              // 154: mgmt.v1alpha1.CreateJobHookRequest
-	(*CreateJobHookResponse)(nil),                                             // 155: mgmt.v1alpha1.CreateJobHookResponse
-	(*DeleteJobHookRequest)(nil),                                              // 156: mgmt.v1alpha1.DeleteJobHookRequest
-	(*DeleteJobHookResponse)(nil),                                             // 157: mgmt.v1alpha1.DeleteJobHookResponse
-	(*IsJobHookNameAvailableRequest)(nil),                                     // 158: mgmt.v1alpha1.IsJobHookNameAvailableRequest
-	(*IsJobHookNameAvailableResponse)(nil),                                    // 159: mgmt.v1alpha1.IsJobHookNameAvailableResponse
-	(*UpdateJobHookRequest)(nil),                                              // 160: mgmt.v1alpha1.UpdateJobHookRequest
-	(*UpdateJobHookResponse)(nil),                                             // 161: mgmt.v1alpha1.UpdateJobHookResponse
-	(*SetJobHookEnabledRequest)(nil),                                          // 162: mgmt.v1alpha1.SetJobHookEnabledRequest
-	(*SetJobHookEnabledResponse)(nil),                                         // 163: mgmt.v1alpha1.SetJobHookEnabledResponse
-	(*GetActiveJobHooksByTimingRequest)(nil),                                  // 164: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest
-	(*GetActiveJobHooksByTimingResponse)(nil),                                 // 165: mgmt.v1alpha1.GetActiveJobHooksByTimingResponse
-	(*GetPiiDetectionReportRequest)(nil),                                      // 166: mgmt.v1alpha1.GetPiiDetectionReportRequest
-	(*GetPiiDetectionReportResponse)(nil),                                     // 167: mgmt.v1alpha1.GetPiiDetectionReportResponse
-	(*PiiDetectionReport)(nil),                                                // 168: mgmt.v1alpha1.PiiDetectionReport
-	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy)(nil),         // 169: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy
-	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy)(nil),             // 170: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy
-	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil), // 171: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap)(nil), // 172: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
-	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil), // 173: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),         // 174: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),     // 175: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy)(nil),                    // 176: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy
-	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy)(nil),                // 177: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy
-	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),            // 178: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),        // 179: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil),        // 180: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap)(nil),        // 181: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
-	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil),    // 182: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy)(nil),                    // 183: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy
-	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy)(nil),                // 184: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy
-	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),            // 185: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),        // 186: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil),        // 187: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil),    // 188: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	(*PostgresOnConflictConfig_PostgresOnConflictDoNothing)(nil),                  // 189: mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothing
-	(*PostgresOnConflictConfig_PostgresOnConflictUpdate)(nil),                     // 190: mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictUpdate
-	(*MysqlOnConflictConfig_MysqlOnConflictDoNothing)(nil),                        // 191: mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothing
-	(*MysqlOnConflictConfig_MysqlOnConflictUpdate)(nil),                           // 192: mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictUpdate
-	(*JobTypeConfig_JobTypeSync)(nil),                                             // 193: mgmt.v1alpha1.JobTypeConfig.JobTypeSync
-	(*JobTypeConfig_JobTypePiiDetect)(nil),                                        // 194: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect
-	(*JobTypeConfig_JobTypePiiDetect_Incremental)(nil),                            // 195: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.Incremental
-	(*JobTypeConfig_JobTypePiiDetect_DataSampling)(nil),                           // 196: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling
-	(*JobTypeConfig_JobTypePiiDetect_TableScanFilter)(nil),                        // 197: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter
-	(*JobTypeConfig_JobTypePiiDetect_IncludeAll)(nil),                             // 198: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.IncludeAll
-	(*JobTypeConfig_JobTypePiiDetect_TablePatterns)(nil),                          // 199: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
-	(*JobTypeConfig_JobTypePiiDetect_TableIdentifier)(nil),                        // 200: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableIdentifier
-	nil,                                   // 201: mgmt.v1alpha1.GetJobRunLogsStreamResponse.LabelsEntry
-	(*GetJobRunLogsResponse_LogLine)(nil), // 202: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine
-	nil,                                   // 203: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.LabelsEntry
-	(*ColumnError_ColumnErrorReport)(nil), // 204: mgmt.v1alpha1.ColumnError.ColumnErrorReport
-	(*ColumnWarning_ColumnWarningReport)(nil),                 // 205: mgmt.v1alpha1.ColumnWarning.ColumnWarningReport
-	(*DatabaseError_DatabaseErrorReport)(nil),                 // 206: mgmt.v1alpha1.DatabaseError.DatabaseErrorReport
-	(*TableError_TableErrorReport)(nil),                       // 207: mgmt.v1alpha1.TableError.TableErrorReport
-	(*ValidateSchemaResponse_Table)(nil),                      // 208: mgmt.v1alpha1.ValidateSchemaResponse.Table
-	(*JobHookConfig_JobSqlHook)(nil),                          // 209: mgmt.v1alpha1.JobHookConfig.JobSqlHook
-	(*JobHookConfig_JobSqlHook_Timing)(nil),                   // 210: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing
-	(*PiiDetectionReport_TableReport)(nil),                    // 211: mgmt.v1alpha1.PiiDetectionReport.TableReport
-	(*PiiDetectionReport_TableReport_ColumnReport)(nil),       // 212: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport
-	(*PiiDetectionReport_TableReport_ColumnReport_Regex)(nil), // 213: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Regex
-	(*PiiDetectionReport_TableReport_ColumnReport_LLM)(nil),   // 214: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.LLM
-	(*TransformerConfig)(nil),                                 // 215: mgmt.v1alpha1.TransformerConfig
-	(*timestamppb.Timestamp)(nil),                             // 216: google.protobuf.Timestamp
-	(*DatabaseColumn)(nil),                                    // 217: mgmt.v1alpha1.DatabaseColumn
+	(JobEngine)(0),      // 0: mgmt.v1alpha1.JobEngine
+	(JobStatus)(0),      // 1: mgmt.v1alpha1.JobStatus
+	(ActivityStatus)(0), // 2: mgmt.v1alpha1.ActivityStatus
+	(JobRunStatus)(0),   // 3: mgmt.v1alpha1.JobRunStatus
+	(LogWindow)(0),      // 4: mgmt.v1alpha1.LogWindow
+	(LogLevel)(0),       // 5: mgmt.v1alpha1.LogLevel
+	(AwsS3DestinationConnectionOptions_StorageClass)(0),                       // 6: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.StorageClass
+	(ColumnError_ColumnErrorCode)(0),                                          // 7: mgmt.v1alpha1.ColumnError.ColumnErrorCode
+	(ColumnWarning_ColumnWarningCode)(0),                                      // 8: mgmt.v1alpha1.ColumnWarning.ColumnWarningCode
+	(DatabaseError_DatabaseErrorCode)(0),                                      // 9: mgmt.v1alpha1.DatabaseError.DatabaseErrorCode
+	(TableError_TableErrorCode)(0),                                            // 10: mgmt.v1alpha1.TableError.TableErrorCode
+	(GetActiveJobHooksByTimingRequest_Timing)(0),                              // 11: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.Timing
+	(*GetJobsRequest)(nil),                                                    // 12: mgmt.v1alpha1.GetJobsRequest
+	(*GetJobsResponse)(nil),                                                   // 13: mgmt.v1alpha1.GetJobsResponse
+	(*JobSource)(nil),                                                         // 14: mgmt.v1alpha1.JobSource
+	(*JobSourceOptions)(nil),                                                  // 15: mgmt.v1alpha1.JobSourceOptions
+	(*CreateJobDestination)(nil),                                              // 16: mgmt.v1alpha1.CreateJobDestination
+	(*JobDestination)(nil),                                                    // 17: mgmt.v1alpha1.JobDestination
+	(*AiGenerateSourceOptions)(nil),                                           // 18: mgmt.v1alpha1.AiGenerateSourceOptions
+	(*AiGenerateSourceSchemaOption)(nil),                                      // 19: mgmt.v1alpha1.AiGenerateSourceSchemaOption
+	(*AiGenerateSourceTableOption)(nil),                                       // 20: mgmt.v1alpha1.AiGenerateSourceTableOption
+	(*GenerateSourceOptions)(nil),                                             // 21: mgmt.v1alpha1.GenerateSourceOptions
+	(*GenerateSourceSchemaOption)(nil),                                        // 22: mgmt.v1alpha1.GenerateSourceSchemaOption
+	(*GenerateSourceTableOption)(nil),                                         // 23: mgmt.v1alpha1.GenerateSourceTableOption
+	(*MongoDBSourceConnectionOptions)(nil),                                    // 24: mgmt.v1alpha1.MongoDBSourceConnectionOptions
+	(*DynamoDBSourceConnectionOptions)(nil),                                   // 25: mgmt.v1alpha1.DynamoDBSourceConnectionOptions
+	(*DynamoDBSourceUnmappedTransformConfig)(nil),                             // 26: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig
+	(*DynamoDBSourceTableOption)(nil),                                         // 27: mgmt.v1alpha1.DynamoDBSourceTableOption
+	(*PostgresSourceConnectionOptions)(nil),                                   // 28: mgmt.v1alpha1.PostgresSourceConnectionOptions
+	(*PostgresSourceSchemaOption)(nil),                                        // 29: mgmt.v1alpha1.PostgresSourceSchemaOption
+	(*PostgresSourceTableOption)(nil),                                         // 30: mgmt.v1alpha1.PostgresSourceTableOption
+	(*MysqlSourceConnectionOptions)(nil),                                      // 31: mgmt.v1alpha1.MysqlSourceConnectionOptions
+	(*MysqlSourceSchemaOption)(nil),                                           // 32: mgmt.v1alpha1.MysqlSourceSchemaOption
+	(*MysqlSourceTableOption)(nil),                                            // 33: mgmt.v1alpha1.MysqlSourceTableOption
+	(*MssqlSourceConnectionOptions)(nil),                                      // 34: mgmt.v1alpha1.MssqlSourceConnectionOptions
+	(*MssqlSourceSchemaOption)(nil),                                           // 35: mgmt.v1alpha1.MssqlSourceSchemaOption
+	(*MssqlSourceTableOption)(nil),                                            // 36: mgmt.v1alpha1.MssqlSourceTableOption
+	(*AwsS3SourceConnectionOptions)(nil),                                      // 37: mgmt.v1alpha1.AwsS3SourceConnectionOptions
+	(*JobDestinationOptions)(nil),                                             // 38: mgmt.v1alpha1.JobDestinationOptions
+	(*MongoDBDestinationConnectionOptions)(nil),                               // 39: mgmt.v1alpha1.MongoDBDestinationConnectionOptions
+	(*GcpCloudStorageDestinationConnectionOptions)(nil),                       // 40: mgmt.v1alpha1.GcpCloudStorageDestinationConnectionOptions
+	(*DynamoDBDestinationConnectionOptions)(nil),                              // 41: mgmt.v1alpha1.DynamoDBDestinationConnectionOptions
+	(*DynamoDBDestinationTableMapping)(nil),                                   // 42: mgmt.v1alpha1.DynamoDBDestinationTableMapping
+	(*PostgresDestinationConnectionOptions)(nil),                              // 43: mgmt.v1alpha1.PostgresDestinationConnectionOptions
+	(*PostgresOnConflictConfig)(nil),                                          // 44: mgmt.v1alpha1.PostgresOnConflictConfig
+	(*PostgresTruncateTableConfig)(nil),                                       // 45: mgmt.v1alpha1.PostgresTruncateTableConfig
+	(*MysqlDestinationConnectionOptions)(nil),                                 // 46: mgmt.v1alpha1.MysqlDestinationConnectionOptions
+	(*MysqlTruncateTableConfig)(nil),                                          // 47: mgmt.v1alpha1.MysqlTruncateTableConfig
+	(*MysqlOnConflictConfig)(nil),                                             // 48: mgmt.v1alpha1.MysqlOnConflictConfig
+	(*MssqlDestinationConnectionOptions)(nil),                                 // 49: mgmt.v1alpha1.MssqlDestinationConnectionOptions
+	(*MssqlTruncateTableConfig)(nil),                                          // 50: mgmt.v1alpha1.MssqlTruncateTableConfig
+	(*MssqlOnConflictConfig)(nil),                                             // 51: mgmt.v1alpha1.MssqlOnConflictConfig
+	(*AwsS3DestinationConnectionOptions)(nil),                                 // 52: mgmt.v1alpha1.AwsS3DestinationConnectionOptions
+	(*BatchConfig)(nil),                                                       // 53: mgmt.v1alpha1.BatchConfig
+	(*CreateJobRequest)(nil),                                                  // 54: mgmt.v1alpha1.CreateJobRequest
+	(*JobTypeConfig)(nil),                                                     // 55: mgmt.v1alpha1.JobTypeConfig
+	(*WorkflowOptions)(nil),                                                   // 56: mgmt.v1alpha1.WorkflowOptions
+	(*ActivityOptions)(nil),                                                   // 57: mgmt.v1alpha1.ActivityOptions
+	(*RetryPolicy)(nil),                                                       // 58: mgmt.v1alpha1.RetryPolicy
+	(*CreateJobResponse)(nil),                                                 // 59: mgmt.v1alpha1.CreateJobResponse
+	(*JobMappingTransformer)(nil),                                             // 60: mgmt.v1alpha1.JobMappingTransformer
+	(*JobMapping)(nil),                                                        // 61: mgmt.v1alpha1.JobMapping
+	(*GetJobRequest)(nil),                                                     // 62: mgmt.v1alpha1.GetJobRequest
+	(*GetJobResponse)(nil),                                                    // 63: mgmt.v1alpha1.GetJobResponse
+	(*UpdateJobScheduleRequest)(nil),                                          // 64: mgmt.v1alpha1.UpdateJobScheduleRequest
+	(*UpdateJobScheduleResponse)(nil),                                         // 65: mgmt.v1alpha1.UpdateJobScheduleResponse
+	(*PauseJobRequest)(nil),                                                   // 66: mgmt.v1alpha1.PauseJobRequest
+	(*PauseJobResponse)(nil),                                                  // 67: mgmt.v1alpha1.PauseJobResponse
+	(*UpdateJobSourceConnectionRequest)(nil),                                  // 68: mgmt.v1alpha1.UpdateJobSourceConnectionRequest
+	(*UpdateJobSourceConnectionResponse)(nil),                                 // 69: mgmt.v1alpha1.UpdateJobSourceConnectionResponse
+	(*PostgresSourceSchemaSubset)(nil),                                        // 70: mgmt.v1alpha1.PostgresSourceSchemaSubset
+	(*MysqlSourceSchemaSubset)(nil),                                           // 71: mgmt.v1alpha1.MysqlSourceSchemaSubset
+	(*DynamoDBSourceSchemaSubset)(nil),                                        // 72: mgmt.v1alpha1.DynamoDBSourceSchemaSubset
+	(*MssqlSourceSchemaSubset)(nil),                                           // 73: mgmt.v1alpha1.MssqlSourceSchemaSubset
+	(*JobSourceSqlSubetSchemas)(nil),                                          // 74: mgmt.v1alpha1.JobSourceSqlSubetSchemas
+	(*SetJobSourceSqlConnectionSubsetsRequest)(nil),                           // 75: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest
+	(*SetJobSourceSqlConnectionSubsetsResponse)(nil),                          // 76: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse
+	(*UpdateJobDestinationConnectionRequest)(nil),                             // 77: mgmt.v1alpha1.UpdateJobDestinationConnectionRequest
+	(*UpdateJobDestinationConnectionResponse)(nil),                            // 78: mgmt.v1alpha1.UpdateJobDestinationConnectionResponse
+	(*DeleteJobDestinationConnectionRequest)(nil),                             // 79: mgmt.v1alpha1.DeleteJobDestinationConnectionRequest
+	(*DeleteJobDestinationConnectionResponse)(nil),                            // 80: mgmt.v1alpha1.DeleteJobDestinationConnectionResponse
+	(*CreateJobDestinationConnectionsRequest)(nil),                            // 81: mgmt.v1alpha1.CreateJobDestinationConnectionsRequest
+	(*CreateJobDestinationConnectionsResponse)(nil),                           // 82: mgmt.v1alpha1.CreateJobDestinationConnectionsResponse
+	(*DeleteJobRequest)(nil),                                                  // 83: mgmt.v1alpha1.DeleteJobRequest
+	(*DeleteJobResponse)(nil),                                                 // 84: mgmt.v1alpha1.DeleteJobResponse
+	(*IsJobNameAvailableRequest)(nil),                                         // 85: mgmt.v1alpha1.IsJobNameAvailableRequest
+	(*IsJobNameAvailableResponse)(nil),                                        // 86: mgmt.v1alpha1.IsJobNameAvailableResponse
+	(*GetJobRunsRequest)(nil),                                                 // 87: mgmt.v1alpha1.GetJobRunsRequest
+	(*GetJobRunsResponse)(nil),                                                // 88: mgmt.v1alpha1.GetJobRunsResponse
+	(*GetJobRunRequest)(nil),                                                  // 89: mgmt.v1alpha1.GetJobRunRequest
+	(*GetJobRunResponse)(nil),                                                 // 90: mgmt.v1alpha1.GetJobRunResponse
+	(*CreateJobRunRequest)(nil),                                               // 91: mgmt.v1alpha1.CreateJobRunRequest
+	(*CreateJobRunResponse)(nil),                                              // 92: mgmt.v1alpha1.CreateJobRunResponse
+	(*CancelJobRunRequest)(nil),                                               // 93: mgmt.v1alpha1.CancelJobRunRequest
+	(*CancelJobRunResponse)(nil),                                              // 94: mgmt.v1alpha1.CancelJobRunResponse
+	(*Job)(nil),                                                               // 95: mgmt.v1alpha1.Job
+	(*JobRecentRun)(nil),                                                      // 96: mgmt.v1alpha1.JobRecentRun
+	(*GetJobRecentRunsRequest)(nil),                                           // 97: mgmt.v1alpha1.GetJobRecentRunsRequest
+	(*GetJobRecentRunsResponse)(nil),                                          // 98: mgmt.v1alpha1.GetJobRecentRunsResponse
+	(*JobNextRuns)(nil),                                                       // 99: mgmt.v1alpha1.JobNextRuns
+	(*GetJobNextRunsRequest)(nil),                                             // 100: mgmt.v1alpha1.GetJobNextRunsRequest
+	(*GetJobNextRunsResponse)(nil),                                            // 101: mgmt.v1alpha1.GetJobNextRunsResponse
+	(*GetJobStatusRequest)(nil),                                               // 102: mgmt.v1alpha1.GetJobStatusRequest
+	(*GetJobStatusResponse)(nil),                                              // 103: mgmt.v1alpha1.GetJobStatusResponse
+	(*JobStatusRecord)(nil),                                                   // 104: mgmt.v1alpha1.JobStatusRecord
+	(*GetJobStatusesRequest)(nil),                                             // 105: mgmt.v1alpha1.GetJobStatusesRequest
+	(*GetJobStatusesResponse)(nil),                                            // 106: mgmt.v1alpha1.GetJobStatusesResponse
+	(*ActivityFailure)(nil),                                                   // 107: mgmt.v1alpha1.ActivityFailure
+	(*PendingActivity)(nil),                                                   // 108: mgmt.v1alpha1.PendingActivity
+	(*JobRun)(nil),                                                            // 109: mgmt.v1alpha1.JobRun
+	(*JobRunEventTaskError)(nil),                                              // 110: mgmt.v1alpha1.JobRunEventTaskError
+	(*JobRunEventTask)(nil),                                                   // 111: mgmt.v1alpha1.JobRunEventTask
+	(*JobRunSyncMetadata)(nil),                                                // 112: mgmt.v1alpha1.JobRunSyncMetadata
+	(*JobRunEventMetadata)(nil),                                               // 113: mgmt.v1alpha1.JobRunEventMetadata
+	(*JobRunEvent)(nil),                                                       // 114: mgmt.v1alpha1.JobRunEvent
+	(*GetJobRunEventsRequest)(nil),                                            // 115: mgmt.v1alpha1.GetJobRunEventsRequest
+	(*GetJobRunEventsResponse)(nil),                                           // 116: mgmt.v1alpha1.GetJobRunEventsResponse
+	(*DeleteJobRunRequest)(nil),                                               // 117: mgmt.v1alpha1.DeleteJobRunRequest
+	(*DeleteJobRunResponse)(nil),                                              // 118: mgmt.v1alpha1.DeleteJobRunResponse
+	(*TerminateJobRunRequest)(nil),                                            // 119: mgmt.v1alpha1.TerminateJobRunRequest
+	(*TerminateJobRunResponse)(nil),                                           // 120: mgmt.v1alpha1.TerminateJobRunResponse
+	(*GetJobRunLogsStreamRequest)(nil),                                        // 121: mgmt.v1alpha1.GetJobRunLogsStreamRequest
+	(*GetJobRunLogsStreamResponse)(nil),                                       // 122: mgmt.v1alpha1.GetJobRunLogsStreamResponse
+	(*GetJobRunLogsRequest)(nil),                                              // 123: mgmt.v1alpha1.GetJobRunLogsRequest
+	(*GetJobRunLogsResponse)(nil),                                             // 124: mgmt.v1alpha1.GetJobRunLogsResponse
+	(*SetJobWorkflowOptionsRequest)(nil),                                      // 125: mgmt.v1alpha1.SetJobWorkflowOptionsRequest
+	(*SetJobWorkflowOptionsResponse)(nil),                                     // 126: mgmt.v1alpha1.SetJobWorkflowOptionsResponse
+	(*SetJobSyncOptionsRequest)(nil),                                          // 127: mgmt.v1alpha1.SetJobSyncOptionsRequest
+	(*SetJobSyncOptionsResponse)(nil),                                         // 128: mgmt.v1alpha1.SetJobSyncOptionsResponse
+	(*ValidateJobMappingsRequest)(nil),                                        // 129: mgmt.v1alpha1.ValidateJobMappingsRequest
+	(*ColumnError)(nil),                                                       // 130: mgmt.v1alpha1.ColumnError
+	(*ColumnWarning)(nil),                                                     // 131: mgmt.v1alpha1.ColumnWarning
+	(*DatabaseError)(nil),                                                     // 132: mgmt.v1alpha1.DatabaseError
+	(*TableError)(nil),                                                        // 133: mgmt.v1alpha1.TableError
+	(*ValidateJobMappingsResponse)(nil),                                       // 134: mgmt.v1alpha1.ValidateJobMappingsResponse
+	(*ValidateSchemaRequest)(nil),                                             // 135: mgmt.v1alpha1.ValidateSchemaRequest
+	(*ValidateSchemaResponse)(nil),                                            // 136: mgmt.v1alpha1.ValidateSchemaResponse
+	(*VirtualForeignKey)(nil),                                                 // 137: mgmt.v1alpha1.VirtualForeignKey
+	(*VirtualForeignConstraint)(nil),                                          // 138: mgmt.v1alpha1.VirtualForeignConstraint
+	(*RunContextKey)(nil),                                                     // 139: mgmt.v1alpha1.RunContextKey
+	(*GetRunContextRequest)(nil),                                              // 140: mgmt.v1alpha1.GetRunContextRequest
+	(*GetRunContextResponse)(nil),                                             // 141: mgmt.v1alpha1.GetRunContextResponse
+	(*SetRunContextRequest)(nil),                                              // 142: mgmt.v1alpha1.SetRunContextRequest
+	(*SetRunContextResponse)(nil),                                             // 143: mgmt.v1alpha1.SetRunContextResponse
+	(*SetRunContextsRequest)(nil),                                             // 144: mgmt.v1alpha1.SetRunContextsRequest
+	(*SetRunContextsResponse)(nil),                                            // 145: mgmt.v1alpha1.SetRunContextsResponse
+	(*JobHook)(nil),                                                           // 146: mgmt.v1alpha1.JobHook
+	(*NewJobHook)(nil),                                                        // 147: mgmt.v1alpha1.NewJobHook
+	(*JobHookConfig)(nil),                                                     // 148: mgmt.v1alpha1.JobHookConfig
+	(*JobHookTimingPreSync)(nil),                                              // 149: mgmt.v1alpha1.JobHookTimingPreSync
+	(*JobHookTimingPostSync)(nil),                                             // 150: mgmt.v1alpha1.JobHookTimingPostSync
+	(*GetJobHooksRequest)(nil),                                                // 151: mgmt.v1alpha1.GetJobHooksRequest
+	(*GetJobHooksResponse)(nil),                                               // 152: mgmt.v1alpha1.GetJobHooksResponse
+	(*GetJobHookRequest)(nil),                                                 // 153: mgmt.v1alpha1.GetJobHookRequest
+	(*GetJobHookResponse)(nil),                                                // 154: mgmt.v1alpha1.GetJobHookResponse
+	(*CreateJobHookRequest)(nil),                                              // 155: mgmt.v1alpha1.CreateJobHookRequest
+	(*CreateJobHookResponse)(nil),                                             // 156: mgmt.v1alpha1.CreateJobHookResponse
+	(*DeleteJobHookRequest)(nil),                                              // 157: mgmt.v1alpha1.DeleteJobHookRequest
+	(*DeleteJobHookResponse)(nil),                                             // 158: mgmt.v1alpha1.DeleteJobHookResponse
+	(*IsJobHookNameAvailableRequest)(nil),                                     // 159: mgmt.v1alpha1.IsJobHookNameAvailableRequest
+	(*IsJobHookNameAvailableResponse)(nil),                                    // 160: mgmt.v1alpha1.IsJobHookNameAvailableResponse
+	(*UpdateJobHookRequest)(nil),                                              // 161: mgmt.v1alpha1.UpdateJobHookRequest
+	(*UpdateJobHookResponse)(nil),                                             // 162: mgmt.v1alpha1.UpdateJobHookResponse
+	(*SetJobHookEnabledRequest)(nil),                                          // 163: mgmt.v1alpha1.SetJobHookEnabledRequest
+	(*SetJobHookEnabledResponse)(nil),                                         // 164: mgmt.v1alpha1.SetJobHookEnabledResponse
+	(*GetActiveJobHooksByTimingRequest)(nil),                                  // 165: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest
+	(*GetActiveJobHooksByTimingResponse)(nil),                                 // 166: mgmt.v1alpha1.GetActiveJobHooksByTimingResponse
+	(*GetPiiDetectionReportRequest)(nil),                                      // 167: mgmt.v1alpha1.GetPiiDetectionReportRequest
+	(*GetPiiDetectionReportResponse)(nil),                                     // 168: mgmt.v1alpha1.GetPiiDetectionReportResponse
+	(*PiiDetectionReport)(nil),                                                // 169: mgmt.v1alpha1.PiiDetectionReport
+	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy)(nil),         // 170: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy
+	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy)(nil),             // 171: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy
+	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil), // 172: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap)(nil), // 173: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+	(*PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil), // 174: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),         // 175: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	(*PostgresSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),     // 176: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy)(nil),                    // 177: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy
+	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy)(nil),                // 178: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy
+	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),            // 179: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	(*MysqlSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),        // 180: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil),        // 181: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap)(nil),        // 182: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+	(*MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil),    // 183: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy)(nil),                    // 184: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy
+	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy)(nil),                // 185: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy
+	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy_HaltJob)(nil),            // 186: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	(*MssqlSourceConnectionOptions_ColumnRemovalStrategy_ContinueJob)(nil),        // 187: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob)(nil),        // 188: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	(*MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough)(nil),    // 189: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	(*PostgresOnConflictConfig_PostgresOnConflictDoNothing)(nil),                  // 190: mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothing
+	(*PostgresOnConflictConfig_PostgresOnConflictUpdate)(nil),                     // 191: mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictUpdate
+	(*MysqlOnConflictConfig_MysqlOnConflictDoNothing)(nil),                        // 192: mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothing
+	(*MysqlOnConflictConfig_MysqlOnConflictUpdate)(nil),                           // 193: mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictUpdate
+	(*JobTypeConfig_JobTypeSync)(nil),                                             // 194: mgmt.v1alpha1.JobTypeConfig.JobTypeSync
+	(*JobTypeConfig_JobTypePiiDetect)(nil),                                        // 195: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect
+	(*JobTypeConfig_JobTypePiiDetect_Incremental)(nil),                            // 196: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.Incremental
+	(*JobTypeConfig_JobTypePiiDetect_DataSampling)(nil),                           // 197: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling
+	(*JobTypeConfig_JobTypePiiDetect_TableScanFilter)(nil),                        // 198: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter
+	(*JobTypeConfig_JobTypePiiDetect_IncludeAll)(nil),                             // 199: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.IncludeAll
+	(*JobTypeConfig_JobTypePiiDetect_TablePatterns)(nil),                          // 200: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
+	(*JobTypeConfig_JobTypePiiDetect_TableIdentifier)(nil),                        // 201: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableIdentifier
+	nil,                                   // 202: mgmt.v1alpha1.GetJobRunLogsStreamResponse.LabelsEntry
+	(*GetJobRunLogsResponse_LogLine)(nil), // 203: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine
+	nil,                                   // 204: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.LabelsEntry
+	(*ColumnError_ColumnErrorReport)(nil), // 205: mgmt.v1alpha1.ColumnError.ColumnErrorReport
+	(*ColumnWarning_ColumnWarningReport)(nil),                 // 206: mgmt.v1alpha1.ColumnWarning.ColumnWarningReport
+	(*DatabaseError_DatabaseErrorReport)(nil),                 // 207: mgmt.v1alpha1.DatabaseError.DatabaseErrorReport
+	(*TableError_TableErrorReport)(nil),                       // 208: mgmt.v1alpha1.TableError.TableErrorReport
+	(*ValidateSchemaResponse_Table)(nil),                      // 209: mgmt.v1alpha1.ValidateSchemaResponse.Table
+	(*JobHookConfig_JobSqlHook)(nil),                          // 210: mgmt.v1alpha1.JobHookConfig.JobSqlHook
+	(*JobHookConfig_JobSqlHook_Timing)(nil),                   // 211: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing
+	(*PiiDetectionReport_TableReport)(nil),                    // 212: mgmt.v1alpha1.PiiDetectionReport.TableReport
+	(*PiiDetectionReport_TableReport_ColumnReport)(nil),       // 213: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport
+	(*PiiDetectionReport_TableReport_ColumnReport_Regex)(nil), // 214: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Regex
+	(*PiiDetectionReport_TableReport_ColumnReport_LLM)(nil),   // 215: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.LLM
+	(*TransformerConfig)(nil),                                 // 216: mgmt.v1alpha1.TransformerConfig
+	(*timestamppb.Timestamp)(nil),                             // 217: google.protobuf.Timestamp
+	(*DatabaseColumn)(nil),                                    // 218: mgmt.v1alpha1.DatabaseColumn
 }
 var file_mgmt_v1alpha1_job_proto_depIdxs = []int32{
-	94,  // 0: mgmt.v1alpha1.GetJobsResponse.jobs:type_name -> mgmt.v1alpha1.Job
-	14,  // 1: mgmt.v1alpha1.JobSource.options:type_name -> mgmt.v1alpha1.JobSourceOptions
-	27,  // 2: mgmt.v1alpha1.JobSourceOptions.postgres:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions
-	36,  // 3: mgmt.v1alpha1.JobSourceOptions.aws_s3:type_name -> mgmt.v1alpha1.AwsS3SourceConnectionOptions
-	30,  // 4: mgmt.v1alpha1.JobSourceOptions.mysql:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions
-	20,  // 5: mgmt.v1alpha1.JobSourceOptions.generate:type_name -> mgmt.v1alpha1.GenerateSourceOptions
-	17,  // 6: mgmt.v1alpha1.JobSourceOptions.ai_generate:type_name -> mgmt.v1alpha1.AiGenerateSourceOptions
-	23,  // 7: mgmt.v1alpha1.JobSourceOptions.mongodb:type_name -> mgmt.v1alpha1.MongoDBSourceConnectionOptions
-	24,  // 8: mgmt.v1alpha1.JobSourceOptions.dynamodb:type_name -> mgmt.v1alpha1.DynamoDBSourceConnectionOptions
-	33,  // 9: mgmt.v1alpha1.JobSourceOptions.mssql:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions
-	37,  // 10: mgmt.v1alpha1.CreateJobDestination.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
-	37,  // 11: mgmt.v1alpha1.JobDestination.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
-	18,  // 12: mgmt.v1alpha1.AiGenerateSourceOptions.schemas:type_name -> mgmt.v1alpha1.AiGenerateSourceSchemaOption
-	19,  // 13: mgmt.v1alpha1.AiGenerateSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.AiGenerateSourceTableOption
-	21,  // 14: mgmt.v1alpha1.GenerateSourceOptions.schemas:type_name -> mgmt.v1alpha1.GenerateSourceSchemaOption
-	22,  // 15: mgmt.v1alpha1.GenerateSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.GenerateSourceTableOption
-	26,  // 16: mgmt.v1alpha1.DynamoDBSourceConnectionOptions.tables:type_name -> mgmt.v1alpha1.DynamoDBSourceTableOption
-	25,  // 17: mgmt.v1alpha1.DynamoDBSourceConnectionOptions.unmapped_transforms:type_name -> mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig
-	59,  // 18: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.b:type_name -> mgmt.v1alpha1.JobMappingTransformer
-	59,  // 19: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.boolean:type_name -> mgmt.v1alpha1.JobMappingTransformer
-	59,  // 20: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.n:type_name -> mgmt.v1alpha1.JobMappingTransformer
-	59,  // 21: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.s:type_name -> mgmt.v1alpha1.JobMappingTransformer
-	28,  // 22: mgmt.v1alpha1.PostgresSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.PostgresSourceSchemaOption
-	169, // 23: mgmt.v1alpha1.PostgresSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy
-	170, // 24: mgmt.v1alpha1.PostgresSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy
-	29,  // 25: mgmt.v1alpha1.PostgresSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.PostgresSourceTableOption
-	31,  // 26: mgmt.v1alpha1.MysqlSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.MysqlSourceSchemaOption
-	176, // 27: mgmt.v1alpha1.MysqlSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy
-	177, // 28: mgmt.v1alpha1.MysqlSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy
-	32,  // 29: mgmt.v1alpha1.MysqlSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.MysqlSourceTableOption
-	34,  // 30: mgmt.v1alpha1.MssqlSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.MssqlSourceSchemaOption
-	183, // 31: mgmt.v1alpha1.MssqlSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy
-	184, // 32: mgmt.v1alpha1.MssqlSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy
-	35,  // 33: mgmt.v1alpha1.MssqlSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.MssqlSourceTableOption
-	42,  // 34: mgmt.v1alpha1.JobDestinationOptions.postgres_options:type_name -> mgmt.v1alpha1.PostgresDestinationConnectionOptions
-	51,  // 35: mgmt.v1alpha1.JobDestinationOptions.aws_s3_options:type_name -> mgmt.v1alpha1.AwsS3DestinationConnectionOptions
-	45,  // 36: mgmt.v1alpha1.JobDestinationOptions.mysql_options:type_name -> mgmt.v1alpha1.MysqlDestinationConnectionOptions
-	38,  // 37: mgmt.v1alpha1.JobDestinationOptions.mongodb_options:type_name -> mgmt.v1alpha1.MongoDBDestinationConnectionOptions
-	39,  // 38: mgmt.v1alpha1.JobDestinationOptions.gcp_cloudstorage_options:type_name -> mgmt.v1alpha1.GcpCloudStorageDestinationConnectionOptions
-	40,  // 39: mgmt.v1alpha1.JobDestinationOptions.dynamodb_options:type_name -> mgmt.v1alpha1.DynamoDBDestinationConnectionOptions
-	48,  // 40: mgmt.v1alpha1.JobDestinationOptions.mssql_options:type_name -> mgmt.v1alpha1.MssqlDestinationConnectionOptions
-	41,  // 41: mgmt.v1alpha1.DynamoDBDestinationConnectionOptions.table_mappings:type_name -> mgmt.v1alpha1.DynamoDBDestinationTableMapping
-	44,  // 42: mgmt.v1alpha1.PostgresDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.PostgresTruncateTableConfig
-	43,  // 43: mgmt.v1alpha1.PostgresDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig
-	52,  // 44: mgmt.v1alpha1.PostgresDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
-	189, // 45: mgmt.v1alpha1.PostgresOnConflictConfig.nothing:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothing
-	190, // 46: mgmt.v1alpha1.PostgresOnConflictConfig.update:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictUpdate
-	46,  // 47: mgmt.v1alpha1.MysqlDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.MysqlTruncateTableConfig
-	47,  // 48: mgmt.v1alpha1.MysqlDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig
-	52,  // 49: mgmt.v1alpha1.MysqlDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
-	191, // 50: mgmt.v1alpha1.MysqlOnConflictConfig.nothing:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothing
-	192, // 51: mgmt.v1alpha1.MysqlOnConflictConfig.update:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictUpdate
-	49,  // 52: mgmt.v1alpha1.MssqlDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.MssqlTruncateTableConfig
-	50,  // 53: mgmt.v1alpha1.MssqlDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.MssqlOnConflictConfig
-	52,  // 54: mgmt.v1alpha1.MssqlDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
-	5,   // 55: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.storage_class:type_name -> mgmt.v1alpha1.AwsS3DestinationConnectionOptions.StorageClass
-	52,  // 56: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
-	60,  // 57: mgmt.v1alpha1.CreateJobRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
-	13,  // 58: mgmt.v1alpha1.CreateJobRequest.source:type_name -> mgmt.v1alpha1.JobSource
-	15,  // 59: mgmt.v1alpha1.CreateJobRequest.destinations:type_name -> mgmt.v1alpha1.CreateJobDestination
-	55,  // 60: mgmt.v1alpha1.CreateJobRequest.workflow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
-	56,  // 61: mgmt.v1alpha1.CreateJobRequest.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
-	137, // 62: mgmt.v1alpha1.CreateJobRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
-	54,  // 63: mgmt.v1alpha1.CreateJobRequest.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
-	193, // 64: mgmt.v1alpha1.JobTypeConfig.sync:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypeSync
-	194, // 65: mgmt.v1alpha1.JobTypeConfig.pii_detect:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect
-	57,  // 66: mgmt.v1alpha1.ActivityOptions.retry_policy:type_name -> mgmt.v1alpha1.RetryPolicy
-	94,  // 67: mgmt.v1alpha1.CreateJobResponse.job:type_name -> mgmt.v1alpha1.Job
-	215, // 68: mgmt.v1alpha1.JobMappingTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
-	59,  // 69: mgmt.v1alpha1.JobMapping.transformer:type_name -> mgmt.v1alpha1.JobMappingTransformer
-	94,  // 70: mgmt.v1alpha1.GetJobResponse.job:type_name -> mgmt.v1alpha1.Job
-	94,  // 71: mgmt.v1alpha1.UpdateJobScheduleResponse.job:type_name -> mgmt.v1alpha1.Job
-	94,  // 72: mgmt.v1alpha1.PauseJobResponse.job:type_name -> mgmt.v1alpha1.Job
-	13,  // 73: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.source:type_name -> mgmt.v1alpha1.JobSource
-	60,  // 74: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
-	137, // 75: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
-	54,  // 76: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
-	94,  // 77: mgmt.v1alpha1.UpdateJobSourceConnectionResponse.job:type_name -> mgmt.v1alpha1.Job
-	28,  // 78: mgmt.v1alpha1.PostgresSourceSchemaSubset.postgres_schemas:type_name -> mgmt.v1alpha1.PostgresSourceSchemaOption
-	31,  // 79: mgmt.v1alpha1.MysqlSourceSchemaSubset.mysql_schemas:type_name -> mgmt.v1alpha1.MysqlSourceSchemaOption
-	26,  // 80: mgmt.v1alpha1.DynamoDBSourceSchemaSubset.tables:type_name -> mgmt.v1alpha1.DynamoDBSourceTableOption
-	34,  // 81: mgmt.v1alpha1.MssqlSourceSchemaSubset.mssql_schemas:type_name -> mgmt.v1alpha1.MssqlSourceSchemaOption
-	69,  // 82: mgmt.v1alpha1.JobSourceSqlSubetSchemas.postgres_subset:type_name -> mgmt.v1alpha1.PostgresSourceSchemaSubset
-	70,  // 83: mgmt.v1alpha1.JobSourceSqlSubetSchemas.mysql_subset:type_name -> mgmt.v1alpha1.MysqlSourceSchemaSubset
-	71,  // 84: mgmt.v1alpha1.JobSourceSqlSubetSchemas.dynamodb_subset:type_name -> mgmt.v1alpha1.DynamoDBSourceSchemaSubset
-	72,  // 85: mgmt.v1alpha1.JobSourceSqlSubetSchemas.mssql_subset:type_name -> mgmt.v1alpha1.MssqlSourceSchemaSubset
-	73,  // 86: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest.schemas:type_name -> mgmt.v1alpha1.JobSourceSqlSubetSchemas
-	94,  // 87: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse.job:type_name -> mgmt.v1alpha1.Job
-	37,  // 88: mgmt.v1alpha1.UpdateJobDestinationConnectionRequest.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
-	94,  // 89: mgmt.v1alpha1.UpdateJobDestinationConnectionResponse.job:type_name -> mgmt.v1alpha1.Job
-	15,  // 90: mgmt.v1alpha1.CreateJobDestinationConnectionsRequest.destinations:type_name -> mgmt.v1alpha1.CreateJobDestination
-	94,  // 91: mgmt.v1alpha1.CreateJobDestinationConnectionsResponse.job:type_name -> mgmt.v1alpha1.Job
-	108, // 92: mgmt.v1alpha1.GetJobRunsResponse.job_runs:type_name -> mgmt.v1alpha1.JobRun
-	108, // 93: mgmt.v1alpha1.GetJobRunResponse.job_run:type_name -> mgmt.v1alpha1.JobRun
-	216, // 94: mgmt.v1alpha1.Job.created_at:type_name -> google.protobuf.Timestamp
-	216, // 95: mgmt.v1alpha1.Job.updated_at:type_name -> google.protobuf.Timestamp
-	13,  // 96: mgmt.v1alpha1.Job.source:type_name -> mgmt.v1alpha1.JobSource
-	16,  // 97: mgmt.v1alpha1.Job.destinations:type_name -> mgmt.v1alpha1.JobDestination
-	60,  // 98: mgmt.v1alpha1.Job.mappings:type_name -> mgmt.v1alpha1.JobMapping
-	56,  // 99: mgmt.v1alpha1.Job.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
-	55,  // 100: mgmt.v1alpha1.Job.workflow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
-	137, // 101: mgmt.v1alpha1.Job.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
-	54,  // 102: mgmt.v1alpha1.Job.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
-	216, // 103: mgmt.v1alpha1.JobRecentRun.start_time:type_name -> google.protobuf.Timestamp
-	95,  // 104: mgmt.v1alpha1.GetJobRecentRunsResponse.recent_runs:type_name -> mgmt.v1alpha1.JobRecentRun
-	216, // 105: mgmt.v1alpha1.JobNextRuns.next_run_times:type_name -> google.protobuf.Timestamp
-	98,  // 106: mgmt.v1alpha1.GetJobNextRunsResponse.next_runs:type_name -> mgmt.v1alpha1.JobNextRuns
-	0,   // 107: mgmt.v1alpha1.GetJobStatusResponse.status:type_name -> mgmt.v1alpha1.JobStatus
-	0,   // 108: mgmt.v1alpha1.JobStatusRecord.status:type_name -> mgmt.v1alpha1.JobStatus
-	103, // 109: mgmt.v1alpha1.GetJobStatusesResponse.statuses:type_name -> mgmt.v1alpha1.JobStatusRecord
-	1,   // 110: mgmt.v1alpha1.PendingActivity.status:type_name -> mgmt.v1alpha1.ActivityStatus
-	106, // 111: mgmt.v1alpha1.PendingActivity.last_failure:type_name -> mgmt.v1alpha1.ActivityFailure
-	2,   // 112: mgmt.v1alpha1.JobRun.status:type_name -> mgmt.v1alpha1.JobRunStatus
-	216, // 113: mgmt.v1alpha1.JobRun.started_at:type_name -> google.protobuf.Timestamp
-	216, // 114: mgmt.v1alpha1.JobRun.completed_at:type_name -> google.protobuf.Timestamp
-	107, // 115: mgmt.v1alpha1.JobRun.pending_activities:type_name -> mgmt.v1alpha1.PendingActivity
-	216, // 116: mgmt.v1alpha1.JobRunEventTask.event_time:type_name -> google.protobuf.Timestamp
-	109, // 117: mgmt.v1alpha1.JobRunEventTask.error:type_name -> mgmt.v1alpha1.JobRunEventTaskError
-	111, // 118: mgmt.v1alpha1.JobRunEventMetadata.sync_metadata:type_name -> mgmt.v1alpha1.JobRunSyncMetadata
-	216, // 119: mgmt.v1alpha1.JobRunEvent.start_time:type_name -> google.protobuf.Timestamp
-	216, // 120: mgmt.v1alpha1.JobRunEvent.close_time:type_name -> google.protobuf.Timestamp
-	112, // 121: mgmt.v1alpha1.JobRunEvent.metadata:type_name -> mgmt.v1alpha1.JobRunEventMetadata
-	110, // 122: mgmt.v1alpha1.JobRunEvent.tasks:type_name -> mgmt.v1alpha1.JobRunEventTask
-	113, // 123: mgmt.v1alpha1.GetJobRunEventsResponse.events:type_name -> mgmt.v1alpha1.JobRunEvent
-	3,   // 124: mgmt.v1alpha1.GetJobRunLogsStreamRequest.window:type_name -> mgmt.v1alpha1.LogWindow
-	4,   // 125: mgmt.v1alpha1.GetJobRunLogsStreamRequest.log_levels:type_name -> mgmt.v1alpha1.LogLevel
-	216, // 126: mgmt.v1alpha1.GetJobRunLogsStreamResponse.timestamp:type_name -> google.protobuf.Timestamp
-	201, // 127: mgmt.v1alpha1.GetJobRunLogsStreamResponse.labels:type_name -> mgmt.v1alpha1.GetJobRunLogsStreamResponse.LabelsEntry
-	3,   // 128: mgmt.v1alpha1.GetJobRunLogsRequest.window:type_name -> mgmt.v1alpha1.LogWindow
-	4,   // 129: mgmt.v1alpha1.GetJobRunLogsRequest.log_levels:type_name -> mgmt.v1alpha1.LogLevel
-	202, // 130: mgmt.v1alpha1.GetJobRunLogsResponse.log_lines:type_name -> mgmt.v1alpha1.GetJobRunLogsResponse.LogLine
-	55,  // 131: mgmt.v1alpha1.SetJobWorkflowOptionsRequest.worfklow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
-	94,  // 132: mgmt.v1alpha1.SetJobWorkflowOptionsResponse.job:type_name -> mgmt.v1alpha1.Job
-	56,  // 133: mgmt.v1alpha1.SetJobSyncOptionsRequest.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
-	94,  // 134: mgmt.v1alpha1.SetJobSyncOptionsResponse.job:type_name -> mgmt.v1alpha1.Job
-	60,  // 135: mgmt.v1alpha1.ValidateJobMappingsRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
-	137, // 136: mgmt.v1alpha1.ValidateJobMappingsRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
-	13,  // 137: mgmt.v1alpha1.ValidateJobMappingsRequest.job_source:type_name -> mgmt.v1alpha1.JobSource
-	204, // 138: mgmt.v1alpha1.ColumnError.error_reports:type_name -> mgmt.v1alpha1.ColumnError.ColumnErrorReport
-	205, // 139: mgmt.v1alpha1.ColumnWarning.warning_reports:type_name -> mgmt.v1alpha1.ColumnWarning.ColumnWarningReport
-	206, // 140: mgmt.v1alpha1.DatabaseError.error_reports:type_name -> mgmt.v1alpha1.DatabaseError.DatabaseErrorReport
-	207, // 141: mgmt.v1alpha1.TableError.error_reports:type_name -> mgmt.v1alpha1.TableError.TableErrorReport
-	129, // 142: mgmt.v1alpha1.ValidateJobMappingsResponse.column_errors:type_name -> mgmt.v1alpha1.ColumnError
-	131, // 143: mgmt.v1alpha1.ValidateJobMappingsResponse.database_errors:type_name -> mgmt.v1alpha1.DatabaseError
-	130, // 144: mgmt.v1alpha1.ValidateJobMappingsResponse.column_warnings:type_name -> mgmt.v1alpha1.ColumnWarning
-	132, // 145: mgmt.v1alpha1.ValidateJobMappingsResponse.table_errors:type_name -> mgmt.v1alpha1.TableError
-	60,  // 146: mgmt.v1alpha1.ValidateSchemaRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
-	217, // 147: mgmt.v1alpha1.ValidateSchemaResponse.missing_columns:type_name -> mgmt.v1alpha1.DatabaseColumn
-	217, // 148: mgmt.v1alpha1.ValidateSchemaResponse.extra_columns:type_name -> mgmt.v1alpha1.DatabaseColumn
-	208, // 149: mgmt.v1alpha1.ValidateSchemaResponse.missing_tables:type_name -> mgmt.v1alpha1.ValidateSchemaResponse.Table
-	136, // 150: mgmt.v1alpha1.VirtualForeignConstraint.foreign_key:type_name -> mgmt.v1alpha1.VirtualForeignKey
-	138, // 151: mgmt.v1alpha1.GetRunContextRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
-	138, // 152: mgmt.v1alpha1.SetRunContextRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
-	138, // 153: mgmt.v1alpha1.SetRunContextsRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
-	147, // 154: mgmt.v1alpha1.JobHook.config:type_name -> mgmt.v1alpha1.JobHookConfig
-	216, // 155: mgmt.v1alpha1.JobHook.created_at:type_name -> google.protobuf.Timestamp
-	216, // 156: mgmt.v1alpha1.JobHook.updated_at:type_name -> google.protobuf.Timestamp
-	147, // 157: mgmt.v1alpha1.NewJobHook.config:type_name -> mgmt.v1alpha1.JobHookConfig
-	209, // 158: mgmt.v1alpha1.JobHookConfig.sql:type_name -> mgmt.v1alpha1.JobHookConfig.JobSqlHook
-	145, // 159: mgmt.v1alpha1.GetJobHooksResponse.hooks:type_name -> mgmt.v1alpha1.JobHook
-	145, // 160: mgmt.v1alpha1.GetJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
-	146, // 161: mgmt.v1alpha1.CreateJobHookRequest.hook:type_name -> mgmt.v1alpha1.NewJobHook
-	145, // 162: mgmt.v1alpha1.CreateJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
-	147, // 163: mgmt.v1alpha1.UpdateJobHookRequest.config:type_name -> mgmt.v1alpha1.JobHookConfig
-	145, // 164: mgmt.v1alpha1.UpdateJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
-	145, // 165: mgmt.v1alpha1.SetJobHookEnabledResponse.hook:type_name -> mgmt.v1alpha1.JobHook
-	10,  // 166: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.timing:type_name -> mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.Timing
-	145, // 167: mgmt.v1alpha1.GetActiveJobHooksByTimingResponse.hooks:type_name -> mgmt.v1alpha1.JobHook
-	168, // 168: mgmt.v1alpha1.GetPiiDetectionReportResponse.report:type_name -> mgmt.v1alpha1.PiiDetectionReport
-	211, // 169: mgmt.v1alpha1.PiiDetectionReport.tables:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport
-	171, // 170: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	172, // 171: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.auto_map:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
-	173, // 172: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	174, // 173: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	175, // 174: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	178, // 175: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	179, // 176: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	180, // 177: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	181, // 178: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.auto_map:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
-	182, // 179: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	185, // 180: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
-	186, // 181: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
-	187, // 182: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
-	188, // 183: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-	196, // 184: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.data_sampling:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling
-	197, // 185: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.table_scan_filter:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter
-	195, // 186: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.incremental:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.Incremental
-	198, // 187: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.include_all:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.IncludeAll
-	199, // 188: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.include:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
-	199, // 189: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.exclude:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
-	200, // 190: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns.tables:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableIdentifier
-	216, // 191: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.timestamp:type_name -> google.protobuf.Timestamp
-	203, // 192: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.labels:type_name -> mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.LabelsEntry
-	6,   // 193: mgmt.v1alpha1.ColumnError.ColumnErrorReport.code:type_name -> mgmt.v1alpha1.ColumnError.ColumnErrorCode
-	7,   // 194: mgmt.v1alpha1.ColumnWarning.ColumnWarningReport.code:type_name -> mgmt.v1alpha1.ColumnWarning.ColumnWarningCode
-	8,   // 195: mgmt.v1alpha1.DatabaseError.DatabaseErrorReport.code:type_name -> mgmt.v1alpha1.DatabaseError.DatabaseErrorCode
-	9,   // 196: mgmt.v1alpha1.TableError.TableErrorReport.code:type_name -> mgmt.v1alpha1.TableError.TableErrorCode
-	210, // 197: mgmt.v1alpha1.JobHookConfig.JobSqlHook.timing:type_name -> mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing
-	148, // 198: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing.pre_sync:type_name -> mgmt.v1alpha1.JobHookTimingPreSync
-	149, // 199: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing.post_sync:type_name -> mgmt.v1alpha1.JobHookTimingPostSync
-	212, // 200: mgmt.v1alpha1.PiiDetectionReport.TableReport.columns:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport
-	213, // 201: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.regex_report:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Regex
-	214, // 202: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.llm_report:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.LLM
-	11,  // 203: mgmt.v1alpha1.JobService.GetJobs:input_type -> mgmt.v1alpha1.GetJobsRequest
-	61,  // 204: mgmt.v1alpha1.JobService.GetJob:input_type -> mgmt.v1alpha1.GetJobRequest
-	53,  // 205: mgmt.v1alpha1.JobService.CreateJob:input_type -> mgmt.v1alpha1.CreateJobRequest
-	82,  // 206: mgmt.v1alpha1.JobService.DeleteJob:input_type -> mgmt.v1alpha1.DeleteJobRequest
-	84,  // 207: mgmt.v1alpha1.JobService.IsJobNameAvailable:input_type -> mgmt.v1alpha1.IsJobNameAvailableRequest
-	63,  // 208: mgmt.v1alpha1.JobService.UpdateJobSchedule:input_type -> mgmt.v1alpha1.UpdateJobScheduleRequest
-	67,  // 209: mgmt.v1alpha1.JobService.UpdateJobSourceConnection:input_type -> mgmt.v1alpha1.UpdateJobSourceConnectionRequest
-	74,  // 210: mgmt.v1alpha1.JobService.SetJobSourceSqlConnectionSubsets:input_type -> mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest
-	76,  // 211: mgmt.v1alpha1.JobService.UpdateJobDestinationConnection:input_type -> mgmt.v1alpha1.UpdateJobDestinationConnectionRequest
-	78,  // 212: mgmt.v1alpha1.JobService.DeleteJobDestinationConnection:input_type -> mgmt.v1alpha1.DeleteJobDestinationConnectionRequest
-	80,  // 213: mgmt.v1alpha1.JobService.CreateJobDestinationConnections:input_type -> mgmt.v1alpha1.CreateJobDestinationConnectionsRequest
-	65,  // 214: mgmt.v1alpha1.JobService.PauseJob:input_type -> mgmt.v1alpha1.PauseJobRequest
-	96,  // 215: mgmt.v1alpha1.JobService.GetJobRecentRuns:input_type -> mgmt.v1alpha1.GetJobRecentRunsRequest
-	99,  // 216: mgmt.v1alpha1.JobService.GetJobNextRuns:input_type -> mgmt.v1alpha1.GetJobNextRunsRequest
-	101, // 217: mgmt.v1alpha1.JobService.GetJobStatus:input_type -> mgmt.v1alpha1.GetJobStatusRequest
-	104, // 218: mgmt.v1alpha1.JobService.GetJobStatuses:input_type -> mgmt.v1alpha1.GetJobStatusesRequest
-	86,  // 219: mgmt.v1alpha1.JobService.GetJobRuns:input_type -> mgmt.v1alpha1.GetJobRunsRequest
-	114, // 220: mgmt.v1alpha1.JobService.GetJobRunEvents:input_type -> mgmt.v1alpha1.GetJobRunEventsRequest
-	88,  // 221: mgmt.v1alpha1.JobService.GetJobRun:input_type -> mgmt.v1alpha1.GetJobRunRequest
-	116, // 222: mgmt.v1alpha1.JobService.DeleteJobRun:input_type -> mgmt.v1alpha1.DeleteJobRunRequest
-	90,  // 223: mgmt.v1alpha1.JobService.CreateJobRun:input_type -> mgmt.v1alpha1.CreateJobRunRequest
-	92,  // 224: mgmt.v1alpha1.JobService.CancelJobRun:input_type -> mgmt.v1alpha1.CancelJobRunRequest
-	118, // 225: mgmt.v1alpha1.JobService.TerminateJobRun:input_type -> mgmt.v1alpha1.TerminateJobRunRequest
-	120, // 226: mgmt.v1alpha1.JobService.GetJobRunLogsStream:input_type -> mgmt.v1alpha1.GetJobRunLogsStreamRequest
-	122, // 227: mgmt.v1alpha1.JobService.GetJobRunLogs:input_type -> mgmt.v1alpha1.GetJobRunLogsRequest
-	124, // 228: mgmt.v1alpha1.JobService.SetJobWorkflowOptions:input_type -> mgmt.v1alpha1.SetJobWorkflowOptionsRequest
-	126, // 229: mgmt.v1alpha1.JobService.SetJobSyncOptions:input_type -> mgmt.v1alpha1.SetJobSyncOptionsRequest
-	128, // 230: mgmt.v1alpha1.JobService.ValidateJobMappings:input_type -> mgmt.v1alpha1.ValidateJobMappingsRequest
-	134, // 231: mgmt.v1alpha1.JobService.ValidateSchema:input_type -> mgmt.v1alpha1.ValidateSchemaRequest
-	139, // 232: mgmt.v1alpha1.JobService.GetRunContext:input_type -> mgmt.v1alpha1.GetRunContextRequest
-	141, // 233: mgmt.v1alpha1.JobService.SetRunContext:input_type -> mgmt.v1alpha1.SetRunContextRequest
-	143, // 234: mgmt.v1alpha1.JobService.SetRunContexts:input_type -> mgmt.v1alpha1.SetRunContextsRequest
-	150, // 235: mgmt.v1alpha1.JobService.GetJobHooks:input_type -> mgmt.v1alpha1.GetJobHooksRequest
-	152, // 236: mgmt.v1alpha1.JobService.GetJobHook:input_type -> mgmt.v1alpha1.GetJobHookRequest
-	154, // 237: mgmt.v1alpha1.JobService.CreateJobHook:input_type -> mgmt.v1alpha1.CreateJobHookRequest
-	156, // 238: mgmt.v1alpha1.JobService.DeleteJobHook:input_type -> mgmt.v1alpha1.DeleteJobHookRequest
-	158, // 239: mgmt.v1alpha1.JobService.IsJobHookNameAvailable:input_type -> mgmt.v1alpha1.IsJobHookNameAvailableRequest
-	160, // 240: mgmt.v1alpha1.JobService.UpdateJobHook:input_type -> mgmt.v1alpha1.UpdateJobHookRequest
-	162, // 241: mgmt.v1alpha1.JobService.SetJobHookEnabled:input_type -> mgmt.v1alpha1.SetJobHookEnabledRequest
-	164, // 242: mgmt.v1alpha1.JobService.GetActiveJobHooksByTiming:input_type -> mgmt.v1alpha1.GetActiveJobHooksByTimingRequest
-	166, // 243: mgmt.v1alpha1.JobService.GetPiiDetectionReport:input_type -> mgmt.v1alpha1.GetPiiDetectionReportRequest
-	12,  // 244: mgmt.v1alpha1.JobService.GetJobs:output_type -> mgmt.v1alpha1.GetJobsResponse
-	62,  // 245: mgmt.v1alpha1.JobService.GetJob:output_type -> mgmt.v1alpha1.GetJobResponse
-	58,  // 246: mgmt.v1alpha1.JobService.CreateJob:output_type -> mgmt.v1alpha1.CreateJobResponse
-	83,  // 247: mgmt.v1alpha1.JobService.DeleteJob:output_type -> mgmt.v1alpha1.DeleteJobResponse
-	85,  // 248: mgmt.v1alpha1.JobService.IsJobNameAvailable:output_type -> mgmt.v1alpha1.IsJobNameAvailableResponse
-	64,  // 249: mgmt.v1alpha1.JobService.UpdateJobSchedule:output_type -> mgmt.v1alpha1.UpdateJobScheduleResponse
-	68,  // 250: mgmt.v1alpha1.JobService.UpdateJobSourceConnection:output_type -> mgmt.v1alpha1.UpdateJobSourceConnectionResponse
-	75,  // 251: mgmt.v1alpha1.JobService.SetJobSourceSqlConnectionSubsets:output_type -> mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse
-	77,  // 252: mgmt.v1alpha1.JobService.UpdateJobDestinationConnection:output_type -> mgmt.v1alpha1.UpdateJobDestinationConnectionResponse
-	79,  // 253: mgmt.v1alpha1.JobService.DeleteJobDestinationConnection:output_type -> mgmt.v1alpha1.DeleteJobDestinationConnectionResponse
-	81,  // 254: mgmt.v1alpha1.JobService.CreateJobDestinationConnections:output_type -> mgmt.v1alpha1.CreateJobDestinationConnectionsResponse
-	66,  // 255: mgmt.v1alpha1.JobService.PauseJob:output_type -> mgmt.v1alpha1.PauseJobResponse
-	97,  // 256: mgmt.v1alpha1.JobService.GetJobRecentRuns:output_type -> mgmt.v1alpha1.GetJobRecentRunsResponse
-	100, // 257: mgmt.v1alpha1.JobService.GetJobNextRuns:output_type -> mgmt.v1alpha1.GetJobNextRunsResponse
-	102, // 258: mgmt.v1alpha1.JobService.GetJobStatus:output_type -> mgmt.v1alpha1.GetJobStatusResponse
-	105, // 259: mgmt.v1alpha1.JobService.GetJobStatuses:output_type -> mgmt.v1alpha1.GetJobStatusesResponse
-	87,  // 260: mgmt.v1alpha1.JobService.GetJobRuns:output_type -> mgmt.v1alpha1.GetJobRunsResponse
-	115, // 261: mgmt.v1alpha1.JobService.GetJobRunEvents:output_type -> mgmt.v1alpha1.GetJobRunEventsResponse
-	89,  // 262: mgmt.v1alpha1.JobService.GetJobRun:output_type -> mgmt.v1alpha1.GetJobRunResponse
-	117, // 263: mgmt.v1alpha1.JobService.DeleteJobRun:output_type -> mgmt.v1alpha1.DeleteJobRunResponse
-	91,  // 264: mgmt.v1alpha1.JobService.CreateJobRun:output_type -> mgmt.v1alpha1.CreateJobRunResponse
-	93,  // 265: mgmt.v1alpha1.JobService.CancelJobRun:output_type -> mgmt.v1alpha1.CancelJobRunResponse
-	119, // 266: mgmt.v1alpha1.JobService.TerminateJobRun:output_type -> mgmt.v1alpha1.TerminateJobRunResponse
-	121, // 267: mgmt.v1alpha1.JobService.GetJobRunLogsStream:output_type -> mgmt.v1alpha1.GetJobRunLogsStreamResponse
-	123, // 268: mgmt.v1alpha1.JobService.GetJobRunLogs:output_type -> mgmt.v1alpha1.GetJobRunLogsResponse
-	125, // 269: mgmt.v1alpha1.JobService.SetJobWorkflowOptions:output_type -> mgmt.v1alpha1.SetJobWorkflowOptionsResponse
-	127, // 270: mgmt.v1alpha1.JobService.SetJobSyncOptions:output_type -> mgmt.v1alpha1.SetJobSyncOptionsResponse
-	133, // 271: mgmt.v1alpha1.JobService.ValidateJobMappings:output_type -> mgmt.v1alpha1.ValidateJobMappingsResponse
-	135, // 272: mgmt.v1alpha1.JobService.ValidateSchema:output_type -> mgmt.v1alpha1.ValidateSchemaResponse
-	140, // 273: mgmt.v1alpha1.JobService.GetRunContext:output_type -> mgmt.v1alpha1.GetRunContextResponse
-	142, // 274: mgmt.v1alpha1.JobService.SetRunContext:output_type -> mgmt.v1alpha1.SetRunContextResponse
-	144, // 275: mgmt.v1alpha1.JobService.SetRunContexts:output_type -> mgmt.v1alpha1.SetRunContextsResponse
-	151, // 276: mgmt.v1alpha1.JobService.GetJobHooks:output_type -> mgmt.v1alpha1.GetJobHooksResponse
-	153, // 277: mgmt.v1alpha1.JobService.GetJobHook:output_type -> mgmt.v1alpha1.GetJobHookResponse
-	155, // 278: mgmt.v1alpha1.JobService.CreateJobHook:output_type -> mgmt.v1alpha1.CreateJobHookResponse
-	157, // 279: mgmt.v1alpha1.JobService.DeleteJobHook:output_type -> mgmt.v1alpha1.DeleteJobHookResponse
-	159, // 280: mgmt.v1alpha1.JobService.IsJobHookNameAvailable:output_type -> mgmt.v1alpha1.IsJobHookNameAvailableResponse
-	161, // 281: mgmt.v1alpha1.JobService.UpdateJobHook:output_type -> mgmt.v1alpha1.UpdateJobHookResponse
-	163, // 282: mgmt.v1alpha1.JobService.SetJobHookEnabled:output_type -> mgmt.v1alpha1.SetJobHookEnabledResponse
-	165, // 283: mgmt.v1alpha1.JobService.GetActiveJobHooksByTiming:output_type -> mgmt.v1alpha1.GetActiveJobHooksByTimingResponse
-	167, // 284: mgmt.v1alpha1.JobService.GetPiiDetectionReport:output_type -> mgmt.v1alpha1.GetPiiDetectionReportResponse
-	244, // [244:285] is the sub-list for method output_type
-	203, // [203:244] is the sub-list for method input_type
-	203, // [203:203] is the sub-list for extension type_name
-	203, // [203:203] is the sub-list for extension extendee
-	0,   // [0:203] is the sub-list for field type_name
+	95,  // 0: mgmt.v1alpha1.GetJobsResponse.jobs:type_name -> mgmt.v1alpha1.Job
+	15,  // 1: mgmt.v1alpha1.JobSource.options:type_name -> mgmt.v1alpha1.JobSourceOptions
+	28,  // 2: mgmt.v1alpha1.JobSourceOptions.postgres:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions
+	37,  // 3: mgmt.v1alpha1.JobSourceOptions.aws_s3:type_name -> mgmt.v1alpha1.AwsS3SourceConnectionOptions
+	31,  // 4: mgmt.v1alpha1.JobSourceOptions.mysql:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions
+	21,  // 5: mgmt.v1alpha1.JobSourceOptions.generate:type_name -> mgmt.v1alpha1.GenerateSourceOptions
+	18,  // 6: mgmt.v1alpha1.JobSourceOptions.ai_generate:type_name -> mgmt.v1alpha1.AiGenerateSourceOptions
+	24,  // 7: mgmt.v1alpha1.JobSourceOptions.mongodb:type_name -> mgmt.v1alpha1.MongoDBSourceConnectionOptions
+	25,  // 8: mgmt.v1alpha1.JobSourceOptions.dynamodb:type_name -> mgmt.v1alpha1.DynamoDBSourceConnectionOptions
+	34,  // 9: mgmt.v1alpha1.JobSourceOptions.mssql:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions
+	38,  // 10: mgmt.v1alpha1.CreateJobDestination.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
+	38,  // 11: mgmt.v1alpha1.JobDestination.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
+	19,  // 12: mgmt.v1alpha1.AiGenerateSourceOptions.schemas:type_name -> mgmt.v1alpha1.AiGenerateSourceSchemaOption
+	20,  // 13: mgmt.v1alpha1.AiGenerateSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.AiGenerateSourceTableOption
+	22,  // 14: mgmt.v1alpha1.GenerateSourceOptions.schemas:type_name -> mgmt.v1alpha1.GenerateSourceSchemaOption
+	23,  // 15: mgmt.v1alpha1.GenerateSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.GenerateSourceTableOption
+	27,  // 16: mgmt.v1alpha1.DynamoDBSourceConnectionOptions.tables:type_name -> mgmt.v1alpha1.DynamoDBSourceTableOption
+	26,  // 17: mgmt.v1alpha1.DynamoDBSourceConnectionOptions.unmapped_transforms:type_name -> mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig
+	60,  // 18: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.b:type_name -> mgmt.v1alpha1.JobMappingTransformer
+	60,  // 19: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.boolean:type_name -> mgmt.v1alpha1.JobMappingTransformer
+	60,  // 20: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.n:type_name -> mgmt.v1alpha1.JobMappingTransformer
+	60,  // 21: mgmt.v1alpha1.DynamoDBSourceUnmappedTransformConfig.s:type_name -> mgmt.v1alpha1.JobMappingTransformer
+	29,  // 22: mgmt.v1alpha1.PostgresSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.PostgresSourceSchemaOption
+	170, // 23: mgmt.v1alpha1.PostgresSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy
+	171, // 24: mgmt.v1alpha1.PostgresSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy
+	30,  // 25: mgmt.v1alpha1.PostgresSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.PostgresSourceTableOption
+	32,  // 26: mgmt.v1alpha1.MysqlSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.MysqlSourceSchemaOption
+	177, // 27: mgmt.v1alpha1.MysqlSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy
+	178, // 28: mgmt.v1alpha1.MysqlSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy
+	33,  // 29: mgmt.v1alpha1.MysqlSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.MysqlSourceTableOption
+	35,  // 30: mgmt.v1alpha1.MssqlSourceConnectionOptions.schemas:type_name -> mgmt.v1alpha1.MssqlSourceSchemaOption
+	184, // 31: mgmt.v1alpha1.MssqlSourceConnectionOptions.column_removal_strategy:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy
+	185, // 32: mgmt.v1alpha1.MssqlSourceConnectionOptions.new_column_addition_strategy:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy
+	36,  // 33: mgmt.v1alpha1.MssqlSourceSchemaOption.tables:type_name -> mgmt.v1alpha1.MssqlSourceTableOption
+	43,  // 34: mgmt.v1alpha1.JobDestinationOptions.postgres_options:type_name -> mgmt.v1alpha1.PostgresDestinationConnectionOptions
+	52,  // 35: mgmt.v1alpha1.JobDestinationOptions.aws_s3_options:type_name -> mgmt.v1alpha1.AwsS3DestinationConnectionOptions
+	46,  // 36: mgmt.v1alpha1.JobDestinationOptions.mysql_options:type_name -> mgmt.v1alpha1.MysqlDestinationConnectionOptions
+	39,  // 37: mgmt.v1alpha1.JobDestinationOptions.mongodb_options:type_name -> mgmt.v1alpha1.MongoDBDestinationConnectionOptions
+	40,  // 38: mgmt.v1alpha1.JobDestinationOptions.gcp_cloudstorage_options:type_name -> mgmt.v1alpha1.GcpCloudStorageDestinationConnectionOptions
+	41,  // 39: mgmt.v1alpha1.JobDestinationOptions.dynamodb_options:type_name -> mgmt.v1alpha1.DynamoDBDestinationConnectionOptions
+	49,  // 40: mgmt.v1alpha1.JobDestinationOptions.mssql_options:type_name -> mgmt.v1alpha1.MssqlDestinationConnectionOptions
+	42,  // 41: mgmt.v1alpha1.DynamoDBDestinationConnectionOptions.table_mappings:type_name -> mgmt.v1alpha1.DynamoDBDestinationTableMapping
+	45,  // 42: mgmt.v1alpha1.PostgresDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.PostgresTruncateTableConfig
+	44,  // 43: mgmt.v1alpha1.PostgresDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig
+	53,  // 44: mgmt.v1alpha1.PostgresDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
+	190, // 45: mgmt.v1alpha1.PostgresOnConflictConfig.nothing:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothing
+	191, // 46: mgmt.v1alpha1.PostgresOnConflictConfig.update:type_name -> mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictUpdate
+	47,  // 47: mgmt.v1alpha1.MysqlDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.MysqlTruncateTableConfig
+	48,  // 48: mgmt.v1alpha1.MysqlDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig
+	53,  // 49: mgmt.v1alpha1.MysqlDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
+	192, // 50: mgmt.v1alpha1.MysqlOnConflictConfig.nothing:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothing
+	193, // 51: mgmt.v1alpha1.MysqlOnConflictConfig.update:type_name -> mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictUpdate
+	50,  // 52: mgmt.v1alpha1.MssqlDestinationConnectionOptions.truncate_table:type_name -> mgmt.v1alpha1.MssqlTruncateTableConfig
+	51,  // 53: mgmt.v1alpha1.MssqlDestinationConnectionOptions.on_conflict:type_name -> mgmt.v1alpha1.MssqlOnConflictConfig
+	53,  // 54: mgmt.v1alpha1.MssqlDestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
+	6,   // 55: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.storage_class:type_name -> mgmt.v1alpha1.AwsS3DestinationConnectionOptions.StorageClass
+	53,  // 56: mgmt.v1alpha1.AwsS3DestinationConnectionOptions.batch:type_name -> mgmt.v1alpha1.BatchConfig
+	61,  // 57: mgmt.v1alpha1.CreateJobRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
+	14,  // 58: mgmt.v1alpha1.CreateJobRequest.source:type_name -> mgmt.v1alpha1.JobSource
+	16,  // 59: mgmt.v1alpha1.CreateJobRequest.destinations:type_name -> mgmt.v1alpha1.CreateJobDestination
+	56,  // 60: mgmt.v1alpha1.CreateJobRequest.workflow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
+	57,  // 61: mgmt.v1alpha1.CreateJobRequest.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
+	138, // 62: mgmt.v1alpha1.CreateJobRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
+	55,  // 63: mgmt.v1alpha1.CreateJobRequest.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
+	194, // 64: mgmt.v1alpha1.JobTypeConfig.sync:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypeSync
+	195, // 65: mgmt.v1alpha1.JobTypeConfig.pii_detect:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect
+	0,   // 66: mgmt.v1alpha1.WorkflowOptions.engine:type_name -> mgmt.v1alpha1.JobEngine
+	58,  // 67: mgmt.v1alpha1.ActivityOptions.retry_policy:type_name -> mgmt.v1alpha1.RetryPolicy
+	95,  // 68: mgmt.v1alpha1.CreateJobResponse.job:type_name -> mgmt.v1alpha1.Job
+	216, // 69: mgmt.v1alpha1.JobMappingTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
+	60,  // 70: mgmt.v1alpha1.JobMapping.transformer:type_name -> mgmt.v1alpha1.JobMappingTransformer
+	95,  // 71: mgmt.v1alpha1.GetJobResponse.job:type_name -> mgmt.v1alpha1.Job
+	95,  // 72: mgmt.v1alpha1.UpdateJobScheduleResponse.job:type_name -> mgmt.v1alpha1.Job
+	95,  // 73: mgmt.v1alpha1.PauseJobResponse.job:type_name -> mgmt.v1alpha1.Job
+	14,  // 74: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.source:type_name -> mgmt.v1alpha1.JobSource
+	61,  // 75: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
+	138, // 76: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
+	55,  // 77: mgmt.v1alpha1.UpdateJobSourceConnectionRequest.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
+	95,  // 78: mgmt.v1alpha1.UpdateJobSourceConnectionResponse.job:type_name -> mgmt.v1alpha1.Job
+	29,  // 79: mgmt.v1alpha1.PostgresSourceSchemaSubset.postgres_schemas:type_name -> mgmt.v1alpha1.PostgresSourceSchemaOption
+	32,  // 80: mgmt.v1alpha1.MysqlSourceSchemaSubset.mysql_schemas:type_name -> mgmt.v1alpha1.MysqlSourceSchemaOption
+	27,  // 81: mgmt.v1alpha1.DynamoDBSourceSchemaSubset.tables:type_name -> mgmt.v1alpha1.DynamoDBSourceTableOption
+	35,  // 82: mgmt.v1alpha1.MssqlSourceSchemaSubset.mssql_schemas:type_name -> mgmt.v1alpha1.MssqlSourceSchemaOption
+	70,  // 83: mgmt.v1alpha1.JobSourceSqlSubetSchemas.postgres_subset:type_name -> mgmt.v1alpha1.PostgresSourceSchemaSubset
+	71,  // 84: mgmt.v1alpha1.JobSourceSqlSubetSchemas.mysql_subset:type_name -> mgmt.v1alpha1.MysqlSourceSchemaSubset
+	72,  // 85: mgmt.v1alpha1.JobSourceSqlSubetSchemas.dynamodb_subset:type_name -> mgmt.v1alpha1.DynamoDBSourceSchemaSubset
+	73,  // 86: mgmt.v1alpha1.JobSourceSqlSubetSchemas.mssql_subset:type_name -> mgmt.v1alpha1.MssqlSourceSchemaSubset
+	74,  // 87: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest.schemas:type_name -> mgmt.v1alpha1.JobSourceSqlSubetSchemas
+	95,  // 88: mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse.job:type_name -> mgmt.v1alpha1.Job
+	38,  // 89: mgmt.v1alpha1.UpdateJobDestinationConnectionRequest.options:type_name -> mgmt.v1alpha1.JobDestinationOptions
+	95,  // 90: mgmt.v1alpha1.UpdateJobDestinationConnectionResponse.job:type_name -> mgmt.v1alpha1.Job
+	16,  // 91: mgmt.v1alpha1.CreateJobDestinationConnectionsRequest.destinations:type_name -> mgmt.v1alpha1.CreateJobDestination
+	95,  // 92: mgmt.v1alpha1.CreateJobDestinationConnectionsResponse.job:type_name -> mgmt.v1alpha1.Job
+	109, // 93: mgmt.v1alpha1.GetJobRunsResponse.job_runs:type_name -> mgmt.v1alpha1.JobRun
+	109, // 94: mgmt.v1alpha1.GetJobRunResponse.job_run:type_name -> mgmt.v1alpha1.JobRun
+	217, // 95: mgmt.v1alpha1.Job.created_at:type_name -> google.protobuf.Timestamp
+	217, // 96: mgmt.v1alpha1.Job.updated_at:type_name -> google.protobuf.Timestamp
+	14,  // 97: mgmt.v1alpha1.Job.source:type_name -> mgmt.v1alpha1.JobSource
+	17,  // 98: mgmt.v1alpha1.Job.destinations:type_name -> mgmt.v1alpha1.JobDestination
+	61,  // 99: mgmt.v1alpha1.Job.mappings:type_name -> mgmt.v1alpha1.JobMapping
+	57,  // 100: mgmt.v1alpha1.Job.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
+	56,  // 101: mgmt.v1alpha1.Job.workflow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
+	138, // 102: mgmt.v1alpha1.Job.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
+	55,  // 103: mgmt.v1alpha1.Job.job_type:type_name -> mgmt.v1alpha1.JobTypeConfig
+	217, // 104: mgmt.v1alpha1.JobRecentRun.start_time:type_name -> google.protobuf.Timestamp
+	96,  // 105: mgmt.v1alpha1.GetJobRecentRunsResponse.recent_runs:type_name -> mgmt.v1alpha1.JobRecentRun
+	217, // 106: mgmt.v1alpha1.JobNextRuns.next_run_times:type_name -> google.protobuf.Timestamp
+	99,  // 107: mgmt.v1alpha1.GetJobNextRunsResponse.next_runs:type_name -> mgmt.v1alpha1.JobNextRuns
+	1,   // 108: mgmt.v1alpha1.GetJobStatusResponse.status:type_name -> mgmt.v1alpha1.JobStatus
+	1,   // 109: mgmt.v1alpha1.JobStatusRecord.status:type_name -> mgmt.v1alpha1.JobStatus
+	104, // 110: mgmt.v1alpha1.GetJobStatusesResponse.statuses:type_name -> mgmt.v1alpha1.JobStatusRecord
+	2,   // 111: mgmt.v1alpha1.PendingActivity.status:type_name -> mgmt.v1alpha1.ActivityStatus
+	107, // 112: mgmt.v1alpha1.PendingActivity.last_failure:type_name -> mgmt.v1alpha1.ActivityFailure
+	3,   // 113: mgmt.v1alpha1.JobRun.status:type_name -> mgmt.v1alpha1.JobRunStatus
+	217, // 114: mgmt.v1alpha1.JobRun.started_at:type_name -> google.protobuf.Timestamp
+	217, // 115: mgmt.v1alpha1.JobRun.completed_at:type_name -> google.protobuf.Timestamp
+	108, // 116: mgmt.v1alpha1.JobRun.pending_activities:type_name -> mgmt.v1alpha1.PendingActivity
+	217, // 117: mgmt.v1alpha1.JobRunEventTask.event_time:type_name -> google.protobuf.Timestamp
+	110, // 118: mgmt.v1alpha1.JobRunEventTask.error:type_name -> mgmt.v1alpha1.JobRunEventTaskError
+	112, // 119: mgmt.v1alpha1.JobRunEventMetadata.sync_metadata:type_name -> mgmt.v1alpha1.JobRunSyncMetadata
+	217, // 120: mgmt.v1alpha1.JobRunEvent.start_time:type_name -> google.protobuf.Timestamp
+	217, // 121: mgmt.v1alpha1.JobRunEvent.close_time:type_name -> google.protobuf.Timestamp
+	113, // 122: mgmt.v1alpha1.JobRunEvent.metadata:type_name -> mgmt.v1alpha1.JobRunEventMetadata
+	111, // 123: mgmt.v1alpha1.JobRunEvent.tasks:type_name -> mgmt.v1alpha1.JobRunEventTask
+	114, // 124: mgmt.v1alpha1.GetJobRunEventsResponse.events:type_name -> mgmt.v1alpha1.JobRunEvent
+	4,   // 125: mgmt.v1alpha1.GetJobRunLogsStreamRequest.window:type_name -> mgmt.v1alpha1.LogWindow
+	5,   // 126: mgmt.v1alpha1.GetJobRunLogsStreamRequest.log_levels:type_name -> mgmt.v1alpha1.LogLevel
+	217, // 127: mgmt.v1alpha1.GetJobRunLogsStreamResponse.timestamp:type_name -> google.protobuf.Timestamp
+	202, // 128: mgmt.v1alpha1.GetJobRunLogsStreamResponse.labels:type_name -> mgmt.v1alpha1.GetJobRunLogsStreamResponse.LabelsEntry
+	4,   // 129: mgmt.v1alpha1.GetJobRunLogsRequest.window:type_name -> mgmt.v1alpha1.LogWindow
+	5,   // 130: mgmt.v1alpha1.GetJobRunLogsRequest.log_levels:type_name -> mgmt.v1alpha1.LogLevel
+	203, // 131: mgmt.v1alpha1.GetJobRunLogsResponse.log_lines:type_name -> mgmt.v1alpha1.GetJobRunLogsResponse.LogLine
+	56,  // 132: mgmt.v1alpha1.SetJobWorkflowOptionsRequest.worfklow_options:type_name -> mgmt.v1alpha1.WorkflowOptions
+	95,  // 133: mgmt.v1alpha1.SetJobWorkflowOptionsResponse.job:type_name -> mgmt.v1alpha1.Job
+	57,  // 134: mgmt.v1alpha1.SetJobSyncOptionsRequest.sync_options:type_name -> mgmt.v1alpha1.ActivityOptions
+	95,  // 135: mgmt.v1alpha1.SetJobSyncOptionsResponse.job:type_name -> mgmt.v1alpha1.Job
+	61,  // 136: mgmt.v1alpha1.ValidateJobMappingsRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
+	138, // 137: mgmt.v1alpha1.ValidateJobMappingsRequest.virtual_foreign_keys:type_name -> mgmt.v1alpha1.VirtualForeignConstraint
+	14,  // 138: mgmt.v1alpha1.ValidateJobMappingsRequest.job_source:type_name -> mgmt.v1alpha1.JobSource
+	205, // 139: mgmt.v1alpha1.ColumnError.error_reports:type_name -> mgmt.v1alpha1.ColumnError.ColumnErrorReport
+	206, // 140: mgmt.v1alpha1.ColumnWarning.warning_reports:type_name -> mgmt.v1alpha1.ColumnWarning.ColumnWarningReport
+	207, // 141: mgmt.v1alpha1.DatabaseError.error_reports:type_name -> mgmt.v1alpha1.DatabaseError.DatabaseErrorReport
+	208, // 142: mgmt.v1alpha1.TableError.error_reports:type_name -> mgmt.v1alpha1.TableError.TableErrorReport
+	130, // 143: mgmt.v1alpha1.ValidateJobMappingsResponse.column_errors:type_name -> mgmt.v1alpha1.ColumnError
+	132, // 144: mgmt.v1alpha1.ValidateJobMappingsResponse.database_errors:type_name -> mgmt.v1alpha1.DatabaseError
+	131, // 145: mgmt.v1alpha1.ValidateJobMappingsResponse.column_warnings:type_name -> mgmt.v1alpha1.ColumnWarning
+	133, // 146: mgmt.v1alpha1.ValidateJobMappingsResponse.table_errors:type_name -> mgmt.v1alpha1.TableError
+	61,  // 147: mgmt.v1alpha1.ValidateSchemaRequest.mappings:type_name -> mgmt.v1alpha1.JobMapping
+	218, // 148: mgmt.v1alpha1.ValidateSchemaResponse.missing_columns:type_name -> mgmt.v1alpha1.DatabaseColumn
+	218, // 149: mgmt.v1alpha1.ValidateSchemaResponse.extra_columns:type_name -> mgmt.v1alpha1.DatabaseColumn
+	209, // 150: mgmt.v1alpha1.ValidateSchemaResponse.missing_tables:type_name -> mgmt.v1alpha1.ValidateSchemaResponse.Table
+	137, // 151: mgmt.v1alpha1.VirtualForeignConstraint.foreign_key:type_name -> mgmt.v1alpha1.VirtualForeignKey
+	139, // 152: mgmt.v1alpha1.GetRunContextRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
+	139, // 153: mgmt.v1alpha1.SetRunContextRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
+	139, // 154: mgmt.v1alpha1.SetRunContextsRequest.id:type_name -> mgmt.v1alpha1.RunContextKey
+	148, // 155: mgmt.v1alpha1.JobHook.config:type_name -> mgmt.v1alpha1.JobHookConfig
+	217, // 156: mgmt.v1alpha1.JobHook.created_at:type_name -> google.protobuf.Timestamp
+	217, // 157: mgmt.v1alpha1.JobHook.updated_at:type_name -> google.protobuf.Timestamp
+	148, // 158: mgmt.v1alpha1.NewJobHook.config:type_name -> mgmt.v1alpha1.JobHookConfig
+	210, // 159: mgmt.v1alpha1.JobHookConfig.sql:type_name -> mgmt.v1alpha1.JobHookConfig.JobSqlHook
+	146, // 160: mgmt.v1alpha1.GetJobHooksResponse.hooks:type_name -> mgmt.v1alpha1.JobHook
+	146, // 161: mgmt.v1alpha1.GetJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
+	147, // 162: mgmt.v1alpha1.CreateJobHookRequest.hook:type_name -> mgmt.v1alpha1.NewJobHook
+	146, // 163: mgmt.v1alpha1.CreateJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
+	148, // 164: mgmt.v1alpha1.UpdateJobHookRequest.config:type_name -> mgmt.v1alpha1.JobHookConfig
+	146, // 165: mgmt.v1alpha1.UpdateJobHookResponse.hook:type_name -> mgmt.v1alpha1.JobHook
+	146, // 166: mgmt.v1alpha1.SetJobHookEnabledResponse.hook:type_name -> mgmt.v1alpha1.JobHook
+	11,  // 167: mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.timing:type_name -> mgmt.v1alpha1.GetActiveJobHooksByTimingRequest.Timing
+	146, // 168: mgmt.v1alpha1.GetActiveJobHooksByTimingResponse.hooks:type_name -> mgmt.v1alpha1.JobHook
+	169, // 169: mgmt.v1alpha1.GetPiiDetectionReportResponse.report:type_name -> mgmt.v1alpha1.PiiDetectionReport
+	212, // 170: mgmt.v1alpha1.PiiDetectionReport.tables:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport
+	172, // 171: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	173, // 172: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.auto_map:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+	174, // 173: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	175, // 174: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	176, // 175: mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.PostgresSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	179, // 176: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	180, // 177: mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	181, // 178: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	182, // 179: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.auto_map:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+	183, // 180: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	186, // 181: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.halt_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob
+	187, // 182: mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.continue_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
+	188, // 183: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.halt_job:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
+	189, // 184: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.passthrough:type_name -> mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
+	197, // 185: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.data_sampling:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling
+	198, // 186: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.table_scan_filter:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter
+	196, // 187: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.incremental:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.Incremental
+	199, // 188: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.include_all:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.IncludeAll
+	200, // 189: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.include:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
+	200, // 190: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableScanFilter.exclude:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns
+	201, // 191: mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TablePatterns.tables:type_name -> mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.TableIdentifier
+	217, // 192: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.timestamp:type_name -> google.protobuf.Timestamp
+	204, // 193: mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.labels:type_name -> mgmt.v1alpha1.GetJobRunLogsResponse.LogLine.LabelsEntry
+	7,   // 194: mgmt.v1alpha1.ColumnError.ColumnErrorReport.code:type_name -> mgmt.v1alpha1.ColumnError.ColumnErrorCode
+	8,   // 195: mgmt.v1alpha1.ColumnWarning.ColumnWarningReport.code:type_name -> mgmt.v1alpha1.ColumnWarning.ColumnWarningCode
+	9,   // 196: mgmt.v1alpha1.DatabaseError.DatabaseErrorReport.code:type_name -> mgmt.v1alpha1.DatabaseError.DatabaseErrorCode
+	10,  // 197: mgmt.v1alpha1.TableError.TableErrorReport.code:type_name -> mgmt.v1alpha1.TableError.TableErrorCode
+	211, // 198: mgmt.v1alpha1.JobHookConfig.JobSqlHook.timing:type_name -> mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing
+	149, // 199: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing.pre_sync:type_name -> mgmt.v1alpha1.JobHookTimingPreSync
+	150, // 200: mgmt.v1alpha1.JobHookConfig.JobSqlHook.Timing.post_sync:type_name -> mgmt.v1alpha1.JobHookTimingPostSync
+	213, // 201: mgmt.v1alpha1.PiiDetectionReport.TableReport.columns:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport
+	214, // 202: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.regex_report:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Regex
+	215, // 203: mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.llm_report:type_name -> mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.LLM
+	12,  // 204: mgmt.v1alpha1.JobService.GetJobs:input_type -> mgmt.v1alpha1.GetJobsRequest
+	62,  // 205: mgmt.v1alpha1.JobService.GetJob:input_type -> mgmt.v1alpha1.GetJobRequest
+	54,  // 206: mgmt.v1alpha1.JobService.CreateJob:input_type -> mgmt.v1alpha1.CreateJobRequest
+	83,  // 207: mgmt.v1alpha1.JobService.DeleteJob:input_type -> mgmt.v1alpha1.DeleteJobRequest
+	85,  // 208: mgmt.v1alpha1.JobService.IsJobNameAvailable:input_type -> mgmt.v1alpha1.IsJobNameAvailableRequest
+	64,  // 209: mgmt.v1alpha1.JobService.UpdateJobSchedule:input_type -> mgmt.v1alpha1.UpdateJobScheduleRequest
+	68,  // 210: mgmt.v1alpha1.JobService.UpdateJobSourceConnection:input_type -> mgmt.v1alpha1.UpdateJobSourceConnectionRequest
+	75,  // 211: mgmt.v1alpha1.JobService.SetJobSourceSqlConnectionSubsets:input_type -> mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest
+	77,  // 212: mgmt.v1alpha1.JobService.UpdateJobDestinationConnection:input_type -> mgmt.v1alpha1.UpdateJobDestinationConnectionRequest
+	79,  // 213: mgmt.v1alpha1.JobService.DeleteJobDestinationConnection:input_type -> mgmt.v1alpha1.DeleteJobDestinationConnectionRequest
+	81,  // 214: mgmt.v1alpha1.JobService.CreateJobDestinationConnections:input_type -> mgmt.v1alpha1.CreateJobDestinationConnectionsRequest
+	66,  // 215: mgmt.v1alpha1.JobService.PauseJob:input_type -> mgmt.v1alpha1.PauseJobRequest
+	97,  // 216: mgmt.v1alpha1.JobService.GetJobRecentRuns:input_type -> mgmt.v1alpha1.GetJobRecentRunsRequest
+	100, // 217: mgmt.v1alpha1.JobService.GetJobNextRuns:input_type -> mgmt.v1alpha1.GetJobNextRunsRequest
+	102, // 218: mgmt.v1alpha1.JobService.GetJobStatus:input_type -> mgmt.v1alpha1.GetJobStatusRequest
+	105, // 219: mgmt.v1alpha1.JobService.GetJobStatuses:input_type -> mgmt.v1alpha1.GetJobStatusesRequest
+	87,  // 220: mgmt.v1alpha1.JobService.GetJobRuns:input_type -> mgmt.v1alpha1.GetJobRunsRequest
+	115, // 221: mgmt.v1alpha1.JobService.GetJobRunEvents:input_type -> mgmt.v1alpha1.GetJobRunEventsRequest
+	89,  // 222: mgmt.v1alpha1.JobService.GetJobRun:input_type -> mgmt.v1alpha1.GetJobRunRequest
+	117, // 223: mgmt.v1alpha1.JobService.DeleteJobRun:input_type -> mgmt.v1alpha1.DeleteJobRunRequest
+	91,  // 224: mgmt.v1alpha1.JobService.CreateJobRun:input_type -> mgmt.v1alpha1.CreateJobRunRequest
+	93,  // 225: mgmt.v1alpha1.JobService.CancelJobRun:input_type -> mgmt.v1alpha1.CancelJobRunRequest
+	119, // 226: mgmt.v1alpha1.JobService.TerminateJobRun:input_type -> mgmt.v1alpha1.TerminateJobRunRequest
+	121, // 227: mgmt.v1alpha1.JobService.GetJobRunLogsStream:input_type -> mgmt.v1alpha1.GetJobRunLogsStreamRequest
+	123, // 228: mgmt.v1alpha1.JobService.GetJobRunLogs:input_type -> mgmt.v1alpha1.GetJobRunLogsRequest
+	125, // 229: mgmt.v1alpha1.JobService.SetJobWorkflowOptions:input_type -> mgmt.v1alpha1.SetJobWorkflowOptionsRequest
+	127, // 230: mgmt.v1alpha1.JobService.SetJobSyncOptions:input_type -> mgmt.v1alpha1.SetJobSyncOptionsRequest
+	129, // 231: mgmt.v1alpha1.JobService.ValidateJobMappings:input_type -> mgmt.v1alpha1.ValidateJobMappingsRequest
+	135, // 232: mgmt.v1alpha1.JobService.ValidateSchema:input_type -> mgmt.v1alpha1.ValidateSchemaRequest
+	140, // 233: mgmt.v1alpha1.JobService.GetRunContext:input_type -> mgmt.v1alpha1.GetRunContextRequest
+	142, // 234: mgmt.v1alpha1.JobService.SetRunContext:input_type -> mgmt.v1alpha1.SetRunContextRequest
+	144, // 235: mgmt.v1alpha1.JobService.SetRunContexts:input_type -> mgmt.v1alpha1.SetRunContextsRequest
+	151, // 236: mgmt.v1alpha1.JobService.GetJobHooks:input_type -> mgmt.v1alpha1.GetJobHooksRequest
+	153, // 237: mgmt.v1alpha1.JobService.GetJobHook:input_type -> mgmt.v1alpha1.GetJobHookRequest
+	155, // 238: mgmt.v1alpha1.JobService.CreateJobHook:input_type -> mgmt.v1alpha1.CreateJobHookRequest
+	157, // 239: mgmt.v1alpha1.JobService.DeleteJobHook:input_type -> mgmt.v1alpha1.DeleteJobHookRequest
+	159, // 240: mgmt.v1alpha1.JobService.IsJobHookNameAvailable:input_type -> mgmt.v1alpha1.IsJobHookNameAvailableRequest
+	161, // 241: mgmt.v1alpha1.JobService.UpdateJobHook:input_type -> mgmt.v1alpha1.UpdateJobHookRequest
+	163, // 242: mgmt.v1alpha1.JobService.SetJobHookEnabled:input_type -> mgmt.v1alpha1.SetJobHookEnabledRequest
+	165, // 243: mgmt.v1alpha1.JobService.GetActiveJobHooksByTiming:input_type -> mgmt.v1alpha1.GetActiveJobHooksByTimingRequest
+	167, // 244: mgmt.v1alpha1.JobService.GetPiiDetectionReport:input_type -> mgmt.v1alpha1.GetPiiDetectionReportRequest
+	13,  // 245: mgmt.v1alpha1.JobService.GetJobs:output_type -> mgmt.v1alpha1.GetJobsResponse
+	63,  // 246: mgmt.v1alpha1.JobService.GetJob:output_type -> mgmt.v1alpha1.GetJobResponse
+	59,  // 247: mgmt.v1alpha1.JobService.CreateJob:output_type -> mgmt.v1alpha1.CreateJobResponse
+	84,  // 248: mgmt.v1alpha1.JobService.DeleteJob:output_type -> mgmt.v1alpha1.DeleteJobResponse
+	86,  // 249: mgmt.v1alpha1.JobService.IsJobNameAvailable:output_type -> mgmt.v1alpha1.IsJobNameAvailableResponse
+	65,  // 250: mgmt.v1alpha1.JobService.UpdateJobSchedule:output_type -> mgmt.v1alpha1.UpdateJobScheduleResponse
+	69,  // 251: mgmt.v1alpha1.JobService.UpdateJobSourceConnection:output_type -> mgmt.v1alpha1.UpdateJobSourceConnectionResponse
+	76,  // 252: mgmt.v1alpha1.JobService.SetJobSourceSqlConnectionSubsets:output_type -> mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse
+	78,  // 253: mgmt.v1alpha1.JobService.UpdateJobDestinationConnection:output_type -> mgmt.v1alpha1.UpdateJobDestinationConnectionResponse
+	80,  // 254: mgmt.v1alpha1.JobService.DeleteJobDestinationConnection:output_type -> mgmt.v1alpha1.DeleteJobDestinationConnectionResponse
+	82,  // 255: mgmt.v1alpha1.JobService.CreateJobDestinationConnections:output_type -> mgmt.v1alpha1.CreateJobDestinationConnectionsResponse
+	67,  // 256: mgmt.v1alpha1.JobService.PauseJob:output_type -> mgmt.v1alpha1.PauseJobResponse
+	98,  // 257: mgmt.v1alpha1.JobService.GetJobRecentRuns:output_type -> mgmt.v1alpha1.GetJobRecentRunsResponse
+	101, // 258: mgmt.v1alpha1.JobService.GetJobNextRuns:output_type -> mgmt.v1alpha1.GetJobNextRunsResponse
+	103, // 259: mgmt.v1alpha1.JobService.GetJobStatus:output_type -> mgmt.v1alpha1.GetJobStatusResponse
+	106, // 260: mgmt.v1alpha1.JobService.GetJobStatuses:output_type -> mgmt.v1alpha1.GetJobStatusesResponse
+	88,  // 261: mgmt.v1alpha1.JobService.GetJobRuns:output_type -> mgmt.v1alpha1.GetJobRunsResponse
+	116, // 262: mgmt.v1alpha1.JobService.GetJobRunEvents:output_type -> mgmt.v1alpha1.GetJobRunEventsResponse
+	90,  // 263: mgmt.v1alpha1.JobService.GetJobRun:output_type -> mgmt.v1alpha1.GetJobRunResponse
+	118, // 264: mgmt.v1alpha1.JobService.DeleteJobRun:output_type -> mgmt.v1alpha1.DeleteJobRunResponse
+	92,  // 265: mgmt.v1alpha1.JobService.CreateJobRun:output_type -> mgmt.v1alpha1.CreateJobRunResponse
+	94,  // 266: mgmt.v1alpha1.JobService.CancelJobRun:output_type -> mgmt.v1alpha1.CancelJobRunResponse
+	120, // 267: mgmt.v1alpha1.JobService.TerminateJobRun:output_type -> mgmt.v1alpha1.TerminateJobRunResponse
+	122, // 268: mgmt.v1alpha1.JobService.GetJobRunLogsStream:output_type -> mgmt.v1alpha1.GetJobRunLogsStreamResponse
+	124, // 269: mgmt.v1alpha1.JobService.GetJobRunLogs:output_type -> mgmt.v1alpha1.GetJobRunLogsResponse
+	126, // 270: mgmt.v1alpha1.JobService.SetJobWorkflowOptions:output_type -> mgmt.v1alpha1.SetJobWorkflowOptionsResponse
+	128, // 271: mgmt.v1alpha1.JobService.SetJobSyncOptions:output_type -> mgmt.v1alpha1.SetJobSyncOptionsResponse
+	134, // 272: mgmt.v1alpha1.JobService.ValidateJobMappings:output_type -> mgmt.v1alpha1.ValidateJobMappingsResponse
+	136, // 273: mgmt.v1alpha1.JobService.ValidateSchema:output_type -> mgmt.v1alpha1.ValidateSchemaResponse
+	141, // 274: mgmt.v1alpha1.JobService.GetRunContext:output_type -> mgmt.v1alpha1.GetRunContextResponse
+	143, // 275: mgmt.v1alpha1.JobService.SetRunContext:output_type -> mgmt.v1alpha1.SetRunContextResponse
+	145, // 276: mgmt.v1alpha1.JobService.SetRunContexts:output_type -> mgmt.v1alpha1.SetRunContextsResponse
+	152, // 277: mgmt.v1alpha1.JobService.GetJobHooks:output_type -> mgmt.v1alpha1.GetJobHooksResponse
+	154, // 278: mgmt.v1alpha1.JobService.GetJobHook:output_type -> mgmt.v1alpha1.GetJobHookResponse
+	156, // 279: mgmt.v1alpha1.JobService.CreateJobHook:output_type -> mgmt.v1alpha1.CreateJobHookResponse
+	158, // 280: mgmt.v1alpha1.JobService.DeleteJobHook:output_type -> mgmt.v1alpha1.DeleteJobHookResponse
+	160, // 281: mgmt.v1alpha1.JobService.IsJobHookNameAvailable:output_type -> mgmt.v1alpha1.IsJobHookNameAvailableResponse
+	162, // 282: mgmt.v1alpha1.JobService.UpdateJobHook:output_type -> mgmt.v1alpha1.UpdateJobHookResponse
+	164, // 283: mgmt.v1alpha1.JobService.SetJobHookEnabled:output_type -> mgmt.v1alpha1.SetJobHookEnabledResponse
+	166, // 284: mgmt.v1alpha1.JobService.GetActiveJobHooksByTiming:output_type -> mgmt.v1alpha1.GetActiveJobHooksByTimingResponse
+	168, // 285: mgmt.v1alpha1.JobService.GetPiiDetectionReport:output_type -> mgmt.v1alpha1.GetPiiDetectionReportResponse
+	245, // [245:286] is the sub-list for method output_type
+	204, // [204:245] is the sub-list for method input_type
+	204, // [204:204] is the sub-list for extension type_name
+	204, // [204:204] is the sub-list for extension extendee
+	0,   // [0:204] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_job_proto_init() }
@@ -13986,7 +14055,7 @@ func file_mgmt_v1alpha1_job_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_job_proto_rawDesc), len(file_mgmt_v1alpha1_job_proto_rawDesc)),
-			NumEnums:      11,
+			NumEnums:      12,
 			NumMessages:   204,
 			NumExtensions: 0,
 			NumServices:   1,

@@ -45,6 +45,7 @@ import (
 	datasync_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	piidetect_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/register"
+	sync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -385,7 +386,13 @@ func serve(ctx context.Context) error {
 	if pageLimit <= 0 {
 		pageLimit = 100_000
 	}
-	enableAthanor := viper.GetBool("ENABLE_ATHANOR_ENGINE")
+	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
+	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
+	athanorPolicy := sync_activity.NewAthanorPolicy(
+		viper.GetBool("ENABLE_ATHANOR_ENGINE"),
+		viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
+		viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
+	)
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
 		w,
@@ -399,7 +406,7 @@ func serve(ctx context.Context) error {
 		maxIterations,
 		anonymizationclient,
 		redisclient,
-		enableAthanor,
+		athanorPolicy,
 	)
 
 	schemainit_workflow_register.Register(

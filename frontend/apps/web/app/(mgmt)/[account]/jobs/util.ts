@@ -121,6 +121,7 @@ import {
   VirtualForeignConstraint,
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
+  JobEngine,
   WorkflowOptions,
   WorkflowOptionsSchema,
 } from '@neosync/sdk';
@@ -479,9 +480,12 @@ function toPiiDetectTableScanFilter(
 export function toWorkflowOptions(
   values?: WorkflowSettingsSchema
 ): WorkflowOptions | undefined {
-  if (values?.runTimeout) {
+  if (values?.runTimeout || values?.engine) {
     return create(WorkflowOptionsSchema, {
-      runTimeout: convertMinutesToNanoseconds(values.runTimeout),
+      runTimeout: values.runTimeout
+        ? convertMinutesToNanoseconds(values.runTimeout)
+        : undefined,
+      engine: values.engine ?? JobEngine.UNSPECIFIED,
     });
   }
   return undefined;

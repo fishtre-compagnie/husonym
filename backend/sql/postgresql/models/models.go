@@ -2469,16 +2469,21 @@ func (t *TemporalConfig) FromDto(dto *mgmtv1alpha1.AccountTemporalConfig) {
 
 type WorkflowOptions struct {
 	RunTimeout *int64 `json:"runTimeout,omitempty"`
+	// Engine : moteur de transformation choisi pour ce job (enum JobEngine stocké
+	// en int32). 0 = unspecified = défaut déploiement.
+	Engine int32 `json:"engine,omitempty"`
 }
 
 func (a *WorkflowOptions) ToDto() *mgmtv1alpha1.WorkflowOptions {
 	return &mgmtv1alpha1.WorkflowOptions{
 		RunTimeout: a.RunTimeout,
+		Engine:     mgmtv1alpha1.JobEngine(a.Engine),
 	}
 }
 
 func (a *WorkflowOptions) FromDto(dto *mgmtv1alpha1.WorkflowOptions) {
 	a.RunTimeout = dto.RunTimeout
+	a.Engine = int32(dto.GetEngine())
 }
 
 type ActivityOptions struct {

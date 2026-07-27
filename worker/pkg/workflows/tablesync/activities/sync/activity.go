@@ -48,7 +48,7 @@ type Activity struct {
 	temporalclient       temporalclient.Client
 	anonymizationClient  mgmtv1alpha1connect.AnonymizationServiceClient
 	redisclient          redis.UniversalClient
-	enableAthanor        bool
+	athanorPolicy        AthanorPolicy
 }
 
 func New(
@@ -61,7 +61,7 @@ func New(
 	tclient temporalclient.Client,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
 	redisclient redis.UniversalClient,
-	enableAthanor bool,
+	athanorPolicy AthanorPolicy,
 ) *Activity {
 	return &Activity{
 		connclient:           connclient,
@@ -73,7 +73,7 @@ func New(
 		temporalclient:       tclient,
 		anonymizationClient:  anonymizationClient,
 		redisclient:          redisclient,
-		enableAthanor:        enableAthanor,
+		athanorPolicy:        athanorPolicy,
 	}
 }
 
@@ -189,9 +189,9 @@ func (a *Activity) SyncTable(
 		return nil, err
 	}
 
-	// Aiguillage vers le moteur Athanor (flag ENABLE_ATHANOR_ENGINE). Le moteur
+	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Le moteur
 	// traite la table complète en une passe : pas de token de continuation.
-	if a.enableAthanor {
+	if a.useAthanorForJob(ctx, req.JobRunId, logger) {
 		if aerr := a.runAthanor(ctx, req, metadata, session, getConnectionById, logger); aerr != nil {
 			return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
 		}

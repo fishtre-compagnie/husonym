@@ -10448,6 +10448,29 @@
           ]
         },
         {
+          "name": "JobEngine",
+          "longName": "JobEngine",
+          "fullName": "mgmt.v1alpha1.JobEngine",
+          "description": "Config that contains various timeouts that are configured in the underlying temporal workflow\nMore options will come in the future as needed\nWhich transformation engine runs a job.",
+          "values": [
+            {
+              "name": "JOB_ENGINE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defer to the deployment default (ENABLE_ATHANOR_ENGINE / per-worker policy)."
+            },
+            {
+              "name": "JOB_ENGINE_ATHANOR",
+              "number": "1",
+              "description": "New vectorized engine (deterministic consistency, native referential integrity)."
+            },
+            {
+              "name": "JOB_ENGINE_BENTHOS",
+              "number": "2",
+              "description": "Original row-by-row streaming engine (Benthos/redpanda-connect)."
+            }
+          ]
+        },
+        {
           "name": "JobRunStatus",
           "longName": "JobRunStatus",
           "fullName": "mgmt.v1alpha1.JobRunStatus",
@@ -18119,7 +18142,7 @@
           "name": "WorkflowOptions",
           "longName": "WorkflowOptions",
           "fullName": "mgmt.v1alpha1.WorkflowOptions",
-          "description": "Config that contains various timeouts that are configured in the underlying temporal workflow\nMore options will come in the future as needed",
+          "description": "",
           "hasExtensions": false,
           "hasFields": true,
           "hasOneofs": true,
@@ -18135,6 +18158,18 @@
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "_run_timeout",
+              "defaultValue": ""
+            },
+            {
+              "name": "engine",
+              "description": "Which transformation engine runs this job. Unspecified = deployment default.",
+              "label": "",
+              "type": "JobEngine",
+              "longType": "JobEngine",
+              "fullType": "mgmt.v1alpha1.JobEngine",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
               "defaultValue": ""
             }
           ]

@@ -13,6 +13,12 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class JobEngine(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JOB_ENGINE_UNSPECIFIED: _ClassVar[JobEngine]
+    JOB_ENGINE_ATHANOR: _ClassVar[JobEngine]
+    JOB_ENGINE_BENTHOS: _ClassVar[JobEngine]
+
 class JobStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     JOB_STATUS_UNSPECIFIED: _ClassVar[JobStatus]
@@ -54,6 +60,9 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOG_LEVEL_INFO: _ClassVar[LogLevel]
     LOG_LEVEL_WARN: _ClassVar[LogLevel]
     LOG_LEVEL_ERROR: _ClassVar[LogLevel]
+JOB_ENGINE_UNSPECIFIED: JobEngine
+JOB_ENGINE_ATHANOR: JobEngine
+JOB_ENGINE_BENTHOS: JobEngine
 JOB_STATUS_UNSPECIFIED: JobStatus
 JOB_STATUS_ENABLED: JobStatus
 JOB_STATUS_PAUSED: JobStatus
@@ -689,10 +698,12 @@ class JobTypeConfig(_message.Message):
     def __init__(self, sync: _Optional[_Union[JobTypeConfig.JobTypeSync, _Mapping]] = ..., pii_detect: _Optional[_Union[JobTypeConfig.JobTypePiiDetect, _Mapping]] = ...) -> None: ...
 
 class WorkflowOptions(_message.Message):
-    __slots__ = ("run_timeout",)
+    __slots__ = ("run_timeout", "engine")
     RUN_TIMEOUT_FIELD_NUMBER: _ClassVar[int]
+    ENGINE_FIELD_NUMBER: _ClassVar[int]
     run_timeout: int
-    def __init__(self, run_timeout: _Optional[int] = ...) -> None: ...
+    engine: JobEngine
+    def __init__(self, run_timeout: _Optional[int] = ..., engine: _Optional[_Union[JobEngine, str]] = ...) -> None: ...
 
 class ActivityOptions(_message.Message):
     __slots__ = ("schedule_to_close_timeout", "start_to_close_timeout", "retry_policy")

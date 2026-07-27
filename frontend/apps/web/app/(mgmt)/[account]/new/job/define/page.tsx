@@ -34,7 +34,14 @@ import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation } from '@connectrpc/connect-query';
-import { JobService } from '@neosync/sdk';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { JobEngine, JobService } from '@neosync/sdk';
 import { usePostHog } from 'posthog-js/react';
 import { DEFAULT_CRON_STRING } from '../../../jobs/[id]/components/ScheduleCard';
 import { getNewJobSessionKeys } from '../../../jobs/util';
@@ -246,6 +253,41 @@ export default function Page(props: PageProps): ReactElement {
                             }}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="workflowSettings.engine"
+                    render={({ field }) => (
+                      <FormItem className="pt-4">
+                        <FormLabel>Engine</FormLabel>
+                        <FormDescription>
+                          Transformation engine used to run this job.{' '}
+                          <code>Default</code> follows the deployment setting.
+                        </FormDescription>
+                        <Select
+                          onValueChange={(v) => field.onChange(Number(v))}
+                          value={String(field.value ?? JobEngine.UNSPECIFIED)}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={String(JobEngine.UNSPECIFIED)}>
+                              Default (deployment)
+                            </SelectItem>
+                            <SelectItem value={String(JobEngine.ATHANOR)}>
+                              Athanor
+                            </SelectItem>
+                            <SelectItem value={String(JobEngine.BENTHOS)}>
+                              Benthos (legacy)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
