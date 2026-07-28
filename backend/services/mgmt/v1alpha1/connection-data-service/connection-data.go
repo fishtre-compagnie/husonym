@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonymgob "github.com/fishtre-compagnie/husonym/internal/gob"
@@ -158,6 +159,10 @@ func (s *Service) GetConnectionSchema(
 	if err != nil {
 		return nil, err
 	}
+
+	// Détection heuristique RGPD : annote chaque colonne (catégorie, sensibilité,
+	// transformer suggéré) à partir de son nom et de son type SQL.
+	piidetect.Enrich(schemas)
 
 	return connect.NewResponse(&mgmtv1alpha1.GetConnectionSchemaResponse{
 		Schemas: schemas,

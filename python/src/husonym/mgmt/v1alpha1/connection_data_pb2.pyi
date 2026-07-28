@@ -1,5 +1,6 @@
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
+from mgmt.v1alpha1 import transformer_pb2 as _transformer_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -123,7 +124,7 @@ class ConnectionSchemaConfig(_message.Message):
     def __init__(self, pg_config: _Optional[_Union[PostgresSchemaConfig, _Mapping]] = ..., aws_s3_config: _Optional[_Union[AwsS3SchemaConfig, _Mapping]] = ..., mysql_config: _Optional[_Union[MysqlSchemaConfig, _Mapping]] = ..., mongo_config: _Optional[_Union[MongoSchemaConfig, _Mapping]] = ..., gcp_cloudstorage_config: _Optional[_Union[GcpCloudStorageSchemaConfig, _Mapping]] = ..., dynamodb_config: _Optional[_Union[DynamoDBSchemaConfig, _Mapping]] = ..., mssql_config: _Optional[_Union[MssqlSchemaConfig, _Mapping]] = ...) -> None: ...
 
 class DatabaseColumn(_message.Message):
-    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation")
+    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation", "data_category", "is_sensitive", "suggested_transformer_source")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
@@ -132,6 +133,9 @@ class DatabaseColumn(_message.Message):
     COLUMN_DEFAULT_FIELD_NUMBER: _ClassVar[int]
     GENERATED_TYPE_FIELD_NUMBER: _ClassVar[int]
     IDENTITY_GENERATION_FIELD_NUMBER: _ClassVar[int]
+    DATA_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
+    SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
@@ -140,7 +144,10 @@ class DatabaseColumn(_message.Message):
     column_default: str
     generated_type: str
     identity_generation: str
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ...) -> None: ...
+    data_category: str
+    is_sensitive: bool
+    suggested_transformer_source: _transformer_pb2.TransformerSource
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ..., data_category: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ...) -> None: ...
 
 class GetConnectionSchemaRequest(_message.Message):
     __slots__ = ("connection_id", "schema_config")

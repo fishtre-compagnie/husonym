@@ -8595,6 +8595,42 @@
               "isoneof": true,
               "oneofdecl": "_identity_generation",
               "defaultValue": ""
+            },
+            {
+              "name": "data_category",
+              "description": "Nature sémantique détectée pour cette colonne (heuristique nom+type SQL). Ex: \"email\", \"phone_number\", \"person_full_name\". Vide si rien de détecté.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_sensitive",
+              "description": "True si la colonne est considérée comme une donnée à caractère personnel (RGPD).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "Transformer recommandé pour anonymiser cette colonne. TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
