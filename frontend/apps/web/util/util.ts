@@ -14,7 +14,7 @@ import {
   TransformerDataType,
   TransformerSource,
   UserDefinedTransformer,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 

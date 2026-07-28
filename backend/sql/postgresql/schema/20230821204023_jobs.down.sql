@@ -1,2 +1,2 @@
-DROP TABLE IF EXISTS neosync_api.job_destination_connection_associations;
-DROP TABLE IF EXISTS neosync_api.jobs;
+DROP TABLE IF EXISTS husonym_api.job_destination_connection_associations;
+DROP TABLE IF EXISTS husonym_api.jobs;

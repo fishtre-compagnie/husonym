@@ -1,5 +1,5 @@
 #!/bin/bash
-VALID_CONTEXTS=("kind-neosync-dev")
+VALID_CONTEXTS=("kind-husonym-dev")
 
 assert_context()
 {

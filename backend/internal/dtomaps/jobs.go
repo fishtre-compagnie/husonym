@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	temporalclient "go.temporal.io/sdk/client"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToJobDto(
-	inputJob *db_queries.NeosyncApiJob,
-	inputDestConnections []db_queries.NeosyncApiJobDestinationConnectionAssociation,
+	inputJob *db_queries.HusonymApiJob,
+	inputDestConnections []db_queries.HusonymApiJobDestinationConnectionAssociation,
 ) (*mgmtv1alpha1.Job, error) {
 	mappings := []*mgmtv1alpha1.JobMapping{}
 	for _, mapping := range inputJob.Mappings {
@@ -60,20 +60,20 @@ func ToJobDto(
 	}
 
 	return &mgmtv1alpha1.Job{
-		Id:                 neosyncdb.UUIDString(inputJob.ID),
+		Id:                 husonymdb.UUIDString(inputJob.ID),
 		Name:               inputJob.Name,
 		CreatedAt:          timestamppb.New(inputJob.CreatedAt.Time),
 		UpdatedAt:          timestamppb.New(inputJob.UpdatedAt.Time),
-		CreatedByUserId:    neosyncdb.UUIDString(inputJob.CreatedByID),
-		UpdatedByUserId:    neosyncdb.UUIDString(inputJob.UpdatedByID),
-		CronSchedule:       neosyncdb.ToNullableString(inputJob.CronSchedule),
+		CreatedByUserId:    husonymdb.UUIDString(inputJob.CreatedByID),
+		UpdatedByUserId:    husonymdb.UUIDString(inputJob.UpdatedByID),
+		CronSchedule:       husonymdb.ToNullableString(inputJob.CronSchedule),
 		Mappings:           mappings,
 		VirtualForeignKeys: virtualForeignKeys,
 		Source: &mgmtv1alpha1.JobSource{
 			Options: sourceOptions,
 		},
 		Destinations:    destinations,
-		AccountId:       neosyncdb.UUIDString(inputJob.AccountID),
+		AccountId:       husonymdb.UUIDString(inputJob.AccountID),
 		SyncOptions:     syncOptions,
 		WorkflowOptions: workflowOptions,
 		JobType:         jobTypeConfig,
@@ -81,12 +81,12 @@ func ToJobDto(
 }
 
 func toDestinationDto(
-	input *db_queries.NeosyncApiJobDestinationConnectionAssociation,
+	input *db_queries.HusonymApiJobDestinationConnectionAssociation,
 ) *mgmtv1alpha1.JobDestination {
 	return &mgmtv1alpha1.JobDestination{
-		ConnectionId: neosyncdb.UUIDString(input.ConnectionID),
+		ConnectionId: husonymdb.UUIDString(input.ConnectionID),
 		Options:      input.Options.ToDto(),
-		Id:           neosyncdb.UUIDString(input.ID),
+		Id:           husonymdb.UUIDString(input.ID),
 	}
 }
 

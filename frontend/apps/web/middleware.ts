@@ -9,7 +9,7 @@ export default auth((req) => {
       req.headers.set('Authorization', `Bearer ${req.auth.accessToken}`);
     }
     return NextResponse.rewrite(
-      `${sysConfig.neosyncApiBaseUrl}${trimPrefix(req.nextUrl.pathname, PUBLIC_PATHNAME)}${req.nextUrl.search}`,
+      `${sysConfig.husonymApiBaseUrl}${trimPrefix(req.nextUrl.pathname, PUBLIC_PATHNAME)}${req.nextUrl.search}`,
       {
         request: req,
       }

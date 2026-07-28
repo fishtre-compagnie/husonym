@@ -17,16 +17,16 @@ export default function WelcomeOverview(props: Props): ReactElement {
 
   return (
     <div className="flex flex-col gap-12 justify-center items-center text-center">
-      <h1 className="font-semibold text-2xl">Welcome to Neosync</h1>
+      <h1 className="font-semibold text-2xl">Welcome to Husonym</h1>
       {theme.resolvedTheme == 'light' ? (
         <ConnectLightMode />
       ) : (
         <ConnectDarkMode />
       )}
       <p className="text-sm px-12">
-        Neosync makes it easy to anonymize sensitive data, generate synthetic
+        Husonym makes it easy to anonymize sensitive data, generate synthetic
         data and sync data across environments. Click{' '}
-        <span className="font-semibold">Next</span> to learn how Neosync works.
+        <span className="font-semibold">Next</span> to learn how Husonym works.
       </p>
       <div className="flex flex-row justify-between w-full py-6">
         <Button

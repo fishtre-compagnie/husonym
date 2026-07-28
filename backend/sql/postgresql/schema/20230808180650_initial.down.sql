@@ -1,1 +1,1 @@
-DROP SCHEMA IF EXISTS neosync_api;
+DROP SCHEMA IF EXISTS husonym_api;

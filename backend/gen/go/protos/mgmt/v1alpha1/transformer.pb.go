@@ -72,7 +72,7 @@ const (
 	TransformerSource_TRANSFORMER_SOURCE_USER_DEFINED                 TransformerSource = 44
 	TransformerSource_TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT          TransformerSource = 45
 	TransformerSource_TRANSFORMER_SOURCE_GENERATE_COUNTRY             TransformerSource = 46
-	// NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+	// HusonymCloud/Enterprise only transformer for anonymizing PII Text
 	TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT          TransformerSource = 47
 	TransformerSource_TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME      TransformerSource = 48
 	TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS         TransformerSource = 49
@@ -1477,7 +1477,7 @@ func (x *UserDefinedTransformer) GetDataTypes() []TransformerDataType {
 	return nil
 }
 
-// A system transformer is a transformer that is built into the Neosync platform.
+// A system transformer is a transformer that is built into the Husonym platform.
 // It can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.
 type SystemTransformer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2284,7 +2284,7 @@ type TransformerConfig_GenerateCountryConfig struct {
 }
 
 type TransformerConfig_TransformPiiTextConfig struct {
-	// NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+	// HusonymCloud/Enterprise only transformer for anonymizing PII Text
 	TransformPiiTextConfig *TransformPiiText `protobuf:"bytes,44,opt,name=transform_pii_text_config,json=transformPiiTextConfig,proto3,oneof"`
 }
 
@@ -2439,7 +2439,7 @@ func (*TransformScrambleIdentity) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_transformer_proto_rawDescGZIP(), []int{19}
 }
 
-// NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+// HusonymCloud/Enterprise only transformer for anonymizing PII Text
 type TransformPiiText struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Minimal detection score for determining PII. 0.0-1.0
@@ -2721,7 +2721,7 @@ type PiiAnonymizer_Hash_ struct {
 }
 
 type PiiAnonymizer_Transform_ struct {
-	// Configures the anonymizer to use a Neosync configured transformer
+	// Configures the anonymizer to use a Husonym configured transformer
 	Transform *PiiAnonymizer_Transform `protobuf:"bytes,5,opt,name=transform,proto3,oneof"`
 }
 
@@ -5678,8 +5678,8 @@ const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"\x1aIsTransformerNameAvailable\x120.mgmt.v1alpha1.IsTransformerNameAvailableRequest\x1a1.mgmt.v1alpha1.IsTransformerNameAvailableResponse\"\x00\x12\x83\x01\n" +
 	"\x1aValidateUserJavascriptCode\x120.mgmt.v1alpha1.ValidateUserJavascriptCodeRequest\x1a1.mgmt.v1alpha1.ValidateUserJavascriptCodeResponse\"\x00\x12t\n" +
 	"\x15ValidateUserRegexCode\x12+.mgmt.v1alpha1.ValidateUserRegexCodeRequest\x1a,.mgmt.v1alpha1.ValidateUserRegexCodeResponse\"\x00\x12}\n" +
-	"\x17GetTransformPiiEntities\x12-.mgmt.v1alpha1.GetTransformPiiEntitiesRequest\x1a..mgmt.v1alpha1.GetTransformPiiEntitiesResponse\"\x03\x90\x02\x01B\xcc\x01\n" +
-	"\x11com.mgmt.v1alpha1B\x10TransformerProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x17GetTransformPiiEntities\x12-.mgmt.v1alpha1.GetTransformPiiEntitiesRequest\x1a..mgmt.v1alpha1.GetTransformPiiEntitiesResponse\"\x03\x90\x02\x01B\xd1\x01\n" +
+	"\x11com.mgmt.v1alpha1B\x10TransformerProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_transformer_proto_rawDescOnce sync.Once

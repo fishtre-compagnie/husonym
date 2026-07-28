@@ -2,7 +2,7 @@ import { buildConnectionConfigAwsS3 } from '@/app/(mgmt)/[account]/connections/u
 import { AwsFormValues } from '@/yup-validations/connections';
 
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { ConnectionFormProps } from '../types';
 import { useConnection } from '../useConnection';

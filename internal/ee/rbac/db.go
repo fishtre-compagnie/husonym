@@ -3,8 +3,8 @@ package rbac
 import (
 	"context"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type RbacDb struct {
@@ -23,11 +23,11 @@ func (r *RbacDb) GetAccountIds(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return neosyncdb.UUIDStrings(resp), nil
+	return husonymdb.UUIDStrings(resp), nil
 }
 
 func (r *RbacDb) GetAccountUsers(ctx context.Context, accountId string) ([]string, error) {
-	accountUuid, err := neosyncdb.ToUuid(accountId)
+	accountUuid, err := husonymdb.ToUuid(accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -35,5 +35,5 @@ func (r *RbacDb) GetAccountUsers(ctx context.Context, accountId string) ([]strin
 	if err != nil {
 		return nil, err
 	}
-	return neosyncdb.UUIDStrings(resp), nil
+	return husonymdb.UUIDStrings(resp), nil
 }

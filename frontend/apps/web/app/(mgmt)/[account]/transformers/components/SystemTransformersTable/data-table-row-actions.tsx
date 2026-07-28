@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SystemTransformer } from '@neosync/sdk';
+import { SystemTransformer } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 
 interface DataTableRowActionsProps<TData> {

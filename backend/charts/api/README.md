@@ -1,12 +1,12 @@
 # api
 
-A Helm chart for the Neosync Backend API
+A Helm chart for the Husonym Backend API
 
-**Homepage:** <https://www.neosync.dev>
+**Homepage:** <https://www.husonym.com>
 
 ## Source Code
 
-* <https://github.com/Groupe-Hevea/neosync>
+* <https://github.com/fishtre-compagnie/husonym>
 
 ## Values
 
@@ -37,22 +37,22 @@ A Helm chart for the Neosync Backend API
 | db.port | int | `5432` | The database port |
 | db.username | string | `nil` | The username that will be used for authentication |
 | deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
-| ee.license | string | `nil` | Neosync Enterprise-Edition License Key |
+| ee.license | string | `nil` | Husonym Enterprise-Edition License Key |
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment's user-container. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
-| image.repository | string | `"ghcr.io/groupe-hevea/neosync/api"` | The default image repository |
+| image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/api"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
 | imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
 | kubernetes.enabled | bool | `true` | Whether or not this is kubernetes (should always be true) |
 | kubernetes.namespace | string | `nil` | Falls back to the helm release namespace |
-| kubernetes.workerAppName | string | `"neosync-worker"` | Corresponds with the app label that is present on the worker pod |
+| kubernetes.workerAppName | string | `"husonym-worker"` | Corresponds with the app label that is present on the worker pod |
 | migrations.db.disableSsl | bool | `false` | Whether or not to disable SSL when connecting to the database |
 | migrations.db.host | string | `nil` | The database hostname |
-| migrations.db.migrationsTableName | string | `"neosync_api_schema_migrations"` | This is the tablename that will be created in the postgres "public" schema |
+| migrations.db.migrationsTableName | string | `"husonym_api_schema_migrations"` | This is the tablename that will be created in the postgres "public" schema |
 | migrations.db.migrationsTableQuoted | bool | `false` | Whether or not the tablename is quoted in the connection string |
 | migrations.db.name | string | `nil` | The name of the database |
 | migrations.db.options | string | `nil` | Extra database options that will be appended to the query string |
@@ -63,10 +63,10 @@ A Helm chart for the Neosync Backend API
 | migrations.enabled | bool | `true` | Whether or not the migrations init container will be added to the deployment |
 | migrations.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the migration init container. |
 | nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
-| neosyncCloud.enabled | bool | `false` | Whether or not this is NeosyncCloud |
-| neosyncCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
+| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
+| husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| nucleusEnv | string | `nil` | Mostly used by NeosyncCloud. Adds a special tag to the logging to determine what environment is running |
+| nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
@@ -77,11 +77,11 @@ A Helm chart for the Neosync Backend API
 | resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
 | resources.requests.memory | string | `"128Mi"` | Sets the Memory amount to be requested |
-| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Neosync API and UI (requires a valid license). |
+| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI (requires a valid license). |
 | runLogs.lokiConfig.baseUrl | string | `nil` | The base url to the loki instance |
 | runLogs.lokiConfig.keepLabels | string | `nil` | List format. |
 | runLogs.lokiConfig.labelsQuery | string | `nil` | LogQL labels query (without the {} as those are provided by the system) |
-| runLogs.podConfig.workerAppName | string | `"neosync-worker"` | Corresponds to the app label that is present on the worker pod that will be used to surface logs |
+| runLogs.podConfig.workerAppName | string | `"husonym-worker"` | Corresponds to the app label that is present on the worker pod that will be used to surface logs |
 | runLogs.podConfig.workerNamespace | string | `nil` | The namespace the worker lives in |
 | runLogs.type | string | `"k8s-pods"` | Possible values: k8s-pods, loki |
 | serviceAccount.annotations | object | `{}` | Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment. |

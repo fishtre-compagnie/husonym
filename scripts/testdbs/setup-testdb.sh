@@ -19,8 +19,8 @@ sleep 5
 SRC_CONN="postgresql://postgres:foofar@localhost:${SRC_PORT}/nucleus?sslmode=disable"
 DST_CONN="postgresql://postgres:foofar@localhost:${DST_PORT}/nucleus?sslmode=disable"
 
-psql '${SRC_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS neosync_api'
-psql '${DST_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS neosync_api'
+psql '${SRC_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS husonym_api'
+psql '${DST_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS husonym_api'
 
 migrate -path backend/migrations -database "${SRC_CONN}" up
 migrate -path backend/migrations -database "${DST_CONN}" up

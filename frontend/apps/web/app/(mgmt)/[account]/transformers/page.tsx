@@ -8,7 +8,7 @@ import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@connectrpc/connect-query';
-import { TransformersService } from '@neosync/sdk';
+import { TransformersService } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
 import { ReadonlyURLSearchParams, useSearchParams } from 'next/navigation';

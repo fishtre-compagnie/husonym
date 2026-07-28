@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	integrationtests_test "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -73,8 +73,8 @@ func (s *IntegrationTestSuite) Test_ConnectionService_CheckConnectionConfig() {
 func (s *IntegrationTestSuite) Test_ConnectionService_CreateConnection() {
 	t := s.T()
 
-	t.Run("Neosync Cloud Authenticated", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	t.Run("Husonym Cloud Authenticated", func(t *testing.T) {
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		integrationtests_test.SetUser(s.ctx, t, userclient)
@@ -86,7 +86,7 @@ func (s *IntegrationTestSuite) Test_ConnectionService_CreateConnection() {
 			"test-account",
 			"cus_P00000000000000000000000",
 		)
-		client := s.NeosyncCloudAuthenticatedLicensedClients.Connections(
+		client := s.HusonymCloudAuthenticatedLicensedClients.Connections(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		t.Run("postgres-envvar-failure", func(t *testing.T) {

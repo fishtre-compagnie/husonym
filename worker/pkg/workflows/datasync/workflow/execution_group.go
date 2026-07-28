@@ -3,8 +3,8 @@ package datasync_workflow
 import (
 	"sort"
 
-	benthosbuilder "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder"
-	runconfigs "github.com/Groupe-Hevea/neosync/internal/runconfigs"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
+	runconfigs "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 )
 
 // ExecutionGroup represents a logical unit of execution for table synchronization.

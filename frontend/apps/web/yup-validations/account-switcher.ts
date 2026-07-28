@@ -16,7 +16,7 @@ export const CreateTeamFormValues = Yup.object({
         if (!RESOURCE_NAME_REGEX.test(value)) {
           return false;
         }
-        // todo: test to make sure that account is valid across neosync
+        // todo: test to make sure that account is valid across husonym
         return true;
       }
     ),

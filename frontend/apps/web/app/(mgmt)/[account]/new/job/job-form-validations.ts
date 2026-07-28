@@ -11,7 +11,7 @@ import {
   Connection,
   IsJobNameAvailableRequestSchema,
   IsJobNameAvailableResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { UseMutateAsyncFunction } from '@tanstack/react-query';
 import cron from 'cron-validate';
 import * as Yup from 'yup';

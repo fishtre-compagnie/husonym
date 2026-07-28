@@ -3,7 +3,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import { cn, refreshWhenJobRunning } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService, PiiDetectionReport_TableReport } from '@neosync/sdk';
+import { JobService, PiiDetectionReport_TableReport } from '@husonym/sdk';
 import { DownloadIcon, ReloadIcon } from '@radix-ui/react-icons';
 import {
   getCoreRowModel,

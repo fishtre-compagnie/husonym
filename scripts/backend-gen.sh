@@ -51,8 +51,8 @@ BUF_GENERATE_CMD="$BUF_GENERATE_CMD \
   --volume \"./frontend/packages/sdk/src/client:/workspace/frontend/packages/sdk/src/client\" \
   --volume \"./docs/protos:/workspace/docs/protos\" \
   --volume \"./docs/openapi:/workspace/docs/openapi\" \
-  --volume \"./neosync.openapi.template.yaml:/workspace/neosync.openapi.template.yaml\" \
-  --volume \"./python/src/neosync:/workspace/python/src/neosync\" \
+  --volume \"./husonym.openapi.template.yaml:/workspace/husonym.openapi.template.yaml\" \
+  --volume \"./python/src/husonym:/workspace/python/src/husonym\" \
   --volume \"./buf.yaml:/workspace/buf.yaml\" \
   --volume \"./buf.lock:/workspace/buf.lock\" \
   --volume \"./buf.gen.yaml:/workspace/buf.gen.yaml\" \

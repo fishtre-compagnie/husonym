@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	tablesync_shared "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 )
 
 // Determines SQL driver from connection type
@@ -95,7 +95,7 @@ type DestinationParams struct {
 
 // BenthosSourceConfig represents a Benthos source configuration
 type BenthosSourceConfig struct {
-	Config                  *neosync_benthos.BenthosConfig
+	Config                  *husonym_benthos.BenthosConfig
 	Name                    string
 	DependsOn               []*runconfigs.DependsOn
 	RunType                 runconfigs.RunType
@@ -103,8 +103,8 @@ type BenthosSourceConfig struct {
 	TableName               string
 	Columns                 []string
 	RedisDependsOn          map[string][]string
-	ColumnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties
-	Processors              []*neosync_benthos.ProcessorConfig
+	ColumnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties
+	Processors              []*husonym_benthos.ProcessorConfig
 	BenthosDsns             []*bb_shared.BenthosDsn
 	RedisConfig             []*bb_shared.BenthosRedisConfig
 	PrimaryKeys             []string
@@ -114,6 +114,6 @@ type BenthosSourceConfig struct {
 
 // BenthosDestinationConfig represents a Benthos destination configuration
 type BenthosDestinationConfig struct {
-	Outputs     []neosync_benthos.Outputs
+	Outputs     []husonym_benthos.Outputs
 	BenthosDsns []*bb_shared.BenthosDsn
 }

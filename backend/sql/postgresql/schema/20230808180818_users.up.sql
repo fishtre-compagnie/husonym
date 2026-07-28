@@ -1,11 +1,11 @@
-CREATE TABLE IF NOT EXISTS neosync_api.users (
+CREATE TABLE IF NOT EXISTS husonym_api.users (
 	id uuid NOT NULL DEFAULT gen_random_uuid(),
 	created_at timestamp NOT NULL DEFAULT now(),
 	updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS neosync_api.user_identity_provider_associations (
+CREATE TABLE IF NOT EXISTS husonym_api.user_identity_provider_associations (
 	id uuid NOT NULL DEFAULT gen_random_uuid(),
 	user_id uuid NOT NULL,
 	auth0_provider_id varchar NOT NULL,
@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS neosync_api.user_identity_provider_associations (
 	updated_at timestamp NOT NULL DEFAULT now(),
 	CONSTRAINT user_identity_provider_associations_auth0_provider_id_key UNIQUE (auth0_provider_id),
 	CONSTRAINT user_identity_provider_associations_pkey PRIMARY KEY (id),
-	CONSTRAINT fk_user_identity_provider_user_id FOREIGN KEY (user_id) REFERENCES neosync_api.users(id) ON DELETE CASCADE
+	CONSTRAINT fk_user_identity_provider_user_id FOREIGN KEY (user_id) REFERENCES husonym_api.users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS neosync_api.accounts (
+CREATE TABLE IF NOT EXISTS husonym_api.accounts (
 	id uuid NOT NULL DEFAULT gen_random_uuid(),
 	created_at timestamp NOT NULL DEFAULT now(),
 	updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS neosync_api.accounts (
 	CONSTRAINT accounts_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS neosync_api.account_user_associations (
+CREATE TABLE IF NOT EXISTS husonym_api.account_user_associations (
 	id uuid NOT NULL DEFAULT gen_random_uuid(),
 	account_id uuid NOT NULL,
 	user_id uuid NOT NULL,
@@ -37,6 +37,6 @@ CREATE TABLE IF NOT EXISTS neosync_api.account_user_associations (
 	updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT account_user_associations_account_id_user_id_key UNIQUE (account_id, user_id),
 	CONSTRAINT account_user_associations_pkey PRIMARY KEY (id),
-	CONSTRAINT fk_account_user_associations_account_id FOREIGN KEY (account_id) REFERENCES neosync_api.accounts(id) ON DELETE CASCADE,
-	CONSTRAINT fk_account_user_associations_user_id FOREIGN KEY (user_id) REFERENCES neosync_api.users(id) ON DELETE CASCADE
+	CONSTRAINT fk_account_user_associations_account_id FOREIGN KEY (account_id) REFERENCES husonym_api.accounts(id) ON DELETE CASCADE,
+	CONSTRAINT fk_account_user_associations_user_id FOREIGN KEY (user_id) REFERENCES husonym_api.users(id) ON DELETE CASCADE
 );

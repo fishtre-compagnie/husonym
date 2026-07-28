@@ -7,7 +7,7 @@ import Spinner from '@/components/Spinner';
 import { useAccount } from '@/components/providers/account-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useReadNeosyncTransformerDeclarationFile } from '@/libs/hooks/useReadNeosyncTransfomerDeclarationFile';
+import { useReadHusonymTransformerDeclarationFile } from '@/libs/hooks/useReadHusonymTransfomerDeclarationFile';
 import { create } from '@bufbuild/protobuf';
 import { useMutation } from '@connectrpc/connect-query';
 import Editor, { useMonaco } from '@monaco-editor/react';
@@ -15,7 +15,7 @@ import {
   GenerateJavascript,
   GenerateJavascriptSchema,
   TransformersService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 import { useTheme } from 'next-themes';
 import { ReactElement, useEffect, useState } from 'react';
@@ -34,12 +34,12 @@ export default function GenerateJavascriptForm(props: Props): ReactElement {
 
   const { resolvedTheme } = useTheme();
   const monaco = useMonaco();
-  const { data: fileContent } = useReadNeosyncTransformerDeclarationFile();
+  const { data: fileContent } = useReadHusonymTransformerDeclarationFile();
   useEffect(() => {
     if (monaco && fileContent) {
       monaco.typescript.javascriptDefaults.addExtraLib(
         fileContent,
-        'neosync-transformer.d.ts'
+        'husonym-transformer.d.ts'
       );
     }
   }, [monaco, fileContent]);

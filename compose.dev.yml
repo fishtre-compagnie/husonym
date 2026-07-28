@@ -1,4 +1,4 @@
-name: neosync
+name: husonym
 
 include:
   - path: ./compose/temporal/compose.yml
@@ -12,7 +12,7 @@ include:
 
 services:
   app:
-    container_name: neosync-app
+    container_name: husonym-app
     build:
       context: ./
       dockerfile: ./frontend/apps/web/dev/build/Dockerfile.dev
@@ -23,7 +23,7 @@ services:
       - NUCLEUS_ENV=dev
       - NEXTAUTH_SECRET=foo
       - NEXTAUTH_URL=http://localhost:3000
-      - NEOSYNC_API_BASE_URL=http://api:8080
+      - HUSONYM_API_BASE_URL=http://api:8080
       - NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
 
       - POSTHOG_KEY=phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip
@@ -34,16 +34,16 @@ services:
       - path: ./.env.app.local
         required: false
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
       - ./frontend:/app/:rw
-      - neosync_app_nodemodules:/app/node_modules
-      - neosync_web_nodemodules:/app/apps/web/node_modules
-      - neosync_sdk_nodemodules:/app/packages/sdk/node_modules
-      - neosync_next_cache:/app/apps/web/.next
+      - husonym_app_nodemodules:/app/node_modules
+      - husonym_web_nodemodules:/app/apps/web/node_modules
+      - husonym_sdk_nodemodules:/app/packages/sdk/node_modules
+      - husonym_next_cache:/app/apps/web/.next
 
   db:
-    container_name: neosync-db
+    container_name: husonym-db
     image: postgres:15
     ports:
       - 5432:5432
@@ -57,13 +57,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
-      - neosync_pg_data:/var/lib/postgresql/data
+      - husonym_pg_data:/var/lib/postgresql/data
       - ./scripts/pg-init:/docker-entrypoint-initdb.d
 
   api:
-    container_name: neosync-api
+    container_name: husonym-api
     build:
       context: ./
       dockerfile: ./backend/dev/build/Dockerfile.dev
@@ -84,7 +84,7 @@ services:
       - DB_USER=postgres
       - DB_PASS=foofar
       - DB_SSL_DISABLE=true
-      - DB_MIGRATIONS_TABLE=neosync_api_schema_migrations
+      - DB_MIGRATIONS_TABLE=husonym_api_schema_migrations
       - DB_MIGRATIONS_TABLE_QUOTED=false
       - LOG_LEVEL=DEBUG
 
@@ -96,7 +96,7 @@ services:
       - path: ./.env.api.local
         required: false
     networks:
-      - neosync-network
+      - husonym-network
       - temporal-network
     depends_on:
       db:
@@ -108,13 +108,13 @@ services:
       - ./internal:/workspace/internal:rw
       - ./go.mod:/workspace/go.mod:rw
       - ./go.sum:/workspace/go.sum:rw
-      - neosync_api_tmp:/workspace/tmp
-      - neosync_go_mod_cache:/go/pkg/mod
-      - neosync_backend_build_cache:/root/.cache/go-build
+      - husonym_api_tmp:/workspace/tmp
+      - husonym_go_mod_cache:/go/pkg/mod
+      - husonym_backend_build_cache:/root/.cache/go-build
     restart: on-failure
 
   worker:
-    container_name: neosync-worker
+    container_name: husonym-worker
     build:
       context: ./
       dockerfile: ./worker/dev/build/Dockerfile.dev
@@ -125,7 +125,7 @@ services:
       - TEMPORAL_URL=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - TEMPORAL_TASK_QUEUE=sync-job
-      - NEOSYNC_URL=http://api:8080
+      - HUSONYM_URL=http://api:8080
       - REDIS_URL=redis://default:foofar@redis:6379
       - TABLESYNC_MAX_CONCURRENCY=3
       - LOG_LEVEL=DEBUG
@@ -134,7 +134,7 @@ services:
       - path: ./.env.worker.local
         required: false
     networks:
-      - neosync-network
+      - husonym-network
       - temporal-network
     depends_on:
       temporal:
@@ -146,49 +146,49 @@ services:
       - ./internal:/workspace/internal:rw
       - ./go.mod:/workspace/go.mod:rw
       - ./go.sum:/workspace/go.sum:rw
-      - neosync_worker_tmp:/workspace/tmp
-      - neosync_go_mod_cache:/go/pkg/mod
-      - neosync_worker_build_cache:/root/.cache/go-build
+      - husonym_worker_tmp:/workspace/tmp
+      - husonym_go_mod_cache:/go/pkg/mod
+      - husonym_worker_build_cache:/root/.cache/go-build
     restart: on-failure
 
   redis:
-    container_name: neosync-redis
+    container_name: husonym-redis
     image: redis:7.2.4
     ports:
       - 6379:6379
     command: redis-server --save 20 1 --loglevel warning --requirepass foofar
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
-      - neosync_redis_cache:/data
+      - husonym_redis_cache:/data
 
   mysql:
-    container_name: neosync-mysql
+    container_name: husonym-mysql
     image: mysql:8
     ports:
       - 33306:3306
     environment:
       MYSQL_ROOT_PASSWORD: example
       MYSQL_DATABASE: octopus
-      MYSQL_USER: neosync
-      MYSQL_PASSWORD: neosyncpass
+      MYSQL_USER: husonym
+      MYSQL_PASSWORD: husonympass
     networks:
-      - neosync-network
+      - husonym-network
 
 volumes:
-  neosync_redis_cache:
-  neosync_mysqlZ:
-  neosync_pg_data:
-  neosync_api_tmp:
-  neosync_backend_build_cache:
-  neosync_worker_tmp:
-  neosync_worker_build_cache:
-  neosync_go_mod_cache:
-  neosync_app_nodemodules:
-  neosync_web_nodemodules:
-  neosync_sdk_nodemodules:
-  neosync_next_cache:
+  husonym_redis_cache:
+  husonym_mysqlZ:
+  husonym_pg_data:
+  husonym_api_tmp:
+  husonym_backend_build_cache:
+  husonym_worker_tmp:
+  husonym_worker_build_cache:
+  husonym_go_mod_cache:
+  husonym_app_nodemodules:
+  husonym_web_nodemodules:
+  husonym_sdk_nodemodules:
+  husonym_next_cache:
 
 networks:
-  neosync-network:
-    name: neosync-network
+  husonym-network:
+    name: husonym-network

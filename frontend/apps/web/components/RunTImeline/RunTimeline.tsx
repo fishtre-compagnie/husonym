@@ -12,7 +12,7 @@ import {
   timestampDate,
   TimestampSchema,
 } from '@bufbuild/protobuf/wkt';
-import { JobRunEvent, JobRunStatus } from '@neosync/sdk';
+import { JobRunEvent, JobRunStatus } from '@husonym/sdk';
 
 import {
   Tooltip,
@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { isMessage } from '@bufbuild/protobuf';
-import { JobRunStatus as JobRunStatusEnum } from '@neosync/sdk';
+import { JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
 import {
   CheckCircledIcon,
   ChevronDownIcon,

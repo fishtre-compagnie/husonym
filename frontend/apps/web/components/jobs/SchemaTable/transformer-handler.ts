@@ -5,7 +5,7 @@ import {
   TransformerDataType,
   TransformerSource,
   UserDefinedTransformer,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { JobType } from './schema-constraint-handler';
 
 // Helper function to extract the 'case' property from a config type

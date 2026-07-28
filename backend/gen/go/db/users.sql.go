@@ -8,12 +8,12 @@ package db_queries
 import (
 	"context"
 
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const convertPersonalAccountToTeam = `-- name: ConvertPersonalAccountToTeam :one
-UPDATE neosync_api.accounts
+UPDATE husonym_api.accounts
 SET account_slug = $1,
     account_type = 1,
     max_allowed_records = NULL
@@ -26,9 +26,9 @@ type ConvertPersonalAccountToTeamParams struct {
 	AccountId pgtype.UUID
 }
 
-func (q *Queries) ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (NeosyncApiAccount, error) {
+func (q *Queries) ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, convertPersonalAccountToTeam, arg.TeamName, arg.AccountId)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -44,7 +44,7 @@ func (q *Queries) ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg
 }
 
 const createAccountInvite = `-- name: CreateAccountInvite :one
-INSERT INTO neosync_api.account_invites (
+INSERT INTO husonym_api.account_invites (
   account_id, sender_user_id, email, expires_at, role
 ) VALUES (
   $1, $2, $3, $4, $5
@@ -60,7 +60,7 @@ type CreateAccountInviteParams struct {
 	Role         pgtype.Int4
 }
 
-func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (NeosyncApiAccountInvite, error) {
+func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error) {
 	row := db.QueryRow(ctx, createAccountInvite,
 		arg.AccountID,
 		arg.SenderUserID,
@@ -68,7 +68,7 @@ func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAc
 		arg.ExpiresAt,
 		arg.Role,
 	)
-	var i NeosyncApiAccountInvite
+	var i HusonymApiAccountInvite
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -85,7 +85,7 @@ func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAc
 }
 
 const createAccountUserAssociation = `-- name: CreateAccountUserAssociation :exec
-INSERT INTO neosync_api.account_user_associations (
+INSERT INTO husonym_api.account_user_associations (
   account_id, user_id
 ) VALUES (
   $1, $2
@@ -104,7 +104,7 @@ func (q *Queries) CreateAccountUserAssociation(ctx context.Context, db DBTX, arg
 }
 
 const createIdentityProviderAssociation = `-- name: CreateIdentityProviderAssociation :one
-INSERT INTO neosync_api.user_identity_provider_associations (
+INSERT INTO husonym_api.user_identity_provider_associations (
   user_id, provider_sub
 ) VALUES (
   $1, $2
@@ -117,9 +117,9 @@ type CreateIdentityProviderAssociationParams struct {
 	ProviderSub string
 }
 
-func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX, arg CreateIdentityProviderAssociationParams) (NeosyncApiUserIdentityProviderAssociation, error) {
+func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX, arg CreateIdentityProviderAssociationParams) (HusonymApiUserIdentityProviderAssociation, error) {
 	row := db.QueryRow(ctx, createIdentityProviderAssociation, arg.UserID, arg.ProviderSub)
-	var i NeosyncApiUserIdentityProviderAssociation
+	var i HusonymApiUserIdentityProviderAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -131,7 +131,7 @@ func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX
 }
 
 const createMachineUser = `-- name: CreateMachineUser :one
-INSERT INTO neosync_api.users (
+INSERT INTO husonym_api.users (
   id, created_at, updated_at, user_type
 ) VALUES (
   DEFAULT, DEFAULT, DEFAULT, 1
@@ -139,9 +139,9 @@ INSERT INTO neosync_api.users (
 RETURNING id, created_at, updated_at, user_type
 `
 
-func (q *Queries) CreateMachineUser(ctx context.Context, db DBTX) (NeosyncApiUser, error) {
+func (q *Queries) CreateMachineUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, createMachineUser)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -152,7 +152,7 @@ func (q *Queries) CreateMachineUser(ctx context.Context, db DBTX) (NeosyncApiUse
 }
 
 const createNonMachineUser = `-- name: CreateNonMachineUser :one
-INSERT INTO neosync_api.users (
+INSERT INTO husonym_api.users (
   id, created_at, updated_at, user_type
 ) VALUES (
   DEFAULT, DEFAULT, DEFAULT, 0
@@ -160,9 +160,9 @@ INSERT INTO neosync_api.users (
 RETURNING id, created_at, updated_at, user_type
 `
 
-func (q *Queries) CreateNonMachineUser(ctx context.Context, db DBTX) (NeosyncApiUser, error) {
+func (q *Queries) CreateNonMachineUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, createNonMachineUser)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -173,7 +173,7 @@ func (q *Queries) CreateNonMachineUser(ctx context.Context, db DBTX) (NeosyncApi
 }
 
 const createPersonalAccount = `-- name: CreatePersonalAccount :one
-INSERT INTO neosync_api.accounts (
+INSERT INTO husonym_api.accounts (
   account_type, account_slug, max_allowed_records
 ) VALUES (
   0, $1, $2
@@ -186,9 +186,9 @@ type CreatePersonalAccountParams struct {
 	MaxAllowedRecords pgtype.Int8
 }
 
-func (q *Queries) CreatePersonalAccount(ctx context.Context, db DBTX, arg CreatePersonalAccountParams) (NeosyncApiAccount, error) {
+func (q *Queries) CreatePersonalAccount(ctx context.Context, db DBTX, arg CreatePersonalAccountParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, createPersonalAccount, arg.AccountSlug, arg.MaxAllowedRecords)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -204,7 +204,7 @@ func (q *Queries) CreatePersonalAccount(ctx context.Context, db DBTX, arg Create
 }
 
 const createTeamAccount = `-- name: CreateTeamAccount :one
-INSERT INTO neosync_api.accounts (
+INSERT INTO husonym_api.accounts (
   account_type, account_slug
 ) VALUES (
   1, $1
@@ -212,9 +212,9 @@ INSERT INTO neosync_api.accounts (
 RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
 `
 
-func (q *Queries) CreateTeamAccount(ctx context.Context, db DBTX, accountSlug string) (NeosyncApiAccount, error) {
+func (q *Queries) CreateTeamAccount(ctx context.Context, db DBTX, accountSlug string) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, createTeamAccount, accountSlug)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -230,13 +230,13 @@ func (q *Queries) CreateTeamAccount(ctx context.Context, db DBTX, accountSlug st
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id from neosync_api.accounts
+SELECT id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id from husonym_api.accounts
 WHERE id = $1
 `
 
-func (q *Queries) GetAccount(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiAccount, error) {
+func (q *Queries) GetAccount(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, getAccount, id)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -252,7 +252,7 @@ func (q *Queries) GetAccount(ctx context.Context, db DBTX, id pgtype.UUID) (Neos
 }
 
 const getAccountIds = `-- name: GetAccountIds :many
-SELECT id FROM neosync_api.accounts
+SELECT id FROM husonym_api.accounts
 `
 
 func (q *Queries) GetAccountIds(ctx context.Context, db DBTX) ([]pgtype.UUID, error) {
@@ -276,13 +276,13 @@ func (q *Queries) GetAccountIds(ctx context.Context, db DBTX) ([]pgtype.UUID, er
 }
 
 const getAccountInvite = `-- name: GetAccountInvite :one
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM neosync_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
 WHERE id = $1
 `
 
-func (q *Queries) GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiAccountInvite, error) {
+func (q *Queries) GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error) {
 	row := db.QueryRow(ctx, getAccountInvite, id)
-	var i NeosyncApiAccountInvite
+	var i HusonymApiAccountInvite
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -299,13 +299,13 @@ func (q *Queries) GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID)
 }
 
 const getAccountInviteByToken = `-- name: GetAccountInviteByToken :one
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM neosync_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
 WHERE token = $1
 `
 
-func (q *Queries) GetAccountInviteByToken(ctx context.Context, db DBTX, token string) (NeosyncApiAccountInvite, error) {
+func (q *Queries) GetAccountInviteByToken(ctx context.Context, db DBTX, token string) (HusonymApiAccountInvite, error) {
 	row := db.QueryRow(ctx, getAccountInviteByToken, token)
-	var i NeosyncApiAccountInvite
+	var i HusonymApiAccountInvite
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -323,7 +323,7 @@ func (q *Queries) GetAccountInviteByToken(ctx context.Context, db DBTX, token st
 
 const getAccountOnboardingConfig = `-- name: GetAccountOnboardingConfig :one
 SELECT onboarding_config
-FROM neosync_api.accounts
+FROM husonym_api.accounts
 WHERE id = $1
 `
 
@@ -335,9 +335,9 @@ func (q *Queries) GetAccountOnboardingConfig(ctx context.Context, db DBTX, id pg
 }
 
 const getAccountUserAssociation = `-- name: GetAccountUserAssociation :one
-SELECT aua.id, aua.account_id, aua.user_id, aua.created_at, aua.updated_at from neosync_api.account_user_associations aua
-INNER JOIN neosync_api.accounts a ON a.id = aua.account_id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+SELECT aua.id, aua.account_id, aua.user_id, aua.created_at, aua.updated_at from husonym_api.account_user_associations aua
+INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE a.id = $1 AND u.id = $2
 `
 
@@ -346,9 +346,9 @@ type GetAccountUserAssociationParams struct {
 	UserId    pgtype.UUID
 }
 
-func (q *Queries) GetAccountUserAssociation(ctx context.Context, db DBTX, arg GetAccountUserAssociationParams) (NeosyncApiAccountUserAssociation, error) {
+func (q *Queries) GetAccountUserAssociation(ctx context.Context, db DBTX, arg GetAccountUserAssociationParams) (HusonymApiAccountUserAssociation, error) {
 	row := db.QueryRow(ctx, getAccountUserAssociation, arg.AccountId, arg.UserId)
-	var i NeosyncApiAccountUserAssociation
+	var i HusonymApiAccountUserAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -361,9 +361,9 @@ func (q *Queries) GetAccountUserAssociation(ctx context.Context, db DBTX, arg Ge
 
 const getAccountUsers = `-- name: GetAccountUsers :many
 SELECT u.id
-FROM neosync_api.users u
-INNER JOIN neosync_api.account_user_associations aua ON aua.user_id = u.id
-INNER JOIN neosync_api.accounts a ON a.id = aua.account_id
+FROM husonym_api.users u
+INNER JOIN husonym_api.account_user_associations aua ON aua.user_id = u.id
+INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
 WHERE a.id = $1 AND u.user_type = 0
 `
 
@@ -389,29 +389,29 @@ func (q *Queries) GetAccountUsers(ctx context.Context, db DBTX, accountid pgtype
 
 const getAccountsByUser = `-- name: GetAccountsByUser :many
 SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id
-FROM neosync_api.accounts a
-INNER JOIN neosync_api.account_api_keys aak ON aak.account_id = a.id
-INNER JOIN neosync_api.users u ON u.id = aak.user_id
+FROM husonym_api.accounts a
+INNER JOIN husonym_api.account_api_keys aak ON aak.account_id = a.id
+INNER JOIN husonym_api.users u ON u.id = aak.user_id
 WHERE u.id = $1
 
 UNION
 
 SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id
-FROM neosync_api.accounts a
-INNER JOIN neosync_api.account_user_associations aua ON aua.account_id = a.id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+FROM husonym_api.accounts a
+INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE u.id = $1
 `
 
-func (q *Queries) GetAccountsByUser(ctx context.Context, db DBTX, id pgtype.UUID) ([]NeosyncApiAccount, error) {
+func (q *Queries) GetAccountsByUser(ctx context.Context, db DBTX, id pgtype.UUID) ([]HusonymApiAccount, error) {
 	rows, err := db.Query(ctx, getAccountsByUser, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccount
+	var items []HusonymApiAccount
 	for rows.Next() {
-		var i NeosyncApiAccount
+		var i HusonymApiAccount
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -434,19 +434,19 @@ func (q *Queries) GetAccountsByUser(ctx context.Context, db DBTX, id pgtype.UUID
 }
 
 const getActiveAccountInvites = `-- name: GetActiveAccountInvites :many
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM neosync_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
 WHERE account_id = $1 AND expires_at > CURRENT_TIMESTAMP AND accepted = false
 `
 
-func (q *Queries) GetActiveAccountInvites(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiAccountInvite, error) {
+func (q *Queries) GetActiveAccountInvites(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiAccountInvite, error) {
 	rows, err := db.Query(ctx, getActiveAccountInvites, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccountInvite
+	var items []HusonymApiAccountInvite
 	for rows.Next() {
-		var i NeosyncApiAccountInvite
+		var i HusonymApiAccountInvite
 		if err := rows.Scan(
 			&i.ID,
 			&i.AccountID,
@@ -470,13 +470,13 @@ func (q *Queries) GetActiveAccountInvites(ctx context.Context, db DBTX, accounti
 }
 
 const getAnonymousUser = `-- name: GetAnonymousUser :one
-SELECT id, created_at, updated_at, user_type from neosync_api.users
+SELECT id, created_at, updated_at, user_type from husonym_api.users
 WHERE id = '00000000-0000-0000-0000-000000000000'
 `
 
-func (q *Queries) GetAnonymousUser(ctx context.Context, db DBTX) (NeosyncApiUser, error) {
+func (q *Queries) GetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, getAnonymousUser)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -488,19 +488,19 @@ func (q *Queries) GetAnonymousUser(ctx context.Context, db DBTX) (NeosyncApiUser
 
 const getBilledAccounts = `-- name: GetBilledAccounts :many
 SELECT id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
-FROM neosync_api.accounts
+FROM husonym_api.accounts
 WHERE stripe_customer_id IS NOT NULL AND ($1::uuid[] = '{}' OR id = ANY($1::uuid[]))
 `
 
-func (q *Queries) GetBilledAccounts(ctx context.Context, db DBTX, accountids []pgtype.UUID) ([]NeosyncApiAccount, error) {
+func (q *Queries) GetBilledAccounts(ctx context.Context, db DBTX, accountids []pgtype.UUID) ([]HusonymApiAccount, error) {
 	rows, err := db.Query(ctx, getBilledAccounts, accountids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccount
+	var items []HusonymApiAccount
 	for rows.Next() {
-		var i NeosyncApiAccount
+		var i HusonymApiAccount
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -523,15 +523,15 @@ func (q *Queries) GetBilledAccounts(ctx context.Context, db DBTX, accountids []p
 }
 
 const getPersonalAccountByUserId = `-- name: GetPersonalAccountByUserId :one
-SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id from neosync_api.accounts a
-INNER JOIN neosync_api.account_user_associations aua ON aua.account_id = a.id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id from husonym_api.accounts a
+INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE u.id = $1 AND a.account_type = 0
 `
 
-func (q *Queries) GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (NeosyncApiAccount, error) {
+func (q *Queries) GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, getPersonalAccountByUserId, userid)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -547,21 +547,21 @@ func (q *Queries) GetPersonalAccountByUserId(ctx context.Context, db DBTX, useri
 }
 
 const getTeamAccountsByUserId = `-- name: GetTeamAccountsByUserId :many
-SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id from neosync_api.accounts a
-INNER JOIN neosync_api.account_user_associations aua ON aua.account_id = a.id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+SELECT a.id, a.created_at, a.updated_at, a.account_type, a.account_slug, a.temporal_config, a.onboarding_config, a.max_allowed_records, a.stripe_customer_id from husonym_api.accounts a
+INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE u.id = $1 AND a.account_type = 1
 `
 
-func (q *Queries) GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]NeosyncApiAccount, error) {
+func (q *Queries) GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]HusonymApiAccount, error) {
 	rows, err := db.Query(ctx, getTeamAccountsByUserId, userid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccount
+	var items []HusonymApiAccount
 	for rows.Next() {
-		var i NeosyncApiAccount
+		var i HusonymApiAccount
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -585,7 +585,7 @@ func (q *Queries) GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid p
 
 const getTemporalConfigByAccount = `-- name: GetTemporalConfigByAccount :one
 SELECT temporal_config
-FROM neosync_api.accounts
+FROM husonym_api.accounts
 WHERE id = $1
 `
 
@@ -598,9 +598,9 @@ func (q *Queries) GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pg
 
 const getTemporalConfigByUserAccount = `-- name: GetTemporalConfigByUserAccount :one
 SELECT a.temporal_config
-FROM neosync_api.accounts a
-INNER JOIN neosync_api.account_user_associations aua ON aua.account_id = a.id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+FROM husonym_api.accounts a
+INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE a.id = $1 AND u.id = $2
 `
 
@@ -617,13 +617,13 @@ func (q *Queries) GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, a
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, created_at, updated_at, user_type FROM neosync_api.users
+SELECT id, created_at, updated_at, user_type FROM husonym_api.users
 WHERE id = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiUser, error) {
+func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, getUser, id)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -634,13 +634,13 @@ func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (Neosync
 }
 
 const getUserAssociationByProviderSub = `-- name: GetUserAssociationByProviderSub :one
-SELECT id, user_id, provider_sub, created_at, updated_at from neosync_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at from husonym_api.user_identity_provider_associations
 WHERE provider_sub = $1
 `
 
-func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, providerSub string) (NeosyncApiUserIdentityProviderAssociation, error) {
+func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUserIdentityProviderAssociation, error) {
 	row := db.QueryRow(ctx, getUserAssociationByProviderSub, providerSub)
-	var i NeosyncApiUserIdentityProviderAssociation
+	var i HusonymApiUserIdentityProviderAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -652,14 +652,14 @@ func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, 
 }
 
 const getUserByProviderSub = `-- name: GetUserByProviderSub :one
-SELECT u.id, u.created_at, u.updated_at, u.user_type from neosync_api.users u
-INNER JOIN neosync_api.user_identity_provider_associations uipa ON uipa.user_id = u.id
+SELECT u.id, u.created_at, u.updated_at, u.user_type from husonym_api.users u
+INNER JOIN husonym_api.user_identity_provider_associations uipa ON uipa.user_id = u.id
 WHERE uipa.provider_sub = $1 and u.user_type = 0
 `
 
-func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub string) (NeosyncApiUser, error) {
+func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, getUserByProviderSub, providerSub)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -671,21 +671,21 @@ func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub
 
 const getUserIdentitiesByTeamAccount = `-- name: GetUserIdentitiesByTeamAccount :many
 SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at
-FROM neosync_api.user_identity_provider_associations aipa
-INNER JOIN neosync_api.account_user_associations aua ON aua.user_id = aipa.user_id
-INNER JOIN neosync_api.accounts a ON a.id = aua.account_id
+FROM husonym_api.user_identity_provider_associations aipa
+INNER JOIN husonym_api.account_user_associations aua ON aua.user_id = aipa.user_id
+INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
 WHERE aua.account_id = $1 AND a.account_type = 1
 `
 
-func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiUserIdentityProviderAssociation, error) {
+func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error) {
 	rows, err := db.Query(ctx, getUserIdentitiesByTeamAccount, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiUserIdentityProviderAssociation
+	var items []HusonymApiUserIdentityProviderAssociation
 	for rows.Next() {
-		var i NeosyncApiUserIdentityProviderAssociation
+		var i HusonymApiUserIdentityProviderAssociation
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -704,19 +704,19 @@ func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, a
 }
 
 const getUserIdentityAssociationsByUserIds = `-- name: GetUserIdentityAssociationsByUserIds :many
-SELECT id, user_id, provider_sub, created_at, updated_at from neosync_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at from husonym_api.user_identity_provider_associations
 WHERE user_id = ANY($1::uuid[])
 `
 
-func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]NeosyncApiUserIdentityProviderAssociation, error) {
+func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error) {
 	rows, err := db.Query(ctx, getUserIdentityAssociationsByUserIds, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiUserIdentityProviderAssociation
+	var items []HusonymApiUserIdentityProviderAssociation
 	for rows.Next() {
-		var i NeosyncApiUserIdentityProviderAssociation
+		var i HusonymApiUserIdentityProviderAssociation
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -735,13 +735,13 @@ func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db D
 }
 
 const getUserIdentityByUserId = `-- name: GetUserIdentityByUserId :one
-SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at FROM neosync_api.user_identity_provider_associations aipa
+SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at FROM husonym_api.user_identity_provider_associations aipa
 WHERE aipa.user_id = $1
 `
 
-func (q *Queries) GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (NeosyncApiUserIdentityProviderAssociation, error) {
+func (q *Queries) GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error) {
 	row := db.QueryRow(ctx, getUserIdentityByUserId, userID)
-	var i NeosyncApiUserIdentityProviderAssociation
+	var i HusonymApiUserIdentityProviderAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -753,9 +753,9 @@ func (q *Queries) GetUserIdentityByUserId(ctx context.Context, db DBTX, userID p
 }
 
 const isUserInAccount = `-- name: IsUserInAccount :one
-SELECT count(aua.id) from neosync_api.account_user_associations aua
-INNER JOIN neosync_api.accounts a ON a.id = aua.account_id
-INNER JOIN neosync_api.users u ON u.id = aua.user_id
+SELECT count(aua.id) from husonym_api.account_user_associations aua
+INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
+INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE a.id = $1 AND u.id = $2
 `
 
@@ -772,7 +772,7 @@ func (q *Queries) IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAcco
 }
 
 const removeAccountInvite = `-- name: RemoveAccountInvite :exec
-DELETE FROM neosync_api.account_invites
+DELETE FROM husonym_api.account_invites
 WHERE id = $1
 `
 
@@ -782,7 +782,7 @@ func (q *Queries) RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UU
 }
 
 const removeAccountUser = `-- name: RemoveAccountUser :exec
-DELETE FROM neosync_api.account_user_associations
+DELETE FROM husonym_api.account_user_associations
 WHERE account_id = $1 AND user_id = $2
 `
 
@@ -797,7 +797,7 @@ func (q *Queries) RemoveAccountUser(ctx context.Context, db DBTX, arg RemoveAcco
 }
 
 const setAccountCreatedAt = `-- name: SetAccountCreatedAt :one
-UPDATE neosync_api.accounts
+UPDATE husonym_api.accounts
 SET created_at = $1
 WHERE id = $2
 RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
@@ -808,9 +808,9 @@ type SetAccountCreatedAtParams struct {
 	AccountId pgtype.UUID
 }
 
-func (q *Queries) SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (NeosyncApiAccount, error) {
+func (q *Queries) SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, setAccountCreatedAt, arg.CreatedAt, arg.AccountId)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -826,7 +826,7 @@ func (q *Queries) SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccou
 }
 
 const setAnonymousUser = `-- name: SetAnonymousUser :one
-INSERT INTO neosync_api.users (
+INSERT INTO husonym_api.users (
   id, created_at, updated_at
 ) VALUES (
   '00000000-0000-0000-0000-000000000000', DEFAULT, DEFAULT
@@ -837,9 +837,9 @@ DO
 RETURNING id, created_at, updated_at, user_type
 `
 
-func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (NeosyncApiUser, error) {
+func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error) {
 	row := db.QueryRow(ctx, setAnonymousUser)
-	var i NeosyncApiUser
+	var i HusonymApiUser
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -850,7 +850,7 @@ func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (NeosyncApiUser
 }
 
 const setNewAccountStripeCustomerId = `-- name: SetNewAccountStripeCustomerId :one
-UPDATE neosync_api.accounts
+UPDATE husonym_api.accounts
 SET stripe_customer_id = $1
 WHERE id = $2 AND stripe_customer_id IS NULL
 RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
@@ -861,9 +861,9 @@ type SetNewAccountStripeCustomerIdParams struct {
 	AccountId        pgtype.UUID
 }
 
-func (q *Queries) SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (NeosyncApiAccount, error) {
+func (q *Queries) SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, setNewAccountStripeCustomerId, arg.StripeCustomerID, arg.AccountId)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -879,15 +879,15 @@ func (q *Queries) SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, ar
 }
 
 const updateAccountInviteToAccepted = `-- name: UpdateAccountInviteToAccepted :one
-UPDATE neosync_api.account_invites
+UPDATE husonym_api.account_invites
 SET accepted = true
 WHERE id = $1
 RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role
 `
 
-func (q *Queries) UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiAccountInvite, error) {
+func (q *Queries) UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error) {
 	row := db.QueryRow(ctx, updateAccountInviteToAccepted, id)
-	var i NeosyncApiAccountInvite
+	var i HusonymApiAccountInvite
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -904,7 +904,7 @@ func (q *Queries) UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id
 }
 
 const updateAccountOnboardingConfig = `-- name: UpdateAccountOnboardingConfig :one
-UPDATE neosync_api.accounts
+UPDATE husonym_api.accounts
 SET onboarding_config = $1
 WHERE id = $2
 RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
@@ -915,9 +915,9 @@ type UpdateAccountOnboardingConfigParams struct {
 	AccountId        pgtype.UUID
 }
 
-func (q *Queries) UpdateAccountOnboardingConfig(ctx context.Context, db DBTX, arg UpdateAccountOnboardingConfigParams) (NeosyncApiAccount, error) {
+func (q *Queries) UpdateAccountOnboardingConfig(ctx context.Context, db DBTX, arg UpdateAccountOnboardingConfigParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, updateAccountOnboardingConfig, arg.OnboardingConfig, arg.AccountId)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -933,7 +933,7 @@ func (q *Queries) UpdateAccountOnboardingConfig(ctx context.Context, db DBTX, ar
 }
 
 const updateActiveAccountInvitesToExpired = `-- name: UpdateActiveAccountInvitesToExpired :one
-UPDATE neosync_api.account_invites
+UPDATE husonym_api.account_invites
 SET expires_at = CURRENT_TIMESTAMP
 WHERE account_id = $1 AND email = $2 AND expires_at > CURRENT_TIMESTAMP
 RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role
@@ -944,9 +944,9 @@ type UpdateActiveAccountInvitesToExpiredParams struct {
 	Email     string
 }
 
-func (q *Queries) UpdateActiveAccountInvitesToExpired(ctx context.Context, db DBTX, arg UpdateActiveAccountInvitesToExpiredParams) (NeosyncApiAccountInvite, error) {
+func (q *Queries) UpdateActiveAccountInvitesToExpired(ctx context.Context, db DBTX, arg UpdateActiveAccountInvitesToExpiredParams) (HusonymApiAccountInvite, error) {
 	row := db.QueryRow(ctx, updateActiveAccountInvitesToExpired, arg.AccountId, arg.Email)
-	var i NeosyncApiAccountInvite
+	var i HusonymApiAccountInvite
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -963,7 +963,7 @@ func (q *Queries) UpdateActiveAccountInvitesToExpired(ctx context.Context, db DB
 }
 
 const updateTemporalConfigByAccount = `-- name: UpdateTemporalConfigByAccount :one
-UPDATE neosync_api.accounts
+UPDATE husonym_api.accounts
 SET temporal_config = $1
 WHERE id = $2
 RETURNING id, created_at, updated_at, account_type, account_slug, temporal_config, onboarding_config, max_allowed_records, stripe_customer_id
@@ -974,9 +974,9 @@ type UpdateTemporalConfigByAccountParams struct {
 	AccountId      pgtype.UUID
 }
 
-func (q *Queries) UpdateTemporalConfigByAccount(ctx context.Context, db DBTX, arg UpdateTemporalConfigByAccountParams) (NeosyncApiAccount, error) {
+func (q *Queries) UpdateTemporalConfigByAccount(ctx context.Context, db DBTX, arg UpdateTemporalConfigByAccountParams) (HusonymApiAccount, error) {
 	row := db.QueryRow(ctx, updateTemporalConfigByAccount, arg.TemporalConfig, arg.AccountId)
-	var i NeosyncApiAccount
+	var i HusonymApiAccount
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

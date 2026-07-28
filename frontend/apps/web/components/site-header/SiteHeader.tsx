@@ -18,7 +18,7 @@ import AccountSwitcher from './AccountSwitcher';
 import { MainNav } from './MainNav';
 import { MobileNav } from './MobileNav';
 import { ModeToggle } from './ModeToggle';
-import NeosyncVersion from './NeosyncVersion';
+import HusonymVersion from './HusonymVersion';
 import { UserNav } from './UserNav';
 
 export default function SiteHeader(): ReactElement {
@@ -54,7 +54,7 @@ function SupportSheet(): ReactElement {
           <div className="flex flex-col md:flex-row gap-2 items-center justify-between">
             <SheetTitle>Support</SheetTitle>
             <div>
-              <NeosyncVersion />
+              <HusonymVersion />
             </div>
           </div>
           <SheetDescription>Need help? We got you covered.</SheetDescription>

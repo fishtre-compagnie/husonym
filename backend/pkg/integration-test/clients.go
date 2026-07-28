@@ -3,16 +3,16 @@ package integrationtests_test
 import (
 	"net/http"
 
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	http_client "github.com/Groupe-Hevea/neosync/internal/http/client"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 )
 
-type NeosyncClients struct {
+type HusonymClients struct {
 	httpUrl string
 }
 
-func newNeosyncClients(httpUrl string) *NeosyncClients {
-	return &NeosyncClients{
+func newHusonymClients(httpUrl string) *HusonymClients {
+	return &HusonymClients{
 		httpUrl: httpUrl,
 	}
 }
@@ -29,47 +29,47 @@ func WithUserId(userId string) ClientConfigOption {
 	}
 }
 
-func (s *NeosyncClients) Users(
+func (s *HusonymClients) Users(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.UserAccountServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewUserAccountServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) Connections(
+func (s *HusonymClients) Connections(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.ConnectionServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewConnectionServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) Anonymize(
+func (s *HusonymClients) Anonymize(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.AnonymizationServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewAnonymizationServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) Jobs(opts ...ClientConfigOption) mgmtv1alpha1connect.JobServiceClient {
+func (s *HusonymClients) Jobs(opts ...ClientConfigOption) mgmtv1alpha1connect.JobServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewJobServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) Transformers(
+func (s *HusonymClients) Transformers(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.TransformersServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewTransformersServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) ConnectionData(
+func (s *HusonymClients) ConnectionData(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.ConnectionDataServiceClient {
 	config := getHydratedClientConfig(opts...)
 	return mgmtv1alpha1connect.NewConnectionDataServiceClient(getHttpClient(config), s.httpUrl)
 }
 
-func (s *NeosyncClients) AccountHooks(
+func (s *HusonymClients) AccountHooks(
 	opts ...ClientConfigOption,
 ) mgmtv1alpha1connect.AccountHookServiceClient {
 	config := getHydratedClientConfig(opts...)

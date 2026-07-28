@@ -1,6 +1,6 @@
 {
-  "name": "neosync",
-  "image": "ghcr.io/groupe-hevea/neosync/devcontainer:latest",
+  "name": "husonym",
+  "image": "ghcr.io/fishtre-compagnie/husonym/devcontainer:latest",
   "mounts": [
     "source=${localEnv:HOME}/.ssh/,target=${localEnv:HOME}/.ssh,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.ssh/,target=/home/vscode/.ssh,type=bind,consistency=cached",

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/require"
 )
@@ -59,8 +59,8 @@ func Test_UnmarshalAttributeValueMap(t *testing.T) {
 		reflect.DeepEqual(actual, expected),
 		fmt.Sprintf("expected %v, got %v", expected, actual),
 	)
-	require.Equal(t, keyTypeMap["StrSet"], neosync_types.StringSet)
-	require.Equal(t, keyTypeMap["NumSet"], neosync_types.NumberSet)
+	require.Equal(t, keyTypeMap["StrSet"], husonym_types.StringSet)
+	require.Equal(t, keyTypeMap["NumSet"], husonym_types.NumberSet)
 }
 
 func Test_ParseAttributeValue(t *testing.T) {
@@ -129,7 +129,7 @@ func Test_ParseAttributeValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ktm := map[string]neosync_types.KeyType{}
+			ktm := map[string]husonym_types.KeyType{}
 			actual, err := parseAttributeValue(tt.name, tt.input, ktm)
 			require.NoError(t, err)
 			require.True(

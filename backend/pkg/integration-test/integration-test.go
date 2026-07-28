@@ -8,20 +8,20 @@ import (
 	"testing"
 	"time"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	auth_client "github.com/Groupe-Hevea/neosync/backend/internal/auth/client"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	"github.com/Groupe-Hevea/neosync/internal/authmgmt"
-	"github.com/Groupe-Hevea/neosync/internal/billing"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	ee_slack "github.com/Groupe-Hevea/neosync/internal/ee/slack"
-	neomigrate "github.com/Groupe-Hevea/neosync/internal/migrate"
-	promapiv1mock "github.com/Groupe-Hevea/neosync/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
-	clientmanager "github.com/Groupe-Hevea/neosync/internal/temporal/clientmanager"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	tcpostgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
+	"github.com/fishtre-compagnie/husonym/internal/billing"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
+	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
+	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/enums/v1"
@@ -49,8 +49,8 @@ type Presidiomocks struct {
 	Entities   *presidioapi.MockEntityInterface
 }
 
-type NeosyncApiTestClient struct {
-	NeosyncQuerier db_queries.Querier
+type HusonymApiTestClient struct {
+	HusonymQuerier db_queries.Querier
 	systemQuerier  pg_queries.Querier
 
 	Pgcontainer   *tcpostgres.PostgresTestContainer
@@ -59,26 +59,26 @@ type NeosyncApiTestClient struct {
 	httpsrv *httptest.Server
 
 	// OSS, Unauthenticated, Licensed
-	OSSUnauthenticatedLicensedClients *NeosyncClients
+	OSSUnauthenticatedLicensedClients *HusonymClients
 	// OSS, Authenticated, Licensed
-	OSSAuthenticatedLicensedClients *NeosyncClients
+	OSSAuthenticatedLicensedClients *HusonymClients
 	// OSS, Unauthenticated, Unlicensed
-	OSSUnauthenticatedUnlicensedClients *NeosyncClients
+	OSSUnauthenticatedUnlicensedClients *HusonymClients
 	// NeoCloud, Authenticated, Licensed
-	NeosyncCloudAuthenticatedLicensedClients *NeosyncClients
+	HusonymCloudAuthenticatedLicensedClients *HusonymClients
 
 	Mocks *Mocks
 }
 
-// Option is a functional option for configuring Neosync Api Test Client
-type Option func(*NeosyncApiTestClient)
+// Option is a functional option for configuring Husonym Api Test Client
+type Option func(*HusonymApiTestClient)
 
-func NewNeosyncApiTestClient(
+func NewHusonymApiTestClient(
 	ctx context.Context,
 	t testing.TB,
 	opts ...Option,
-) (*NeosyncApiTestClient, error) {
-	neoApi := &NeosyncApiTestClient{
+) (*HusonymApiTestClient, error) {
+	neoApi := &HusonymApiTestClient{
 		migrationsDir: "../../../../sql/postgresql/schema",
 	}
 	for _, opt := range opts {
@@ -91,21 +91,21 @@ func NewNeosyncApiTestClient(
 	return neoApi, nil
 }
 
-// Sets neosync database migrations directory path
+// Sets husonym database migrations directory path
 func WithMigrationsDirectory(directoryPath string) Option {
-	return func(a *NeosyncApiTestClient) {
+	return func(a *HusonymApiTestClient) {
 		a.migrationsDir = directoryPath
 	}
 }
 
-func (s *NeosyncApiTestClient) Setup(ctx context.Context, t testing.TB) error {
+func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	pgcontainer, err := tcpostgres.NewPostgresTestContainer(ctx)
 	if err != nil {
 		return err
 	}
 
 	s.Pgcontainer = pgcontainer
-	s.NeosyncQuerier = db_queries.New()
+	s.HusonymQuerier = db_queries.New()
 	s.systemQuerier = pg_queries.New()
 
 	s.Mocks = &Mocks{
@@ -175,23 +175,23 @@ func (s *NeosyncApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.NotFound(w, r)
 	})
 
-	s.OSSUnauthenticatedLicensedClients = newNeosyncClients(
+	s.OSSUnauthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedLicensedPostfix,
 	)
-	s.OSSAuthenticatedLicensedClients = newNeosyncClients(
+	s.OSSAuthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceAuthenticatedLicensedPostfix,
 	)
-	s.OSSUnauthenticatedUnlicensedClients = newNeosyncClients(
+	s.OSSUnauthenticatedUnlicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedUnlicensedPostfix,
 	)
-	s.NeosyncCloudAuthenticatedLicensedClients = newNeosyncClients(
+	s.HusonymCloudAuthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + neoCloudAuthenticatedLicensedPostfix,
 	)
 
 	return nil
 }
 
-func (s *NeosyncApiTestClient) MockTemporalForCreateJob(returnId string) {
+func (s *HusonymApiTestClient) MockTemporalForCreateJob(returnId string) {
 	s.Mocks.TemporalClientManager.
 		On(
 			"DoesAccountHaveNamespace", mock.Anything, mock.Anything, mock.Anything,
@@ -213,7 +213,7 @@ func (s *NeosyncApiTestClient) MockTemporalForCreateJob(returnId string) {
 }
 
 // Used for any API call that uses GetJobRun() as this mocks the response from Temporal for that execution
-func (s *NeosyncApiTestClient) MockTemporalForDescribeWorkflowExecution(
+func (s *HusonymApiTestClient) MockTemporalForDescribeWorkflowExecution(
 	accountId, jobId, jobRunId, workflowName string,
 ) {
 	s.Mocks.TemporalClientManager.EXPECT().
@@ -243,7 +243,7 @@ func (s *NeosyncApiTestClient) MockTemporalForDescribeWorkflowExecution(
 		}, nil).
 		Once()
 }
-func (s *NeosyncApiTestClient) InitializeTest(ctx context.Context, t testing.TB) error {
+func (s *HusonymApiTestClient) InitializeTest(ctx context.Context, t testing.TB) error {
 	err := neomigrate.Up(ctx, s.Pgcontainer.URL, s.migrationsDir, testutil.GetTestLogger(t))
 	if err != nil {
 		return err
@@ -251,11 +251,11 @@ func (s *NeosyncApiTestClient) InitializeTest(ctx context.Context, t testing.TB)
 	return nil
 }
 
-func (s *NeosyncApiTestClient) CleanupTest(ctx context.Context) error {
+func (s *HusonymApiTestClient) CleanupTest(ctx context.Context) error {
 	// Dropping here because 1) more efficient and 2) we have a bad down migration
 	// _jobs-connection-id-null.down that breaks due to having a null connection_id column.
 	// we should do something about that at some point. Running this single drop is easier though
-	_, err := s.Pgcontainer.DB.Exec(ctx, "DROP SCHEMA IF EXISTS neosync_api CASCADE")
+	_, err := s.Pgcontainer.DB.Exec(ctx, "DROP SCHEMA IF EXISTS husonym_api CASCADE")
 	if err != nil {
 		return err
 	}
@@ -266,9 +266,9 @@ func (s *NeosyncApiTestClient) CleanupTest(ctx context.Context) error {
 	return nil
 }
 
-func (s *NeosyncApiTestClient) TearDown(ctx context.Context) error {
+func (s *HusonymApiTestClient) TearDown(ctx context.Context) error {
 	if s.Pgcontainer != nil {
-		_, err := s.Pgcontainer.DB.Exec(ctx, "DROP SCHEMA IF EXISTS neosync_api CASCADE")
+		_, err := s.Pgcontainer.DB.Exec(ctx, "DROP SCHEMA IF EXISTS husonym_api CASCADE")
 		if err != nil {
 			return err
 		}

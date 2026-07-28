@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ func (s *IntegrationTestSuite) createPersonalAccount(
 	userclient mgmtv1alpha1connect.UserAccountServiceClient,
 ) string {
 	s.T().Helper()
-	return tcneosyncapi.CreatePersonalAccount(ctx, s.T(), userclient)
+	return tchusonymapi.CreatePersonalAccount(ctx, s.T(), userclient)
 }
 
 func requireNoErrResp[T any](t testing.TB, resp *connect.Response[T], err error) {
@@ -53,11 +53,11 @@ func (s *IntegrationTestSuite) setAccountCreatedAt(
 	accountId string,
 	createdAt time.Time,
 ) error {
-	accountUuid, err := neosyncdb.ToUuid(accountId)
+	accountUuid, err := husonymdb.ToUuid(accountId)
 	if err != nil {
 		return err
 	}
-	_, err = s.NeosyncQuerier.SetAccountCreatedAt(
+	_, err = s.HusonymQuerier.SetAccountCreatedAt(
 		ctx,
 		s.Pgcontainer.DB,
 		db_queries.SetAccountCreatedAtParams{

@@ -23,7 +23,7 @@ debug() {
 
 # odd quoting for migrate, which will attempt to create this table in public schema
 # if you don't quote it with double quotes like this.
-MIGRATION_TABLE_NAME='"public"."neosync_api_schema_migrations"'
+MIGRATION_TABLE_NAME='"public"."husonym_api_schema_migrations"'
 
 PG_LOGIN="${PG_USERNAME:-postgres}:${PG_PASSWORD:-foofar}"
 PG_HOSTNAME=${PG_HOSTNAME:-"localhost:5432/nucleus"}
@@ -35,7 +35,7 @@ fi
 if [ "$PG_HOSTNAME" = "postgresql:5432/nucleus" ]; then
     PG_OPTIONS="${PG_OPTIONS}&sslmode=disable"
 fi
-if [ "$PG_HOSTNAME" = "neosync-postgresql:5432/nucleus" ]; then
+if [ "$PG_HOSTNAME" = "husonym-postgresql:5432/nucleus" ]; then
     PG_OPTIONS="${PG_OPTIONS}&sslmode=disable"
 fi
 if [ "$PG_HOSTNAME" = "db:5432/nucleus" ]; then
@@ -72,11 +72,11 @@ if [ -z "${SKIP_SCHEMA_CREATION}" ] || [ "${SKIP_SCHEMA_CREATION}" = "false" ] &
         exit 1
     fi
 
-    debug "Attempting to create neosync_api schema"
+    debug "Attempting to create husonym_api schema"
 
     # shellcheck disable=2086 # need expansion here
-    if ! psql ${PG_CONNECT_STR} -c 'CREATE SCHEMA IF NOT EXISTS neosync_api'; then
-        echo "error upserting neosync_api schema"
+    if ! psql ${PG_CONNECT_STR} -c 'CREATE SCHEMA IF NOT EXISTS husonym_api'; then
+        echo "error upserting husonym_api schema"
         exit 1
     fi
 fi

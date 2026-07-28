@@ -3,7 +3,7 @@ package mysql
 import (
 	"testing"
 
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,11 +39,11 @@ func Test_parseMysqlRowValues(t *testing.T) {
 			"bool_col": true,
 			"nil_col":  nil,
 			"json_col": map[string]any{"key": "value"},
-			"binary_col": &neosynctypes.Binary{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"binary_col": &husonymtypes.Binary{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_BINARY",
+						TypeId:  "HUSONYM_BINARY",
 					},
 				},
 				Bytes: binaryData,

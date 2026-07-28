@@ -3,15 +3,15 @@ package genbenthosconfigs_activity
 import (
 	"testing"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_mssql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mssql"
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	benthosbuilder "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder"
-	runconfigs "github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
+	runconfigs "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/stretchr/testify/require"
 
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
 
 func Test_buildPostTableSyncRunCtx(t *testing.T) {
@@ -44,7 +44,7 @@ func Test_buildPostTableSyncRunCtx(t *testing.T) {
 			{
 				Name:    "config1",
 				RunType: runconfigs.RunTypeInsert,
-				ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+				ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 					"col1": {NeedsReset: true, HasDefaultTransformer: false},
 				},
 				TableSchema: "public",
@@ -53,7 +53,7 @@ func Test_buildPostTableSyncRunCtx(t *testing.T) {
 			{
 				Name:    "config2",
 				RunType: runconfigs.RunTypeInsert,
-				ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+				ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 					"col1": {NeedsOverride: true},
 				},
 				TableSchema: "dbo",
@@ -118,7 +118,7 @@ func Test_BuildPgPostTableSyncStatement(t *testing.T) {
 	t.Run("No columns need reset", func(t *testing.T) {
 		bcNoReset := &benthosbuilder.BenthosConfigResponse{
 			RunType: runconfigs.RunTypeInsert,
-			ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+			ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 				"col1": {NeedsReset: false, HasDefaultTransformer: false},
 				"col2": {NeedsReset: false, HasDefaultTransformer: true},
 			},
@@ -132,7 +132,7 @@ func Test_BuildPgPostTableSyncStatement(t *testing.T) {
 	t.Run("Some columns need reset", func(t *testing.T) {
 		bcSomeReset := &benthosbuilder.BenthosConfigResponse{
 			RunType: runconfigs.RunTypeInsert,
-			ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+			ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 				"col1": {NeedsReset: true, HasDefaultTransformer: false},
 				"col2": {NeedsReset: false, HasDefaultTransformer: true},
 				"col3": {NeedsReset: true, HasDefaultTransformer: false},
@@ -174,7 +174,7 @@ func Test_BuildMssqlPostTableSyncStatement(t *testing.T) {
 	t.Run("No columns need override", func(t *testing.T) {
 		bcNoOverride := &benthosbuilder.BenthosConfigResponse{
 			RunType: runconfigs.RunTypeInsert,
-			ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+			ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 				"col1": {NeedsOverride: false},
 				"col2": {NeedsOverride: false},
 			},
@@ -188,7 +188,7 @@ func Test_BuildMssqlPostTableSyncStatement(t *testing.T) {
 	t.Run("Some columns need override", func(t *testing.T) {
 		bcSomeOverride := &benthosbuilder.BenthosConfigResponse{
 			RunType: runconfigs.RunTypeInsert,
-			ColumnDefaultProperties: map[string]*neosync_benthos.ColumnDefaultProperties{
+			ColumnDefaultProperties: map[string]*husonym_benthos.ColumnDefaultProperties{
 				"col1": {NeedsOverride: true},
 				"col2": {NeedsOverride: false},
 			},

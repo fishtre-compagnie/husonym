@@ -1,11 +1,11 @@
-package neosync_benthos_error
+package husonym_benthos_error
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 
@@ -99,7 +99,7 @@ func (e *errorOutput) Close(ctx context.Context) error {
 
 func (e *errorOutput) isCriticalError(errMsg string) bool {
 	if e.isGenerateJob {
-		return neosync_benthos.IsGenerateJobCriticalError(errMsg)
+		return husonym_benthos.IsGenerateJobCriticalError(errMsg)
 	}
-	return neosync_benthos.IsCriticalError(errMsg)
+	return husonym_benthos.IsCriticalError(errMsg)
 }

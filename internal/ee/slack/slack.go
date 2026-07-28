@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	sym_encrypt "github.com/Groupe-Hevea/neosync/internal/encrypt/sym"
+	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	"github.com/slack-go/slack"
 )
 

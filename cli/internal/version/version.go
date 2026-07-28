@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Groupe-Hevea/neosync/backend/pkg/utils"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/utils"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -32,7 +32,7 @@ func (info *VersionInfo) Headers() map[string]string {
 
 func constructUserAgent(info *VersionInfo) string {
 	return fmt.Sprintf(
-		"neosync/%s (commit: %s; build: %s; go: %s; compiler: %s; platform: %s)",
+		"husonym/%s (commit: %s; build: %s; go: %s; compiler: %s; platform: %s)",
 		info.GitVersion,
 		info.GitCommit,
 		info.BuildDate,

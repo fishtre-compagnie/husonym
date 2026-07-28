@@ -3,15 +3,15 @@ package javascript
 import (
 	"log/slog"
 
-	javascript_functions "github.com/Groupe-Hevea/neosync/internal/javascript/functions"
-	benthos_functions "github.com/Groupe-Hevea/neosync/internal/javascript/functions/benthos"
-	neosync_functions "github.com/Groupe-Hevea/neosync/internal/javascript/functions/neosync"
-	javascript_vm "github.com/Groupe-Hevea/neosync/internal/javascript/vm"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
+	benthos_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/benthos"
+	husonym_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/husonym"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 	goja_require "github.com/dop251/goja_nodejs/require"
 )
 
-// Comes full featured, but expects a value api that the benthos/neosync functions can manipulate
+// Comes full featured, but expects a value api that the benthos/husonym functions can manipulate
 func NewDefaultValueRunner(
 	valueApi javascript_functions.ValueApi,
 	transformPiiTextApi transformers.TransformPiiTextApi,
@@ -45,12 +45,12 @@ func getDefaultFunctions(
 	transformPiiTextApi transformers.TransformPiiTextApi,
 ) ([]*javascript_functions.FunctionDefinition, error) {
 	benthosFns := benthos_functions.Get()
-	neosyncFns, err := neosync_functions.Get(transformPiiTextApi)
+	husonymFns, err := husonym_functions.Get(transformPiiTextApi)
 	if err != nil {
 		return nil, err
 	}
-	output := make([]*javascript_functions.FunctionDefinition, 0, len(benthosFns)+len(neosyncFns))
+	output := make([]*javascript_functions.FunctionDefinition, 0, len(benthosFns)+len(husonymFns))
 	output = append(output, benthosFns...)
-	output = append(output, neosyncFns...)
+	output = append(output, husonymFns...)
 	return output, nil
 }

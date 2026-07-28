@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"time"
 
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
@@ -15,11 +15,11 @@ func RegisterGobTypes() {
 	gob.Register([]any{})
 	gob.Register(time.Time{})
 	gob.Register([][]uint8{})
-	gob.RegisterName("neosynctypes.NeosyncDateTime", &neosynctypes.NeosyncDateTime{})
-	gob.RegisterName("neosynctypes.Bits", &neosynctypes.Bits{})
-	gob.RegisterName("neosynctypes.Binary", &neosynctypes.Binary{})
-	gob.RegisterName("neosynctypes.NeosyncArray", &neosynctypes.NeosyncArray{})
-	gob.RegisterName("neosynctypes.Interval", &neosynctypes.Interval{})
+	gob.RegisterName("husonymtypes.HusonymDateTime", &husonymtypes.HusonymDateTime{})
+	gob.RegisterName("husonymtypes.Bits", &husonymtypes.Bits{})
+	gob.RegisterName("husonymtypes.Binary", &husonymtypes.Binary{})
+	gob.RegisterName("husonymtypes.HusonymArray", &husonymtypes.HusonymArray{})
+	gob.RegisterName("husonymtypes.Interval", &husonymtypes.Interval{})
 	gob.RegisterName("dynamodb.AttributeValueMemberB", &dynamotypes.AttributeValueMemberB{})
 	gob.RegisterName("dynamodb.AttributeValueMemberBOOL", &dynamotypes.AttributeValueMemberBOOL{})
 	gob.RegisterName("dynamodb.AttributeValueMemberBS", &dynamotypes.AttributeValueMemberBS{})

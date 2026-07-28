@@ -10,11 +10,11 @@ package runner
 import (
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/engine"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
-	te "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
 // SpecForTable traduit les mappings d'un job pour une table donnée en une

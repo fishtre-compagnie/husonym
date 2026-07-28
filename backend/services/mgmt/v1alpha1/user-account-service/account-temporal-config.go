@@ -4,21 +4,21 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 func (s *Service) GetAccountTemporalConfig(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountTemporalConfigRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountTemporalConfigResponse], error) {
-	if s.cfg.IsNeosyncCloud {
-		return nil, nucleuserrors.NewNotImplemented("not enabled in Neosync Cloud")
+	if s.cfg.IsHusonymCloud {
+		return nil, nucleuserrors.NewNotImplemented("not enabled in Husonym Cloud")
 	}
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
@@ -48,8 +48,8 @@ func (s *Service) SetAccountTemporalConfig(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.SetAccountTemporalConfigRequest],
 ) (*connect.Response[mgmtv1alpha1.SetAccountTemporalConfigResponse], error) {
-	if s.cfg.IsNeosyncCloud {
-		return nil, nucleuserrors.NewNotImplemented("not enabled in Neosync Cloud")
+	if s.cfg.IsHusonymCloud {
+		return nil, nucleuserrors.NewNotImplemented("not enabled in Husonym Cloud")
 	}
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
@@ -66,7 +66,7 @@ func (s *Service) SetAccountTemporalConfig(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}

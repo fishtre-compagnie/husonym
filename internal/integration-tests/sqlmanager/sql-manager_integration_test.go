@@ -4,8 +4,8 @@ import (
 	context "context"
 	"testing"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	testmssql "github.com/testcontainers/testcontainers-go/modules/mssql"
@@ -14,10 +14,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/microsoft/go-mssqldb"
 
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	tcmysql "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/mysql"
-	tcpostgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	tcmysql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mysql"
+	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 )
 
 func Test_Manager_NewSqlConnection(t *testing.T) {

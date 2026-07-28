@@ -39,8 +39,8 @@ venv2/
 python/dist/
 __pycache__/
 
-neosync_ee_ca.key
-neosync_cloud_ca.key
+husonym_ee_ca.key
+husonym_cloud_ca.key
 
 .env.app.local
 .env.api.local

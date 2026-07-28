@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	neosyncFolderName = ".neosync"
+	husonymFolderName = ".husonym"
 )
 
 // Get or Creates the Nucleus folder that lives and stores persisted settings.
 //
-// 1. Checks for directory specified by env var NEOSYNC_CONFIG_DIR
-// 2. Checks for existence of XDG_CONFIG_HOME and append "neosync" to it, if exists
-// 3. Use ~/.neosync
-func GetOrCreateNeosyncFolder() (string, error) {
+// 1. Checks for directory specified by env var HUSONYM_CONFIG_DIR
+// 2. Checks for existence of XDG_CONFIG_HOME and append "husonym" to it, if exists
+// 3. Use ~/.husonym
+func GetOrCreateHusonymFolder() (string, error) {
 	configDir := os.Getenv(
-		"NEOSYNC_CONFIG_DIR",
+		"HUSONYM_CONFIG_DIR",
 	) // helpful for tools such as direnv and people who want it somewhere interesting
 	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME") // linux users expect this to be respected
 
@@ -46,13 +46,13 @@ func GetOrCreateNeosyncFolder() (string, error) {
 				return "", err
 			}
 		}
-		fullName = filepath.Join(baseDir, neosyncFolderName[1:])
+		fullName = filepath.Join(baseDir, husonymFolderName[1:])
 	} else {
 		dirname, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
-		fullName = filepath.Join(dirname, neosyncFolderName)
+		fullName = filepath.Join(dirname, husonymFolderName)
 	}
 
 	if err := ensureDirectoryExists(fullName); err != nil {

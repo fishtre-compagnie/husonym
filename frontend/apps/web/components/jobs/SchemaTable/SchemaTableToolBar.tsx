@@ -22,7 +22,7 @@ import {
   JobMappingTransformerSchema,
   SystemTransformer,
   UserDefinedTransformer,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import ApplyDefaultTransformersButton from './ApplyDefaultTransformersButton';

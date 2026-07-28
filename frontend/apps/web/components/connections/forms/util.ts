@@ -8,7 +8,7 @@ import {
   SqlConnectionOptions,
   SSHAuthentication,
   SSHTunnel,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 
 export function getSqlOptionsFormValues(
   input: SqlConnectionOptions | undefined

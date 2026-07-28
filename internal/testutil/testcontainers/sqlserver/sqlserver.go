@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel/connectors/mssqltunconnector"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mssqltunconnector"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/testcontainers/testcontainers-go"
 	testmssql "github.com/testcontainers/testcontainers-go/modules/mssql"
 	"github.com/testcontainers/testcontainers-go/wait"

@@ -223,7 +223,7 @@ message GetAiGeneratedDataRequest {
   ];
   // The LLM model name to use that works with the configured connection id.
   string model_name = 3 [(buf.validate.field).string.min_len = 1];
-  // The prompt that will be used to further refine the data generation. This is appended to the prompt that Neosync generates that includes schema information.
+  // The prompt that will be used to further refine the data generation. This is appended to the prompt that Husonym generates that includes schema information.
   optional string user_prompt = 4;
   // The unique identifier of a connection that the AI generated data would be inserted into. This is used to generate and send schema information to the LLM to help shape the generated data.
   string data_connection_id = 5 [(buf.validate.field).string.uuid = true];

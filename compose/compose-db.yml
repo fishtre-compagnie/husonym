@@ -14,7 +14,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
       - ../scripts/seed-test-prod-db.sql:/docker-entrypoint-initdb.d/seed.sql
 
@@ -33,4 +33,4 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - neosync-network
+      - husonym-network

@@ -1,5 +1,5 @@
-package neosync_benthos_metadata
+package husonym_benthos_metadata
 
 const (
-	MetaTypeMapStr = "neosync_key_type_map"
+	MetaTypeMapStr = "husonym_key_type_map"
 )

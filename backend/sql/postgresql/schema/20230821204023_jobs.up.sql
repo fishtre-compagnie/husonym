@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS neosync_api.jobs (
+CREATE TABLE IF NOT EXISTS husonym_api.jobs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
 	created_at timestamp NOT NULL DEFAULT now(),
 	updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -18,14 +18,14 @@ CREATE TABLE IF NOT EXISTS neosync_api.jobs (
   updated_by_id uuid NOT NULL,
 
   CONSTRAINT jobs_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_jobs_accounts_id FOREIGN KEY (account_id) REFERENCES neosync_api.accounts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_jobs_accounts_id FOREIGN KEY (account_id) REFERENCES husonym_api.accounts(id) ON DELETE CASCADE,
   CONSTRAINT jobs_name_account_id UNIQUE (name, account_id),
-  CONSTRAINT fk_jobs_created_by_users_id FOREIGN KEY (created_by_id) REFERENCES neosync_api.users(id),
-  CONSTRAINT fk_jobs_updated_by_users_id FOREIGN KEY (updated_by_id) REFERENCES neosync_api.users(id),
-  CONSTRAINT fk_jobs_conn_source_id_conn_id FOREIGN KEY (connection_source_id) REFERENCES neosync_api.connections(id)
+  CONSTRAINT fk_jobs_created_by_users_id FOREIGN KEY (created_by_id) REFERENCES husonym_api.users(id),
+  CONSTRAINT fk_jobs_updated_by_users_id FOREIGN KEY (updated_by_id) REFERENCES husonym_api.users(id),
+  CONSTRAINT fk_jobs_conn_source_id_conn_id FOREIGN KEY (connection_source_id) REFERENCES husonym_api.connections(id)
 );
 
-CREATE TABLE IF NOT EXISTS neosync_api.job_destination_connection_associations (
+CREATE TABLE IF NOT EXISTS husonym_api.job_destination_connection_associations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
 	created_at timestamp NOT NULL DEFAULT now(),
 	updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS neosync_api.job_destination_connection_associations (
   options jsonb NOT NULL DEFAULT '{}'::jsonb,
 
   CONSTRAINT job_destination_connection_associations_pkey PRIMARY KEY (id),
-  CONSTRAINT fk_jobdstconassoc_job_id_jobs_id FOREIGN KEY (job_id) REFERENCES neosync_api.jobs(id) ON DELETE CASCADE,
-  CONSTRAINT fk_jobdstconassoc_conn_id_conn_id FOREIGN KEY (connection_id) REFERENCES neosync_api.connections(id) ON DELETE CASCADE,
+  CONSTRAINT fk_jobdstconassoc_job_id_jobs_id FOREIGN KEY (job_id) REFERENCES husonym_api.jobs(id) ON DELETE CASCADE,
+  CONSTRAINT fk_jobdstconassoc_conn_id_conn_id FOREIGN KEY (connection_id) REFERENCES husonym_api.connections(id) ON DELETE CASCADE,
   CONSTRAINT job_id_connection_id UNIQUE (job_id, connection_id)
 );
 

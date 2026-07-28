@@ -1,8 +1,8 @@
 package v1alpha1_metricsservice
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 

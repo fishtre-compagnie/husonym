@@ -19,7 +19,7 @@ import {
   JobSourceOptions,
   JobStatus,
   JobTypeConfig,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { LightningBoltIcon, TrashIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';

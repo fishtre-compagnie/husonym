@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 )
 
 func TestNormalize_Auto(t *testing.T) {

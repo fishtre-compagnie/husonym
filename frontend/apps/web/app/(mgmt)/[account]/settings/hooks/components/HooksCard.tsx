@@ -4,7 +4,7 @@ import Spinner from '@/components/Spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
-import { AccountHookService } from '@neosync/sdk';
+import { AccountHookService } from '@husonym/sdk';
 import { ReactElement, ReactNode, useMemo } from 'react';
 import { MdWebhook } from 'react-icons/md';
 import HookCard from './HookCard';

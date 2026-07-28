@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"math"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Service struct {
 	cfg            *config
-	db             *neosyncdb.NeosyncDb
+	db             *husonymdb.HusonymDb
 	userdataclient userdata.Interface
 }
 
@@ -74,7 +74,7 @@ func WithEnabled() Option {
 type Option func(*config)
 
 func New(
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	userdataclient userdata.Interface,
 	opts ...Option,
 ) *Service {
@@ -103,7 +103,7 @@ func (s *Service) GetJobHooks(
 	if err != nil {
 		return nil, err
 	}
-	logger = logger.With("accountId", neosyncdb.UUIDString(verifyResp.AccountUuid))
+	logger = logger.With("accountId", husonymdb.UUIDString(verifyResp.AccountUuid))
 
 	hooks, err := s.db.Q.GetJobHooksByJob(ctx, s.db.Db, verifyResp.JobUuid)
 	if err != nil {
@@ -132,29 +132,29 @@ func (s *Service) GetJobHook(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
-	hookuuid, err := neosyncdb.ToUuid(req.GetId())
+	hookuuid, err := husonymdb.ToUuid(req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	hook, err := s.db.Q.GetJobHookById(ctx, s.db.Db, hookuuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find job hook by id")
 	}
 
 	verifyResp, err := s.verifyUserHasJob(
 		ctx,
-		neosyncdb.UUIDString(hook.JobID),
+		husonymdb.UUIDString(hook.JobID),
 		rbac.JobAction_View,
 	)
 	if err != nil {
 		return nil, err
 	}
 	logger = logger.With(
-		"accountId", neosyncdb.UUIDString(verifyResp.AccountUuid),
-		"jobId", neosyncdb.UUIDString(verifyResp.JobUuid),
+		"accountId", husonymdb.UUIDString(verifyResp.AccountUuid),
+		"jobId", husonymdb.UUIDString(verifyResp.JobUuid),
 	)
 
 	logger.Debug("hook successfully found")
@@ -179,30 +179,30 @@ func (s *Service) DeleteJobHook(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
-	hookuuid, err := neosyncdb.ToUuid(req.GetId())
+	hookuuid, err := husonymdb.ToUuid(req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	hook, err := s.db.Q.GetJobHookById(ctx, s.db.Db, hookuuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		logger.Debug("unable to find hook during deletion")
 		return &mgmtv1alpha1.DeleteJobHookResponse{}, nil
 	}
 
 	verifyResp, err := s.verifyUserHasJob(
 		ctx,
-		neosyncdb.UUIDString(hook.JobID),
+		husonymdb.UUIDString(hook.JobID),
 		rbac.JobAction_Delete,
 	)
 	if err != nil {
 		return nil, err
 	}
 	logger = logger.With(
-		"accountId", neosyncdb.UUIDString(verifyResp.AccountUuid),
-		"jobId", neosyncdb.UUIDString(verifyResp.JobUuid),
+		"accountId", husonymdb.UUIDString(verifyResp.AccountUuid),
+		"jobId", husonymdb.UUIDString(verifyResp.JobUuid),
 	)
 	logger.Debug("attempting to remove hook")
 	err = s.db.Q.RemoveJobHookById(ctx, s.db.Db, hookuuid)
@@ -225,7 +225,7 @@ func (s *Service) IsJobHookNameAvailable(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
-	jobuuid, err := neosyncdb.ToUuid(req.GetJobId())
+	jobuuid, err := husonymdb.ToUuid(req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +234,8 @@ func (s *Service) IsJobHookNameAvailable(
 		return nil, err
 	}
 	logger = logger.With(
-		"accountId", neosyncdb.UUIDString(verifyResp.AccountUuid),
-		"jobId", neosyncdb.UUIDString(verifyResp.JobUuid),
+		"accountId", husonymdb.UUIDString(verifyResp.AccountUuid),
+		"jobId", husonymdb.UUIDString(verifyResp.JobUuid),
 	)
 	logger.Debug("checking if job hook name is available")
 	ok, err := s.db.Q.IsJobHookNameAvailable(ctx, s.db.Db, db_queries.IsJobHookNameAvailableParams{
@@ -261,7 +261,7 @@ func (s *Service) CreateJobHook(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
-	jobuuid, err := neosyncdb.ToUuid(req.GetJobId())
+	jobuuid, err := husonymdb.ToUuid(req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -270,8 +270,8 @@ func (s *Service) CreateJobHook(
 		return nil, err
 	}
 	logger = logger.With(
-		"accountId", neosyncdb.UUIDString(verifyResp.AccountUuid),
-		"jobId", neosyncdb.UUIDString(verifyResp.JobUuid),
+		"accountId", husonymdb.UUIDString(verifyResp.AccountUuid),
+		"jobId", husonymdb.UUIDString(verifyResp.JobUuid),
 	)
 
 	hookReq := req.GetHook()
@@ -336,7 +336,7 @@ func (s *Service) UpdateJobHook(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
-	jobuuid, err := neosyncdb.ToUuid(getResp.GetHook().GetJobId())
+	jobuuid, err := husonymdb.ToUuid(getResp.GetHook().GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ func (s *Service) UpdateJobHook(
 		return nil, err
 	}
 
-	hookuuid, err := neosyncdb.ToUuid(getResp.GetHook().GetId())
+	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func (s *Service) UpdateJobHook(
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.verifyUserHasJob(ctx, neosyncdb.UUIDString(jobuuid), rbac.JobAction_Edit)
+	_, err = s.verifyUserHasJob(ctx, husonymdb.UUIDString(jobuuid), rbac.JobAction_Edit)
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +423,7 @@ func (s *Service) SetJobHookEnabled(
 		return nil, err
 	}
 
-	hookuuid, err := neosyncdb.ToUuid(getResp.GetHook().GetId())
+	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -469,14 +469,14 @@ func (s *Service) GetActiveJobHooksByTiming(
 	if err != nil {
 		return nil, err
 	}
-	logger = logger.With("accountId", neosyncdb.UUIDString(verifyResp.AccountUuid))
+	logger = logger.With("accountId", husonymdb.UUIDString(verifyResp.AccountUuid))
 
-	jobuuid, err := neosyncdb.ToUuid(req.GetJobId())
+	jobuuid, err := husonymdb.ToUuid(req.GetJobId())
 	if err != nil {
 		return nil, err
 	}
 
-	var hooks []db_queries.NeosyncApiJobHook
+	var hooks []db_queries.HusonymApiJobHook
 	switch req.GetTiming() {
 	case mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_UNSPECIFIED:
 		logger.Debug("searching for active job hooks")
@@ -523,15 +523,15 @@ func (s *Service) verifyUserHasJob(
 	jobId string,
 	permission rbac.JobAction,
 ) (*verifyUserJobResponse, error) {
-	jobuuid, err := neosyncdb.ToUuid(jobId)
+	jobuuid, err := husonymdb.ToUuid(jobId)
 	if err != nil {
 		return nil, err
 	}
 
 	accountUuid, err := s.db.Q.GetAccountIdFromJobId(ctx, s.db.Db, jobuuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("unable to find job id")
 	}
 
@@ -568,7 +568,7 @@ func (s *Service) verifyHookHasValidConnections(
 		if cfg.Sql == nil {
 			return false, errors.New("job hook config was type Sql, but the config was nil")
 		}
-		connuuid, err := neosyncdb.ToUuid(cfg.Sql.GetConnectionId())
+		connuuid, err := husonymdb.ToUuid(cfg.Sql.GetConnectionId())
 		if err != nil {
 			return false, err
 		}

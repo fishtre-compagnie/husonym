@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	temporallogger "github.com/Groupe-Hevea/neosync/worker/internal/temporal-logger"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
@@ -163,10 +163,10 @@ func executeWebhook(
 }
 
 const (
-	WEBHOOK_USERAGENT       = "neosync"
+	WEBHOOK_USERAGENT       = "husonym"
 	WEBHOOK_TIMEOUT         = 10 * time.Second
-	WEBHOOK_SIG_HEADER      = "X-Neosync-Signature"
-	WEBHOOK_SIG_TYPE        = "X-Neosync-Signature-Type"
+	WEBHOOK_SIG_HEADER      = "X-Husonym-Signature"
+	WEBHOOK_SIG_TYPE        = "X-Husonym-Signature-Type"
 	WEBHOOK_SIG_TYPE_SHA256 = "sha256"
 	WEBHOOK_CONTENT_TYPE    = "application/json"
 )

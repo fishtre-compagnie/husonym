@@ -1,8 +1,8 @@
 releases:
-  - name: neosync-api
+  - name: husonym-api
     chart: ../../../charts/api
     version: 'v0.0.0'
-    namespace: neosync
+    namespace: husonym
     createNamespace: false
 
     values:

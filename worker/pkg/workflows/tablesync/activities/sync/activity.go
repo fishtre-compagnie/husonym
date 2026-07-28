@@ -10,21 +10,21 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	benthosstream "github.com/Groupe-Hevea/neosync/internal/benthos-stream"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	pool_mongo_provider "github.com/Groupe-Hevea/neosync/internal/connection-manager/pool/providers/mongo"
-	pool_sql_provider "github.com/Groupe-Hevea/neosync/internal/connection-manager/pool/providers/sql"
-	continuation_token "github.com/Groupe-Hevea/neosync/internal/continuation-token"
-	temporallogger "github.com/Groupe-Hevea/neosync/worker/internal/temporal-logger"
-	benthos_environment "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/environment"
-	neosync_benthos_mongodb "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/mongodb"
-	neosync_benthos_sql "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/sql"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
-	tablesync_shared "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	benthosstream "github.com/fishtre-compagnie/husonym/internal/benthos-stream"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	pool_mongo_provider "github.com/fishtre-compagnie/husonym/internal/connection-manager/pool/providers/mongo"
+	pool_sql_provider "github.com/fishtre-compagnie/husonym/internal/connection-manager/pool/providers/sql"
+	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	benthos_environment "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/environment"
+	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
+	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 	"github.com/redis/go-redis/v9"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/redpanda-data/benthos/v4/public/service"
@@ -34,15 +34,15 @@ import (
 	"go.temporal.io/sdk/log"
 	"golang.org/x/sync/errgroup"
 
-	benthosbuilder_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	_ "github.com/Groupe-Hevea/neosync/internal/benthos/imports"
+	benthosbuilder_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	_ "github.com/fishtre-compagnie/husonym/internal/benthos/imports"
 )
 
 type Activity struct {
 	connclient           mgmtv1alpha1connect.ConnectionServiceClient
 	jobclient            mgmtv1alpha1connect.JobServiceClient
-	sqlconnmanager       connectionmanager.Interface[neosync_benthos_sql.SqlDbtx]
-	mongoconnmanager     connectionmanager.Interface[neosync_benthos_mongodb.MongoClient]
+	sqlconnmanager       connectionmanager.Interface[husonym_benthos_sql.SqlDbtx]
+	mongoconnmanager     connectionmanager.Interface[husonym_benthos_mongodb.MongoClient]
 	meter                metric.Meter // optional
 	benthosStreamManager benthosstream.BenthosStreamManagerClient
 	temporalclient       temporalclient.Client
@@ -54,8 +54,8 @@ type Activity struct {
 func New(
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	jobclient mgmtv1alpha1connect.JobServiceClient,
-	sqlconnmanager connectionmanager.Interface[neosync_benthos_sql.SqlDbtx],
-	mongoconnmanager connectionmanager.Interface[neosync_benthos_mongodb.MongoClient],
+	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
+	mongoconnmanager connectionmanager.Interface[husonym_benthos_mongodb.MongoClient],
 	meter metric.Meter,
 	benthosStreamManager benthosstream.BenthosStreamManagerClient,
 	tclient temporalclient.Client,
@@ -365,7 +365,7 @@ func (a *Activity) getBenthosStream(
 	session connectionmanager.SessionInterface,
 	stopActivityChan chan error,
 	getConnectionById func(connectionId string) (connectionmanager.ConnectionInput, error),
-	hasMorePages neosync_benthos_sql.OnHasMorePagesFn,
+	hasMorePages husonym_benthos_sql.OnHasMorePagesFn,
 	continuationToken *continuation_token.ContinuationToken,
 	identityAllocator tablesync_shared.IdentityAllocator,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
@@ -391,7 +391,7 @@ func (a *Activity) getBenthosStream(
 	envKeyMap := map[string]string{}
 	envKeyMap[metrics.TemporalWorkflowIdEnvKey] = info.WorkflowExecution.ID
 	envKeyMap[metrics.TemporalRunIdEnvKey] = info.WorkflowExecution.RunID
-	envKeyMap[metrics.NeosyncDateEnvKey] = time.Now().UTC().Format(metrics.NeosyncDateFormat)
+	envKeyMap[metrics.HusonymDateEnvKey] = time.Now().UTC().Format(metrics.HusonymDateFormat)
 
 	streambldr := benenv.NewStreamBuilder()
 	streambldr.SetLogger(logger.With(
@@ -424,7 +424,7 @@ func (a *Activity) getBenthosEnvironment(
 	getConnectionById func(connectionId string) (connectionmanager.ConnectionInput, error),
 	session connectionmanager.SessionInterface,
 	stopActivityChan chan error,
-	hasMorePages neosync_benthos_sql.OnHasMorePagesFn,
+	hasMorePages husonym_benthos_sql.OnHasMorePagesFn,
 	continuationToken *continuation_token.ContinuationToken,
 	identityAllocator tablesync_shared.IdentityAllocator,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,

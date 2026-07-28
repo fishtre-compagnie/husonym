@@ -7,7 +7,7 @@ import {
   onJobRunsPaused,
 } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService } from '@neosync/sdk';
+import { JobService } from '@husonym/sdk';
 import { ArrowTopRightIcon } from '@radix-ui/react-icons';
 import { ReactElement, useMemo, useState } from 'react';
 import { GoStack } from 'react-icons/go';

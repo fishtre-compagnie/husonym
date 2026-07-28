@@ -5,7 +5,7 @@ import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@connectrpc/connect-query';
-import { UserAccountService, UserAccountType } from '@neosync/sdk';
+import { UserAccountService, UserAccountType } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { InvitesTable } from './components/InviteTable';
 import InviteUserForm from './components/InviteUserForm';

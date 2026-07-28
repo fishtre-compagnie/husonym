@@ -16,8 +16,8 @@ package transform
 // façon totalement réversible.
 
 import (
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	te "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
 // neosyncValueAdapter enveloppe un *TransformerExecutor Neosync derrière

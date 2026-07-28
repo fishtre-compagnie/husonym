@@ -917,7 +917,7 @@ func (x *Connection) GetAccountId() string {
 	return ""
 }
 
-// Configuration for all of the supported Neosync connection types
+// Configuration for all of the supported Husonym connection types
 type ConnectionConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Config:
@@ -3311,8 +3311,8 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\x19CheckConnectionConfigById\x12/.mgmt.v1alpha1.CheckConnectionConfigByIdRequest\x1a0.mgmt.v1alpha1.CheckConnectionConfigByIdResponse\"\x00\x12\\\n" +
 	"\rCheckSqlQuery\x12#.mgmt.v1alpha1.CheckSqlQueryRequest\x1a$.mgmt.v1alpha1.CheckSqlQueryResponse\"\x00\x12k\n" +
 	"\x12CheckSSHConnection\x12(.mgmt.v1alpha1.CheckSSHConnectionRequest\x1a).mgmt.v1alpha1.CheckSSHConnectionResponse\"\x00\x12w\n" +
-	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\x00B\xcb\x01\n" +
-	"\x11com.mgmt.v1alpha1B\x0fConnectionProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\x00B\xd0\x01\n" +
+	"\x11com.mgmt.v1alpha1B\x0fConnectionProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_connection_proto_rawDescOnce sync.Once

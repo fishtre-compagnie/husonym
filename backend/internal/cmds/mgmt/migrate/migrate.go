@@ -1,8 +1,8 @@
 package migrate_cmd
 
 import (
-	down_cmd "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/migrate/down"
-	up_cmd "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/migrate/up"
+	down_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/migrate/down"
+	up_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/migrate/up"
 	"github.com/spf13/cobra"
 )
 

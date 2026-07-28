@@ -7,7 +7,7 @@ import {
 } from '@/util/util';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
-import { SystemTransformerSchema } from '@neosync/sdk';
+import { SystemTransformerSchema } from '@husonym/sdk';
 import { ColumnDef, createColumnHelper, Row } from '@tanstack/react-table';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';

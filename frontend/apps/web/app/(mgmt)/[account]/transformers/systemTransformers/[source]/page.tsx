@@ -27,7 +27,7 @@ import {
   convertTransformerConfigToForm,
 } from '@/yup-validations/jobs';
 import { useQuery } from '@connectrpc/connect-query';
-import { TransformerSource, TransformersService } from '@neosync/sdk';
+import { TransformerSource, TransformersService } from '@husonym/sdk';
 import Error from 'next/error';
 import NextLink from 'next/link';
 import { ReactElement, use } from 'react';

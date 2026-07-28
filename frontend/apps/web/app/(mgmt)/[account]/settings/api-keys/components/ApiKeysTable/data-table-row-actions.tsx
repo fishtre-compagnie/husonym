@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AccountApiKey } from '@neosync/sdk';
+import { AccountApiKey } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import RemoveAccountApiKeyButton from '../../[id]/components/RemoveAccountApiKeyButton';
 

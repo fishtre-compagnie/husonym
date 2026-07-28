@@ -73,7 +73,7 @@ func ExtractBenthosSpec(fileSet *token.FileSet) ([]*BenthosSpec, error) {
 			}
 			for _, cgroup := range node.Comments {
 				for _, comment := range cgroup.List {
-					if strings.HasPrefix(comment.Text, "// +neosyncTransformerBuilder:") {
+					if strings.HasPrefix(comment.Text, "// +husonymTransformerBuilder:") {
 						parts := strings.Split(comment.Text, ":")
 						if len(parts) < 3 {
 							continue

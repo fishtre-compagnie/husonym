@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 const (
@@ -52,7 +52,7 @@ func (s *Service) GetDailyMetricCount(
 			"true",
 		), // we want to always exclude update configs
 		metrics.NewRegexMatchLabel(
-			metrics.NeosyncDateLabel,
+			metrics.HusonymDateLabel,
 			strings.Join(
 				metrics.GenerateMonthRegexRange(req.Msg.GetStart(), req.Msg.GetEnd()),
 				metricDateSeparator,
@@ -111,7 +111,7 @@ func (s *Service) GetDailyMetricCount(
 }
 
 var (
-	// NeosyncCloud currently limits prom metric storage to 60 days
+	// HusonymCloud currently limits prom metric storage to 60 days
 	// todo: expose as env var if we want to change this per environment
 	timeLimit = 60 * 24 * time.Hour
 )
@@ -148,7 +148,7 @@ func (s *Service) GetMetricCount(
 			"true",
 		), // we want to always exclude update configs
 		metrics.NewRegexMatchLabel(
-			metrics.NeosyncDateLabel,
+			metrics.HusonymDateLabel,
 			strings.Join(
 				metrics.GenerateMonthRegexRange(req.Msg.GetStartDay(), req.Msg.GetEndDay()),
 				metricDateSeparator,

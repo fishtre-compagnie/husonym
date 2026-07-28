@@ -14,7 +14,7 @@ package engine
 import (
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 // Batch : un lot de lignes en représentation colonnaire.

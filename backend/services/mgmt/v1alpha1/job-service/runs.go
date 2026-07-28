@@ -14,19 +14,19 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/loki"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	piidetect_job_activities "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
-	piidetect_table_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/table"
-	piidetect_table_activities "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
-	tablesync_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/workflow"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/loki"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
+	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
+	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
+	tablesync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
@@ -53,7 +53,7 @@ func (s *Service) GetJobRuns(
 	jobIds := []string{}
 	switch id := req.Msg.Id.(type) {
 	case *mgmtv1alpha1.GetJobRunsRequest_JobId:
-		jobUuid, err := neosyncdb.ToUuid(id.JobId)
+		jobUuid, err := husonymdb.ToUuid(id.JobId)
 		if err != nil {
 			return nil, err
 		}
@@ -62,11 +62,11 @@ func (s *Service) GetJobRuns(
 			return nil, err
 		}
 
-		accountId = neosyncdb.UUIDString(job.AccountID)
+		accountId = husonymdb.UUIDString(job.AccountID)
 		jobIds = append(jobIds, id.JobId)
 	case *mgmtv1alpha1.GetJobRunsRequest_AccountId:
 		accountId = id.AccountId
-		accountPgUuid, err := neosyncdb.ToUuid(accountId)
+		accountPgUuid, err := husonymdb.ToUuid(accountId)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func (s *Service) GetJobRuns(
 		}
 		for i := range jobs {
 			job := jobs[i]
-			jobIds = append(jobIds, neosyncdb.UUIDString(job.ID))
+			jobIds = append(jobIds, husonymdb.UUIDString(job.ID))
 		}
 	default:
 		return nil, fmt.Errorf("must provide jobId or accountId")
@@ -1060,7 +1060,7 @@ func (s *Service) GetRunContext(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(id.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(id.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -1070,9 +1070,9 @@ func (s *Service) GetRunContext(
 		ExternalId: id.GetExternalId(),
 		AccountId:  accountUuid,
 	})
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to retrieve run context by key: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("no run context exists with the provided key")
 	}
 
@@ -1095,13 +1095,13 @@ func (s *Service) SetRunContext(
 		return nil, err
 	}
 
-	if s.cfg.IsNeosyncCloud && !user.IsWorkerApiKey() {
+	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
 		return nil, nucleuserrors.NewUnauthenticated(
 			"must provide valid authentication credentials for this endpoint",
 		)
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(id.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(id.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -1136,13 +1136,13 @@ func (s *Service) SetRunContexts(
 			return nil, err
 		}
 
-		if s.cfg.IsNeosyncCloud && !user.IsWorkerApiKey() {
+		if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
 			return nil, nucleuserrors.NewUnauthenticated(
 				"must provide valid authentication credentials for this endpoint",
 			)
 		}
 
-		accountUuid, err := neosyncdb.ToUuid(id.GetAccountId())
+		accountUuid, err := husonymdb.ToUuid(id.GetAccountId())
 		if err != nil {
 			return nil, err
 		}
@@ -1184,7 +1184,7 @@ func (s *Service) GetPiiDetectionReport(
 
 	logger.Debug("building pii detection report")
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -1207,7 +1207,7 @@ func (s *Service) GetPiiDetectionReport(
 				AccountId:        accountUuid,
 			},
 		)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, fmt.Errorf("unable to retrieve run contexts: %w", err)
 		}
 
@@ -1242,15 +1242,15 @@ func (s *Service) getTableRunContextsFromJobReport(
 	ctx context.Context,
 	jobRun *mgmtv1alpha1.JobRun,
 	accountUuid pgtype.UUID,
-) ([]*db_queries.NeosyncApiRuncontext, error) {
+) ([]*db_queries.HusonymApiRuncontext, error) {
 	runContext, err := s.db.Q.GetRunContextByKey(ctx, s.db.Db, db_queries.GetRunContextByKeyParams{
 		WorkflowId: jobRun.GetId(),
 		ExternalId: piidetect_job_activities.BuildJobReportExternalId(jobRun.GetJobId()),
 		AccountId:  accountUuid,
 	})
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to retrieve run context: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nil
 	}
 	var jobReport piidetect_job_activities.JobPiiDetectReport
@@ -1276,10 +1276,10 @@ func (s *Service) getTableRunContextsFromJobReport(
 func (s *Service) getDbRunContextsFromKeys(
 	ctx context.Context,
 	keys []*mgmtv1alpha1.RunContextKey,
-) ([]*db_queries.NeosyncApiRuncontext, error) {
+) ([]*db_queries.HusonymApiRuncontext, error) {
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.SetLimit(10)
-	runContexts := []*db_queries.NeosyncApiRuncontext{}
+	runContexts := []*db_queries.HusonymApiRuncontext{}
 	mu := sync.Mutex{}
 	// this could be further optimized by fetching all the run contexts in a single query
 	// where the account id and workflow id are the same
@@ -1288,7 +1288,7 @@ func (s *Service) getDbRunContextsFromKeys(
 	for _, key := range keys {
 		key := key
 		errgrp.Go(func() error {
-			accountUuid, err := neosyncdb.ToUuid(key.GetAccountId())
+			accountUuid, err := husonymdb.ToUuid(key.GetAccountId())
 			if err != nil {
 				return fmt.Errorf("unable to convert account id to uuid: %w", err)
 			}
@@ -1317,7 +1317,7 @@ func (s *Service) getDbRunContextsFromKeys(
 }
 
 func getReportsFromTableContexts(
-	tableContexts []*db_queries.NeosyncApiRuncontext,
+	tableContexts []*db_queries.HusonymApiRuncontext,
 ) ([]*piidetect_table_activities.TableReport, error) {
 	reports := make([]*piidetect_table_activities.TableReport, len(tableContexts))
 	for i := range tableContexts {

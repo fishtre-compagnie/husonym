@@ -22,7 +22,7 @@ import {
 import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
-import { Job, JobEngine, JobService } from '@neosync/sdk';
+import { Job, JobEngine, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';

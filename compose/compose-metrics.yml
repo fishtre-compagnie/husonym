@@ -1,9 +1,9 @@
 services:
   otel-collector:
-    container_name: neosync-otel
+    container_name: husonym-otel
     image: otel/opentelemetry-collector-contrib:0.96.0
     networks:
-      - neosync-network
+      - husonym-network
       - metrics
     volumes:
       - $PWD/scripts/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
@@ -17,10 +17,10 @@ services:
       - 55679:55679 # zpages extension
 
   prometheus:
-    container_name: neosync-prom
+    container_name: husonym-prom
     image: prom/prometheus
     networks:
-      - neosync-network
+      - husonym-network
       - metrics
     volumes:
       - $PWD/scripts/prometheus.yaml:/etc/prometheus/prometheus.yml
@@ -49,11 +49,11 @@ services:
   #     - "--promscrape.config=/etc/victoriametrics/prometheus.yaml"
   #     # - "--vmalert.proxyURL=http://vmalert:8880"
   #   networks:
-  #     - neosync-network
+  #     - husonym-network
   #     - metrics
 
   grafana:
-    container_name: neosync-grafana
+    container_name: husonym-grafana
     image: grafana/grafana-enterprise
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
@@ -86,7 +86,7 @@ services:
       - grafana:/var/lib/grafana
 
   loki:
-    container_name: neosync-loki
+    container_name: husonym-loki
     image: grafana/loki:2.9.4
     ports:
       - "3100:3100"
@@ -95,10 +95,10 @@ services:
       - $PWD/scripts/loki-config.yaml:/etc/loki/loki-config.yaml
     networks:
       - metrics
-      - neosync-network
+      - husonym-network
 
   promtail:
-    container_name: neosync-promtail
+    container_name: husonym-promtail
     image: grafana/promtail:2.9.4
     command: -config.file=/etc/promtail/config.yml
     volumes:
@@ -106,10 +106,10 @@ services:
       - /var/lib/docker/containers:/var/log/docker/containers:ro
     networks:
       - metrics
-      - neosync-network
+      - husonym-network
 
 networks:
-  neosync-network:
+  husonym-network:
     external: true
   metrics:
     driver: bridge

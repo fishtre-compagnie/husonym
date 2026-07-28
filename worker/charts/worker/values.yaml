@@ -1,7 +1,7 @@
 # image Configure the Worker Docker Image
 image:
   # -- The default image repository
-  repository: ghcr.io/Groupe-Hevea/neosync/worker
+  repository: ghcr.io/fishtre-compagnie/husonym/worker
   # -- Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
   tag:
   # -- Overrides the default K8s pull policy
@@ -30,16 +30,16 @@ serviceAccount:
   # -- Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment.
   annotations: {}
 
-# -- Mostly used by NeosyncCloud. Adds a special tag to the logging to determine what environment is running
+# -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
 nucleusEnv:
 
-neosyncCloud:
-  # -- Whether or not this is NeosyncCloud
+husonymCloud:
+  # -- Whether or not this is HusonymCloud
   enabled: false
 
-# Configure Neosync Enterprise
+# Configure Husonym Enterprise
 ee:
-  # -- Neosync Enterprise-Edition License Key
+  # -- Husonym Enterprise-Edition License Key
   license:
 
 # -- Will eventually allow sending traces.
@@ -77,12 +77,12 @@ autoscaling:
   # -- The behavior of the HPA autoscaler
   behavior:
 
-# Adds annotations and labels to the deployment to opt it in to Istio service mesh. See the Neosync k8s docs for more details. This may be omitted and applied manually via the deployment's annotations and labels
+# Adds annotations and labels to the deployment to opt it in to Istio service mesh. See the Husonym k8s docs for more details. This may be omitted and applied manually via the deployment's annotations and labels
 istio:
   # -- Whether or not to apply the default istio annotations/labels to the deployment
   enabled: false
 
-# Adds annotations to support sending logs to Datadog. See the Neosync k8s docs for more details. This may be omitted and applied manually to the deployment.
+# Adds annotations to support sending logs to Datadog. See the Husonym k8s docs for more details. This may be omitted and applied manually to the deployment.
 datadog:
   # -- Whether or not to apply the default Datadog annotations/labels to the deployment
   enabled: false
@@ -92,9 +92,9 @@ terminationGracePeriodSeconds:
 # -- Not currently used
 shutdownTimeoutSeconds:
 
-neosync:
+husonym:
   # -- The url to the Neoysnc API instance
-  url: http://neosync-api
+  url: http://husonym-api
   # -- Only required if running the backend in auth-mode
   apiKey:
 

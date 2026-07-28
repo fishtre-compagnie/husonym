@@ -163,7 +163,7 @@ enum TransformerSource {
   TRANSFORMER_SOURCE_USER_DEFINED = 44;
   TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT = 45;
   TRANSFORMER_SOURCE_GENERATE_COUNTRY = 46;
-  // NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+  // HusonymCloud/Enterprise only transformer for anonymizing PII Text
   TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT = 47;
   TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME = 48;
   TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS = 49;
@@ -183,7 +183,7 @@ enum TransformerDataType {
   TRANSFORMER_DATA_TYPE_UUID = 8;
 }
 
-// A system transformer is a transformer that is built into the Neosync platform.
+// A system transformer is a transformer that is built into the Husonym platform.
 // It can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.
 message SystemTransformer {
   // The name of the transformer.
@@ -257,7 +257,7 @@ message TransformerConfig {
     TransformCharacterScramble transform_character_scramble_config = 41;
     GenerateJavascript generate_javascript_config = 42;
     GenerateCountry generate_country_config = 43;
-    // NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+    // HusonymCloud/Enterprise only transformer for anonymizing PII Text
     TransformPiiText transform_pii_text_config = 44;
     GenerateBusinessName generate_business_name_config = 45;
     GenerateIpAddress generate_ip_address_config = 46;
@@ -271,7 +271,7 @@ message TransformerConfig {
 // This is effectively a random integer generator that has unique properties.
 message TransformScrambleIdentity {}
 
-// NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+// HusonymCloud/Enterprise only transformer for anonymizing PII Text
 message TransformPiiText {
   // Minimal detection score for determining PII. 0.0-1.0
   float score_threshold = 1 [
@@ -329,7 +329,7 @@ message PiiAnonymizer {
     Mask mask = 3;
     // Configures the anonymizer to hash the identified PII
     Hash hash = 4;
-    // Configures the anonymizer to use a Neosync configured transformer
+    // Configures the anonymizer to use a Husonym configured transformer
     Transform transform = 5;
   }
 

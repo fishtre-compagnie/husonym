@@ -15,38 +15,38 @@ import (
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/otelconnect"
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	neosynclogger "github.com/Groupe-Hevea/neosync/backend/pkg/logger"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/mongoconnect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	awsmanager "github.com/Groupe-Hevea/neosync/internal/aws"
-	benthosstream "github.com/Groupe-Hevea/neosync/internal/benthos-stream"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/connection-manager/providers/mongoprovider"
-	"github.com/Groupe-Hevea/neosync/internal/connection-manager/providers/sqlprovider"
-	"github.com/Groupe-Hevea/neosync/internal/connectiondata"
-	retry_interceptor "github.com/Groupe-Hevea/neosync/internal/connectrpc/interceptors/retry"
-	cloudlicense "github.com/Groupe-Hevea/neosync/internal/ee/cloud-license"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	neosync_gcp "github.com/Groupe-Hevea/neosync/internal/gcp"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
-	neosyncotel "github.com/Groupe-Hevea/neosync/internal/otel"
-	pyroscope_env "github.com/Groupe-Hevea/neosync/internal/pyroscope"
-	neosync_redis "github.com/Groupe-Hevea/neosync/internal/redis"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
-	schemainit_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/workflow/register"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	benthosstream "github.com/fishtre-compagnie/husonym/internal/benthos-stream"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/mongoprovider"
+	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	retry_interceptor "github.com/fishtre-compagnie/husonym/internal/connectrpc/interceptors/retry"
+	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
+	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
+	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
+	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 
-	datasync_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/workflow/register"
-	accounthook_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow/register"
-	piidetect_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/register"
-	sync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/activities/sync"
-	tablesync_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/workflow/register"
+	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
+	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
+	piidetect_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/register"
+	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
+	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -77,7 +77,7 @@ func NewCmd() *cobra.Command {
 }
 
 func serve(ctx context.Context) error {
-	logger, loglogger := neosynclogger.NewLoggers()
+	logger, loglogger := husonymlogger.NewLoggers()
 	slog.SetDefault(
 		logger,
 	) // set default logger for methods that can't easily access the configured logger
@@ -90,11 +90,11 @@ func serve(ctx context.Context) error {
 
 	ncloudlicense, err := cloudlicense.NewFromEnv()
 	if err != nil {
-		return fmt.Errorf("unable to initialize neosync cloud license from env: %w", err)
+		return fmt.Errorf("unable to initialize husonym cloud license from env: %w", err)
 	}
-	logger.Debug(fmt.Sprintf("neosync cloud enabled: %t", ncloudlicense.IsValid()))
+	logger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
 
-	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("neosync-worker", logger)
+	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-worker", logger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize pyroscope from env: %w", err)
 	}
@@ -112,27 +112,27 @@ func serve(ctx context.Context) error {
 
 	connectInterceptors := []connect.Interceptor{}
 
-	otelconfig := neosyncotel.GetOtelConfigFromViperEnv()
+	otelconfig := husonymotel.GetOtelConfigFromViperEnv()
 	if otelconfig.IsEnabled {
 		logger.Debug("otel is enabled")
-		tmPropagator := neosyncotel.NewDefaultPropagator()
+		tmPropagator := husonymotel.NewDefaultPropagator()
 		otelconnopts := []otelconnect.Option{
 			otelconnect.WithoutServerPeerAttributes(),
 			otelconnect.WithPropagator(tmPropagator),
 		}
 
-		meterProviders := []neosyncotel.MeterProvider{}
-		traceProviders := []neosyncotel.TracerProvider{}
+		meterProviders := []husonymotel.MeterProvider{}
+		traceProviders := []husonymotel.TracerProvider{}
 		// Meter Provider that uses delta temporality for use with Benthos metrics
 		// This meter provider is setup expire metrics after a specified time period for easy computation
-		benthosMeterProvider, err := neosyncotel.NewMeterProvider(
+		benthosMeterProvider, err := husonymotel.NewMeterProvider(
 			ctx,
-			&neosyncotel.MeterProviderConfig{
+			&husonymotel.MeterProviderConfig{
 				Exporter:   otelconfig.MeterExporter,
 				AppVersion: otelconfig.ServiceVersion,
-				Opts: neosyncotel.MeterExporterOpts{
+				Opts: husonymotel.MeterExporterOpts{
 					Otlp: []otlpmetricgrpc.Option{
-						neosyncotel.GetBenthosMetricTemporalityOption(),
+						husonymotel.GetBenthosMetricTemporalityOption(),
 					},
 					Console: []stdoutmetric.Option{stdoutmetric.WithPrettyPrint()},
 				},
@@ -147,12 +147,12 @@ func serve(ctx context.Context) error {
 			syncActivityMeter = benthosMeterProvider.Meter("sync_activity")
 		}
 
-		temporalMeterProvider, err := neosyncotel.NewMeterProvider(
+		temporalMeterProvider, err := husonymotel.NewMeterProvider(
 			ctx,
-			&neosyncotel.MeterProviderConfig{
+			&husonymotel.MeterProviderConfig{
 				Exporter:   otelconfig.MeterExporter,
 				AppVersion: otelconfig.ServiceVersion,
-				Opts: neosyncotel.MeterExporterOpts{
+				Opts: husonymotel.MeterExporterOpts{
 					Otlp:    []otlpmetricgrpc.Option{},
 					Console: []stdoutmetric.Option{stdoutmetric.WithPrettyPrint()},
 				},
@@ -166,7 +166,7 @@ func serve(ctx context.Context) error {
 			meterProviders = append(meterProviders, temporalMeterProvider)
 			temopralMeterHandler = temporalotel.NewMetricsHandler(
 				temporalotel.MetricsHandlerOptions{
-					Meter: temporalMeterProvider.Meter("neosync-temporal-sdk"),
+					Meter: temporalMeterProvider.Meter("husonym-temporal-sdk"),
 					OnError: func(err error) {
 						logger.Error(fmt.Errorf("error with temporal metering: %w", err).Error())
 					},
@@ -174,12 +174,12 @@ func serve(ctx context.Context) error {
 			)
 		}
 
-		neosyncMeterProvider, err := neosyncotel.NewMeterProvider(
+		husonymMeterProvider, err := husonymotel.NewMeterProvider(
 			ctx,
-			&neosyncotel.MeterProviderConfig{
+			&husonymotel.MeterProviderConfig{
 				Exporter:   otelconfig.MeterExporter,
 				AppVersion: otelconfig.ServiceVersion,
-				Opts: neosyncotel.MeterExporterOpts{
+				Opts: husonymotel.MeterExporterOpts{
 					Otlp:    []otlpmetricgrpc.Option{},
 					Console: []stdoutmetric.Option{stdoutmetric.WithPrettyPrint()},
 				},
@@ -188,19 +188,19 @@ func serve(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if neosyncMeterProvider != nil {
-			logger.Debug("otel metering for neosync clients has been configured")
-			meterProviders = append(meterProviders, neosyncMeterProvider)
-			otelconnopts = append(otelconnopts, otelconnect.WithMeterProvider(neosyncMeterProvider))
+		if husonymMeterProvider != nil {
+			logger.Debug("otel metering for husonym clients has been configured")
+			meterProviders = append(meterProviders, husonymMeterProvider)
+			otelconnopts = append(otelconnopts, otelconnect.WithMeterProvider(husonymMeterProvider))
 		} else {
 			otelconnopts = append(otelconnopts, otelconnect.WithoutMetrics())
 		}
 
-		temporalTraceProvider, err := neosyncotel.NewTraceProvider(
+		temporalTraceProvider, err := husonymotel.NewTraceProvider(
 			ctx,
-			&neosyncotel.TraceProviderConfig{
+			&husonymotel.TraceProviderConfig{
 				Exporter: otelconfig.TraceExporter,
-				Opts: neosyncotel.TraceExporterOpts{
+				Opts: husonymotel.TraceExporterOpts{
 					Otlp:    []otlptracegrpc.Option{},
 					Console: []stdouttrace.Option{stdouttrace.WithPrettyPrint()},
 				},
@@ -213,7 +213,7 @@ func serve(ctx context.Context) error {
 			logger.Debug("otel tracing for temporal has been configured")
 			temporalTraceInterceptor, err := temporalotel.NewTracingInterceptor(
 				temporalotel.TracerOptions{
-					Tracer: temporalTraceProvider.Tracer("neosync-temporal-sdk"),
+					Tracer: temporalTraceProvider.Tracer("husonym-temporal-sdk"),
 				},
 			)
 			if err != nil {
@@ -226,11 +226,11 @@ func serve(ctx context.Context) error {
 			traceProviders = append(traceProviders, temporalTraceProvider)
 		}
 
-		neosyncTraceProvider, err := neosyncotel.NewTraceProvider(
+		husonymTraceProvider, err := husonymotel.NewTraceProvider(
 			ctx,
-			&neosyncotel.TraceProviderConfig{
+			&husonymotel.TraceProviderConfig{
 				Exporter: otelconfig.TraceExporter,
-				Opts: neosyncotel.TraceExporterOpts{
+				Opts: husonymotel.TraceExporterOpts{
 					Otlp:    []otlptracegrpc.Option{},
 					Console: []stdouttrace.Option{stdouttrace.WithPrettyPrint()},
 				},
@@ -239,11 +239,11 @@ func serve(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if neosyncTraceProvider != nil {
-			logger.Debug("otel tracing for neosync clients has been configured")
+		if husonymTraceProvider != nil {
+			logger.Debug("otel tracing for husonym clients has been configured")
 			otelconnopts = append(
 				otelconnopts,
-				otelconnect.WithTracerProvider(neosyncTraceProvider),
+				otelconnect.WithTracerProvider(husonymTraceProvider),
 			)
 		} else {
 			otelconnopts = append(otelconnopts, otelconnect.WithoutTracing(), otelconnect.WithoutTraceEvents())
@@ -255,7 +255,7 @@ func serve(ctx context.Context) error {
 		}
 		connectInterceptors = append(connectInterceptors, otelConnectInterceptor)
 
-		otelshutdown := neosyncotel.SetupOtelSdk(&neosyncotel.SetupConfig{
+		otelshutdown := husonymotel.SetupOtelSdk(&husonymotel.SetupConfig{
 			TraceProviders:    traceProviders,
 			MeterProviders:    meterProviders,
 			Logger:            logr.FromSlogHandler(logger.Handler()),
@@ -330,37 +330,37 @@ func serve(ctx context.Context) error {
 		license.NewValidLicense(),
 	)
 
-	neosyncurl := shared.GetNeosyncUrl()
-	httpclient := shared.GetNeosyncHttpClient()
+	husonymurl := shared.GetHusonymUrl()
+	httpclient := shared.GetHusonymHttpClient()
 	connectInterceptorOption := connect.WithInterceptors(connectInterceptors...)
 	userclient := mgmtv1alpha1connect.NewUserAccountServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 	connclient := mgmtv1alpha1connect.NewConnectionServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 	jobclient := mgmtv1alpha1connect.NewJobServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 	transformerclient := mgmtv1alpha1connect.NewTransformersServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 	accounthookclient := mgmtv1alpha1connect.NewAccountHookServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 	anonymizationclient := mgmtv1alpha1connect.NewAnonymizationServiceClient(
 		httpclient,
-		neosyncurl,
+		husonymurl,
 		connectInterceptorOption,
 	)
 
@@ -376,7 +376,7 @@ func serve(ctx context.Context) error {
 	sqlmanager := sql_manager.NewSqlManager(sql_manager.WithConnectionManager(sqlconnmanager))
 
 	redisconfig := shared.GetRedisConfig()
-	redisclient, err := neosync_redis.GetRedisClient(redisconfig)
+	redisclient, err := husonym_redis.GetRedisClient(redisconfig)
 	if err != nil {
 		return fmt.Errorf("unable to get redis client: %w", err)
 	}
@@ -433,16 +433,16 @@ func serve(ctx context.Context) error {
 
 		openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
 
-		neosynctyperegistry := neosynctypes.NewTypeRegistry(logger)
+		husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
 		conndatabuilder := connectiondata.NewConnectionDataBuilder(
 			sqlConnector,
 			sqlmanager,
 			pg_queries.New(),
 			mysql_queries.New(),
 			awsmanager.New(),
-			neosync_gcp.NewManager(),
+			husonym_gcp.NewManager(),
 			mongoconnect.NewConnector(),
-			neosynctyperegistry,
+			husonymtyperegistry,
 		)
 
 		piidetect_workflow_register.Register(

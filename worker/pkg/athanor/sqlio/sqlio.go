@@ -14,8 +14,8 @@ package sqlio
 import (
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/engine"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 // RowReader abstrait une source de lignes. *database/sql.Rows le satisfait tel

@@ -13,11 +13,11 @@ package runner
 // leur contenu change la cohérence historique).
 
 import (
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/native"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
-	ds "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/data-sets"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/native"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
+	ds "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/data-sets"
 )
 
 // deterministicValueTransformer renvoie un transformer déterministe pour les

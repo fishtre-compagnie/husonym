@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 func TestEmailFaker_DeterministicAndValid(t *testing.T) {

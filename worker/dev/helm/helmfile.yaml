@@ -1,13 +1,13 @@
 releases:
-  - name: neosync-worker
+  - name: husonym-worker
     chart: ../../charts/worker
     version: 'v0.0.0'
-    namespace: neosync
+    namespace: husonym
     createNamespace: false
 
     values:
       - image:
-          repository: neosync-worker
+          repository: husonym-worker
         serviceAccount:
           create: true
 
@@ -22,8 +22,8 @@ releases:
 
         nucleusEnv: dev
 
-        neosync:
-          url: http://neosync-api:80
+        husonym:
+          url: http://husonym-api:80
         temporal:
           url: temporal.temporal:7233
           namespace: default

@@ -1,6 +1,6 @@
 package runner
 
-import mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+import mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 
 // WhereForTable renvoie la clause de subsetting (sans le mot-clé WHERE) configurée
 // pour une table donnée dans les options de source du job, ou "" si aucune.

@@ -1,2 +1,2 @@
 
-ALTER TABLE neosync_api.account_invites ADD COLUMN IF NOT EXISTS role INTEGER DEFAULT NULL;
+ALTER TABLE husonym_api.account_invites ADD COLUMN IF NOT EXISTS role INTEGER DEFAULT NULL;

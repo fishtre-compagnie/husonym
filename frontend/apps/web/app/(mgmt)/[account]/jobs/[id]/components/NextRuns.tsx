@@ -12,7 +12,7 @@ import {
 import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService, JobStatus } from '@neosync/sdk';
+import { JobService, JobStatus } from '@husonym/sdk';
 import { ReactElement } from 'react';
 
 interface Props {

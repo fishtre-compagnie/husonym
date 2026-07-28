@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 )
 
 /* FLOAT MANIPULATION UTILS */

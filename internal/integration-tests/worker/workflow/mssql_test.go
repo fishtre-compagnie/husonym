@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	tcmssql "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/sqlserver"
-	testutil_testdata "github.com/Groupe-Hevea/neosync/internal/testutil/testdata"
-	mssql_alltypes "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mssql/alltypes"
-	mssql_commerce "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/mssql/commerce"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	tcmssql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/sqlserver"
+	testutil_testdata "github.com/fishtre-compagnie/husonym/internal/testutil/testdata"
+	mssql_alltypes "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mssql/alltypes"
+	mssql_commerce "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/mssql/commerce"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,12 +109,12 @@ func test_mssql_types(
 	t *testing.T,
 	ctx context.Context,
 	mssql *tcmssql.MssqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "alltypes"
 	err := mssql.Source.RunCreateStmtsInSchema(
 		ctx,
@@ -125,7 +125,7 @@ func test_mssql_types(
 	require.NoError(t, err)
 	err = mssql.Target.CreateSchemas(ctx, []string{schema})
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-mssql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mssql-sync")
 
 	alltypesMappings := mssql_alltypes.GetDefaultSyncJobMappings(schema)
 	for _, mapping := range alltypesMappings {
@@ -147,7 +147,7 @@ func test_mssql_types(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers, WithValidEELicense())
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers, WithValidEELicense())
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -199,20 +199,20 @@ func test_mssql_cross_schema_foreign_keys(
 	t *testing.T,
 	ctx context.Context,
 	mssql *tcmssql.MssqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
 	testdataFolder := mssqlTestdataFolder + "/commerce"
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	err := mssql.Source.CreateSchemas(ctx, []string{"sales", "production"})
 	require.NoError(t, err)
 	err = mssql.Source.RunSqlFiles(ctx, &testdataFolder, []string{"create-tables.sql"})
 	require.NoError(t, err)
 	err = mssql.Target.CreateSchemas(ctx, []string{"sales", "production"})
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-mssql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mssql-sync")
 
 	mappings := mssql_commerce.GetDefaultSyncJobMappings()
 
@@ -228,7 +228,7 @@ func test_mssql_cross_schema_foreign_keys(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers, WithValidEELicense())
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers, WithValidEELicense())
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -278,13 +278,13 @@ func test_mssql_subset(
 	t *testing.T,
 	ctx context.Context,
 	mssql *tcmssql.MssqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
 	testdataFolder := mssqlTestdataFolder + "/commerce"
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	err := mssql.Source.CreateSchemas(ctx, []string{"sales_subset", "production_subset"})
 	require.NoError(t, err)
 	err = createCommerceTables(
@@ -297,7 +297,7 @@ func test_mssql_subset(
 	require.NoError(t, err)
 	err = mssql.Target.CreateSchemas(ctx, []string{"sales_subset", "production_subset"})
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-mssql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mssql-sync")
 
 	mappings := mssql_commerce.GetDefaultSyncJobMappings()
 	updatedMappings := []*mgmtv1alpha1.JobMapping{}
@@ -329,7 +329,7 @@ func test_mssql_subset(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers, WithValidEELicense())
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers, WithValidEELicense())
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -379,13 +379,13 @@ func test_mssql_identity_columns(
 	t *testing.T,
 	ctx context.Context,
 	mssql *tcmssql.MssqlTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
 	testdataFolder := mssqlTestdataFolder + "/commerce"
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	err := mssql.Source.CreateSchemas(ctx, []string{"sales_identity", "production_identity"})
 	require.NoError(t, err)
 	err = createCommerceTables(
@@ -398,7 +398,7 @@ func test_mssql_identity_columns(
 	require.NoError(t, err)
 	err = mssql.Target.CreateSchemas(ctx, []string{"sales_identity", "production_identity"})
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-mssql-sync")
+	husonymApi.MockTemporalForCreateJob("test-mssql-sync")
 
 	mappings := mssql_commerce.GetDefaultSyncJobMappings()
 	tableColTypeMap := mssql_commerce.GetTableColumnTypeMap()
@@ -433,7 +433,7 @@ func test_mssql_identity_columns(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers, WithValidEELicense())
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers, WithValidEELicense())
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(

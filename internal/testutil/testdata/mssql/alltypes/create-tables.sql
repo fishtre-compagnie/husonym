@@ -120,8 +120,8 @@ VALUES (
     N'This is an NTEXT column', -- NTEXT
     
     -- -- Binary strings
-    CAST('NEOSYNC' AS binary(10)), -- BINARY(10)
-    CAST('NEOSYNC' AS varbinary(50)), -- VARBINARY(50)
+    CAST('HUSONYM' AS binary(10)), -- BINARY(10)
+    CAST('HUSONYM' AS varbinary(50)), -- VARBINARY(50)
     -- 0x0123456789ABCDEF0123456789ABCDEF, -- IMAGE
     
     -- Other data types

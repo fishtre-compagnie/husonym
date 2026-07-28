@@ -1,4 +1,4 @@
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 
 interface CreateProps {
   mode: 'create';

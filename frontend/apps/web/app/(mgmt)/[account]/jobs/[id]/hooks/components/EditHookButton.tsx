@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { Connection, JobHook, JobService } from '@neosync/sdk';
+import { Connection, JobHook, JobService } from '@husonym/sdk';
 import { Pencil1Icon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';

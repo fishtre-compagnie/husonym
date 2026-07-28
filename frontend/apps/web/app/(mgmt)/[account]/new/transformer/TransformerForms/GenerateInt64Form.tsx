@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 
 import FormErrorMessage from '@/components/FormErrorMessage';
 import { create } from '@bufbuild/protobuf';
-import { GenerateInt64, GenerateInt64Schema } from '@neosync/sdk';
+import { GenerateInt64, GenerateInt64Schema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 

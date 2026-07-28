@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	execute_hook_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/activities/execute"
-	hooks_by_event_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/activities/hooks-by-event"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	execute_hook_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/execute"
+	hooks_by_event_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/hooks-by-event"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/testsuite"

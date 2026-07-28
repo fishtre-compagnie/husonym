@@ -30,7 +30,7 @@ function HooksDisabledAlert(): ReactElement {
       <Alert variant="warning">
         <AlertTitle>Job Hooks are not currently enabled</AlertTitle>
         <AlertDescription>
-          To enable them, please update Neosync configuration or contact your
+          To enable them, please update Husonym configuration or contact your
           system administrator.
         </AlertDescription>
       </Alert>

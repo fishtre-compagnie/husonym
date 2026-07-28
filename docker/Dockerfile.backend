@@ -36,7 +36,7 @@ COPY backend/pkg/ pkg/
 COPY backend/sql sql/
 
 # Build
-RUN go build -ldflags="-s -w -X 'github.com/Groupe-Hevea/neosync/backend/internal/version.buildDate=$buildDate' -X 'github.com/Groupe-Hevea/neosync/backend/internal/version.gitCommit=$gitCommit' -X 'github.com/Groupe-Hevea/neosync/backend/internal/version.gitVersion=$gitVersion'" -o bin/mgmt cmd/mgmt/*.go
+RUN go build -ldflags="-s -w -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.buildDate=$buildDate' -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.gitCommit=$gitCommit' -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.gitVersion=$gitVersion'" -o bin/mgmt cmd/mgmt/*.go
 
 # Use debian:bullseye-slim as the base image to include necessary C libraries
 FROM debian:bookworm-slim

@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JobEngine, JobService } from '@neosync/sdk';
+import { JobEngine, JobService } from '@husonym/sdk';
 import { usePostHog } from 'posthog-js/react';
 import { DEFAULT_CRON_STRING } from '../../../jobs/[id]/components/ScheduleCard';
 import { getNewJobSessionKeys } from '../../../jobs/util';

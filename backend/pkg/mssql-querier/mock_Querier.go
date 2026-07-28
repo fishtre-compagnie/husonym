@@ -5,7 +5,7 @@ package mssql_queries
 import (
 	context "context"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	mock "github.com/stretchr/testify/mock"
 )
 

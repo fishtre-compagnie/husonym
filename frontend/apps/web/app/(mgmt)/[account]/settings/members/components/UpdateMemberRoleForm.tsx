@@ -4,7 +4,7 @@ import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
 import { BaseHookStore } from '@/util/zustand.stores.util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
-import { AccountRole, AccountUser } from '@neosync/sdk';
+import { AccountRole, AccountUser } from '@husonym/sdk';
 import { FormEvent, ReactElement, useEffect } from 'react';
 import * as yup from 'yup';
 import { create } from 'zustand';

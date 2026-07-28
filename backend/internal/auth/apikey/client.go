@@ -8,23 +8,23 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	"github.com/Groupe-Hevea/neosync/backend/internal/utils"
-	pkg_utils "github.com/Groupe-Hevea/neosync/backend/pkg/utils"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
+	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type TokenContextKey struct{}
 type TokenContextData struct {
 	RawToken   string
-	ApiKey     *db_queries.NeosyncApiAccountApiKey
+	ApiKey     *db_queries.HusonymApiAccountApiKey
 	ApiKeyType apikey.ApiKeyType
 }
 
 var (
-	ErrInvalidApiKey = errors.New("token is not a valid neosync api key")
+	ErrInvalidApiKey = errors.New("token is not a valid husonym api key")
 	ErrApiKeyExpired = nucleuserrors.NewUnauthenticated("token is expired")
 )
 
@@ -33,7 +33,7 @@ type Queries interface {
 		ctx context.Context,
 		db db_queries.DBTX,
 		apiKey string,
-	) (db_queries.NeosyncApiAccountApiKey, error)
+	) (db_queries.HusonymApiAccountApiKey, error)
 }
 
 type Client struct {
@@ -76,9 +76,9 @@ func (c *Client) InjectTokenCtx(
 			token,
 		)
 		apiKey, err := c.q.GetAccountApiKeyByKeyValue(ctx, c.db, hashedKeyValue)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, err
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nil, ErrInvalidApiKey
 		}
 

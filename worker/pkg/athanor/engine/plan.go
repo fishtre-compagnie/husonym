@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 // ValueBinding lie une colonne à un transformer de portée Value.

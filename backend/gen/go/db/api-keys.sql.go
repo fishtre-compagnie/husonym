@@ -12,7 +12,7 @@ import (
 )
 
 const createAccountApiKey = `-- name: CreateAccountApiKey :one
-INSERT INTO neosync_api.account_api_keys (
+INSERT INTO husonym_api.account_api_keys (
   key_name, key_value, account_id, expires_at, created_by_id, updated_by_id, user_id
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7
@@ -30,7 +30,7 @@ type CreateAccountApiKeyParams struct {
 	UserID      pgtype.UUID
 }
 
-func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (NeosyncApiAccountApiKey, error) {
+func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error) {
 	row := db.QueryRow(ctx, createAccountApiKey,
 		arg.KeyName,
 		arg.KeyValue,
@@ -40,7 +40,7 @@ func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAc
 		arg.UpdatedByID,
 		arg.UserID,
 	)
-	var i NeosyncApiAccountApiKey
+	var i HusonymApiAccountApiKey
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -57,12 +57,12 @@ func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAc
 }
 
 const getAccountApiKeyById = `-- name: GetAccountApiKeyById :one
-SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from neosync_api.account_api_keys WHERE id = $1
+SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from husonym_api.account_api_keys WHERE id = $1
 `
 
-func (q *Queries) GetAccountApiKeyById(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiAccountApiKey, error) {
+func (q *Queries) GetAccountApiKeyById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountApiKey, error) {
 	row := db.QueryRow(ctx, getAccountApiKeyById, id)
-	var i NeosyncApiAccountApiKey
+	var i HusonymApiAccountApiKey
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -79,12 +79,12 @@ func (q *Queries) GetAccountApiKeyById(ctx context.Context, db DBTX, id pgtype.U
 }
 
 const getAccountApiKeyByKeyValue = `-- name: GetAccountApiKeyByKeyValue :one
-SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from neosync_api.account_api_keys WHERE key_value = $1
+SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from husonym_api.account_api_keys WHERE key_value = $1
 `
 
-func (q *Queries) GetAccountApiKeyByKeyValue(ctx context.Context, db DBTX, keyValue string) (NeosyncApiAccountApiKey, error) {
+func (q *Queries) GetAccountApiKeyByKeyValue(ctx context.Context, db DBTX, keyValue string) (HusonymApiAccountApiKey, error) {
 	row := db.QueryRow(ctx, getAccountApiKeyByKeyValue, keyValue)
-	var i NeosyncApiAccountApiKey
+	var i HusonymApiAccountApiKey
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -101,20 +101,20 @@ func (q *Queries) GetAccountApiKeyByKeyValue(ctx context.Context, db DBTX, keyVa
 }
 
 const getAccountApiKeys = `-- name: GetAccountApiKeys :many
-SELECT aak.id, aak.account_id, aak.key_value, aak.created_by_id, aak.updated_by_id, aak.created_at, aak.updated_at, aak.expires_at, aak.key_name, aak.user_id from neosync_api.account_api_keys aak
-INNER JOIN neosync_api.accounts a on a.id = aak.account_id
+SELECT aak.id, aak.account_id, aak.key_value, aak.created_by_id, aak.updated_by_id, aak.created_at, aak.updated_at, aak.expires_at, aak.key_name, aak.user_id from husonym_api.account_api_keys aak
+INNER JOIN husonym_api.accounts a on a.id = aak.account_id
 WHERE a.id = $1
 `
 
-func (q *Queries) GetAccountApiKeys(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiAccountApiKey, error) {
+func (q *Queries) GetAccountApiKeys(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiAccountApiKey, error) {
 	rows, err := db.Query(ctx, getAccountApiKeys, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccountApiKey
+	var items []HusonymApiAccountApiKey
 	for rows.Next() {
-		var i NeosyncApiAccountApiKey
+		var i HusonymApiAccountApiKey
 		if err := rows.Scan(
 			&i.ID,
 			&i.AccountID,
@@ -138,9 +138,9 @@ func (q *Queries) GetAccountApiKeys(ctx context.Context, db DBTX, accountid pgty
 }
 
 const isUserInAccountApiKey = `-- name: IsUserInAccountApiKey :one
-SELECT count(apk.id) from neosync_api.account_api_keys apk 
-INNER JOIN neosync_api.accounts a ON a.id = apk.account_id
-INNER JOIN neosync_api.users u ON u.id = apk.user_id
+SELECT count(apk.id) from husonym_api.account_api_keys apk 
+INNER JOIN husonym_api.accounts a ON a.id = apk.account_id
+INNER JOIN husonym_api.users u ON u.id = apk.user_id
 WHERE a.id = $1 AND u.id = $2
 `
 
@@ -157,7 +157,7 @@ func (q *Queries) IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUser
 }
 
 const removeAccountApiKey = `-- name: RemoveAccountApiKey :exec
-DELETE FROM neosync_api.account_api_keys WHERE id = $1
+DELETE FROM husonym_api.account_api_keys WHERE id = $1
 `
 
 func (q *Queries) RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -166,7 +166,7 @@ func (q *Queries) RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UU
 }
 
 const updateAccountApiKeyValue = `-- name: UpdateAccountApiKeyValue :one
-UPDATE neosync_api.account_api_keys
+UPDATE husonym_api.account_api_keys
 SET key_value = $1,
     expires_at = $2,
     updated_by_id = $3
@@ -181,14 +181,14 @@ type UpdateAccountApiKeyValueParams struct {
 	ID          pgtype.UUID
 }
 
-func (q *Queries) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (NeosyncApiAccountApiKey, error) {
+func (q *Queries) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error) {
 	row := db.QueryRow(ctx, updateAccountApiKeyValue,
 		arg.KeyValue,
 		arg.ExpiresAt,
 		arg.UpdatedByID,
 		arg.ID,
 	)
-	var i NeosyncApiAccountApiKey
+	var i HusonymApiAccountApiKey
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,

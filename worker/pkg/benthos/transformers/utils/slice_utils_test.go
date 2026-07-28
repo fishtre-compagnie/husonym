@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

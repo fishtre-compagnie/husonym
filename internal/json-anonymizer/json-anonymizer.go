@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	transformer_executor "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/itchyny/gojq"
 )
 
@@ -400,7 +400,7 @@ func initTransformerExecutors(
 			transformer_executor.WithTransformPiiTextConfig(
 				anonymizeConfig.analyze,
 				anonymizeConfig.anonymize,
-				newNeosyncOperatorApi(execOpts),
+				newHusonymOperatorApi(execOpts),
 				anonymizeConfig.defaultLanguage,
 			),
 		)
@@ -446,7 +446,7 @@ func initDefaultTransformerExecutors(
 			transformer_executor.WithTransformPiiTextConfig(
 				anonymizeConfig.analyze,
 				anonymizeConfig.anonymize,
-				newNeosyncOperatorApi(execOpts),
+				newHusonymOperatorApi(execOpts),
 				anonymizeConfig.defaultLanguage,
 			),
 		)

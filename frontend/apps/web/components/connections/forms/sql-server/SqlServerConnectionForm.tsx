@@ -2,7 +2,7 @@ import { buildConnectionConfigMssql } from '@/app/(mgmt)/[account]/connections/u
 import { MssqlFormValues } from '@/yup-validations/connections';
 
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
-import { Connection, MssqlConnectionConfig } from '@neosync/sdk';
+import { Connection, MssqlConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { ConnectionFormProps } from '../types';
 import { useConnection } from '../useConnection';

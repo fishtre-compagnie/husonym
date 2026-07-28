@@ -3,11 +3,11 @@ package sqlprovider
 import (
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	neosync_benthos_sql "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/sql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 )
 
 type Provider struct {
@@ -20,7 +20,7 @@ func NewProvider(
 	return &Provider{connector: sqlconnector}
 }
 
-var _ connectionmanager.ConnectionProvider[neosync_benthos_sql.SqlDbtx] = &Provider{}
+var _ connectionmanager.ConnectionProvider[husonym_benthos_sql.SqlDbtx] = &Provider{}
 
 type sqlDbtxWrapper struct {
 	sqldbtx.DBTX
@@ -36,7 +36,7 @@ const defaultConnectionTimeoutSeconds = uint32(10)
 func (p *Provider) GetConnectionClient(
 	cc *mgmtv1alpha1.ConnectionConfig,
 	logger *slog.Logger,
-) (neosync_benthos_sql.SqlDbtx, error) {
+) (husonym_benthos_sql.SqlDbtx, error) {
 	container, err := p.connector.NewDbFromConnectionConfig(
 		cc,
 		logger,
@@ -54,6 +54,6 @@ func (p *Provider) GetConnectionClient(
 	}}, nil
 }
 
-func (p *Provider) CloseClientConnection(client neosync_benthos_sql.SqlDbtx) error {
+func (p *Provider) CloseClientConnection(client husonym_benthos_sql.SqlDbtx) error {
 	return client.Close()
 }

@@ -19,8 +19,8 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 )
 
 const (

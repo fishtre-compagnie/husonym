@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 )

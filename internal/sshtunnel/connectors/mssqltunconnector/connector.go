@@ -5,7 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/internal/sshtunnel"
+	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
 )

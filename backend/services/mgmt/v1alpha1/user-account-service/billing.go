@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	"github.com/Groupe-Hevea/neosync/internal/billing"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/billing"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v81"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -51,13 +51,13 @@ func (s *Service) GetAccountStatus(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	logger = logger.With("accountId", req.Msg.GetAccountId())
-	if !s.cfg.IsNeosyncCloud || s.billingclient == nil {
+	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
 		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{}), nil
 	}
 
@@ -68,7 +68,7 @@ func (s *Service) GetAccountStatus(
 
 	trialStatus := getTrialStatus(account.CreatedAt)
 
-	if account.AccountType == int16(neosyncdb.AccountType_Personal) {
+	if account.AccountType == int16(husonymdb.AccountType_Personal) {
 		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
 			SubscriptionStatus: trialStatus,
 		}), nil
@@ -191,7 +191,7 @@ func (s *Service) IsAccountStatusValid(
 		return nil, err
 	}
 
-	if !s.cfg.IsNeosyncCloud || s.billingclient == nil {
+	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
 		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
 	}
 
@@ -212,7 +212,7 @@ func (s *Service) IsAccountStatusValid(
 		accountStatus = mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_TRIAL_ACTIVE
 		isValid = true
 
-		accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+		accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func (s *Service) GetAccountBillingCheckoutSession(
 	req *connect.Request[mgmtv1alpha1.GetAccountBillingCheckoutSessionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingCheckoutSessionResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	if !s.cfg.IsNeosyncCloud || s.billingclient == nil {
+	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
 		return nil, nucleuserrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented",
@@ -259,7 +259,7 @@ func (s *Service) GetAccountBillingCheckoutSession(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func (s *Service) GetAccountBillingPortalSession(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountBillingPortalSessionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingPortalSessionResponse], error) {
-	if !s.cfg.IsNeosyncCloud || s.billingclient == nil {
+	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
 		return nil, nucleuserrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented",
@@ -337,7 +337,7 @@ func (s *Service) GetAccountBillingPortalSession(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func (s *Service) GetBillingAccounts(
 	if err != nil {
 		return nil, err
 	}
-	if s.cfg.IsNeosyncCloud && !user.IsWorkerApiKey() {
+	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
 		return nil, nucleuserrors.NewUnauthorized(
 			"must provide valid authentication credentials for this endpoint",
 		)
@@ -381,7 +381,7 @@ func (s *Service) GetBillingAccounts(
 
 	accountIdsToFilter := []pgtype.UUID{}
 	for _, accountId := range req.Msg.GetAccountIds() {
-		accountUuid, err := neosyncdb.ToUuid(accountId)
+		accountUuid, err := husonymdb.ToUuid(accountId)
 		if err != nil {
 			return nil, fmt.Errorf("input did not contain entirely valid uuids: %w", err)
 		}
@@ -413,7 +413,7 @@ func (s *Service) SetBillingMeterEvent(
 	if err != nil {
 		return nil, err
 	}
-	if s.cfg.IsNeosyncCloud && !user.IsWorkerApiKey() {
+	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
 		return nil, nucleuserrors.NewUnauthorized(
 			"must provide valid authentication credentials for this endpoint",
 		)
@@ -426,15 +426,15 @@ func (s *Service) SetBillingMeterEvent(
 			"eventName", req.Msg.GetEventName(),
 		)
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	account, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nucleuserrors.NewNotFound("account does not exist")
 	}
 	if !account.StripeCustomerID.Valid {

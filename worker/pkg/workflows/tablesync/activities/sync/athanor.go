@@ -15,11 +15,11 @@ import (
 	"os"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/runner"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/sqlio"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	"github.com/google/uuid"
 )
 

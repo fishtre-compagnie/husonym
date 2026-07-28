@@ -1,6 +1,6 @@
 ---
-title: Using Neosync to sync incremental data
-description: Learn how to use Neosync to sync incremental batches of data instead of a full refresh
+title: Using Husonym to sync incremental data
+description: Learn how to use Husonym to sync incremental batches of data instead of a full refresh
 id: incremental-data-sync
 hide_title: false
 slug: /guides/incremental-data-sync
@@ -13,7 +13,7 @@ Data syncs generally have two modes:
 1. Full refresh
 2. Incremental additions
 
-In this guide, we'll take a look at how to accomplish both in Neosync.
+In this guide, we'll take a look at how to accomplish both in Husonym.
 
 ## Destination Options
 
@@ -35,7 +35,7 @@ Here is a matrix showing support for each destination option under the **Option*
 
 ## Full Refresh
 
-A full refresh means that you're sync'ing all of your data every single time (less any subsets) when you run a sync. This is the default mode that Neosync runs on.
+A full refresh means that you're sync'ing all of your data every single time (less any subsets) when you run a sync. This is the default mode that Husonym runs on.
 
 Depending on how much data you have, this may not be feasible. Especially if you're syncing to a smaller database or local environment.
 
@@ -51,7 +51,7 @@ Now whenever you run a sync, the sync will truncate all of the data in the desti
 
 ## Incremental Additions
 
-Incremental additions are great ways to get a smaller, more manageable and potentially more refined data set. There are two ways to accomplish incremental data syncs in Neosync:
+Incremental additions are great ways to get a smaller, more manageable and potentially more refined data set. There are two ways to accomplish incremental data syncs in Husonym:
 
 1. Using the On Conflict Do Nothing destination option
 2. Subsetting
@@ -60,7 +60,7 @@ Let's go through both.
 
 ### Using the On Conflict Do Nothing destination option
 
-The On Conflict Do Nothing destination option tells Neosync to skip inserting a record if there is a conflict on `INSERT`. The most common reason there is a conflict is because the record already exists given a particular constraint like a `UNIQUE` or `PRIMARY KEY` constraint.
+The On Conflict Do Nothing destination option tells Husonym to skip inserting a record if there is a conflict on `INSERT`. The most common reason there is a conflict is because the record already exists given a particular constraint like a `UNIQUE` or `PRIMARY KEY` constraint.
 
 This option can be used to do incremental data additions because on every record conflict it will skip trying to insert the record and move onto the next one. While this might be inefficiently since it has to try to insert every record once, it does result in an incremental data addition since the new records won't conflict with existing records.
 
@@ -72,4 +72,4 @@ This is generally more efficient and more flexible way to do incremental data re
 
 ## Conclusion
 
-Full refreshes and incremental data syncs are two ways to sync data using Neosync. There are plenty of valid use-cases for both and depending on your requirements, one may make more sense than the other. If you have other requirements or questions, please don't hesitate to submit a feature request or talk to us in Discord.
+Full refreshes and incremental data syncs are two ways to sync data using Husonym. There are plenty of valid use-cases for both and depending on your requirements, one may make more sense than the other. If you have other requirements or questions, please don't hesitate to submit a feature request or talk to us in Discord.

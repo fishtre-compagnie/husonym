@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  summary: Husonym API
+  description: Husonym API
+  version: 0.5
+  termsOfService: "https://www.husonym.com/terms-of-service"
+  contact:
+    name: Husonym Support
+    email: support@husonym.com
+  license:
+    name: MIT
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
+externalDocs:
+  description: API and SDK Documentation
+  url: https://docs.husonym.com/api
+servers:
+  - url: https://husonym-api.svcs.husonym.com
+    description: Husonym Cloud
+  - url: http://localhost:{port}
+    description: Development
+    variables:
+      port:
+        default: 8080
+        description: The port to use for the development server
+components:
+  securitySchemas:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API Key or JWT are accepted as valid access tokens. However, authentication is required for Husonym Cloud, it may not be required for local or self-hosted deployments.
+security:
+  - BearerAuth: []

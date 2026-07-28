@@ -5,7 +5,7 @@ import {
   AccountStatus,
   IsAccountStatusValidResponse,
   UserAccountService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ArrowUpIcon, ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { IoAlertCircleOutline } from 'react-icons/io5';
@@ -35,8 +35,8 @@ export default function Upgrade(props: UpgradeProps): ReactElement | null {
   const { data: systemInfo } = useQuery(
     UserAccountService.method.getSystemInformation
   );
-  // always surface the upgrade button for non-neosynccloud users
-  if (!systemInfo?.license?.isValid && !systemInfo?.license?.isNeosyncCloud) {
+  // always surface the upgrade button for non-husonymcloud users
+  if (!systemInfo?.license?.isValid && !systemInfo?.license?.isHusonymCloud) {
     return <UpgradeButton href={calendlyLink} target="_blank" />;
   }
 
@@ -85,7 +85,7 @@ function UpgradeInfoDialog(props: UpgradeInfoDialogProps): ReactElement {
             Upgrade Required
           </DialogTitle>
           <DialogDescription className="tracking-tight">
-            Upgrade to a Team or Enterprise plan to continue using Neosync.
+            Upgrade to a Team or Enterprise plan to continue using Husonym.
           </DialogDescription>
         </DialogHeader>
         {!!accountStatus && !!reason && (

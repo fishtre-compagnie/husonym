@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	schema_mssql "github.com/Groupe-Hevea/neosync/internal/schema-manager/mssql"
-	schema_mysql "github.com/Groupe-Hevea/neosync/internal/schema-manager/mysql"
-	schema_notsupported "github.com/Groupe-Hevea/neosync/internal/schema-manager/not-supported"
-	schema_postgres "github.com/Groupe-Hevea/neosync/internal/schema-manager/postgres"
-	schema_shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	schema_mssql "github.com/fishtre-compagnie/husonym/internal/schema-manager/mssql"
+	schema_mysql "github.com/fishtre-compagnie/husonym/internal/schema-manager/mysql"
+	schema_notsupported "github.com/fishtre-compagnie/husonym/internal/schema-manager/not-supported"
+	schema_postgres "github.com/fishtre-compagnie/husonym/internal/schema-manager/postgres"
+	schema_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 
 type SchemaManagerService interface {

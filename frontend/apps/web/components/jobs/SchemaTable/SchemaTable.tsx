@@ -24,7 +24,7 @@ import {
   GetConnectionSchemaResponse,
   JobMapping,
   ValidateJobMappingsResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { ReactElement, useMemo } from 'react';

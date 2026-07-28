@@ -1,4 +1,4 @@
-package neosync_benthos_sql
+package husonym_benthos_sql
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	querybuilder "github.com/Groupe-Hevea/neosync/worker/pkg/query-builder"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -285,7 +285,7 @@ func (s *pooledInsertOutput) WriteBatch(ctx context.Context, batch service.Messa
 		return fmt.Errorf("failed to build insert query: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, insertQuery, args...); err != nil {
-		shouldRetry := neosync_benthos.ShouldRetryInsert(err.Error(), s.skipForeignKeyViolations)
+		shouldRetry := husonym_benthos.ShouldRetryInsert(err.Error(), s.skipForeignKeyViolations)
 		if !shouldRetry {
 			return fmt.Errorf("failed to execute insert query: %w", err)
 		}
@@ -327,9 +327,9 @@ func retryInsertRowByRow(
 		}
 		_, err = db.ExecContext(ctx, insertQuery, args...)
 		if err != nil {
-			if !neosync_benthos.ShouldRetryInsert(err.Error(), skipForeignKeyViolations) {
+			if !husonym_benthos.ShouldRetryInsert(err.Error(), skipForeignKeyViolations) {
 				return fmt.Errorf("failed to retry insert query: %w", err)
-			} else if neosync_benthos.IsForeignKeyViolationError(err.Error()) {
+			} else if husonym_benthos.IsForeignKeyViolationError(err.Error()) {
 				fkErrorCount++
 			} else {
 				otherErrorCount++
@@ -381,7 +381,7 @@ func (s *pooledInsertOutput) postgresUpsert(
 		if err != nil {
 			// skip foreign key violations
 			if s.skipForeignKeyViolations &&
-				neosync_benthos.IsForeignKeyViolationError(err.Error()) {
+				husonym_benthos.IsForeignKeyViolationError(err.Error()) {
 				continue
 			}
 			if isPostgresUniqueViolation(err) {

@@ -1,8 +1,8 @@
 import { create } from '@bufbuild/protobuf';
 import {
-  Date as NeosyncDate,
-  DateSchema as NeosyncDateSchema,
-} from '@neosync/sdk';
+  Date as HusonymDate,
+  DateSchema as HusonymDateSchema,
+} from '@husonym/sdk';
 import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 
 export type MetricIdentifierType = 'accountId' | 'jobId' | 'runId';
@@ -26,8 +26,8 @@ export function shortNumberFormatter(
 
 export type UsagePeriod = 'current' | 'last-month';
 
-export function dateToNeoDate(date: Date): NeosyncDate {
-  return create(NeosyncDateSchema, {
+export function dateToNeoDate(date: Date): HusonymDate {
+  return create(HusonymDateSchema, {
     day: date.getDate(),
     month: date.getMonth() + 1,
     year: date.getFullYear(),

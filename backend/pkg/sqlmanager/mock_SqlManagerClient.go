@@ -5,7 +5,7 @@ package sqlmanager
 import (
 	context "context"
 
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 
 	mock "github.com/stretchr/testify/mock"
 

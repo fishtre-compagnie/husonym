@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_mssql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mssql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	tabledependency "github.com/Groupe-Hevea/neosync/backend/pkg/table-dependency"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	ee_sqlmanager_mssql "github.com/Groupe-Hevea/neosync/internal/ee/mssql-manager"
-	shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	tabledependency "github.com/fishtre-compagnie/husonym/backend/pkg/table-dependency"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	ee_sqlmanager_mssql "github.com/fishtre-compagnie/husonym/internal/ee/mssql-manager"
+	shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 
 type MssqlSchemaManager struct {
@@ -71,7 +71,7 @@ func (d *MssqlSchemaManager) InitializeSchema(
 	}
 	if !d.eelicense.IsValid() {
 		return nil, fmt.Errorf(
-			"invalid or non-existent Neosync License. SQL Server schema init requires valid Enterprise license",
+			"invalid or non-existent Husonym License. SQL Server schema init requires valid Enterprise license",
 		)
 	}
 	tables := []*sqlmanager_shared.SchemaTable{}

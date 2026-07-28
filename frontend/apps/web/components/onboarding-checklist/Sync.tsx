@@ -17,7 +17,7 @@ export default function Sync(props: Props): ReactElement {
       <h1 className="font-semibold text-2xl">Sync</h1>
       <p className="text-sm px-10">
         Run your job on a set schedule or run it ad-hoc whenever you&apos;d
-        like. Now that you have an idea of Neosync works, click{' '}
+        like. Now that you have an idea of Husonym works, click{' '}
         <span className="font-semibold">Next</span> to create a Job.
       </p>
       <div className=" flex flex-col gap-8">

@@ -2,7 +2,7 @@ import { buildConnectionConfigPostgres } from '@/app/(mgmt)/[account]/connection
 import { PostgresFormValues } from '@/yup-validations/connections';
 
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
-import { Connection, PostgresConnectionConfig } from '@neosync/sdk';
+import { Connection, PostgresConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { ConnectionFormProps } from '../types';
 import { useConnection } from '../useConnection';

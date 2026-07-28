@@ -1,5 +1,5 @@
 version: 2
-project_name: neosync
+project_name: husonym
 before:
   hooks:
     - go mod tidy # https://goreleaser.com/customization/builds/#go-modules
@@ -16,9 +16,9 @@ builds:
       - arm64
 
     ldflags:
-      - -s -w -X 'github.com/Groupe-Hevea/neosync/cli/internal/version.buildDate={{.Date}}' -X 'github.com/Groupe-Hevea/neosync/cli/internal/version.gitCommit={{.Commit}}' -X 'github.com/Groupe-Hevea/neosync/cli/internal/version.gitVersion={{.Version}}' -X 'github.com/Groupe-Hevea/neosync/cli/internal/auth.defaultBaseUrl={{ .Env.NEOSYNC_BASE_URL }}'
+      - -s -w -X 'github.com/fishtre-compagnie/husonym/cli/internal/version.buildDate={{.Date}}' -X 'github.com/fishtre-compagnie/husonym/cli/internal/version.gitCommit={{.Commit}}' -X 'github.com/fishtre-compagnie/husonym/cli/internal/version.gitVersion={{.Version}}' -X 'github.com/fishtre-compagnie/husonym/cli/internal/auth.defaultBaseUrl={{ .Env.HUSONYM_BASE_URL }}'
 
-    main: ./cmd/neosync
+    main: ./cmd/husonym
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
@@ -50,11 +50,11 @@ changelog:
 # On ne gère pas homebrew ni AUR ni le container pour le moment
 # brews:
 #   - repository:
-#       owner: Groupe-Hevea
+#       owner: fishtre-compagnie
 #       name: homebrew-tap
 #     directory: Formula
-#     homepage: https://www.neosync.dev
-#     description: CLI for interfacing with Neosync
+#     homepage: https://www.husonym.com
+#     description: CLI for interfacing with Husonym
 #     license: MIT
 # archives:
 #   - id: default
@@ -63,69 +63,69 @@ changelog:
 #         format: zip
 
 # aurs:
-#   - homepage: https://www.neosync.dev
-#     description: CLI for interfacing with Neosync
+#   - homepage: https://www.husonym.com
+#     description: CLI for interfacing with Husonym
 #     maintainers:
-#       - Devops <devops@Groupe-Hevea.com>
+#       - Devops <devops@fishtre-compagnie.com>
 #     license: MIT
-#     git_url: ssh://aur@aur.archlinux.org/neosync-bin.git
+#     git_url: ssh://aur@aur.archlinux.org/husonym-bin.git
 #     package: |-
 #       # bin
-#       install -Dm755 "./neosync" "${pkgdir}/usr/bin/neosync"
+#       install -Dm755 "./husonym" "${pkgdir}/usr/bin/husonym"
 
 #       # license
-#       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/neosync/LICENSE"
+#       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/husonym/LICENSE"
 #     commit_author:
 #       name: nucleusbot
-#       email: devops@Groupe-Hevea.com
+#       email: devops@fishtre-compagnie.com
 #     private_key: "{{ .Env.AUR_KEY }}"
 
 # dockers:
 #   - image_templates:
-#       - "ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64"
+#       - "ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64"
 #     use: buildx
 #     dockerfile: Dockerfile.goreleaser
 #     build_flag_templates:
 #       - --platform=linux/amd64
 #       - --label=org.opencontainers.image.title={{ .ProjectName }}
 #       - --label=org.opencontainers.image.description={{ .ProjectName }}
-#       - --label=org.opencontainers.image.url=https://github.com/Groupe-Hevea/neosync/cli
-#       - --label=org.opencontainers.image.source=https://github.com/Groupe-Hevea/neosync/cli
+#       - --label=org.opencontainers.image.url=https://github.com/fishtre-compagnie/husonym/cli
+#       - --label=org.opencontainers.image.source=https://github.com/fishtre-compagnie/husonym/cli
 #       - --label=org.opencontainers.image.version={{ .Version }}
 #       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
 #       - --label=org.opencontainers.image.revision={{ .FullCommit }}
 #   - image_templates:
-#       - "ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64"
+#       - "ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64"
 #     use: buildx
 #     dockerfile: Dockerfile.goreleaser
 #     build_flag_templates:
 #       - --platform=linux/arm64
 #       - --label=org.opencontainers.image.title={{ .ProjectName }}
 #       - --label=org.opencontainers.image.description={{ .ProjectName }}
-#       - --label=org.opencontainers.image.url=https://github.com/Groupe-Hevea/neosync/cli
-#       - --label=org.opencontainers.image.source=https://github.com/Groupe-Hevea/neosync/cli
+#       - --label=org.opencontainers.image.url=https://github.com/fishtre-compagnie/husonym/cli
+#       - --label=org.opencontainers.image.source=https://github.com/fishtre-compagnie/husonym/cli
 #       - --label=org.opencontainers.image.version={{ .Version }}
 #       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
 #       - --label=org.opencontainers.image.revision={{ .FullCommit }}
 
 # docker_manifests:
-#   - name_template: ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}
+#   - name_template: ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}
 #     image_templates:
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64
-#   - name_template: ghcr.io/Groupe-Hevea/neosync/cli:latest
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64
+#   - name_template: ghcr.io/fishtre-compagnie/husonym/cli:latest
 #     image_templates:
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64
-#   - name_template: ghcr.io/Groupe-Hevea/neosync/cli:{{ .Tag }}
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64
+#   - name_template: ghcr.io/fishtre-compagnie/husonym/cli:{{ .Tag }}
 #     image_templates:
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64
-#   - name_template: ghcr.io/Groupe-Hevea/neosync/cli:v{{ .Major }}
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64
+#   - name_template: ghcr.io/fishtre-compagnie/husonym/cli:v{{ .Major }}
 #     image_templates:
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64
-#   - name_template: ghcr.io/Groupe-Hevea/neosync/cli:v{{ .Major }}.{{ .Minor }}
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64
+#   - name_template: ghcr.io/fishtre-compagnie/husonym/cli:v{{ .Major }}.{{ .Minor }}
 #     image_templates:
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-amd64
-#       - ghcr.io/Groupe-Hevea/neosync/cli:{{ .Version }}-arm64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-amd64
+#       - ghcr.io/fishtre-compagnie/husonym/cli:{{ .Version }}-arm64

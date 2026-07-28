@@ -1,21 +1,21 @@
 openapi: 3.1.0
 info:
-  summary: Neosync API
+  summary: Husonym API
   version: "0.5"
-  termsOfService: "https://www.neosync.dev/terms-of-service"
+  termsOfService: "https://www.husonym.com/terms-of-service"
   contact:
-    name: Neosync Support
-    email: support@neosync.dev
+    name: Husonym Support
+    email: support@husonym.com
   license:
     name: MIT
-    url: https://github.com/Groupe-Hevea/neosync/blob/main/LICENSE.md
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
   title: mgmt.v1alpha1
 externalDocs:
   description: API and SDK Documentation
-  url: https://docs.neosync.allopneus.com/api
+  url: https://docs.husonym.com/api
 servers:
-  - url: https://neosync-api.svcs.neosync.dev
-    description: Neosync Cloud
+  - url: https://husonym-api.svcs.husonym.com
+    description: Husonym Cloud
   - url: http://localhost:{port}
     description: Development
     variables:
@@ -950,7 +950,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.PiiAnonymizer.Transform'
           title: transform
-          description: Configures the anonymizer to use a Neosync configured transformer
+          description: Configures the anonymizer to use a Husonym configured transformer
       title: PiiAnonymizer
       additionalProperties: false
     mgmt.v1alpha1.PiiAnonymizer.Hash:
@@ -1113,7 +1113,7 @@ components:
       title: SystemTransformer
       additionalProperties: false
       description: |-
-        A system transformer is a transformer that is built into the Neosync platform.
+        A system transformer is a transformer that is built into the Husonym platform.
          It can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.
     mgmt.v1alpha1.TransformCharacterScramble:
       type: object
@@ -1485,7 +1485,7 @@ components:
              If not provided, the default_anonymizer will be used.
       title: TransformPiiText
       additionalProperties: false
-      description: NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+      description: HusonymCloud/Enterprise only transformer for anonymizing PII Text
     mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry:
       type: object
       properties:
@@ -2103,7 +2103,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformPiiText'
           title: transform_pii_text_config
-          description: NeosyncCloud/Enterprise only transformer for anonymizing PII Text
+          description: HusonymCloud/Enterprise only transformer for anonymizing PII Text
         generateBusinessNameConfig:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.GenerateBusinessName'

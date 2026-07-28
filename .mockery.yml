@@ -10,31 +10,31 @@ resolve-type-alias: False
 issue-845-fix: True
 
 packages:
-  github.com/Groupe-Hevea/neosync/backend/internal/auth/jwt:
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt:
     interfaces:
       JwtValidator:
-  github.com/Groupe-Hevea/neosync/backend/internal/auth/client:
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/client:
     interfaces:
       Interface:
-  github.com/Groupe-Hevea/neosync/internal/authmgmt:
+  github.com/fishtre-compagnie/husonym/internal/authmgmt:
     interfaces:
       Interface:
-  github.com/Groupe-Hevea/neosync/backend/internal/auth/clientcred_token_provider:
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/clientcred_token_provider:
     interfaces:
       tokenProvider:
-  github.com/Groupe-Hevea/neosync/backend/internal/auth/authmw:
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/authmw:
     interfaces:
       AuthClient:
-  github.com/Groupe-Hevea/neosync/internal/neosyncdb:
+  github.com/fishtre-compagnie/husonym/internal/husonymdb:
     # config:
     interfaces:
       DBTX:
-  github.com/Groupe-Hevea/neosync/backend/gen/go/db:
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db:
     # config:
     interfaces:
       Querier:
       DBTX:
-  github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect:
+  github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect:
     # config:
     interfaces:
       UserAccountServiceClient:
@@ -44,38 +44,38 @@ packages:
       AuthServiceClient:
       TransformersServiceClient:
       AccountHookServiceClient:
-  github.com/Groupe-Hevea/neosync/internal/temporal/clientmanager:
+  github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager:
     interfaces:
       DB:
       Interface:
       ConfigProvider:
-  github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql:
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql:
     # config:
     interfaces:
       Querier:
       DBTX:
-  github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql:
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql:
     # config:
     interfaces:
       Querier:
       DBTX:
-  github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier:
+  github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier:
     # config:
     interfaces:
       Querier:
-  github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect:
+  github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect:
     interfaces:
       SqlConnector:
       SqlDbContainer:
-  github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager:
+  github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager:
     interfaces:
       SqlDatabase:
       SqlManagerClient:
-  github.com/Groupe-Hevea/neosync/internal/aws:
+  github.com/fishtre-compagnie/husonym/internal/aws:
     interfaces:
-      NeosyncAwsManagerClient:
+      HusonymAwsManagerClient:
       dynamoDBAPIV2:
-  github.com/Groupe-Hevea/neosync/internal/benthos-stream:
+  github.com/fishtre-compagnie/husonym/internal/benthos-stream:
     interfaces:
       BenthosStreamClient:
       BenthosStreamManagerClient:
@@ -86,24 +86,24 @@ packages:
       outpkg: promapiv1mock
     interfaces:
       API:
-  github.com/Groupe-Hevea/neosync/backend/internal/loki:
+  github.com/fishtre-compagnie/husonym/backend/internal/loki:
     interfaces:
       LokiHttpClient:
-  github.com/Groupe-Hevea/neosync/backend/pkg/mongoconnect:
+  github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect:
     interfaces:
       Interface:
       DbContainer:
-  github.com/Groupe-Hevea/neosync/internal/gcp:
+  github.com/fishtre-compagnie/husonym/internal/gcp:
     interfaces:
       ManagerInterface:
       ClientInterface:
-  github.com/Groupe-Hevea/neosync/internal/connection-manager:
+  github.com/fishtre-compagnie/husonym/internal/connection-manager:
     interfaces:
       ConnectionProvider:
-  github.com/Groupe-Hevea/neosync/worker/pkg/benthos/dynamodb:
+  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/dynamodb:
     interfaces:
       dynamoDBAPIV2:
-  github.com/Groupe-Hevea/neosync/internal/billing:
+  github.com/fishtre-compagnie/husonym/internal/billing:
     interfaces:
       Interface:
   github.com/jackc/pgx/v5:
@@ -113,41 +113,41 @@ packages:
       outpkg: pgxmock
     interfaces:
       Tx:
-  github.com/Groupe-Hevea/neosync/internal/ee/presidio:
+  github.com/fishtre-compagnie/husonym/internal/ee/presidio:
     interfaces:
       AnalyzeInterface:
       AnonymizeInterface:
       EntityInterface:
-  github.com/Groupe-Hevea/neosync/backend/internal/userdata:
+  github.com/fishtre-compagnie/husonym/backend/internal/userdata:
     interfaces:
       Interface:
       EntityEnforcer:
-  github.com/Groupe-Hevea/neosync/internal/ee/transformers/functions:
+  github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
     interfaces:
-      NeosyncOperatorApi:
-  github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor:
+      HusonymOperatorApi:
+  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor:
     interfaces:
       UserDefinedTransformerResolver:
-  github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx:
+  github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx:
     interfaces:
       DBTX:
-  github.com/Groupe-Hevea/neosync/internal/encrypt/sym:
+  github.com/fishtre-compagnie/husonym/internal/encrypt/sym:
     interfaces:
       Interface:
-  github.com/Groupe-Hevea/neosync/internal/ee/slack:
+  github.com/fishtre-compagnie/husonym/internal/ee/slack:
     interfaces:
       Interface:
-  github.com/Groupe-Hevea/neosync/internal/connectiondata:
+  github.com/fishtre-compagnie/husonym/internal/connectiondata:
     interfaces:
       ConnectionDataBuilder:
       ConnectionDataService:
       SampleDataStream:
-  github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
+  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
     interfaces:
       OpenAiCompletionsClient:
-  github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/shared:
+  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared:
     interfaces:
       BlockAllocator:
-  github.com/Groupe-Hevea/neosync/worker/pkg/rng:
+  github.com/fishtre-compagnie/husonym/worker/pkg/rng:
     interfaces:
       Rand:

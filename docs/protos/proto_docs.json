@@ -1221,7 +1221,7 @@
             },
             {
               "name": "GetSlackConnectionUrl",
-              "description": "Retrieves the Slack connection url that allows a user to connect their Slack workspace to Neosync.",
+              "description": "Retrieves the Slack connection url that allows a user to connect their Slack workspace to Husonym.",
               "requestType": "GetSlackConnectionUrlRequest",
               "requestLongType": "GetSlackConnectionUrlRequest",
               "requestFullType": "mgmt.v1alpha1.GetSlackConnectionUrlRequest",
@@ -1738,7 +1738,7 @@
             {
               "name": "TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT",
               "number": "47",
-              "description": "NeosyncCloud/Enterprise only transformer for anonymizing PII Text"
+              "description": "HusonymCloud/Enterprise only transformer for anonymizing PII Text"
             },
             {
               "name": "TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME",
@@ -2873,7 +2873,7 @@
             },
             {
               "name": "transform",
-              "description": "Configures the anonymizer to use a Neosync configured transformer",
+              "description": "Configures the anonymizer to use a Husonym configured transformer",
               "label": "",
               "type": "Transform",
               "longType": "PiiAnonymizer.Transform",
@@ -3056,7 +3056,7 @@
           "name": "SystemTransformer",
           "longName": "SystemTransformer",
           "fullName": "mgmt.v1alpha1.SystemTransformer",
-          "description": "A system transformer is a transformer that is built into the Neosync platform.\nIt can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.",
+          "description": "A system transformer is a transformer that is built into the Husonym platform.\nIt can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.",
           "hasExtensions": false,
           "hasFields": true,
           "hasOneofs": false,
@@ -3491,7 +3491,7 @@
           "name": "TransformPiiText",
           "longName": "TransformPiiText",
           "fullName": "mgmt.v1alpha1.TransformPiiText",
-          "description": "NeosyncCloud/Enterprise only transformer for anonymizing PII Text",
+          "description": "HusonymCloud/Enterprise only transformer for anonymizing PII Text",
           "hasExtensions": false,
           "hasFields": true,
           "hasOneofs": true,
@@ -4193,7 +4193,7 @@
             },
             {
               "name": "transform_pii_text_config",
-              "description": "NeosyncCloud/Enterprise only transformer for anonymizing PII Text",
+              "description": "HusonymCloud/Enterprise only transformer for anonymizing PII Text",
               "label": "",
               "type": "TransformPiiText",
               "longType": "TransformPiiText",
@@ -5932,11 +5932,11 @@
           "name": "AuthService",
           "longName": "AuthService",
           "fullName": "mgmt.v1alpha1.AuthService",
-          "description": "Service that handles generic Authentication for Neosync\nToday this is mostly used by the CLI to receive authentication information",
+          "description": "Service that handles generic Authentication for Husonym\nToday this is mostly used by the CLI to receive authentication information",
           "methods": [
             {
               "name": "LoginCli",
-              "description": "Used by the CLI to login to Neosync with OAuth.",
+              "description": "Used by the CLI to login to Husonym with OAuth.",
               "requestType": "LoginCliRequest",
               "requestLongType": "LoginCliRequest",
               "requestFullType": "mgmt.v1alpha1.LoginCliRequest",
@@ -5948,7 +5948,7 @@
             },
             {
               "name": "RefreshCli",
-              "description": "Used by the CLI to refresh an expired Neosync accesss token.\nThis should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.",
+              "description": "Used by the CLI to refresh an expired Husonym accesss token.\nThis should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.",
               "requestType": "RefreshCliRequest",
               "requestLongType": "RefreshCliRequest",
               "requestFullType": "mgmt.v1alpha1.RefreshCliRequest",
@@ -6703,7 +6703,7 @@
           "name": "ConnectionConfig",
           "longName": "ConnectionConfig",
           "fullName": "mgmt.v1alpha1.ConnectionConfig",
-          "description": "Configuration for all of the supported Neosync connection types",
+          "description": "Configuration for all of the supported Husonym connection types",
           "hasExtensions": false,
           "hasFields": true,
           "hasOneofs": true,
@@ -8084,7 +8084,7 @@
           "name": "ConnectionService",
           "longName": "ConnectionService",
           "fullName": "mgmt.v1alpha1.ConnectionService",
-          "description": "Service for managing datasource connections.\nThis is a primary data model in Neosync and is used in reference when hooking up Jobs to synchronize and generate data.",
+          "description": "Service for managing datasource connections.\nThis is a primary data model in Husonym and is used in reference when hooking up Jobs to synchronize and generate data.",
           "methods": [
             {
               "name": "GetConnections",
@@ -8873,7 +8873,7 @@
             },
             {
               "name": "user_prompt",
-              "description": "The prompt that will be used to further refine the data generation. This is appended to the prompt that Neosync generates that includes schema information.",
+              "description": "The prompt that will be used to further refine the data generation. This is appended to the prompt that Husonym generates that includes schema information.",
               "label": "optional",
               "type": "string",
               "longType": "string",
@@ -10737,7 +10737,7 @@
           "fields": [
             {
               "name": "ai_connection_id",
-              "description": "The connection id that corresponds with an AI-based Neosync connection",
+              "description": "The connection id that corresponds with an AI-based Husonym connection",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -13955,7 +13955,7 @@
             },
             {
               "name": "connection_id",
-              "description": "Unique identifier of the Neosync connection to run this hook for. Must be a connection id that is present in the job.",
+              "description": "Unique identifier of the Husonym connection to run this hook for. Must be a connection id that is present in the job.",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -15237,7 +15237,7 @@
             },
             {
               "name": "column_removal_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.",
               "label": "",
               "type": "ColumnRemovalStrategy",
               "longType": "MssqlSourceConnectionOptions.ColumnRemovalStrategy",
@@ -15249,7 +15249,7 @@
             },
             {
               "name": "new_column_addition_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.",
               "label": "",
               "type": "NewColumnAdditionStrategy",
               "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy",
@@ -15714,7 +15714,7 @@
             },
             {
               "name": "column_removal_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.",
               "label": "",
               "type": "ColumnRemovalStrategy",
               "longType": "MysqlSourceConnectionOptions.ColumnRemovalStrategy",
@@ -15726,7 +15726,7 @@
             },
             {
               "name": "new_column_addition_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.",
               "label": "",
               "type": "NewColumnAdditionStrategy",
               "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy",
@@ -16574,7 +16574,7 @@
             },
             {
               "name": "new_column_addition_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.",
               "label": "",
               "type": "NewColumnAdditionStrategy",
               "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy",
@@ -16586,7 +16586,7 @@
             },
             {
               "name": "column_removal_strategy",
-              "description": "Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.",
+              "description": "Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.",
               "label": "",
               "type": "ColumnRemovalStrategy",
               "longType": "PostgresSourceConnectionOptions.ColumnRemovalStrategy",
@@ -16905,7 +16905,7 @@
           "fields": [
             {
               "name": "job_run_id",
-              "description": "The Neosync Run ID",
+              "description": "The Husonym Run ID",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -16929,7 +16929,7 @@
             },
             {
               "name": "account_id",
-              "description": "The Neosync Account ID",
+              "description": "The Husonym Account ID",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -19671,7 +19671,7 @@
             },
             {
               "name": "checkout_session_url",
-              "description": "If NeosyncCloud, will respond with a checkout session url so they can setup billing",
+              "description": "If HusonymCloud, will respond with a checkout session url so they can setup billing",
               "label": "optional",
               "type": "string",
               "longType": "string",
@@ -19743,7 +19743,7 @@
             },
             {
               "name": "checkout_session_url",
-              "description": "If NeosyncCloud, will respond with a checkout session url so they can setup billing",
+              "description": "If HusonymCloud, will respond with a checkout session url so they can setup billing",
               "label": "optional",
               "type": "string",
               "longType": "string",
@@ -20114,7 +20114,7 @@
             },
             {
               "name": "compiler",
-              "description": "The Go compiler flag that was used to build this version of Neosync",
+              "description": "The Go compiler flag that was used to build this version of Husonym",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -20126,7 +20126,7 @@
             },
             {
               "name": "platform",
-              "description": "The Go platform flag that was used to build this version of Neosync",
+              "description": "The Go platform flag that was used to build this version of Husonym",
               "label": "",
               "type": "string",
               "longType": "string",
@@ -21173,8 +21173,8 @@
               "defaultValue": ""
             },
             {
-              "name": "is_neosync_cloud",
-              "description": "Whether or not the license is for NeosyncCloud",
+              "name": "is_husonym_cloud",
+              "description": "Whether or not the license is for HusonymCloud",
               "label": "",
               "type": "bool",
               "longType": "bool",

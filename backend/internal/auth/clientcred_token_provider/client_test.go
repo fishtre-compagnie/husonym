@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	auth_client "github.com/Groupe-Hevea/neosync/backend/internal/auth/client"
+	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sync/errgroup"

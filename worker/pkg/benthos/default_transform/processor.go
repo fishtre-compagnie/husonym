@@ -1,4 +1,4 @@
-package neosync_benthos_defaulttransform
+package husonym_benthos_defaulttransform
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	transformer_executor "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -31,7 +31,7 @@ func defaultTransformerProcessorConfig() *service.ConfigSpec {
 
 func ReisterDefaultTransformerProcessor(env *service.Environment) error {
 	return env.RegisterBatchProcessor(
-		"neosync_default_transformer",
+		"husonym_default_transformer",
 		defaultTransformerProcessorConfig(),
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchProcessor, error) {
 			proc, err := newDefaultTransformerProcessor(conf, mgr)

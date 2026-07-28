@@ -1,27 +1,27 @@
 ---
 title: List
-description: Learn how to list Neosync accounts with the neosync accounts list command.
+description: Learn how to list Husonym accounts with the husonym accounts list command.
 id: list
 hide_title: false
 slug: /cli/accounts/list
 ---
 
-# neosync list
+# husonym list
 
 ## Overview
 
-Learn how to list Neosync accounts with the neosync accounts list command.
+Learn how to list Husonym accounts with the husonym accounts list command.
 
-The `neosync accounts list` command is used to list the personal and team accounts for a user or api key.
+The `husonym accounts list` command is used to list the personal and team accounts for a user or api key.
 
 ## Usage
 
 ```bash
-neosync accounts list
+husonym accounts list
 ```
 
 ### Aliases
 
 ```bash
-neosync accounts ls
+husonym accounts ls
 ```

@@ -14,7 +14,7 @@ import {
   MysqlConnectionConfig,
   OpenAiConnectionConfig,
   PostgresConnectionConfig,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import {
   getSingleOrUndefined,
   JobRunsAutoRefreshInterval,

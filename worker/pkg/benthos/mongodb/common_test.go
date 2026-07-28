@@ -1,10 +1,10 @@
-package neosync_benthos_mongodb
+package husonym_benthos_mongodb
 
 import (
 	"math/big"
 	"testing"
 
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,7 +17,7 @@ func Test_MarshalToBSONValue(t *testing.T) {
 		name        string
 		key         string
 		value       any
-		keyTypeMap  map[string]neosync_types.KeyType
+		keyTypeMap  map[string]husonym_types.KeyType
 		expected    any
 		expectError bool
 	}{
@@ -25,7 +25,7 @@ func Test_MarshalToBSONValue(t *testing.T) {
 			name:        "String to ObjectID",
 			key:         "id",
 			value:       "5f63e6f0d51b0d0001c1b0a1",
-			keyTypeMap:  map[string]neosync_types.KeyType{"id": neosync_types.ObjectID},
+			keyTypeMap:  map[string]husonym_types.KeyType{"id": husonym_types.ObjectID},
 			expected:    objId,
 			expectError: false,
 		},
@@ -33,7 +33,7 @@ func Test_MarshalToBSONValue(t *testing.T) {
 			name:        "Float64 to Decimal128",
 			key:         "amount",
 			value:       getBigFloat(dec128.String()),
-			keyTypeMap:  map[string]neosync_types.KeyType{"amount": neosync_types.Decimal128},
+			keyTypeMap:  map[string]husonym_types.KeyType{"amount": husonym_types.Decimal128},
 			expected:    dec128,
 			expectError: false,
 		},
@@ -41,7 +41,7 @@ func Test_MarshalToBSONValue(t *testing.T) {
 			name:        "Int to Timestamp",
 			key:         "timestamp",
 			value:       int(1630000000),
-			keyTypeMap:  map[string]neosync_types.KeyType{"timestamp": neosync_types.Timestamp},
+			keyTypeMap:  map[string]husonym_types.KeyType{"timestamp": husonym_types.Timestamp},
 			expected:    primitive.Timestamp{T: uint32(1630000000), I: 1},
 			expectError: false,
 		},
@@ -62,7 +62,7 @@ func Test_MarshalJSONToBSONDocument(t *testing.T) {
 	testCases := []struct {
 		name        string
 		input       any
-		keyTypeMap  map[string]neosync_types.KeyType
+		keyTypeMap  map[string]husonym_types.KeyType
 		expected    bson.M
 		expectError bool
 	}{
@@ -73,7 +73,7 @@ func Test_MarshalJSONToBSONDocument(t *testing.T) {
 				"age":   30,
 				"email": "john@example.com",
 			},
-			keyTypeMap: map[string]neosync_types.KeyType{},
+			keyTypeMap: map[string]husonym_types.KeyType{},
 			expected: bson.M{
 				"name":  bson.E{Key: "name", Value: "John Doe"},
 				"age":   bson.E{Key: "age", Value: 30},
@@ -88,10 +88,10 @@ func Test_MarshalJSONToBSONDocument(t *testing.T) {
 				"amount":    getBigFloat(dec128.String()),
 				"timestamp": 1630000000,
 			},
-			keyTypeMap: map[string]neosync_types.KeyType{
-				"id":        neosync_types.ObjectID,
-				"amount":    neosync_types.Decimal128,
-				"timestamp": neosync_types.Timestamp,
+			keyTypeMap: map[string]husonym_types.KeyType{
+				"id":        husonym_types.ObjectID,
+				"amount":    husonym_types.Decimal128,
+				"timestamp": husonym_types.Timestamp,
 			},
 			expected: bson.M{
 				"id":     bson.E{Key: "id", Value: objId},

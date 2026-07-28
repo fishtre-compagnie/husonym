@@ -8,7 +8,7 @@ import {
   ConnectionService,
   CreateConnectionRequestSchema,
   UpdateConnectionRequestSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';

@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"log/slog"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	mssql_queries "github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	sqlmanager_mssql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mssql"
-	sqlmanager_mysql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mysql"
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/connection-manager/providers/sqlprovider"
-	neosync_benthos_sql "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/sql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
+	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 )
 
 type SqlDatabase interface {
@@ -96,7 +96,7 @@ type sqlManagerConfig struct {
 	mysqlQuerier mysql_queries.Querier
 	mssqlQuerier mssql_queries.Querier
 
-	mgr connectionmanager.Interface[neosync_benthos_sql.SqlDbtx]
+	mgr connectionmanager.Interface[husonym_benthos_sql.SqlDbtx]
 }
 type SqlManagerOption func(*sqlManagerConfig)
 
@@ -120,7 +120,7 @@ func NewSqlManager(
 }
 
 func WithConnectionManager(
-	manager connectionmanager.Interface[neosync_benthos_sql.SqlDbtx],
+	manager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 ) SqlManagerOption {
 	return func(smc *sqlManagerConfig) {
 		smc.mgr = manager

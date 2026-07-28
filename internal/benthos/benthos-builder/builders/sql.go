@@ -7,19 +7,19 @@ import (
 	"log/slog"
 	"strings"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_mssql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mssql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	job_util "github.com/Groupe-Hevea/neosync/internal/job"
-	rc "github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
 type sqlSyncBuilder struct {
@@ -286,11 +286,11 @@ func buildBenthosSqlSourceConfigResponses(
 			return nil, fmt.Errorf("query info not found for id: %s", config.Id())
 		}
 
-		bc := &neosync_benthos.BenthosConfig{
-			StreamConfig: neosync_benthos.StreamConfig{
-				Input: &neosync_benthos.InputConfig{
-					Inputs: neosync_benthos.Inputs{
-						PooledSqlRaw: &neosync_benthos.InputPooledSqlRaw{
+		bc := &husonym_benthos.BenthosConfig{
+			StreamConfig: husonym_benthos.StreamConfig{
+				Input: &husonym_benthos.InputConfig{
+					Inputs: husonym_benthos.Inputs{
+						PooledSqlRaw: &husonym_benthos.InputPooledSqlRaw{
 							ConnectionId: dsnConnectionId,
 
 							Query:             query.Query,
@@ -300,15 +300,15 @@ func buildBenthosSqlSourceConfigResponses(
 						},
 					},
 				},
-				Pipeline: &neosync_benthos.PipelineConfig{
+				Pipeline: &husonym_benthos.PipelineConfig{
 					Threads:    -1,
-					Processors: []neosync_benthos.ProcessorConfig{},
+					Processors: []husonym_benthos.ProcessorConfig{},
 				},
-				Output: &neosync_benthos.OutputConfig{
-					Outputs: neosync_benthos.Outputs{
-						Broker: &neosync_benthos.OutputBrokerConfig{
+				Output: &husonym_benthos.OutputConfig{
+					Outputs: husonym_benthos.Outputs{
+						Broker: &husonym_benthos.OutputBrokerConfig{
 							Pattern: "fan_out",
-							Outputs: []neosync_benthos.Outputs{},
+							Outputs: []husonym_benthos.Outputs{},
 						},
 					},
 				},
@@ -376,7 +376,7 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 ) (*bb_internal.BenthosDestinationConfig, error) {
 	logger := params.Logger
 	benthosConfig := params.SourceConfig
-	tableKey := neosync_benthos.BuildBenthosTable(
+	tableKey := husonym_benthos.BuildBenthosTable(
 		benthosConfig.TableSchema,
 		benthosConfig.TableName,
 	)
@@ -480,10 +480,10 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 		if err != nil {
 			return nil, err
 		}
-		config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
-			Fallback: []neosync_benthos.Outputs{
+		config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
+			Fallback: []husonym_benthos.Outputs{
 				{
-					PooledSqlUpdate: &neosync_benthos.PooledSqlUpdate{
+					PooledSqlUpdate: &husonym_benthos.PooledSqlUpdate{
 						ConnectionId: params.DestConnection.GetId(),
 
 						Schema:                   benthosConfig.TableSchema,
@@ -493,17 +493,17 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						MaxInFlight:              int(destOpts.MaxInFlight),
 						WhereColumns:             benthosConfig.PrimaryKeys,
 
-						Batching: &neosync_benthos.Batching{
+						Batching: &husonym_benthos.Batching{
 							Period:     destOpts.BatchPeriod,
 							Count:      destOpts.BatchCount,
-							Processors: []*neosync_benthos.BatchProcessor{sqlProcessor},
+							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 					},
 				},
 				// kills activity depending on error
-				{Error: &neosync_benthos.ErrorOutputConfig{
+				{Error: &husonym_benthos.ErrorOutputConfig{
 					ErrorMsg: `${! meta("fallback_error")}`,
-					Batching: &neosync_benthos.Batching{
+					Batching: &husonym_benthos.Batching{
 						Period: destOpts.BatchPeriod,
 						Count:  destOpts.BatchCount,
 					},
@@ -516,11 +516,11 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 		for col := range constraints {
 			transformer := b.colTransformerMap[tableKey][col]
 			if shouldProcessStrict(transformer) {
-				hashedKey := neosync_benthos.HashBenthosCacheKey(params.Job.GetId(), params.JobRunId, tableKey, col)
-				config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
-					Fallback: []neosync_benthos.Outputs{
+				hashedKey := husonym_benthos.HashBenthosCacheKey(params.Job.GetId(), params.JobRunId, tableKey, col)
+				config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
+					Fallback: []husonym_benthos.Outputs{
 						{
-							RedisHashOutput: &neosync_benthos.RedisHashOutputConfig{
+							RedisHashOutput: &husonym_benthos.RedisHashOutputConfig{
 								Key: hashedKey,
 								FieldsMapping: fmt.Sprintf(
 									`root = {meta(%q): json(%q)}`,
@@ -532,7 +532,7 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 							},
 						},
 						// kills activity depending on error
-						{Error: &neosync_benthos.ErrorOutputConfig{
+						{Error: &husonym_benthos.ErrorOutputConfig{
 							ErrorMsg: `${! meta("fallback_error")}`,
 						}},
 					},
@@ -551,10 +551,10 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 
 		hasDeferrableConstraint := b.tableDeferrableMap[tableKey]
 		prefix, suffix := getInsertPrefixAndSuffix(b.driver, benthosConfig.TableSchema, benthosConfig.TableName, columnDefaultProperties)
-		config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
-			Fallback: []neosync_benthos.Outputs{
+		config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
+			Fallback: []husonym_benthos.Outputs{
 				{
-					PooledSqlInsert: &neosync_benthos.PooledSqlInsert{
+					PooledSqlInsert: &husonym_benthos.PooledSqlInsert{
 						ConnectionId: params.DestConnection.GetId(),
 
 						Schema:                      benthosConfig.TableSchema,
@@ -570,18 +570,18 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						Prefix:                      prefix,
 						Suffix:                      suffix,
 
-						Batching: &neosync_benthos.Batching{
+						Batching: &husonym_benthos.Batching{
 							Period:     destOpts.BatchPeriod,
 							Count:      destOpts.BatchCount,
-							Processors: []*neosync_benthos.BatchProcessor{sqlProcessor},
+							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 						MaxInFlight: int(destOpts.MaxInFlight),
 					},
 				},
 				// kills activity depending on error
-				{Error: &neosync_benthos.ErrorOutputConfig{
+				{Error: &husonym_benthos.ErrorOutputConfig{
 					ErrorMsg: `${! meta("fallback_error")}`,
-					Batching: &neosync_benthos.Batching{
+					Batching: &husonym_benthos.Batching{
 						Period: destOpts.BatchPeriod,
 						Count:  destOpts.BatchCount,
 					},
@@ -597,8 +597,8 @@ func getProcessors(
 	driver string,
 	columns []string,
 	colInfoMap map[string]*sqlmanager_shared.DatabaseSchemaRow,
-	columnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties,
-) (*neosync_benthos.BatchProcessor, error) {
+	columnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties,
+) (*husonym_benthos.BatchProcessor, error) {
 	columnDataTypes := map[string]string{}
 	for _, c := range columns {
 		colType, ok := colInfoMap[c]
@@ -612,7 +612,7 @@ func getProcessors(
 
 func getInsertPrefixAndSuffix(
 	driver, schema, table string,
-	columnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties,
+	columnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties,
 ) (prefix, suffix *string) {
 	var pre, suff *string
 	if len(columnDefaultProperties) == 0 {
@@ -642,7 +642,7 @@ func getInsertPrefixAndSuffix(
 }
 
 func hasPassthroughIdentityColumn(
-	columnDefaultProperties map[string]*neosync_benthos.ColumnDefaultProperties,
+	columnDefaultProperties map[string]*husonym_benthos.ColumnDefaultProperties,
 ) bool {
 	for _, d := range columnDefaultProperties {
 		if d.NeedsOverride && d.NeedsReset && !d.HasDefaultTransformer {

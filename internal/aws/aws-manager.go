@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -20,10 +20,10 @@ import (
 	"github.com/aws/smithy-go"
 )
 
-type NeosyncAwsManager struct {
+type HusonymAwsManager struct {
 }
 
-type NeosyncAwsManagerClient interface {
+type HusonymAwsManagerClient interface {
 	NewS3Client(ctx context.Context, config *mgmtv1alpha1.AwsS3ConnectionConfig) (*s3.Client, error)
 	ListObjectsV2(
 		ctx context.Context,
@@ -44,12 +44,12 @@ type NeosyncAwsManagerClient interface {
 	) (*DynamoDbClient, error)
 }
 
-func New() *NeosyncAwsManager {
-	return &NeosyncAwsManager{}
+func New() *HusonymAwsManager {
+	return &HusonymAwsManager{}
 }
 
 // Returns a wrapper dynamodb client
-func (n *NeosyncAwsManager) NewDynamoDbClient(
+func (n *HusonymAwsManager) NewDynamoDbClient(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*DynamoDbClient, error) {
@@ -61,7 +61,7 @@ func (n *NeosyncAwsManager) NewDynamoDbClient(
 }
 
 // returns the raw, underlying aws client
-func (n *NeosyncAwsManager) newDynamoDbClient(
+func (n *HusonymAwsManager) newDynamoDbClient(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*dynamodb.Client, error) {
@@ -76,7 +76,7 @@ func (n *NeosyncAwsManager) newDynamoDbClient(
 	}), nil
 }
 
-func (n *NeosyncAwsManager) NewS3Client(
+func (n *HusonymAwsManager) NewS3Client(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*s3.Client, error) {
@@ -91,7 +91,7 @@ func (n *NeosyncAwsManager) NewS3Client(
 	}), nil
 }
 
-func (n *NeosyncAwsManager) ListObjectsV2(
+func (n *HusonymAwsManager) ListObjectsV2(
 	ctx context.Context,
 	s3Client *s3.Client,
 	region *string,
@@ -107,7 +107,7 @@ func (n *NeosyncAwsManager) ListObjectsV2(
 	return output, nil
 }
 
-func (n *NeosyncAwsManager) GetObject(
+func (n *HusonymAwsManager) GetObject(
 	ctx context.Context,
 	s3Client *s3.Client,
 	region *string,
@@ -141,7 +141,7 @@ func getS3AwsConfig(
 		Token:           s3ConnConfig.GetCredentials().GetSessionToken(),
 		Role:            s3ConnConfig.GetCredentials().GetRoleArn(),
 		RoleExternalId:  s3ConnConfig.GetCredentials().GetRoleExternalId(),
-		RoleSessionName: "neosync",
+		RoleSessionName: "husonym",
 		UseEc2:          s3ConnConfig.GetCredentials().GetFromEc2Role(),
 	})
 }
@@ -159,7 +159,7 @@ func getDynamoAwsConfig(
 		Token:           dynConnConfig.GetCredentials().GetSessionToken(),
 		Role:            dynConnConfig.GetCredentials().GetRoleArn(),
 		RoleExternalId:  dynConnConfig.GetCredentials().GetRoleExternalId(),
-		RoleSessionName: "neosync",
+		RoleSessionName: "husonym",
 		UseEc2:          dynConnConfig.GetCredentials().GetFromEc2Role(),
 	})
 }

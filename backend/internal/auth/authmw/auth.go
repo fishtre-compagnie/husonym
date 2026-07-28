@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 )
 
 type AuthClient interface {

@@ -1,0 +1,12 @@
+'use client';
+import { useQuery } from '@connectrpc/connect-query';
+import { UserAccountService } from '@husonym/sdk';
+import { ReactElement } from 'react';
+
+export default function HusonymVersion(): ReactElement | null {
+  const { data } = useQuery(UserAccountService.method.getSystemInformation);
+  if (!data?.version) {
+    return null;
+  }
+  return <p className="text-sm tracking-tight">{data.version}</p>;
+}

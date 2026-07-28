@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { AccountHookService, NewAccountHook } from '@neosync/sdk';
+import { AccountHookService, NewAccountHook } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';

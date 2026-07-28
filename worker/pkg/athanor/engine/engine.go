@@ -8,7 +8,7 @@ package engine
 import (
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 // Execute applique le plan au batch, en place.

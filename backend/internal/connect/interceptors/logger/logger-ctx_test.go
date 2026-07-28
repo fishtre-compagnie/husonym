@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 

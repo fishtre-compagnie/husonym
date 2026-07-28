@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx"
-	"github.com/Groupe-Hevea/neosync/internal/backoffutil"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
+	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
 	"github.com/cenkalti/backoff/v5"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"

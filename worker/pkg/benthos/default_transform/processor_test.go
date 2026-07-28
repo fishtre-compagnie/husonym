@@ -1,9 +1,9 @@
-package neosync_benthos_defaulttransform
+package husonym_benthos_defaulttransform
 
 import (
 	"testing"
 
-	transformer_executor "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformer_executor"
+	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

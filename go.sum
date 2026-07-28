@@ -875,10 +875,6 @@ github.com/nexus-rpc/sdk-go v0.6.0/go.mod h1:FHdPfVQwRuJFZFTF0Y2GOAxCrbIBNrcPna9
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac h1:4YV96Dzy2csSnhzl14/Qk5YsSrKAQusGsIADDn/4/g8=
 github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac/go.mod h1:mpRZBD8SJ55OIICQ3iWH0Yz3cjzA61JdqMLoWXeB2+8=
-github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5 h1:MRc2C7I88nGhKbk1VRT3nnr6XtpClkHT35lhKbg6kD4=
-github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5/go.mod h1:MtI3ufP40Bql/YkhZFvDcR9h479JKb+hEUElwweQMzo=
-github.com/nucleuscloud/sql-adapter v0.0.0-20250423153919-c67824ce520f h1:V7g6pUNVK21yNW52n6uoViD/UU7GjYjvHHcQh/gb4yA=
-github.com/nucleuscloud/sql-adapter v0.0.0-20250423153919-c67824ce520f/go.mod h1:AihNaUaSXxf8+ankrCj+6FKsZP91vLLzDMgNPVmF7cE=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
 github.com/nxadm/tail v1.4.11 h1:8feyoE3OzPrcshW5/MJ4sGESc5cqmGkGCWlco4l0bqY=

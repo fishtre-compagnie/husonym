@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
@@ -24,9 +24,9 @@ func (m *DynamoDBMapper) MapRecord(item map[string]types.AttributeValue) (map[st
 
 func (m *DynamoDBMapper) MapRecordWithKeyType(
 	item map[string]types.AttributeValue,
-) (valuemap map[string]any, typemap map[string]neosync_types.KeyType, err error) {
+) (valuemap map[string]any, typemap map[string]husonym_types.KeyType, err error) {
 	standardJSON := make(map[string]any)
-	ktm := make(map[string]neosync_types.KeyType)
+	ktm := make(map[string]husonym_types.KeyType)
 	for k, v := range item {
 		val, err := parseAttributeValue(k, v, ktm)
 		if err != nil {
@@ -41,7 +41,7 @@ func (m *DynamoDBMapper) MapRecordWithKeyType(
 func parseAttributeValue(
 	key string,
 	v types.AttributeValue,
-	keyTypeMap map[string]neosync_types.KeyType,
+	keyTypeMap map[string]husonym_types.KeyType,
 ) (any, error) {
 	switch t := v.(type) {
 	case *types.AttributeValueMemberB:
@@ -81,7 +81,7 @@ func parseAttributeValue(
 		}
 		return n, nil
 	case *types.AttributeValueMemberNS:
-		keyTypeMap[key] = neosync_types.NumberSet
+		keyTypeMap[key] = husonym_types.NumberSet
 		lAny := make([]any, len(t.Value))
 		for i, v := range t.Value {
 			n, err := gotypeutil.ParseStringAsNumber(v)
@@ -96,7 +96,7 @@ func parseAttributeValue(
 	case *types.AttributeValueMemberS:
 		return t.Value, nil
 	case *types.AttributeValueMemberSS:
-		keyTypeMap[key] = neosync_types.StringSet
+		keyTypeMap[key] = husonym_types.StringSet
 		lAny := make([]any, len(t.Value))
 		for i, v := range t.Value {
 			lAny[i] = v

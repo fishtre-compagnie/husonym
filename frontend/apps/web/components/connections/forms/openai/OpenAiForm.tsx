@@ -3,7 +3,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import { BaseStore } from '@/util/zustand.stores.util';
 import { OpenAiFormValues } from '@/yup-validations/connections';
 import { useMutation } from '@connectrpc/connect-query';
-import { ConnectionService } from '@neosync/sdk';
+import { ConnectionService } from '@husonym/sdk';
 import { ReactElement, useEffect } from 'react';
 import { create } from 'zustand';
 import { Name } from '../SharedFormInputs';

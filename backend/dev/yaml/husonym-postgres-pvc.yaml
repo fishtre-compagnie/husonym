@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: husonym-postgres
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /husonym/husonym-postgres
+    type: DirectoryOrCreate
+  claimRef:
+    kind: PersistentVolumeClaim
+    name: husonym-postgres
+    namespace: husonym
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: husonym-postgres
+  namespace: husonym
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+  volumeMode: Filesystem

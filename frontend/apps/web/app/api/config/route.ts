@@ -1,7 +1,7 @@
-import { withNeosyncContext } from '@/api-only/neosync-context';
+import { withHusonymContext } from '@/api-only/husonym-context';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSystemAppConfig } from './config';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  return withNeosyncContext(async () => getSystemAppConfig())(req);
+  return withHusonymContext(async () => getSystemAppConfig())(req);
 }

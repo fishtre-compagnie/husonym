@@ -8,7 +8,7 @@ import {
   ResourcePermission_Action,
   ResourcePermission_Type,
   UserAccountService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { Pencil1Icon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
 import { ReactElement } from 'react';

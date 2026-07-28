@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
@@ -72,9 +72,9 @@ func (m *MysqlManager) GetDatabaseSchema(
 		return nil, err
 	}
 	dbSchemas, err := querier.GetDatabaseSchema(ctx, m.pool)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return []*sqlmanager_shared.DatabaseSchemaRow{}, nil
 	}
 	result := []*sqlmanager_shared.DatabaseSchemaRow{}
@@ -364,9 +364,9 @@ func (m *MysqlManager) GetTableConstraintsBySchema(
 		return nil, err
 	}
 	rows, err := querier.GetTableConstraintsBySchemas(ctx, m.pool, schemas)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return &sqlmanager_shared.TableConstraints{}, nil
 	}
 
@@ -462,9 +462,9 @@ func (m *MysqlManager) GetRolePermissionsMap(ctx context.Context) (map[string][]
 		return nil, err
 	}
 	rows, err := querier.GetMysqlRolePermissions(ctx, m.pool)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return map[string][]string{}, nil
 	}
 
@@ -1144,9 +1144,9 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 					Tables: tables,
 				},
 			)
-			if err != nil && !neosyncdb.IsNoRows(err) {
+			if err != nil && !husonymdb.IsNoRows(err) {
 				return err
-			} else if err != nil && neosyncdb.IsNoRows(err) {
+			} else if err != nil && husonymdb.IsNoRows(err) {
 				return nil
 			}
 
@@ -1280,9 +1280,9 @@ func (m *MysqlManager) getFunctionsBySchemas(
 		return nil, err
 	}
 	rows, err := querier.GetCustomFunctionsBySchemas(ctx, m.pool, schemas)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return []*sqlmanager_shared.DataType{}, nil
 	}
 
@@ -1335,7 +1335,7 @@ func wrapIdempotentConstraint(
 	constraintname,
 	constraintStmt string,
 ) string {
-	procedureName := fmt.Sprintf("NeosyncAddConstraint_%s", hashInput(schema, table, constraintname))[:64]
+	procedureName := fmt.Sprintf("HusonymAddConstraint_%s", hashInput(schema, table, constraintname))[:64]
 	stmt := fmt.Sprintf(`
 CREATE PROCEDURE %[1]s()
 BEGIN
@@ -1404,7 +1404,7 @@ func wrapIdempotentIndex(
 			columnInput = append(columnInput, EscapeMysqlColumn(col))
 		}
 	}
-	procedureName := fmt.Sprintf("NeosyncAddIndex_%s", hashInput(hashParams...))[:64]
+	procedureName := fmt.Sprintf("HusonymAddIndex_%s", hashInput(hashParams...))[:64]
 	indexStmt := createIndexStmt(schema, table, idxInfo, columnInput)
 	stmt := fmt.Sprintf(`
 CREATE PROCEDURE %[1]s()

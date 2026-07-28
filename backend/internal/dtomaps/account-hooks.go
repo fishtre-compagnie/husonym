@@ -3,17 +3,17 @@ package dtomaps
 import (
 	"encoding/json"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToAccountHookDto(
-	input *db_queries.NeosyncApiAccountHook,
+	input *db_queries.HusonymApiAccountHook,
 ) (*mgmtv1alpha1.AccountHook, error) {
 	if input == nil {
-		input = &db_queries.NeosyncApiAccountHook{}
+		input = &db_queries.HusonymApiAccountHook{}
 	}
 
 	config := &mgmtv1alpha1.AccountHookConfig{}
@@ -23,13 +23,13 @@ func ToAccountHookDto(
 	}
 
 	output := &mgmtv1alpha1.AccountHook{
-		Id:              neosyncdb.UUIDString(input.ID),
+		Id:              husonymdb.UUIDString(input.ID),
 		Name:            input.Name,
 		Description:     input.Description,
-		AccountId:       neosyncdb.UUIDString(input.AccountID),
-		CreatedByUserId: neosyncdb.UUIDString(input.CreatedByUserID),
+		AccountId:       husonymdb.UUIDString(input.AccountID),
+		CreatedByUserId: husonymdb.UUIDString(input.CreatedByUserID),
 		CreatedAt:       timestamppb.New(input.CreatedAt.Time),
-		UpdatedByUserId: neosyncdb.UUIDString(input.UpdatedByUserID),
+		UpdatedByUserId: husonymdb.UUIDString(input.UpdatedByUserID),
 		UpdatedAt:       timestamppb.New(input.UpdatedAt.Time),
 		Enabled:         input.Enabled,
 		Config:          config,
@@ -40,7 +40,7 @@ func ToAccountHookDto(
 }
 
 func ToAccountHooksDto(
-	input []db_queries.NeosyncApiAccountHook,
+	input []db_queries.HusonymApiAccountHook,
 ) ([]*mgmtv1alpha1.AccountHook, error) {
 	dtos := make([]*mgmtv1alpha1.AccountHook, len(input))
 	for idx := range input {

@@ -8,26 +8,26 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	schemamanager_shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
-	tcpostgres "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/postgres"
-	tcredis "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/redis"
-	testutil_testdata "github.com/Groupe-Hevea/neosync/internal/testutil/testdata"
-	pg_alltypes "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/alltypes"
-	pg_complex "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/complex"
-	pg_edgecases "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/edgecases"
-	pg_foreignkey_violations "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/foreignkey-violations"
-	pg_humanresources "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/humanresources"
-	pg_schema_init "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/schema-init"
-	pg_subsetting "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/subsetting"
-	pg_transformers "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/transformers"
-	pg_uuids "github.com/Groupe-Hevea/neosync/internal/testutil/testdata/postgres/uuids"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
+	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
+	tcredis "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/redis"
+	testutil_testdata "github.com/fishtre-compagnie/husonym/internal/testutil/testdata"
+	pg_alltypes "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/alltypes"
+	pg_complex "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/complex"
+	pg_edgecases "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/edgecases"
+	pg_foreignkey_violations "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/foreignkey-violations"
+	pg_humanresources "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/humanresources"
+	pg_schema_init "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/schema-init"
+	pg_subsetting "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/subsetting"
+	pg_transformers "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/transformers"
+	pg_uuids "github.com/fishtre-compagnie/husonym/internal/testutil/testdata/postgres/uuids"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -156,12 +156,12 @@ func test_postgres_types(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	alltypesSchema := "alltypes"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -177,7 +177,7 @@ func test_postgres_types(
 	)
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	alltypesMappings := pg_alltypes.GetDefaultSyncJobMappings(alltypesSchema)
 
@@ -194,7 +194,7 @@ func test_postgres_types(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -296,12 +296,12 @@ func test_postgres_passthrough_on_new_column_addition(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	alltypesSchema := "alltypes_passthrough"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -317,7 +317,7 @@ func test_postgres_passthrough_on_new_column_addition(
 	)
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	expectedResults := []struct {
 		schema   string
@@ -360,7 +360,7 @@ func test_postgres_passthrough_on_new_column_addition(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -451,12 +451,12 @@ func test_postgres_primary_key_transformations(
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
 	redis *tcredis.RedisTestContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "primary_$key_sdef"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -477,7 +477,7 @@ func test_postgres_primary_key_transformations(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	defaultMappings := pg_uuids.GetDefaultSyncJobMappings(schema)
 	updatedJobmappings := []*mgmtv1alpha1.JobMapping{}
@@ -531,7 +531,7 @@ func test_postgres_primary_key_transformations(
 		VirtualForeignKeys: pg_humanresources.GetVirtualForeignKeys(schema),
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers, WithRedis(redis.URL))
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers, WithRedis(redis.URL))
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -586,12 +586,12 @@ func test_postgres_edgecases(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "CaPiTaL"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -607,7 +607,7 @@ func test_postgres_edgecases(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	edgecasesMappings := pg_edgecases.GetDefaultSyncJobMappings(schema)
 
@@ -624,7 +624,7 @@ func test_postgres_edgecases(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -671,12 +671,12 @@ func test_postgres_virtual_foreign_keys(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "vfk_hr"
 	subsetSchema := "vfk_hr_subset"
 	errgrp, errctx := errgroup.WithContext(ctx)
@@ -715,7 +715,7 @@ func test_postgres_virtual_foreign_keys(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	humanresourcesMappings := pg_humanresources.GetDefaultSyncJobMappings(schema)
 	subsetHumanresourcesMappings := pg_humanresources.GetDefaultSyncJobMappings(subsetSchema)
@@ -740,7 +740,7 @@ func test_postgres_virtual_foreign_keys(
 		VirtualForeignKeys: slices.Concat(virtualForeignKeys, subsetVirtualForeignKeys),
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -792,12 +792,12 @@ func test_postgres_javascript_transformers(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	transformersSchema := "transformers"
 	generatorsSchema := "generators"
 	errgrp, errctx := errgroup.WithContext(ctx)
@@ -822,7 +822,7 @@ func test_postgres_javascript_transformers(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	transformersMappings := getJsTransformerJobmappings(
 		pg_transformers.GetDefaultSyncJobMappings(transformersSchema),
@@ -844,7 +844,7 @@ func test_postgres_javascript_transformers(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -883,75 +883,75 @@ func test_postgres_javascript_transformers(
 func getJsGeneratorJobmappings(jobmappings []*mgmtv1alpha1.JobMapping) []*mgmtv1alpha1.JobMapping {
 	colTransformerMap := map[string]*mgmtv1alpha1.JobMappingTransformer{
 		"e164_phone_number": getJavascriptTransformerConfig(
-			"return neosync.generateInternationalPhoneNumber({ min: 9, max: 15});",
+			"return husonym.generateInternationalPhoneNumber({ min: 9, max: 15});",
 		),
 		"email": getJavascriptTransformerConfig(
-			"return neosync.generateEmail({ maxLength: 255});",
+			"return husonym.generateEmail({ maxLength: 255});",
 		),
 		"str": getJavascriptTransformerConfig(
-			"return neosync.generateRandomString({ min: 1, max: 50});",
+			"return husonym.generateRandomString({ min: 1, max: 50});",
 		),
 		"measurement": getJavascriptTransformerConfig(
-			"return neosync.generateFloat64({ min: 3.14, max: 300.10});",
+			"return husonym.generateFloat64({ min: 3.14, max: 300.10});",
 		),
 		"int64": getJavascriptTransformerConfig(
-			"return neosync.generateInt64({ min: 1, max: 50});",
+			"return husonym.generateInt64({ min: 1, max: 50});",
 		),
 		"int64_phone_number": getJavascriptTransformerConfig(
-			"return neosync.generateInt64PhoneNumber({});",
+			"return husonym.generateInt64PhoneNumber({});",
 		),
 		"string_phone_number": getJavascriptTransformerConfig(
-			"return neosync.generateStringPhoneNumber({ min: 1, max: 15});",
+			"return husonym.generateStringPhoneNumber({ min: 1, max: 15});",
 		),
 		"first_name": getJavascriptTransformerConfig(
-			"return neosync.generateFirstName({ maxLength: 25});",
+			"return husonym.generateFirstName({ maxLength: 25});",
 		),
 		"last_name": getJavascriptTransformerConfig(
-			"return neosync.generateLastName({ maxLength: 25});",
+			"return husonym.generateLastName({ maxLength: 25});",
 		),
 		"full_name": getJavascriptTransformerConfig(
-			"return neosync.generateFullName({ maxLength: 25});",
+			"return husonym.generateFullName({ maxLength: 25});",
 		),
 		"character_scramble": getJavascriptTransformerConfig(
-			"return neosync.generateCity({ maxLength: 100});",
+			"return husonym.generateCity({ maxLength: 100});",
 		),
-		"bool": getJavascriptTransformerConfig("return neosync.generateBool({});"),
+		"bool": getJavascriptTransformerConfig("return husonym.generateBool({});"),
 		"card_number": getJavascriptTransformerConfig(
-			"return neosync.generateCardNumber({ validLuhn: true });",
+			"return husonym.generateCardNumber({ validLuhn: true });",
 		),
 		"categorical": getJavascriptTransformerConfig(
-			"return neosync.generateCategorical({ categories: 'dog,cat,horse'});",
+			"return husonym.generateCategorical({ categories: 'dog,cat,horse'});",
 		),
 		"city": getJavascriptTransformerConfig(
-			"return neosync.generateCity({ maxLength: 100 });",
+			"return husonym.generateCity({ maxLength: 100 });",
 		),
 		"full_address": getJavascriptTransformerConfig(
-			"return neosync.generateFullAddress({ maxLength: 100 });",
+			"return husonym.generateFullAddress({ maxLength: 100 });",
 		),
-		"gender": getJavascriptTransformerConfig("return neosync.generateGender({});"),
+		"gender": getJavascriptTransformerConfig("return husonym.generateGender({});"),
 		"international_phone": getJavascriptTransformerConfig(
-			"return neosync.generateInternationalPhoneNumber({ min: 9, max: 14});",
+			"return husonym.generateInternationalPhoneNumber({ min: 9, max: 14});",
 		),
 		"sha256": getJavascriptTransformerConfig(
-			"return neosync.generateSHA256Hash({});",
+			"return husonym.generateSHA256Hash({});",
 		),
-		"ssn":   getJavascriptTransformerConfig("return neosync.generateSSN({});"),
-		"state": getJavascriptTransformerConfig("return neosync.generateState({});"),
+		"ssn":   getJavascriptTransformerConfig("return husonym.generateSSN({});"),
+		"state": getJavascriptTransformerConfig("return husonym.generateState({});"),
 		"street_address": getJavascriptTransformerConfig(
-			"return neosync.generateStreetAddress({ maxLength: 100 });",
+			"return husonym.generateStreetAddress({ maxLength: 100 });",
 		),
 		"unix_time": getJavascriptTransformerConfig(
-			"return neosync.generateUnixTimestamp({});",
+			"return husonym.generateUnixTimestamp({});",
 		),
 		"username": getJavascriptTransformerConfig(
-			"return neosync.generateUsername({ maxLength: 100 });",
+			"return husonym.generateUsername({ maxLength: 100 });",
 		),
 		"utc_timestamp": getJavascriptTransformerConfig(
-			"return neosync.generateUTCTimestamp({});",
+			"return husonym.generateUTCTimestamp({});",
 		),
-		"uuid": getJavascriptTransformerConfig("return neosync.generateUUID({});"),
+		"uuid": getJavascriptTransformerConfig("return husonym.generateUUID({});"),
 		"zipcode": getJavascriptTransformerConfig(
-			"return neosync.generateZipcode({});",
+			"return husonym.generateZipcode({});",
 		),
 	}
 	updatedJobmappings := []*mgmtv1alpha1.JobMapping{}
@@ -975,37 +975,37 @@ func getJsTransformerJobmappings(
 ) []*mgmtv1alpha1.JobMapping {
 	colTransformerMap := map[string]*mgmtv1alpha1.JobMappingTransformer{
 		"e164_phone_number": getJavascriptTransformerConfig(
-			"return neosync.transformE164PhoneNumber(value, { preserveLength: true, maxLength: 20});",
+			"return husonym.transformE164PhoneNumber(value, { preserveLength: true, maxLength: 20});",
 		),
 		"email": getJavascriptTransformerConfig(
-			"return neosync.transformEmail(value, { preserveLength: true, maxLength: 255});",
+			"return husonym.transformEmail(value, { preserveLength: true, maxLength: 255});",
 		),
 		"str": getJavascriptTransformerConfig(
-			"return neosync.transformString(value, { preserveLength: true, maxLength: 30});",
+			"return husonym.transformString(value, { preserveLength: true, maxLength: 30});",
 		),
 		"measurement": getJavascriptTransformerConfig(
-			"return neosync.transformFloat64(value, { randomizationRangeMin: 3.14, randomizationRangeMax: 300.10});",
+			"return husonym.transformFloat64(value, { randomizationRangeMin: 3.14, randomizationRangeMax: 300.10});",
 		),
 		"int64": getJavascriptTransformerConfig(
-			"return neosync.transformInt64(value, { randomizationRangeMin: 1, randomizationRangeMax: 300});",
+			"return husonym.transformInt64(value, { randomizationRangeMin: 1, randomizationRangeMax: 300});",
 		),
 		"int64_phone_number": getJavascriptTransformerConfig(
-			"return neosync.transformInt64PhoneNumber(value, { preserveLength: true});",
+			"return husonym.transformInt64PhoneNumber(value, { preserveLength: true});",
 		),
 		"string_phone_number": getJavascriptTransformerConfig(
-			"return neosync.transformStringPhoneNumber(value, { preserveLength: true, maxLength: 200});",
+			"return husonym.transformStringPhoneNumber(value, { preserveLength: true, maxLength: 200});",
 		),
 		"first_name": getJavascriptTransformerConfig(
-			"return neosync.transformFirstName(value, { preserveLength: true, maxLength: 25});",
+			"return husonym.transformFirstName(value, { preserveLength: true, maxLength: 25});",
 		),
 		"last_name": getJavascriptTransformerConfig(
-			"return neosync.transformLastName(value, { preserveLength: true, maxLength: 25});",
+			"return husonym.transformLastName(value, { preserveLength: true, maxLength: 25});",
 		),
 		"full_name": getJavascriptTransformerConfig(
-			"return neosync.transformFullName(value, { preserveLength: true, maxLength: 25});",
+			"return husonym.transformFullName(value, { preserveLength: true, maxLength: 25});",
 		),
 		"character_scramble": getJavascriptTransformerConfig(
-			"return neosync.transformCharacterScramble(value, { preserveLength: false, maxLength: 100});",
+			"return husonym.transformCharacterScramble(value, { preserveLength: false, maxLength: 100});",
 		),
 	}
 	updatedJobmappings := []*mgmtv1alpha1.JobMapping{}
@@ -1034,12 +1034,12 @@ func test_postgres_skip_foreign_keys_violations(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "fk_violations"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -1055,7 +1055,7 @@ func test_postgres_skip_foreign_keys_violations(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	jobmappings := pg_foreignkey_violations.GetDefaultSyncJobMappings(schema)
 
@@ -1073,7 +1073,7 @@ func test_postgres_skip_foreign_keys_violations(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -1118,12 +1118,12 @@ func test_postgres_foreign_keys_violations_error(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "fk_violations_error"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -1139,7 +1139,7 @@ func test_postgres_foreign_keys_violations_error(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	jobmappings := pg_foreignkey_violations.GetDefaultSyncJobMappings(schema)
 
@@ -1157,7 +1157,7 @@ func test_postgres_foreign_keys_violations_error(
 		},
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
 		t,
@@ -1176,12 +1176,12 @@ func test_postgres_subsetting(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "subsetting"
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.Go(func() error {
@@ -1197,7 +1197,7 @@ func test_postgres_subsetting(
 	})
 	err := errgrp.Wait()
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	jobmappings := pg_subsetting.GetDefaultSyncJobMappings(schema)
 
@@ -1227,7 +1227,7 @@ func test_postgres_subsetting(
 
 	testworkflow := NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithMaxIterations(2),
 		WithPageLimit(3),
@@ -1291,12 +1291,12 @@ func test_postgres_generate_workflow(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "generate"
 	err := postgres.Target.RunCreateStmtsInSchema(
 		ctx,
@@ -1305,7 +1305,7 @@ func test_postgres_generate_workflow(
 		schema,
 	)
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	table := "all_data_types"
 	mappings := []*mgmtv1alpha1.JobMapping{
@@ -1379,7 +1379,7 @@ func test_postgres_generate_workflow(
 	}))
 	require.NoError(t, err)
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.Msg.GetJob().GetId())
 	require.Truef(
@@ -1429,12 +1429,12 @@ func test_postgres_small_batch_size(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := "small_batch"
 	err := postgres.Source.RunCreateStmtsInSchema(
 		ctx,
@@ -1447,7 +1447,7 @@ func test_postgres_small_batch_size(
 		schema,
 	)
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	defaultMappings := pg_uuids.GetDefaultSyncJobMappings(schema)
 	transformHumanresourcesMappings := pg_humanresources.GetDefaultSyncJobMappings(schema)
@@ -1470,7 +1470,7 @@ func test_postgres_small_batch_size(
 
 	testworkflow := NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithPageLimit(5),
 		WithMaxIterations(2),
@@ -1642,12 +1642,12 @@ func test_postgres_complex(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	folder := testdataFolder + "/complex"
 	err := postgres.Source.RunSqlFiles(ctx, &folder, []string{"create-tables.sql", "inserts.sql"})
 	require.NoError(t, err)
@@ -1655,7 +1655,7 @@ func test_postgres_complex(
 	jobmappings := pg_complex.GetDefaultSyncJobMappings()
 
 	t.Run("sync", func(t *testing.T) {
-		neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+		husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 		job := createPostgresSyncJob(t, ctx, jobclient, &createJobConfig{
 			AccountId:   accountId,
@@ -1673,7 +1673,7 @@ func test_postgres_complex(
 
 		testworkflow := NewTestDataSyncWorkflowEnv(
 			t,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			WithMaxIterations(10),
 			WithPageLimit(100),
@@ -2077,7 +2077,7 @@ func test_postgres_complex(
 			"scientific_data.experiments": "experiment_id < 5",
 		}
 
-		neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+		husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 		job := createPostgresSyncJob(t, ctx, jobclient, &createJobConfig{
 			AccountId:   accountId,
 			SourceConn:  sourceConn,
@@ -2095,7 +2095,7 @@ func test_postgres_complex(
 
 		testworkflow := NewTestDataSyncWorkflowEnv(
 			t,
-			neosyncApi,
+			husonymApi,
 			dbManagers,
 			WithMaxIterations(10),
 			WithPageLimit(100),
@@ -2197,13 +2197,13 @@ func test_postgres_schema_reconciliation(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 	shouldTruncate bool,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
 	schema := fmt.Sprintf("schema_drift_%t", shouldTruncate)
 	err := postgres.Source.RunCreateStmtsInSchema(
 		ctx,
@@ -2212,7 +2212,7 @@ func test_postgres_schema_reconciliation(
 		schema,
 	)
 	require.NoError(t, err)
-	neosyncApi.MockTemporalForCreateJob("test-postgres-sync")
+	husonymApi.MockTemporalForCreateJob("test-postgres-sync")
 
 	job := createPostgresSyncJob(t, ctx, jobclient, &createJobConfig{
 		AccountId:   accountId,
@@ -2231,7 +2231,7 @@ func test_postgres_schema_reconciliation(
 
 	testworkflow := NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithPostgresSchemaDrift(),
 		WithMaxIterations(100),
@@ -2304,7 +2304,7 @@ func test_postgres_schema_reconciliation(
 
 	testworkflow = NewTestDataSyncWorkflowEnv(
 		t,
-		neosyncApi,
+		husonymApi,
 		dbManagers,
 		WithPostgresSchemaDrift(),
 		WithMaxIterations(100),

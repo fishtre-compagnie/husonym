@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	v1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	http "net/http"
 	strings "strings"
 )
@@ -49,9 +49,9 @@ const (
 
 // AuthServiceClient is a client for the mgmt.v1alpha1.AuthService service.
 type AuthServiceClient interface {
-	// Used by the CLI to login to Neosync with OAuth.
+	// Used by the CLI to login to Husonym with OAuth.
 	LoginCli(context.Context, *connect.Request[v1alpha1.LoginCliRequest]) (*connect.Response[v1alpha1.LoginCliResponse], error)
-	// Used by the CLI to refresh an expired Neosync accesss token.
+	// Used by the CLI to refresh an expired Husonym accesss token.
 	// This should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.
 	RefreshCli(context.Context, *connect.Request[v1alpha1.RefreshCliRequest]) (*connect.Response[v1alpha1.RefreshCliResponse], error)
 	// Empty endpoint to simply check if the provided access token is valid
@@ -145,9 +145,9 @@ func (c *authServiceClient) GetAuthStatus(ctx context.Context, req *connect.Requ
 
 // AuthServiceHandler is an implementation of the mgmt.v1alpha1.AuthService service.
 type AuthServiceHandler interface {
-	// Used by the CLI to login to Neosync with OAuth.
+	// Used by the CLI to login to Husonym with OAuth.
 	LoginCli(context.Context, *connect.Request[v1alpha1.LoginCliRequest]) (*connect.Response[v1alpha1.LoginCliResponse], error)
-	// Used by the CLI to refresh an expired Neosync accesss token.
+	// Used by the CLI to refresh an expired Husonym accesss token.
 	// This should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.
 	RefreshCli(context.Context, *connect.Request[v1alpha1.RefreshCliRequest]) (*connect.Response[v1alpha1.RefreshCliResponse], error)
 	// Empty endpoint to simply check if the provided access token is valid

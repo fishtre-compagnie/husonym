@@ -12,7 +12,7 @@ import {
   ConnectionSchema,
   ConnectionService,
   JobService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
 import { ReactElement, use } from 'react';

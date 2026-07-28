@@ -19,8 +19,8 @@ import (
 	"strconv"
 	"strings"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	querybuilder "github.com/Groupe-Hevea/neosync/worker/pkg/query-builder"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
 
 // Execer est le sous-ensemble de database/sql suffisant pour écrire.

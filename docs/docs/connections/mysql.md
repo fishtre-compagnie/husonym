@@ -1,18 +1,18 @@
 ---
 title: Mysql
-description: Neosync supports most Mysql-compatible databases natively using the Mysql connection.
+description: Husonym supports most Mysql-compatible databases natively using the Mysql connection.
 id: mysql
 hide_title: false
 slug: /connections/mysql
 ---
 
-Neosync is an open-source, developer-first product that allows you to create anonymized, secure test data that you can sync across all of your environments for high quality local, stage and CI testing.
+Husonym is an open-source, developer-first product that allows you to create anonymized, secure test data that you can sync across all of your environments for high quality local, stage and CI testing.
 
-Neosync supports most Mysql-compatible databases natively using the Mysql connection.
+Husonym supports most Mysql-compatible databases natively using the Mysql connection.
 
 ## Things to watch out for
 
-1. Neosync can sync data between two physical Mysql databases that are exposed through two different ports. Today, Neosync cannot sync between two logical databases in Mysql.
+1. Husonym can sync data between two physical Mysql databases that are exposed through two different ports. Today, Husonym cannot sync between two logical databases in Mysql.
 
 For example:
 
@@ -37,14 +37,14 @@ To connect using the environment variable, simply paste the environment variable
 
 The value of the environment variable must be in the `Connection URL` format.
 
-This is only available in the OSS version of Neosync. The environment variable must begin with `USER_DEFINED_`.
-This is for safety and is to limit the class of environment variables a user of Neosync may configure.
+This is only available in the OSS version of Husonym. The environment variable must begin with `USER_DEFINED_`.
+This is for safety and is to limit the class of environment variables a user of Husonym may configure.
 
-For full support, the environment variable must live on both the `neosync-api` as well as `neosync-worker`.
+For full support, the environment variable must live on both the `husonym-api` as well as `husonym-worker`.
 
 ### Discrete Host Parameters
 
-![mysql](https://assets.Groupe-Hevea.com/neosync/docs/mysql.png)
+![mysql](https://assets.fishtre-compagnie.com/husonym/docs/mysql.png)
 
 This guide will help you to configure your MySQL database connection properly.
 
@@ -68,14 +68,14 @@ You may also specify a direct DSN via the `URL` tab instead of the split out `Ho
 
 ## TLS
 
-Neosync has support for Regular TLS (one-way) as well as mTLS (two-way).
+Husonym has support for Regular TLS (one-way) as well as mTLS (two-way).
 
 This is configured via the `Client TLS Certificates` section on the database configuration page.
 
 If you simply wish to verify the server certificate, only the `Root certificate` is required.
 
 If wishing to have the client present a certificate, you must specify both the `Client key` as well as the `Client certificate`.
-If only one of these is provided, the Neosync will reject the configuration.
+If only one of these is provided, the Husonym will reject the configuration.
 
 The following TLS/SSL modes are available for Mysql via the `tls` query parameter.
 
@@ -92,17 +92,17 @@ The `server name` _must_ be provided if using `tls=true` otherwise the client wi
 
 ## Go Mysql Driver
 
-Neosync uses the `go-sql-driver/mysql` for Mysql support.
+Husonym uses the `go-sql-driver/mysql` for Mysql support.
 
 HTTP urls are not very well supported and you will find much better luck, using the older `DSN` format.
 
 For a full look at query parameters available to you, check the [driver readme](https://github.com/go-sql-driver/mysql?tab=readme-ov-file#parameters)
 
-By default, Neosync will add the following query parameters automatically to your user-provided DSN at runtime:
+By default, Husonym will add the following query parameters automatically to your user-provided DSN at runtime:
 
 - `multiStatements=true`
 
-  - This is used to enable sending batched SQL statements to the server at once. If this is turned off, Neosync has to send single statements at a time, which really hurts performance.
+  - This is used to enable sending batched SQL statements to the server at once. If this is turned off, Husonym has to send single statements at a time, which really hurts performance.
 
 - `parseTime=true`
   - This configures the driver to automatically convert date and time values to go's `time.Time` object for better data handling through the system.

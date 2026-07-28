@@ -11,7 +11,7 @@ import {
   DynamoDBSourceOptionsFormValues,
   DynamoDBSourceUnmappedTransformConfigFormValues,
 } from '@/yup-validations/jobs';
-import { TransformerDataType } from '@neosync/sdk';
+import { TransformerDataType } from '@husonym/sdk';
 import { ExternalLinkIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
 import { ReactElement } from 'react';

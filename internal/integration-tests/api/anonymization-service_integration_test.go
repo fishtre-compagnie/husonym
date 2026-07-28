@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	integrationtests_test "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/stretchr/testify/require"
 	"github.com/stripe/stripe-go/v81"
 )
@@ -36,10 +36,10 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
 	})
 
 	t.Run("cloud-personal-fail", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.NeosyncCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(s.ctx, userclient)
@@ -92,10 +92,10 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
 }`,
 		}
 
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.NeosyncCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 
@@ -377,10 +377,10 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeSingle_InvalidTran
 	t := s.T()
 
 	t.Run("no-nested-transformpiitext", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.NeosyncCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 
@@ -549,10 +549,10 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeSingle_ForbiddenTr
 	})
 
 	t.Run("cloud-personal", func(t *testing.T) {
-		userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.NeosyncCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 

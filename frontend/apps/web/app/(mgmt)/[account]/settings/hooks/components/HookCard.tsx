@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { AccountHook } from '@neosync/sdk';
+import { AccountHook } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import EditHookButton from './EditHookButton';
 import RemoveHookButton from './RemoveHookButton';

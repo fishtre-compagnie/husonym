@@ -13,7 +13,7 @@ import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { JobRunStatus as JobRunStatusEnum, JobService } from '@neosync/sdk';
+import { JobRunStatus as JobRunStatusEnum, JobService } from '@husonym/sdk';
 import { TiCancel } from 'react-icons/ti';
 
 import { CopyButton } from '@/components/CopyButton';

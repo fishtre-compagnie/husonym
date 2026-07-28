@@ -3,7 +3,7 @@ import { SystemAppConfig } from '@/app/config/app-config';
 import { cn } from '@/libs/utils';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
-import { AccountStatus, UserAccountService } from '@neosync/sdk';
+import { AccountStatus, UserAccountService } from '@husonym/sdk';
 import { differenceInDays } from 'date-fns';
 import { useAccount } from '../providers/account-provider';
 import { Skeleton } from '../ui/skeleton';
@@ -28,7 +28,7 @@ export function AccountStatusHandler(props: Props) {
   }
 
   const showTrialCountdown =
-    systemAppConfig.isNeosyncCloud &&
+    systemAppConfig.isHusonymCloud &&
     (data?.accountStatus == AccountStatus.ACCOUNT_TRIAL_ACTIVE ||
       data?.accountStatus == AccountStatus.ACCOUNT_TRIAL_EXPIRED);
 

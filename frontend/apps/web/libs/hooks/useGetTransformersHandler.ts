@@ -1,6 +1,6 @@
 import { TransformerHandler } from '@/components/jobs/SchemaTable/transformer-handler';
 import { useQuery } from '@connectrpc/connect-query';
-import { TransformersService } from '@neosync/sdk';
+import { TransformersService } from '@husonym/sdk';
 import { useMemo } from 'react';
 
 export function useGetTransformersHandler(accountId: string): {

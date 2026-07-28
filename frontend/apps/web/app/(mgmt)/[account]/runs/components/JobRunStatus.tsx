@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/libs/utils';
-import { JobRunStatus as JobRunStatusEnum } from '@neosync/sdk';
+import { JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
 import {
   CheckIcon,
   ClockIcon,

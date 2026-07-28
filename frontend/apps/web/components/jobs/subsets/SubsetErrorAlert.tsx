@@ -1,5 +1,5 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckSqlQueryResponse } from '@neosync/sdk';
+import { CheckSqlQueryResponse } from '@husonym/sdk';
 import { ReactElement } from 'react';
 
 interface Props {

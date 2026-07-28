@@ -1,4 +1,4 @@
-package neosync_benthos_sql
+package husonym_benthos_sql
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"sync"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	continuation_token "github.com/Groupe-Hevea/neosync/internal/continuation-token"
-	database_record_mapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper"
-	record_mapper_builder "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper"
+	record_mapper_builder "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 
@@ -201,7 +201,7 @@ func (s *pooledInput) Connect(ctx context.Context) error {
 
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		if neosync_benthos.IsCriticalError(err.Error()) {
+		if husonym_benthos.IsCriticalError(err.Error()) {
 			s.logger.Error(
 				fmt.Sprintf("Benthos input error - sending stop activity signal: %s ", err.Error()),
 			)

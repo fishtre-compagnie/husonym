@@ -1,6 +1,6 @@
 'use client';
 import { getErrorMessage } from '@/util/util';
-import { Code, ConnectError } from '@neosync/sdk';
+import { Code, ConnectError } from '@husonym/sdk';
 import {
   isServer,
   QueryCache,

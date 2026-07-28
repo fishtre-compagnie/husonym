@@ -12,7 +12,7 @@ import (
 )
 
 const getRunContextByKey = `-- name: GetRunContextByKey :one
-SELECT workflow_id, external_id, account_id, value, created_at, updated_at, created_by_id, updated_by_id from neosync_api.runcontexts
+SELECT workflow_id, external_id, account_id, value, created_at, updated_at, created_by_id, updated_by_id from husonym_api.runcontexts
 WHERE workflow_id = $1
   AND external_id = $2
   AND account_id = $3
@@ -24,9 +24,9 @@ type GetRunContextByKeyParams struct {
 	AccountId  pgtype.UUID
 }
 
-func (q *Queries) GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (NeosyncApiRuncontext, error) {
+func (q *Queries) GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (HusonymApiRuncontext, error) {
 	row := db.QueryRow(ctx, getRunContextByKey, arg.WorkflowId, arg.ExternalId, arg.AccountId)
-	var i NeosyncApiRuncontext
+	var i HusonymApiRuncontext
 	err := row.Scan(
 		&i.WorkflowID,
 		&i.ExternalID,
@@ -41,7 +41,7 @@ func (q *Queries) GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunCon
 }
 
 const getRunContextsByExternalIdSuffix = `-- name: GetRunContextsByExternalIdSuffix :many
-SELECT workflow_id, external_id, account_id, value, created_at, updated_at, created_by_id, updated_by_id from neosync_api.runcontexts
+SELECT workflow_id, external_id, account_id, value, created_at, updated_at, created_by_id, updated_by_id from husonym_api.runcontexts
 WHERE workflow_id = $1
   AND external_id LIKE '%' || $2::text
   AND account_id = $3
@@ -53,15 +53,15 @@ type GetRunContextsByExternalIdSuffixParams struct {
 	AccountId        pgtype.UUID
 }
 
-func (q *Queries) GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX, arg GetRunContextsByExternalIdSuffixParams) ([]NeosyncApiRuncontext, error) {
+func (q *Queries) GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX, arg GetRunContextsByExternalIdSuffixParams) ([]HusonymApiRuncontext, error) {
 	rows, err := db.Query(ctx, getRunContextsByExternalIdSuffix, arg.WorkflowId, arg.ExternalIdSuffix, arg.AccountId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiRuncontext
+	var items []HusonymApiRuncontext
 	for rows.Next() {
-		var i NeosyncApiRuncontext
+		var i HusonymApiRuncontext
 		if err := rows.Scan(
 			&i.WorkflowID,
 			&i.ExternalID,
@@ -83,7 +83,7 @@ func (q *Queries) GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX,
 }
 
 const setRunContext = `-- name: SetRunContext :exec
-INSERT INTO neosync_api.runcontexts (
+INSERT INTO husonym_api.runcontexts (
     workflow_id,
     external_id,
     "value",

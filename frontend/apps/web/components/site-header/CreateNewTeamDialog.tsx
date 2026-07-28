@@ -142,7 +142,7 @@ function ShowSubscriptionInfo(props: ShowSubscriptionInfoProps): ReactElement {
           Continuing will start a monthly Team plan subscription.
         </p>
         <Link
-          href="https://neosync.dev/pricing"
+          href="https://husonym.com/pricing"
           target="_blank"
           className="hover:underline inline-flex gap-1 flex-row items-center text-sm tracking-tight"
         >

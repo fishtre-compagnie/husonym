@@ -7,7 +7,7 @@ import {
   JobHookConfig,
   JobHookConfig_JobSqlHook,
   JobHookConfigSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ClockIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
 import EditHookButton from './EditHookButton';

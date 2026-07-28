@@ -1,4 +1,4 @@
-package neosyncotel
+package husonymotel
 
 import (
 	"context"

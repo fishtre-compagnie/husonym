@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"runtime"
 
-	pyroscope_logger "github.com/Groupe-Hevea/neosync/internal/pyroscope/logger"
+	pyroscope_logger "github.com/fishtre-compagnie/husonym/internal/pyroscope/logger"
 	"github.com/grafana/pyroscope-go"
 	"github.com/spf13/viper"
 )

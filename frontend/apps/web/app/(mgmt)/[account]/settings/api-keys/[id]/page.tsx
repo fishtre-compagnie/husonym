@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
-import { AccountApiKey, ApiKeyService } from '@neosync/sdk';
+import { AccountApiKey, ApiKeyService } from '@husonym/sdk';
 import { InfoCircledIcon, ReloadIcon } from '@radix-ui/react-icons';
 import Error from 'next/error';
 import Link from 'next/link';

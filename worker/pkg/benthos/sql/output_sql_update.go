@@ -1,13 +1,13 @@
-package neosync_benthos_sql
+package husonym_benthos_sql
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqldbtx"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	querybuilder "github.com/Groupe-Hevea/neosync/worker/pkg/query-builder"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/redpanda-data/benthos/v4/public/service"
@@ -186,7 +186,7 @@ func (s *pooledUpdateOutput) WriteBatch(ctx context.Context, batch service.Messa
 		}
 		if _, err := db.ExecContext(ctx, query); err != nil {
 			if !s.skipForeignKeyViolations ||
-				!neosync_benthos.IsForeignKeyViolationError(err.Error()) {
+				!husonym_benthos.IsForeignKeyViolationError(err.Error()) {
 				return err
 			}
 		}

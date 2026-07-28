@@ -9,7 +9,7 @@ slug: /guides/custom-code-transformers
 
 ## Introduction
 
-Neosync supports the ability to write your own custom logic using JavaScript.
+Husonym supports the ability to write your own custom logic using JavaScript.
 
 There exist two different transformers that enable this. One of them is input-free, while the other is input-full, and allows you to transform incoming values.
 
@@ -30,7 +30,7 @@ In order to create a custom code transformer:
 1. Navigate to the **Transformers** page and click on **+ New Transformer**.
 2. You'll be brought to the new transformer page where you can select a base transformer. A base transformer serves as the blueprint for the user defined transformer. Select the **Transform Javascript** transformer.
 
-![tj](https://assets.Groupe-Hevea.com/neosync/docs/customcodetransformer.png)
+![tj](https://assets.fishtre-compagnie.com/husonym/docs/customcodetransformer.png)
 
 3. Give your transformer a **Name** and a **Description**.
 4. Then move onto to the **Custom Code** section. Here you can write in custom javascript code to transform your input value.
@@ -112,6 +112,6 @@ Calling the `toString()` method on the integer in order to return it correctly. 
 
 ## JavaScript Runtime
 
-Since Neosync is written in Go, we have to use a JavaScript-compatible runtime to invoke JS transformations. Today, we rely on [goja](https://github.com/dop251/goja). This works well and is written in native Golang. However, it does have limitations such as no 3rd party modules, and does not have full ES6 support (yet).
+Since Husonym is written in Go, we have to use a JavaScript-compatible runtime to invoke JS transformations. Today, we rely on [goja](https://github.com/dop251/goja). This works well and is written in native Golang. However, it does have limitations such as no 3rd party modules, and does not have full ES6 support (yet).
 
 If running into anything strange with JS, it's worthwhile to check what Goja supports to see if you've hit any incompatibility errors.

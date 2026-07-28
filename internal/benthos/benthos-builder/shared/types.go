@@ -3,14 +3,14 @@ package benthosbuilder_shared
 import (
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	rc "github.com/Groupe-Hevea/neosync/internal/runconfigs"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 )
 
 // Holds the environment variable name and the connection id that should replace it at runtime when the Sync activity is launched
 type BenthosDsn struct {
-	// Neosync Connection Id
+	// Husonym Connection Id
 	ConnectionId string
 }
 
@@ -48,7 +48,7 @@ const (
 	ConnectionTypeDynamodb    ConnectionType = "aws-dynamodb"
 	ConnectionTypeLocalDir    ConnectionType = "local-directory"
 	ConnectionTypeOpenAI      ConnectionType = "openai"
-	ConnectionTypeNeosyncData ConnectionType = "neosync-data-stream"
+	ConnectionTypeHusonymData ConnectionType = "husonym-data-stream"
 )
 
 // Determines type of connection from Connection

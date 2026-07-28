@@ -4,7 +4,7 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 import SwitchCard from '@/components/switches/SwitchCard';
 import { Button } from '@/components/ui/button';
 import { fromJson } from '@bufbuild/protobuf';
-import { JobMapping, JobMappingSchema } from '@neosync/sdk';
+import { JobMapping, JobMappingSchema } from '@husonym/sdk';
 import { filesize } from 'filesize';
 import {
   ReactElement,

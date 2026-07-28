@@ -3,10 +3,10 @@ package sqlio
 import (
 	"testing"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/consistency"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/engine"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/native"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/native"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
 
 // fakeReader reproduit la sémantique de *database/sql.Rows : Next() avance le

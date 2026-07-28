@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -44,7 +44,7 @@ func (p *DBConfigProvider) GetConfig(
 	ctx context.Context,
 	accountID string,
 ) (*TemporalConfig, error) {
-	accountUuid, err := neosyncdb.ToUuid(accountID)
+	accountUuid, err := husonymdb.ToUuid(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid account ID: %w", err)
 	}

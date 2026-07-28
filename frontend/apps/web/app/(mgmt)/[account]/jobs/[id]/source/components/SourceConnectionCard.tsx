@@ -1,6 +1,6 @@
 'use client';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService } from '@neosync/sdk';
+import { JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { isAiDataGenJob, isDataGenJob, isPiiDetectJob } from '../../util';
 import AiDataGenConnectionCard from './AiDataGenConnectionCard';

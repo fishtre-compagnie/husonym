@@ -73,7 +73,7 @@ func GetSingleTransformFunction(userCode string) (code, propertyPath string) {
 }
 
 // Takes all of the built userland functions and output setters and stuffs them into a single function that can be invoked by the JS VM
-// Calling the resulting program expects benthos.v0_msg_as_structured() and neosync.patchStructuredMessage() to be defined in the JS VM
+// Calling the resulting program expects benthos.v0_msg_as_structured() and husonym.patchStructuredMessage() to be defined in the JS VM
 func GetFunction(jsFuncs, outputSetters []string) string {
 	jsFunctionStrings := strings.Join(jsFuncs, "\n")
 
@@ -85,7 +85,7 @@ func GetFunction(jsFuncs, outputSetters []string) string {
 const input = benthos.v0_msg_as_structured();
 const updatedValues = {}
 %s
-neosync.patchStructuredMessage(updatedValues)
+husonym.patchStructuredMessage(updatedValues)
 })();`, jsFunctionStrings, benthosOutputString)
 	return jsCode
 }
