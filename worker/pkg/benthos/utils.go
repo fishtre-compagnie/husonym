@@ -1,4 +1,4 @@
-package neosync_benthos
+package husonym_benthos
 
 import (
 	"crypto/sha256"

@@ -4,7 +4,7 @@ import {
   ConnectError,
   IsConnectionNameAvailableRequestSchema,
   IsConnectionNameAvailableResponse,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { UseMutateAsyncFunction } from '@tanstack/react-query';
 import * as Yup from 'yup';
 import { getDurationValidateFn } from './number';

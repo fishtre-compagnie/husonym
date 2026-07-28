@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
 type generateBuilder struct {
@@ -78,7 +78,7 @@ func (b *generateBuilder) BuildSourceConfigs(
 	}
 
 	for _, tableMapping := range groupedMappings {
-		tableName := neosync_benthos.BuildBenthosTable(tableMapping.Schema, tableMapping.Table)
+		tableName := husonym_benthos.BuildBenthosTable(tableMapping.Schema, tableMapping.Table)
 		var count = 0
 		tableOpt := sourceTableOpts[tableName]
 		if tableOpt != nil {
@@ -109,19 +109,19 @@ func (b *generateBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		var processors []*neosync_benthos.ProcessorConfig
+		var processors []*husonym_benthos.ProcessorConfig
 		// for the generate input, benthos requires a mapping, so falling back to a
 		// generic empty object if the mutations are empty
 		if mutations == "" {
 			mutations = "root = {}"
 		}
-		processors = append(processors, &neosync_benthos.ProcessorConfig{Mutation: &mutations})
+		processors = append(processors, &husonym_benthos.ProcessorConfig{Mutation: &mutations})
 
 		if jsCode != "" {
 			processors = append(
 				processors,
-				&neosync_benthos.ProcessorConfig{
-					NeosyncJavascript: &neosync_benthos.NeosyncJavascriptConfig{Code: jsCode},
+				&husonym_benthos.ProcessorConfig{
+					HusonymJavascript: &husonym_benthos.HusonymJavascriptConfig{Code: jsCode},
 				},
 			)
 		}
@@ -129,34 +129,34 @@ func (b *generateBuilder) BuildSourceConfigs(
 			// add catch and error processor
 			processors = append(
 				processors,
-				&neosync_benthos.ProcessorConfig{Catch: []*neosync_benthos.ProcessorConfig{
-					{Error: &neosync_benthos.ErrorProcessorConfig{
+				&husonym_benthos.ProcessorConfig{Catch: []*husonym_benthos.ProcessorConfig{
+					{Error: &husonym_benthos.ErrorProcessorConfig{
 						ErrorMsg: `${! error()}`,
 					}},
 				}},
 			)
 		}
 
-		bc := &neosync_benthos.BenthosConfig{
-			StreamConfig: neosync_benthos.StreamConfig{
-				Input: &neosync_benthos.InputConfig{
-					Inputs: neosync_benthos.Inputs{
-						Generate: &neosync_benthos.Generate{
+		bc := &husonym_benthos.BenthosConfig{
+			StreamConfig: husonym_benthos.StreamConfig{
+				Input: &husonym_benthos.InputConfig{
+					Inputs: husonym_benthos.Inputs{
+						Generate: &husonym_benthos.Generate{
 							Interval: "",
 							Count:    count,
 							Mapping:  "root = {}",
 						},
 					},
 				},
-				Pipeline: &neosync_benthos.PipelineConfig{
+				Pipeline: &husonym_benthos.PipelineConfig{
 					Threads:    -1,
-					Processors: []neosync_benthos.ProcessorConfig{}, // leave empty. processors should be on output
+					Processors: []husonym_benthos.ProcessorConfig{}, // leave empty. processors should be on output
 				},
-				Output: &neosync_benthos.OutputConfig{
-					Outputs: neosync_benthos.Outputs{
-						Broker: &neosync_benthos.OutputBrokerConfig{
+				Output: &husonym_benthos.OutputConfig{
+					Outputs: husonym_benthos.Outputs{
+						Broker: &husonym_benthos.OutputBrokerConfig{
 							Pattern: "fan_out",
-							Outputs: []neosync_benthos.Outputs{},
+							Outputs: []husonym_benthos.Outputs{},
 						},
 					},
 				},
@@ -176,7 +176,7 @@ func (b *generateBuilder) BuildSourceConfigs(
 		}
 
 		configs = append(configs, &bb_internal.BenthosSourceConfig{
-			Name: neosync_benthos.BuildBenthosTable(
+			Name: husonym_benthos.BuildBenthosTable(
 				tableMapping.Schema,
 				tableMapping.Table,
 			), // todo: may need to expand on this
@@ -213,7 +213,7 @@ func (b *generateBuilder) BuildDestinationConfig(
 		return nil, fmt.Errorf("unable to parse destination options: %w", err)
 	}
 
-	processorConfigs := []neosync_benthos.ProcessorConfig{}
+	processorConfigs := []husonym_benthos.ProcessorConfig{}
 	for _, pc := range benthosConfig.Processors {
 		processorConfigs = append(processorConfigs, *pc)
 	}
@@ -232,17 +232,17 @@ func (b *generateBuilder) BuildDestinationConfig(
 		config.BenthosDsns,
 		&bb_shared.BenthosDsn{ConnectionId: params.DestConnection.Id},
 	)
-	config.Outputs = append(config.Outputs, neosync_benthos.Outputs{
+	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
 		// retry processor and output several times
-		Retry: &neosync_benthos.RetryConfig{
-			InlineRetryConfig: neosync_benthos.InlineRetryConfig{
+		Retry: &husonym_benthos.RetryConfig{
+			InlineRetryConfig: husonym_benthos.InlineRetryConfig{
 				MaxRetries: 10,
 			},
-			Output: neosync_benthos.OutputConfig{
-				Outputs: neosync_benthos.Outputs{
-					Fallback: []neosync_benthos.Outputs{
+			Output: husonym_benthos.OutputConfig{
+				Outputs: husonym_benthos.Outputs{
+					Fallback: []husonym_benthos.Outputs{
 						{
-							PooledSqlInsert: &neosync_benthos.PooledSqlInsert{
+							PooledSqlInsert: &husonym_benthos.PooledSqlInsert{
 								ConnectionId: params.DestConnection.GetId(),
 
 								Schema:              benthosConfig.TableSchema,
@@ -251,18 +251,18 @@ func (b *generateBuilder) BuildDestinationConfig(
 								OnConflictDoUpdate:  destOpts.OnConflictDoUpdate,
 								TruncateOnRetry:     destOpts.Truncate,
 
-								Batching: &neosync_benthos.Batching{
+								Batching: &husonym_benthos.Batching{
 									Period:     destOpts.BatchPeriod,
 									Count:      destOpts.BatchCount,
-									Processors: []*neosync_benthos.BatchProcessor{sqlProcessor},
+									Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 								},
 								MaxInFlight: int(destOpts.MaxInFlight),
 							},
 						},
 						{ // kills activity depending on error
-							Error: &neosync_benthos.ErrorOutputConfig{
+							Error: &husonym_benthos.ErrorOutputConfig{
 								ErrorMsg: `${! meta("fallback_error")}`,
-								Batching: &neosync_benthos.Batching{
+								Batching: &husonym_benthos.Batching{
 									Period: destOpts.BatchPeriod,
 									Count:  destOpts.BatchCount,
 								},
@@ -291,7 +291,7 @@ func groupGenerateSourceOptionsByTable(
 		schemaOpt := schemaOptions[idx]
 		for tidx := range schemaOpt.Tables {
 			tableOpt := schemaOpt.Tables[tidx]
-			key := neosync_benthos.BuildBenthosTable(schemaOpt.Schema, tableOpt.Table)
+			key := husonym_benthos.BuildBenthosTable(schemaOpt.Schema, tableOpt.Table)
 			groupedMappings[key] = &generateSourceTableOptions{
 				Count: int(
 					tableOpt.RowCount,

@@ -6,13 +6,13 @@ type TemplateData struct {
 	Example     string
 }
 
-type NeosyncTransformer interface {
+type HusonymTransformer interface {
 	ParseOptions(opts map[string]any) (any, error)
 	GetJsTemplateData() (*TemplateData, error)
 	Transform(value any, opts any) (any, error)
 }
 
-type NeosyncGenerator interface {
+type HusonymGenerator interface {
 	ParseOptions(opts map[string]any) (any, error)
 	GetJsTemplateData() (*TemplateData, error)
 	Generate(opts any) (any, error)

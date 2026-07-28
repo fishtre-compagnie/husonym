@@ -1,8 +1,8 @@
 package v1alpha1_connectiondataservice
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/internal/connectiondata"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 )
 
 type Service struct {

@@ -4,7 +4,7 @@ import SystemLicenseAlert from '@/components/SystemLicenseAlert';
 import { BaseStore } from '@/util/zustand.stores.util';
 import { AwsFormValues } from '@/yup-validations/connections';
 import { useMutation } from '@connectrpc/connect-query';
-import { ConnectionService } from '@neosync/sdk';
+import { ConnectionService } from '@husonym/sdk';
 import { ReactElement, useEffect } from 'react';
 import { create } from 'zustand';
 import {

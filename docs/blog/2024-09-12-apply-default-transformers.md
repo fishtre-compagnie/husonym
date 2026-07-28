@@ -17,6 +17,6 @@ authors:
 9. Add support for applying default transformers to the Mapping table with one click
 10. Surface Generated column badges in the Job Mapping table
 11. Support SQL Server Truncate options
-12. Add support for Team accounts in OSS Neosync
+12. Add support for Team accounts in OSS Husonym
 13. Add real time validation for connections in the Connect page
 14. Add a Country Code Transformer

@@ -24,7 +24,7 @@ import {
 import { formatDateTime, getErrorMessage } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
-import { JobRunStatus as JobRunStatusEnum, JobService } from '@neosync/sdk';
+import { JobRunStatus as JobRunStatusEnum, JobService } from '@husonym/sdk';
 import {
   Cross2Icon,
   DotsHorizontalIcon,

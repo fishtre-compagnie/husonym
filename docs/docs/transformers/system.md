@@ -1,6 +1,6 @@
 ---
 title: System Transformers
-description: Learn about Neosync's System Transformers that come out of the box and help anonymize data and generate synthetic data
+description: Learn about Husonym's System Transformers that come out of the box and help anonymize data and generate synthetic data
 id: system
 hide_title: false
 slug: /transformers/system
@@ -9,7 +9,7 @@ slug: /transformers/system
 
 ## Introduction
 
-Neosync ships with 40+ System Transformers to give you an easy way to get started with anonymizing or generating data. There are two kinds of System Transformers:
+Husonym ships with 40+ System Transformers to give you an easy way to get started with anonymizing or generating data. There are two kinds of System Transformers:
 
 1. Generators - these begin with `Generate` and do not anonymize existing data. They only generate net-new synthetic data.
 2. Transformers - these begin with `Transform` and can anonymize existing data or generate new-new synthetic data based on your configuration.
@@ -70,7 +70,7 @@ Randomly selects a value from a defined set of categorical values.
 
 | Name       | Description                                                              | Default         | Example Output |
 | ---------- | ------------------------------------------------------------------------ | --------------- | -------------- |
-| Categories | List of comma-separated string values that Neosync will randomly sample. | `value1,value2` | `value1`       |
+| Categories | List of comma-separated string values that Husonym will randomly sample. | `value1,value2` | `value1`       |
 
 **Examples**
 
@@ -535,7 +535,7 @@ Anonymizes and transforms an existing email address.
 | Preserve Domain      | Preserve Domain will ensure that the output email domain is the same as the input email domain    | false   | john@gmail      | william@yahoo.com                              |
 | Excluded Domains     | Takes in a list of comma separated domains and excludes them from the transformer                 | []      | @gmail          | william@gmail.com                              |
 | Email Type           | Provides a way to generate unique email addresses by appending a UUID to the domain               | uuid_v4 | john@gmail      | ab6b676b-0d0e-4e38-b98a-3935a832da7d@gmail.com |
-| Invalid Email Action | Provide a way for Neosync to handle email strings that are not formatted as valid email addresses | reject  | john@gmail..com | null                                           |
+| Invalid Email Action | Provide a way for Husonym to handle email strings that are not formatted as valid email addresses | reject  | john@gmail..com | null                                           |
 
 **Examples**
 
@@ -810,7 +810,7 @@ This section is for detailing what we have limited or in-progress support for in
 
 ### Array data types
 
-Neosync has limited support for array data types today.
+Husonym has limited support for array data types today.
 
 1. Passthrough - Array data types can be set to passthrough and have their values directly passed through from the source to the destination.
 2. Null - If the column is nullable, this transformer can be safely set.

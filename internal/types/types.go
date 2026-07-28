@@ -1,4 +1,4 @@
-package neosync_types
+package husonym_types
 
 type KeyType int
 

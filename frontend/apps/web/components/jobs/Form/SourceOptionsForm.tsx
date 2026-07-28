@@ -2,7 +2,7 @@
 import { getDefaultUnmappedTransformConfig } from '@/app/(mgmt)/[account]/jobs/util';
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import { SourceOptionsFormValues } from '@/yup-validations/jobs';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import DynamoDBSourceOptionsForm from './DynamoDBSourceOptionsForm';
 import MssqlDBSourceOptionsForm from './MssqlDBSourceOptionsForm';

@@ -12,7 +12,7 @@ import (
 )
 
 const createAccountHook = `-- name: CreateAccountHook :one
-INSERT INTO neosync_api.account_hooks (
+INSERT INTO husonym_api.account_hooks (
   name, description, account_id, events, config, created_by_user_id, updated_by_user_id, enabled
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7, $8
@@ -31,7 +31,7 @@ type CreateAccountHookParams struct {
 	Enabled         bool
 }
 
-func (q *Queries) CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (NeosyncApiAccountHook, error) {
+func (q *Queries) CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (HusonymApiAccountHook, error) {
 	row := db.QueryRow(ctx, createAccountHook,
 		arg.Name,
 		arg.Description,
@@ -42,7 +42,7 @@ func (q *Queries) CreateAccountHook(ctx context.Context, db DBTX, arg CreateAcco
 		arg.UpdatedByUserID,
 		arg.Enabled,
 	)
-	var i NeosyncApiAccountHook
+	var i HusonymApiAccountHook
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -61,7 +61,7 @@ func (q *Queries) CreateAccountHook(ctx context.Context, db DBTX, arg CreateAcco
 }
 
 const createSlackOAuthConnection = `-- name: CreateSlackOAuthConnection :one
-INSERT INTO neosync_api.slack_oauth_connections (account_id, oauth_v2_response, created_by_user_id, updated_by_user_id)
+INSERT INTO husonym_api.slack_oauth_connections (account_id, oauth_v2_response, created_by_user_id, updated_by_user_id)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (account_id) DO UPDATE
 SET oauth_v2_response = EXCLUDED.oauth_v2_response,
@@ -77,14 +77,14 @@ type CreateSlackOAuthConnectionParams struct {
 	UpdatedByUserID pgtype.UUID
 }
 
-func (q *Queries) CreateSlackOAuthConnection(ctx context.Context, db DBTX, arg CreateSlackOAuthConnectionParams) (NeosyncApiSlackOauthConnection, error) {
+func (q *Queries) CreateSlackOAuthConnection(ctx context.Context, db DBTX, arg CreateSlackOAuthConnectionParams) (HusonymApiSlackOauthConnection, error) {
 	row := db.QueryRow(ctx, createSlackOAuthConnection,
 		arg.AccountID,
 		arg.OauthV2Response,
 		arg.CreatedByUserID,
 		arg.UpdatedByUserID,
 	)
-	var i NeosyncApiSlackOauthConnection
+	var i HusonymApiSlackOauthConnection
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -98,7 +98,7 @@ func (q *Queries) CreateSlackOAuthConnection(ctx context.Context, db DBTX, arg C
 }
 
 const deleteSlackOAuthConnection = `-- name: DeleteSlackOAuthConnection :exec
-DELETE FROM neosync_api.slack_oauth_connections
+DELETE FROM husonym_api.slack_oauth_connections
 WHERE account_id = $1
 `
 
@@ -108,12 +108,12 @@ func (q *Queries) DeleteSlackOAuthConnection(ctx context.Context, db DBTX, accou
 }
 
 const getAccountHookById = `-- name: GetAccountHookById :one
-SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from neosync_api.account_hooks WHERE id = $1
+SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from husonym_api.account_hooks WHERE id = $1
 `
 
-func (q *Queries) GetAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiAccountHook, error) {
+func (q *Queries) GetAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountHook, error) {
 	row := db.QueryRow(ctx, getAccountHookById, id)
-	var i NeosyncApiAccountHook
+	var i HusonymApiAccountHook
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -132,18 +132,18 @@ func (q *Queries) GetAccountHookById(ctx context.Context, db DBTX, id pgtype.UUI
 }
 
 const getAccountHooksByAccount = `-- name: GetAccountHooksByAccount :many
-SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from neosync_api.account_hooks WHERE account_id = $1
+SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from husonym_api.account_hooks WHERE account_id = $1
 `
 
-func (q *Queries) GetAccountHooksByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]NeosyncApiAccountHook, error) {
+func (q *Queries) GetAccountHooksByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountHook, error) {
 	rows, err := db.Query(ctx, getAccountHooksByAccount, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccountHook
+	var items []HusonymApiAccountHook
 	for rows.Next() {
-		var i NeosyncApiAccountHook
+		var i HusonymApiAccountHook
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -169,7 +169,7 @@ func (q *Queries) GetAccountHooksByAccount(ctx context.Context, db DBTX, account
 }
 
 const getActiveAccountHooksByEvent = `-- name: GetActiveAccountHooksByEvent :many
-SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from neosync_api.account_hooks
+SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from husonym_api.account_hooks
 WHERE account_id = $1
   AND enabled = true
   AND events && $2::int[]
@@ -181,15 +181,15 @@ type GetActiveAccountHooksByEventParams struct {
 	Events    []int32
 }
 
-func (q *Queries) GetActiveAccountHooksByEvent(ctx context.Context, db DBTX, arg GetActiveAccountHooksByEventParams) ([]NeosyncApiAccountHook, error) {
+func (q *Queries) GetActiveAccountHooksByEvent(ctx context.Context, db DBTX, arg GetActiveAccountHooksByEventParams) ([]HusonymApiAccountHook, error) {
 	rows, err := db.Query(ctx, getActiveAccountHooksByEvent, arg.AccountID, arg.Events)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiAccountHook
+	var items []HusonymApiAccountHook
 	for rows.Next() {
-		var i NeosyncApiAccountHook
+		var i HusonymApiAccountHook
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -216,7 +216,7 @@ func (q *Queries) GetActiveAccountHooksByEvent(ctx context.Context, db DBTX, arg
 
 const getSlackAccessToken = `-- name: GetSlackAccessToken :one
 SELECT (oauth_v2_response->>'access_token')::TEXT as access_token
-FROM neosync_api.slack_oauth_connections
+FROM husonym_api.slack_oauth_connections
 WHERE account_id = $1
 `
 
@@ -230,7 +230,7 @@ func (q *Queries) GetSlackAccessToken(ctx context.Context, db DBTX, accountID pg
 const isAccountHookNameAvailable = `-- name: IsAccountHookNameAvailable :one
 SELECT NOT EXISTS(
   SELECT 1
-  FROM neosync_api.account_hooks
+  FROM husonym_api.account_hooks
   WHERE account_id = $1 AND name = $2
 )
 `
@@ -248,7 +248,7 @@ func (q *Queries) IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg I
 }
 
 const removeAccountHookById = `-- name: RemoveAccountHookById :exec
-DELETE FROM neosync_api.account_hooks WHERE id = $1
+DELETE FROM husonym_api.account_hooks WHERE id = $1
 `
 
 func (q *Queries) RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -257,7 +257,7 @@ func (q *Queries) RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.
 }
 
 const setAccountHookEnabled = `-- name: SetAccountHookEnabled :one
-UPDATE neosync_api.account_hooks
+UPDATE husonym_api.account_hooks
 SET enabled = $1,
     updated_by_user_id = $2
 WHERE id = $3
@@ -270,9 +270,9 @@ type SetAccountHookEnabledParams struct {
 	ID              pgtype.UUID
 }
 
-func (q *Queries) SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (NeosyncApiAccountHook, error) {
+func (q *Queries) SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error) {
 	row := db.QueryRow(ctx, setAccountHookEnabled, arg.Enabled, arg.UpdatedByUserID, arg.ID)
-	var i NeosyncApiAccountHook
+	var i HusonymApiAccountHook
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -291,7 +291,7 @@ func (q *Queries) SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAcc
 }
 
 const updateAccountHook = `-- name: UpdateAccountHook :one
-UPDATE neosync_api.account_hooks
+UPDATE husonym_api.account_hooks
 SET name = $1,
     description = $2,
     events = $3,
@@ -312,7 +312,7 @@ type UpdateAccountHookParams struct {
 	ID              pgtype.UUID
 }
 
-func (q *Queries) UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (NeosyncApiAccountHook, error) {
+func (q *Queries) UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error) {
 	row := db.QueryRow(ctx, updateAccountHook,
 		arg.Name,
 		arg.Description,
@@ -322,7 +322,7 @@ func (q *Queries) UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAcco
 		arg.UpdatedByUserID,
 		arg.ID,
 	)
-	var i NeosyncApiAccountHook
+	var i HusonymApiAccountHook
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

@@ -1,13 +1,12 @@
-module github.com/Groupe-Hevea/neosync/tools
+module github.com/fishtre-compagnie/husonym/tools
 
 go 1.26.4
 
-replace github.com/Groupe-Hevea/neosync => ../
+replace github.com/fishtre-compagnie/husonym => ../
 
 require (
-	github.com/Groupe-Hevea/neosync v0.5.1
 	github.com/antlr4-go/antlr/v4 v4.13.1
-	github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5
+	github.com/fishtre-compagnie/husonym v0.5.1
 	github.com/pganalyze/pg_query_go/v5 v5.1.0
 )
 

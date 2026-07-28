@@ -735,7 +735,7 @@ type ConvertPersonalToTeamAccountResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The id of the team account (will be the same identifier as the personal account)
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	// If NeosyncCloud, will respond with a checkout session url so they can setup billing
+	// If HusonymCloud, will respond with a checkout session url so they can setup billing
 	CheckoutSessionUrl *string `protobuf:"bytes,2,opt,name=checkout_session_url,json=checkoutSessionUrl,proto3,oneof" json:"checkout_session_url,omitempty"`
 	// The identifier of the newly created personal account
 	NewPersonalAccountId string `protobuf:"bytes,3,opt,name=new_personal_account_id,json=newPersonalAccountId,proto3" json:"new_personal_account_id,omitempty"`
@@ -1266,7 +1266,7 @@ type CreateTeamAccountResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier of the team account that was created.
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	// If NeosyncCloud, will respond with a checkout session url so they can setup billing
+	// If HusonymCloud, will respond with a checkout session url so they can setup billing
 	CheckoutSessionUrl *string `protobuf:"bytes,2,opt,name=checkout_session_url,json=checkoutSessionUrl,proto3,oneof" json:"checkout_session_url,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -2113,9 +2113,9 @@ type GetSystemInformationResponse struct {
 	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	// The Git commit
 	Commit string `protobuf:"bytes,2,opt,name=commit,proto3" json:"commit,omitempty"`
-	// The Go compiler flag that was used to build this version of Neosync
+	// The Go compiler flag that was used to build this version of Husonym
 	Compiler string `protobuf:"bytes,3,opt,name=compiler,proto3" json:"compiler,omitempty"`
-	// The Go platform flag that was used to build this version of Neosync
+	// The Go platform flag that was used to build this version of Husonym
 	Platform string `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
 	// The time when the build was created
 	BuildDate *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=build_date,json=buildDate,proto3" json:"build_date,omitempty"`
@@ -2203,8 +2203,8 @@ type SystemLicense struct {
 	IsValid bool `protobuf:"varint,1,opt,name=is_valid,json=isValid,proto3" json:"is_valid,omitempty"`
 	// The time when the license expires
 	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	// Whether or not the license is for NeosyncCloud
-	IsNeosyncCloud bool `protobuf:"varint,3,opt,name=is_neosync_cloud,json=isNeosyncCloud,proto3" json:"is_neosync_cloud,omitempty"`
+	// Whether or not the license is for HusonymCloud
+	IsHusonymCloud bool `protobuf:"varint,3,opt,name=is_husonym_cloud,json=isHusonymCloud,proto3" json:"is_husonym_cloud,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2253,9 +2253,9 @@ func (x *SystemLicense) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *SystemLicense) GetIsNeosyncCloud() bool {
+func (x *SystemLicense) GetIsHusonymCloud() bool {
 	if x != nil {
-		return x.IsNeosyncCloud
+		return x.IsHusonymCloud
 	}
 	return false
 }
@@ -3611,7 +3611,7 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\bis_valid\x18\x01 \x01(\bR\aisValid\x129\n" +
 	"\n" +
 	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12(\n" +
-	"\x10is_neosync_cloud\x18\x03 \x01(\bR\x0eisNeosyncCloud\"L\n" +
+	"\x10is_husonym_cloud\x18\x03 \x01(\bR\x0eisHusonymCloud\"L\n" +
 	"!GetAccountOnboardingConfigRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"d\n" +
@@ -3757,8 +3757,8 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x14SetBillingMeterEvent\x12*.mgmt.v1alpha1.SetBillingMeterEventRequest\x1a+.mgmt.v1alpha1.SetBillingMeterEventResponse\"\x00\x12V\n" +
 	"\vSetUserRole\x12!.mgmt.v1alpha1.SetUserRoleRequest\x1a\".mgmt.v1alpha1.SetUserRoleResponse\"\x00\x12\\\n" +
 	"\rHasPermission\x12#.mgmt.v1alpha1.HasPermissionRequest\x1a$.mgmt.v1alpha1.HasPermissionResponse\"\x00\x12_\n" +
-	"\x0eHasPermissions\x12$.mgmt.v1alpha1.HasPermissionsRequest\x1a%.mgmt.v1alpha1.HasPermissionsResponse\"\x00B\xcc\x01\n" +
-	"\x11com.mgmt.v1alpha1B\x10UserAccountProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x0eHasPermissions\x12$.mgmt.v1alpha1.HasPermissionsRequest\x1a%.mgmt.v1alpha1.HasPermissionsResponse\"\x00B\xd1\x01\n" +
+	"\x11com.mgmt.v1alpha1B\x10UserAccountProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_user_account_proto_rawDescOnce sync.Once

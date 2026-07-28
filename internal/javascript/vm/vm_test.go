@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	javascript_functions "github.com/Groupe-Hevea/neosync/internal/javascript/functions"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/dop251/goja"
 	goja_require "github.com/dop251/goja_nodejs/require"
 

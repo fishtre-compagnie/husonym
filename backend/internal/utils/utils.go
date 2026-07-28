@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 func FilterSlice[T any](slice []T, filterFn func(T) bool) []T {

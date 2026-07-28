@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS neosync_api.transformers;
+DROP TABLE IF EXISTS husonym_api.transformers;

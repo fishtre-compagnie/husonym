@@ -5,7 +5,7 @@ package sqlmanager
 import (
 	context "context"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	mock "github.com/stretchr/testify/mock"
 )
 

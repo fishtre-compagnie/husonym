@@ -8,7 +8,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "docker": "turbo prune @neosync/app --docker",
+    "docker": "turbo prune @husonym/app --docker",
     "prettier:check": "prettier --check .",
     "prettier:write": "prettier --write .",
     "knip": "knip",

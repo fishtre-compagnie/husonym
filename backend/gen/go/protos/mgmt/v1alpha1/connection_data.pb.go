@@ -1961,7 +1961,7 @@ type GetAiGeneratedDataRequest struct {
 	Count int64 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
 	// The LLM model name to use that works with the configured connection id.
 	ModelName string `protobuf:"bytes,3,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`
-	// The prompt that will be used to further refine the data generation. This is appended to the prompt that Neosync generates that includes schema information.
+	// The prompt that will be used to further refine the data generation. This is appended to the prompt that Husonym generates that includes schema information.
 	UserPrompt *string `protobuf:"bytes,4,opt,name=user_prompt,json=userPrompt,proto3,oneof" json:"user_prompt,omitempty"`
 	// The unique identifier of a connection that the AI generated data would be inserted into. This is used to generate and send schema information to the LLM to help shape the generated data.
 	DataConnectionId string `protobuf:"bytes,5,opt,name=data_connection_id,json=dataConnectionId,proto3" json:"data_connection_id,omitempty"`
@@ -2909,8 +2909,8 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x1bGetConnectionInitStatements\x121.mgmt.v1alpha1.GetConnectionInitStatementsRequest\x1a2.mgmt.v1alpha1.GetConnectionInitStatementsResponse\"\x00\x12k\n" +
 	"\x12GetAiGeneratedData\x12(.mgmt.v1alpha1.GetAiGeneratedDataRequest\x1a).mgmt.v1alpha1.GetAiGeneratedDataResponse\"\x00\x12h\n" +
 	"\x10GetTableRowCount\x12&.mgmt.v1alpha1.GetTableRowCountRequest\x1a'.mgmt.v1alpha1.GetTableRowCountResponse\"\x03\x90\x02\x01\x12z\n" +
-	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\x03\x90\x02\x01B\xcf\x01\n" +
-	"\x11com.mgmt.v1alpha1B\x13ConnectionDataProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\x03\x90\x02\x01B\xd4\x01\n" +
+	"\x11com.mgmt.v1alpha1B\x13ConnectionDataProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_connection_data_proto_rawDescOnce sync.Once

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	transformer_utils "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/utils"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	transformer_utils "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/utils"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/require"
 )
@@ -471,7 +471,7 @@ func Test_TransformEmailTransformerWithEmptyValueNilDomainsIntegerSliceDomains(t
 func Test_TransformEmailTransformer_InvalidEmailArg(t *testing.T) {
 	mapping := fmt.Sprintf(
 		`root = transform_email(value:%q,invalid_email_action:"passthrough")`,
-		"nick@neosync.dev",
+		"nick@husonym.com",
 	)
 	ex, err := bloblang.Parse(mapping)
 	require.NoError(t, err, "failed to parse the email transformer")
@@ -481,7 +481,7 @@ func Test_TransformEmailTransformer_InvalidEmailArg(t *testing.T) {
 }
 
 func Test_TransformEmailTransformer_NoOptions(t *testing.T) {
-	mapping := fmt.Sprintf(`root = transform_email(value:%q)`, "nick@neosync.dev")
+	mapping := fmt.Sprintf(`root = transform_email(value:%q)`, "nick@husonym.com")
 	ex, err := bloblang.Parse(mapping)
 	require.NoError(t, err, "failed to parse the email transformer")
 

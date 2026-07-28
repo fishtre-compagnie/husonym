@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
-import { UserAccountService } from '@neosync/sdk';
+import { UserAccountService } from '@husonym/sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ReactElement } from 'react';
 import { ConnectionMeta } from '../../../connections/util';

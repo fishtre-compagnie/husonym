@@ -1,6 +1,6 @@
 ---
 title: Kubernetes
-description: The Kubernetes guide covers how to deploy Neosync specific resources.
+description: The Kubernetes guide covers how to deploy Husonym specific resources.
 id: kubernetes
 hide_title: false
 slug: /deploy/kubernetes
@@ -8,59 +8,59 @@ slug: /deploy/kubernetes
 
 ## Kubernetes
 
-The Kubernetes guide covers how to deploy Neosync specific resources.
+The Kubernetes guide covers how to deploy Husonym specific resources.
 Deploying a Postgres database and Temporal instances are not covered under this guide.
 See the external dependency section below for more information regarding these resources.
 
-## Neosync Helm Chart Layout
+## Husonym Helm Chart Layout
 
-Neosync can be deployed to Kubernetes easily with the assistance of Helm charts.
+Husonym can be deployed to Kubernetes easily with the assistance of Helm charts.
 
 We currently publish four different helm charts for maximum flexibility.
 This page will detail the purpose of each one and how it can be used to deploy to Kubernetes.
 
 All of our helm charts are deployed as OCI helm charts and require Helm3 to use.
-Our images are published directly to the Github Container registry at: `ghcr.io/Groupe-Hevea/neosync/helm`.
+Our images are published directly to the Github Container registry at: `ghcr.io/fishtre-compagnie/husonym/helm`.
 
-When a release of Neosync is made, all of these resources are tagged and released at the same version.
-If using the Neosync AIO chart at version `v1.0.0`, it will use `v1.0.0` of the api, app, and worker.
+When a release of Husonym is made, all of these resources are tagged and released at the same version.
+If using the Husonym AIO chart at version `v1.0.0`, it will use `v1.0.0` of the api, app, and worker.
 
 ### API
 
 The API Helm chart can be used to deploy just the backend API server.
-The chart itself can be found [here](https://github.com/Groupe-Hevea/neosync/tree/main/backend/charts/api).
+The chart itself can be found [here](https://github.com/fishtre-compagnie/husonym/tree/main/backend/charts/api).
 
-The local dev edition can be found in the [helmfile](https://github.com/Groupe-Hevea/neosync/blob/main/backend/dev/helm/api/helmfile.yaml) that is used by our dev Tilt instance.
+The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/backend/dev/helm/api/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/Groupe-Hevea/neosync/helm/api:latest`
+The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/api:latest`
 
 ### App
 
 The APP Helm chart can be used to deploy just the frontend APP.
-The chart itself can be found [here](https://github.com/Groupe-Hevea/neosync/tree/main/frontend/charts/app).
+The chart itself can be found [here](https://github.com/fishtre-compagnie/husonym/tree/main/frontend/charts/app).
 
-The local dev edition can be found in the [helmfile](https://github.com/Groupe-Hevea/neosync/blob/main/frontend/apps/web/dev/helm/app/helmfile.yaml) that is used by our dev Tilt instance.
+The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/frontend/apps/web/dev/helm/app/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/Groupe-Hevea/neosync/helm/app:latest`
+The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/app:latest`
 
 ### Worker
 
 The APP Helm chart can be used to deploy just the worker.
-The chart itself can be found [here](https://github.com/Groupe-Hevea/neosync/tree/main/worker/charts/worker).
+The chart itself can be found [here](https://github.com/fishtre-compagnie/husonym/tree/main/worker/charts/worker).
 
-The local dev edition can be found in the [helmfile](https://github.com/Groupe-Hevea/neosync/blob/main/worker/dev/helm/helmfile.yaml) that is used by our dev Tilt instance.
+The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/worker/dev/helm/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/Groupe-Hevea/neosync/helm/worker:latest`
+The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/worker:latest`
 
-### Neosync Umbrella Chart
+### Husonym Umbrella Chart
 
-The Neosync Umbrella Helm chart can be used to deploy all three resources listed above.
-The chart itself can be found [here](https://github.com/Groupe-Hevea/neosync/blob/main/charts/neosync).
+The Husonym Umbrella Helm chart can be used to deploy all three resources listed above.
+The chart itself can be found [here](https://github.com/fishtre-compagnie/husonym/blob/main/charts/husonym).
 
-This chart has no templates of its own and merely acts as a single helm entrypoint to deploy all of the Neosync services.
-It only contains a `Chart.yaml` that defines the three Neosync dependencies.
+This chart has no templates of its own and merely acts as a single helm entrypoint to deploy all of the Husonym services.
+It only contains a `Chart.yaml` that defines the three Husonym dependencies.
 
-The full image can be docker pulled via: `docker pull ghcr.io/Groupe-Hevea/neosync/helm/neosync:latest`
+The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/husonym:latest`
 
 When running this within the repo, it points to the local copies of the helm chart. The OCI image will point to the OCI images of the published API, APP, and Worker charts.
 
@@ -77,7 +77,7 @@ worker:
 
 These can easily be spread across multiple `values.yaml` files if desired to keep them separate, but they will still need to be nested underneath their respective chart name keys.
 
-## Install Neosync on a Kubernetes Cluster
+## Install Husonym on a Kubernetes Cluster
 
 ### Prerequisites
 
@@ -92,7 +92,7 @@ This example uses the umbrella chart for simplicity.
 
 ### Basic Installation
 
-Neosync uses the OCI image format for Helm, so there is no need to add a separate registry prior to doing the install.
+Husonym uses the OCI image format for Helm, so there is no need to add a separate registry prior to doing the install.
 
 This example assumes that an external Postgres database has been provisioned as well as a functioning Temporal instance (or cloud).
 In the future we will add support for these external dependencies to make it easier to get up and running quickly.
@@ -106,13 +106,13 @@ Each helm chart has a README that contains the full values spec.
 
 These can be found in the Github repo, and are also available via ArtifactHub.
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/neosync)](https://artifacthub.io/packages/search?repo=neosync)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym)](https://artifacthub.io/packages/search?repo=husonym)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/neosync-api)](https://artifacthub.io/packages/search?repo=neosync-api)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-api)](https://artifacthub.io/packages/search?repo=husonym-api)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/neosync-app)](https://artifacthub.io/packages/search?repo=neosync-app)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-app)](https://artifacthub.io/packages/search?repo=husonym-app)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/neosync-worker)](https://artifacthub.io/packages/search?repo=neosync-worker)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-worker)](https://artifacthub.io/packages/search?repo=husonym-worker)
 
 ```
 api:
@@ -152,14 +152,14 @@ Install the chart:
 When specifying the version, be sure to omit the `v` from the github release. So if the current version if `v0.4.38`, specify `0.4.38` as the helm version.
 
 ```
-helm install oci://ghcr.io/Groupe-Hevea/neosync/helm/neosync --version <version> -f values.yaml
+helm install oci://ghcr.io/fishtre-compagnie/husonym/helm/husonym --version <version> -f values.yaml
 ```
 
 ## External Dependencies for Production Deployments
 
-We do not cover how to deploy a Postgres database for Neosync or the Temporal suite.
+We do not cover how to deploy a Postgres database for Husonym or the Temporal suite.
 
-### Neosync Postgres DB
+### Husonym Postgres DB
 
 Generally, we suggest going with a cloud provider to host the database, but if it's desired to host within Kubernetes, the [Kubernetes Operator](https://postgres-operator.readthedocs.io/en/latest/) is good option.
 
@@ -178,7 +178,7 @@ Redis serves as an optional external dependency. It's specifically required if p
 
 ## Tilt for Development Deployments
 
-For development, we use Tilt to set up and deploy Neosync to Kubernetes.
+For development, we use Tilt to set up and deploy Husonym to Kubernetes.
 You can find all of the scripts in the various `Tiltfile`'s that can be found throughout our Github repository.
 The top level `Tiltfile` is the main driver that can be used to deploy everything (including external dependencies like Temporal).
 This is the quickest way to get up and running with a Kubernetes-enabled setup.
@@ -213,18 +213,18 @@ kind: Deployment
 metadata:
   labels:
     tags.datadoghq.com/env: { { .Values.nucleusEnv } }
-    tags.datadoghq.com/service: { { template "neosync-api.fullname" . } }
+    tags.datadoghq.com/service: { { template "husonym-api.fullname" . } }
     tags.datadoghq.com/version:
       { { .Values.image.tag | default .Chart.AppVersion } }
 spec:
   template:
     metadata:
       annotations:
-        ad.datadoghq.com/nucleus-api.logs: '[{"source":"nucleus-neosync-api","service":"{{ template "neosync-api.fullname" . }}"}]'
+        ad.datadoghq.com/nucleus-api.logs: '[{"source":"nucleus-husonym-api","service":"{{ template "husonym-api.fullname" . }}"}]'
       labels:
         admission.datadoghq.com/enabled: 'true'
         tags.datadoghq.com/env: { { .Values.nucleusEnv } }
-        tags.datadoghq.com/service: { { template "neosync-api.fullname" . } }
+        tags.datadoghq.com/service: { { template "husonym-api.fullname" . } }
         tags.datadoghq.com/version:
           { { .Values.image.tag | default .Chart.AppVersion } }
     spec:
@@ -252,7 +252,7 @@ This will generate a Kubernetes `Ingress` resource that is attached to each char
 See the `ingress.yaml` in each chart for a better understanding of what is available there.
 Each ingress has full support for specifying the classname and TLS options.
 
-Below is an example neosync-api Ingress that utilizes nginx, along with cert-manager for TLS decryption, which is required if exposing gRPC/Connect to the outside world.
+Below is an example husonym-api Ingress that utilizes nginx, along with cert-manager for TLS decryption, which is required if exposing gRPC/Connect to the outside world.
 The TLS setup may be different depending on what your ingress class supports.
 
 ```yaml
@@ -262,43 +262,43 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: my-cluster-issuer
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
-    nginx.org/grpc-services: neosync-api
-  name: neosync-api
+    nginx.org/grpc-services: husonym-api
+  name: husonym-api
 spec:
   ingressClassName: nginx
   rules:
-    - host: neosync-api.example.com
+    - host: husonym-api.example.com
       http:
         paths:
           - backend:
               service:
-                name: neosync-api
+                name: husonym-api
                 port:
                   number: 80
             path: /
             pathType: Prefix
   tls:
     - hosts:
-        - neosync-api.example.com
-      secretName: neosync-api-certificate
+        - husonym-api.example.com
+      secretName: husonym-api-certificate
 ```
 
-The corresponding helm chart values to generate the above would look like this for neosync-api:
+The corresponding helm chart values to generate the above would look like this for husonym-api:
 
 ```yaml
 ingress:
   enabled: true
   className: nginx
   hosts:
-    - neosync-api.example.com
+    - husonym-api.example.com
   tls:
     - hosts:
-        - neosync-api.example.com
-      secretName: neosync-api-certificate
+        - husonym-api.example.com
+      secretName: husonym-api-certificate
   annotations:
     cert-manager.io/cluster-issuer: my-cluster-issuer
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
-    nginx.org/grpc-services: neosync-api
+    nginx.org/grpc-services: husonym-api
 ```
 
 ## Configuring API and Worker charts with Temporal mTLS Certificates
@@ -320,7 +320,7 @@ Both the `temporal.cert` and `temporal.key` must be sitting next to the `kustomi
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: neosync
+namespace: husonym
 
 secretGenerator:
   - name: temporal-mtls-certs
@@ -334,7 +334,7 @@ secretGenerator:
 
 To apply this: `kustomize build . | kubectl apply -f -`
 
-This will generate a secret and store it in the `neosync` namespace named `temporal-mtls-certs`
+This will generate a secret and store it in the `husonym` namespace named `temporal-mtls-certs`
 
 To properly configure the `api` and `worker` helm charts, the following values can be specific in the `values.yaml` file.
 For simplicity, this section assumes that the same leaf cert will be used by both the API and the Worker.

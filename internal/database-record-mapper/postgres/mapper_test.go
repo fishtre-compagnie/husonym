@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
@@ -50,11 +50,11 @@ func Test_parsePgRowValues(t *testing.T) {
 			"nil_col":   nil,
 			"json_col":  map[string]any{"key": "value"},
 			"array_col": []any{1, 2, 3},
-			"binary_col": &neosynctypes.Binary{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"binary_col": &husonymtypes.Binary{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_BINARY",
+						TypeId:  "HUSONYM_BINARY",
 					},
 				},
 				Bytes: binaryData,
@@ -120,58 +120,58 @@ func Test_parsePgRowValues(t *testing.T) {
 		require.NoError(t, err)
 
 		expected := map[string]any{
-			"bit_col": &neosynctypes.Bits{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"bit_col": &husonymtypes.Bits{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_BIT",
+						TypeId:  "HUSONYM_BIT",
 					},
 				},
 				Bytes: bits.Bytes,
 				Len:   bits.Len,
 			},
-			"varbit_col": &neosynctypes.Bits{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"varbit_col": &husonymtypes.Bits{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_BIT",
+						TypeId:  "HUSONYM_BIT",
 					},
 				},
 				Bytes: varbits.Bytes,
 				Len:   varbits.Len,
 			},
-			"bytea_col": &neosynctypes.Binary{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"bytea_col": &husonymtypes.Binary{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_BINARY",
+						TypeId:  "HUSONYM_BINARY",
 					},
 				},
 				Bytes: byteaValue,
 			},
-			"bit_array_col": &neosynctypes.NeosyncArray{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"bit_array_col": &husonymtypes.HusonymArray{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_ARRAY",
+						TypeId:  "HUSONYM_ARRAY",
 					},
 				},
-				Elements: []neosynctypes.NeosyncAdapter{
-					&neosynctypes.Bits{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+				Elements: []husonymtypes.HusonymAdapter{
+					&husonymtypes.Bits{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BIT",
+								TypeId:  "HUSONYM_BIT",
 							},
 						},
 						Bytes: []byte{0x05},
 						Len:   3,
 					},
-					&neosynctypes.Bits{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+					&husonymtypes.Bits{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BIT",
+								TypeId:  "HUSONYM_BIT",
 							},
 						},
 						Bytes: []byte{0x03},
@@ -179,28 +179,28 @@ func Test_parsePgRowValues(t *testing.T) {
 					},
 				},
 			},
-			"bytea_array_col": &neosynctypes.NeosyncArray{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"bytea_array_col": &husonymtypes.HusonymArray{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_ARRAY",
+						TypeId:  "HUSONYM_ARRAY",
 					},
 				},
-				Elements: []neosynctypes.NeosyncAdapter{
-					&neosynctypes.Binary{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+				Elements: []husonymtypes.HusonymAdapter{
+					&husonymtypes.Binary{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BINARY",
+								TypeId:  "HUSONYM_BINARY",
 							},
 						},
 						Bytes: []byte{0x01, 0x02},
 					},
-					&neosynctypes.Binary{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+					&husonymtypes.Binary{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BINARY",
+								TypeId:  "HUSONYM_BINARY",
 							},
 						},
 						Bytes: []byte{0x03, 0x04},
@@ -325,28 +325,28 @@ func Test_parsePgRowValues(t *testing.T) {
 			"int_array":  []any{int64(42), int64(43)},
 			"bool_array": []any{true, false},
 			"json_array": []any{map[string]any{"key": "value1"}, map[string]any{"key": "value2"}},
-			"binary_array": &neosynctypes.NeosyncArray{
-				BaseType: neosynctypes.BaseType{
-					Neosync: neosynctypes.Neosync{
+			"binary_array": &husonymtypes.HusonymArray{
+				BaseType: husonymtypes.BaseType{
+					Husonym: husonymtypes.Husonym{
 						Version: 1,
-						TypeId:  "NEOSYNC_ARRAY",
+						TypeId:  "HUSONYM_ARRAY",
 					},
 				},
-				Elements: []neosynctypes.NeosyncAdapter{
-					&neosynctypes.Binary{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+				Elements: []husonymtypes.HusonymAdapter{
+					&husonymtypes.Binary{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BINARY",
+								TypeId:  "HUSONYM_BINARY",
 							},
 						},
 						Bytes: binaryData1,
 					},
-					&neosynctypes.Binary{
-						BaseType: neosynctypes.BaseType{
-							Neosync: neosynctypes.Neosync{
+					&husonymtypes.Binary{
+						BaseType: husonymtypes.BaseType{
+							Husonym: husonymtypes.Husonym{
 								Version: 1,
-								TypeId:  "NEOSYNC_BINARY",
+								TypeId:  "HUSONYM_BINARY",
 							},
 						},
 						Bytes: binaryData2,

@@ -51,7 +51,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Neosync CLI',
+      label: 'Husonym CLI',
       collapsible: true,
       collapsed: true,
       items: [
@@ -130,7 +130,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'html',
-      value: '<div>Deploy Neosync</div>',
+      value: '<div>Deploy Husonym</div>',
       className: 'sidebarcategory',
     },
     {
@@ -186,8 +186,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'guides/using-neosync-in-ci',
-      label: 'Using Neosync in CI',
+      id: 'guides/using-husonym-in-ci',
+      label: 'Using Husonym in CI',
     },
     {
       type: 'doc',
@@ -196,13 +196,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'guides/neosync-local-dev',
-      label: 'Developing Neosync Locally',
+      id: 'guides/husonym-local-dev',
+      label: 'Developing Husonym Locally',
     },
     {
       type: 'doc',
       id: 'guides/terraform',
-      label: 'Neosync Terraform Provider',
+      label: 'Husonym Terraform Provider',
     },
     {
       type: 'doc',
@@ -231,8 +231,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'guides/neosync-ip-ranges',
-      label: 'Neosync IP Ranges',
+      id: 'guides/husonym-ip-ranges',
+      label: 'Husonym IP Ranges',
     },
     {
       type: 'doc',
@@ -326,8 +326,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'transformers/neosync-types',
-      label: 'Neosync Types',
+      id: 'transformers/husonym-types',
+      label: 'Husonym Types',
     },
     {
       type: 'doc',

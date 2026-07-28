@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	integrationtests_test "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	ee_slack "github.com/Groupe-Hevea/neosync/internal/ee/slack"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/mock"
@@ -92,12 +92,12 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 	})
 
 	t.Run("Cloud", func(t *testing.T) {
-		client := s.NeosyncCloudAuthenticatedLicensedClients.AccountHooks(
+		client := s.HusonymCloudAuthenticatedLicensedClients.AccountHooks(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(
 			ctx,
-			s.NeosyncCloudAuthenticatedLicensedClients.Users(
+			s.HusonymCloudAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
@@ -105,7 +105,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("GetAccountHooks", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -134,7 +134,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("GetAccountHook", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -163,7 +163,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("CreateAccountHook", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -185,7 +185,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("DeleteAccountHook", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -233,7 +233,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("IsAccountHookNameAvailable", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -279,7 +279,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("SetAccountHookEnabled", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -324,7 +324,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("GetActiveAccountHooksByEvent", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -414,7 +414,7 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		t.Run("UpdateAccountHook", func(t *testing.T) {
 			accountId := s.createBilledTeamAccount(
 				ctx,
-				s.NeosyncCloudAuthenticatedLicensedClients.Users(
+				s.HusonymCloudAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
 				uuid.NewString(),
@@ -482,13 +482,13 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_Slack() {
 	t := s.T()
 	ctx := s.ctx
 
-	userclient := s.NeosyncCloudAuthenticatedLicensedClients.Users(
+	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	userId := s.setUser(ctx, userclient)
 	accountId := s.createBilledTeamAccount(ctx, userclient, uuid.NewString(), uuid.NewString())
 
-	hookclient := s.NeosyncCloudAuthenticatedLicensedClients.AccountHooks(
+	hookclient := s.HusonymCloudAuthenticatedLicensedClients.AccountHooks(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 

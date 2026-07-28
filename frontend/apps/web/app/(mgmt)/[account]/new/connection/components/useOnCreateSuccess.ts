@@ -1,5 +1,5 @@
 import { useAccount } from '@/components/providers/account-provider';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export function useOnCreateSuccess(): (conn: Connection) => Promise<void> {

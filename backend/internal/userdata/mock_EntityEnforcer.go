@@ -5,7 +5,7 @@ package userdata
 import (
 	context "context"
 
-	rbac "github.com/Groupe-Hevea/neosync/internal/ee/rbac"
+	rbac "github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -52,7 +52,7 @@ message JobDestination {
 }
 
 message AiGenerateSourceOptions {
-  // The connection id that corresponds with an AI-based Neosync connection
+  // The connection id that corresponds with an AI-based Husonym connection
   string ai_connection_id = 1 [(buf.validate.field).string.uuid = true];
   // The list of schemas (and their tables) along with any configuration options that will be used to generate data for.
   repeated AiGenerateSourceSchemaOption schemas = 2 [(buf.validate.field).repeated.min_items = 1];
@@ -155,9 +155,9 @@ message PostgresSourceConnectionOptions {
   string connection_id = 3 [(buf.validate.field).string.uuid = true];
   // Whether to subset the table by foreign key constraints
   bool subset_by_foreign_key_constraints = 4;
-  // Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+  // Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
   NewColumnAdditionStrategy new_column_addition_strategy = 5;
-  // Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+  // Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
   ColumnRemovalStrategy column_removal_strategy = 6;
 
   message NewColumnAdditionStrategy {
@@ -220,10 +220,10 @@ message MysqlSourceConnectionOptions {
   // Whether to subset the table by foreign key constraints
   bool subset_by_foreign_key_constraints = 4;
 
-  // Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+  // Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
   ColumnRemovalStrategy column_removal_strategy = 5;
 
-  // Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+  // Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
   NewColumnAdditionStrategy new_column_addition_strategy = 6;
 
   message ColumnRemovalStrategy {
@@ -285,9 +285,9 @@ message MssqlSourceConnectionOptions {
   string connection_id = 3 [(buf.validate.field).string.uuid = true];
   // Whether to subset the table by foreign key constraints
   bool subset_by_foreign_key_constraints = 4;
-  // Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+  // Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
   ColumnRemovalStrategy column_removal_strategy = 5;
-  // Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+  // Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
   NewColumnAdditionStrategy new_column_addition_strategy = 6;
 
   message ColumnRemovalStrategy {
@@ -1434,11 +1434,11 @@ message VirtualForeignConstraint {
 }
 
 message RunContextKey {
-  // The Neosync Run ID
+  // The Husonym Run ID
   string job_run_id = 1 [(buf.validate.field).string.min_len = 1];
   // An opaque identifier that will be used to store specific items
   string external_id = 2 [(buf.validate.field).string.min_len = 1];
-  // The Neosync Account ID
+  // The Husonym Account ID
   string account_id = 3 [(buf.validate.field).string.min_len = 1];
 }
 
@@ -1540,7 +1540,7 @@ message JobHookConfig {
     // The SQL query to execute
     string query = 1 [(buf.validate.field).string.min_len = 1];
 
-    // Unique identifier of the Neosync connection to run this hook for. Must be a connection id that is present in the job.
+    // Unique identifier of the Husonym connection to run this hook for. Must be a connection id that is present in the job.
     string connection_id = 2 [(buf.validate.field).string.uuid = true];
 
     // The timing of when the hook will run

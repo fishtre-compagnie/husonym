@@ -5,7 +5,7 @@ import {
   JobMappingTransformerForm,
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
-import { JobMapping, JobMappingTransformerSchema } from '@neosync/sdk';
+import { JobMapping, JobMappingTransformerSchema } from '@husonym/sdk';
 import { toast } from 'sonner';
 
 interface Props {

@@ -40,5 +40,5 @@ func (r iteratorForCreateJobConnectionDestinations) Err() error {
 }
 
 func (q *Queries) CreateJobConnectionDestinations(ctx context.Context, db DBTX, arg []CreateJobConnectionDestinationsParams) (int64, error) {
-	return db.CopyFrom(ctx, []string{"neosync_api", "job_destination_connection_associations"}, []string{"job_id", "connection_id", "options"}, &iteratorForCreateJobConnectionDestinations{rows: arg})
+	return db.CopyFrom(ctx, []string{"husonym_api", "job_destination_connection_associations"}, []string{"job_id", "connection_id", "options"}, &iteratorForCreateJobConnectionDestinations{rows: arg})
 }

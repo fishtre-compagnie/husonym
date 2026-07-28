@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/Groupe-Hevea/neosync/backend/internal/utils"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 )

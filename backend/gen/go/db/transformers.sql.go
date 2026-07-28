@@ -8,12 +8,12 @@ package db_queries
 import (
 	"context"
 
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUserDefinedTransformer = `-- name: CreateUserDefinedTransformer :one
-INSERT INTO neosync_api.transformers (
+INSERT INTO husonym_api.transformers (
   name, description, source, account_id, transformer_config, created_by_id, updated_by_id
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7
@@ -31,7 +31,7 @@ type CreateUserDefinedTransformerParams struct {
 	UpdatedByID       pgtype.UUID
 }
 
-func (q *Queries) CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (NeosyncApiTransformer, error) {
+func (q *Queries) CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error) {
 	row := db.QueryRow(ctx, createUserDefinedTransformer,
 		arg.Name,
 		arg.Description,
@@ -41,7 +41,7 @@ func (q *Queries) CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg
 		arg.CreatedByID,
 		arg.UpdatedByID,
 	)
-	var i NeosyncApiTransformer
+	var i HusonymApiTransformer
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -58,7 +58,7 @@ func (q *Queries) CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg
 }
 
 const deleteUserDefinedTransformerById = `-- name: DeleteUserDefinedTransformerById :exec
-DELETE FROM neosync_api.transformers WHERE id = $1
+DELETE FROM husonym_api.transformers WHERE id = $1
 `
 
 func (q *Queries) DeleteUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -67,12 +67,12 @@ func (q *Queries) DeleteUserDefinedTransformerById(ctx context.Context, db DBTX,
 }
 
 const getUserDefinedTransformerById = `-- name: GetUserDefinedTransformerById :one
-SELECT id, created_at, updated_at, name, description, account_id, transformer_config, created_by_id, updated_by_id, source from neosync_api.transformers WHERE id = $1
+SELECT id, created_at, updated_at, name, description, account_id, transformer_config, created_by_id, updated_by_id, source from husonym_api.transformers WHERE id = $1
 `
 
-func (q *Queries) GetUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiTransformer, error) {
+func (q *Queries) GetUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiTransformer, error) {
 	row := db.QueryRow(ctx, getUserDefinedTransformerById, id)
-	var i NeosyncApiTransformer
+	var i HusonymApiTransformer
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -89,21 +89,21 @@ func (q *Queries) GetUserDefinedTransformerById(ctx context.Context, db DBTX, id
 }
 
 const getUserDefinedTransformersByAccount = `-- name: GetUserDefinedTransformersByAccount :many
-SELECT t.id, t.created_at, t.updated_at, t.name, t.description, t.account_id, t.transformer_config, t.created_by_id, t.updated_by_id, t.source from neosync_api.transformers t
-INNER JOIN neosync_api.accounts a ON a.id = t.account_id
+SELECT t.id, t.created_at, t.updated_at, t.name, t.description, t.account_id, t.transformer_config, t.created_by_id, t.updated_by_id, t.source from husonym_api.transformers t
+INNER JOIN husonym_api.accounts a ON a.id = t.account_id
 WHERE a.id = $1
 ORDER BY t.name ASC
 `
 
-func (q *Queries) GetUserDefinedTransformersByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiTransformer, error) {
+func (q *Queries) GetUserDefinedTransformersByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiTransformer, error) {
 	rows, err := db.Query(ctx, getUserDefinedTransformersByAccount, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiTransformer
+	var items []HusonymApiTransformer
 	for rows.Next() {
-		var i NeosyncApiTransformer
+		var i HusonymApiTransformer
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -127,8 +127,8 @@ func (q *Queries) GetUserDefinedTransformersByAccount(ctx context.Context, db DB
 }
 
 const isTransformerNameAvailable = `-- name: IsTransformerNameAvailable :one
-SELECT count(t.id) from neosync_api.transformers t
-INNER JOIN neosync_api.accounts a ON a.id = t.account_id
+SELECT count(t.id) from husonym_api.transformers t
+INNER JOIN husonym_api.accounts a ON a.id = t.account_id
 WHERE a.id = $1 and t.name = $2
 `
 
@@ -145,7 +145,7 @@ func (q *Queries) IsTransformerNameAvailable(ctx context.Context, db DBTX, arg I
 }
 
 const updateUserDefinedTransformer = `-- name: UpdateUserDefinedTransformer :one
-UPDATE neosync_api.transformers
+UPDATE husonym_api.transformers
 SET
   name = $1,
   description = $2,
@@ -163,7 +163,7 @@ type UpdateUserDefinedTransformerParams struct {
 	ID                pgtype.UUID
 }
 
-func (q *Queries) UpdateUserDefinedTransformer(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (NeosyncApiTransformer, error) {
+func (q *Queries) UpdateUserDefinedTransformer(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (HusonymApiTransformer, error) {
 	row := db.QueryRow(ctx, updateUserDefinedTransformer,
 		arg.Name,
 		arg.Description,
@@ -171,7 +171,7 @@ func (q *Queries) UpdateUserDefinedTransformer(ctx context.Context, db DBTX, arg
 		arg.UpdatedByID,
 		arg.ID,
 	)
-	var i NeosyncApiTransformer
+	var i HusonymApiTransformer
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

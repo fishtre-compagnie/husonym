@@ -1,6 +1,6 @@
 ---
 title: Foreign Keys
-description: Learn how Neosync handles foreign keys when anonymizing and subsetting data
+description: Learn how Husonym handles foreign keys when anonymizing and subsetting data
 id: foreign-keys
 hide_title: false
 slug: /table-constraints/foreign-keys
@@ -8,7 +8,7 @@ slug: /table-constraints/foreign-keys
 
 ## Introduction
 
-Foreign keys are a great way to enforce relationships between tables and columns and are found in most relational databases. Neosync natively supports foreign key relationships when syncing data from a source to a destination(s) database.
+Foreign keys are a great way to enforce relationships between tables and columns and are found in most relational databases. Husonym natively supports foreign key relationships when syncing data from a source to a destination(s) database.
 
 If you have foreign keys in your database, they will appear in the Schema Mapping page with a light orange `Foreign Key` badge:
 
@@ -28,6 +28,6 @@ In the example above, we have a source column that is storing email addresses. W
 
 In the bottom example, you can see that if you transform the value in the parent column, you must transform the value in the child column in the same way in order to not break the foreign key reference.
 
-Neosync will also update any foreign keys connected to the primary key to reflect the change. However, it's important to note that for this automatic updating to work, the foreign key must be set to `passthrough` or it can be set to a custom javascript transformer but you must be careful in order to ensure that the parent column is set to the same custom javascript transformer.
+Husonym will also update any foreign keys connected to the primary key to reflect the change. However, it's important to note that for this automatic updating to work, the foreign key must be set to `passthrough` or it can be set to a custom javascript transformer but you must be careful in order to ensure that the parent column is set to the same custom javascript transformer.
 
-This setting allows Neosync to correctly identify and update the foreign keys, ensuring that the integrity and relationships within your database are preserved even after primary key changes.
+This setting allows Husonym to correctly identify and update the foreign keys, ensuring that the integrity and relationships within your database are preserved even after primary key changes.

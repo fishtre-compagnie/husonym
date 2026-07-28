@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	temporallogger "github.com/Groupe-Hevea/neosync/worker/internal/temporal-logger"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )

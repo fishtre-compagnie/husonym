@@ -6,7 +6,7 @@ import {
   getTransformerJobTypesString,
   getTransformerSourceString,
 } from '@/util/util';
-import { SystemTransformer } from '@neosync/sdk';
+import { SystemTransformer } from '@husonym/sdk';
 import { ColumnDef } from '@tanstack/react-table';
 import NextLink from 'next/link';
 import { DataTableColumnHeader } from './data-table-column-header';

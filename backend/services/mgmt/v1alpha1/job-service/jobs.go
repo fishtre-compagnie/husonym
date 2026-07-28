@@ -9,20 +9,20 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/backend/internal/dtomaps"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	job_util "github.com/Groupe-Hevea/neosync/internal/job"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	datasync_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/workflow"
-	piidetect_job_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/piidetect/workflows/job"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
+	piidetect_job_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	temporalclient "go.temporal.io/sdk/client"
@@ -52,15 +52,15 @@ func (s *Service) GetJobs(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	jobs, err := s.db.Q.GetJobsByAccount(ctx, s.db.Db, accountUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to get jobs by account: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.GetJobsResponse{Jobs: []*mgmtv1alpha1.Job{}}), nil
 	}
 
@@ -72,33 +72,33 @@ func (s *Service) GetJobs(
 		jobIds = append(jobIds, dbJob.ID)
 	}
 
-	var destinationAssociations []db_queries.NeosyncApiJobDestinationConnectionAssociation
+	var destinationAssociations []db_queries.HusonymApiJobDestinationConnectionAssociation
 	if len(jobIds) > 0 {
 		destinationAssociations, err = s.db.Q.GetJobConnectionDestinationsByJobIds(
 			ctx,
 			s.db.Db,
 			jobIds,
 		)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, fmt.Errorf("unable to get job connection destinations by job ids: %w", err)
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			logger.Debug("found no job connection destinations by job ids")
 		}
 	}
 
-	jobMap := map[pgtype.UUID]*db_queries.NeosyncApiJob{}
+	jobMap := map[pgtype.UUID]*db_queries.HusonymApiJob{}
 	for idx := range jobs {
 		dbJob := jobs[idx]
 		jobMap[dbJob.ID] = &dbJob
 	}
 
-	associationMap := map[pgtype.UUID][]db_queries.NeosyncApiJobDestinationConnectionAssociation{}
+	associationMap := map[pgtype.UUID][]db_queries.HusonymApiJobDestinationConnectionAssociation{}
 	for i := range destinationAssociations {
 		assoc := destinationAssociations[i]
 		if _, ok := associationMap[assoc.JobID]; ok {
 			associationMap[assoc.JobID] = append(associationMap[assoc.JobID], assoc)
 		} else {
-			associationMap[assoc.JobID] = append([]db_queries.NeosyncApiJobDestinationConnectionAssociation{}, assoc)
+			associationMap[assoc.JobID] = append([]db_queries.HusonymApiJobDestinationConnectionAssociation{}, assoc)
 		}
 	}
 
@@ -126,30 +126,30 @@ func (s *Service) GetJob(
 	if err != nil {
 		return nil, err
 	}
-	jobUuid, err := neosyncdb.ToUuid(req.Msg.GetId())
+	jobUuid, err := husonymdb.ToUuid(req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	errgrp, errctx := errgroup.WithContext(ctx)
 
-	var dbJob db_queries.NeosyncApiJob
+	var dbJob db_queries.HusonymApiJob
 	errgrp.Go(func() error {
 		j, err := s.db.Q.GetJobById(errctx, s.db.Db, jobUuid)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return fmt.Errorf("unable to get job by id: %w", err)
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nucleuserrors.NewNotFound("job with that id does not exist")
 		}
 		dbJob = j
 		return nil
 	})
-	var destConnections []db_queries.NeosyncApiJobDestinationConnectionAssociation
+	var destConnections []db_queries.HusonymApiJobDestinationConnectionAssociation
 	errgrp.Go(func() error {
 		dcs, err := s.db.Q.GetJobConnectionDestinations(ctx, s.db.Db, jobUuid)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return fmt.Errorf("unable to get job connection destinations by job id: %w", err)
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			return nil
 		}
 		destConnections = dcs
@@ -224,21 +224,21 @@ func (s *Service) GetJobStatuses(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
 
 	jobs, err := s.db.Q.GetJobsByAccount(ctx, s.db.Db, accountUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to get jobs by account: %w", err)
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.GetJobStatusesResponse{Statuses: []*mgmtv1alpha1.JobStatusRecord{}}), nil
 	}
 
 	scheduleIds := make([]string, 0, len(jobs))
 	for idx := range jobs {
-		scheduleIds = append(scheduleIds, neosyncdb.UUIDString(jobs[idx].ID))
+		scheduleIds = append(scheduleIds, husonymdb.UUIDString(jobs[idx].ID))
 	}
 
 	responses, err := s.temporalmgr.DescribeSchedules(
@@ -364,7 +364,7 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func (s *Service) CreateJob(
 	connectionIds := []string{}
 	destinations := []*destination{}
 	for _, dest := range req.Msg.Destinations {
-		destUuid, err := neosyncdb.ToUuid(dest.ConnectionId)
+		destUuid, err := husonymdb.ToUuid(dest.ConnectionId)
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +433,7 @@ func (s *Service) CreateJob(
 			return nil, err
 		}
 
-		sourceUuid, err := neosyncdb.ToUuid(*connectionIdToVerify)
+		sourceUuid, err := husonymdb.ToUuid(*connectionIdToVerify)
 		if err != nil {
 			return nil, err
 		}
@@ -487,9 +487,9 @@ func (s *Service) CreateJob(
 		return nil, err
 	}
 
-	connDestParams := []*neosyncdb.CreateJobConnectionDestination{}
+	connDestParams := []*husonymdb.CreateJobConnectionDestination{}
 	for _, dest := range destinations {
-		connDestParams = append(connDestParams, &neosyncdb.CreateJobConnectionDestination{
+		connDestParams = append(connDestParams, &husonymdb.CreateJobConnectionDestination{
 			ConnectionId: dest.ConnectionId,
 			Options:      dest.Options,
 		})
@@ -548,12 +548,12 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, fmt.Errorf("unable to create job: %w", err)
 	}
-	jobUuid := neosyncdb.UUIDString(cj.ID)
+	jobUuid := husonymdb.UUIDString(cj.ID)
 	logger = logger.With("jobId", jobUuid)
 	logger.Debug("created job record")
 
 	logger = logger.With("jobId", jobUuid)
-	schedule := neosyncdb.ToNullableString(cj.CronSchedule)
+	schedule := husonymdb.ToNullableString(cj.CronSchedule)
 	paused := true
 	spec := temporalclient.ScheduleSpec{}
 	if schedule != nil {
@@ -571,7 +571,7 @@ func (s *Service) CreateJob(
 			Workflow:  syncWf.Workflow,
 			TaskQueue: taskQueue,
 			Args:      []any{&datasync_workflow.WorkflowRequest{JobId: jobUuid}},
-			ID:        neosyncdb.UUIDString(cj.ID),
+			ID:        husonymdb.UUIDString(cj.ID),
 		}
 	} else if req.Msg.GetJobType().GetPiiDetect() != nil {
 		piiWf := &piidetect_job_workflow.Workflow{}
@@ -579,7 +579,7 @@ func (s *Service) CreateJob(
 			Workflow:  piiWf.JobPiiDetect,
 			TaskQueue: taskQueue,
 			Args:      []any{&piidetect_job_workflow.PiiDetectRequest{JobId: jobUuid}},
-			ID:        neosyncdb.UUIDString(cj.ID),
+			ID:        husonymdb.UUIDString(cj.ID),
 		}
 	}
 	if cj.WorkflowOptions != nil && cj.WorkflowOptions.RunTimeout != nil {
@@ -651,15 +651,15 @@ func (s *Service) DeleteJob(
 ) (*connect.Response[mgmtv1alpha1.DeleteJobResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.Msg.Id)
-	idUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	idUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	dbJob, err := s.db.Q.GetJobById(ctx, s.db.Db, idUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.DeleteJobResponse{}), nil
 	}
 
@@ -679,8 +679,8 @@ func (s *Service) DeleteJob(
 	logger.Debug("deleting temporal schedule")
 	err = s.temporalmgr.DeleteSchedule(
 		ctx,
-		neosyncdb.UUIDString(dbJob.AccountID),
-		neosyncdb.UUIDString(dbJob.ID),
+		husonymdb.UUIDString(dbJob.AccountID),
+		husonymdb.UUIDString(dbJob.ID),
 		logger,
 	)
 	if err != nil {
@@ -702,7 +702,7 @@ func (s *Service) CreateJobDestinationConnections(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.Msg.JobId)
 
-	jobUuid, err := neosyncdb.ToUuid(req.Msg.JobId)
+	jobUuid, err := husonymdb.ToUuid(req.Msg.JobId)
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +720,7 @@ func (s *Service) CreateJobDestinationConnections(
 	if err != nil {
 		return nil, err
 	}
-	accountUuid, err := neosyncdb.ToUuid(jobResp.Msg.GetJob().GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(jobResp.Msg.GetJob().GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -729,7 +729,7 @@ func (s *Service) CreateJobDestinationConnections(
 	connectionUuids := []pgtype.UUID{}
 	destinations := []*destination{}
 	for _, dest := range req.Msg.Destinations {
-		destUuid, err := neosyncdb.ToUuid(dest.ConnectionId)
+		destUuid, err := husonymdb.ToUuid(dest.ConnectionId)
 		if err != nil {
 			return nil, err
 		}
@@ -820,12 +820,12 @@ func (s *Service) UpdateJobSchedule(
 		return nil, err
 	}
 
-	jobUuid, err := neosyncdb.ToUuid(jobDto.GetId())
+	jobUuid, err := husonymdb.ToUuid(jobDto.GetId())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.db.WithTx(ctx, nil, func(dbtx neosyncdb.BaseDBTX) error {
+	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
 		_, err = s.db.Q.UpdateJobSchedule(ctx, dbtx, db_queries.UpdateJobScheduleParams{
 			ID:           jobUuid,
 			CronSchedule: cronText,
@@ -1087,7 +1087,7 @@ func (s *Service) UpdateJobSourceConnection(
 		vfkKeys[key] = struct{}{}
 	}
 
-	jobUuid, err := neosyncdb.ToUuid(jobDto.GetId())
+	jobUuid, err := husonymdb.ToUuid(jobDto.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -1100,7 +1100,7 @@ func (s *Service) UpdateJobSourceConnection(
 		}
 	}
 
-	if err := s.db.WithTx(ctx, nil, func(dbtx neosyncdb.BaseDBTX) error {
+	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
 		_, err = s.db.Q.UpdateJobSource(ctx, dbtx, db_queries.UpdateJobSourceParams{
 			ID:                jobUuid,
 			ConnectionOptions: connectionOptions,
@@ -1173,7 +1173,7 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 		return nil, err
 	}
 	jobDto := jobResp.Msg.GetJob()
-	jobUuid, err := neosyncdb.ToUuid(jobDto.GetId())
+	jobUuid, err := husonymdb.ToUuid(jobDto.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -1251,11 +1251,11 @@ func (s *Service) UpdateJobDestinationConnection(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.Msg.GetJobId(), "connectionId", req.Msg.GetConnectionId())
 
-	jobUuid, err := neosyncdb.ToUuid(req.Msg.GetJobId())
+	jobUuid, err := husonymdb.ToUuid(req.Msg.GetJobId())
 	if err != nil {
 		return nil, err
 	}
-	destinationUuid, err := neosyncdb.ToUuid(req.Msg.GetDestinationId())
+	destinationUuid, err := husonymdb.ToUuid(req.Msg.GetDestinationId())
 	if err != nil {
 		return nil, err
 	}
@@ -1275,7 +1275,7 @@ func (s *Service) UpdateJobDestinationConnection(
 		return nil, err
 	}
 
-	connectionUuid, err := neosyncdb.ToUuid(req.Msg.GetConnectionId())
+	connectionUuid, err := husonymdb.ToUuid(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, err
 	}
@@ -1300,9 +1300,9 @@ func (s *Service) UpdateJobDestinationConnection(
 			Options:      options,
 		},
 	)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		logger.Debug("destination not found. creating job destination connection")
 		_, err = s.db.Q.CreateJobConnectionDestination(ctx, s.db.Db, db_queries.CreateJobConnectionDestinationParams{
 			JobID:        jobUuid,
@@ -1333,19 +1333,19 @@ func (s *Service) DeleteJobDestinationConnection(
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("destinationId", req.Msg.GetDestinationId())
 
-	destinationUuid, err := neosyncdb.ToUuid(req.Msg.GetDestinationId())
+	destinationUuid, err := husonymdb.ToUuid(req.Msg.GetDestinationId())
 	if err != nil {
 		return nil, err
 	}
 
 	destination, err := s.db.Q.GetJobConnectionDestination(ctx, s.db.Db, destinationUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		return connect.NewResponse(&mgmtv1alpha1.DeleteJobDestinationConnectionResponse{}), nil
 	}
 
-	jobId := neosyncdb.UUIDString(destination.JobID)
+	jobId := husonymdb.UUIDString(destination.JobID)
 
 	jobResp, err := s.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{
 		Id: jobId,
@@ -1368,9 +1368,9 @@ func (s *Service) DeleteJobDestinationConnection(
 
 	logger.Debug("deleting job destination connection")
 	err = s.db.Q.RemoveJobConnectionDestination(ctx, s.db.Db, destinationUuid)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
-	} else if err != nil && neosyncdb.IsNoRows(err) {
+	} else if err != nil && husonymdb.IsNoRows(err) {
 		logger.Debug("destination not found, during delete")
 	}
 
@@ -1390,7 +1390,7 @@ func (s *Service) IsJobNameAvailable(
 		return nil, err
 	}
 
-	accountUuid, err := neosyncdb.ToUuid(req.Msg.GetAccountId())
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
 	}
@@ -1413,11 +1413,11 @@ func (s *Service) verifyConnectionInAccount(
 	connectionId string,
 	accountId string,
 ) error {
-	accountUuid, err := neosyncdb.ToUuid(accountId)
+	accountUuid, err := husonymdb.ToUuid(accountId)
 	if err != nil {
 		return err
 	}
-	connectionUuid, err := neosyncdb.ToUuid(connectionId)
+	connectionUuid, err := husonymdb.ToUuid(connectionId)
 	if err != nil {
 		return err
 	}
@@ -1437,7 +1437,7 @@ func (s *Service) verifyConnectionInAccount(
 
 func verifyConnectionsInAccount(
 	ctx context.Context,
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	connectionUuids []pgtype.UUID,
 	accountUuid pgtype.UUID,
 ) (bool, error) {
@@ -1469,12 +1469,12 @@ func verifyConnectionIdsUnique(connectionIds []string) bool {
 
 func verifyConnectionsAreCompatible(
 	ctx context.Context,
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	sourceConnId pgtype.UUID,
 	destinations []*destination,
 ) (bool, error) {
-	var sourceConnection db_queries.NeosyncApiConnection
-	dests := make([]db_queries.NeosyncApiConnection, len(destinations))
+	var sourceConnection db_queries.HusonymApiConnection
+	dests := make([]db_queries.HusonymApiConnection, len(destinations))
 	group := new(errgroup.Group)
 	group.Go(func() error {
 		source, err := db.Q.GetConnectionById(ctx, db.Db, sourceConnId)
@@ -1565,13 +1565,13 @@ func (s *Service) SetJobWorkflowOptions(
 		wfOptions.FromDto(req.Msg.WorfklowOptions)
 	}
 
-	jobUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	jobUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// update temporal scheduled job
-	if err := s.db.WithTx(ctx, nil, func(dbtx neosyncdb.BaseDBTX) error {
+	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
 		_, err = s.db.Q.SetJobWorkflowOptions(ctx, dbtx, db_queries.SetJobWorkflowOptionsParams{
 			ID:              jobUuid,
 			WorkflowOptions: wfOptions,
@@ -1654,7 +1654,7 @@ func (s *Service) SetJobSyncOptions(
 		syncOptions.FromDto(req.Msg.SyncOptions)
 	}
 
-	jobUuid, err := neosyncdb.ToUuid(req.Msg.Id)
+	jobUuid, err := husonymdb.ToUuid(req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}

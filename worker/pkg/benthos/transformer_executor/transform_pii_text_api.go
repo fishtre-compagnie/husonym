@@ -4,25 +4,25 @@ import (
 	"context"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	ee_transformer_fns "github.com/Groupe-Hevea/neosync/internal/ee/transformers/functions"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
 type piiTextApi struct {
 	execConfig         *transformPiiTextConfig
-	neosyncOperatorApi ee_transformer_fns.NeosyncOperatorApi
+	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi
 	logger             *slog.Logger
 }
 
 func newFromExecConfig(
 	execConfig *transformPiiTextConfig,
-	neosyncOperatorApi ee_transformer_fns.NeosyncOperatorApi,
+	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi,
 	logger *slog.Logger,
 ) transformers.TransformPiiTextApi {
 	return &piiTextApi{
 		execConfig:         execConfig,
-		neosyncOperatorApi: neosyncOperatorApi,
+		husonymOperatorApi: husonymOperatorApi,
 		logger:             logger,
 	}
 }
@@ -36,7 +36,7 @@ func (p *piiTextApi) Transform(
 		ctx,
 		p.execConfig.analyze,
 		p.execConfig.anonymize,
-		p.neosyncOperatorApi,
+		p.husonymOperatorApi,
 		config,
 		value,
 		p.logger,

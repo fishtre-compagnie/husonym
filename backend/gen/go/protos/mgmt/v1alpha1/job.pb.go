@@ -1122,7 +1122,7 @@ func (x *JobDestination) GetId() string {
 
 type AiGenerateSourceOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The connection id that corresponds with an AI-based Neosync connection
+	// The connection id that corresponds with an AI-based Husonym connection
 	AiConnectionId string `protobuf:"bytes,1,opt,name=ai_connection_id,json=aiConnectionId,proto3" json:"ai_connection_id,omitempty"`
 	// The list of schemas (and their tables) along with any configuration options that will be used to generate data for.
 	Schemas []*AiGenerateSourceSchemaOption `protobuf:"bytes,2,rep,name=schemas,proto3" json:"schemas,omitempty"`
@@ -1737,9 +1737,9 @@ type PostgresSourceConnectionOptions struct {
 	ConnectionId string `protobuf:"bytes,3,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	// Whether to subset the table by foreign key constraints
 	SubsetByForeignKeyConstraints bool `protobuf:"varint,4,opt,name=subset_by_foreign_key_constraints,json=subsetByForeignKeyConstraints,proto3" json:"subset_by_foreign_key_constraints,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+	// Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
 	NewColumnAdditionStrategy *PostgresSourceConnectionOptions_NewColumnAdditionStrategy `protobuf:"bytes,5,opt,name=new_column_addition_strategy,json=newColumnAdditionStrategy,proto3" json:"new_column_addition_strategy,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+	// Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
 	ColumnRemovalStrategy *PostgresSourceConnectionOptions_ColumnRemovalStrategy `protobuf:"bytes,6,opt,name=column_removal_strategy,json=columnRemovalStrategy,proto3" json:"column_removal_strategy,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
@@ -1932,9 +1932,9 @@ type MysqlSourceConnectionOptions struct {
 	ConnectionId string `protobuf:"bytes,3,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	// Whether to subset the table by foreign key constraints
 	SubsetByForeignKeyConstraints bool `protobuf:"varint,4,opt,name=subset_by_foreign_key_constraints,json=subsetByForeignKeyConstraints,proto3" json:"subset_by_foreign_key_constraints,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+	// Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
 	ColumnRemovalStrategy *MysqlSourceConnectionOptions_ColumnRemovalStrategy `protobuf:"bytes,5,opt,name=column_removal_strategy,json=columnRemovalStrategy,proto3" json:"column_removal_strategy,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+	// Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
 	NewColumnAdditionStrategy *MysqlSourceConnectionOptions_NewColumnAdditionStrategy `protobuf:"bytes,6,opt,name=new_column_addition_strategy,json=newColumnAdditionStrategy,proto3" json:"new_column_addition_strategy,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
@@ -2135,9 +2135,9 @@ type MssqlSourceConnectionOptions struct {
 	ConnectionId string `protobuf:"bytes,3,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	// Whether to subset the table by foreign key constraints
 	SubsetByForeignKeyConstraints bool `protobuf:"varint,4,opt,name=subset_by_foreign_key_constraints,json=subsetByForeignKeyConstraints,proto3" json:"subset_by_foreign_key_constraints,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters a column that is removed from the source table.
+	// Provide a strategy of what to do in the event Husonym encounters a column that is removed from the source table.
 	ColumnRemovalStrategy *MssqlSourceConnectionOptions_ColumnRemovalStrategy `protobuf:"bytes,5,opt,name=column_removal_strategy,json=columnRemovalStrategy,proto3" json:"column_removal_strategy,omitempty"`
-	// Provide a strategy of what to do in the event Neosync encounters an unmapped column for the job's mapped tables.
+	// Provide a strategy of what to do in the event Husonym encounters an unmapped column for the job's mapped tables.
 	NewColumnAdditionStrategy *MssqlSourceConnectionOptions_NewColumnAdditionStrategy `protobuf:"bytes,6,opt,name=new_column_addition_strategy,json=newColumnAdditionStrategy,proto3" json:"new_column_addition_strategy,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
@@ -8429,11 +8429,11 @@ func (x *VirtualForeignConstraint) GetForeignKey() *VirtualForeignKey {
 
 type RunContextKey struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Neosync Run ID
+	// The Husonym Run ID
 	JobRunId string `protobuf:"bytes,1,opt,name=job_run_id,json=jobRunId,proto3" json:"job_run_id,omitempty"`
 	// An opaque identifier that will be used to store specific items
 	ExternalId string `protobuf:"bytes,2,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
-	// The Neosync Account ID
+	// The Husonym Account ID
 	AccountId     string `protobuf:"bytes,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -12077,7 +12077,7 @@ type JobHookConfig_JobSqlHook struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The SQL query to execute
 	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	// Unique identifier of the Neosync connection to run this hook for. Must be a connection id that is present in the job.
+	// Unique identifier of the Husonym connection to run this hook for. Must be a connection id that is present in the job.
 	ConnectionId string `protobuf:"bytes,2,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
 	// The timing of when the hook will run
 	Timing        *JobHookConfig_JobSqlHook_Timing `protobuf:"bytes,3,opt,name=timing,proto3" json:"timing,omitempty"`
@@ -13335,8 +13335,8 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\rUpdateJobHook\x12#.mgmt.v1alpha1.UpdateJobHookRequest\x1a$.mgmt.v1alpha1.UpdateJobHookResponse\"\x00\x12h\n" +
 	"\x11SetJobHookEnabled\x12'.mgmt.v1alpha1.SetJobHookEnabledRequest\x1a(.mgmt.v1alpha1.SetJobHookEnabledResponse\"\x00\x12\x83\x01\n" +
 	"\x19GetActiveJobHooksByTiming\x12/.mgmt.v1alpha1.GetActiveJobHooksByTimingRequest\x1a0.mgmt.v1alpha1.GetActiveJobHooksByTimingResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetPiiDetectionReport\x12+.mgmt.v1alpha1.GetPiiDetectionReportRequest\x1a,.mgmt.v1alpha1.GetPiiDetectionReportResponse\"\x03\x90\x02\x01B\xc4\x01\n" +
-	"\x11com.mgmt.v1alpha1B\bJobProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x15GetPiiDetectionReport\x12+.mgmt.v1alpha1.GetPiiDetectionReportRequest\x1a,.mgmt.v1alpha1.GetPiiDetectionReportResponse\"\x03\x90\x02\x01B\xc9\x01\n" +
+	"\x11com.mgmt.v1alpha1B\bJobProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_job_proto_rawDescOnce sync.Once

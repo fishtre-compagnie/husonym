@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 )
 
 // MariaDB reports schema metadata differently than MySQL 8 in three ways that

@@ -4,7 +4,7 @@ import * as yup from 'yup';
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
-import { AccountHook } from '@neosync/sdk';
+import { AccountHook } from '@husonym/sdk';
 import {
   AccountHookConfig,
   AccountHookEvents,

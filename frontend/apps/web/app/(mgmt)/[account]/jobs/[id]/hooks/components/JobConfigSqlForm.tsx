@@ -13,7 +13,7 @@ import useMonacoResizer from '@/libs/hooks/monaco/useMonacoResizer';
 import useMonacoTheme from '@/libs/hooks/monaco/useMonacoTheme';
 import { splitConnections } from '@/libs/utils';
 import { Editor } from '@monaco-editor/react';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { editor } from 'monaco-editor';
 import FormHeader from './FormHeader';
 import { JobHookSqlFormValues, SqlTimingFormValue } from './validation';

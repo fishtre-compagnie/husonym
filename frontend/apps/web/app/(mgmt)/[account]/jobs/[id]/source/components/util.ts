@@ -33,7 +33,7 @@ import {
   JobSource,
   SystemTransformer,
   UserDefinedTransformer,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { Row } from '@tanstack/react-table';
 
 export function getConnectionIdFromSource(

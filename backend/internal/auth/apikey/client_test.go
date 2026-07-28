@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
-	pkg_utils "github.com/Groupe-Hevea/neosync/backend/pkg/utils"
-	"github.com/Groupe-Hevea/neosync/internal/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/mock"
@@ -36,9 +36,9 @@ func Test_Client_InjectTokenCtx_Account(t *testing.T) {
 	hashedFakeToken := pkg_utils.ToSha256(
 		fakeToken,
 	)
-	expiresAt, err := neosyncdb.ToTimestamp(time.Now().Add(5 * time.Minute))
+	expiresAt, err := husonymdb.ToTimestamp(time.Now().Add(5 * time.Minute))
 	assert.NoError(t, err)
-	apiKeyRecord := db_queries.NeosyncApiAccountApiKey{
+	apiKeyRecord := db_queries.HusonymApiAccountApiKey{
 		ID:        pgtype.UUID{Valid: true},
 		ExpiresAt: expiresAt,
 	}
@@ -75,9 +75,9 @@ func Test_Client_InjectTokenCtx_Account_Expired(t *testing.T) {
 	hashedFakeToken := pkg_utils.ToSha256(
 		fakeToken,
 	)
-	expiresAt, err := neosyncdb.ToTimestamp(time.Now().Add(-5 * time.Second))
+	expiresAt, err := husonymdb.ToTimestamp(time.Now().Add(-5 * time.Second))
 	assert.NoError(t, err)
-	apiKeyRecord := db_queries.NeosyncApiAccountApiKey{
+	apiKeyRecord := db_queries.HusonymApiAccountApiKey{
 		ID:        pgtype.UUID{Valid: true},
 		ExpiresAt: expiresAt,
 	}
@@ -127,7 +127,7 @@ func Test_Client_InjectTokenCtx_Account_NotFoundKeyValue(t *testing.T) {
 	)
 
 	mockQuerier.On("GetAccountApiKeyByKeyValue", mock.Anything, mock.Anything, hashedFakeToken).
-		Return(db_queries.NeosyncApiAccountApiKey{}, pgx.ErrNoRows)
+		Return(db_queries.HusonymApiAccountApiKey{}, pgx.ErrNoRows)
 
 	newctx, err := client.InjectTokenCtx(context.Background(), http.Header{
 		"Authorization": []string{fmt.Sprintf("Bearer %s", fakeToken)},

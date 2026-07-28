@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 )
 
 /* Generates a random int64 of length l. For example, given a length of 4, possible values will always have a length of 4 digits. */

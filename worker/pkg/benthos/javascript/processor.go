@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/Groupe-Hevea/neosync/internal/benthos_slogger"
-	"github.com/Groupe-Hevea/neosync/internal/javascript"
-	javascript_vm "github.com/Groupe-Hevea/neosync/internal/javascript/vm"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	"github.com/fishtre-compagnie/husonym/internal/benthos_slogger"
+	"github.com/fishtre-compagnie/husonym/internal/javascript"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 	"github.com/dop251/goja"
 
 	"github.com/redpanda-data/benthos/v4/public/service"
@@ -24,12 +24,12 @@ func javascriptProcessorConfig() *service.ConfigSpec {
 		Field(service.NewInterpolatedStringField(codeField))
 }
 
-func RegisterNeosyncJavascriptProcessor(
+func RegisterHusonymJavascriptProcessor(
 	env *service.Environment,
 	transformPiiTextApi transformers.TransformPiiTextApi,
 ) error {
 	return env.RegisterBatchProcessor(
-		"neosync_javascript", javascriptProcessorConfig(),
+		"husonym_javascript", javascriptProcessorConfig(),
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchProcessor, error) {
 			return newJavascriptProcessorFromConfig(conf, mgr, transformPiiTextApi)
 		})
@@ -108,12 +108,12 @@ func (j *javascriptProcessor) ProcessBatch(
 	defer func() {
 		if r := recover(); r != nil {
 			j.slogger.Error(
-				"recovered from panic in neosync_javascript batch processor",
+				"recovered from panic in husonym_javascript batch processor",
 				"error",
 				fmt.Sprintf("%v", r),
 			)
 			// Set the named return value 'err'
-			err = fmt.Errorf("neosync_javascript batch processor panic recovered: %v", r)
+			err = fmt.Errorf("husonym_javascript batch processor panic recovered: %v", r)
 			return
 		}
 	}()

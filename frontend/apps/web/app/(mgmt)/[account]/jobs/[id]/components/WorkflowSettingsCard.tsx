@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
-import { Job, JobService } from '@neosync/sdk';
+import { Job, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';

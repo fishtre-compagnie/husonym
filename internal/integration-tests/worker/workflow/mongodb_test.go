@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/errgroup"
 
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	tcmongodb "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/mongodb"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	tcmongodb "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mongodb"
 )
 
 func createMongodbSyncJob(
@@ -60,13 +60,13 @@ func test_mongodb_alltypes(
 	t *testing.T,
 	ctx context.Context,
 	mongo *tcmongodb.MongoDBTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
-	neosyncApi.MockTemporalForCreateJob("test-mongodb-sync")
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	husonymApi.MockTemporalForCreateJob("test-mongodb-sync")
 	dbName := "data"
 	collectionName := "test-sync"
 	docs := getMongodbAllTypesTestData()
@@ -106,7 +106,7 @@ func test_mongodb_alltypes(
 		JobMappings: mappings,
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -142,13 +142,13 @@ func test_mongodb_transform(
 	t *testing.T,
 	ctx context.Context,
 	mongo *tcmongodb.MongoDBTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
-	neosyncApi.MockTemporalForCreateJob("test-mongodb-sync")
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	husonymApi.MockTemporalForCreateJob("test-mongodb-sync")
 	dbName := "data"
 	collectionName := "test-sync-transform"
 	docs := getMongodbAllTypesTestData()
@@ -236,7 +236,7 @@ func test_mongodb_transform(
 		JobMappings: mappings,
 	})
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(

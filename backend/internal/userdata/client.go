@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	auth_apikey "github.com/Groupe-Hevea/neosync/backend/internal/auth/apikey"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	"github.com/Groupe-Hevea/neosync/internal/ee/rbac"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type UserServiceClient interface {
@@ -57,7 +57,7 @@ func (c *Client) GetUser(ctx context.Context) (*User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get user: %w", err)
 	}
-	pguuid, err := neosyncdb.ToUuid(resp.Msg.GetUserId())
+	pguuid, err := husonymdb.ToUuid(resp.Msg.GetUserId())
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse user id: %w", err)
 	}

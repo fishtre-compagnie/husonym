@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/backoffutil"
+	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
 	"github.com/cenkalti/backoff/v5"
 	"golang.org/x/crypto/ssh"
 )

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	ee_transformer_fns "github.com/Groupe-Hevea/neosync/internal/ee/transformers/functions"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1631,7 +1631,7 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 
 		mockanalyze := presidioapi.NewMockAnalyzeInterface(t)
 		mockanon := presidioapi.NewMockAnonymizeInterface(t)
-		mockneosync := ee_transformer_fns.NewMockNeosyncOperatorApi(t)
+		mockhusonym := ee_transformer_fns.NewMockHusonymOperatorApi(t)
 		mockanalyze.On("PostAnalyzeWithResponse", mock.Anything, mock.Anything).
 			Return(&presidioapi.PostAnalyzeResponse{
 				JSON200: &[]presidioapi.RecognizerResultWithAnaysisExplanation{
@@ -1650,7 +1650,7 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 		defaultLan := "en"
 
 		execOpts := []TransformerExecutorOption{
-			WithTransformPiiTextConfig(mockanalyze, mockanon, mockneosync, &defaultLan),
+			WithTransformPiiTextConfig(mockanalyze, mockanon, mockhusonym, &defaultLan),
 		}
 		executor, err := InitializeTransformerByConfigType(config, execOpts...)
 		require.NoError(t, err)
@@ -1671,7 +1671,7 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 
 		mockanalyze := presidioapi.NewMockAnalyzeInterface(t)
 		mockanon := presidioapi.NewMockAnonymizeInterface(t)
-		mockneosync := ee_transformer_fns.NewMockNeosyncOperatorApi(t)
+		mockhusonym := ee_transformer_fns.NewMockHusonymOperatorApi(t)
 
 		mockanalyze.On("PostAnalyzeWithResponse", mock.Anything, mock.Anything).
 			Return(&presidioapi.PostAnalyzeResponse{
@@ -1690,7 +1690,7 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 			}, nil)
 		defaultLan := "en"
 		execOpts := []TransformerExecutorOption{
-			WithTransformPiiTextConfig(mockanalyze, mockanon, mockneosync, &defaultLan),
+			WithTransformPiiTextConfig(mockanalyze, mockanon, mockhusonym, &defaultLan),
 		}
 		executor, err := InitializeTransformerByConfigType(config, execOpts...)
 		require.NoError(t, err)

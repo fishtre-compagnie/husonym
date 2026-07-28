@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	javascript_functions "github.com/Groupe-Hevea/neosync/internal/javascript/functions"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	"github.com/dop251/goja"
 )
 

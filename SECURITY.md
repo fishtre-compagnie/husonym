@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-It is recommended to use the latest version of Neosync to ensure you are up-to-date on all the latest security updates.
+It is recommended to use the latest version of Husonym to ensure you are up-to-date on all the latest security updates.
 
 ## Reporting a Vulnerability
 
-If you believe to have uncovered a vulnerability, please email security@neosync.dev.
+If you believe to have uncovered a vulnerability, please email security@husonym.com.
 
 In the message, please provide as much detail as you can to give our engineers an easy path to reproducing the issue such that we may swiftly fix it.
 

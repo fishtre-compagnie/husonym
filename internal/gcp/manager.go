@@ -1,4 +1,4 @@
-package neosync_gcp
+package husonym_gcp
 
 import (
 	"context"

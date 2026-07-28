@@ -8,12 +8,12 @@ package db_queries
 import (
 	"context"
 
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createJob = `-- name: CreateJob :one
-INSERT INTO neosync_api.jobs (
+INSERT INTO husonym_api.jobs (
   name, account_id, status, connection_options, mappings,
   cron_schedule, created_by_id, updated_by_id, workflow_options, sync_options,
   virtual_foreign_keys, jobtype_config
@@ -38,7 +38,7 @@ type CreateJobParams struct {
 	JobtypeConfig      []byte
 }
 
-func (q *Queries) CreateJob(ctx context.Context, db DBTX, arg CreateJobParams) (NeosyncApiJob, error) {
+func (q *Queries) CreateJob(ctx context.Context, db DBTX, arg CreateJobParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, createJob,
 		arg.Name,
 		arg.AccountID,
@@ -53,7 +53,7 @@ func (q *Queries) CreateJob(ctx context.Context, db DBTX, arg CreateJobParams) (
 		arg.VirtualForeignKeys,
 		arg.JobtypeConfig,
 	)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -75,7 +75,7 @@ func (q *Queries) CreateJob(ctx context.Context, db DBTX, arg CreateJobParams) (
 }
 
 const createJobConnectionDestination = `-- name: CreateJobConnectionDestination :one
-INSERT INTO neosync_api.job_destination_connection_associations (
+INSERT INTO husonym_api.job_destination_connection_associations (
   job_id, connection_id, options
 ) VALUES (
   $1, $2, $3
@@ -91,9 +91,9 @@ type CreateJobConnectionDestinationParams struct {
 	Options      *pg_models.JobDestinationOptions
 }
 
-func (q *Queries) CreateJobConnectionDestination(ctx context.Context, db DBTX, arg CreateJobConnectionDestinationParams) (NeosyncApiJobDestinationConnectionAssociation, error) {
+func (q *Queries) CreateJobConnectionDestination(ctx context.Context, db DBTX, arg CreateJobConnectionDestinationParams) (HusonymApiJobDestinationConnectionAssociation, error) {
 	row := db.QueryRow(ctx, createJobConnectionDestination, arg.JobID, arg.ConnectionID, arg.Options)
-	var i NeosyncApiJobDestinationConnectionAssociation
+	var i HusonymApiJobDestinationConnectionAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -112,7 +112,7 @@ type CreateJobConnectionDestinationsParams struct {
 }
 
 const deleteJob = `-- name: DeleteJob :exec
-DELETE FROM neosync_api.jobs WHERE id = $1
+DELETE FROM husonym_api.jobs WHERE id = $1
 `
 
 func (q *Queries) DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -126,7 +126,7 @@ SELECT EXISTS (
     FROM (
         -- Check direct associations in the job_destination_connection_associations table
         SELECT connection_id
-        FROM neosync_api.job_destination_connection_associations
+        FROM husonym_api.job_destination_connection_associations
         WHERE job_id = $1
             AND connection_id = $2
 
@@ -155,7 +155,7 @@ SELECT EXISTS (
                 WHEN connection_options->'dynamoDBOptions'->>'connectionId' IS NOT NULL THEN
                     (connection_options->'dynamoDBOptions'->>'connectionId')::uuid
             END AS connection_id
-            FROM neosync_api.jobs
+            FROM husonym_api.jobs
             WHERE id = $1
         ) embedded_connections
         WHERE connection_id = $2
@@ -177,7 +177,7 @@ func (q *Queries) DoesJobHaveConnectionId(ctx context.Context, db DBTX, arg Does
 
 const getAccountIdFromJobId = `-- name: GetAccountIdFromJobId :one
 SELECT account_id
-FROM neosync_api.jobs
+FROM husonym_api.jobs
 WHERE id = $1
 LIMIT 1
 `
@@ -190,12 +190,12 @@ func (q *Queries) GetAccountIdFromJobId(ctx context.Context, db DBTX, id pgtype.
 }
 
 const getJobById = `-- name: GetJobById :one
-SELECT id, created_at, updated_at, name, account_id, status, connection_options, mappings, cron_schedule, created_by_id, updated_by_id, workflow_options, sync_options, virtual_foreign_keys, jobtype_config from neosync_api.jobs WHERE id = $1
+SELECT id, created_at, updated_at, name, account_id, status, connection_options, mappings, cron_schedule, created_by_id, updated_by_id, workflow_options, sync_options, virtual_foreign_keys, jobtype_config from husonym_api.jobs WHERE id = $1
 `
 
-func (q *Queries) GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiJob, error) {
+func (q *Queries) GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, getJobById, id)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -217,8 +217,8 @@ func (q *Queries) GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (Neos
 }
 
 const getJobByNameAndAccount = `-- name: GetJobByNameAndAccount :one
-SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from neosync_api.jobs j
-INNER JOIN neosync_api.accounts a ON a.id = j.account_id
+SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from husonym_api.jobs j
+INNER JOIN husonym_api.accounts a ON a.id = j.account_id
 WHERE a.id = $1 AND j.name = $2
 `
 
@@ -227,9 +227,9 @@ type GetJobByNameAndAccountParams struct {
 	JobName   string
 }
 
-func (q *Queries) GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (NeosyncApiJob, error) {
+func (q *Queries) GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, getJobByNameAndAccount, arg.AccountId, arg.JobName)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -251,13 +251,13 @@ func (q *Queries) GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJo
 }
 
 const getJobConnectionDestination = `-- name: GetJobConnectionDestination :one
-SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from neosync_api.job_destination_connection_associations jdca
+SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from husonym_api.job_destination_connection_associations jdca
 WHERE jdca.id = $1
 `
 
-func (q *Queries) GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiJobDestinationConnectionAssociation, error) {
+func (q *Queries) GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error) {
 	row := db.QueryRow(ctx, getJobConnectionDestination, id)
-	var i NeosyncApiJobDestinationConnectionAssociation
+	var i HusonymApiJobDestinationConnectionAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -270,21 +270,21 @@ func (q *Queries) GetJobConnectionDestination(ctx context.Context, db DBTX, id p
 }
 
 const getJobConnectionDestinations = `-- name: GetJobConnectionDestinations :many
-SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from neosync_api.job_destination_connection_associations jdca
-INNER JOIN neosync_api.jobs j ON j.id = jdca.job_id
+SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from husonym_api.job_destination_connection_associations jdca
+INNER JOIN husonym_api.jobs j ON j.id = jdca.job_id
 WHERE j.id = $1
 ORDER BY jdca.created_at
 `
 
-func (q *Queries) GetJobConnectionDestinations(ctx context.Context, db DBTX, id pgtype.UUID) ([]NeosyncApiJobDestinationConnectionAssociation, error) {
+func (q *Queries) GetJobConnectionDestinations(ctx context.Context, db DBTX, id pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error) {
 	rows, err := db.Query(ctx, getJobConnectionDestinations, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiJobDestinationConnectionAssociation
+	var items []HusonymApiJobDestinationConnectionAssociation
 	for rows.Next() {
-		var i NeosyncApiJobDestinationConnectionAssociation
+		var i HusonymApiJobDestinationConnectionAssociation
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -304,21 +304,21 @@ func (q *Queries) GetJobConnectionDestinations(ctx context.Context, db DBTX, id 
 }
 
 const getJobConnectionDestinationsByJobIds = `-- name: GetJobConnectionDestinationsByJobIds :many
-SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from neosync_api.job_destination_connection_associations jdca
-INNER JOIN neosync_api.jobs j ON j.id = jdca.job_id
+SELECT jdca.id, jdca.created_at, jdca.updated_at, jdca.job_id, jdca.connection_id, jdca.options from husonym_api.job_destination_connection_associations jdca
+INNER JOIN husonym_api.jobs j ON j.id = jdca.job_id
 WHERE j.id = ANY($1::uuid[])
 ORDER BY j.created_at, jdca.created_at
 `
 
-func (q *Queries) GetJobConnectionDestinationsByJobIds(ctx context.Context, db DBTX, jobids []pgtype.UUID) ([]NeosyncApiJobDestinationConnectionAssociation, error) {
+func (q *Queries) GetJobConnectionDestinationsByJobIds(ctx context.Context, db DBTX, jobids []pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error) {
 	rows, err := db.Query(ctx, getJobConnectionDestinationsByJobIds, jobids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiJobDestinationConnectionAssociation
+	var items []HusonymApiJobDestinationConnectionAssociation
 	for rows.Next() {
-		var i NeosyncApiJobDestinationConnectionAssociation
+		var i HusonymApiJobDestinationConnectionAssociation
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -338,21 +338,21 @@ func (q *Queries) GetJobConnectionDestinationsByJobIds(ctx context.Context, db D
 }
 
 const getJobsByAccount = `-- name: GetJobsByAccount :many
-SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from neosync_api.jobs j
-INNER JOIN neosync_api.accounts a ON a.id = j.account_id
+SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from husonym_api.jobs j
+INNER JOIN husonym_api.accounts a ON a.id = j.account_id
 WHERE a.id = $1
 ORDER BY j.created_at DESC
 `
 
-func (q *Queries) GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiJob, error) {
+func (q *Queries) GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error) {
 	rows, err := db.Query(ctx, getJobsByAccount, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiJob
+	var items []HusonymApiJob
 	for rows.Next() {
-		var i NeosyncApiJob
+		var i HusonymApiJob
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -381,8 +381,8 @@ func (q *Queries) GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtyp
 }
 
 const isJobNameAvailable = `-- name: IsJobNameAvailable :one
-SELECT count(j.id) from neosync_api.jobs j
-INNER JOIN neosync_api.accounts a ON a.id = j.account_id
+SELECT count(j.id) from husonym_api.jobs j
+INNER JOIN husonym_api.accounts a ON a.id = j.account_id
 WHERE a.id = $1 AND j.name = $2
 `
 
@@ -399,7 +399,7 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 }
 
 const removeJobById = `-- name: RemoveJobById :exec
-DELETE FROM neosync_api.jobs WHERE id = $1
+DELETE FROM husonym_api.jobs WHERE id = $1
 `
 
 func (q *Queries) RemoveJobById(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -408,7 +408,7 @@ func (q *Queries) RemoveJobById(ctx context.Context, db DBTX, id pgtype.UUID) er
 }
 
 const removeJobConnectionDestination = `-- name: RemoveJobConnectionDestination :exec
-DELETE FROM neosync_api.job_destination_connection_associations WHERE id = $1
+DELETE FROM husonym_api.job_destination_connection_associations WHERE id = $1
 `
 
 func (q *Queries) RemoveJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -417,7 +417,7 @@ func (q *Queries) RemoveJobConnectionDestination(ctx context.Context, db DBTX, i
 }
 
 const removeJobConnectionDestinations = `-- name: RemoveJobConnectionDestinations :exec
-DELETE FROM neosync_api.job_destination_connection_associations
+DELETE FROM husonym_api.job_destination_connection_associations
 WHERE id = ANY($1::uuid[])
 `
 
@@ -427,7 +427,7 @@ func (q *Queries) RemoveJobConnectionDestinations(ctx context.Context, db DBTX, 
 }
 
 const setJobSyncOptions = `-- name: SetJobSyncOptions :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET sync_options = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -440,9 +440,9 @@ type SetJobSyncOptionsParams struct {
 	ID          pgtype.UUID
 }
 
-func (q *Queries) SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSyncOptionsParams) (NeosyncApiJob, error) {
+func (q *Queries) SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSyncOptionsParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, setJobSyncOptions, arg.SyncOptions, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -464,7 +464,7 @@ func (q *Queries) SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSync
 }
 
 const setJobWorkflowOptions = `-- name: SetJobWorkflowOptions :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET workflow_options = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -477,9 +477,9 @@ type SetJobWorkflowOptionsParams struct {
 	ID              pgtype.UUID
 }
 
-func (q *Queries) SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (NeosyncApiJob, error) {
+func (q *Queries) SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, setJobWorkflowOptions, arg.WorkflowOptions, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -501,7 +501,7 @@ func (q *Queries) SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJob
 }
 
 const updateJobConnectionDestination = `-- name: UpdateJobConnectionDestination :one
-UPDATE neosync_api.job_destination_connection_associations
+UPDATE husonym_api.job_destination_connection_associations
 SET options = $1,
 connection_id = $2
 WHERE id = $3
@@ -514,9 +514,9 @@ type UpdateJobConnectionDestinationParams struct {
 	ID           pgtype.UUID
 }
 
-func (q *Queries) UpdateJobConnectionDestination(ctx context.Context, db DBTX, arg UpdateJobConnectionDestinationParams) (NeosyncApiJobDestinationConnectionAssociation, error) {
+func (q *Queries) UpdateJobConnectionDestination(ctx context.Context, db DBTX, arg UpdateJobConnectionDestinationParams) (HusonymApiJobDestinationConnectionAssociation, error) {
 	row := db.QueryRow(ctx, updateJobConnectionDestination, arg.Options, arg.ConnectionID, arg.ID)
-	var i NeosyncApiJobDestinationConnectionAssociation
+	var i HusonymApiJobDestinationConnectionAssociation
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -529,7 +529,7 @@ func (q *Queries) UpdateJobConnectionDestination(ctx context.Context, db DBTX, a
 }
 
 const updateJobMappings = `-- name: UpdateJobMappings :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET mappings = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -542,9 +542,9 @@ type UpdateJobMappingsParams struct {
 	ID          pgtype.UUID
 }
 
-func (q *Queries) UpdateJobMappings(ctx context.Context, db DBTX, arg UpdateJobMappingsParams) (NeosyncApiJob, error) {
+func (q *Queries) UpdateJobMappings(ctx context.Context, db DBTX, arg UpdateJobMappingsParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, updateJobMappings, arg.Mappings, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -566,7 +566,7 @@ func (q *Queries) UpdateJobMappings(ctx context.Context, db DBTX, arg UpdateJobM
 }
 
 const updateJobSchedule = `-- name: UpdateJobSchedule :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET cron_schedule = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -579,9 +579,9 @@ type UpdateJobScheduleParams struct {
 	ID           pgtype.UUID
 }
 
-func (q *Queries) UpdateJobSchedule(ctx context.Context, db DBTX, arg UpdateJobScheduleParams) (NeosyncApiJob, error) {
+func (q *Queries) UpdateJobSchedule(ctx context.Context, db DBTX, arg UpdateJobScheduleParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, updateJobSchedule, arg.CronSchedule, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -603,7 +603,7 @@ func (q *Queries) UpdateJobSchedule(ctx context.Context, db DBTX, arg UpdateJobS
 }
 
 const updateJobSource = `-- name: UpdateJobSource :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET connection_options = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -616,9 +616,9 @@ type UpdateJobSourceParams struct {
 	ID                pgtype.UUID
 }
 
-func (q *Queries) UpdateJobSource(ctx context.Context, db DBTX, arg UpdateJobSourceParams) (NeosyncApiJob, error) {
+func (q *Queries) UpdateJobSource(ctx context.Context, db DBTX, arg UpdateJobSourceParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, updateJobSource, arg.ConnectionOptions, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -640,7 +640,7 @@ func (q *Queries) UpdateJobSource(ctx context.Context, db DBTX, arg UpdateJobSou
 }
 
 const updateJobTypeConfig = `-- name: UpdateJobTypeConfig :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET jobtype_config = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -653,9 +653,9 @@ type UpdateJobTypeConfigParams struct {
 	ID            pgtype.UUID
 }
 
-func (q *Queries) UpdateJobTypeConfig(ctx context.Context, db DBTX, arg UpdateJobTypeConfigParams) (NeosyncApiJob, error) {
+func (q *Queries) UpdateJobTypeConfig(ctx context.Context, db DBTX, arg UpdateJobTypeConfigParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, updateJobTypeConfig, arg.JobtypeConfig, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -677,7 +677,7 @@ func (q *Queries) UpdateJobTypeConfig(ctx context.Context, db DBTX, arg UpdateJo
 }
 
 const updateJobVirtualForeignKeys = `-- name: UpdateJobVirtualForeignKeys :one
-UPDATE neosync_api.jobs
+UPDATE husonym_api.jobs
 SET virtual_foreign_keys = $1,
 updated_by_id = $2
 WHERE id = $3
@@ -690,9 +690,9 @@ type UpdateJobVirtualForeignKeysParams struct {
 	ID                 pgtype.UUID
 }
 
-func (q *Queries) UpdateJobVirtualForeignKeys(ctx context.Context, db DBTX, arg UpdateJobVirtualForeignKeysParams) (NeosyncApiJob, error) {
+func (q *Queries) UpdateJobVirtualForeignKeys(ctx context.Context, db DBTX, arg UpdateJobVirtualForeignKeysParams) (HusonymApiJob, error) {
 	row := db.QueryRow(ctx, updateJobVirtualForeignKeys, arg.VirtualForeignKeys, arg.UpdatedByID, arg.ID)
-	var i NeosyncApiJob
+	var i HusonymApiJob
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

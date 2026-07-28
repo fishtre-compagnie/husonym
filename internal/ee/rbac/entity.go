@@ -3,7 +3,7 @@ package rbac
 import (
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -45,7 +45,7 @@ func NewUserIdEntity(value string) *Entity {
 	return NewEntity("users", value)
 }
 func NewPgUserIdEntity(value pgtype.UUID) *Entity {
-	return NewUserIdEntity(neosyncdb.UUIDString(value))
+	return NewUserIdEntity(husonymdb.UUIDString(value))
 }
 
 func NewConnectionIdEntity(value string) *Entity {

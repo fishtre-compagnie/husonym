@@ -3,10 +3,10 @@ import { useQuery } from '@connectrpc/connect-query';
 import {
   DayResult,
   MetricsService,
-  Date as NeosyncDate,
-  DateSchema as NeosyncDateSchema,
+  Date as HusonymDate,
+  DateSchema as HusonymDateSchema,
   RangedMetricName,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { format } from 'date-fns';
 import { useTheme } from 'next-themes';
 import { ReactElement } from 'react';
@@ -106,7 +106,7 @@ export default function DailyMetricCount(props: Props): ReactElement {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey={(obj: DayResult) => {
-                  const date = obj.date ?? create(NeosyncDateSchema);
+                  const date = obj.date ?? create(HusonymDateSchema);
                   return format(
                     new Date(date.year, date.month - 1, date.day),
                     'MMM d'
@@ -142,12 +142,12 @@ export default function DailyMetricCount(props: Props): ReactElement {
 
 interface DayResultPlotPoint {
   count: number;
-  date: NeosyncDate;
+  date: HusonymDate;
 }
 
 function toDayResultPlotPoints(results: DayResult[]): DayResultPlotPoint[] {
   return results.map((result) => ({
     count: Number(result.count),
-    date: result.date ?? create(NeosyncDateSchema),
+    date: result.date ?? create(HusonymDateSchema),
   }));
 }

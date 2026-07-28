@@ -6,18 +6,18 @@ helpers = load_dynamic("../tilt/extensions/Tiltfile")
 helmfile_with_local_chart = helpers['helmfile_with_local_chart']
 helmfile = helpers['helmfile']
 
-allow_k8s_contexts('kind-neosync-dev')
+allow_k8s_contexts('kind-husonym-dev')
 
 base_dir = os.path.dirname(__file__)
 
 # when debugging can be handy to disable scrub
 secret_settings(disable_scrub=True)
 
-namespace_create('neosync', allow_duplicates=True)
+namespace_create('husonym', allow_duplicates=True)
 
 # Watches and rebuilds Go code
 local_resource(
-  'neosync-worker-build',
+  'husonym-worker-build',
   'scripts/build.sh',
   deps=['.'],
   ignore=[
@@ -34,16 +34,16 @@ local_resource(
   labels=['build']
 )
 
-k8s_yaml(helmfile_with_local_chart('neosync-worker', base_dir + '/charts/worker', helmfileDir=base_dir + '/dev/helm'))
+k8s_yaml(helmfile_with_local_chart('husonym-worker', base_dir + '/charts/worker', helmfileDir=base_dir + '/dev/helm'))
 # References the deployment
 k8s_resource(
-  'neosync-worker',
+  'husonym-worker',
   resource_deps=[],
   labels=['backend'],
   # port_forwards="8080:8080",
 )
 docker_build_with_restart(
-  ref='neosync-worker',
+  ref='husonym-worker',
   context='.',
   entrypoint=['/app/worker', 'serve'],
   dockerfile='./dev/build/Dockerfile.dev',

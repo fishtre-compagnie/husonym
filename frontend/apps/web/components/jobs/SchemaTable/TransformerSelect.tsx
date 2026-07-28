@@ -25,7 +25,7 @@ import {
   TransformerConfigSchema,
   UserDefinedTransformer,
   UserDefinedTransformerConfigSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons';
 import { ReactElement, useEffect, useState } from 'react';
 import { TransformerResult } from './transformer-handler';

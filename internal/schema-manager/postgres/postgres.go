@@ -7,13 +7,13 @@ import (
 	"strings"
 	"sync"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	tabledependency "github.com/Groupe-Hevea/neosync/backend/pkg/table-dependency"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	tabledependency "github.com/fishtre-compagnie/husonym/backend/pkg/table-dependency"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 	"golang.org/x/sync/errgroup"
 )
 

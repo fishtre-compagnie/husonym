@@ -10,7 +10,7 @@ authors:
 2. Data sync logs in the app for k8 deployments
 3. Introduced more granular timeout settings for jobs
 4. Support for tunneling into DBs in private VPCs via bastion host tunneling
-5. Support for HPA in Neosync helm charts
+5. Support for HPA in Husonym helm charts
 6. Introduced a Transform Character Scramble transformer thats scrambles a string while keep spaces, punctuation and format constant
 7. Transformer names are now clickable in the transformers table
 8. More tests for circular dependency support

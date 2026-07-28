@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -26,7 +26,7 @@ func NewPostgresBuilder() *builder.Builder[*sql.Rows] {
 
 func (m *PostgresMapper) MapRecordWithKeyType(
 	rows *sql.Rows,
-) (valuemap map[string]any, typemap map[string]neosync_types.KeyType, err error) {
+) (valuemap map[string]any, typemap map[string]husonym_types.KeyType, err error) {
 	return nil, nil, errors.ErrUnsupported
 }
 
@@ -99,7 +99,7 @@ func parsePgRowValues(values []any, columnNames, columnTypes []string) (map[stri
 		case nil:
 			jObj[col] = t
 		case time.Time:
-			dt, err := neosynctypes.NewDateTimeFromPgx(t)
+			dt, err := husonymtypes.NewDateTimeFromPgx(t)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert time.Time to DateTime: %w", err)
 			}
@@ -149,7 +149,7 @@ func parsePgRowValues(values []any, columnNames, columnTypes []string) (map[stri
 				jObj[col] = nil
 				continue
 			}
-			neoInterval, err := neosynctypes.NewIntervalFromPgx(t)
+			neoInterval, err := husonymtypes.NewIntervalFromPgx(t)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert interval: %w", err)
 			}
@@ -159,7 +159,7 @@ func parsePgRowValues(values []any, columnNames, columnTypes []string) (map[stri
 				jObj[col] = nil
 				continue
 			}
-			bits, err := neosynctypes.NewBitsFromPgx(t)
+			bits, err := husonymtypes.NewBitsFromPgx(t)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert bits: %w", err)
 			}
@@ -167,7 +167,7 @@ func parsePgRowValues(values []any, columnNames, columnTypes []string) (map[stri
 		default:
 			switch {
 			case strings.EqualFold(colType, "bytea"):
-				binary, err := neosynctypes.NewBinaryFromPgx(t)
+				binary, err := husonymtypes.NewBinaryFromPgx(t)
 				if err != nil {
 					return nil, fmt.Errorf("failed to convert binary: %w", err)
 				}
@@ -332,7 +332,7 @@ func (n *NullableJSON) Unmarshal() (any, error) {
 	return js, nil
 }
 
-func toBinaryArray(array *PgxArray[[]byte]) (*neosynctypes.NeosyncArray, error) {
+func toBinaryArray(array *PgxArray[[]byte]) (*husonymtypes.HusonymArray, error) {
 	if array.Elements == nil {
 		return nil, nil
 	}
@@ -342,9 +342,9 @@ func toBinaryArray(array *PgxArray[[]byte]) (*neosynctypes.NeosyncArray, error) 
 		return nil, errors.ErrUnsupported
 	}
 
-	binaryArray, err := neosynctypes.NewBinaryArrayFromPgx(
+	binaryArray, err := husonymtypes.NewBinaryArrayFromPgx(
 		array.Elements,
-		[]neosynctypes.NeosyncTypeOption{},
+		[]husonymtypes.HusonymTypeOption{},
 	)
 	if err != nil {
 		return nil, err
@@ -352,7 +352,7 @@ func toBinaryArray(array *PgxArray[[]byte]) (*neosynctypes.NeosyncArray, error) 
 	return binaryArray, nil
 }
 
-func toBitsArray(array *PgxArray[*pgtype.Bits]) (*neosynctypes.NeosyncArray, error) {
+func toBitsArray(array *PgxArray[*pgtype.Bits]) (*husonymtypes.HusonymArray, error) {
 	if array.Elements == nil {
 		return nil, nil
 	}
@@ -362,9 +362,9 @@ func toBitsArray(array *PgxArray[*pgtype.Bits]) (*neosynctypes.NeosyncArray, err
 		return nil, errors.ErrUnsupported
 	}
 
-	bitsArray, err := neosynctypes.NewBitsArrayFromPgx(
+	bitsArray, err := husonymtypes.NewBitsArrayFromPgx(
 		array.Elements,
-		[]neosynctypes.NeosyncTypeOption{},
+		[]husonymtypes.HusonymTypeOption{},
 	)
 	if err != nil {
 		return nil, err
@@ -372,7 +372,7 @@ func toBitsArray(array *PgxArray[*pgtype.Bits]) (*neosynctypes.NeosyncArray, err
 	return bitsArray, nil
 }
 
-func toIntervalArray(array *PgxArray[*pgtype.Interval]) (*neosynctypes.NeosyncArray, error) {
+func toIntervalArray(array *PgxArray[*pgtype.Interval]) (*husonymtypes.HusonymArray, error) {
 	if array.Elements == nil {
 		return nil, nil
 	}
@@ -382,9 +382,9 @@ func toIntervalArray(array *PgxArray[*pgtype.Interval]) (*neosynctypes.NeosyncAr
 		return nil, errors.ErrUnsupported
 	}
 
-	neoIntervalArray, err := neosynctypes.NewIntervalArrayFromPgx(
+	neoIntervalArray, err := husonymtypes.NewIntervalArrayFromPgx(
 		array.Elements,
-		[]neosynctypes.NeosyncTypeOption{},
+		[]husonymtypes.HusonymTypeOption{},
 	)
 	if err != nil {
 		return nil, err
@@ -417,9 +417,9 @@ func pgArrayToGoSlice(array *PgxArray[any]) (any, error) {
 				return nil, fmt.Errorf("expected time.Time, got %T", elem)
 			}
 		}
-		dtArray, err := neosynctypes.NewDateTimeArrayFromPgx(
+		dtArray, err := husonymtypes.NewDateTimeArrayFromPgx(
 			timeArray,
-			[]neosynctypes.NeosyncTypeOption{},
+			[]husonymtypes.HusonymTypeOption{},
 		)
 		if err != nil {
 			return nil, err

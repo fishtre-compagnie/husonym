@@ -1,4 +1,4 @@
-module github.com/Groupe-Hevea/neosync
+module github.com/fishtre-compagnie/husonym
 
 go 1.26.4
 
@@ -43,8 +43,6 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/microsoft/go-mssqldb v1.10.0
 	github.com/neilotoole/slogt v1.1.0
-	github.com/nucleuscloud/go-antlrv4-parser v0.0.0-20240830015744-041b46c70aa5
-	github.com/nucleuscloud/sql-adapter v0.0.0-20250423153919-c67824ce520f
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.4.1
 	github.com/openai/openai-go v1.12.0

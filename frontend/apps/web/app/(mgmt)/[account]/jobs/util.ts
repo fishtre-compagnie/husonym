@@ -123,7 +123,7 @@ import {
   VirtualForeignKeySchema,
   WorkflowOptions,
   WorkflowOptionsSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ConnectionConfigCase } from '../connections/util';
 import {
   ActivityOptionsFormValues,

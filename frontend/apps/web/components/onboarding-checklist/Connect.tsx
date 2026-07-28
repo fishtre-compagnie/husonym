@@ -36,7 +36,7 @@ export default function Connect(props: Props): ReactElement {
       <h1 className="font-semibold text-2xl">Connect</h1>
       <p className="text-sm px-10">
         Create <span className="font-semibold">Connections</span> to your
-        upstream and downstream data sources. Neosync supports a variety of
+        upstream and downstream data sources. Husonym supports a variety of
         databases and types of object storage.
       </p>
       <div className="grid grid-cols-3 gap-2">

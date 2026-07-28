@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/casbin/casbin/v2"
 )
 
@@ -171,9 +171,9 @@ func setupUserAssignments(
 		// get users in account
 		// assign them all account admin role for the account
 		users, err := db.GetAccountUsers(ctx, accountId)
-		if err != nil && !neosyncdb.IsNoRows(err) {
+		if err != nil && !husonymdb.IsNoRows(err) {
 			return err
-		} else if err != nil && neosyncdb.IsNoRows(err) {
+		} else if err != nil && husonymdb.IsNoRows(err) {
 			logger.Debug(fmt.Sprintf("no users found for account %s, skipping", accountId))
 			continue
 		}
@@ -348,7 +348,7 @@ func (r *Rbac) SetAccountRole(
 	}
 
 	_, err = r.e.AddRoleForUserInDomain(user.String(), roleName, account.String())
-	if err != nil && !neosyncdb.IsConflict(err) {
+	if err != nil && !husonymdb.IsConflict(err) {
 		return fmt.Errorf("unable to add role for user in domain: %w", err)
 	}
 	return nil
@@ -506,9 +506,9 @@ func setPolicy(e casbin.IEnforcer, policy []string) (*setPolicyResult, error) {
 		_, err = e.AddPolicy(
 			policy,
 		) // always resolves to true even if it was not added, may be adapter dependent
-		if err != nil && !neosyncdb.IsConflict(err) {
+		if err != nil && !husonymdb.IsConflict(err) {
 			return nil, fmt.Errorf("unable to add policy: %w", err)
-		} else if err != nil && neosyncdb.IsConflict(err) {
+		} else if err != nil && husonymdb.IsConflict(err) {
 			return &setPolicyResult{DidConflict: true}, nil
 		}
 	}

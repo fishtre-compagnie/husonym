@@ -2,7 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 
-import { ConnectionRolePrivilege } from '@neosync/sdk';
+import { ConnectionRolePrivilege } from '@husonym/sdk';
 import { CheckCircledIcon, CircleBackslashIcon } from '@radix-ui/react-icons';
 import { DataTableColumnHeader } from './data-table-column-header';
 

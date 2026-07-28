@@ -8,7 +8,7 @@ import TruncatedText from '@/components/TruncatedText';
 import { Badge, BadgeProps } from '@/components/ui/badge';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { AccountApiKey } from '@neosync/sdk';
+import { AccountApiKey } from '@husonym/sdk';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';
 

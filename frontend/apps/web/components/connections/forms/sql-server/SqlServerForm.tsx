@@ -14,7 +14,7 @@ import {
   CheckSSHConnectionByIdRequestSchema,
   CheckSSHConnectionRequestSchema,
   ConnectionService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ReactElement, useEffect } from 'react';
 import { create } from 'zustand';
 import {

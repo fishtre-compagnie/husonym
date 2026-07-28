@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/libs/utils';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
-import { AccountHookService } from '@neosync/sdk';
+import { AccountHookService } from '@husonym/sdk';
 import { CheckCircledIcon, ReloadIcon } from '@radix-ui/react-icons';
 import { ReactElement, useState } from 'react';
 import { GoXCircleFill } from 'react-icons/go';
@@ -161,7 +161,7 @@ function RecheckSlackConnectionButton(
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Verify that Neosync has a connection to your Slack</p>
+          <p>Verify that Husonym has a connection to your Slack</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -205,8 +205,8 @@ function ConnectSlackConnectionButton(
         <TooltipContent>
           <p>
             {hasConfiguration
-              ? 'Reconnect Neosync to your Slack'
-              : 'Connect Neosync to your Slack'}
+              ? 'Reconnect Husonym to your Slack'
+              : 'Connect Husonym to your Slack'}
           </p>
         </TooltipContent>
       </Tooltip>

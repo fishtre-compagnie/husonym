@@ -25,7 +25,7 @@ export default function ColumnRemovalStrategyOptionsForm(
           no longer exist in the source database schema.
         </FormDescription>
         <Link
-          href="https://docs.neosync.allopneus.com/guides/column-removal-strategies"
+          href="https://docs.husonym.com/guides/column-removal-strategies"
           target="_blank"
           className="hover:underline inline-flex gap-1 flex-row items-center tracking-tight text-[0.8rem] text-muted-foreground"
         >

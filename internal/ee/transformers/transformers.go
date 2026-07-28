@@ -1,6 +1,6 @@
 package ee_transformers
 
-import mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+import mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 
 var (
 	TransformPiiText = &mgmtv1alpha1.SystemTransformer{

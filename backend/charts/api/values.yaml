@@ -1,7 +1,7 @@
 # Configure the API Docker Image
 image:
   # -- The default image repository
-  repository: ghcr.io/groupe-hevea/neosync/api
+  repository: ghcr.io/fishtre-compagnie/husonym/api
   # -- Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
   tag:
   # -- Overrides the default K8s pull policy
@@ -30,7 +30,7 @@ serviceAccount:
   # -- Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment.
   annotations: {}
 
-# -- Mostly used by NeosyncCloud. Adds a special tag to the logging to determine what environment is running
+# -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
 nucleusEnv:
 
 # Currently does not do anything but will eventaully allow emitting otel metrics and traces
@@ -78,7 +78,7 @@ migrations:
     # -- The directory where the migrations are located.
     schemaDir: /migrations
     # -- This is the tablename that will be created in the postgres "public" schema
-    migrationsTableName: neosync_api_schema_migrations
+    migrationsTableName: husonym_api_schema_migrations
     # -- Whether or not the tablename is quoted in the connection string
     migrationsTableQuoted: false
     # -- Extra database options that will be appended to the query string
@@ -114,12 +114,12 @@ autoscaling:
   # -- The behavior of the HPA autoscaler
   behavior:
 
-# Adds annotations and labels to the deployment to opt it in to Istio service mesh. See the Neosync k8s docs for more details. This may be omitted and applied manually via the deployment's annotations and labels
+# Adds annotations and labels to the deployment to opt it in to Istio service mesh. See the Husonym k8s docs for more details. This may be omitted and applied manually via the deployment's annotations and labels
 istio:
   # -- Whether or not to apply the default istio annotations/labels to the deployment
   enabled: false
 
-# Adds annotations to support sending logs to Datadog. See the Neosync k8s docs for more details. This may be omitted and applied manually to the deployment.
+# Adds annotations to support sending logs to Datadog. See the Husonym k8s docs for more details. This may be omitted and applied manually to the deployment.
 datadog:
   # -- Whether or not to apply the default Datadog annotations/labels to the deployment
   enabled: false
@@ -189,8 +189,8 @@ volumes: []
 # -- Volumes that will be mounted to the deployment
 volumeMounts: []
 
-neosyncCloud:
-  # -- Whether or not this is NeosyncCloud
+husonymCloud:
+  # -- Whether or not this is HusonymCloud
   enabled: false
   # -- Worker API keys that have been allowlisted to for use
   workerApiKeys: []
@@ -202,11 +202,11 @@ kubernetes:
   # -- Falls back to the helm release namespace
   namespace:
   # -- Corresponds with the app label that is present on the worker pod
-  workerAppName: neosync-worker
+  workerAppName: husonym-worker
 
 # If runLogs are disabled, will fallback on the kubernetes configuration above for backwards compat
 runLogs:
-  # -- Enable this if planning to surface logs within Neosync API and UI (requires a valid license).
+  # -- Enable this if planning to surface logs within Husonym API and UI (requires a valid license).
   enabled: false
   # -- Possible values: k8s-pods, loki
   type: k8s-pods
@@ -216,7 +216,7 @@ runLogs:
     # -- The namespace the worker lives in
     workerNamespace:
     # -- Corresponds to the app label that is present on the worker pod that will be used to surface logs
-    workerAppName: neosync-worker
+    workerAppName: husonym-worker
   ## The configuration used if the type is loki
   lokiConfig:
     # -- The base url to the loki instance
@@ -249,7 +249,7 @@ extraEnvVars: []
 # -- Provide sidecars that will be appended directly to the deployment next to the user-container
 sidecarContainers: []
 
-# Configure Neosync Enterprise
+# Configure Husonym Enterprise
 ee:
-  # -- Neosync Enterprise-Edition License Key
+  # -- Husonym Enterprise-Edition License Key
   license:

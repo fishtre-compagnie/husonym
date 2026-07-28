@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"slices"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/jackc/pgx/v5"
 
-	runconfigs "github.com/Groupe-Hevea/neosync/internal/runconfigs"
+	runconfigs "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 
-	selectbuilder "github.com/Groupe-Hevea/neosync/worker/pkg/select-query-builder"
+	selectbuilder "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

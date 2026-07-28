@@ -1,6 +1,6 @@
 ---
-title: Neosync for Python
-description: Learn about Neosync's Python SDK and how you can use it to anonymize data and generate synthetic data
+title: Husonym for Python
+description: Learn about Husonym's Python SDK and how you can use it to anonymize data and generate synthetic data
 id: python
 hide_title: false
 slug: /python
@@ -8,17 +8,17 @@ slug: /python
 
 ## Introduction
 
-The Neosync Python SDK is publicly available and can be added to any Python project. With the Neosync Python SDK, you can:
+The Husonym Python SDK is publicly available and can be added to any Python project. With the Husonym Python SDK, you can:
 
 1. Anonymize structured data and generate synthetic data
 2. Anonymize free-form text data
-3. Create resources in Neosync such as Jobs, Connections, Transformers and more
+3. Create resources in Husonym such as Jobs, Connections, Transformers and more
 
 ## Installation
 
-You can add the Neosync Python SDK using:
+You can add the Husonym Python SDK using:
 
-`pip install neosync`
+`pip install husonym`
 
 ## Prerequisites
 
@@ -26,26 +26,26 @@ There are a few prerequisites that the SDK needs in order to be properly configu
 
 | **Properties** | **Details**                                                                                                                                                                 | **Default**                      |
 |----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------|
-| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Neosync App.                                      |                                  |
-| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Neosync environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |                                  |
-| **API URL**    | The instance of Neosync to point to.                                                                                                                                        | neosync-api.svcs.neosync.dev:443 |
+| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Husonym App.                                      |                                  |
+| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Husonym environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |                                  |
+| **API URL**    | The instance of Husonym to point to.                                                                                                                                        | husonym-api.svcs.husonym.com:443 |
 
 ## Authentication
 
-If you are using Neosync locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
+If you are using Husonym locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
 
-If you are using Neosync locally in `auth mode` or using **Neosync Cloud**, you can authenticate with the Neosync server using an API Key or Access Token. Here is an example showing how to authenticate with Neosync's server.
+If you are using Husonym locally in `auth mode` or using **Husonym Cloud**, you can authenticate with the Husonym server using an API Key or Access Token. Here is an example showing how to authenticate with Husonym's server.
 
 ```python
-from neosync import Neosync
+from husonym import Husonym
 import os
 
 def main():
-    client = Neosync(
-        # Optional, defaults to Neosync Cloud if not provided
-        api_url=os.getenv("NEOSYNC_API_URL"),
-        # Optional if connecting to a custom instance of Neosync with no auth
-        access_token=os.getenv("NEOSYNC_API_KEY"),
+    client = Husonym(
+        # Optional, defaults to Husonym Cloud if not provided
+        api_url=os.getenv("HUSONYM_API_URL"),
+        # Optional if connecting to a custom instance of Husonym with no auth
+        access_token=os.getenv("HUSONYM_API_KEY"),
     )
 
 if __name__ == "__main__":
@@ -54,15 +54,15 @@ if __name__ == "__main__":
 
 ## Getting started
 
-In this section, we're going to walk through two examples that show you how to make an API call using Neosync's Python SDK. For a complete list of the APIs, check out the APIs in the `Services` section of each proto file. ex.: [AnonymizationService](/api/mgmt/v1alpha1/anonymization.proto#anonymizationservice).
+In this section, we're going to walk through two examples that show you how to make an API call using Husonym's Python SDK. For a complete list of the APIs, check out the APIs in the `Services` section of each proto file. ex.: [AnonymizationService](/api/mgmt/v1alpha1/anonymization.proto#anonymizationservice).
 
-Neosync is made up of a number of different services that live inside of the same process. These are all present on the `Neosync` client class.
+Husonym is made up of a number of different services that live inside of the same process. These are all present on the `Husonym` client class.
 
 Each function that is called has a corresponding request and response class.
 
 For example, the `AnonymizeSingle` function has a corresponding request class called `AnonymizeSingleRequest` and a corresponding response class called `AnonymizeSingleResponse`.
 
-These are all importable directly from the root `neosync` package, or may be imported from the `neosync.mgmt.v1alpha1` package.
+These are all importable directly from the root `husonym` package, or may be imported from the `husonym.mgmt.v1alpha1` package.
 
 All services are structured this way.
 
@@ -87,7 +87,7 @@ A straightforward use case is to anonymize sensitive data in an API request. Let
 
 Our input object is a simple user's object that we may get through a user sign up flow. In this object, we have a few sensitive fields that we want to anonymize: `name`, `email`, `address` and `phone`. We can leave the `favorites` as-is for now.
 
-In order to anonymize this object, you can use Neosync's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
+In order to anonymize this object, you can use Husonym's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
 
 Here's how you do it:
 
@@ -96,8 +96,8 @@ Here's how you do it:
 import json
 import os
 
-from neosync import (
-    Neosync,
+from husonym import (
+    Husonym,
     AnonymizeSingleRequest,
     AnonymizeSingleResponse,
     TransformerMapping,
@@ -107,12 +107,12 @@ from neosync import (
     TransformEmail,
 )
 
-ACCESS_TOKEN = os.getenv("NEOSYNC_API_KEY")
-ACCOUNT_ID = os.getenv("NEOSYNC_ACCOUNT_ID")
+ACCESS_TOKEN = os.getenv("HUSONYM_API_KEY")
+ACCOUNT_ID = os.getenv("HUSONYM_ACCOUNT_ID")
 
 
 def main():
-    client = Neosync(access_token=ACCESS_TOKEN)
+    client = Husonym(access_token=ACCESS_TOKEN)
 
     input_data = json.dumps(
         {
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -195,14 +195,14 @@ The best part is that all you have to do is change a transformer, that's it! Her
   },
 ```
 
-Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Neosync's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.neosync.allopneus.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
+Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Husonym's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.husonym.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
 
 ```python
 import json
 import os
 
-from neosync import (
-    Neosync,
+from husonym import (
+    Husonym,
     AnonymizeSingleRequest,
     AnonymizeSingleResponse,
     TransformerMapping,
@@ -210,12 +210,12 @@ from neosync import (
     TransformPiiText,
 )
 
-ACCESS_TOKEN = os.getenv("NEOSYNC_API_KEY")
-ACCOUNT_ID = os.getenv("NEOSYNC_ACCOUNT_ID")
+ACCESS_TOKEN = os.getenv("HUSONYM_API_KEY")
+ACCOUNT_ID = os.getenv("HUSONYM_ACCOUNT_ID")
 
 
 def main():
-    client = Neosync(access_token=ACCESS_TOKEN)
+    client = Husonym(access_token=ACCESS_TOKEN)
 
     input_data = json.dumps(
         {
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -260,23 +260,23 @@ As you can see, we've identified and redacted the PII in the original message an
 
 ### Triggering a Job Run
 
-Another common use case is to create resources in Neosync such as Jobs, Connections, Runs, Transformers and more. In this example, we'll trigger a Job which will create a Job Run. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
+Another common use case is to create resources in Husonym such as Jobs, Connections, Runs, Transformers and more. In this example, we'll trigger a Job which will create a Job Run. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
 
 Let's augment our code from above to call the `CreateJobRun` API.
 
 ```python
 import os
 
-from neosync import (
-    Neosync,
+from husonym import (
+    Husonym,
     CreateJobRunRequest,
 )
 
-ACCESS_TOKEN = os.getenv("NEOSYNC_API_KEY")
+ACCESS_TOKEN = os.getenv("HUSONYM_API_KEY")
 
 
 def main():
-    client = Neosync(access_token=ACCESS_TOKEN)
+    client = Husonym(access_token=ACCESS_TOKEN)
 
     # Create a job run, returns an empty response
     client.jobs.CreateJobRun(
@@ -293,7 +293,7 @@ if __name__ == "__main__":
 
 Most of these examples show the happy path. This section details how to properly catch errors when using the Python SDK.
 
-Today the Python SDK connects to Neosync using gRPC. This means that you can catch errors using the `grpc` library, which is installed as a dependency to this SDK.
+Today the Python SDK connects to Husonym using gRPC. This means that you can catch errors using the `grpc` library, which is installed as a dependency to this SDK.
 
 Here is the anonymize single example from above, but with some basic error handling added in.
 
@@ -302,8 +302,8 @@ import json
 import os
 import grpc
 
-from neosync import (
-    Neosync,
+from husonym import (
+    Husonym,
     AnonymizeSingleRequest,
     AnonymizeSingleResponse,
     TransformerMapping,
@@ -311,12 +311,12 @@ from neosync import (
     TransformPiiText,
 )
 
-ACCESS_TOKEN = os.getenv("NEOSYNC_API_KEY")
-ACCOUNT_ID = os.getenv("NEOSYNC_ACCOUNT_ID")
+ACCESS_TOKEN = os.getenv("HUSONYM_API_KEY")
+ACCOUNT_ID = os.getenv("HUSONYM_ACCOUNT_ID")
 
 
 def main():
-    client = Neosync(access_token=ACCESS_TOKEN)
+    client = Husonym(access_token=ACCESS_TOKEN)
 
     input_data = json.dumps(
         {
@@ -373,16 +373,16 @@ This will properly decode the escaped characters in the output data. This can be
 
 ## Context Manager
 
-The Neosync Python SDK also supports context managers. This means that you can use the `with` statement to create a Neosync client and automatically close the gRPC channel when you're done.
+The Husonym Python SDK also supports context managers. This means that you can use the `with` statement to create a Husonym client and automatically close the gRPC channel when you're done.
 Otherwise, you'll need to call `client.close()` manually (only if it's desired to cleanly close the gRPC channel).
 
 Here's an example:
 
 ```python
-from neosync import Neosync
+from husonym import Husonym
 
 def main():
-    with Neosync() as client:
+    with Husonym() as client:
         # Do something with the client
         pass
 
@@ -392,4 +392,4 @@ if __name__ == "__main__":
 
 ## Moving forward
 
-Now that you've seen how to anonymize data, generate synthetic data and create resources in Neosync, you can use the Neosync Python SDK to do much more! And if you have any questions, we're always available in Discord to help.
+Now that you've seen how to anonymize data, generate synthetic data and create resources in Husonym, you can use the Husonym Python SDK to do much more! And if you have any questions, we're always available in Discord to help.

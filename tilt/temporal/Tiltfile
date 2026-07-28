@@ -1,6 +1,6 @@
 load('ext://namespace', 'namespace_create')
 
-allow_k8s_contexts("kind-neosync-dev")
+allow_k8s_contexts("kind-husonym-dev")
 
 secret_settings(disable_scrub=True)
 

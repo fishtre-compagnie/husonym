@@ -1,6 +1,6 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { BaseHookStore } from '@/util/zustand.stores.util';
-import { Job } from '@neosync/sdk';
+import { Job } from '@husonym/sdk';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StorageValue } from 'zustand/middleware';
 import {

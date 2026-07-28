@@ -1,7 +1,7 @@
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
-import { NewAccountHook } from '@neosync/sdk';
+import { NewAccountHook } from '@husonym/sdk';
 import { FormEvent, ReactElement } from 'react';
 import { ValidationError } from 'yup';
 import {

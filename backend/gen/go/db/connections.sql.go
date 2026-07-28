@@ -8,13 +8,13 @@ package db_queries
 import (
 	"context"
 
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const areConnectionsInAccount = `-- name: AreConnectionsInAccount :one
-SELECT count(c.id) from neosync_api.connections c
-INNER JOIN neosync_api.accounts a ON a.id = c.account_id
+SELECT count(c.id) from husonym_api.connections c
+INNER JOIN husonym_api.accounts a ON a.id = c.account_id
 WHERE a.id = $1 and c.id = ANY($2::uuid[])
 `
 
@@ -31,7 +31,7 @@ func (q *Queries) AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreC
 }
 
 const createConnection = `-- name: CreateConnection :one
-INSERT INTO neosync_api.connections (
+INSERT INTO husonym_api.connections (
   name, account_id, connection_config, created_by_id, updated_by_id
 ) VALUES (
   $1, $2, $3, $4, $5
@@ -47,7 +47,7 @@ type CreateConnectionParams struct {
 	UpdatedByID      pgtype.UUID
 }
 
-func (q *Queries) CreateConnection(ctx context.Context, db DBTX, arg CreateConnectionParams) (NeosyncApiConnection, error) {
+func (q *Queries) CreateConnection(ctx context.Context, db DBTX, arg CreateConnectionParams) (HusonymApiConnection, error) {
 	row := db.QueryRow(ctx, createConnection,
 		arg.Name,
 		arg.AccountID,
@@ -55,7 +55,7 @@ func (q *Queries) CreateConnection(ctx context.Context, db DBTX, arg CreateConne
 		arg.CreatedByID,
 		arg.UpdatedByID,
 	)
-	var i NeosyncApiConnection
+	var i HusonymApiConnection
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -70,12 +70,12 @@ func (q *Queries) CreateConnection(ctx context.Context, db DBTX, arg CreateConne
 }
 
 const getConnectionById = `-- name: GetConnectionById :one
-SELECT id, created_at, updated_at, name, account_id, connection_config, created_by_id, updated_by_id from neosync_api.connections WHERE id = $1
+SELECT id, created_at, updated_at, name, account_id, connection_config, created_by_id, updated_by_id from husonym_api.connections WHERE id = $1
 `
 
-func (q *Queries) GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) (NeosyncApiConnection, error) {
+func (q *Queries) GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiConnection, error) {
 	row := db.QueryRow(ctx, getConnectionById, id)
-	var i NeosyncApiConnection
+	var i HusonymApiConnection
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -90,8 +90,8 @@ func (q *Queries) GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID
 }
 
 const getConnectionByNameAndAccount = `-- name: GetConnectionByNameAndAccount :one
-SELECT c.id, c.created_at, c.updated_at, c.name, c.account_id, c.connection_config, c.created_by_id, c.updated_by_id from neosync_api.connections c
-INNER JOIN neosync_api.accounts a ON a.id = c.account_id
+SELECT c.id, c.created_at, c.updated_at, c.name, c.account_id, c.connection_config, c.created_by_id, c.updated_by_id from husonym_api.connections c
+INNER JOIN husonym_api.accounts a ON a.id = c.account_id
 WHERE a.id = $1 AND c.name = $2
 `
 
@@ -100,9 +100,9 @@ type GetConnectionByNameAndAccountParams struct {
 	ConnectionName string
 }
 
-func (q *Queries) GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (NeosyncApiConnection, error) {
+func (q *Queries) GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error) {
 	row := db.QueryRow(ctx, getConnectionByNameAndAccount, arg.AccountId, arg.ConnectionName)
-	var i NeosyncApiConnection
+	var i HusonymApiConnection
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -117,21 +117,21 @@ func (q *Queries) GetConnectionByNameAndAccount(ctx context.Context, db DBTX, ar
 }
 
 const getConnectionsByAccount = `-- name: GetConnectionsByAccount :many
-SELECT c.id, c.created_at, c.updated_at, c.name, c.account_id, c.connection_config, c.created_by_id, c.updated_by_id from neosync_api.connections c
-INNER JOIN neosync_api.accounts a ON a.id = c.account_id
+SELECT c.id, c.created_at, c.updated_at, c.name, c.account_id, c.connection_config, c.created_by_id, c.updated_by_id from husonym_api.connections c
+INNER JOIN husonym_api.accounts a ON a.id = c.account_id
 WHERE a.id = $1
 ORDER BY c.created_at DESC
 `
 
-func (q *Queries) GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]NeosyncApiConnection, error) {
+func (q *Queries) GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiConnection, error) {
 	rows, err := db.Query(ctx, getConnectionsByAccount, accountid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiConnection
+	var items []HusonymApiConnection
 	for rows.Next() {
-		var i NeosyncApiConnection
+		var i HusonymApiConnection
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -153,18 +153,18 @@ func (q *Queries) GetConnectionsByAccount(ctx context.Context, db DBTX, accounti
 }
 
 const getConnectionsByIds = `-- name: GetConnectionsByIds :many
-SELECT id, created_at, updated_at, name, account_id, connection_config, created_by_id, updated_by_id from neosync_api.connections WHERE id = ANY($1::uuid[])
+SELECT id, created_at, updated_at, name, account_id, connection_config, created_by_id, updated_by_id from husonym_api.connections WHERE id = ANY($1::uuid[])
 `
 
-func (q *Queries) GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]NeosyncApiConnection, error) {
+func (q *Queries) GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiConnection, error) {
 	rows, err := db.Query(ctx, getConnectionsByIds, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []NeosyncApiConnection
+	var items []HusonymApiConnection
 	for rows.Next() {
-		var i NeosyncApiConnection
+		var i HusonymApiConnection
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -186,8 +186,8 @@ func (q *Queries) GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []p
 }
 
 const isConnectionInAccount = `-- name: IsConnectionInAccount :one
-SELECT count(c.id) from neosync_api.connections c
-INNER JOIN neosync_api.accounts a ON a.id = c.account_id
+SELECT count(c.id) from husonym_api.connections c
+INNER JOIN husonym_api.accounts a ON a.id = c.account_id
 WHERE a.id = $1 and c.id = $2
 `
 
@@ -204,8 +204,8 @@ func (q *Queries) IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConn
 }
 
 const isConnectionNameAvailable = `-- name: IsConnectionNameAvailable :one
-SELECT count(c.id) from neosync_api.connections c
-INNER JOIN neosync_api.accounts a ON a.id = c.account_id
+SELECT count(c.id) from husonym_api.connections c
+INNER JOIN husonym_api.accounts a ON a.id = c.account_id
 WHERE a.id = $1 and c.name = $2
 `
 
@@ -222,7 +222,7 @@ func (q *Queries) IsConnectionNameAvailable(ctx context.Context, db DBTX, arg Is
 }
 
 const removeConnectionById = `-- name: RemoveConnectionById :exec
-DELETE FROM neosync_api.connections WHERE id = $1
+DELETE FROM husonym_api.connections WHERE id = $1
 `
 
 func (q *Queries) RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) error {
@@ -231,7 +231,7 @@ func (q *Queries) RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.U
 }
 
 const removeConnectionByNameAndAccount = `-- name: RemoveConnectionByNameAndAccount :exec
-DELETE FROM neosync_api.connections WHERE name = $1 and account_id = $2
+DELETE FROM husonym_api.connections WHERE name = $1 and account_id = $2
 `
 
 type RemoveConnectionByNameAndAccountParams struct {
@@ -245,7 +245,7 @@ func (q *Queries) RemoveConnectionByNameAndAccount(ctx context.Context, db DBTX,
 }
 
 const updateConnection = `-- name: UpdateConnection :one
-UPDATE neosync_api.connections
+UPDATE husonym_api.connections
 SET name = $1, connection_config = $2,
 updated_by_id = $3
 WHERE id = $4
@@ -259,14 +259,14 @@ type UpdateConnectionParams struct {
 	ID               pgtype.UUID
 }
 
-func (q *Queries) UpdateConnection(ctx context.Context, db DBTX, arg UpdateConnectionParams) (NeosyncApiConnection, error) {
+func (q *Queries) UpdateConnection(ctx context.Context, db DBTX, arg UpdateConnectionParams) (HusonymApiConnection, error) {
 	row := db.QueryRow(ctx, updateConnection,
 		arg.Name,
 		arg.ConnectionConfig,
 		arg.UpdatedByID,
 		arg.ID,
 	)
-	var i NeosyncApiConnection
+	var i HusonymApiConnection
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

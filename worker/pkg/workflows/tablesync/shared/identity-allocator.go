@@ -7,7 +7,7 @@ import (
 	"hash/fnv"
 	"sync"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 	temporalclient "go.temporal.io/sdk/client"
 )
 

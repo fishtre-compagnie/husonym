@@ -1,7 +1,7 @@
 {
-  "name": "@neosync/sdk",
+  "name": "@husonym/sdk",
   "version": "0.0.0",
-  "description": "Neosync SDK",
+  "description": "Husonym SDK",
   "private": false,
   "files": [
     "dist/**"
@@ -40,14 +40,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Groupe-Hevea/neosync.git"
+    "url": "git+https://github.com/fishtre-compagnie/husonym.git"
   },
   "keywords": [
-    "neosync",
+    "husonym",
     "sdk"
   ],
   "bugs": {
-    "url": "https://github.com/Groupe-Hevea/neosync/issues"
+    "url": "https://github.com/fishtre-compagnie/husonym/issues"
   },
-  "homepage": "https://github.com/Groupe-Hevea/neosync#readme"
+  "homepage": "https://github.com/fishtre-compagnie/husonym#readme"
 }

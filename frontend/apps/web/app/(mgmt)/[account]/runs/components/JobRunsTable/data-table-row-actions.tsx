@@ -20,7 +20,7 @@ import {
   JobRun,
   JobRunStatus as JobRunStatusEnum,
   JobService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 

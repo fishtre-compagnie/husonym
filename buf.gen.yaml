@@ -8,7 +8,7 @@ managed:
       module: buf.build/googleapis/googleapis
   override:
     - file_option: go_package_prefix
-      value: github.com/Groupe-Hevea/neosync/backend/gen/go/protos
+      value: github.com/fishtre-compagnie/husonym/backend/gen/go/protos
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.36.11
     out: backend/gen/go/protos
@@ -31,16 +31,16 @@ plugins:
   - local: protoc-gen-connect-openapi
     out: docs/openapi
     opt:
-      - content-types=json,base=neosync.openapi.template.yaml
+      - content-types=json,base=husonym.openapi.template.yaml
 
   - remote: buf.build/community/mfridman-go-json:v1.6.0
     out: backend/gen/go/protos
     opt: paths=source_relative
 
   - remote: buf.build/protocolbuffers/python:v35.1 # generates messages and enums
-    out: python/src/neosync
+    out: python/src/husonym
     include_imports: true
   - remote: buf.build/protocolbuffers/pyi:v35.1 # generates type hints
-    out: python/src/neosync
+    out: python/src/husonym
   - remote: buf.build/grpc/python:v1.81.1 # generates grpc client
-    out: python/src/neosync
+    out: python/src/husonym

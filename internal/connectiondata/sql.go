@@ -9,17 +9,17 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	sqlmanager_mysql "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/mysql"
-	sqlmanager_postgres "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/postgres"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	database_record_mapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	querybuilder "github.com/Groupe-Hevea/neosync/worker/pkg/query-builder"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
 
 type SQLConnectionDataService struct {
@@ -141,7 +141,7 @@ func (s *SQLConnectionDataService) SampleData(
 		return err
 	}
 	rows, err := db.QueryContext(ctx, query)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return fmt.Errorf(
 			"error querying table %s with database type %s: %w",
 			schemaTable,
@@ -220,7 +220,7 @@ func (s *SQLConnectionDataService) StreamData(
 		return err
 	}
 	r, err := db.QueryContext(ctx, query)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return fmt.Errorf(
 			"error querying table %s with database type %s: %w",
 			schemaTable,
@@ -244,7 +244,7 @@ func (s *SQLConnectionDataService) StreamData(
 		return err
 	}
 	rows, err := db.QueryContext(ctx, selectQuery)
-	if err != nil && !neosyncdb.IsNoRows(err) {
+	if err != nil && !husonymdb.IsNoRows(err) {
 		return fmt.Errorf(
 			"error querying table %s with goqu driver %s: %w",
 			schemaTable,

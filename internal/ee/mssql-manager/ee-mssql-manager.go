@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"strings"
 
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	mssql_queries "github.com/Groupe-Hevea/neosync/backend/pkg/mssql-querier"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"golang.org/x/sync/errgroup"
 )
 

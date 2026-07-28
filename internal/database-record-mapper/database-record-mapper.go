@@ -3,14 +3,14 @@ package databaserecordmapper
 import (
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/builder"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/dynamodb"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/mongodb"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/mssql"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/mysql"
-	"github.com/Groupe-Hevea/neosync/internal/database-record-mapper/postgres"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/mongodb"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/mssql"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/mysql"
+	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/postgres"
 )
 
 func NewDatabaseRecordMapper(dbType string) (builder.DatabaseRecordMapper[any], error) {

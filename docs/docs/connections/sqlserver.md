@@ -11,12 +11,12 @@ slug: /connections/sqlserver
 
 Microsoft SQL Server (MSSQL) is a proprietary relational database management system developed by Microsoft.
 
-This page will document various items of interest regarding MS SQL Server and how to use it to synchronize data with Neosync.
+This page will document various items of interest regarding MS SQL Server and how to use it to synchronize data with Husonym.
 
-## Configuring MS SQL Server when running Neosync locally with Docker Compose
+## Configuring MS SQL Server when running Husonym locally with Docker Compose
 
-If you're trying out Neosync locally and are a MS SQL Server user, we make it easy to quickly stand up sql server instances
-that will _just work_ with the Neosync setup.
+If you're trying out Husonym locally and are a MS SQL Server user, we make it easy to quickly stand up sql server instances
+that will _just work_ with the Husonym setup.
 
 The `compose.yml` has some commented out compose files that may be uncommented to enable or disable various databases.
 
@@ -38,7 +38,7 @@ We can change this around to enable the MS Sql Server compose.
 
 Note: If you wish to disable the `./compose/compose-db.yml`, you may, but you may want to also disable the `api-seed` and `temporal-seed` containers as those are set up to automatically seed and populate the test postgres databases.
 
-Afterwards, run `make compose/up` to stand up Neosync with two MS SQL Server containers that are available within the neosync docker network.
+Afterwards, run `make compose/up` to stand up Husonym with two MS SQL Server containers that are available within the husonym docker network.
 They are also both accessible via your laptop on ports `1433` and `1434`.
 
 You can also get away with just one if you wish to only stand up one MSSQL container as SQL Server is capable of database virtualization and is not required to have two physically separate containers for a basic sync.
@@ -49,7 +49,7 @@ If you don't want to modify the compose, the compose command may be run directly
 docker compose -f compose.yml -f compose/compose-db-mssql.yml up -d
 ```
 
-## Configuring a MSSQL Connection in Neosync
+## Configuring a MSSQL Connection in Husonym
 
 ![Configuring a MSSQL Connection](/img/mssql-connection.png)
 
@@ -57,28 +57,28 @@ The form is pretty straightforward and depending on your setup, you may or may n
 
 ### Connection Name
 
-Enter a unique name for your MSSQL connection. This is something that you'll see again when configuring a Neosync Job.
+Enter a unique name for your MSSQL connection. This is something that you'll see again when configuring a Husonym Job.
 
 ### Connection URL
 
-This is the full database url that Neosync will use to connect to your database. This should be in URI format.
+This is the full database url that Husonym will use to connect to your database. This should be in URI format.
 
 Example: `sqlserver://myuser:mypass@mydbhost:1433?database=mydatabase`.
 
 This format supports servers that do not contain a port (if they're behind a web proxy) as well as servers that may or may not require access credentials.
 
-If you've hooked up local Neosync and are wanting to connect to one of the containers, the url would look like this:
+If you've hooked up local Husonym and are wanting to connect to one of the containers, the url would look like this:
 
 Note: the url listed below is using the docker DNS name defined in the compose file.
 To access the database from your laptop, you would simply replace `test-prod-db-mssql` with `localhost`.
 
-> **NB:** It is imperative that you provide a `database` in the connection URL. This will define what MSSQL database Neosync connects to.
+> **NB:** It is imperative that you provide a `database` in the connection URL. This will define what MSSQL database Husonym connects to.
 
 ```bash
 sqlserver://sa:YourStrong@Passw0rd@test-prod-db-mssql:1433?database=master
 ```
 
-Due to MSSQL's design, it is possible to have two separate databases within the same physical database instance and sync between the two. They will simply need to be configured as two separate Neosync connections.
+Due to MSSQL's design, it is possible to have two separate databases within the same physical database instance and sync between the two. They will simply need to be configured as two separate Husonym connections.
 
 ### Environment Variable
 
@@ -86,19 +86,19 @@ To connect using the environment variable, simply paste the environment variable
 
 The value of the environment variable must be in the `Connection URL` format.
 
-This is only available in the OSS version of Neosync. The environment variable must begin with `USER_DEFINED_`.
-This is for safety and is to limit the class of environment variables a user of Neosync may configure.
+This is only available in the OSS version of Husonym. The environment variable must begin with `USER_DEFINED_`.
+This is for safety and is to limit the class of environment variables a user of Husonym may configure.
 
-For full support, the environment variable must live on both the `neosync-api` as well as `neosync-worker`.
+For full support, the environment variable must live on both the `husonym-api` as well as `husonym-worker`.
 
 ### Max Open Connection Limit
 
-This is by default set to 50, but it's important to look into this and set this value to the appropriate size given the size of your database as it changes based on the machine type. 50 may be too high, or too low! Ultimately, this will affect how quickly Neosync is able to sync to or from your database as it takes advantage of parallelization where it can.
+This is by default set to 50, but it's important to look into this and set this value to the appropriate size given the size of your database as it changes based on the machine type. 50 may be too high, or too low! Ultimately, this will affect how quickly Husonym is able to sync to or from your database as it takes advantage of parallelization where it can.
 
 ### Bastion Host Configuration
 
 This section is optional, but may be required for many that use MSSQL databases hosted within cloud infrastructure.
-It's generally not a good practice to publicly expose a database and to instead use a bastion host, or jump box. This facilitates Neosync to use SSH tunneling through this jump box to gain access to your database.
+It's generally not a good practice to publicly expose a database and to instead use a bastion host, or jump box. This facilitates Husonym to use SSH tunneling through this jump box to gain access to your database.
 
 If you require a bastion host and need help setting one up or configuring one, check out out [this tutorial from Azure](https://learn.microsoft.com/en-us/azure/private-link/tutorial-private-endpoint-sql-portal) guide.
 
@@ -114,18 +114,18 @@ Notice how the username has `@<hostname>` appended to it. Once successfully conn
 
 ### TLS
 
-Neosync has support for Regular TLS (one-way) as well as mTLS (two-way).
+Husonym has support for Regular TLS (one-way) as well as mTLS (two-way).
 
 This is configured via the `Client TLS Certificates` section on the database configuration page.
 
 If you simply wish to verify the server certificate, only the `Root certificate` is required.
 
 If wishing to have the client present a certificate, you must specify both the `Client key` as well as the `Client certificate`.
-If only one of these is provided, the Neosync will reject the configuration.
+If only one of these is provided, the Husonym will reject the configuration.
 
 The following TLS/SSL modes are available for MSSQL via the `encrypt` query parameter.
 
-> **NB:** Neosync does not automatically add the `encrypt` query parameter if client certificates have been detected. Regardless of this configuration, the `encrypt` parameter is up to the user based on their bespoke configuration and setup.
+> **NB:** Husonym does not automatically add the `encrypt` query parameter if client certificates have been detected. Regardless of this configuration, the `encrypt` parameter is up to the user based on their bespoke configuration and setup.
 
 > **NB:** The current version of the Go driver does _not_ support `encrypt=strict` mode as it has not yet implemented TDS8 yet. [go-mssqldb#87](https://github.com/microsoft/go-mssqldb/issues/87).
 
@@ -140,13 +140,13 @@ The `server name` _must_ be provided if using `encrypt=true` otherwise the clien
 
 ### Go Mssql Driver
 
-Neosync uses the official `go-mssqldb` driver provided by Microsoft.
+Husonym uses the official `go-mssqldb` driver provided by Microsoft.
 
 You can find DSN format as well as a full list of supported query parameters by visiting their [Readme](https://github.com/microsoft/go-mssqldb/?tab=readme-ov-file#connection-parameters-and-dsn).
 
 ## Permissions
 
-When creating a new connection or checking an existing one, you can click `Test Connection` on the form to check to see if Neosync can connect.
+When creating a new connection or checking an existing one, you can click `Test Connection` on the form to check to see if Husonym can connect.
 
 It will first see if the database is connectable, then it will check to see what schemas and tables it has access to within that database.
 
@@ -160,15 +160,15 @@ Source connections may get away with simple READ permissions on the databases th
 
 Destination connections will of course need READ, WRITE permissions so that they can actually insert data.
 
-As more MSSQL features get added to Neosync such as the ability to create schemas, tables as wel as delete or truncate data prior to a run, more permissions for the destination database will be necessary.
+As more MSSQL features get added to Husonym such as the ability to create schemas, tables as wel as delete or truncate data prior to a run, more permissions for the destination database will be necessary.
 
 ## Data Truncation
 
 MSSQL supports table truncation, but only for constraints that do not contain foreign keys.
-Due to this, Neosync will run a DELETE FROM on each table in reverse constraint order.
+Due to this, Husonym will run a DELETE FROM on each table in reverse constraint order.
 Afterwards, it will reset any identity columns to their original state.
 
-DELETE FROM may take a long time. Depending on your data size, it may be more advantageous for you to drop and re-create the database out of band such that Neosync may only handle the syncing aspect until support is added for drop and recreate in-app.
+DELETE FROM may take a long time. Depending on your data size, it may be more advantageous for you to drop and re-create the database out of band such that Husonym may only handle the syncing aspect until support is added for drop and recreate in-app.
 
 ## Limitations
 

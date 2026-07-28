@@ -2,12 +2,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: {{ template "neosync-api.fullname" . }}-rolebinding
+  name: {{ template "husonym-api.fullname" . }}-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ template "neosync-api.fullname" . }}-role
+  name: {{ template "husonym-api.fullname" . }}-role
 subjects:
   - kind: ServiceAccount
-    name: {{ include "neosync-api.serviceAccountName" . }}
+    name: {{ include "husonym-api.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}

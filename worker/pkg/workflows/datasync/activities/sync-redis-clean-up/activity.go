@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	temporallogger "github.com/Groupe-Hevea/neosync/worker/internal/temporal-logger"
+	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	redis "github.com/redis/go-redis/v9"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"

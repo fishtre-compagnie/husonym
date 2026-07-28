@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/authmgmt"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 )
 
 var (

@@ -2,7 +2,7 @@ import { buildConnectionConfigMysql } from '@/app/(mgmt)/[account]/connections/u
 import { MysqlFormValues } from '@/yup-validations/connections';
 
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
-import { Connection, MysqlConnectionConfig } from '@neosync/sdk';
+import { Connection, MysqlConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { ConnectionFormProps } from '../types';
 import { useConnection } from '../useConnection';

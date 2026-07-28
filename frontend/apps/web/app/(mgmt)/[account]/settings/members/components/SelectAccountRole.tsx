@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getAccountRoleString } from '@/util/util';
-import { AccountRole } from '@neosync/sdk';
+import { AccountRole } from '@husonym/sdk';
 import { ReactElement } from 'react';
 
 interface Props {

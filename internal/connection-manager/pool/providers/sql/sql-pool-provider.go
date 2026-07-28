@@ -5,24 +5,24 @@ import (
 	"fmt"
 	"log/slog"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	connectionmanager "github.com/Groupe-Hevea/neosync/internal/connection-manager"
-	neosync_benthos_sql "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/sql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 )
 
 // wrapper used for benthos sql-based connections to retrieve the connection they need
 type Provider struct {
-	connmanager   connectionmanager.Interface[neosync_benthos_sql.SqlDbtx]
+	connmanager   connectionmanager.Interface[husonym_benthos_sql.SqlDbtx]
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error)
 	logger        *slog.Logger
 	session       connectionmanager.SessionInterface
 }
 
-var _ neosync_benthos_sql.ConnectionProvider = (*Provider)(nil)
+var _ husonym_benthos_sql.ConnectionProvider = (*Provider)(nil)
 
 func NewConnectionProvider(
-	connmanager connectionmanager.Interface[neosync_benthos_sql.SqlDbtx],
+	connmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
 	session connectionmanager.SessionInterface,
 	logger *slog.Logger,
@@ -38,7 +38,7 @@ func NewConnectionProvider(
 func (p *Provider) GetDb(
 	ctx context.Context,
 	connectionId string,
-) (neosync_benthos_sql.SqlDbtx, error) {
+) (husonym_benthos_sql.SqlDbtx, error) {
 	conn, err := p.getConnection(connectionId)
 	if err != nil {
 		return nil, err

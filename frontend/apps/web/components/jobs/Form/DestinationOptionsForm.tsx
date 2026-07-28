@@ -6,7 +6,7 @@ import {
   getDefaultPostgresDestinationFormValueOptions,
 } from '@/app/(mgmt)/[account]/jobs/util';
 import { DestinationOptionsFormValues } from '@/yup-validations/jobs';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { FieldErrors } from 'react-hook-form';
 import { DestinationDetails } from '../NosqlTable/TableMappings/Columns';

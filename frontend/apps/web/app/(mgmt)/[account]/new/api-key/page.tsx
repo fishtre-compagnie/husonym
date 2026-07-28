@@ -9,7 +9,7 @@ export default function NewAccountApiKey(): ReactElement {
       Header={
         <PageHeader
           header="Create a new account API Key"
-          subHeadings="API Keys can be used to interact with Neosync programmatically"
+          subHeadings="API Keys can be used to interact with Husonym programmatically"
         />
       }
       containerClassName="mx-24"

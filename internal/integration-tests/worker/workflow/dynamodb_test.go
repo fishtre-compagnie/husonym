@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	tcdynamodb "github.com/Groupe-Hevea/neosync/internal/testutil/testcontainers/dynamodb"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	tcdynamodb "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dyntypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/require"
@@ -72,13 +72,13 @@ func test_dynamodb_alltypes(
 	t *testing.T,
 	ctx context.Context,
 	dynamo *tcdynamodb.DynamoDBTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
-	neosyncApi.MockTemporalForCreateJob("test-dynamodb-sync")
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	husonymApi.MockTemporalForCreateJob("test-dynamodb-sync")
 	tableName := "test-all-types"
 	primaryKey := "id"
 
@@ -125,7 +125,7 @@ func test_dynamodb_alltypes(
 		JobMappings: mappings,
 	}, tableName, tableName)
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -150,13 +150,13 @@ func test_dynamodb_subset(
 	t *testing.T,
 	ctx context.Context,
 	dynamo *tcdynamodb.DynamoDBTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
-	neosyncApi.MockTemporalForCreateJob("test-dynamodb-sync")
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	husonymApi.MockTemporalForCreateJob("test-dynamodb-sync")
 	tableName := "test-subset"
 	primaryKey := "id"
 
@@ -207,7 +207,7 @@ func test_dynamodb_subset(
 		JobMappings: mappings,
 	}, tableName, tableName)
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(
@@ -232,13 +232,13 @@ func test_dynamodb_default_transformers(
 	t *testing.T,
 	ctx context.Context,
 	dynamo *tcdynamodb.DynamoDBTestSyncContainer,
-	neosyncApi *tcneosyncapi.NeosyncApiTestClient,
+	husonymApi *tchusonymapi.HusonymApiTestClient,
 	dbManagers *TestDatabaseManagers,
 	accountId string,
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
-	jobclient := neosyncApi.OSSUnauthenticatedLicensedClients.Jobs()
-	neosyncApi.MockTemporalForCreateJob("test-dynamodb-sync")
+	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
+	husonymApi.MockTemporalForCreateJob("test-dynamodb-sync")
 	tableName := "test-default-transformers"
 	primaryKey := "id"
 
@@ -316,7 +316,7 @@ func test_dynamodb_default_transformers(
 		JobMappings: mappings,
 	}, tableName, tableName)
 
-	testworkflow := NewTestDataSyncWorkflowEnv(t, neosyncApi, dbManagers)
+	testworkflow := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
 	testworkflow.RequireActivitiesCompletedSuccessfully(t)
 	testworkflow.ExecuteTestDataSyncWorkflow(job.GetId())
 	require.Truef(

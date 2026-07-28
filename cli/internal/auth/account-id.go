@@ -7,9 +7,9 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/cli/internal/userconfig"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/cli/internal/userconfig"
 )
 
 // Attempts to find the account id from various places in the following order:
@@ -39,7 +39,7 @@ func ResolveAccountIdFromFlag(
 		}
 		apiKeyAccounts := uaResp.Msg.GetAccounts()
 		if len(apiKeyAccounts) == 0 {
-			return "", errors.New("api key is not associated with any neosync accounts")
+			return "", errors.New("api key is not associated with any husonym accounts")
 		}
 		accountId := apiKeyAccounts[0].GetId()
 		logger.Debug(fmt.Sprintf("provided api key resolved to account %q", accountId))
@@ -48,7 +48,7 @@ func ResolveAccountIdFromFlag(
 	accountId, err := userconfig.GetAccountId()
 	if err != nil {
 		return "", fmt.Errorf(
-			`unable to resolve account id from account context, please use the "neosync accounts switch" command to set an active account context: %w`,
+			`unable to resolve account id from account context, please use the "husonym accounts switch" command to set an active account context: %w`,
 			err,
 		)
 	}

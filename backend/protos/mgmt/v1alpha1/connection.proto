@@ -122,7 +122,7 @@ message Connection {
   string account_id = 8;
 }
 
-// Configuration for all of the supported Neosync connection types
+// Configuration for all of the supported Husonym connection types
 message ConnectionConfig {
   oneof config {
     option (buf.validate.oneof).required = true;
@@ -461,7 +461,7 @@ message CheckSSHConnectionResult {
 }
 
 // Service for managing datasource connections.
-// This is a primary data model in Neosync and is used in reference when hooking up Jobs to synchronize and generate data.
+// This is a primary data model in Husonym and is used in reference when hooking up Jobs to synchronize and generate data.
 service ConnectionService {
   // Returns a list of connections associated with the account
   rpc GetConnections(GetConnectionsRequest) returns (GetConnectionsResponse) {

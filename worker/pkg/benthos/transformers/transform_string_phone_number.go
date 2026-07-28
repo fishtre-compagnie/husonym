@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	transformer_utils "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/utils"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	transformer_utils "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/utils"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 )
 
-// +neosyncTransformerBuilder:transform:transformStringPhoneNumber
+// +husonymTransformerBuilder:transform:transformStringPhoneNumber
 
 func init() {
 	spec := bloblang.NewPluginSpec().

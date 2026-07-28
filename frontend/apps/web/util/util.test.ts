@@ -4,7 +4,7 @@ import {
   SupportedJobType,
   TransformerDataType,
   TransformerSource,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { format } from 'date-fns';
 import {
   convertMinutesToNanoseconds,

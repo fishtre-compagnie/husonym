@@ -1,22 +1,22 @@
 ---
-title: Neosync Cloud Security Overview
-description: Learn how Neosync Cloud is secured and the security principles of the Neosync Platform
+title: Husonym Cloud Security Overview
+description: Learn how Husonym Cloud is secured and the security principles of the Husonym Platform
 id: cloud-security-overview
 hide_title: false
 slug: /cloud-security-overview
 ---
 
-At Neosync, we take as many security precautions as we can to ensure that any information saved on our server is safe.
+At Husonym, we take as many security precautions as we can to ensure that any information saved on our server is safe.
 
 This section will document a few different things that we feel are worth mentioning from a security perspective.
 
-This page is mostly relevant to Neosync Cloud.
+This page is mostly relevant to Husonym Cloud.
 
 ## Code
 
-All of the Neosync code is open source and can be found on our [Github](https://github.com/Groupe-Hevea/neosync).
-If you find a security vulnerability, please refer to our [Security.md](https://github.com/Groupe-Hevea/neosync/blob/main/SECURITY.md) for what to do.
-If all else fails, please email `security@neosync.dev` directly.
+All of the Husonym code is open source and can be found on our [Github](https://github.com/fishtre-compagnie/husonym).
+If you find a security vulnerability, please refer to our [Security.md](https://github.com/fishtre-compagnie/husonym/blob/main/SECURITY.md) for what to do.
+If all else fails, please email `security@husonym.com` directly.
 
 Otherwise, the code that is found in our repo is the same code that we deploy on our servers.
 This is done directly with the helm charts that we publish to the Github Container Registry.
@@ -32,10 +32,10 @@ For access to our internal cluster we use a Bastion Host. This is an EC2 instanc
 We use AWS SSM along with IAM Role policies to control who has access to the tunnel.
 Any access on this instance is logged.
 
-## Connecting a Production Database to Neosync
+## Connecting a Production Database to Husonym
 
-We do not recommend connecting a production data directly to Neosync.
+We do not recommend connecting a production data directly to Husonym.
 
-This is recommended purely for security purposes, but also due to an increased load that Neosync may put on your database when invoking a sync.
-For that reason, we suggest restoring a snapshot of production periodically to another database that is then used by Neosync.
+This is recommended purely for security purposes, but also due to an increased load that Husonym may put on your database when invoking a sync.
+For that reason, we suggest restoring a snapshot of production periodically to another database that is then used by Husonym.
 We don't currently support providing snapshots directly, and if this is important to you, please reach out to us.

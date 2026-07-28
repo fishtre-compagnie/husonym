@@ -9,7 +9,7 @@ import {
 
 import { FormDescription, FormLabel } from '@/components/ui/form';
 import { VirtualForeignConstraintFormValues } from '@/yup-validations/jobs';
-import { GetConnectionSchemaResponse } from '@neosync/sdk';
+import { GetConnectionSchemaResponse } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
 import { GoWorkflow } from 'react-icons/go';
 import { toast } from 'sonner';

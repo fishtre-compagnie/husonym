@@ -10,7 +10,7 @@ spec:
   capacity:
     storage: 1Gi
   hostPath:
-    path: /neosync/temporal-postgres
+    path: /husonym/temporal-postgres
     type: DirectoryOrCreate
   claimRef:
     kind: PersistentVolumeClaim

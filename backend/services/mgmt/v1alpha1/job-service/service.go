@@ -1,18 +1,18 @@
 package v1alpha1_jobservice
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	jobhooks "github.com/Groupe-Hevea/neosync/backend/internal/ee/hooks/jobs"
-	"github.com/Groupe-Hevea/neosync/backend/internal/userdata"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	"github.com/Groupe-Hevea/neosync/internal/connectiondata"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
-	clientmanager "github.com/Groupe-Hevea/neosync/internal/temporal/clientmanager"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 )
 
 type Service struct {
 	cfg               *Config
-	db                *neosyncdb.NeosyncDb
+	db                *husonymdb.HusonymDb
 	connectionService mgmtv1alpha1connect.ConnectionServiceClient
 	userdataclient    userdata.Interface
 	sqlmanager        sql_manager.SqlManagerClient
@@ -45,7 +45,7 @@ type LokiRunLogConfig struct {
 
 type Config struct {
 	IsAuthEnabled  bool
-	IsNeosyncCloud bool
+	IsHusonymCloud bool
 
 	RunLogConfig *RunLogConfig
 }
@@ -59,7 +59,7 @@ type RunLogConfig struct {
 
 func New(
 	cfg *Config,
-	db *neosyncdb.NeosyncDb,
+	db *husonymdb.HusonymDb,
 	temporalWfManager clientmanager.Interface,
 	connectionService mgmtv1alpha1connect.ConnectionServiceClient,
 	sqlmanager sql_manager.SqlManagerClient,

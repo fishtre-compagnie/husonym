@@ -270,7 +270,7 @@ service AccountHookService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // Retrieves the Slack connection url that allows a user to connect their Slack workspace to Neosync.
+  // Retrieves the Slack connection url that allows a user to connect their Slack workspace to Husonym.
   rpc GetSlackConnectionUrl(GetSlackConnectionUrlRequest) returns (GetSlackConnectionUrlResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

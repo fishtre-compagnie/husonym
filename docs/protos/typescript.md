@@ -1,6 +1,6 @@
 ---
-title: Neosync for TypeScript
-description: Learn about Neosync's Typescript SDK and how you can use it to anonymize data and generate synthetic data
+title: Husonym for TypeScript
+description: Learn about Husonym's Typescript SDK and how you can use it to anonymize data and generate synthetic data
 id: typescript
 hide_title: false
 slug: /typescript
@@ -8,11 +8,11 @@ slug: /typescript
 
 ## Introduction
 
-The Neosync Typescript SDK is publicly available and can be added to any TS/JS-based project. With the Neosync Typescript SDK, you can:
+The Husonym Typescript SDK is publicly available and can be added to any TS/JS-based project. With the Husonym Typescript SDK, you can:
 
 1. Anonymize structured data and generate synthetic data
 2. Anonymize free-form text data
-3. Create resources in Neosync such as Jobs, Connections, Transformers and more
+3. Create resources in Husonym such as Jobs, Connections, Transformers and more
 
 ## Installation
 
@@ -25,14 +25,14 @@ The `tsup` package is used to generated the distributed code.
 `@bufbuild/protobuf` provides methods to instantiate the messages used in the SDK.
 
 ```sh
-npm install @neosync/sdk @bufbuild/protobuf
+npm install @husonym/sdk @bufbuild/protobuf
 ```
 
 | **Properties** | **Details**                                                                                                                                                                 |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **API URL**    | Production: `https://neosync-api.svcs.neosync.dev`<br /> Local: `http://localhost:8080`                                                                                     |
-| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Neosync App                                       |
-| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Neosync environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |
+| **API URL**    | Production: `https://husonym-api.svcs.husonym.com`<br /> Local: `http://localhost:8080`                                                                                     |
+| **Account ID** | The account ID may be necessary for some requests and can be found by going into the `/:accountName/settings` page in the Husonym App                                       |
+| **API Key**    | An access token (API key, or user JWT) must be used to access authenticated Husonym environments. For an API Key, this can be created at `/:accountName/settings/api-keys`. |
 
 ### Note on Transports
 
@@ -50,17 +50,17 @@ npm install @connectrpc/connect-web
 
 ## Authentication
 
-To authenticate the TS Neosync Client, pass in a function that returns the API Key or a standard user JWT token. When the `getAccessToken` function is provided, the Neosync Client is configured with an auth interceptor that attaches the `Authorization` header to every outgoing request with the access token returned from the function. This is why the `getTransport` method receives a list of interceptors, and why it's important to hook them up to pass them through to the relevant transport being used.
+To authenticate the TS Husonym Client, pass in a function that returns the API Key or a standard user JWT token. When the `getAccessToken` function is provided, the Husonym Client is configured with an auth interceptor that attaches the `Authorization` header to every outgoing request with the access token returned from the function. This is why the `getTransport` method receives a list of interceptors, and why it's important to hook them up to pass them through to the relevant transport being used.
 
 ```ts
-import { getNeosyncClient } from '@neosync/sdk';
+import { getHusonymClient } from '@husonym/sdk';
 import { createConnectTransport } from '@connectrpc/connect-node';
 
-const neosyncClient = getNeosyncClient({
-  getAccessToken: () => process.env.NEOSYNC_API_KEY,
+const husonymClient = getHusonymClient({
+  getAccessToken: () => process.env.HUSONYM_API_KEY,
   getTransport(interceptors) {
     return createConnectTransport({
-      baseUrl: process.env.NEOSYNC_API_URL,
+      baseUrl: process.env.HUSONYM_API_URL,
       httpVersion: '2',
       interceptors: interceptors,
     });
@@ -70,7 +70,7 @@ const neosyncClient = getNeosyncClient({
 
 ## Getting Started
 
-In this section, we're going to walk through two examples that show you how to make an API call using Neosync's TS SDK. For a complete list of the APIs, check out the APIs in the `Services` section of our [protos](/api/mgmt/v1alpha1/job.proto#jobservice).
+In this section, we're going to walk through two examples that show you how to make an API call using Husonym's TS SDK. For a complete list of the APIs, check out the APIs in the `Services` section of our [protos](/api/mgmt/v1alpha1/job.proto#jobservice).
 
 ### Note on Types and Messages
 
@@ -108,7 +108,7 @@ A straightforward use case is to anonymize sensitive data in an API request. Let
 
 Our input object is a simple user's object that we may get through a user sign up flow. In this object, we have a few sensitive fields that we want to anonymize: `name`, `email`, `address` and `phone`. We can leave the `favorites` as-is for now.
 
-In order to anonymize this object, you can use Neosync's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
+In order to anonymize this object, you can use Husonym's `AnonymizeSingle` API to send in a single object with sensitive data and get back an anonymized version of that object. You have full control over how you anonymize the data or generate new synthetic data.
 
 Here's how you do it:
 
@@ -117,19 +117,19 @@ import { create } from '@bufbuild/protobuf';
 import { createConnectTransport } from '@connectrpc/connect-node';
 import {
   AnonymizeSingleResponse,
-  getNeosyncClient,
+  getHusonymClient,
   TransformerMapping,
   TransformerMappingSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 
-// authenticates with Neosync Cloud
-const neosyncClient = getNeosyncClient({
+// authenticates with Husonym Cloud
+const husonymClient = getHusonymClient({
   getAccessToken: () => {
     return 'neo_at_v1_xxxxxxxxxxxx'; // API key
   },
   getTransport(interceptors) {
     return createConnectTransport({
-      baseUrl: 'https://neosync-api.svcs.neosync.dev', // base url
+      baseUrl: 'https://husonym-api.svcs.husonym.com', // base url
       httpVersion: '2',
       interceptors: interceptors, // interceptors
     });
@@ -195,7 +195,7 @@ const transformers: TransformerMapping[] = [
 async function runAnonymization() {
   try {
     const result: AnonymizeSingleResponse =
-      await neosyncClient.anonymization.anonymizeSingle({
+      await husonymClient.anonymization.anonymizeSingle({
         inputData: JSON.stringify(data), // stringify the data object from above
         transformerMappings: transformers, // pass in your transformer mappings that you defined
       });
@@ -211,7 +211,7 @@ runAnonymization()
   .catch((error) => console.error('Unhandled error:', error));
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -235,25 +235,25 @@ The best part is that all you have to do is change a transformer, that's it! Her
   },
 ```
 
-Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Neosync's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.neosync.allopneus.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
+Our input object is a transcription from a call from a doctor's office. In this transcript, we have PII (personally identifiable information) such as names (John Chang, Jake), social security number (246-80-1357) and dates(8/1/2024). Using Husonym's `TransformPiiText` transformer, you can easily anonymize the sensitive data in this text. See [here](https://docs.husonym.com/api/mgmt/v1alpha1/transformer.proto#transformpiitext) for the `TransformPiiText` proto definition.
 
 ```ts
 import {
   AnonymizeSingleResponse,
-  getNeosyncClient,
+  getHusonymClient,
   TransformerMapping,
   TransformerMappingSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { create } from '@bufbuild/protobuf;
 import { createConnectTransport } from '@connectrpc/connect-node';
 
-const neosyncClient = getNeosyncClient({
+const husonymClient = getHusonymClient({
   getAccessToken: () => {
-    return 'neo_at_v1_xxxxx'; // Neosync API Key
+    return 'neo_at_v1_xxxxx'; // Husonym API Key
   },
   getTransport(interceptors) {
     return createConnectTransport({
-      baseUrl: 'https://neosync-api.svcs.neosync.dev', // Neosync API Url
+      baseUrl: 'https://husonym-api.svcs.husonym.com', // Husonym API Url
       httpVersion: '2',
       interceptors: interceptors,
     });
@@ -285,7 +285,7 @@ runAnonymization()
   .catch((error) => console.error('Unhandled error:', error));
 ```
 
-Let's take a closer look at what we're doing here. Neosync's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Neosync. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
+Let's take a closer look at what we're doing here. Husonym's AnonymizeSingle API uses [JQ](https://jqlang.github.io/jq/manual/) expressions to target field(s) in your object. This means that you don't have to parse your object before sending it to Husonym. You can pass it in as-is and just write JQ expressions to target the field(s) that you want to anonymize or generate.
 
 Our output will look something like this:
 
@@ -298,7 +298,7 @@ As you can see, we've identified and redacted the PII in the original message an
 
 ### Creating a Job
 
-Another common use case is to create resources in Neosync such as Jobs, Runs, Connections, Transformers and more. In this example, we'll create a Job. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
+Another common use case is to create resources in Husonym such as Jobs, Runs, Connections, Transformers and more. In this example, we'll create a Job. This can be used as part of a set-up script or custom workflow. Let's take a look at the code:
 
 ```ts
 import { createConnectTransport } from '@connectrpc/connect-node';
@@ -307,21 +307,21 @@ import {
   CreateJobDestination,
   CreateJobDestinationSchema,
   CreateJobResponse,
-  getNeosyncClient,
+  getHusonymClient,
   JobMapping,
   JobMappingSchema,
   JobSource,
   JobSourceSchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 
-// authenticates with Neosync Cloud
-const neosyncClient = getNeosyncClient({
+// authenticates with Husonym Cloud
+const husonymClient = getHusonymClient({
   getAccessToken: () => {
     return 'neo_at_v1_xxxxxxxxxxxx'; // API key
   },
   getTransport(interceptors) {
     return createConnectTransport({
-      baseUrl: 'https://neosync-api.svcs.neosync.dev', // base url
+      baseUrl: 'https://husonym-api.svcs.husonym.com', // base url
       httpVersion: '2',
       interceptors: interceptors, // interceptors
     });
@@ -396,7 +396,7 @@ const destination: CreateJobDestination[] = [
 async function createJob() {
   try {
     // calling the jobs.createJobs rpc with our configurations in order to create a job called 'new-job'
-    const result: CreateJobResponse = await neosyncClient.jobs.createJob({
+    const result: CreateJobResponse = await husonymClient.jobs.createJob({
       accountId: 'b1b8411f-a2f5-4ca1-b710-2fbc2681527e',
       jobName: 'new-job',
       mappings: jobMapping,
@@ -422,4 +422,4 @@ The beauty of Typescript here is that you can use your IDE's built-in features t
 
 ## Moving forward
 
-Now that you've seen how to anonymize data, generate synthetic data and create resources in Neosync, you can use the Neosync TS SDK to do much more! And if you have any questions, we're always available in Discord to help.
+Now that you've seen how to anonymize data, generate synthetic data and create resources in Husonym, you can use the Husonym TS SDK to do much more! And if you have any questions, we're always available in Discord to help.

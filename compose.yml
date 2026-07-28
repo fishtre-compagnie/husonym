@@ -1,4 +1,4 @@
-name: neosync
+name: husonym
 
 include:
   - path: ./compose/temporal/compose.yml
@@ -12,8 +12,8 @@ include:
 
 services:
   app:
-    container_name: neosync-app
-    image: ghcr.io/Groupe-Hevea/neosync/app:latest
+    container_name: husonym-app
+    image: ghcr.io/fishtre-compagnie/husonym/app:latest
     ports:
       - 3000:3000
     environment:
@@ -21,7 +21,7 @@ services:
       - NUCLEUS_ENV=dev
       - NEXTAUTH_SECRET=foo
       - NEXTAUTH_URL=http://localhost:3000
-      - NEOSYNC_API_BASE_URL=http://api:8080
+      - HUSONYM_API_BASE_URL=http://api:8080
       - NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
 
       - POSTHOG_KEY=phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip
@@ -29,10 +29,10 @@ services:
       - AUTH_ENABLED=false
 
     networks:
-      - neosync-network
+      - husonym-network
 
   db:
-    container_name: neosync-db
+    container_name: husonym-db
     image: postgres:15
     ports:
       - 5432:5432
@@ -46,14 +46,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
-      - neosync_pg_data:/var/lib/postgresql/data
+      - husonym_pg_data:/var/lib/postgresql/data
       - ./scripts/pg-init:/docker-entrypoint-initdb.d
 
   api:
-    container_name: neosync-api
-    image: ghcr.io/groupe-hevea/neosync/api:latest
+    container_name: husonym-api
+    image: ghcr.io/fishtre-compagnie/husonym/api:latest
     ports:
       - 8080:8080
     command: serve connect
@@ -71,13 +71,13 @@ services:
       - DB_USER=postgres
       - DB_PASS=foofar
       - DB_SSL_DISABLE=true
-      - DB_MIGRATIONS_TABLE=neosync_api_schema_migrations
+      - DB_MIGRATIONS_TABLE=husonym_api_schema_migrations
       - DB_MIGRATIONS_TABLE_QUOTED=false
 
       - AUTH_ENABLED=false
 
     networks:
-      - neosync-network
+      - husonym-network
       - temporal-network
     restart: on-failure
 
@@ -87,20 +87,20 @@ services:
         restart: true
 
   api-seed:
-    container_name: neosync-api-seed
+    container_name: husonym-api-seed
     image: postgres:15
     entrypoint: >
-      /bin/sh -c "./scripts/wait-for-it.sh api:8080 -- psql 'postgresql://postgres:foofar@neosync-db:5432/nucleus?sslmode=disable' -f /scripts/seed.sql"
+      /bin/sh -c "./scripts/wait-for-it.sh api:8080 -- psql 'postgresql://postgres:foofar@husonym-db:5432/nucleus?sslmode=disable' -f /scripts/seed.sql"
     volumes:
-      - ./scripts/seed-neosync.sql:/scripts/seed.sql
+      - ./scripts/seed-husonym.sql:/scripts/seed.sql
       - ./scripts/wait-for-it.sh:/scripts/wait-for-it.sh
     depends_on:
       - api
     networks:
-      - neosync-network
+      - husonym-network
 
   temporal-seed:
-    container_name: neosync-temporal-seed
+    container_name: husonym-temporal-seed
     image: temporalio/admin-tools:1.26.2
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
@@ -110,40 +110,40 @@ services:
     depends_on:
       - api
     networks:
-      - neosync-network
+      - husonym-network
       - temporal-network
 
   worker:
-    container_name: neosync-worker
-    image: ghcr.io/Groupe-Hevea/neosync/worker:latest
+    container_name: husonym-worker
+    image: ghcr.io/fishtre-compagnie/husonym/worker:latest
     environment:
       - NUCLEUS_ENV=dev
       - TEMPORAL_URL=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - TEMPORAL_TASK_QUEUE=sync-job
-      - NEOSYNC_URL=http://api:8080
+      - HUSONYM_URL=http://api:8080
       - REDIS_URL=redis://default:foofar@redis:6379
       - TABLESYNC_MAX_CONCURRENCY=3
     networks:
-      - neosync-network
+      - husonym-network
       - temporal-network
     restart: on-failure
 
   redis:
-    container_name: neosync-redis
+    container_name: husonym-redis
     image: redis:7.2.4
     ports:
       - 6379:6379
     command: redis-server --save 20 1 --loglevel warning --requirepass foofar
     networks:
-      - neosync-network
+      - husonym-network
     volumes:
-      - neosync_redis_cache:/data
+      - husonym_redis_cache:/data
 
 volumes:
-  neosync_redis_cache:
-  neosync_pg_data:
+  husonym_redis_cache:
+  husonym_pg_data:
 
 networks:
-  neosync-network:
-    name: neosync-network
+  husonym-network:
+    name: husonym-network

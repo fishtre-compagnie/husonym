@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	testpg "github.com/testcontainers/testcontainers-go/modules/postgres"

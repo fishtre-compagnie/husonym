@@ -1,1 +1,1 @@
-Neosync Api Successfully installed!
+Husonym Api Successfully installed!

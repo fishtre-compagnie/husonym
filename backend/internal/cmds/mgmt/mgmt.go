@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	migrate_cmd "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/migrate"
-	run_cmd "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/run"
-	serve "github.com/Groupe-Hevea/neosync/backend/internal/cmds/mgmt/serve"
-	neosynclogger "github.com/Groupe-Hevea/neosync/backend/pkg/logger"
+	migrate_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/migrate"
+	run_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/run"
+	serve "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/serve"
+	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 )
 
 func Execute() {
@@ -18,7 +18,7 @@ func Execute() {
 
 	rootCmd := &cobra.Command{
 		Use:   "mgmt",
-		Short: "Terminal app that is used to manage the Neosync API system.",
+		Short: "Terminal app that is used to manage the Husonym API system.",
 		Long:  "",
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			cmd.SilenceErrors = true
@@ -32,7 +32,7 @@ func Execute() {
 	rootCmd.AddCommand(migrate_cmd.NewCmd())
 	rootCmd.AddCommand(run_cmd.NewCmd())
 
-	logger, _ := neosynclogger.NewLoggers()
+	logger, _ := husonymlogger.NewLoggers()
 
 	err := rootCmd.Execute()
 	if err != nil {

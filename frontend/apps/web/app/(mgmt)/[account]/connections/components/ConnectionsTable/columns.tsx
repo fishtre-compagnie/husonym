@@ -7,7 +7,7 @@ import NextLink from 'next/link';
 import TruncatedText from '@/components/TruncatedText';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { Connection } from '@neosync/sdk';
+import { Connection } from '@husonym/sdk';
 import { getCategory } from '../../util';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';

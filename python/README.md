@@ -1,11 +1,11 @@
-# Neosync Python SDK
+# Husonym Python SDK
 
-This is the Python SDK for the Neosync API.
+This is the Python SDK for the Husonym API.
 
 ## Installation
 
 ```bash
-pip install neosync
+pip install husonym
 ```
 
-For more details and examples, see the [docs](https://docs.neosync.allopneus.com/api/python).
+For more details and examples, see the [docs](https://docs.husonym.com/api/python).

@@ -11,22 +11,22 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	neosync_gcp "github.com/Groupe-Hevea/neosync/internal/gcp"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 )
 
 type GcpConnectionDataService struct {
 	logger     *slog.Logger
-	gcpmanager neosync_gcp.ManagerInterface
+	gcpmanager husonym_gcp.ManagerInterface
 	connection *mgmtv1alpha1.Connection
 	connconfig *mgmtv1alpha1.GcpCloudStorageConnectionConfig
 }
 
 func NewGcpConnectionDataService(
 	logger *slog.Logger,
-	gcpmanager neosync_gcp.ManagerInterface,
+	gcpmanager husonym_gcp.ManagerInterface,
 	connection *mgmtv1alpha1.Connection,
 ) *GcpConnectionDataService {
 	return &GcpConnectionDataService{
@@ -94,7 +94,7 @@ func (s *GcpConnectionDataService) StreamData(
 			&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()},
 		)
 	}
-	tablePath := neosync_gcp.GetWorkflowActivityDataPrefix(
+	tablePath := husonym_gcp.GetWorkflowActivityDataPrefix(
 		jobRunId,
 		sqlmanager_shared.BuildTable(schema, table),
 		s.connconfig.PathPrefix,
@@ -137,7 +137,7 @@ func (s *GcpConnectionDataService) GetSchema(
 	schemas, err := gcpclient.GetDbSchemaFromPrefix(
 		ctx,
 		s.connconfig.GetBucket(),
-		neosync_gcp.GetWorkflowActivityPrefix(jobRunId, s.connconfig.PathPrefix),
+		husonym_gcp.GetWorkflowActivityPrefix(jobRunId, s.connconfig.PathPrefix),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("uanble to retrieve db schema from gcs: %w", err)
@@ -147,7 +147,7 @@ func (s *GcpConnectionDataService) GetSchema(
 
 func (s *GcpConnectionDataService) getLatestJobRunFromGcs(
 	ctx context.Context,
-	client neosync_gcp.ClientInterface,
+	client husonym_gcp.ClientInterface,
 	jobId string,
 	bucket string,
 	pathPrefix *string,
@@ -183,7 +183,7 @@ func (s *GcpConnectionDataService) getLatestJobRunFromGcs(
 	sort.Sort(sort.Reverse(sort.StringSlice(runIDs)))
 
 	for _, runId := range runIDs {
-		prefix := neosync_gcp.GetWorkflowActivityPrefix(runId, pathPrefix)
+		prefix := husonym_gcp.GetWorkflowActivityPrefix(runId, pathPrefix)
 		ok, err := client.DoesPrefixContainTables(ctx, bucket, prefix)
 		if err != nil {
 			return "", fmt.Errorf("unable to check if prefix contains tables: %w", err)

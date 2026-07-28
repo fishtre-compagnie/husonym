@@ -28,7 +28,7 @@ import {
   JobDestination,
   JobMapping,
   JobService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';

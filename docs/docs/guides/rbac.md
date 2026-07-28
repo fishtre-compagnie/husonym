@@ -1,6 +1,6 @@
 ---
 title: RBAC
-description: Learn how to use RBAC to manage user permissions in Neosync
+description: Learn how to use RBAC to manage user permissions in Husonym
 id: rbac
 hide_title: false
 slug: /guides/rbac
@@ -8,17 +8,17 @@ slug: /guides/rbac
 
 ## Introduction
 
-RBAC (Role-Based Access Control) is a system that allows you to manage user permissions in Neosync.
+RBAC (Role-Based Access Control) is a system that allows you to manage user permissions in Husonym.
 
-## Neosync Version Availability
+## Husonym Version Availability
 
-RBAC is available for all team and enterprise accounts in Neosync Cloud.
+RBAC is available for all team and enterprise accounts in Husonym Cloud.
 
 For OSS users, RBAC is only available with a valid Enterprise license.
 
 ## How to configure RBAC
 
-RBAC is configured in the Neosync UI under the `Settings` page in the `Members` tab.
+RBAC is configured in the Husonym UI under the `Settings` page in the `Members` tab.
 
 When inviting a new user to your team, the role of the user will be selected during the invitation process.
 
@@ -42,7 +42,7 @@ The following roles are available for configuration:
 
 ### Account Admin
 
-This is the most permissive role for an account and grants full access to all features and settings within the account in Neosync.
+This is the most permissive role for an account and grants full access to all features and settings within the account in Husonym.
 
 This role is currently the only role that may create Account API Keys. This is because today Account API Keys are not granular and effectively operate as account admins.
 

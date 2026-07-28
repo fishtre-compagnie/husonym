@@ -23,7 +23,7 @@ import {
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { getAccountRoleString, getErrorMessage } from '@/util/util';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
-import { AccountRole, AccountUser, UserAccountService } from '@neosync/sdk';
+import { AccountRole, AccountUser, UserAccountService } from '@husonym/sdk';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import {
   ColumnDef,

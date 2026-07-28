@@ -10,17 +10,17 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	javascript_userland "github.com/Groupe-Hevea/neosync/internal/javascript/userland"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
-	transformer_utils "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/utils"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
-	tablesync_shared "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
+	transformer_utils "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/utils"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
+	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -35,7 +35,7 @@ func buildProcessorConfigsByRunType(
 	columnInfoMap map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	jobSourceOptions *mgmtv1alpha1.JobSourceOptions,
 	mappedKeys []string,
-) ([]*neosync_benthos.ProcessorConfig, error) {
+) ([]*husonym_benthos.ProcessorConfig, error) {
 	if config.RunType() == runconfigs.RunTypeUpdate {
 		// sql update processor configs
 		processorConfigs := buildSqlUpdateProcessorConfigs(
@@ -75,8 +75,8 @@ func buildSqlUpdateProcessorConfigs(
 	config *runconfigs.RunConfig,
 	jobId, runId string,
 	transformedFktoPkMap map[string][]*bb_internal.ReferenceKey,
-) []*neosync_benthos.ProcessorConfig {
-	processorConfigs := []*neosync_benthos.ProcessorConfig{}
+) []*husonym_benthos.ProcessorConfig {
+	processorConfigs := []*husonym_benthos.ProcessorConfig{}
 	for fkCol, pks := range transformedFktoPkMap {
 		for _, pk := range pks {
 			if !slices.Contains(config.InsertColumns(), fkCol) {
@@ -84,7 +84,7 @@ func buildSqlUpdateProcessorConfigs(
 			}
 
 			// circular dependent foreign key
-			hashedKey := neosync_benthos.HashBenthosCacheKey(jobId, runId, pk.Table, pk.Column)
+			hashedKey := husonym_benthos.HashBenthosCacheKey(jobId, runId, pk.Table, pk.Column)
 			requestMap := fmt.Sprintf(
 				`root = if this.%q == null { deleted() } else { this }`,
 				fkCol,
@@ -98,7 +98,7 @@ func buildSqlUpdateProcessorConfigs(
 			)
 			processorConfigs = append(
 				processorConfigs,
-				&neosync_benthos.ProcessorConfig{Branch: fkBranch},
+				&husonym_benthos.ProcessorConfig{Branch: fkBranch},
 			)
 		}
 	}
@@ -106,7 +106,7 @@ func buildSqlUpdateProcessorConfigs(
 	if len(processorConfigs) > 0 {
 		for _, pk := range config.PrimaryKeys() {
 			// primary key
-			hashedKey := neosync_benthos.HashBenthosCacheKey(jobId, runId, config.Table(), pk)
+			hashedKey := husonym_benthos.HashBenthosCacheKey(jobId, runId, config.Table(), pk)
 			pkRequestMap := fmt.Sprintf(`root = if this.%q == null { deleted() } else { this }`, pk)
 			pkArgsMapping := fmt.Sprintf(`root = [%q, json(%q)]`, hashedKey, pk)
 			pkResultMap := fmt.Sprintf("root.%q = this", pk)
@@ -117,14 +117,14 @@ func buildSqlUpdateProcessorConfigs(
 			)
 			processorConfigs = append(
 				processorConfigs,
-				&neosync_benthos.ProcessorConfig{Branch: pkBranch},
+				&husonym_benthos.ProcessorConfig{Branch: pkBranch},
 			)
 		}
 		// add catch and error processor
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{Catch: []*neosync_benthos.ProcessorConfig{
-				{Error: &neosync_benthos.ErrorProcessorConfig{
+			&husonym_benthos.ProcessorConfig{Catch: []*husonym_benthos.ProcessorConfig{
+				{Error: &husonym_benthos.ErrorProcessorConfig{
 					ErrorMsg: `${! error()}`,
 				}},
 			}},
@@ -144,7 +144,7 @@ func buildProcessorConfigs(
 	runconfig *runconfigs.RunConfig,
 	jobSourceOptions *mgmtv1alpha1.JobSourceOptions,
 	mappedKeys []string,
-) ([]*neosync_benthos.ProcessorConfig, error) {
+) ([]*husonym_benthos.ProcessorConfig, error) {
 	// filter columns by config insert cols
 	filteredCols := []*mgmtv1alpha1.JobMapping{}
 	for _, col := range cols {
@@ -181,24 +181,24 @@ func buildProcessorConfigs(
 	if err != nil {
 		return nil, err
 	}
-	var processorConfigs []*neosync_benthos.ProcessorConfig
+	var processorConfigs []*husonym_benthos.ProcessorConfig
 	if pkMapping != "" {
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{Mapping: &pkMapping},
+			&husonym_benthos.ProcessorConfig{Mapping: &pkMapping},
 		)
 	}
 	if mutations != "" {
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{Mutation: &mutations},
+			&husonym_benthos.ProcessorConfig{Mutation: &mutations},
 		)
 	}
 	if jsCode != "" {
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{
-				NeosyncJavascript: &neosync_benthos.NeosyncJavascriptConfig{Code: jsCode},
+			&husonym_benthos.ProcessorConfig{
+				HusonymJavascript: &husonym_benthos.HusonymJavascriptConfig{Code: jsCode},
 			},
 		)
 	}
@@ -206,14 +206,14 @@ func buildProcessorConfigs(
 		for _, config := range cacheBranches {
 			processorConfigs = append(
 				processorConfigs,
-				&neosync_benthos.ProcessorConfig{Branch: config},
+				&husonym_benthos.ProcessorConfig{Branch: config},
 			)
 		}
 	}
 	if defaultTransformerConfig != nil {
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{NeosyncDefaultTransformer: defaultTransformerConfig},
+			&husonym_benthos.ProcessorConfig{HusonymDefaultTransformer: defaultTransformerConfig},
 		)
 	}
 
@@ -221,8 +221,8 @@ func buildProcessorConfigs(
 		// add catch and error processor
 		processorConfigs = append(
 			processorConfigs,
-			&neosync_benthos.ProcessorConfig{Catch: []*neosync_benthos.ProcessorConfig{
-				{Error: &neosync_benthos.ErrorProcessorConfig{
+			&husonym_benthos.ProcessorConfig{Catch: []*husonym_benthos.ProcessorConfig{
+				{Error: &husonym_benthos.ErrorProcessorConfig{
 					ErrorMsg: `${! error()}`,
 				}},
 			}},
@@ -235,7 +235,7 @@ func buildProcessorConfigs(
 func buildDefaultTransformerConfigs(
 	jobSourceOptions *mgmtv1alpha1.JobSourceOptions,
 	mappedKeys []string,
-) (*neosync_benthos.NeosyncDefaultTransformerConfig, error) {
+) (*husonym_benthos.HusonymDefaultTransformerConfig, error) {
 	// only available for dynamodb source
 	if jobSourceOptions == nil || jobSourceOptions.GetDynamodb() == nil {
 		return nil, nil
@@ -245,7 +245,7 @@ func buildDefaultTransformerConfigs(
 	if err != nil {
 		return nil, err
 	}
-	return &neosync_benthos.NeosyncDefaultTransformerConfig{
+	return &husonym_benthos.HusonymDefaultTransformerConfig{
 		JobSourceOptionsString: string(sourceOptBits),
 		MappedKeys:             mappedKeys,
 	}, nil
@@ -432,7 +432,7 @@ func buildPrimaryKeyMappingConfigs(cols []*mgmtv1alpha1.JobMapping, primaryKeys 
 }
 
 func hashPrimaryKeyMetaKey(schema, table, column string) string {
-	return generateSha1Hash(fmt.Sprintf("neosync_%s_%s_%s", schema, table, column))
+	return generateSha1Hash(fmt.Sprintf("husonym_%s_%s_%s", schema, table, column))
 }
 
 func generateSha1Hash(input string) string {
@@ -446,18 +446,18 @@ func buildBranchCacheConfigs(
 	cols []*mgmtv1alpha1.JobMapping,
 	transformedFktoPkMap map[string][]*bb_internal.ReferenceKey,
 	jobId, runId string,
-) []*neosync_benthos.BranchConfig {
-	branchConfigs := []*neosync_benthos.BranchConfig{}
+) []*husonym_benthos.BranchConfig {
+	branchConfigs := []*husonym_benthos.BranchConfig{}
 	for _, col := range cols {
 		fks, ok := transformedFktoPkMap[col.Column]
 		if ok {
 			for _, fk := range fks {
 				// skip self referencing cols
-				if fk.Table == neosync_benthos.BuildBenthosTable(col.Schema, col.Table) {
+				if fk.Table == husonym_benthos.BuildBenthosTable(col.Schema, col.Table) {
 					continue
 				}
 
-				hashedKey := neosync_benthos.HashBenthosCacheKey(jobId, runId, fk.Table, fk.Column)
+				hashedKey := husonym_benthos.HashBenthosCacheKey(jobId, runId, fk.Table, fk.Column)
 				requestMap := fmt.Sprintf(
 					`root = if this.%q == null { deleted() } else { this }`,
 					col.Column,
@@ -479,12 +479,12 @@ func buildBranchCacheConfigs(
 func buildRedisGetBranchConfig(
 	resultMap, argsMapping string,
 	requestMap *string,
-) *neosync_benthos.BranchConfig {
-	return &neosync_benthos.BranchConfig{
+) *husonym_benthos.BranchConfig {
+	return &husonym_benthos.BranchConfig{
 		RequestMap: requestMap,
-		Processors: []neosync_benthos.ProcessorConfig{
+		Processors: []husonym_benthos.ProcessorConfig{
 			{
-				Redis: &neosync_benthos.RedisProcessorConfig{
+				Redis: &husonym_benthos.RedisProcessorConfig{
 					Command:     "hget",
 					ArgsMapping: argsMapping,
 				},
@@ -853,7 +853,7 @@ func computeMutationFunction(
 }
 
 func buildScrambleIdentityToken(col *mgmtv1alpha1.JobMapping) string {
-	return neosync_benthos.ToSha256(
+	return husonym_benthos.ToSha256(
 		fmt.Sprintf("%s.%s.%s", col.GetSchema(), col.GetTable(), col.GetColumn()),
 	)
 }

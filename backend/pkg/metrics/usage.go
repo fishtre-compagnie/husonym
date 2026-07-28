@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 )
@@ -51,12 +51,12 @@ func GetDailyUsageFromProm(
 
 	var overallTotal float64
 	for _, day := range dates {
-		date, err := time.Parse(NeosyncDateFormat, day)
+		date, err := time.Parse(HusonymDateFormat, day)
 		if err != nil {
 			return nil, -1, fmt.Errorf(
 				"unable to convert day back to usage date (%q) format (%q): %w",
 				date,
-				NeosyncDateFormat,
+				HusonymDateFormat,
 				err,
 			)
 		}
@@ -72,17 +72,17 @@ func GetDailyUsageFromProm(
 }
 
 func getDayFromMetric(metric model.Metric, metricTimestamp time.Time) string {
-	metricVal, ok := metric[NeosyncDateLabel]
+	metricVal, ok := metric[HusonymDateLabel]
 	if ok && metricVal.IsValid() {
 		return string(metricVal)
 	}
-	return metricTimestamp.Format(NeosyncDateFormat)
+	return metricTimestamp.Format(HusonymDateFormat)
 }
 
 // Plugs in to slices.SortFunc
 func sortUsageDates(a, b string) int {
-	dateA, errA := time.Parse(NeosyncDateFormat, a)
-	dateB, errB := time.Parse(NeosyncDateFormat, b)
+	dateA, errA := time.Parse(HusonymDateFormat, a)
+	dateB, errB := time.Parse(HusonymDateFormat, b)
 
 	// If both dates are invalid, maintain their original order
 	if errA != nil && errB != nil {
@@ -152,7 +152,7 @@ func GetPromQueryFromMetric(
 		metricName,
 		labels.ToPromQueryString(),
 		timeWindow,
-		NeosyncDateLabel,
+		HusonymDateLabel,
 	), nil
 }
 

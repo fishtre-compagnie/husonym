@@ -4,7 +4,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
 import { PageProps } from '@/components/types';
 import { useQuery } from '@connectrpc/connect-query';
-import { Connection, ConnectionService } from '@neosync/sdk';
+import { Connection, ConnectionService } from '@husonym/sdk';
 import Error from 'next/error';
 import { useRouter } from 'next/navigation';
 import { ReactElement, use } from 'react';

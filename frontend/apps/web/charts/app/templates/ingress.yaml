@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ template "neosync-app.fullname" . }}
+  name: {{ template "husonym-app.fullname" . }}
   namespace: {{ .Release.Namespace }}
 {{- with .Values.ingress.annotations }}
   annotations:
@@ -32,7 +32,7 @@ spec:
               pathType: Prefix
               backend:
                 service:
-                  name: {{ include "neosync-app.fullname" $ }}
+                  name: {{ include "husonym-app.fullname" $ }}
                   port:
                     number: {{ $.Values.servicePort }}
       {{- end}}

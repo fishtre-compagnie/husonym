@@ -22,7 +22,7 @@ import {
 import { UpdateUserDefinedTransformerFormValues } from '@/yup-validations/transformer-validations';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
-import { TransformersService, UserDefinedTransformer } from '@neosync/sdk';
+import { TransformersService, UserDefinedTransformer } from '@husonym/sdk';
 import NextLink from 'next/link';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';

@@ -112,7 +112,7 @@ export function IconHandler(name: string): ReactElement {
       return <PiFlaskLight />;
     case 'Subset Data':
       return <BsFunnel />;
-    case 'Neosync CLI':
+    case 'Husonym CLI':
       return <BiTerminal />;
     case 'Environment Variables':
       return <TbVariable />;
@@ -140,7 +140,7 @@ export function IconHandler(name: string): ReactElement {
     case 'Core Concepts':
       return <GoLightBulb />;
     case 'Github Actions':
-    case 'Using Neosync in CI':
+    case 'Using Husonym in CI':
       return <GitHubLogoIcon />;
     case 'SDK':
       return <TbSdk />;
@@ -159,9 +159,9 @@ export function IconHandler(name: string): ReactElement {
       return <FaKey />;
     case 'Configuring Analytics':
       return <GrAnalytics />;
-    case 'Developing Neosync Locally':
+    case 'Developing Husonym Locally':
       return <FaLaptop />;
-    case 'Neosync Terraform Provider':
+    case 'Husonym Terraform Provider':
       return <SiTerraform />;
     case 'Quickstart':
       return <RocketIcon />;
@@ -183,7 +183,7 @@ export function IconHandler(name: string): ReactElement {
       return <BiLogoPostgresql />;
     case 'Syncing data with MongoDB':
       return <SiMongodb />;
-    case 'Neosync IP Ranges':
+    case 'Husonym IP Ranges':
       return <BiNetworkChart />;
     case 'Custom Code Transformers':
       return <IoMdCode />;

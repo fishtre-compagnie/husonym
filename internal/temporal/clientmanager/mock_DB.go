@@ -5,10 +5,10 @@ package clientmanager
 import (
 	context "context"
 
-	db_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mock "github.com/stretchr/testify/mock"
 
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 
 	pgtype "github.com/jackc/pgx/v5/pgtype"
 )

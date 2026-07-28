@@ -1,6 +1,6 @@
 ---
 title: Column Removal Strategies
-description: Learn how to configure Neosync to handle old columns that no longer exist in the source database
+description: Learn how to configure Husonym to handle old columns that no longer exist in the source database
 id: column-removal-strategies
 hide_title: false
 slug: /guides/column-removal-strategies
@@ -8,12 +8,12 @@ slug: /guides/column-removal-strategies
 
 ## Introduction
 
-When a Neosync Job is configured for relational databases, all columns for each selected table must have a transformer mapping configured.
-This page goes into detail how Neosync handles old columns that no longer exist in the source database and the different strategies that can be used to handle this.
+When a Husonym Job is configured for relational databases, all columns for each selected table must have a transformer mapping configured.
+This page goes into detail how Husonym handles old columns that no longer exist in the source database and the different strategies that can be used to handle this.
 
-This is a common occurrence for any company that is adding or removing columns to a database and may not update Neosync straight away.
+This is a common occurrence for any company that is adding or removing columns to a database and may not update Husonym straight away.
 
-The `continue` strategy is the default strategy as it is the most flexible. The idea is to keep Neosync running and being less brittle to configuration drift without having to constantly check in on how Neosync is doing.
+The `continue` strategy is the default strategy as it is the most flexible. The idea is to keep Husonym running and being less brittle to configuration drift without having to constantly check in on how Husonym is doing.
 
 ## Driver Support
 
@@ -24,12 +24,12 @@ The `continue` strategy is the default strategy as it is the most flexible. The 
 
 ## Halt Strategy
 
-This strategy is plain and simple. During the job run, Neosync compares the configured job mappings with the source database.
+This strategy is plain and simple. During the job run, Husonym compares the configured job mappings with the source database.
 For the selected tables in the job mappings, a diff is made and if a column is found in the job mappings that doesn't exist in the source database, the run is halted.
 
 ## Continue Strategy
 
-This strategy tells Neosync to ignore any difference in job mappings from the source database.
+This strategy tells Husonym to ignore any difference in job mappings from the source database.
 
-Neosync is able to detect that columns were removed in the source, and will leave them off of the insert statement.
+Husonym is able to detect that columns were removed in the source, and will leave them off of the insert statement.
 This may result in failures if any unmapped columns do not have a column default in the destination connection.

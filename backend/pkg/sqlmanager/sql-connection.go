@@ -1,6 +1,6 @@
 package sqlmanager
 
-import sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
+import sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 
 type SqlConnection struct {
 	database SqlDatabase

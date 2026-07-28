@@ -11,7 +11,7 @@ const (
 )
 
 func GetAccessToken() (string, error) {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return "", err
 	}
@@ -24,7 +24,7 @@ func GetAccessToken() (string, error) {
 }
 
 func SetAccessToken(token string) error {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func SetAccessToken(token string) error {
 }
 
 func RemoveAccessToken() error {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func RemoveAccessToken() error {
 }
 
 func GetRefreshToken() (string, error) {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return "", err
 	}
@@ -53,7 +53,7 @@ func GetRefreshToken() (string, error) {
 }
 
 func SetRefreshToken(token string) error {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func SetRefreshToken(token string) error {
 }
 
 func RemoveRefreshToken() error {
-	dirpath, err := GetOrCreateNeosyncFolder()
+	dirpath, err := GetOrCreateHusonymFolder()
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ import {
   getTransformerSourceString,
 } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { UserDefinedTransformer } from '@neosync/sdk';
+import { UserDefinedTransformer } from '@husonym/sdk';
 import { ColumnDef } from '@tanstack/react-table';
 import NextLink from 'next/link';
 import { DataTableColumnHeader } from './data-table-column-header';

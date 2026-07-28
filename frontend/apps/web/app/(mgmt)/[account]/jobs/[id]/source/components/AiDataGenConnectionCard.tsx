@@ -47,7 +47,7 @@ import {
   GetConnectionSchemaMapResponse,
   Job,
   JobService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';

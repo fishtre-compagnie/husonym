@@ -6,15 +6,15 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	mysql_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/mysql"
-	pg_queries "github.com/Groupe-Hevea/neosync/backend/gen/go/db/dbschemas/postgresql"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/mongoconnect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/sqlconnect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	aws_manager "github.com/Groupe-Hevea/neosync/internal/aws"
-	neosync_gcp "github.com/Groupe-Hevea/neosync/internal/gcp"
-	neosynctypes "github.com/Groupe-Hevea/neosync/internal/neosync-types"
+	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
+	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
+	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 )
 
 type SampleDataStream interface {
@@ -71,10 +71,10 @@ type DefaultConnectionDataBuilder struct {
 	sqlmanager          sql_manager.SqlManagerClient
 	pgquerier           pg_queries.Querier
 	mysqlquerier        mysql_queries.Querier
-	awsmanager          aws_manager.NeosyncAwsManagerClient
-	gcpmanager          neosync_gcp.ManagerInterface
+	awsmanager          aws_manager.HusonymAwsManagerClient
+	gcpmanager          husonym_gcp.ManagerInterface
 	mongoconnector      mongoconnect.Interface
-	neosynctyperegistry neosynctypes.NeosyncTypeRegistry
+	husonymtyperegistry husonymtypes.HusonymTypeRegistry
 }
 
 func NewConnectionDataBuilder(
@@ -82,10 +82,10 @@ func NewConnectionDataBuilder(
 	sqlmanager sql_manager.SqlManagerClient,
 	pgquerier pg_queries.Querier,
 	mysqlquerier mysql_queries.Querier,
-	awsmanager aws_manager.NeosyncAwsManagerClient,
-	gcpmanager neosync_gcp.ManagerInterface,
+	awsmanager aws_manager.HusonymAwsManagerClient,
+	gcpmanager husonym_gcp.ManagerInterface,
 	mongoconnector mongoconnect.Interface,
-	neosynctyperegistry neosynctypes.NeosyncTypeRegistry,
+	husonymtyperegistry husonymtypes.HusonymTypeRegistry,
 ) ConnectionDataBuilder {
 	return &DefaultConnectionDataBuilder{
 		sqlconnector:        sqlconnector,
@@ -95,7 +95,7 @@ func NewConnectionDataBuilder(
 		awsmanager:          awsmanager,
 		gcpmanager:          gcpmanager,
 		mongoconnector:      mongoconnector,
-		neosynctyperegistry: neosynctyperegistry,
+		husonymtyperegistry: husonymtyperegistry,
 	}
 }
 
@@ -109,7 +109,7 @@ func (b *DefaultConnectionDataBuilder) NewDataConnection(
 		*mgmtv1alpha1.ConnectionConfig_MssqlConfig:
 		return NewSQLConnectionDataService(logger, b.sqlconnector, b.sqlmanager, connection), nil
 	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config:
-		return NewAwsS3ConnectionDataService(logger, b.awsmanager, b.neosynctyperegistry, connection), nil
+		return NewAwsS3ConnectionDataService(logger, b.awsmanager, b.husonymtyperegistry, connection), nil
 	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
 		return NewGcpConnectionDataService(logger, b.gcpmanager, connection), nil
 	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:

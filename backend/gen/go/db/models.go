@@ -5,11 +5,11 @@
 package db_queries
 
 import (
-	pg_models "github.com/Groupe-Hevea/neosync/backend/sql/postgresql/models"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type NeosyncApiAccount struct {
+type HusonymApiAccount struct {
 	ID                pgtype.UUID
 	CreatedAt         pgtype.Timestamp
 	UpdatedAt         pgtype.Timestamp
@@ -21,7 +21,7 @@ type NeosyncApiAccount struct {
 	StripeCustomerID  pgtype.Text
 }
 
-type NeosyncApiAccountApiKey struct {
+type HusonymApiAccountApiKey struct {
 	ID          pgtype.UUID
 	AccountID   pgtype.UUID
 	KeyValue    string
@@ -35,7 +35,7 @@ type NeosyncApiAccountApiKey struct {
 }
 
 // Stores hooks that can be configured to run as part of an account
-type NeosyncApiAccountHook struct {
+type HusonymApiAccountHook struct {
 	ID              pgtype.UUID
 	Name            string
 	Description     string
@@ -50,7 +50,7 @@ type NeosyncApiAccountHook struct {
 	HookType        pgtype.Text
 }
 
-type NeosyncApiAccountInvite struct {
+type HusonymApiAccountInvite struct {
 	ID           pgtype.UUID
 	AccountID    pgtype.UUID
 	SenderUserID pgtype.UUID
@@ -63,7 +63,7 @@ type NeosyncApiAccountInvite struct {
 	Role         pgtype.Int4
 }
 
-type NeosyncApiAccountUserAssociation struct {
+type HusonymApiAccountUserAssociation struct {
 	ID        pgtype.UUID
 	AccountID pgtype.UUID
 	UserID    pgtype.UUID
@@ -71,7 +71,7 @@ type NeosyncApiAccountUserAssociation struct {
 	UpdatedAt pgtype.Timestamp
 }
 
-type NeosyncApiCasbinRule struct {
+type HusonymApiCasbinRule struct {
 	PType     string
 	V0        string
 	V1        string
@@ -83,7 +83,7 @@ type NeosyncApiCasbinRule struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
-type NeosyncApiConnection struct {
+type HusonymApiConnection struct {
 	ID               pgtype.UUID
 	CreatedAt        pgtype.Timestamp
 	UpdatedAt        pgtype.Timestamp
@@ -94,7 +94,7 @@ type NeosyncApiConnection struct {
 	UpdatedByID      pgtype.UUID
 }
 
-type NeosyncApiJob struct {
+type HusonymApiJob struct {
 	ID                 pgtype.UUID
 	CreatedAt          pgtype.Timestamp
 	UpdatedAt          pgtype.Timestamp
@@ -112,7 +112,7 @@ type NeosyncApiJob struct {
 	JobtypeConfig      []byte
 }
 
-type NeosyncApiJobDestinationConnectionAssociation struct {
+type HusonymApiJobDestinationConnectionAssociation struct {
 	ID           pgtype.UUID
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
@@ -122,7 +122,7 @@ type NeosyncApiJobDestinationConnectionAssociation struct {
 }
 
 // Stores hooks that can be configured to run as part of a job
-type NeosyncApiJobHook struct {
+type HusonymApiJobHook struct {
 	ID              pgtype.UUID
 	Name            string
 	Description     string
@@ -138,7 +138,7 @@ type NeosyncApiJobHook struct {
 	ConnectionID    pgtype.UUID
 }
 
-type NeosyncApiRuncontext struct {
+type HusonymApiRuncontext struct {
 	WorkflowID  string
 	ExternalID  string
 	AccountID   pgtype.UUID
@@ -150,7 +150,7 @@ type NeosyncApiRuncontext struct {
 }
 
 // Stores Slack OAuth connections for a given account
-type NeosyncApiSlackOauthConnection struct {
+type HusonymApiSlackOauthConnection struct {
 	ID              pgtype.UUID
 	AccountID       pgtype.UUID
 	OauthV2Response []byte
@@ -160,7 +160,7 @@ type NeosyncApiSlackOauthConnection struct {
 	UpdatedByUserID pgtype.UUID
 }
 
-type NeosyncApiTransformer struct {
+type HusonymApiTransformer struct {
 	ID                pgtype.UUID
 	CreatedAt         pgtype.Timestamp
 	UpdatedAt         pgtype.Timestamp
@@ -173,14 +173,14 @@ type NeosyncApiTransformer struct {
 	Source            int32
 }
 
-type NeosyncApiUser struct {
+type HusonymApiUser struct {
 	ID        pgtype.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	UserType  int16
 }
 
-type NeosyncApiUserIdentityProviderAssociation struct {
+type HusonymApiUserIdentityProviderAssociation struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
 	ProviderSub string

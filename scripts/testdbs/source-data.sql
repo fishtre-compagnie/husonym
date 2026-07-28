@@ -1,4 +1,4 @@
-INSERT INTO neosync_api.users (id)
+INSERT INTO husonym_api.users (id)
 VALUES
   ('00000000-0000-0000-0000-000000000000'),
   ('00000000-0000-0000-0000-000000000001'),
@@ -7,7 +7,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000004'),
   ('00000000-0000-0000-0000-000000000005');
 --
-INSERT INTO neosync_api.accounts (id, account_type, account_slug)
+INSERT INTO husonym_api.accounts (id, account_type, account_slug)
 VALUES
   ('00000000-0000-0000-0000-000000000000', 0, 'personal'),
   ('00000000-0000-0000-0000-000000000001', 0, 'personal'),
@@ -16,7 +16,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000004', 0, 'personal'),
   ('00000000-0000-0000-0000-000000000005', 0, 'personal');
 --
-INSERT INTO neosync_api.account_user_associations (account_id, user_id)
+INSERT INTO husonym_api.account_user_associations (account_id, user_id)
 VALUES
   ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000'),
   ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001'),
@@ -25,7 +25,7 @@ VALUES
   ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004'),
   ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005');
 --
-INSERT INTO neosync_api.user_identity_provider_associations (user_id, auth0_provider_id)
+INSERT INTO husonym_api.user_identity_provider_associations (user_id, auth0_provider_id)
 VALUES
   ('00000000-0000-0000-0000-000000000000', '0'),
   ('00000000-0000-0000-0000-000000000001', '1'),

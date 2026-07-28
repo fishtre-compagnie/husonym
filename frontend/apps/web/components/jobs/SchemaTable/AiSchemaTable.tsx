@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { GetConnectionSchemaResponse } from '@neosync/sdk';
+import { GetConnectionSchemaResponse } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { ReactElement, useMemo } from 'react';
 import { getSchemaColumns } from './AiSchemaColumns';

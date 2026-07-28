@@ -3,8 +3,8 @@ package schemamanager_notsupported
 import (
 	"context"
 
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	shared "github.com/Groupe-Hevea/neosync/internal/schema-manager/shared"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 
 type NotSupportedSchemaManager struct {

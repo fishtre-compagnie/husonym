@@ -94,7 +94,7 @@ import {
   ValidateJobMappingsResponse,
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';

@@ -7,20 +7,20 @@ import (
 	"sync"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	benthosbuilder "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	accountstatus_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/account-status"
-	genbenthosconfigs_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
-	jobhooks_by_timing_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
-	posttablesync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/post-table-sync"
-	syncactivityopts_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/sync-activity-opts"
-	syncrediscleanup_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
-	schemainit_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/schemainit/workflow"
-	workflow_shared "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/shared"
-	sync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/activities/sync"
-	tablesync_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/tablesync/workflow"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
+	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
+	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
+	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
+	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
+	workflow_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared"
+	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
+	tablesync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow"
 	"github.com/spf13/viper"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/temporal"
@@ -439,7 +439,7 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 
 			if !isReady {
 				// Determine if it's a self-reference
-				currentTable := neosync_benthos.BuildBenthosTable(bc.TableSchema, bc.TableName)
+				currentTable := husonym_benthos.BuildBenthosTable(bc.TableSchema, bc.TableName)
 				depType := "external"
 				for _, dep := range bc.DependsOn {
 					if dep.Table == currentTable {

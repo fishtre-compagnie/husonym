@@ -1,6 +1,6 @@
 ---
 title: New Column Addition Strategies
-description: Learn how to configure Neosync to handle new columns detected during a job run
+description: Learn how to configure Husonym to handle new columns detected during a job run
 id: new-column-addition-strategies
 hide_title: false
 slug: /guides/new-column-addition-strategies
@@ -9,10 +9,10 @@ slug: /guides/new-column-addition-strategies
 
 ## Introduction
 
-When a Neosync Job is configured for relational databases, all columns for each selected table must have a transformer mapping configured.
-This page goes into detail how Neosync handles new columns that may be added to your source database in-between updating a job.
+When a Husonym Job is configured for relational databases, all columns for each selected table must have a transformer mapping configured.
+This page goes into detail how Husonym handles new columns that may be added to your source database in-between updating a job.
 
-This is a common occurrence for any company that is adding new columns to a database and may not update Neosync straight away.
+This is a common occurrence for any company that is adding new columns to a database and may not update Husonym straight away.
 
 ## Driver Support
 
@@ -24,14 +24,14 @@ This is a common occurrence for any company that is adding new columns to a data
 
 ## Halt Strategy
 
-This strategy is plain and simple. During the job run, Neosync compares the configured job mappings with the source database.
+This strategy is plain and simple. During the job run, Husonym compares the configured job mappings with the source database.
 For the selected tables in the job mappings, a diff is made and if a column is found in the source connection that doesn't exist in the job mappings, the run is halted.
 
 ## Continue Strategy
 
-This strategy tells Neosync to ignore any difference in job mappings from the source database.
+This strategy tells Husonym to ignore any difference in job mappings from the source database.
 
-Neosync is able to detect that new columns were added in the source, but it will leave them off of the insert statement.
+Husonym is able to detect that new columns were added in the source, but it will leave them off of the insert statement.
 This may result in failures if any unmapped columns do not have a column default in the destination connection.
 However, any additional columns that have a default or are a generated column will not result in a job run failure.
 
@@ -57,7 +57,7 @@ The algorithm works as follows:
 
 ## Passthrough
 
-Passthrough mode is a strategy that allows Neosync to handle new columns found in source tables by setting them to passthrough. This means that any new columns detected in the source database will be included in the table sync and their values will be directly copied from the source to the destination without any transformation.
+Passthrough mode is a strategy that allows Husonym to handle new columns found in source tables by setting them to passthrough. This means that any new columns detected in the source database will be included in the table sync and their values will be directly copied from the source to the destination without any transformation.
 
 This strategy is useful when you want to reduce the need for manual updates to job mappings when new columns are added to the source database.
 

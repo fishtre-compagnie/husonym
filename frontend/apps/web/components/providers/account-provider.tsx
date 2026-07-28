@@ -1,8 +1,8 @@
 'use client';
-import { useNeosyncUser } from '@/libs/hooks/useNeosyncUser';
+import { useHusonymUser } from '@/libs/hooks/useHusonymUser';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
-import { UserAccount, UserAccountService } from '@neosync/sdk';
+import { UserAccount, UserAccountService } from '@husonym/sdk';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ReactElement,
@@ -47,7 +47,7 @@ export default function AccountProvider(props: Props): ReactElement {
     undefined
   );
 
-  const { isLoading: isUserLoading } = useNeosyncUser();
+  const { isLoading: isUserLoading } = useHusonymUser();
 
   const {
     data: accountsResponse,

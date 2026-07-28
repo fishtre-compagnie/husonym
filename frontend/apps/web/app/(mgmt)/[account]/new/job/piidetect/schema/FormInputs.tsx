@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, splitConnections } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
-import { ConnectionDataService, ConnectionService } from '@neosync/sdk';
+import { ConnectionDataService, ConnectionService } from '@husonym/sdk';
 import { ReloadIcon, TableIcon } from '@radix-ui/react-icons';
 import { ReactElement, useCallback, useMemo } from 'react';
 import ConnectionSelectContent from '../../connect/ConnectionSelectContent';

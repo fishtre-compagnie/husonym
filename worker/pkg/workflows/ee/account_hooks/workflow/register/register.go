@@ -1,10 +1,10 @@
 package accounthook_workflow_register
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	execute_hook_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/activities/execute"
-	hooks_by_event_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/activities/hooks-by-event"
-	accounthook_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	execute_hook_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/execute"
+	hooks_by_event_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/hooks-by-event"
+	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 )
 
 type Worker interface {

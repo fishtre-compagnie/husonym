@@ -64,12 +64,12 @@ message RefreshCliResponse {
 message CheckTokenRequest {}
 message CheckTokenResponse {}
 
-// Service that handles generic Authentication for Neosync
+// Service that handles generic Authentication for Husonym
 // Today this is mostly used by the CLI to receive authentication information
 service AuthService {
-  // Used by the CLI to login to Neosync with OAuth.
+  // Used by the CLI to login to Husonym with OAuth.
   rpc LoginCli(LoginCliRequest) returns (LoginCliResponse) {}
-  // Used by the CLI to refresh an expired Neosync accesss token.
+  // Used by the CLI to refresh an expired Husonym accesss token.
   // This should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.
   rpc RefreshCli(RefreshCliRequest) returns (RefreshCliResponse) {}
   // Empty endpoint to simply check if the provided access token is valid

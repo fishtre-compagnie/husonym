@@ -6,21 +6,21 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	"github.com/Groupe-Hevea/neosync/internal/gotypeutil"
-	rc "github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/google/uuid"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
-	neosync_benthos_transformers "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	husonym_benthos_transformers "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
 const (
@@ -256,7 +256,7 @@ func TestShouldHaltOnSchemaAddition(t *testing.T) {
 				"id":         &sqlmanager_shared.DatabaseSchemaRow{},
 				"created_by": &sqlmanager_shared.DatabaseSchemaRow{},
 			},
-			"neosync_api.accounts": {
+			"husonym_api.accounts": {
 				"id":   &sqlmanager_shared.DatabaseSchemaRow{},
 				"name": &sqlmanager_shared.DatabaseSchemaRow{},
 			},
@@ -627,46 +627,46 @@ func Test_buildBenthosS3Credentials(t *testing.T) {
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{}),
-		&neosync_benthos.AwsCredentials{},
+		&husonym_benthos.AwsCredentials{},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{Profile: shared.Ptr("foo")}),
-		&neosync_benthos.AwsCredentials{Profile: "foo"},
+		&husonym_benthos.AwsCredentials{Profile: "foo"},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{AccessKeyId: shared.Ptr("foo")}),
-		&neosync_benthos.AwsCredentials{Id: "foo"},
+		&husonym_benthos.AwsCredentials{Id: "foo"},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(
 			&mgmtv1alpha1.AwsS3Credentials{SecretAccessKey: shared.Ptr("foo")},
 		),
-		&neosync_benthos.AwsCredentials{Secret: "foo"},
+		&husonym_benthos.AwsCredentials{Secret: "foo"},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{SessionToken: shared.Ptr("foo")}),
-		&neosync_benthos.AwsCredentials{Token: "foo"},
+		&husonym_benthos.AwsCredentials{Token: "foo"},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{FromEc2Role: shared.Ptr(true)}),
-		&neosync_benthos.AwsCredentials{FromEc2Role: true},
+		&husonym_benthos.AwsCredentials{FromEc2Role: true},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{RoleArn: shared.Ptr("foo")}),
-		&neosync_benthos.AwsCredentials{Role: "foo"},
+		&husonym_benthos.AwsCredentials{Role: "foo"},
 	)
 	require.Equal(
 		t,
 		buildBenthosS3Credentials(
 			&mgmtv1alpha1.AwsS3Credentials{RoleExternalId: shared.Ptr("foo")},
 		),
-		&neosync_benthos.AwsCredentials{RoleExternalId: "foo"},
+		&husonym_benthos.AwsCredentials{RoleExternalId: "foo"},
 	)
 	require.Equal(
 		t,
@@ -679,7 +679,7 @@ func Test_buildBenthosS3Credentials(t *testing.T) {
 			RoleArn:         shared.Ptr("role"),
 			RoleExternalId:  shared.Ptr("foo"),
 		}),
-		&neosync_benthos.AwsCredentials{
+		&husonym_benthos.AwsCredentials{
 			Profile:        "profile",
 			Id:             "access-key",
 			Secret:         "secret",
@@ -1109,8 +1109,8 @@ func Test_computeMutationFunction_Validate_Bloblang_Output(t *testing.T) {
 	}
 
 	blobenv := bloblang.NewEnvironment()
-	neosync_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
-	neosync_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
+	husonym_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
+	husonym_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
 
 	for _, transformer := range transformers {
 		t.Run(fmt.Sprintf("%s_%T_lint", t.Name(), transformer.Config.Config), func(t *testing.T) {
@@ -1357,8 +1357,8 @@ func Test_computeMutationFunction_Validate_Bloblang_Output_EmptyConfigs(t *testi
 	}
 
 	blobenv := bloblang.NewEnvironment()
-	neosync_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
-	neosync_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
+	husonym_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
+	husonym_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
 
 	for _, transformer := range transformers {
 		t.Run(fmt.Sprintf("%s_%T_lint", t.Name(), transformer.Config.Config), func(t *testing.T) {

@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	tcneosyncapi "github.com/Groupe-Hevea/neosync/backend/pkg/integration-test"
-	accounthook_events "github.com/Groupe-Hevea/neosync/internal/ee/events"
-	"github.com/Groupe-Hevea/neosync/internal/testutil"
-	accounthook_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow"
-	accounthook_workflow_register "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/ee/account_hooks/workflow/register"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
+	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/log"
@@ -27,24 +27,24 @@ func Test_ProcessAccountHookWorkflow(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	neosyncApi, err := tcneosyncapi.NewNeosyncApiTestClient(
+	husonymApi, err := tchusonymapi.NewHusonymApiTestClient(
 		ctx,
 		t,
-		tcneosyncapi.WithMigrationsDirectory(neosyncDbMigrationsPath),
+		tchusonymapi.WithMigrationsDirectory(husonymDbMigrationsPath),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tcneosyncapi.SetUser(
+	tchusonymapi.SetUser(
 		ctx,
 		t,
-		neosyncApi.OSSAuthenticatedLicensedClients.Users(tcneosyncapi.WithUserId("123")),
+		husonymApi.OSSAuthenticatedLicensedClients.Users(tchusonymapi.WithUserId("123")),
 	)
-	accountId := tcneosyncapi.CreateTeamAccount(
+	accountId := tchusonymapi.CreateTeamAccount(
 		ctx,
 		t,
-		neosyncApi.OSSAuthenticatedLicensedClients.Users(tcneosyncapi.WithUserId("123")),
+		husonymApi.OSSAuthenticatedLicensedClients.Users(tchusonymapi.WithUserId("123")),
 		uuid.NewString(),
 	)
 
@@ -56,7 +56,7 @@ func Test_ProcessAccountHookWorkflow(t *testing.T) {
 	}))
 	srv := startHTTPServer(t, mux)
 
-	hookResp, err := neosyncApi.OSSAuthenticatedLicensedClients.AccountHooks(tcneosyncapi.WithUserId("123")).
+	hookResp, err := husonymApi.OSSAuthenticatedLicensedClients.AccountHooks(tchusonymapi.WithUserId("123")).
 		CreateAccountHook(ctx, connect.NewRequest(&mgmtv1alpha1.CreateAccountHookRequest{
 			AccountId: accountId,
 			Hook: &mgmtv1alpha1.NewAccountHook{
@@ -85,7 +85,7 @@ func Test_ProcessAccountHookWorkflow(t *testing.T) {
 
 	accounthook_workflow_register.Register(
 		env,
-		neosyncApi.OSSAuthenticatedLicensedClients.AccountHooks(tcneosyncapi.WithUserId("123")),
+		husonymApi.OSSAuthenticatedLicensedClients.AccountHooks(tchusonymapi.WithUserId("123")),
 	)
 
 	env.ExecuteWorkflow(

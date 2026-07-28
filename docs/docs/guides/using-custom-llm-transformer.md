@@ -1,6 +1,6 @@
 ---
 title: Using a Custom LLM Transformer
-description: Learn how to use a custom LLM transformer in Neosync in order to call an LLM on every row to generate data or anonymize existing data
+description: Learn how to use a custom LLM transformer in Husonym in order to call an LLM on every row to generate data or anonymize existing data
 id: using-custom-llm-transformer
 hide_title: false
 slug: /guides/using-custom-llm-transformer
@@ -8,13 +8,13 @@ slug: /guides/using-custom-llm-transformer
 
 ## Introduction
 
-This guide walks through how you can integrate Neosync with any LLM or machine learning model that has a REST endpoint as a custom Transformer. We're going to use the use case that we have a customer interview platform that we want to generate synthetic data for our staging and development environments. Because the production customer interview data is sensitive, generating synthetic data is a secure and privacy-safe way of giving developers the data they need to build new features without compromising on data privacy.
+This guide walks through how you can integrate Husonym with any LLM or machine learning model that has a REST endpoint as a custom Transformer. We're going to use the use case that we have a customer interview platform that we want to generate synthetic data for our staging and development environments. Because the production customer interview data is sensitive, generating synthetic data is a secure and privacy-safe way of giving developers the data they need to build new features without compromising on data privacy.
 
 ## Pre-requisites
 
 In order to get started, you'll need the following:
 
-1. A Neosync account which you can sign up for free [here](https://www.neosync.dev)
+1. A Husonym account which you can sign up for free [here](https://www.husonym.com)
 2. Access to an LLM hosted at an endpoint. I'll be using OpenAI but you can use any other LLM as long as it's available at a REST endpoint.
 3. A database to store your data. I'm going to use Neon but either Postgres or Mysql works.
 
@@ -46,13 +46,13 @@ Nice! DB set up is complete.
 
 Last thing we'll need to do is to just get the connection URL that we'll use to connect to our database. Go to **Dashboard** and select the `cust-gen` DB and click on the copy button to copy the connection URL.
 
-Hang on to this for a minute and we can move onto setting up Neosync.
+Hang on to this for a minute and we can move onto setting up Husonym.
 
 ## Creating a Connection
 
-Now that we have our database set up, we can connect Neosync to it.
+Now that we have our database set up, we can connect Husonym to it.
 
-To get started here, login to your Neosync account and click on **Connections** -> **+ New Connection** -> **Neon**.
+To get started here, login to your Husonym account and click on **Connections** -> **+ New Connection** -> **Neon**.
 
 Let's name our connection `cust-gen-db` and then in the **Connection URL** field, paste in the connection string we copied earlier. Click on **Test Connection** to see validate your connection. You should see a modal pop up like so:
 
@@ -62,7 +62,7 @@ Nice! Looks like we can see our database and table and that our permissions are 
 
 ## Creating a Custom Transformer
 
-Neosync has the notion of Transformers. Transformers are modules that can generate synthetic data or anonymize existing data. We ship Neosync with 40+ transformers out of the box but you can also create your own [custom transformers](https://www.neosync.dev/blog/introducing-custom-transformers) in code which is what we're going to do for this use case.
+Husonym has the notion of Transformers. Transformers are modules that can generate synthetic data or anonymize existing data. We ship Husonym with 40+ transformers out of the box but you can also create your own [custom transformers](https://www.husonym.com/blog/introducing-custom-transformers) in code which is what we're going to do for this use case.
 
 Click on **Transformers** in the top navigation menu and then the **+ New Transformer** button.
 
@@ -202,4 +202,4 @@ This looks pretty realistic!. Also, we can just do a quick scan and see that the
 
 ## Conclusion
 
-This is just a peek into what you can do with Neosync and LLMs. You can use any model that you'd like with Neosync as long as it's available at an endpoint.
+This is just a peek into what you can do with Husonym and LLMs. You can use any model that you'd like with Husonym as long as it's available at an endpoint.

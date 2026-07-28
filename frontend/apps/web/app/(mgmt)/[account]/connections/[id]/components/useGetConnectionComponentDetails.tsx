@@ -9,7 +9,7 @@ import PostgresConnectionForm from '@/components/connections/forms/postgres/Post
 import AwsS3ConnectionForm from '@/components/connections/forms/s3/AwsS3ConnectionForm';
 import SqlServerConnectionForm from '@/components/connections/forms/sql-server/SqlServerConnectionForm';
 import PageHeader from '@/components/headers/PageHeader';
-import { Connection, PostgresConnectionConfig } from '@neosync/sdk';
+import { Connection, PostgresConnectionConfig } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import ModeView from './ModeView';
 

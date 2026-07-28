@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: {{ template "neosync-api.fullname" . }}-role
+  name: {{ template "husonym-api.fullname" . }}-role
 rules:
   - apiGroups: [""]
     resources:

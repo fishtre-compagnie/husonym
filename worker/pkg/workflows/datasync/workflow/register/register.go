@@ -1,16 +1,16 @@
 package datasync_workflow_register
 
 import (
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	sql_manager "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager"
-	"github.com/Groupe-Hevea/neosync/internal/ee/license"
-	accountstatus_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/account-status"
-	genbenthosconfigs_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
-	jobhooks_by_timing_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
-	posttablesync_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/post-table-sync"
-	syncactivityopts_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/sync-activity-opts"
-	syncrediscleanup_activity "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
-	datasync_workflow "github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/workflow"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
+	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
+	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
+	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
+	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	"github.com/redis/go-redis/v9"
 )
 

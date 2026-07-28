@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/Groupe-Hevea/neosync/backend/pkg/metrics"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	bb_internal "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/internal"
-	bb_shared "github.com/Groupe-Hevea/neosync/internal/benthos/benthos-builder/shared"
-	"github.com/Groupe-Hevea/neosync/internal/runconfigs"
-	neosync_benthos "github.com/Groupe-Hevea/neosync/worker/pkg/benthos"
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
 
 type mongodbSyncBuilder struct {
@@ -35,11 +35,11 @@ func (b *mongodbSyncBuilder) BuildSourceConfigs(
 
 	benthosConfigs := []*bb_internal.BenthosSourceConfig{}
 	for _, tableMapping := range groupedMappings {
-		bc := &neosync_benthos.BenthosConfig{
-			StreamConfig: neosync_benthos.StreamConfig{
-				Input: &neosync_benthos.InputConfig{
-					Inputs: neosync_benthos.Inputs{
-						PooledMongoDB: &neosync_benthos.InputMongoDb{
+		bc := &husonym_benthos.BenthosConfig{
+			StreamConfig: husonym_benthos.StreamConfig{
+				Input: &husonym_benthos.InputConfig{
+					Inputs: husonym_benthos.Inputs{
+						PooledMongoDB: &husonym_benthos.InputMongoDb{
 							ConnectionId: params.SourceConnection.GetId(),
 							Database:     tableMapping.Schema,
 							Collection:   tableMapping.Table,
@@ -47,15 +47,15 @@ func (b *mongodbSyncBuilder) BuildSourceConfigs(
 						},
 					},
 				},
-				Pipeline: &neosync_benthos.PipelineConfig{
+				Pipeline: &husonym_benthos.PipelineConfig{
 					Threads:    -1,
-					Processors: []neosync_benthos.ProcessorConfig{},
+					Processors: []husonym_benthos.ProcessorConfig{},
 				},
-				Output: &neosync_benthos.OutputConfig{
-					Outputs: neosync_benthos.Outputs{
-						Broker: &neosync_benthos.OutputBrokerConfig{
+				Output: &husonym_benthos.OutputConfig{
+					Outputs: husonym_benthos.Outputs{
+						Broker: &husonym_benthos.OutputBrokerConfig{
 							Pattern: "fan_out",
-							Outputs: []neosync_benthos.Outputs{},
+							Outputs: []husonym_benthos.Outputs{},
 						},
 					},
 				},
@@ -138,7 +138,7 @@ func (b *mongodbSyncBuilder) BuildDestinationConfig(
 	)
 	config.Outputs = append(
 		config.Outputs,
-		neosync_benthos.Outputs{PooledMongoDB: &neosync_benthos.OutputMongoDb{
+		husonym_benthos.Outputs{PooledMongoDB: &husonym_benthos.OutputMongoDb{
 			ConnectionId: params.DestConnection.GetId(),
 
 			Database:   benthosConfig.TableSchema,
@@ -153,7 +153,7 @@ func (b *mongodbSyncBuilder) BuildDestinationConfig(
 			FilterMap: `
 			root._id = this._id
 		`,
-			WriteConcern: &neosync_benthos.MongoWriteConcern{
+			WriteConcern: &husonym_benthos.MongoWriteConcern{
 				W: "1",
 			},
 		},

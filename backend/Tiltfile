@@ -6,17 +6,17 @@ helpers = load_dynamic("../tilt/extensions/Tiltfile")
 helmfile_with_local_chart = helpers['helmfile_with_local_chart']
 helmfile = helpers['helmfile']
 
-allow_k8s_contexts('kind-neosync-dev')
+allow_k8s_contexts('kind-husonym-dev')
 
 base_dir = os.path.dirname(__file__)
 
 # when debugging can be handy to disable scrub
 secret_settings(disable_scrub=True)
 
-namespace_create('neosync', allow_duplicates=True)
+namespace_create('husonym', allow_duplicates=True)
 
 local_resource(
-  'neosync-api-gen',
+  'husonym-api-gen',
   'scripts/gen.sh',
   deps=[
     'protos',
@@ -31,7 +31,7 @@ local_resource(
 
 # Watches and rebuilds Go code
 local_resource(
-  'neosync-api-build',
+  'husonym-api-build',
   'scripts/build.sh',
   deps=['.'],
   ignore=[
@@ -55,7 +55,7 @@ local_resource(
 
 k8s_yaml(kustomize('./dev/yaml'))
 k8s_yaml(helmfile('./dev/helm/db', helmfileDir=base_dir+'/dev/helm/db'))
-k8s_resource('neosync-postgresql', labels=['db'], port_forwards=5432)
+k8s_resource('husonym-postgresql', labels=['db'], port_forwards=5432)
 
 # for namespace in [ "nucleus" ]:
 #   k8s_yaml(configmap_from_dict("dev-config", namespace=namespace, inputs = {
@@ -65,22 +65,22 @@ k8s_resource('neosync-postgresql', labels=['db'], port_forwards=5432)
 #       'AWS_SECURITY_TOKEN'        : os.getenv('AWS_SECURITY_TOKEN'),
 #       'AWS_REGION'                : os.getenv('AWS_REGION'),
 #       'CUST_INGRESS_DNS_ZONE_ID' : os.getenv('NUCLEUS_DEV_DNS_ZONE_ID'),
-#       'CUST_INGRESS_HOSTNAME'     : str(os.getenv('NUCLEUS_DEV_DOMAIN_PREFIX')) + '.Groupe-Hevea.dev',
+#       'CUST_INGRESS_HOSTNAME'     : str(os.getenv('NUCLEUS_DEV_DOMAIN_PREFIX')) + '.fishtre-compagnie.dev',
 #       'EVENTS_QUEUE_URL' : os.getenv('NUCLEUS_DEV_EVENTS_QUEUE_URL'),
 #       'NOTIFICATIONS_QUEUE_URL' : os.getenv('NUCLEUS_DEV_NOTIFICATIONS_QUEUE_URL'),
 #       'EVENTS_TOPIC_ARN' : os.getenv('NUCLEUS_DEV_EVENTS_TOPIC_ARN'),
 # }))
 
-k8s_yaml(helmfile_with_local_chart('neosync-api', base_dir + '/charts/api', helmfileDir=base_dir + '/dev/helm/api'))
+k8s_yaml(helmfile_with_local_chart('husonym-api', base_dir + '/charts/api', helmfileDir=base_dir + '/dev/helm/api'))
 # References the deployment
 k8s_resource(
-  'neosync-api',
-  resource_deps=['neosync-postgresql'],
+  'husonym-api',
+  resource_deps=['husonym-postgresql'],
   labels=['backend'],
   port_forwards="8080:8080",
 )
 docker_build_with_restart(
-  ref='neosync-api',
+  ref='husonym-api',
   context='.',
   entrypoint=['/app/mgmt'],
   dockerfile='./dev/build/Dockerfile.dev',

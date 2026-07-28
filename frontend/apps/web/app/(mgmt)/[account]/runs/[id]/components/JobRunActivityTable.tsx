@@ -1,6 +1,6 @@
 import RunTimeline from '@/components/RunTImeline/RunTimeline';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
-import { JobRunEvent, JobRunStatus as JobRunStatusEnum } from '@neosync/sdk';
+import { JobRunEvent, JobRunStatus as JobRunStatusEnum } from '@husonym/sdk';
 import { ReactElement, useMemo } from 'react';
 import { getColumns } from './JobRunActivityTable/columns';
 import { DataTable } from './JobRunActivityTable/data-table';

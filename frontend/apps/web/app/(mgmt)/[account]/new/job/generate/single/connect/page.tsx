@@ -39,7 +39,7 @@ import {
   ConnectError,
   ConnectionConfigSchema,
   ConnectionService,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect, useState } from 'react';

@@ -1,6 +1,6 @@
 import { isPiiDetectJob } from '@/app/(mgmt)/[account]/jobs/[id]/util';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService } from '@neosync/sdk';
+import { JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 
 interface Props {

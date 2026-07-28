@@ -1,11 +1,11 @@
 image:
-  repository: neosync-api
+  repository: husonym-api
 
 serviceAccount:
   create: true
 
 db:
-  host: neosync-postgresql
+  host: husonym-postgresql
   name: nucleus
   port: 5432
   username: postgres
@@ -14,7 +14,7 @@ db:
 
 migrations:
   db:
-    host: neosync-postgresql
+    host: husonym-postgresql
     name: nucleus
     port: 5432
     username: postgres
@@ -37,8 +37,8 @@ servicePort: 80
 containerPort: 8080
 
 auth:
-  baseUrl: https://auth.Groupe-Hevea.dev/
-  audience: https://api.Groupe-Hevea.com
+  baseUrl: https://auth.fishtre-compagnie.dev/
+  audience: https://api.fishtre-compagnie.com
 
 temporal:
   url: temporal.temporal:7233

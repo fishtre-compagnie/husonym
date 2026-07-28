@@ -1,6 +1,6 @@
 'use client';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { useNeosyncUser } from '@/libs/hooks/useNeosyncUser';
+import { useHusonymUser } from '@/libs/hooks/useHusonymUser';
 import { useSession } from 'next-auth/react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import posthog from 'posthog-js';
@@ -61,7 +61,7 @@ export function PHProvider({ children }: PHProps) {
 export function PostHogIdentifier(): ReactElement {
   const { data: systemAppConfig, isLoading: isSystemAppConfigLoading } =
     useGetSystemAppConfig();
-  const { data: userData, isLoading: isUserDataLoading } = useNeosyncUser();
+  const { data: userData, isLoading: isUserDataLoading } = useHusonymUser();
   const { data: session } = useSession();
   const { account, isLoading: isAccountLoading } = useAccount();
   const posthog = usePostHog();
@@ -81,7 +81,7 @@ export function PostHogIdentifier(): ReactElement {
       accountId: account?.id,
       email: user?.email,
       name: user?.name,
-      neosyncCloud: systemAppConfig?.isNeosyncCloud ?? false,
+      husonymCloud: systemAppConfig?.isHusonymCloud ?? false,
       userId,
     });
   }, [
@@ -92,7 +92,7 @@ export function PostHogIdentifier(): ReactElement {
     account?.name,
     userData?.userId,
     systemAppConfig?.isAuthEnabled,
-    systemAppConfig?.isNeosyncCloud,
+    systemAppConfig?.isHusonymCloud,
     user?.email,
     user?.name,
   ]);

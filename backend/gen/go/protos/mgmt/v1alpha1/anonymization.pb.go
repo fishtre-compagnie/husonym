@@ -491,8 +491,8 @@ const file_mgmt_v1alpha1_anonymization_proto_rawDesc = "" +
 	"outputData2\xd8\x01\n" +
 	"\x14AnonymizationService\x12\\\n" +
 	"\rAnonymizeMany\x12#.mgmt.v1alpha1.AnonymizeManyRequest\x1a$.mgmt.v1alpha1.AnonymizeManyResponse\"\x00\x12b\n" +
-	"\x0fAnonymizeSingle\x12%.mgmt.v1alpha1.AnonymizeSingleRequest\x1a&.mgmt.v1alpha1.AnonymizeSingleResponse\"\x00B\xce\x01\n" +
-	"\x11com.mgmt.v1alpha1B\x12AnonymizationProtoP\x01ZPgithub.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
+	"\x0fAnonymizeSingle\x12%.mgmt.v1alpha1.AnonymizeSingleRequest\x1a&.mgmt.v1alpha1.AnonymizeSingleResponse\"\x00B\xd3\x01\n" +
+	"\x11com.mgmt.v1alpha1B\x12AnonymizationProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
 	file_mgmt_v1alpha1_anonymization_proto_rawDescOnce sync.Once

@@ -6,9 +6,9 @@ import (
 	"net/url"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 func (s *Service) GetAuthStatus(

@@ -3,7 +3,7 @@ import FormErrorMessage from '@/components/FormErrorMessage';
 import { FormDescription, FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { create } from '@bufbuild/protobuf';
-import { TransformInt64, TransformInt64Schema } from '@neosync/sdk';
+import { TransformInt64, TransformInt64Schema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 

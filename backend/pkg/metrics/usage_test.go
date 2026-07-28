@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	promapiv1mock "github.com/Groupe-Hevea/neosync/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -43,8 +43,8 @@ func Test_getPromQueryFromMetric_Invalid_Metric(t *testing.T) {
 
 func Test_getDayFromMetric(t *testing.T) {
 	t.Run("valid metric", func(t *testing.T) {
-		actual := getDayFromMetric(model.Metric{NeosyncDateLabel: NeosyncDateFormat}, time.Now())
-		require.Equal(t, NeosyncDateFormat, actual)
+		actual := getDayFromMetric(model.Metric{HusonymDateLabel: HusonymDateFormat}, time.Now())
+		require.Equal(t, HusonymDateFormat, actual)
 	})
 
 	t.Run("timestamp fallback", func(t *testing.T) {
@@ -131,14 +131,14 @@ func Test_GetDailyUsageFromProm(t *testing.T) {
 		mockapi.On("Query", mock.Anything, mock.Anything, mock.Anything).Once().
 			Return(model.Vector{
 				&model.Sample{
-					Metric: model.Metric{NeosyncDateLabel: "2024-09-23"},
+					Metric: model.Metric{HusonymDateLabel: "2024-09-23"},
 					Value:  10,
 					Timestamp: model.TimeFromUnix(
 						time.Date(2024, 9, 23, 12, 0, 0, 0, time.UTC).Unix(),
 					),
 				},
 				&model.Sample{
-					Metric: model.Metric{NeosyncDateLabel: "2024-09-24"},
+					Metric: model.Metric{HusonymDateLabel: "2024-09-24"},
 					Value:  15,
 					Timestamp: model.TimeFromUnix(
 						time.Date(2024, 9, 24, 12, 0, 0, 0, time.UTC).Unix(),
@@ -173,14 +173,14 @@ func Test_GetTotalUsageFromProm(t *testing.T) {
 		mockapi.On("Query", mock.Anything, mock.Anything, mock.Anything).Once().
 			Return(model.Vector{
 				&model.Sample{
-					Metric: model.Metric{NeosyncDateLabel: "2024-09-23"},
+					Metric: model.Metric{HusonymDateLabel: "2024-09-23"},
 					Value:  10,
 					Timestamp: model.TimeFromUnix(
 						time.Date(2024, 9, 23, 12, 0, 0, 0, time.UTC).Unix(),
 					),
 				},
 				&model.Sample{
-					Metric: model.Metric{NeosyncDateLabel: "2024-09-24"},
+					Metric: model.Metric{HusonymDateLabel: "2024-09-24"},
 					Value:  15,
 					Timestamp: model.TimeFromUnix(
 						time.Date(2024, 9, 24, 12, 0, 0, 0, time.UTC).Unix(),
@@ -201,7 +201,7 @@ func Test_GetTotalUsageFromProm(t *testing.T) {
 	})
 }
 
-// Formats the day into the Neosync Date Format of YYYY-DD-MM
+// Formats the day into the Husonym Date Format of YYYY-DD-MM
 func formatDate(d *mgmtv1alpha1.Date) string {
 	return fmt.Sprintf("%04d-%02d-%02d", d.Year, d.Month, d.Day)
 }

@@ -4,7 +4,7 @@ import * as yup from 'yup';
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
-import { Connection, JobHook } from '@neosync/sdk';
+import { Connection, JobHook } from '@husonym/sdk';
 import {
   Description,
   Enabled,

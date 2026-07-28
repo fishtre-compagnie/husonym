@@ -5,7 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { SchemaColumnHeader } from '@/components/jobs/SchemaTable/SchemaColumnHeader';
 import TruncatedText from '@/components/TruncatedText';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { GetJobRunLogsResponse_LogLine } from '@neosync/sdk';
+import { GetJobRunLogsResponse_LogLine } from '@husonym/sdk';
 
 export function getColumns(): ColumnDef<GetJobRunLogsResponse_LogLine>[] {
   return [

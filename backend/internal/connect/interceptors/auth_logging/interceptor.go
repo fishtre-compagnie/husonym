@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	"github.com/Groupe-Hevea/neosync/backend/internal/auth/tokenctx"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	"github.com/Groupe-Hevea/neosync/internal/neosyncdb"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/tokenctx"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type Interceptor struct {
-	db *neosyncdb.NeosyncDb
+	db *husonymdb.HusonymDb
 }
 
-func NewInterceptor(db *neosyncdb.NeosyncDb) connect.Interceptor {
+func NewInterceptor(db *husonymdb.HusonymDb) connect.Interceptor {
 	return &Interceptor{db: db}
 }
 
@@ -39,13 +39,13 @@ func (i *Interceptor) WrapStreamingHandler(
 	}
 }
 
-func setAuthValues(ctx context.Context, db *neosyncdb.NeosyncDb) context.Context {
+func setAuthValues(ctx context.Context, db *husonymdb.HusonymDb) context.Context {
 	vals := getAuthValues(ctx, db)
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx).With(vals...)
 	return logger_interceptor.SetLoggerContext(ctx, logger)
 }
 
-func getAuthValues(ctx context.Context, db *neosyncdb.NeosyncDb) []any {
+func getAuthValues(ctx context.Context, db *husonymdb.HusonymDb) []any {
 	tokenCtxResp, err := tokenctx.GetTokenCtx(ctx)
 	if err != nil {
 		return []any{}
@@ -57,15 +57,15 @@ func getAuthValues(ctx context.Context, db *neosyncdb.NeosyncDb) []any {
 
 		user, err := db.Q.GetUserByProviderSub(ctx, db.Db, tokenCtxResp.JwtContextData.AuthUserId)
 		if err == nil {
-			output = append(output, "userId", neosyncdb.UUIDString(user.ID))
+			output = append(output, "userId", husonymdb.UUIDString(user.ID))
 		}
 	} else if tokenCtxResp.ApiKeyContextData != nil {
 		output = append(output, "apiKeyType", tokenCtxResp.ApiKeyContextData.ApiKeyType)
 		if tokenCtxResp.ApiKeyContextData.ApiKey != nil {
 			output = append(output,
-				"apiKeyId", neosyncdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.ID),
-				"accountId", neosyncdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.AccountID),
-				"userId", neosyncdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.UserID),
+				"apiKeyId", husonymdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.ID),
+				"accountId", husonymdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.AccountID),
+				"userId", husonymdb.UUIDString(tokenCtxResp.ApiKeyContextData.ApiKey.UserID),
 			)
 		}
 	}

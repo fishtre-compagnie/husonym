@@ -685,13 +685,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # needs to be a non-action token if also pushes to the homebrew repo
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           DISABLE_CHANGELOG: false
-          NEOSYNC_BASE_URL: http://localhost:8080
+          HUSONYM_BASE_URL: http://localhost:8080
 
   py-sdk-build:
     name: Python SDK Build
     runs-on: ubuntu-latest
     # Désactivé pour le fork : la publication PyPI (py-sdk-publish) cible le
-    # package "neosync" que le fork ne possède pas, et requiert un trusted publisher.
+    # package "husonym" que le fork ne possède pas, et requiert un trusted publisher.
     # Réactiver avec : if: startsWith(github.ref, 'refs/tags/')
     if: false
     defaults:
@@ -767,7 +767,7 @@ jobs:
   #       uses: actions/setup-node@v6
   #       with:
   #         registry-url: "https://registry.npmjs.org"
-  #         scope: "@neosync"
+  #         scope: "@husonym"
 
   #     - name: Cache node modules
   #       id: cache-npm

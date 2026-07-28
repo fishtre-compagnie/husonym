@@ -3,7 +3,7 @@ import FormErrorMessage from '@/components/FormErrorMessage';
 import { FormDescription, FormLabel } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { create } from '@bufbuild/protobuf';
-import { TransformPhoneNumber, TransformPhoneNumberSchema } from '@neosync/sdk';
+import { TransformPhoneNumber, TransformPhoneNumberSchema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 interface Props extends TransformerConfigProps<TransformPhoneNumber> {}

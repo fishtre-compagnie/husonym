@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Groupe-Hevea/neosync/worker/pkg/rng"
-	"github.com/Groupe-Hevea/neosync/worker/pkg/workflows/datasync/activities/shared"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/stretchr/testify/require"
 )
 

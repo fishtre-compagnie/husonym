@@ -1,7 +1,7 @@
 package main
 
 import (
-	worker_cmd "github.com/Groupe-Hevea/neosync/worker/internal/cmds/worker"
+	worker_cmd "github.com/fishtre-compagnie/husonym/worker/internal/cmds/worker"
 )
 
 func main() {

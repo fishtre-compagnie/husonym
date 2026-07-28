@@ -1,4 +1,4 @@
-package neosync_benthos_mongodb
+package husonym_benthos_mongodb
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	neosync_types "github.com/Groupe-Hevea/neosync/internal/types"
-	neosync_benthos_metadata "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/metadata"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
+	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/redpanda-data/benthos/v4/public/service"
 	"go.mongodb.org/mongo-driver/bson"
@@ -367,9 +367,9 @@ func extJSONFromMap(b service.MessageBatch, i int, m *bloblang.Executor) (any, e
 	return marshalJSONToBSONDocument(root, keyTypeMap)
 }
 
-func getKeyTypMap(p *service.Message) (map[string]neosync_types.KeyType, error) {
-	keyTypeMap := map[string]neosync_types.KeyType{}
-	meta, ok := p.MetaGetMut(neosync_benthos_metadata.MetaTypeMapStr)
+func getKeyTypMap(p *service.Message) (map[string]husonym_types.KeyType, error) {
+	keyTypeMap := map[string]husonym_types.KeyType{}
+	meta, ok := p.MetaGetMut(husonym_benthos_metadata.MetaTypeMapStr)
 	if ok {
 		kt, err := convertToMapStringKeyType(meta)
 		if err != nil {
@@ -377,7 +377,7 @@ func getKeyTypMap(p *service.Message) (map[string]neosync_types.KeyType, error) 
 		}
 		keyTypeMap = kt
 	}
-	ktm := map[string]neosync_types.KeyType{}
+	ktm := map[string]husonym_types.KeyType{}
 	for k, v := range keyTypeMap {
 		if k == "_id" {
 			ktm[k] = v
@@ -387,8 +387,8 @@ func getKeyTypMap(p *service.Message) (map[string]neosync_types.KeyType, error) 
 	return ktm, nil
 }
 
-func convertToMapStringKeyType(i any) (map[string]neosync_types.KeyType, error) {
-	if m, ok := i.(map[string]neosync_types.KeyType); ok {
+func convertToMapStringKeyType(i any) (map[string]husonym_types.KeyType, error) {
+	if m, ok := i.(map[string]husonym_types.KeyType); ok {
 		return m, nil
 	}
 
@@ -398,7 +398,7 @@ func convertToMapStringKeyType(i any) (map[string]neosync_types.KeyType, error) 
 func marshalToBSONValue(
 	key string,
 	root any,
-	keyTypeMap map[string]neosync_types.KeyType,
+	keyTypeMap map[string]husonym_types.KeyType,
 ) (any, error) {
 	if root == nil {
 		return nil, nil
@@ -415,7 +415,7 @@ func marshalToBSONValue(
 	root = val.Interface()
 	if typeStr, ok := keyTypeMap[key]; ok {
 		switch typeStr {
-		case neosync_types.Decimal128:
+		case husonym_types.Decimal128:
 			if d, ok := root.(primitive.Decimal128); ok {
 				return d, nil
 			}
@@ -442,7 +442,7 @@ func marshalToBSONValue(
 			}
 			return nil, fmt.Errorf("could not convert %v to Decimal128", root)
 
-		case neosync_types.Timestamp:
+		case husonym_types.Timestamp:
 			if ts, ok := root.(primitive.Timestamp); ok {
 				return ts, nil
 			}
@@ -452,7 +452,7 @@ func marshalToBSONValue(
 			}
 			return primitive.Timestamp{T: t, I: 1}, nil
 
-		case neosync_types.ObjectID:
+		case husonym_types.ObjectID:
 			if oid, ok := root.(primitive.ObjectID); ok {
 				return oid, nil
 			}
@@ -525,7 +525,7 @@ func marshalToBSONValue(
 
 func marshalJSONToBSONDocument(
 	root any,
-	keyTypeMap map[string]neosync_types.KeyType,
+	keyTypeMap map[string]husonym_types.KeyType,
 ) (bson.D, error) {
 	m, ok := root.(map[string]any)
 	if !ok {

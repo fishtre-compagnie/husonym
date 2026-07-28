@@ -1,10 +1,10 @@
-package neosync_benthos_dynamodb
+package husonym_benthos_dynamodb
 
 import (
 	"context"
 	"testing"
 
-	dynamodbmapper "github.com/Groupe-Hevea/neosync/internal/database-record-mapper/dynamodb"
+	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -236,5 +236,5 @@ credentials:
 	require.True(t, credsConfig.UseEc2)
 	require.Equal(t, "my-role", credsConfig.Role)
 	require.Equal(t, "123", credsConfig.RoleExternalId)
-	require.Equal(t, "neosync", credsConfig.RoleSessionName)
+	require.Equal(t, "husonym", credsConfig.RoleSessionName)
 }

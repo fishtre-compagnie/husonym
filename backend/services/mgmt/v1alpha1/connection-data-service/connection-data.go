@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/Groupe-Hevea/neosync/backend/internal/connect/interceptors/logger"
-	sqlmanager_shared "github.com/Groupe-Hevea/neosync/backend/pkg/sqlmanager/shared"
-	nucleuserrors "github.com/Groupe-Hevea/neosync/internal/errors"
-	neosyncgob "github.com/Groupe-Hevea/neosync/internal/gob"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymgob "github.com/fishtre-compagnie/husonym/internal/gob"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 
@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	neosyncgob.RegisterGobTypes()
+	husonymgob.RegisterGobTypes()
 }
 
 // GetConnectionDataStream streams data from a connection source (e.g. MySQL, Postgres, S3, etc)

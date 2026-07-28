@@ -6,7 +6,7 @@ import TruncatedText from '@/components/TruncatedText';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
-import { JobStatus } from '@neosync/sdk';
+import { JobStatus } from '@husonym/sdk';
 import NextLink from 'next/link';
 import { DataTableColumnHeader } from './data-table-column-header';
 import { DataTableRowActions } from './data-table-row-actions';

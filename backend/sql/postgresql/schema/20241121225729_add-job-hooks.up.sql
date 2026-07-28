@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS neosync_api.job_hooks (
+CREATE TABLE IF NOT EXISTS husonym_api.job_hooks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   name text NOT NULL,
@@ -33,12 +33,12 @@ CREATE TABLE IF NOT EXISTS neosync_api.job_hooks (
 
   CONSTRAINT fk_job_hooks_connection
     FOREIGN KEY (connection_id)
-    REFERENCES neosync_api.connections(id)
+    REFERENCES husonym_api.connections(id)
     ON DELETE RESTRICT,
 
   CONSTRAINT fk_job_hooks_job
     FOREIGN KEY (job_id)
-    REFERENCES neosync_api.jobs(id)
+    REFERENCES husonym_api.jobs(id)
     ON DELETE CASCADE,
 
   CONSTRAINT job_hooks_priority_check CHECK (priority >= 0),
@@ -47,23 +47,23 @@ CREATE TABLE IF NOT EXISTS neosync_api.job_hooks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_job_hooks_job_id
-  ON neosync_api.job_hooks(job_id);
+  ON husonym_api.job_hooks(job_id);
 
 CREATE INDEX IF NOT EXISTS idx_job_hooks_priority
-  ON neosync_api.job_hooks(priority);
+  ON husonym_api.job_hooks(priority);
 
 CREATE INDEX IF NOT EXISTS idx_job_hooks_enabled
-  ON neosync_api.job_hooks(enabled)
+  ON husonym_api.job_hooks(enabled)
   WHERE enabled = true;
 
 CREATE INDEX IF NOT EXISTS idx_job_hooks_timing_lookup
-  ON neosync_api.job_hooks(job_id, hook_timing, enabled)
+  ON husonym_api.job_hooks(job_id, hook_timing, enabled)
   WHERE enabled = true;
 
-CREATE TRIGGER update_neosync_api_jobhooks_updated_at
-  BEFORE UPDATE ON neosync_api.job_hooks
+CREATE TRIGGER update_husonym_api_jobhooks_updated_at
+  BEFORE UPDATE ON husonym_api.job_hooks
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
-COMMENT ON TABLE neosync_api.job_hooks
+COMMENT ON TABLE husonym_api.job_hooks
   IS 'Stores hooks that can be configured to run as part of a job';

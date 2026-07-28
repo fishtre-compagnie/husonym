@@ -27,7 +27,7 @@ import {
   JobRunEvent,
   JobRunEventMetadata,
   JobRunSyncMetadata,
-} from '@neosync/sdk';
+} from '@husonym/sdk';
 import { useLocalStorage } from 'usehooks-ts';
 
 interface DataTableProps {

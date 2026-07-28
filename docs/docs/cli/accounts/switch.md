@@ -1,24 +1,24 @@
 ---
 title: Switch
-description: Learn how to switch accounts with the neosync accounts switch command.
+description: Learn how to switch accounts with the husonym accounts switch command.
 id: switch
 hide_title: false
 slug: /cli/accounts/switch
 ---
 
-# neosync switch
+# husonym switch
 
 ## Overview
 
-Learn how to switch accounts with the neosync accounts switch command.
+Learn how to switch accounts with the husonym accounts switch command.
 
-The `neosync accounts switch` command is used to switch the account in the cli context.
+The `husonym accounts switch` command is used to switch the account in the cli context.
 This is useful if you want to run cli commands for a different account.
 
 ## Usage
 
 ```bash
-neosync switch <name | id>
+husonym switch <name | id>
 ```
 
 ### Argument: name | id

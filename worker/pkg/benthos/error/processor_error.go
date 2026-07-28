@@ -1,4 +1,4 @@
-package neosync_benthos_error
+package husonym_benthos_error
 
 import (
 	"context"

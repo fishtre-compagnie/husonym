@@ -36,7 +36,7 @@ import {
 } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
-import { AccountRole, UserAccountService } from '@neosync/sdk';
+import { AccountRole, UserAccountService } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';

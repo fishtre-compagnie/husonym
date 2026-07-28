@@ -6,18 +6,18 @@ import (
 	"log/slog"
 	"strings"
 
-	mgmtv1alpha1 "github.com/Groupe-Hevea/neosync/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/Groupe-Hevea/neosync/internal/ee/presidio"
-	"github.com/Groupe-Hevea/neosync/internal/queue"
-	transformer_utils "github.com/Groupe-Hevea/neosync/worker/pkg/benthos/transformers/utils"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/queue"
+	transformer_utils "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/utils"
 )
 
 var (
 	supportedLanguage = "en"
 )
 
-// Used when using the PII Anonymizer with Neosync Transformers
-type NeosyncOperatorApi interface {
+// Used when using the PII Anonymizer with Husonym Transformers
+type HusonymOperatorApi interface {
 	Transform(
 		ctx context.Context,
 		config *mgmtv1alpha1.TransformerConfig,
@@ -29,7 +29,7 @@ func TransformPiiText(
 	ctx context.Context,
 	analyzeClient presidioapi.AnalyzeInterface,
 	anonymizeClient presidioapi.AnonymizeInterface,
-	neosyncOperatorApi NeosyncOperatorApi,
+	husonymOperatorApi HusonymOperatorApi,
 	config *mgmtv1alpha1.TransformPiiText,
 	value string,
 	logger *slog.Logger,
@@ -62,9 +62,9 @@ func TransformPiiText(
 
 	analysisResults := removeAllowedPhrases(*analyzeResp.JSON200, value, config.GetAllowedPhrases())
 
-	analysisResults, neosyncEntityMap := processAnalysisResultsForNeosyncTransformers(
+	analysisResults, husonymEntityMap := processAnalysisResultsForHusonymTransformers(
 		analysisResults,
-		getNeosyncConfiguredEntities(config),
+		getHusonymConfiguredEntities(config),
 		value,
 	)
 	anonymizers, err := buildAnonymizers(config)
@@ -84,32 +84,32 @@ func TransformPiiText(
 	if err != nil {
 		return "", err
 	}
-	if len(neosyncEntityMap) == 0 {
+	if len(husonymEntityMap) == 0 {
 		return *anonResp.JSON200.Text, nil
 	}
 
-	outputText, err := handleNeosyncEntityAnonymization(
+	outputText, err := handleHusonymEntityAnonymization(
 		ctx,
 		anonResp.JSON200,
 		config.GetDefaultAnonymizer(),
 		config.GetEntityAnonymizers(),
-		neosyncEntityMap,
-		neosyncOperatorApi,
+		husonymEntityMap,
+		husonymOperatorApi,
 		logger,
 	)
 	if err != nil {
-		return "", fmt.Errorf("unable to handle neosync entity anonymization: %w", err)
+		return "", fmt.Errorf("unable to handle husonym entity anonymization: %w", err)
 	}
 	return outputText, nil
 }
 
-func handleNeosyncEntityAnonymization(
+func handleHusonymEntityAnonymization(
 	ctx context.Context,
 	resp *presidioapi.AnonymizeResponse,
 	defaultAnonymizer *mgmtv1alpha1.PiiAnonymizer,
 	entityAnonymizerMap map[string]*mgmtv1alpha1.PiiAnonymizer,
 	entityValueMap map[string]*queue.Queue[string],
-	neosyncOperatorApi NeosyncOperatorApi,
+	husonymOperatorApi HusonymOperatorApi,
 	logger *slog.Logger,
 ) (string, error) {
 	outputText := *resp.Text
@@ -138,7 +138,7 @@ func handleNeosyncEntityAnonymization(
 	}
 
 	for _, item := range *resp.Items {
-		presidioEntity := strings.TrimPrefix(item.EntityType, neosyncEntityPrefix)
+		presidioEntity := strings.TrimPrefix(item.EntityType, husonymEntityPrefix)
 
 		var transformerConfig *mgmtv1alpha1.TransformerConfig
 		entityTransformerConfig, ok := entityConfigMap[presidioEntity]
@@ -166,13 +166,13 @@ func handleNeosyncEntityAnonymization(
 			logger.Warn("no original values found in queue for entity", "entity", item.EntityType)
 			continue
 		}
-		transformedSnippet, err := neosyncOperatorApi.Transform(
+		transformedSnippet, err := husonymOperatorApi.Transform(
 			ctx,
 			transformerConfig,
 			originalValue,
 		)
 		if err != nil {
-			return "", fmt.Errorf("unable to transform neosync entity %s: %w", presidioEntity, err)
+			return "", fmt.Errorf("unable to transform husonym entity %s: %w", presidioEntity, err)
 		}
 		logger.Debug(
 			fmt.Sprintf("transformed snippet %s replacing %s", transformedSnippet, *item.Text),
@@ -267,7 +267,7 @@ func getDefaultTransformerConfigByEntity(entity string) *mgmtv1alpha1.Transforme
 		}
 	}
 }
-func getNeosyncConfiguredEntities(config *mgmtv1alpha1.TransformPiiText) []string {
+func getHusonymConfiguredEntities(config *mgmtv1alpha1.TransformPiiText) []string {
 	entities := []string{}
 	for entity := range config.GetEntityAnonymizers() {
 		entities = append(entities, entity)
@@ -293,7 +293,7 @@ func buildAnonymizers(
 		}
 		if ok {
 			if anonymizer.GetTransform() != nil {
-				output[fmt.Sprintf("%s%s", neosyncEntityPrefix, entity)] = *ap
+				output[fmt.Sprintf("%s%s", husonymEntityPrefix, entity)] = *ap
 			} else {
 				output[entity] = *ap
 			}
@@ -326,16 +326,16 @@ func removeAllowedPhrases(
 }
 
 const (
-	neosyncEntityPrefix = "NEOSYNC_"
+	husonymEntityPrefix = "HUSONYM_"
 )
 
-func processAnalysisResultsForNeosyncTransformers(
+func processAnalysisResultsForHusonymTransformers(
 	inputResults []presidioapi.RecognizerResultWithAnaysisExplanation,
-	neosyncEnabledEntities []string,
+	husonymEnabledEntities []string,
 	inputText string,
 ) (analysisResults []presidioapi.RecognizerResultWithAnaysisExplanation, entityValueMap map[string]*queue.Queue[string]) {
 	entitySet := map[string]struct{}{}
-	for _, entity := range neosyncEnabledEntities {
+	for _, entity := range husonymEnabledEntities {
 		entitySet[entity] = struct{}{}
 	}
 
@@ -343,7 +343,7 @@ func processAnalysisResultsForNeosyncTransformers(
 	entityValueMap = map[string]*queue.Queue[string]{} // entity -> list of original values
 	for _, result := range inputResults {
 		if _, ok := entitySet[result.EntityType]; ok {
-			result.EntityType = fmt.Sprintf("%s%s", neosyncEntityPrefix, result.EntityType)
+			result.EntityType = fmt.Sprintf("%s%s", husonymEntityPrefix, result.EntityType)
 		}
 		if _, ok := entityValueMap[result.EntityType]; !ok {
 			entityValueMap[result.EntityType] = queue.NewQueue[string]()
@@ -413,7 +413,7 @@ func toPresidioAnonymizerConfig(
 	case *mgmtv1alpha1.PiiAnonymizer_Transform_:
 		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
 		err := ap.FromReplace(
-			presidioapi.Replace{Type: "replace", NewValue: withNeosyncEntityBumpers(fmt.Sprintf("%s%s", neosyncEntityPrefix, entity))},
+			presidioapi.Replace{Type: "replace", NewValue: withHusonymEntityBumpers(fmt.Sprintf("%s%s", husonymEntityPrefix, entity))},
 		)
 		if err != nil {
 			return nil, false, err
@@ -423,7 +423,7 @@ func toPresidioAnonymizerConfig(
 	return nil, false, nil
 }
 
-func withNeosyncEntityBumpers(text string) string {
+func withHusonymEntityBumpers(text string) string {
 	return fmt.Sprintf("{{%s}}", text)
 }
 

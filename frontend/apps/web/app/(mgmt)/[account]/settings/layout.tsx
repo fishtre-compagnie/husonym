@@ -6,7 +6,7 @@ import { useAccount } from '@/components/providers/account-provider';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { cn } from '@/libs/utils';
 import { toTitleCase } from '@/util/util';
-import { UserAccountType } from '@neosync/sdk';
+import { UserAccountType } from '@husonym/sdk';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactElement } from 'react';
@@ -89,9 +89,9 @@ function useGetNavSettings(): Item[] {
     account?.type === UserAccountType.ENTERPRISE
       ? items
       : items.filter((item) => item.ref !== 'members');
-  // filter temporal page if app is in neosync cloud mode
+  // filter temporal page if app is in husonym cloud mode
   items =
-    !isSystemConfigLoading && systemAppConfigData?.isNeosyncCloud
+    !isSystemConfigLoading && systemAppConfigData?.isHusonymCloud
       ? items.filter((item) => item.ref !== 'temporal')
       : items;
   // filter usage page if metrics service is not enabled
@@ -101,7 +101,7 @@ function useGetNavSettings(): Item[] {
       : items;
   // filter out billing for local
   items =
-    !isSystemConfigLoading && systemAppConfigData?.isNeosyncCloud
+    !isSystemConfigLoading && systemAppConfigData?.isHusonymCloud
       ? items
       : items.filter((item) => item.ref !== 'billing');
   // filter out hooks if account hooks are not enabled

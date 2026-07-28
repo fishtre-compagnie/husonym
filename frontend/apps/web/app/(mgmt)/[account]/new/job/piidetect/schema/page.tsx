@@ -13,7 +13,7 @@ import { PageProps } from '@/components/types';
 import { Button } from '@/components/ui/button';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
-import { Connection, ConnectionService, JobService } from '@neosync/sdk';
+import { Connection, ConnectionService, JobService } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';
 import { FormEvent, ReactElement, use, useEffect } from 'react';

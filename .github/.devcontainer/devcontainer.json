@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
-	"name": "neosync",
+	"name": "husonym",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	// See: https://github.com/devcontainers/ci/issues/191#issuecomment-1473518609
 	// Due to multi-platform builds docker tag fails, this is a workaround
@@ -47,9 +47,9 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		10350, // tilt
-		8080, // neosync api
-		3000, // neosync app
-		5432, // neosync db
+		8080, // husonym api
+		3000, // husonym app
+		5432, // husonym db
 		8233 // temporal ui
 	],
 	"customizations": {

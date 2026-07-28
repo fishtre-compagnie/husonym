@@ -70,7 +70,7 @@ export default function WelcomeRouter({
     },
     {
       name: 'Data Generation',
-      description: 'Generate synthetic data from using Neosync Transformers.',
+      description: 'Generate synthetic data from using Husonym Transformers.',
       href: `/${account?.name}/new/job/define?${dataGenParams.toString()}`,
       icon: <AiOutlineExperiment />,
       type: 'generate-table',

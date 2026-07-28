@@ -3,7 +3,7 @@ import FormErrorMessage from '@/components/FormErrorMessage';
 import { FormDescription, FormLabel } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { create } from '@bufbuild/protobuf';
-import { TransformFullName, TransformFullNameSchema } from '@neosync/sdk';
+import { TransformFullName, TransformFullNameSchema } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { TransformerConfigProps } from './util';
 

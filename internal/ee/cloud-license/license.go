@@ -14,10 +14,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-//go:embed neosync_cloud_pub.pem
+//go:embed husonym_cloud_pub.pem
 var publicKeyPEM string
 
-// The expected base64 decoded structure of the NEOSYNC_CLOUD_LICENSE file
+// The expected base64 decoded structure of the HUSONYM_CLOUD_LICENSE file
 type licenseFile struct {
 	License   string `json:"license"`
 	Signature string `json:"signature"`
@@ -34,7 +34,7 @@ type CloudLicense struct {
 	contents *licenseContents
 }
 
-// Determines if Neosync Cloud is enabled.
+// Determines if Husonym Cloud is enabled.
 // If not enabled, returns a valid struct where IsValid returns false
 // If enabled but no license if provided, returns an error
 func NewFromEnv() (*CloudLicense, error) {
@@ -72,8 +72,8 @@ func (l *licenseContents) IsValid() bool {
 }
 
 const (
-	cloudLicenseEvKey = "NEOSYNC_CLOUD_LICENSE"
-	cloudEnabledEvKey = "NEOSYNC_CLOUD"
+	cloudLicenseEvKey = "HUSONYM_CLOUD_LICENSE"
+	cloudEnabledEvKey = "HUSONYM_CLOUD"
 )
 
 func getFromEnv() (*licenseContents, bool, error) {
@@ -92,7 +92,7 @@ func getFromEnv() (*licenseContents, bool, error) {
 	}
 	pk, err := parsePublicKey(publicKeyPEM)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to parse neosync cloud public key: %w", err)
+		return nil, false, fmt.Errorf("unable to parse husonym cloud public key: %w", err)
 	}
 	contents, err := getLicense(input, pk)
 	if err != nil {
