@@ -7,8 +7,9 @@ import {
 } from '@/util/util';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
-import { SystemTransformerSchema } from '@husonym/sdk';
+import { SystemTransformerSchema, TransformerSource } from '@husonym/sdk';
 import { ColumnDef, createColumnHelper, Row } from '@tanstack/react-table';
+import RgpdCell from './RgpdCell';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
 import EditDocumentKey from '../NosqlTable/EditDocumentKey';
@@ -28,6 +29,10 @@ export interface JobMappingRow {
   isNullable: boolean;
   attributes: RowAttribute;
   transformer: JobMappingTransformerForm;
+  // Détection RGPD (heuristique backend, cf. pkg/piidetect)
+  isSensitive: boolean;
+  dataCategory?: string;
+  suggestedTransformerSource: TransformerSource;
 }
 
 interface RowAttribute {
@@ -238,6 +243,33 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     }
   );
 
+  const rgpdColumn = columnHelper.display({
+    id: 'rgpd',
+    header({ column }) {
+      return <SchemaColumnHeader column={column} title="RGPD" />;
+    },
+    cell({ table, row }) {
+      return (
+        <RgpdCell
+          isSensitive={row.original.isSensitive}
+          dataCategory={row.original.dataCategory}
+          suggestedSource={row.original.suggestedTransformerSource}
+          getTransformers={() =>
+            table.options.meta?.jmTable?.getAvailableTransformers(
+              row.index
+            ) ?? { system: [], userDefined: [] }
+          }
+          onApply={(updatedValue) =>
+            table.options.meta?.jmTable?.onTransformerUpdate(
+              row.index,
+              updatedValue
+            )
+          }
+        />
+      );
+    },
+  });
+
   return [
     checkboxColumn,
     schemaColumn,
@@ -247,6 +279,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     isNullableColumn,
     constraintColumn,
     attributeColumn,
+    rgpdColumn,
     transformerColumn,
   ];
 }

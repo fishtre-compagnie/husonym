@@ -169,6 +169,10 @@ export function SchemaTable(props: Props): ReactElement {
         },
         isNullable: constraintHandler.getIsNullable(colKey),
         transformer: d.transformer,
+        isSensitive: constraintHandler.getIsSensitive(colKey),
+        dataCategory: constraintHandler.getDataCategory(colKey),
+        suggestedTransformerSource:
+          constraintHandler.getSuggestedTransformerSource(colKey),
       };
     });
   }, [data, constraintHandler]);
