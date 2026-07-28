@@ -21,9 +21,6 @@ export interface SystemAppConfig {
   publicHusonymApiBaseUrl: string;
   isRbacEnabled: boolean;
   isPiiDetectionJobEnabled: boolean;
-  // Whether the Athanor transformation engine is enabled on the worker.
-  // Read-only display value; must match the worker's ENABLE_ATHANOR_ENGINE.
-  isAthanorEngineEnabled: boolean;
 }
 
 interface PosthogConfig {
