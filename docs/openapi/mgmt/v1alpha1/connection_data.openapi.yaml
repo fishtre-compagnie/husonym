@@ -234,6 +234,47 @@ components:
           description: The unique identifier of the job run to get the data stream for.
       title: AwsS3StreamConfig
       additionalProperties: false
+    mgmt.v1alpha1.ColumnPiiDetection:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+        table:
+          type: string
+          title: table
+        column:
+          type: string
+          title: column
+        entityType:
+          type: string
+          title: entity_type
+          description: 'Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if none.'
+        score:
+          type: number
+          title: score
+          format: float
+          description: Average score of the detected entity in [0,1].
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: Recommended transformer for this entity.
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: True if the column is considered personal data (GDPR).
+        matchCount:
+          type: integer
+          title: match_count
+          description: Number of sampled values in which the entity was found.
+        sampledCount:
+          type: integer
+          title: sampled_count
+          description: Total number of non-empty sampled values analyzed.
+      title: ColumnPiiDetection
+      additionalProperties: false
+      description: PII detected in a column by analyzing sampled content (Presidio).
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
       allOf:
@@ -490,6 +531,55 @@ components:
           minLength: 1
           description: The table name
       title: DatabaseTable
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to scan.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table to scan.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to scan.
+        columns:
+          type: array
+          items:
+            type: string
+          title: columns
+          description: Columns to analyze. Empty means every column of the table.
+        sampleSize:
+          type: integer
+          title: sample_size
+          description: Number of sampled values per column (default 20).
+        scoreThreshold:
+          type: number
+          title: score_threshold
+          format: float
+          description: Presidio score threshold in [0,1] (default 0.5).
+        language:
+          type: string
+          title: language
+          description: 'Content language (ISO 639-1). Default: server default or "en".'
+      title: DetectPiiInConnectionDataRequest
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataResponse:
+      type: object
+      properties:
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiDetection'
+          title: detections
+      title: DetectPiiInConnectionDataResponse
       additionalProperties: false
     mgmt.v1alpha1.DynamoDBSchemaConfig:
       type: object
@@ -1534,6 +1624,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesResponse'
+  /mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: DetectPiiInConnectionData
+      description: |-
+        Scans sampled column content through Presidio to detect PII (deep scan).
+         Complements the name-based heuristic returned by GetConnectionSchema.
+      operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse'
 tags:
   - name: mgmt.v1alpha1.ConnectionDataService
     description: |-

@@ -61,6 +61,11 @@ class ConnectionDataServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesResponse.FromString,
                 _registered_method=True)
+        self.DetectPiiInConnectionData = channel.unary_unary(
+                '/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData',
+                request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
+                _registered_method=True)
 
 
 class ConnectionDataServiceServicer:
@@ -133,6 +138,14 @@ class ConnectionDataServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DetectPiiInConnectionData(self, request, context):
+        """Scans sampled column content through Presidio to detect PII (deep scan).
+        Complements the name-based heuristic returned by GetConnectionSchema.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ConnectionDataServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -180,6 +193,11 @@ def add_ConnectionDataServiceServicer_to_server(servicer, server):
                     servicer.GetAllSchemasAndTables,
                     request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesResponse.SerializeToString,
+            ),
+            'DetectPiiInConnectionData': grpc.unary_unary_rpc_method_handler(
+                    servicer.DetectPiiInConnectionData,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -427,6 +445,33 @@ class ConnectionDataService:
             '/mgmt.v1alpha1.ConnectionDataService/GetAllSchemasAndTables',
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetAllSchemasAndTablesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DetectPiiInConnectionData(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData',
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -421,3 +421,49 @@ class GetAllSchemasAndTablesResponse(_message.Message):
     schemas: _containers.RepeatedCompositeFieldContainer[GetAllSchemasAndTablesResponse.Schema]
     tables: _containers.RepeatedCompositeFieldContainer[GetAllSchemasAndTablesResponse.Table]
     def __init__(self, schemas: _Optional[_Iterable[_Union[GetAllSchemasAndTablesResponse.Schema, _Mapping]]] = ..., tables: _Optional[_Iterable[_Union[GetAllSchemasAndTablesResponse.Table, _Mapping]]] = ...) -> None: ...
+
+class DetectPiiInConnectionDataRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "columns", "sample_size", "score_threshold", "language")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    SAMPLE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    SCORE_THRESHOLD_FIELD_NUMBER: _ClassVar[int]
+    LANGUAGE_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    columns: _containers.RepeatedScalarFieldContainer[str]
+    sample_size: int
+    score_threshold: float
+    language: str
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., sample_size: _Optional[int] = ..., score_threshold: _Optional[float] = ..., language: _Optional[str] = ...) -> None: ...
+
+class ColumnPiiDetection(_message.Message):
+    __slots__ = ("schema", "table", "column", "entity_type", "score", "suggested_transformer_source", "is_sensitive", "match_count", "sampled_count")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    ENTITY_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SCORE_FIELD_NUMBER: _ClassVar[int]
+    SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
+    MATCH_COUNT_FIELD_NUMBER: _ClassVar[int]
+    SAMPLED_COUNT_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    column: str
+    entity_type: str
+    score: float
+    suggested_transformer_source: _transformer_pb2.TransformerSource
+    is_sensitive: bool
+    match_count: int
+    sampled_count: int
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., entity_type: _Optional[str] = ..., score: _Optional[float] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., is_sensitive: _Optional[bool] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ...) -> None: ...
+
+class DetectPiiInConnectionDataResponse(_message.Message):
+    __slots__ = ("detections",)
+    DETECTIONS_FIELD_NUMBER: _ClassVar[int]
+    detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
+    def __init__(self, detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ...) -> None: ...

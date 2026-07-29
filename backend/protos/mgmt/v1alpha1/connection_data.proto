@@ -324,6 +324,46 @@ message GetAllSchemasAndTablesResponse {
   }
 }
 
+message DetectPiiInConnectionDataRequest {
+  // The unique identifier of the connection to scan.
+  string connection_id = 1 [(buf.validate.field).string.uuid = true];
+  // The schema of the table to scan.
+  string schema = 2 [(buf.validate.field).string.min_len = 1];
+  // The table to scan.
+  string table = 3 [(buf.validate.field).string.min_len = 1];
+  // Columns to analyze. Empty means every column of the table.
+  repeated string columns = 4;
+  // Number of sampled values per column (default 20).
+  uint32 sample_size = 5;
+  // Presidio score threshold in [0,1] (default 0.5).
+  float score_threshold = 6;
+  // Content language (ISO 639-1). Default: server default or "en".
+  string language = 7;
+}
+
+// PII detected in a column by analyzing sampled content (Presidio).
+message ColumnPiiDetection {
+  string schema = 1;
+  string table = 2;
+  string column = 3;
+  // Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if none.
+  string entity_type = 4;
+  // Average score of the detected entity in [0,1].
+  float score = 5;
+  // Recommended transformer for this entity.
+  TransformerSource suggested_transformer_source = 6;
+  // True if the column is considered personal data (GDPR).
+  bool is_sensitive = 7;
+  // Number of sampled values in which the entity was found.
+  uint32 match_count = 8;
+  // Total number of non-empty sampled values analyzed.
+  uint32 sampled_count = 9;
+}
+
+message DetectPiiInConnectionDataResponse {
+  repeated ColumnPiiDetection detections = 1;
+}
+
 // Service for managing connection data.
 // This is used in handle data from a connection
 service ConnectionDataService {
@@ -349,6 +389,11 @@ service ConnectionDataService {
   }
   // Get all schemas and tables for a connection
   rpc GetAllSchemasAndTables(GetAllSchemasAndTablesRequest) returns (GetAllSchemasAndTablesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Scans sampled column content through Presidio to detect PII (deep scan).
+  // Complements the name-based heuristic returned by GetConnectionSchema.
+  rpc DetectPiiInConnectionData(DetectPiiInConnectionDataRequest) returns (DetectPiiInConnectionDataResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

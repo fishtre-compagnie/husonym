@@ -60,6 +60,9 @@ const (
 	// ConnectionDataServiceGetAllSchemasAndTablesProcedure is the fully-qualified name of the
 	// ConnectionDataService's GetAllSchemasAndTables RPC.
 	ConnectionDataServiceGetAllSchemasAndTablesProcedure = "/mgmt.v1alpha1.ConnectionDataService/GetAllSchemasAndTables"
+	// ConnectionDataServiceDetectPiiInConnectionDataProcedure is the fully-qualified name of the
+	// ConnectionDataService's DetectPiiInConnectionData RPC.
+	ConnectionDataServiceDetectPiiInConnectionDataProcedure = "/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData"
 )
 
 // ConnectionDataServiceClient is a client for the mgmt.v1alpha1.ConnectionDataService service.
@@ -84,6 +87,9 @@ type ConnectionDataServiceClient interface {
 	GetTableRowCount(context.Context, *connect.Request[v1alpha1.GetTableRowCountRequest]) (*connect.Response[v1alpha1.GetTableRowCountResponse], error)
 	// Get all schemas and tables for a connection
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
+	// Scans sampled column content through Presidio to detect PII (deep scan).
+	// Complements the name-based heuristic returned by GetConnectionSchema.
+	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
 }
 
 // NewConnectionDataServiceClient constructs a client for the mgmt.v1alpha1.ConnectionDataService
@@ -153,6 +159,13 @@ func NewConnectionDataServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		detectPiiInConnectionData: connect.NewClient[v1alpha1.DetectPiiInConnectionDataRequest, v1alpha1.DetectPiiInConnectionDataResponse](
+			httpClient,
+			baseURL+ConnectionDataServiceDetectPiiInConnectionDataProcedure,
+			connect.WithSchema(connectionDataServiceMethods.ByName("DetectPiiInConnectionData")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -167,6 +180,7 @@ type connectionDataServiceClient struct {
 	getAiGeneratedData            *connect.Client[v1alpha1.GetAiGeneratedDataRequest, v1alpha1.GetAiGeneratedDataResponse]
 	getTableRowCount              *connect.Client[v1alpha1.GetTableRowCountRequest, v1alpha1.GetTableRowCountResponse]
 	getAllSchemasAndTables        *connect.Client[v1alpha1.GetAllSchemasAndTablesRequest, v1alpha1.GetAllSchemasAndTablesResponse]
+	detectPiiInConnectionData     *connect.Client[v1alpha1.DetectPiiInConnectionDataRequest, v1alpha1.DetectPiiInConnectionDataResponse]
 }
 
 // GetConnectionDataStream calls mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream.
@@ -216,6 +230,11 @@ func (c *connectionDataServiceClient) GetAllSchemasAndTables(ctx context.Context
 	return c.getAllSchemasAndTables.CallUnary(ctx, req)
 }
 
+// DetectPiiInConnectionData calls mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData.
+func (c *connectionDataServiceClient) DetectPiiInConnectionData(ctx context.Context, req *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error) {
+	return c.detectPiiInConnectionData.CallUnary(ctx, req)
+}
+
 // ConnectionDataServiceHandler is an implementation of the mgmt.v1alpha1.ConnectionDataService
 // service.
 type ConnectionDataServiceHandler interface {
@@ -239,6 +258,9 @@ type ConnectionDataServiceHandler interface {
 	GetTableRowCount(context.Context, *connect.Request[v1alpha1.GetTableRowCountRequest]) (*connect.Response[v1alpha1.GetTableRowCountResponse], error)
 	// Get all schemas and tables for a connection
 	GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error)
+	// Scans sampled column content through Presidio to detect PII (deep scan).
+	// Complements the name-based heuristic returned by GetConnectionSchema.
+	DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error)
 }
 
 // NewConnectionDataServiceHandler builds an HTTP handler from the service implementation. It
@@ -304,6 +326,13 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	connectionDataServiceDetectPiiInConnectionDataHandler := connect.NewUnaryHandler(
+		ConnectionDataServiceDetectPiiInConnectionDataProcedure,
+		svc.DetectPiiInConnectionData,
+		connect.WithSchema(connectionDataServiceMethods.ByName("DetectPiiInConnectionData")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.ConnectionDataService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConnectionDataServiceGetConnectionDataStreamProcedure:
@@ -324,6 +353,8 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 			connectionDataServiceGetTableRowCountHandler.ServeHTTP(w, r)
 		case ConnectionDataServiceGetAllSchemasAndTablesProcedure:
 			connectionDataServiceGetAllSchemasAndTablesHandler.ServeHTTP(w, r)
+		case ConnectionDataServiceDetectPiiInConnectionDataProcedure:
+			connectionDataServiceDetectPiiInConnectionDataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -367,4 +398,8 @@ func (UnimplementedConnectionDataServiceHandler) GetTableRowCount(context.Contex
 
 func (UnimplementedConnectionDataServiceHandler) GetAllSchemasAndTables(context.Context, *connect.Request[v1alpha1.GetAllSchemasAndTablesRequest]) (*connect.Response[v1alpha1.GetAllSchemasAndTablesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables is not implemented"))
+}
+
+func (UnimplementedConnectionDataServiceHandler) DetectPiiInConnectionData(context.Context, *connect.Request[v1alpha1.DetectPiiInConnectionDataRequest]) (*connect.Response[v1alpha1.DetectPiiInConnectionDataResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData is not implemented"))
 }

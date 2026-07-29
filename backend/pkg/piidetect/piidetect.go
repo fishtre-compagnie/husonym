@@ -245,6 +245,35 @@ func Classify(columnName, dataType string) (Classification, bool) {
 	return Classification{}, false
 }
 
+// SuggestionForEntity mappe une entité Presidio (analyse de contenu) vers une
+// Classification (catégorie, sensibilité, transformer suggéré). ok vaut false si
+// l'entité n'a pas de transformer adapté. dataType permet de choisir la variante
+// numérique du téléphone.
+func SuggestionForEntity(entity, dataType string) (Classification, bool) {
+	switch strings.ToUpper(entity) {
+	case "EMAIL_ADDRESS":
+		return Classification{"email", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL}, true
+	case "PHONE_NUMBER":
+		src := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
+		if isNumericType(dataType) {
+			src = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
+		}
+		return Classification{"phone_number", true, src}, true
+	case "PERSON":
+		return Classification{"person_full_name", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME}, true
+	case "LOCATION", "LOCATION_CITY", "GPE":
+		return Classification{"city", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY}, true
+	case "CREDIT_CARD":
+		return Classification{"credit_card", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER}, true
+	case "IP_ADDRESS":
+		return Classification{"ip_address", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS}, true
+	case "US_SSN":
+		return Classification{"ssn", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN}, true
+	default:
+		return Classification{}, false
+	}
+}
+
 // Enrich annote chaque colonne avec sa catégorie détectée, son flag RGPD et le
 // transformer suggéré. Les colonnes non reconnues restent inchangées.
 func Enrich(columns []*mgmtv1alpha1.DatabaseColumn) {

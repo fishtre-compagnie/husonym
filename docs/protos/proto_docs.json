@@ -8323,6 +8323,126 @@
           ]
         },
         {
+          "name": "ColumnPiiDetection",
+          "longName": "ColumnPiiDetection",
+          "fullName": "mgmt.v1alpha1.ColumnPiiDetection",
+          "description": "PII detected in a column by analyzing sampled content (Presidio).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "entity_type",
+              "description": "Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if none.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "score",
+              "description": "Average score of the detected entity in [0,1].",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "Recommended transformer for this entity.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_sensitive",
+              "description": "True if the column is considered personal data (GDPR).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "match_count",
+              "description": "Number of sampled values in which the entity was found.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sampled_count",
+              "description": "Total number of non-empty sampled values analyzed.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "ConnectionSchemaConfig",
           "longName": "ConnectionSchemaConfig",
           "fullName": "mgmt.v1alpha1.ConnectionSchemaConfig",
@@ -8663,6 +8783,126 @@
               "type": "string",
               "longType": "string",
               "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "DetectPiiInConnectionDataRequest",
+          "longName": "DetectPiiInConnectionDataRequest",
+          "fullName": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "columns",
+              "description": "Columns to analyze. Empty means every column of the table.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sample_size",
+              "description": "Number of sampled values per column (default 20).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "score_threshold",
+              "description": "Presidio score threshold in [0,1] (default 0.5).",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "language",
+              "description": "Content language (ISO 639-1). Default: server default or \"en\".",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "DetectPiiInConnectionDataResponse",
+          "longName": "DetectPiiInConnectionDataResponse",
+          "fullName": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "detections",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnPiiDetection",
+              "longType": "ColumnPiiDetection",
+              "fullType": "mgmt.v1alpha1.ColumnPiiDetection",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -10247,6 +10487,21 @@
               "responseType": "GetAllSchemasAndTablesResponse",
               "responseLongType": "GetAllSchemasAndTablesResponse",
               "responseFullType": "mgmt.v1alpha1.GetAllSchemasAndTablesResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "DetectPiiInConnectionData",
+              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.",
+              "requestType": "DetectPiiInConnectionDataRequest",
+              "requestLongType": "DetectPiiInConnectionDataRequest",
+              "requestFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
+              "requestStreaming": false,
+              "responseType": "DetectPiiInConnectionDataResponse",
+              "responseLongType": "DetectPiiInConnectionDataResponse",
+              "responseFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
