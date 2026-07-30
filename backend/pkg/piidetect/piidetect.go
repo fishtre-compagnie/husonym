@@ -13,6 +13,7 @@
 package piidetect
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -39,9 +40,19 @@ type rule struct {
 	// tokenOnly : mots-clés recherchés UNIQUEMENT comme token entier (évite les
 	// faux positifs des mots courts, ex. "nom" dans "prenom", "tel" dans "hotel").
 	tokenOnly []string
+	// excludeTokens : si l'un de ces tokens est présent, la règle est écartée.
+	// Sert à départager des règles qui se recouvrent sans casser leur ordre :
+	// "nom_complet" contient le token "nom" (nom de famille) alors qu'il désigne
+	// un nom complet.
+	excludeTokens []string
 	// suggestIfNumeric : si non nul, transformer alternatif quand le type SQL est
 	// numérique (ex. téléphone stocké en entier).
 	suggestIfNumeric mgmtv1alpha1.TransformerSource
+	// suggestIfTemporal : transformer alternatif quand le type SQL est temporel
+	// (date, timestamp...). Une date en type natif n'a pas de format d'affichage
+	// à préserver : le driver écrit une vraie date. C'est ce qui permet de
+	// suggérer un générateur là où une date stockée en texte l'interdit.
+	suggestIfTemporal mgmtv1alpha1.TransformerSource
 }
 
 // L'ordre est significatif : première règle qui matche = gagnante. Les règles les
@@ -76,11 +87,12 @@ var rules = []rule{
 		tokenOnly: []string{"fname"},
 	},
 	{
-		category:  "person_last_name",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
-		keywords:  []string{"lastname", "surname", "familyname", "patronyme"},
-		tokenOnly: []string{"lname", "nom"},
+		category:      "person_last_name",
+		sensitive:     true,
+		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
+		keywords:      []string{"lastname", "surname", "familyname", "patronyme"},
+		tokenOnly:     []string{"lname", "nom"},
+		excludeTokens: []string{"complet", "full", "entier"},
 	},
 	{
 		category:  "person_full_name",
@@ -150,11 +162,31 @@ var rules = []rule{
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER,
 		keywords:  []string{"gender", "sexe", "genre"},
 	},
+	{
+		// Date de naissance : la suggestion dépend du TYPE de la colonne, cf.
+		// suggestIfTemporal. Voir DetectDateFormat pour l'inférence du format des
+		// dates stockées en texte.
+		category:  "birth_date",
+		sensitive: true,
+		// Aucune suggestion par défaut : sur une colonne TEXTE, un générateur de
+		// timestamp écrirait "2026-07-30T14:22:31Z" là où la source contient
+		// "25/12/1980", cassant le format attendu par l'applicatif cible.
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		// En type temporel natif en revanche, il n'y a pas de format à préserver.
+		suggestIfTemporal: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP,
+		keywords: []string{
+			"birthdate", "birthday", "dateofbirth", "datenaissance",
+			"datedenaissance", "naissance",
+		},
+		tokenOnly: []string{"dob", "ddn"},
+	},
 }
 
 var (
 	nonAlnum      = regexp.MustCompile(`[^a-z0-9]+`)
 	numericTypeRe = regexp.MustCompile(`int|serial|numeric|decimal|number|float|double|real`)
+	// timestamptz, datetime2, smalldatetime... sont couverts par les racines.
+	temporalTypeRe = regexp.MustCompile(`date|timestamp|datetime`)
 )
 
 // normalize met le nom en minuscules et retire les séparateurs (garde a-z0-9).
@@ -198,6 +230,12 @@ func isNumericType(dataType string) bool {
 	return numericTypeRe.MatchString(strings.ToLower(dataType))
 }
 
+// isTemporalType reconnaît les types date/heure natifs, par opposition à une date
+// stockée dans une colonne texte.
+func isTemporalType(dataType string) bool {
+	return temporalTypeRe.MatchString(strings.ToLower(dataType))
+}
+
 // Classify retourne la classification d'une colonne à partir de son nom et de son
 // type SQL. ok vaut false si aucune règle ne matche.
 func Classify(columnName, dataType string) (Classification, bool) {
@@ -212,6 +250,17 @@ func Classify(columnName, dataType string) (Classification, bool) {
 	}
 
 	for _, ru := range rules {
+		excluded := false
+		for _, ex := range ru.excludeTokens {
+			if _, ok := tokenSet[ex]; ok {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
+
 		matched := false
 		for _, kw := range ru.keywords {
 			if strings.Contains(norm, kw) {
@@ -235,6 +284,10 @@ func Classify(columnName, dataType string) (Classification, bool) {
 		if ru.suggestIfNumeric != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
 			isNumericType(dataType) {
 			suggested = ru.suggestIfNumeric
+		}
+		if ru.suggestIfTemporal != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
+			isTemporalType(dataType) {
+			suggested = ru.suggestIfTemporal
 		}
 		return Classification{
 			Category:  ru.category,
@@ -267,8 +320,28 @@ func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 		return Classification{"credit_card", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER}, true
 	case "IP_ADDRESS":
 		return Classification{"ip_address", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS}, true
-	case "US_SSN":
-		return Classification{"ssn", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN}, true
+	case "US_SSN", "FR_NIR":
+		return Classification{"nir", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN}, true
+	case "FR_PHONE_NUMBER":
+		src := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
+		if isNumericType(dataType) {
+			src = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
+		}
+		return Classification{"phone_number", true, src}, true
+	case "FR_POSTAL_CODE":
+		return Classification{"postal_code", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE}, true
+	case "IBAN_CODE":
+		// Pas de générateur d'IBAN : on signale la sensibilité sans suggérer de
+		// transformer, plutôt que d'en imposer un qui produirait un IBAN invalide.
+		return Classification{"iban", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+	case "FR_SIRET":
+		return Classification{"siret", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+	// DATE_TIME est volontairement ABSENT : Presidio l'émet sur presque tout texte
+	// contenant une date, y compris du texte libre truffé de PII. Comme l'entité
+	// dominante est celle qui couvre le plus de valeurs, DATE_TIME supplanterait
+	// PERSON sur une colonne de commentaires et la ferait passer pour non
+	// sensible. Les dates sont traitées en amont, de façon déterministe, par
+	// DetectDateFormat.
 	default:
 		return Classification{}, false
 	}
@@ -288,5 +361,10 @@ func Enrich(columns []*mgmtv1alpha1.DatabaseColumn) {
 		col.DataCategory = c.Category
 		col.IsSensitive = c.Sensitive
 		col.SuggestedTransformerSource = c.Suggested
+		// La détection par nom est déterministe : elle ne dépend d'aucun modèle
+		// et donne le même résultat à chaque introspection.
+		col.PiiConfidence = mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED
+		col.PiiDetectionMethod = mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_COLUMN_NAME
+		col.PiiEvidence = fmt.Sprintf("reconnu par le nom de colonne « %s »", col.GetColumn())
 	}
 }

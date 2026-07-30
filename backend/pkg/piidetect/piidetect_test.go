@@ -65,3 +65,56 @@ func TestClassify(t *testing.T) {
 		})
 	}
 }
+
+// nom_complet contient le token "nom" (nom de famille) tout en désignant un nom
+// complet : excludeTokens doit départager sans casser la détection de "nom" seul.
+func TestClassify_NomCompletNestPasUnNomDeFamille(t *testing.T) {
+	cases := []struct {
+		column  string
+		wantCat string
+	}{
+		{"nom_complet", "person_full_name"},
+		{"nomComplet", "person_full_name"},
+		{"full_name", "person_full_name"},
+		{"nom", "person_last_name"},
+		{"last_name", "person_last_name"},
+		{"prenom", "person_first_name"},
+	}
+	for _, tc := range cases {
+		got, ok := Classify(tc.column, "text")
+		if !ok {
+			t.Errorf("Classify(%q) = non détecté", tc.column)
+			continue
+		}
+		if got.Category != tc.wantCat {
+			t.Errorf("Classify(%q) = %q, attendu %q", tc.column, got.Category, tc.wantCat)
+		}
+	}
+}
+
+// La date de naissance est une donnée personnelle. Le transformer suggéré dépend
+// du type : cf. TestClassify_DateNaissanceSuggereSelonLeType. Ici on vérifie la
+// catégorie et la sensibilité, sur une colonne TEXTE (aucune suggestion possible,
+// le format de la source devrait être préservé).
+func TestClassify_DateNaissanceSensibleSansTransformer(t *testing.T) {
+	for _, col := range []string{"date_naissance", "birthdate", "dob"} {
+		got, ok := Classify(col, "varchar(100)")
+		if !ok {
+			t.Errorf("Classify(%q) = non détecté", col)
+			continue
+		}
+		if got.Category != "birth_date" {
+			t.Errorf("Classify(%q) = %q, attendu \"birth_date\"", col, got.Category)
+		}
+		if !got.Sensitive {
+			t.Errorf("Classify(%q) : Sensitive = false, attendu true", col)
+		}
+		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
+			t.Errorf("Classify(%q) : transformer = %v, attendu UNSPECIFIED", col, got.Suggested)
+		}
+	}
+	// Une date non personnelle ne doit pas être marquée.
+	if got, ok := Classify("created_at", "timestamp"); ok && got.Sensitive {
+		t.Errorf("Classify(\"created_at\") marquée sensible : %+v", got)
+	}
+}

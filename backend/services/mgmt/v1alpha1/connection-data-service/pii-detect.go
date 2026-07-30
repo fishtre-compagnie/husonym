@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultSampleSize    = 20
-	defaultScoreThresh   = 0.5
+	defaultScoreThresh   = 0.35 // PHONE_NUMBER sort ~0.40 chez Presidio -> seuil bas
 	defaultLanguage      = "en"
 	maxValueRunes        = 200 // tronque les longues valeurs envoyées à Presidio
 	minMatchesFloor      = 2   // faux positif improbable au-delà de ce plancher
@@ -139,6 +139,64 @@ func (s *Service) DetectPiiInConnectionData(
 		if len(values) == 0 {
 			continue
 		}
+
+		// ÉTAGE 1 — validation déterministe, AVANT tout appel à Presidio.
+		// Ce qui se prouve par une clé de contrôle n'a pas à être deviné par un
+		// modèle : c'est plus fiable (Presidio classe un NIR en CREDIT_CARD avec
+		// un score de 1.00 quand celui-ci passe Luhn par hasard) et ça évite un
+		// appel HTTP par valeur.
+		if cc, ok := piidetect.ClassifyValues(values, ""); ok {
+			detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
+				Schema:                     req.Msg.GetSchema(),
+				Table:                      req.Msg.GetTable(),
+				Column:                     col,
+				EntityType:                 strings.ToUpper(cc.Category),
+				Score:                      1,
+				SuggestedTransformerSource: cc.Suggested,
+				IsSensitive:                cc.Sensitive,
+				MatchCount:                 uint32(len(values)),
+				SampledCount:               uint32(len(values)),
+				DataCategory:               cc.Category,
+				PiiConfidence:              cc.Confidence,
+				PiiDetectionMethod:         cc.Method,
+				PiiEvidence:                cc.Evidence,
+			})
+			continue
+		}
+
+		// ÉTAGE 2 — dates stockées en texte : le format s'infère, il ne se devine
+		// pas. Une colonne de dates n'est personnelle que si son nom l'indique.
+		if df, ok := piidetect.DetectDateFormat(values); ok {
+			sensitive := piidetect.IsBirthDateName(col)
+			confidence := mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED
+			if df.Ambiguous {
+				confidence = mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW
+			}
+			if sensitive || df.Ambiguous {
+				detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
+					Schema:       req.Msg.GetSchema(),
+					Table:        req.Msg.GetTable(),
+					Column:       col,
+					EntityType:   "DATE",
+					Score:        1,
+					IsSensitive:  sensitive,
+					MatchCount:   uint32(len(values)),
+					SampledCount: uint32(len(values)),
+					DataCategory: dateCategory(sensitive),
+					// Le transformer reste au choix de l'utilisateur : aucun
+					// générateur ne sait restituer la date dans le format source.
+					SuggestedTransformerSource: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+					PiiConfidence:              confidence,
+					PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT,
+					PiiEvidence:                df.Evidence,
+				})
+			}
+			continue
+		}
+
+		// ÉTAGE 3 — Presidio en dernier recours, sur ce qui n'est pas décidable
+		// autrement : noms de personnes, lieux, texte libre. Résultat toujours
+		// marqué NEEDS_REVIEW, un modèle statistique ne prouve rien.
 		entity, avgScore, matchCount, ok := s.analyzeColumn(ctx, values, threshold, language, logger)
 		if !ok {
 			continue
@@ -165,6 +223,11 @@ func (s *Service) DetectPiiInConnectionData(
 			IsSensitive:                suggestion.Sensitive,
 			MatchCount:                 uint32(matchCount),
 			SampledCount:               uint32(len(values)),
+			DataCategory:               suggestion.Category,
+			PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
+			PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+			PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
+				entity, matchCount, len(values), avgScore),
 		})
 	}
 
@@ -173,8 +236,9 @@ func (s *Service) DetectPiiInConnectionData(
 	}), nil
 }
 
-// analyzeColumn envoie les valeurs concaténées d'une colonne à Presidio et
-// retourne l'entité dominante, son score moyen et le nombre d'occurrences.
+// analyzeColumn analyse chaque valeur individuellement (le NER reconnaît mieux un
+// nom/lieu isolé qu'au sein d'une liste) et retourne l'entité dominante parmi les
+// entités mappables, son score moyen et le nombre de valeurs où elle apparaît.
 func (s *Service) analyzeColumn(
 	ctx context.Context,
 	values []string,
@@ -182,43 +246,51 @@ func (s *Service) analyzeColumn(
 	language string,
 	logger interface{ Warn(string, ...any) },
 ) (entity string, avgScore float64, matchCount int, ok bool) {
-	parts := make([]string, 0, len(values))
-	for _, v := range values {
-		parts = append(parts, truncateRunes(v, maxValueRunes))
-	}
-	text := strings.Join(parts, "\n")
-	if strings.TrimSpace(text) == "" {
-		return "", 0, 0, false
-	}
-
-	results, err := s.analyze.Analyze(ctx, presidio.AnalyzeRequest{
-		Text:           text,
-		Language:       language,
-		ScoreThreshold: threshold,
-	})
-	if err != nil {
-		logger.Warn(fmt.Sprintf("presidio analyze failed: %v", err))
-		return "", 0, 0, false
-	}
-
 	type agg struct {
 		count    int
 		scoreSum float64
 	}
 	byEntity := map[string]*agg{}
-	for _, r := range results {
-		a := byEntity[r.EntityType]
-		if a == nil {
-			a = &agg{}
-			byEntity[r.EntityType] = a
+	analyzed := 0
+	for _, v := range values {
+		text := truncateRunes(v, maxValueRunes)
+		if strings.TrimSpace(text) == "" {
+			continue
 		}
-		a.count++
-		a.scoreSum += r.Score
+		analyzed++
+		results, err := s.analyze.Analyze(ctx, presidio.AnalyzeRequest{
+			Text:           text,
+			Language:       language,
+			ScoreThreshold: threshold,
+		})
+		if err != nil {
+			logger.Warn(fmt.Sprintf("presidio analyze failed: %v", err))
+			continue
+		}
+		// Meilleur score par entité DANS cette valeur (on compte des VALEURS, pas des spans).
+		bestPerEntity := map[string]float64{}
+		for _, r := range results {
+			if sc, seen := bestPerEntity[r.EntityType]; !seen || r.Score > sc {
+				bestPerEntity[r.EntityType] = r.Score
+			}
+		}
+		for e, sc := range bestPerEntity {
+			a := byEntity[e]
+			if a == nil {
+				a = &agg{}
+				byEntity[e] = a
+			}
+			a.count++
+			a.scoreSum += sc
+		}
 	}
-	// Entité dominante = plus grand nombre d'occurrences PARMI les entités mappables
-	// vers un transformer. On ignore le bruit non exploitable (URL, DATE_TIME...) qui
-	// sinon supplanterait EMAIL_ADDRESS (Presidio émet aussi des URL sur les emails).
-	// Départage par nom d'entité pour un résultat déterministe.
+	if analyzed == 0 {
+		return "", 0, 0, false
+	}
+
+	// Entité dominante = présente dans le plus de VALEURS, PARMI les entités
+	// mappables vers un transformer. On ignore le bruit non exploitable
+	// (URL, DATE_TIME...). Départage par nom d'entité pour un résultat déterministe.
 	best := ""
 	for e, a := range byEntity {
 		if _, ok := piidetect.SuggestionForEntity(e, ""); !ok {
@@ -256,4 +328,12 @@ func truncateRunes(s string, max int) string {
 		return s
 	}
 	return string(r[:max])
+}
+
+// dateCategory retourne la catégorie affichée pour une colonne de dates.
+func dateCategory(sensitive bool) string {
+	if sensitive {
+		return "birth_date"
+	}
+	return "date"
 }
