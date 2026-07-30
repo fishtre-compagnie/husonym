@@ -34,6 +34,26 @@ components:
          `Value` type union.
 
          The JSON representation for `NullValue` is JSON `null`.
+    mgmt.v1alpha1.PiiConfidence:
+      type: string
+      title: PiiConfidence
+      enum:
+        - PII_CONFIDENCE_UNSPECIFIED
+        - PII_CONFIDENCE_CONFIRMED
+        - PII_CONFIDENCE_NEEDS_REVIEW
+      description: |-
+        Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il
+         dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
+    mgmt.v1alpha1.PiiDetectionMethod:
+      type: string
+      title: PiiDetectionMethod
+      enum:
+        - PII_DETECTION_METHOD_UNSPECIFIED
+        - PII_DETECTION_METHOD_COLUMN_NAME
+        - PII_DETECTION_METHOD_CHECKSUM
+        - PII_DETECTION_METHOD_CONTENT
+        - PII_DETECTION_METHOD_FORMAT
+      description: Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
     mgmt.v1alpha1.TransformerSource:
       type: string
       title: TransformerSource
@@ -272,9 +292,44 @@ components:
           type: integer
           title: sampled_count
           description: Total number of non-empty sampled values analyzed.
+        dataCategory:
+          type: string
+          title: data_category
+          description: 'Catégorie sémantique déduite de l''entité (ex: "email", "nir"). Alimente le libellé du badge.'
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: |-
+            Niveau de confiance. Une détection issue d'une clé de contrôle est CONFIRMED,
+             une détection Presidio est NEEDS_REVIEW.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: Détail lisible de la preuve, pour l'infobulle.
       title: ColumnPiiDetection
       additionalProperties: false
       description: PII detected in a column by analyzing sampled content (Presidio).
+    mgmt.v1alpha1.ColumnSampleValue:
+      type: object
+      properties:
+        value:
+          type: string
+          title: value
+          description: Représentation textuelle de la valeur. Vide si is_null.
+        isNull:
+          type: boolean
+          title: is_null
+          description: |-
+            Distingue un NULL d'une chaîne vide — la différence compte pour juger d'une
+             colonne (« vide » et « absent » ne se traitent pas pareil).
+      title: ColumnSampleValue
+      additionalProperties: false
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
       allOf:
@@ -515,6 +570,24 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
           title: suggested_transformer_source
           description: Transformer recommandé pour anonymiser cette colonne. TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: |-
+            Niveau de confiance de la détection. Seul CONFIRMED autorise l'application
+             automatique du transformer suggéré.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: |-
+            Détail lisible de la preuve, pour l'infobulle. Ex: "clé NIR valide sur 18/18 valeurs",
+             "format jj/mm/aaaa prouvé (14 valeurs avec jour > 12)", "format ambigu : jj/mm ou mm/jj".
       title: DatabaseColumn
       additionalProperties: false
     mgmt.v1alpha1.DatabaseTable:
@@ -826,6 +899,48 @@ components:
       title: Table
       additionalProperties: false
       description: A table in a schema
+    mgmt.v1alpha1.GetColumnSampleValuesRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to read from.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to read.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column whose values are returned.
+        limit:
+          type: integer
+          title: limit
+          description: Number of rows to return (default 20, max 200).
+      title: GetColumnSampleValuesRequest
+      additionalProperties: false
+      description: |-
+        Échantillon des valeurs d'une colonne, pour lever un doute sur une détection
+         RGPD en regardant les données réelles.
+    mgmt.v1alpha1.GetColumnSampleValuesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+          title: values
+      title: GetColumnSampleValuesResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetConnectionDataStreamRequest:
       type: object
       properties:
@@ -1662,6 +1777,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetColumnSampleValues
+      description: |-
+        Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
+         une détection RGPD en consultant les données réelles.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesResponse'
 tags:
   - name: mgmt.v1alpha1.ConnectionDataService
     description: |-

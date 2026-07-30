@@ -92,6 +92,33 @@ message ConnectionSchemaConfig {
   }
 }
 
+// Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il
+// dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
+enum PiiConfidence {
+  PII_CONFIDENCE_UNSPECIFIED = 0;
+  // Preuve déterministe : heuristique nom+type, ou clé de contrôle vérifiée
+  // (NIR mod 97, IBAN mod 97, Luhn...) sur la quasi-totalité de l'échantillon.
+  // Le transformer suggéré peut être appliqué automatiquement.
+  PII_CONFIDENCE_CONFIRMED = 1;
+  // Indice non prouvé : modèle statistique (Presidio/NER), clé de contrôle
+  // valide sur une partie seulement, ou format de date indécidable.
+  // À signaler à l'utilisateur pour levée de doute, sans rien appliquer.
+  PII_CONFIDENCE_NEEDS_REVIEW = 2;
+}
+
+// Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
+enum PiiDetectionMethod {
+  PII_DETECTION_METHOD_UNSPECIFIED = 0;
+  // Nom de la colonne + type SQL, sans lecture de données.
+  PII_DETECTION_METHOD_COLUMN_NAME = 1;
+  // Clé de contrôle vérifiée sur les valeurs échantillonnées.
+  PII_DETECTION_METHOD_CHECKSUM = 2;
+  // Reconnaissance d'entités par Presidio sur les valeurs échantillonnées.
+  PII_DETECTION_METHOD_CONTENT = 3;
+  // Format inféré depuis les valeurs (ex: date jj/mm/aaaa).
+  PII_DETECTION_METHOD_FORMAT = 4;
+}
+
 message DatabaseColumn {
   // The database schema. Ex: public
   string schema = 1;
@@ -116,6 +143,14 @@ message DatabaseColumn {
   bool is_sensitive = 10;
   // Transformer recommandé pour anonymiser cette colonne. TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.
   TransformerSource suggested_transformer_source = 11;
+  // Niveau de confiance de la détection. Seul CONFIRMED autorise l'application
+  // automatique du transformer suggéré.
+  PiiConfidence pii_confidence = 12;
+  // Comment la détection a été obtenue.
+  PiiDetectionMethod pii_detection_method = 13;
+  // Détail lisible de la preuve, pour l'infobulle. Ex: "clé NIR valide sur 18/18 valeurs",
+  // "format jj/mm/aaaa prouvé (14 valeurs avec jour > 12)", "format ambigu : jj/mm ou mm/jj".
+  string pii_evidence = 14;
 }
 
 message GetConnectionSchemaRequest {
@@ -358,10 +393,46 @@ message ColumnPiiDetection {
   uint32 match_count = 8;
   // Total number of non-empty sampled values analyzed.
   uint32 sampled_count = 9;
+  // Catégorie sémantique déduite de l'entité (ex: "email", "nir"). Alimente le libellé du badge.
+  string data_category = 10;
+  // Niveau de confiance. Une détection issue d'une clé de contrôle est CONFIRMED,
+  // une détection Presidio est NEEDS_REVIEW.
+  PiiConfidence pii_confidence = 11;
+  // Comment la détection a été obtenue.
+  PiiDetectionMethod pii_detection_method = 12;
+  // Détail lisible de la preuve, pour l'infobulle.
+  string pii_evidence = 13;
 }
 
 message DetectPiiInConnectionDataResponse {
   repeated ColumnPiiDetection detections = 1;
+}
+
+// Échantillon des valeurs d'une colonne, pour lever un doute sur une détection
+// RGPD en regardant les données réelles.
+message GetColumnSampleValuesRequest {
+  // The unique identifier of the connection to read from.
+  string connection_id = 1 [(buf.validate.field).string.uuid = true];
+  // The schema of the table.
+  string schema = 2 [(buf.validate.field).string.min_len = 1];
+  // The table to read.
+  string table = 3 [(buf.validate.field).string.min_len = 1];
+  // The column whose values are returned.
+  string column = 4 [(buf.validate.field).string.min_len = 1];
+  // Number of rows to return (default 20, max 200).
+  uint32 limit = 5;
+}
+
+message ColumnSampleValue {
+  // Représentation textuelle de la valeur. Vide si is_null.
+  string value = 1;
+  // Distingue un NULL d'une chaîne vide — la différence compte pour juger d'une
+  // colonne (« vide » et « absent » ne se traitent pas pareil).
+  bool is_null = 2;
+}
+
+message GetColumnSampleValuesResponse {
+  repeated ColumnSampleValue values = 1;
 }
 
 // Service for managing connection data.
@@ -394,6 +465,11 @@ service ConnectionDataService {
   // Scans sampled column content through Presidio to detect PII (deep scan).
   // Complements the name-based heuristic returned by GetConnectionSchema.
   rpc DetectPiiInConnectionData(DetectPiiInConnectionDataRequest) returns (DetectPiiInConnectionDataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
+  // une détection RGPD en consultant les données réelles.
+  rpc GetColumnSampleValues(GetColumnSampleValuesRequest) returns (GetColumnSampleValuesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

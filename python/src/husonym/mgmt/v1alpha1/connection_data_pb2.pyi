@@ -2,12 +2,35 @@ from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
 from mgmt.v1alpha1 import transformer_pb2 as _transformer_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class PiiConfidence(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PII_CONFIDENCE_UNSPECIFIED: _ClassVar[PiiConfidence]
+    PII_CONFIDENCE_CONFIRMED: _ClassVar[PiiConfidence]
+    PII_CONFIDENCE_NEEDS_REVIEW: _ClassVar[PiiConfidence]
+
+class PiiDetectionMethod(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PII_DETECTION_METHOD_UNSPECIFIED: _ClassVar[PiiDetectionMethod]
+    PII_DETECTION_METHOD_COLUMN_NAME: _ClassVar[PiiDetectionMethod]
+    PII_DETECTION_METHOD_CHECKSUM: _ClassVar[PiiDetectionMethod]
+    PII_DETECTION_METHOD_CONTENT: _ClassVar[PiiDetectionMethod]
+    PII_DETECTION_METHOD_FORMAT: _ClassVar[PiiDetectionMethod]
+PII_CONFIDENCE_UNSPECIFIED: PiiConfidence
+PII_CONFIDENCE_CONFIRMED: PiiConfidence
+PII_CONFIDENCE_NEEDS_REVIEW: PiiConfidence
+PII_DETECTION_METHOD_UNSPECIFIED: PiiDetectionMethod
+PII_DETECTION_METHOD_COLUMN_NAME: PiiDetectionMethod
+PII_DETECTION_METHOD_CHECKSUM: PiiDetectionMethod
+PII_DETECTION_METHOD_CONTENT: PiiDetectionMethod
+PII_DETECTION_METHOD_FORMAT: PiiDetectionMethod
 
 class PostgresStreamConfig(_message.Message):
     __slots__ = ()
@@ -124,7 +147,7 @@ class ConnectionSchemaConfig(_message.Message):
     def __init__(self, pg_config: _Optional[_Union[PostgresSchemaConfig, _Mapping]] = ..., aws_s3_config: _Optional[_Union[AwsS3SchemaConfig, _Mapping]] = ..., mysql_config: _Optional[_Union[MysqlSchemaConfig, _Mapping]] = ..., mongo_config: _Optional[_Union[MongoSchemaConfig, _Mapping]] = ..., gcp_cloudstorage_config: _Optional[_Union[GcpCloudStorageSchemaConfig, _Mapping]] = ..., dynamodb_config: _Optional[_Union[DynamoDBSchemaConfig, _Mapping]] = ..., mssql_config: _Optional[_Union[MssqlSchemaConfig, _Mapping]] = ...) -> None: ...
 
 class DatabaseColumn(_message.Message):
-    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation", "data_category", "is_sensitive", "suggested_transformer_source")
+    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation", "data_category", "is_sensitive", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
@@ -136,6 +159,9 @@ class DatabaseColumn(_message.Message):
     DATA_CATEGORY_FIELD_NUMBER: _ClassVar[int]
     IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
     SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    PII_CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    PII_DETECTION_METHOD_FIELD_NUMBER: _ClassVar[int]
+    PII_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
@@ -147,7 +173,10 @@ class DatabaseColumn(_message.Message):
     data_category: str
     is_sensitive: bool
     suggested_transformer_source: _transformer_pb2.TransformerSource
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ..., data_category: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ...) -> None: ...
+    pii_confidence: PiiConfidence
+    pii_detection_method: PiiDetectionMethod
+    pii_evidence: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ..., data_category: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
 
 class GetConnectionSchemaRequest(_message.Message):
     __slots__ = ("connection_id", "schema_config")
@@ -441,7 +470,7 @@ class DetectPiiInConnectionDataRequest(_message.Message):
     def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., sample_size: _Optional[int] = ..., score_threshold: _Optional[float] = ..., language: _Optional[str] = ...) -> None: ...
 
 class ColumnPiiDetection(_message.Message):
-    __slots__ = ("schema", "table", "column", "entity_type", "score", "suggested_transformer_source", "is_sensitive", "match_count", "sampled_count")
+    __slots__ = ("schema", "table", "column", "entity_type", "score", "suggested_transformer_source", "is_sensitive", "match_count", "sampled_count", "data_category", "pii_confidence", "pii_detection_method", "pii_evidence")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
@@ -451,6 +480,10 @@ class ColumnPiiDetection(_message.Message):
     IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
     MATCH_COUNT_FIELD_NUMBER: _ClassVar[int]
     SAMPLED_COUNT_FIELD_NUMBER: _ClassVar[int]
+    DATA_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    PII_CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    PII_DETECTION_METHOD_FIELD_NUMBER: _ClassVar[int]
+    PII_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
@@ -460,10 +493,42 @@ class ColumnPiiDetection(_message.Message):
     is_sensitive: bool
     match_count: int
     sampled_count: int
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., entity_type: _Optional[str] = ..., score: _Optional[float] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., is_sensitive: _Optional[bool] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ...) -> None: ...
+    data_category: str
+    pii_confidence: PiiConfidence
+    pii_detection_method: PiiDetectionMethod
+    pii_evidence: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., entity_type: _Optional[str] = ..., score: _Optional[float] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., is_sensitive: _Optional[bool] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ..., data_category: _Optional[str] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
 
 class DetectPiiInConnectionDataResponse(_message.Message):
     __slots__ = ("detections",)
     DETECTIONS_FIELD_NUMBER: _ClassVar[int]
     detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
     def __init__(self, detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ...) -> None: ...
+
+class GetColumnSampleValuesRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "column", "limit")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    column: str
+    limit: int
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., limit: _Optional[int] = ...) -> None: ...
+
+class ColumnSampleValue(_message.Message):
+    __slots__ = ("value", "is_null")
+    VALUE_FIELD_NUMBER: _ClassVar[int]
+    IS_NULL_FIELD_NUMBER: _ClassVar[int]
+    value: str
+    is_null: bool
+    def __init__(self, value: _Optional[str] = ..., is_null: _Optional[bool] = ...) -> None: ...
+
+class GetColumnSampleValuesResponse(_message.Message):
+    __slots__ = ("values",)
+    VALUES_FIELD_NUMBER: _ClassVar[int]
+    values: _containers.RepeatedCompositeFieldContainer[ColumnSampleValue]
+    def __init__(self, values: _Optional[_Iterable[_Union[ColumnSampleValue, _Mapping]]] = ...) -> None: ...

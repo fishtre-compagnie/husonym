@@ -66,6 +66,11 @@ class ConnectionDataServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
                 _registered_method=True)
+        self.GetColumnSampleValues = channel.unary_unary(
+                '/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues',
+                request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.FromString,
+                _registered_method=True)
 
 
 class ConnectionDataServiceServicer:
@@ -146,6 +151,14 @@ class ConnectionDataServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetColumnSampleValues(self, request, context):
+        """Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
+        une détection RGPD en consultant les données réelles.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ConnectionDataServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -198,6 +211,11 @@ def add_ConnectionDataServiceServicer_to_server(servicer, server):
                     servicer.DetectPiiInConnectionData,
                     request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.SerializeToString,
+            ),
+            'GetColumnSampleValues': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetColumnSampleValues,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -472,6 +490,33 @@ class ConnectionDataService:
             '/mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData',
             mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_connection__data__pb2.DetectPiiInConnectionDataResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetColumnSampleValues(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues',
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.FromString,
             options,
             channel_credentials,
             insecure,

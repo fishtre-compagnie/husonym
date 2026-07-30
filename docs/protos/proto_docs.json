@@ -8232,11 +8232,68 @@
       "name": "mgmt/v1alpha1/connection_data.proto",
       "description": "",
       "package": "mgmt.v1alpha1",
-      "hasEnums": false,
+      "hasEnums": true,
       "hasExtensions": false,
       "hasMessages": true,
       "hasServices": true,
-      "enums": [],
+      "enums": [
+        {
+          "name": "PiiConfidence",
+          "longName": "PiiConfidence",
+          "fullName": "mgmt.v1alpha1.PiiConfidence",
+          "description": "Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il\ndit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.",
+          "values": [
+            {
+              "name": "PII_CONFIDENCE_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PII_CONFIDENCE_CONFIRMED",
+              "number": "1",
+              "description": "Preuve déterministe : heuristique nom+type, ou clé de contrôle vérifiée\n(NIR mod 97, IBAN mod 97, Luhn...) sur la quasi-totalité de l'échantillon.\nLe transformer suggéré peut être appliqué automatiquement."
+            },
+            {
+              "name": "PII_CONFIDENCE_NEEDS_REVIEW",
+              "number": "2",
+              "description": "Indice non prouvé : modèle statistique (Presidio/NER), clé de contrôle\nvalide sur une partie seulement, ou format de date indécidable.\nÀ signaler à l'utilisateur pour levée de doute, sans rien appliquer."
+            }
+          ]
+        },
+        {
+          "name": "PiiDetectionMethod",
+          "longName": "PiiDetectionMethod",
+          "fullName": "mgmt.v1alpha1.PiiDetectionMethod",
+          "description": "Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.",
+          "values": [
+            {
+              "name": "PII_DETECTION_METHOD_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PII_DETECTION_METHOD_COLUMN_NAME",
+              "number": "1",
+              "description": "Nom de la colonne + type SQL, sans lecture de données."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_CHECKSUM",
+              "number": "2",
+              "description": "Clé de contrôle vérifiée sur les valeurs échantillonnées."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_CONTENT",
+              "number": "3",
+              "description": "Reconnaissance d'entités par Presidio sur les valeurs échantillonnées."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_FORMAT",
+              "number": "4",
+              "description": "Format inféré depuis les valeurs (ex: date jj/mm/aaaa)."
+            }
+          ]
+        }
+      ],
       "extensions": [],
       "messages": [
         {
@@ -8435,6 +8492,90 @@
               "type": "uint32",
               "longType": "uint32",
               "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_category",
+              "description": "Catégorie sémantique déduite de l'entité (ex: \"email\", \"nir\"). Alimente le libellé du badge.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_confidence",
+              "description": "Niveau de confiance. Une détection issue d'une clé de contrôle est CONFIRMED,\nune détection Presidio est NEEDS_REVIEW.",
+              "label": "",
+              "type": "PiiConfidence",
+              "longType": "PiiConfidence",
+              "fullType": "mgmt.v1alpha1.PiiConfidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_detection_method",
+              "description": "Comment la détection a été obtenue.",
+              "label": "",
+              "type": "PiiDetectionMethod",
+              "longType": "PiiDetectionMethod",
+              "fullType": "mgmt.v1alpha1.PiiDetectionMethod",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_evidence",
+              "description": "Détail lisible de la preuve, pour l'infobulle.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ColumnSampleValue",
+          "longName": "ColumnSampleValue",
+          "fullName": "mgmt.v1alpha1.ColumnSampleValue",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "value",
+              "description": "Représentation textuelle de la valeur. Vide si is_null.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_null",
+              "description": "Distingue un NULL d'une chaîne vide — la différence compte pour juger d'une\ncolonne (« vide » et « absent » ne se traitent pas pareil).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -8747,6 +8888,42 @@
               "type": "TransformerSource",
               "longType": "TransformerSource",
               "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_confidence",
+              "description": "Niveau de confiance de la détection. Seul CONFIRMED autorise l'application\nautomatique du transformer suggéré.",
+              "label": "",
+              "type": "PiiConfidence",
+              "longType": "PiiConfidence",
+              "fullType": "mgmt.v1alpha1.PiiConfidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_detection_method",
+              "description": "Comment la détection a été obtenue.",
+              "label": "",
+              "type": "PiiDetectionMethod",
+              "longType": "PiiDetectionMethod",
+              "fullType": "mgmt.v1alpha1.PiiDetectionMethod",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_evidence",
+              "description": "Détail lisible de la preuve, pour l'infobulle. Ex: \"clé NIR valide sur 18/18 valeurs\",\n\"format jj/mm/aaaa prouvé (14 valeurs avec jour \u003e 12)\", \"format ambigu : jj/mm ou mm/jj\".",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -9322,6 +9499,102 @@
               "type": "string",
               "longType": "string",
               "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetColumnSampleValuesRequest",
+          "longName": "GetColumnSampleValuesRequest",
+          "fullName": "mgmt.v1alpha1.GetColumnSampleValuesRequest",
+          "description": "Échantillon des valeurs d'une colonne, pour lever un doute sur une détection\nRGPD en regardant les données réelles.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection to read from.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to read.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose values are returned.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "limit",
+              "description": "Number of rows to return (default 20, max 200).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetColumnSampleValuesResponse",
+          "longName": "GetColumnSampleValuesResponse",
+          "fullName": "mgmt.v1alpha1.GetColumnSampleValuesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "values",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -10502,6 +10775,21 @@
               "responseType": "DetectPiiInConnectionDataResponse",
               "responseLongType": "DetectPiiInConnectionDataResponse",
               "responseFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetColumnSampleValues",
+              "description": "Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur\nune détection RGPD en consultant les données réelles.",
+              "requestType": "GetColumnSampleValuesRequest",
+              "requestLongType": "GetColumnSampleValuesRequest",
+              "requestFullType": "mgmt.v1alpha1.GetColumnSampleValuesRequest",
+              "requestStreaming": false,
+              "responseType": "GetColumnSampleValuesResponse",
+              "responseLongType": "GetColumnSampleValuesResponse",
+              "responseFullType": "mgmt.v1alpha1.GetColumnSampleValuesResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
