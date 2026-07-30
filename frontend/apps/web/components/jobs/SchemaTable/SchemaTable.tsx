@@ -15,19 +15,28 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Transformer } from '@/shared/transformers';
 import {
+  convertJobMappingTransformerToForm,
   JobMappingFormValues,
   JobMappingTransformerForm,
   SchemaFormValues,
   VirtualForeignConstraintFormValues,
 } from '@/yup-validations/jobs';
+import { create } from '@bufbuild/protobuf';
+import { useMutation } from '@connectrpc/connect-query';
 import {
+  ConnectionDataService,
   GetConnectionSchemaResponse,
   JobMapping,
+  JobMappingTransformerSchema,
+  PiiConfidence,
+  PiiDetectionMethod,
+  TransformerSource,
   ValidateJobMappingsResponse,
 } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { ReactElement, useMemo } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { FieldErrors } from 'react-hook-form';
 import {
   getGeneratedStatement,
@@ -79,6 +88,28 @@ interface Props {
   onApplyDefaultClick(override: boolean): void;
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
+  // Id de la connexion SOURCE. S'il est fourni (jobs sync), active le scan de
+  // contenu PII (Presidio). Absent pour les jobs generate (rien à échantillonner).
+  sourceConnectionId?: string;
+}
+
+// Détection remontée par le scan de contenu, telle que le backend l'a qualifiée.
+interface ContentPii {
+  source: TransformerSource;
+  category?: string;
+  isSensitive: boolean;
+  confidence: PiiConfidence;
+  method: PiiDetectionMethod;
+  evidence: string;
+}
+
+interface ResolvedPii {
+  isSensitive: boolean;
+  suggestedTransformerSource: TransformerSource;
+  dataCategory?: string;
+  confidence: PiiConfidence;
+  method: PiiDetectionMethod;
+  evidence: string;
 }
 
 export function SchemaTable(props: Props): ReactElement {
@@ -105,7 +136,239 @@ export function SchemaTable(props: Props): ReactElement {
     onTransformerBulkUpdate,
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
+    sourceConnectionId,
   } = props;
+
+  // --- Scan de contenu PII (Presidio) ---------------------------------------
+  const [contentPii, setContentPii] = useState<Record<string, ContentPii>>({});
+  const [isScanningPii, setIsScanningPii] = useState(false);
+  const { mutateAsync: detectPii } = useMutation(
+    ConnectionDataService.method.detectPiiInConnectionData
+  );
+
+  // Fusionne détection par NOM (constraintHandler, déterministe) et détection de
+  // CONTENU (scan, qualifiée par le backend). Le nom prime : c'est une preuve
+  // reproductible qui ne dépend d'aucun modèle. Le contenu comble les colonnes
+  // que le nom a manquées — typiquement celles nommées col_1, col_2...
+  const resolvePiiWith = (
+    content: Record<string, ContentPii>,
+    colKey: { schema: string; table: string; column: string }
+  ): ResolvedPii => {
+    const nameSensitive = constraintHandler.getIsSensitive(colKey);
+    const nameSource = constraintHandler.getSuggestedTransformerSource(colKey);
+    const nameCategory = constraintHandler.getDataCategory(colKey);
+    const c = content[`${colKey.schema}.${colKey.table}.${colKey.column}`];
+    if (nameSensitive) {
+      // Le nom a établi la NATURE de la donnée. Mais un doute sur le FORMAT est
+      // une autre question : « c'est bien une date de naissance » n'implique pas
+      // « on sait dans quel format la réécrire ». Une date jj/mm indistinguable
+      // de mm/jj doit être signalée même si la colonne s'appelle
+      // date_naissance, sinon on écrirait la base cible dans le mauvais format.
+      const formatDoubt =
+        c?.confidence === PiiConfidence.NEEDS_REVIEW &&
+        c.method === PiiDetectionMethod.FORMAT;
+      return {
+        isSensitive: true,
+        suggestedTransformerSource: nameSource,
+        dataCategory: nameCategory,
+        confidence: formatDoubt
+          ? PiiConfidence.NEEDS_REVIEW
+          : PiiConfidence.CONFIRMED,
+        method: formatDoubt
+          ? PiiDetectionMethod.FORMAT
+          : PiiDetectionMethod.COLUMN_NAME,
+        evidence: formatDoubt
+          ? (c?.evidence ?? '')
+          : `reconnu par le nom de colonne « ${colKey.column} »`,
+      };
+    }
+    if (c) {
+      return {
+        isSensitive: c.isSensitive,
+        suggestedTransformerSource: c.source,
+        dataCategory: c.category,
+        confidence: c.confidence,
+        method: c.method,
+        evidence: c.evidence,
+      };
+    }
+    return {
+      isSensitive: false,
+      suggestedTransformerSource: nameSource,
+      dataCategory: nameCategory,
+      confidence: PiiConfidence.UNSPECIFIED,
+      method: PiiDetectionMethod.UNSPECIFIED,
+      evidence: '',
+    };
+  };
+
+  const resolvePii = (colKey: {
+    schema: string;
+    table: string;
+    column: string;
+  }): ResolvedPii => resolvePiiWith(contentPii, colKey);
+
+  // Applique automatiquement le transformer suggéré par la détection DÉTERMINISTE
+  // (par NOM) aux colonnes encore en passthrough (jamais d'écrasement d'un choix
+  // explicite). La détection par CONTENU (Presidio) est faillible : elle ne fait
+  // qu'ALERTER (badge), sans jamais modifier le transformer.
+  const applyNamePiiSuggestions = (): void => {
+    data.forEach((d, idx) => {
+      const colKey = { schema: d.schema, table: d.table, column: d.column };
+      if (!constraintHandler.getIsSensitive(colKey)) {
+        return;
+      }
+      const source = constraintHandler.getSuggestedTransformerSource(colKey);
+      if (source === TransformerSource.UNSPECIFIED) {
+        return;
+      }
+      const currentCase = d.transformer?.config?.case;
+      if (currentCase && currentCase !== 'passthroughConfig') {
+        return; // choix explicite : on ne touche pas
+      }
+      const sys = getAvailableTransformers(idx).system.find(
+        (t) => t.source === source
+      );
+      if (!sys) {
+        return;
+      }
+      onTransformerUpdate(
+        idx,
+        convertJobMappingTransformerToForm(
+          create(JobMappingTransformerSchema, { config: sys.config })
+        )
+      );
+    });
+  };
+
+  // Applique le transformer suggéré par une détection de contenu CONFIRMÉE
+  // (clé de contrôle vérifiée). Ne touche jamais une colonne dont le transformer
+  // a déjà été choisi explicitement. Retourne le nombre de colonnes modifiées.
+  const applyContentPiiSuggestions = (
+    content: Record<string, ContentPii>
+  ): number => {
+    let applied = 0;
+    data.forEach((d, idx) => {
+      const c = content[`${d.schema}.${d.table}.${d.column}`];
+      if (!c || c.confidence !== PiiConfidence.CONFIRMED) {
+        return;
+      }
+      if (c.source === TransformerSource.UNSPECIFIED) {
+        return; // pas de générateur adapté (IBAN, SIRET, date...)
+      }
+      const currentCase = d.transformer?.config?.case;
+      if (currentCase && currentCase !== 'passthroughConfig') {
+        return;
+      }
+      const sys = getAvailableTransformers(idx).system.find(
+        (t) => t.source === c.source
+      );
+      if (!sys) {
+        return;
+      }
+      onTransformerUpdate(
+        idx,
+        convertJobMappingTransformerToForm(
+          create(JobMappingTransformerSchema, { config: sys.config })
+        )
+      );
+      applied++;
+    });
+    return applied;
+  };
+
+  const onScanContent = async (): Promise<void> => {
+    if (!sourceConnectionId) {
+      return;
+    }
+    setIsScanningPii(true);
+    try {
+      const tables = new Map<string, { schema: string; table: string }>();
+      data.forEach((d) =>
+        tables.set(`${d.schema}.${d.table}`, {
+          schema: d.schema,
+          table: d.table,
+        })
+      );
+      const next: Record<string, ContentPii> = {};
+      for (const { schema: sch, table: tbl } of tables.values()) {
+        const resp = await detectPii({
+          connectionId: sourceConnectionId,
+          schema: sch,
+          table: tbl,
+          sampleSize: 20,
+        });
+        resp.detections.forEach((det) => {
+          next[`${det.schema}.${det.table}.${det.column}`] = {
+            source: det.suggestedTransformerSource,
+            category: det.dataCategory,
+            isSensitive: det.isSensitive,
+            confidence: det.piiConfidence,
+            method: det.piiDetectionMethod,
+            evidence: det.piiEvidence,
+          };
+        });
+      }
+      setContentPii(next);
+
+      // Les détections prouvées par une clé de contrôle (NIR mod 97, IBAN,
+      // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
+      // sur un modèle statistique ou un format ambigu ne le sont jamais : elles
+      // s'affichent en badge orange pour que l'utilisateur lève le doute.
+      const applied = applyContentPiiSuggestions(next);
+
+      const confirmed = Object.values(next).filter(
+        (c) => c.confidence === PiiConfidence.CONFIRMED
+      ).length;
+      const toReview = Object.values(next).filter(
+        (c) => c.confidence === PiiConfidence.NEEDS_REVIEW
+      ).length;
+
+      if (confirmed === 0 && toReview === 0) {
+        toast.success(
+          'Aucune donnée personnelle détectée dans le contenu échantillonné.'
+        );
+      } else {
+        const parts: string[] = [];
+        if (confirmed > 0) {
+          parts.push(
+            `${confirmed} colonne(s) confirmée(s) par clé de contrôle` +
+              (applied > 0 ? ` (${applied} transformer(s) appliqué(s))` : '')
+          );
+        }
+        if (toReview > 0) {
+          parts.push(`${toReview} à vérifier`);
+        }
+        toast.success(parts.join(' · '));
+      }
+    } catch (e) {
+      toast.error(
+        `Échec du scan de contenu : ${e instanceof Error ? e.message : 'erreur inconnue'}`
+      );
+    } finally {
+      setIsScanningPii(false);
+    }
+  };
+
+  // Auto-application des suggestions par NOM au chargement (jobs sync). Le garde
+  // « passthrough uniquement » rend l'opération idempotente (pas de boucle).
+  useEffect(() => {
+    if (!sourceConnectionId) {
+      return;
+    }
+    applyNamePiiSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [constraintHandler, sourceConnectionId]);
+
+  const piiScanProps = {
+    showPiiScan: !!sourceConnectionId,
+    onScanContent,
+    isScanningPii,
+    // Propagé jusqu'aux cellules (via meta) pour l'aperçu des valeurs.
+    sourceConnectionId,
+  };
+  // --------------------------------------------------------------------------
+
   const tableData = useMemo((): JobMappingRow[] => {
     return data.map((d): JobMappingRow => {
       const colKey = {
@@ -169,13 +432,21 @@ export function SchemaTable(props: Props): ReactElement {
         },
         isNullable: constraintHandler.getIsNullable(colKey),
         transformer: d.transformer,
-        isSensitive: constraintHandler.getIsSensitive(colKey),
-        dataCategory: constraintHandler.getDataCategory(colKey),
-        suggestedTransformerSource:
-          constraintHandler.getSuggestedTransformerSource(colKey),
+        ...(() => {
+          const pii = resolvePii(colKey);
+          return {
+            isSensitive: pii.isSensitive,
+            dataCategory: pii.dataCategory,
+            suggestedTransformerSource: pii.suggestedTransformerSource,
+            piiConfidence: pii.confidence,
+            piiDetectionMethod: pii.method,
+            piiEvidence: pii.evidence,
+          };
+        })(),
       };
     });
-  }, [data, constraintHandler]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, constraintHandler, contentPii]);
 
   const virtualForeignKeyColumns = useMemo(() => {
     return getVirtualForeignKeysColumns({ removeVirtualForeignKey });
@@ -268,6 +539,7 @@ export function SchemaTable(props: Props): ReactElement {
               onRemoveMissingSourceColumnMappings={
                 onRemoveMissingSourceColumnMappings
               }
+              {...piiScanProps}
             />
           </TabsContent>
           <TabsContent value="virtualforeignkeys">
@@ -314,6 +586,7 @@ export function SchemaTable(props: Props): ReactElement {
           onRemoveMissingSourceColumnMappings={
             onRemoveMissingSourceColumnMappings
           }
+          {...piiScanProps}
         />
       )}
     </div>

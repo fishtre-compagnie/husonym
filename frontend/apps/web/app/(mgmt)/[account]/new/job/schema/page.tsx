@@ -726,6 +726,7 @@ export default function Page(props: PageProps): ReactElement {
             <SchemaTable
               data={formMappings}
               jobType="sync"
+              sourceConnectionId={connectFormValues.sourceId}
               constraintHandler={schemaConstraintHandler}
               schema={connectionSchemaDataMap?.schemaMap ?? {}}
               isSchemaDataReloading={isSchemaMapValidating}
