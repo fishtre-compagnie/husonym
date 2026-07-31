@@ -6,8 +6,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
+	"time"
+	"unicode"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -24,6 +27,10 @@ const (
 	minMatchesFloor      = 2   // faux positif improbable au-delà de ce plancher
 	matchRatioNumerator  = 1
 	matchRatioDenominato = 3 // une entité doit couvrir ~1/3 des valeurs échantillonnées
+	// sampleTimeout borne la lecture de l'échantillon. 20 lignes doivent revenir
+	// en quelques millisecondes ; passé ce délai, le problème est ailleurs (table
+	// verrouillée, base saturée, réseau) et insister ne sert à rien.
+	sampleTimeout = 15 * time.Second
 )
 
 // rowCollector accumule les lignes échantillonnées (gob) en mémoire.
@@ -73,14 +80,27 @@ func (s *Service) DetectPiiInConnectionData(
 		sampleSize = defaultSampleSize
 	}
 
+	// Délai propre à l'échantillonnage : au-delà, l'erreur est explicite et
+	// actionnable. Sans lui, c'est le client qui abandonne, et le serveur ne
+	// remonte qu'un « context canceled » que l'UI affiche en HTTP 500 opaque.
+	sampleCtx, cancelSample := context.WithTimeout(ctx, sampleTimeout)
+	defer cancelSample()
+
 	collector := &rowCollector{}
 	if err := dataconn.SampleData(
-		ctx,
+		sampleCtx,
 		collector,
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
 		uint(sampleSize),
 	); err != nil {
+		if errors.Is(sampleCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf(
+				"l'échantillonnage de %s.%s a dépassé %s : table volumineuse ou base surchargée. "+
+					"Décochez cette table ou relancez le scan hors période de charge",
+				req.Msg.GetSchema(), req.Msg.GetTable(), sampleTimeout,
+			))
+		}
 		return nil, fmt.Errorf("unable to sample data for pii scan: %w", err)
 	}
 
@@ -194,6 +214,16 @@ func (s *Service) DetectPiiInConnectionData(
 			continue
 		}
 
+		// Colonnes hors de portée du NER : ni nom, ni lieu, ni texte libre ne peut
+		// s'y cacher. Les identifiants à clé de contrôle (NIR, IBAN, carte) sont
+		// déjà traités par l'étage 1, il ne reste ici que des entiers, des montants
+		// et des booléens. Les écarter est décisif pour la tenue en charge : sur une
+		// base métier réelle, l'essentiel des colonnes est de cette nature, et
+		// chacune coûtait 20 appels HTTP à Presidio pour un résultat toujours vide.
+		if !isAnalyzableText(values) {
+			continue
+		}
+
 		// ÉTAGE 3 — Presidio en dernier recours, sur ce qui n'est pas décidable
 		// autrement : noms de personnes, lieux, texte libre. Résultat toujours
 		// marqué NEEDS_REVIEW, un modèle statistique ne prouve rien.
@@ -213,6 +243,12 @@ func (s *Service) DetectPiiInConnectionData(
 		if !ok {
 			continue
 		}
+		// Presidio ne distingue ni prénom/nom/nom complet (tout est PERSON), ni
+		// ville/adresse (tout est LOCATION). On tranche sur la forme des valeurs,
+		// sinon une colonne d'adresses se voyait suggérer Generate City.
+		suggestion.Category, suggestion.Suggested = piidetect.RefineByValues(
+			suggestion.Category, suggestion.Suggested, values,
+		)
 		detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
 			Schema:                     req.Msg.GetSchema(),
 			Table:                      req.Msg.GetTable(),
@@ -328,6 +364,91 @@ func truncateRunes(s string, max int) string {
 		return s
 	}
 	return string(r[:max])
+}
+
+// nonTextualRe reconnaît une valeur dépourvue de contenu langagier : nombre
+// (entier, décimal, signé), booléen, ou horodatage déjà écarté par l'étage 2.
+var nonTextualRe = regexp.MustCompile(`^[+-]?[0-9]+([.,][0-9]+)?$`)
+
+// base64ishRe : suite continue de caractères de l'alphabet base64 / base64url.
+// Le point et l'arobase en sont absents, ce qui laisse passer emails et URLs.
+var base64ishRe = regexp.MustCompile(`^[A-Za-z0-9+/=_-]+$`)
+
+// minBlobLen : en dessous, une chaîne compacte reste plausible comme mot réel
+// (« Saint-Étienne », « Jean-Pierre »). Au-dessus, aucun mot de langue naturelle.
+const minBlobLen = 32
+
+// looksLikeOpaqueBlob reconnaît une donnée technique opaque : signature, jeton,
+// hash, payload compressé, blob base64.
+//
+// Rencontré en base de production : une colonne de signatures zlib+base64
+// (« eJztWPdXk1m0jc… ») que Presidio classait « ville » avec assez de valeurs
+// concordantes pour franchir le seuil. Sans ce filtre, ces colonnes produisent un
+// badge RGPD sur une donnée qui n'a rien de personnel — et chacune coûte un appel
+// HTTP par valeur, sur du contenu tronqué qui ne veut rien dire.
+// Le verdict se prend fragment par fragment, et non sur la chaîne entière : le
+// base64 stocké en base est souvent replié en lignes de 76 caractères, si bien
+// qu'un test sur la valeur complète échoue sur le premier saut de ligne. Découper
+// protège aussi le texte libre — « Client Jean Dupont joignable au 0710203040 »
+// forme, blancs retirés, une suite parfaitement conforme à l'alphabet base64,
+// alors que ses MOTS sont courts. Exiger que CHAQUE fragment soit long sépare les
+// deux sans ambiguïté.
+func looksLikeOpaqueBlob(v string) bool {
+	if len(v) < minBlobLen {
+		return false
+	}
+	fields := strings.Fields(v)
+	if len(fields) == 0 {
+		return false
+	}
+	total := 0
+	for _, f := range fields {
+		if !base64ishRe.MatchString(f) {
+			return false
+		}
+		total += len(f)
+	}
+	// C'est la LONGUEUR MOYENNE des fragments qui sépare les deux cas, et non
+	// l'alphabet : les mots d'une phrase y sont eux aussi conformes. Un base64
+	// replié donne des lignes de 76 caractères — la dernière est souvent courte,
+	// d'où la moyenne plutôt qu'un minimum sur chaque fragment. Le mot français le
+	// plus long reste très en dessous du seuil.
+	return total/len(fields) >= minBlobLen
+}
+
+// isAnalyzableText indique s'il vaut la peine de soumettre la colonne au NER.
+//
+// Le verdict se prend sur la COLONNE, pas sur les valeurs une à une : une colonne
+// est homogène, et une seule valeur textuelle parmi des nombres est plus
+// probablement une anomalie de saisie qu'une PII. On exige donc qu'une part
+// significative des valeurs porte du texte.
+func isAnalyzableText(values []string) bool {
+	textual := 0
+	total := 0
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		total++
+		switch strings.ToLower(v) {
+		case "true", "false", "t", "f", "0", "1", "oui", "non", "y", "n":
+			continue
+		}
+		if nonTextualRe.MatchString(v) || looksLikeOpaqueBlob(v) {
+			continue
+		}
+		// Une valeur sans aucune lettre (référence « 12-AB »… non, celle-ci en a)
+		// n'apporte rien au NER, qui raisonne sur des mots.
+		if !strings.ContainsFunc(v, unicode.IsLetter) {
+			continue
+		}
+		textual++
+	}
+	if total == 0 {
+		return false
+	}
+	return textual*2 > total
 }
 
 // dateCategory retourne la catégorie affichée pour une colonne de dates.

@@ -35,7 +35,7 @@ import {
 } from '@husonym/sdk';
 import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FieldErrors } from 'react-hook-form';
 import {
@@ -291,25 +291,44 @@ export function SchemaTable(props: Props): ReactElement {
         })
       );
       const next: Record<string, ContentPii> = {};
+      // Une table en échec (volumineuse, verrouillée, droits manquants) ne doit pas
+      // emporter le scan des autres : sur une base réelle, une seule table lente
+      // faisait perdre le résultat de toutes celles déjà analysées.
+      const failed: string[] = [];
       for (const { schema: sch, table: tbl } of tables.values()) {
-        const resp = await detectPii({
-          connectionId: sourceConnectionId,
-          schema: sch,
-          table: tbl,
-          sampleSize: 20,
-        });
-        resp.detections.forEach((det) => {
-          next[`${det.schema}.${det.table}.${det.column}`] = {
-            source: det.suggestedTransformerSource,
-            category: det.dataCategory,
-            isSensitive: det.isSensitive,
-            confidence: det.piiConfidence,
-            method: det.piiDetectionMethod,
-            evidence: det.piiEvidence,
-          };
-        });
+        try {
+          const resp = await detectPii({
+            connectionId: sourceConnectionId,
+            schema: sch,
+            table: tbl,
+            sampleSize: 20,
+          });
+          resp.detections.forEach((det) => {
+            next[`${det.schema}.${det.table}.${det.column}`] = {
+              source: det.suggestedTransformerSource,
+              category: det.dataCategory,
+              isSensitive: det.isSensitive,
+              confidence: det.piiConfidence,
+              method: det.piiDetectionMethod,
+              evidence: det.piiEvidence,
+            };
+          });
+        } catch (e) {
+          failed.push(`${sch}.${tbl}`);
+          console.warn(`scan PII impossible sur ${sch}.${tbl}`, e);
+        }
       }
       setContentPii(next);
+
+      // Les tables non analysées sont annoncées : sans ce message, leurs colonnes
+      // resteraient sans badge et l'absence de détection passerait pour une absence
+      // de donnée personnelle.
+      if (failed.length > 0) {
+        toast.warning(
+          `${failed.length} table(s) non analysée(s) : ${failed.slice(0, 3).join(', ')}` +
+            (failed.length > 3 ? '…' : '')
+        );
+      }
 
       // Les détections prouvées par une clé de contrôle (NIR mod 97, IBAN,
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
@@ -352,13 +371,37 @@ export function SchemaTable(props: Props): ReactElement {
 
   // Auto-application des suggestions par NOM au chargement (jobs sync). Le garde
   // « passthrough uniquement » rend l'opération idempotente (pas de boucle).
+  //
+  // data.length est une dépendance indispensable : à la CRÉATION d'un job, les
+  // tables sont ajoutées après le montage, sans que constraintHandler change. Sans
+  // elle, l'effet ne se rejouait jamais sur les colonnes ajoutées — les colonnes
+  // reconnues par leur nom (LIB_NOM_CLIENT, LIB_VILLE_CLIENT…) restaient en
+  // Passthrough avec un badge rouge, alors que celles prouvées par clé de contrôle
+  // étaient bien traitées, puisque leur application suit le scan de contenu.
   useEffect(() => {
-    if (!sourceConnectionId) {
+    if (!sourceConnectionId || data.length === 0) {
       return;
     }
     applyNamePiiSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [constraintHandler, sourceConnectionId]);
+  }, [constraintHandler, sourceConnectionId, data.length]);
+
+  // Scan de contenu lancé une fois à l'ouverture, en tâche de fond : sans lui,
+  // l'écran affiche un état partiel (seules les colonnes reconnues par leur nom
+  // sont qualifiées) jusqu'à ce que l'utilisateur pense à cliquer sur le bouton.
+  // Il ne remplace jamais un transformer déjà choisi — cf. la garde
+  // « passthrough uniquement » dans applyContentPiiSuggestions.
+  const autoScanDone = useRef(false);
+  useEffect(() => {
+    if (!sourceConnectionId || autoScanDone.current || data.length === 0) {
+      return;
+    }
+    // Un seul déclenchement par montage : la ref, et non un state, pour que le
+    // re-render provoqué par l'application des transformers ne le relance pas.
+    autoScanDone.current = true;
+    void onScanContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceConnectionId, data.length]);
 
   const piiScanProps = {
     showPiiScan: !!sourceConnectionId,
