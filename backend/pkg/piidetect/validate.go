@@ -111,6 +111,16 @@ var validators = []validator{
 		numericSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		fn:               IsFrenchPhone,
 	},
+	{
+		// Liste fermée : c'est ce qui la rend fiable là où Presidio échoue.
+		// Mesuré au banc, Presidio classe « M. / Mme » en PERSON — il n'a aucune
+		// entité de civilité, et une colonne de civilités ressortait donc en
+		// « nom complet », avec le mauvais transformer à la clé.
+		category:  "gender",
+		label:     "civilité",
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER,
+		fn:        IsCivility,
+	},
 	// Pas de validateur de CODE POSTAL ici, volontairement : « 5 chiffres dont un
 	// département 01-98 » décrit aussi un salaire (28000), un identifiant ou une
 	// quantité. Mesuré sur le jeu de test, ce contrôle classait « salaire_annuel »
@@ -362,4 +372,26 @@ func IsFrenchPostalCode(v string) bool {
 		return false
 	}
 	return dept >= 1 && dept <= 98
+}
+
+// civilities : formes rencontrées en base, abréviations et formes pleines. Liste
+// close — une civilité n'est pas un texte libre, ce qui permet une décision
+// certaine plutôt qu'un score.
+var civilities = map[string]struct{}{
+	"m": {}, "mr": {}, "mme": {}, "mlle": {}, "mgr": {}, "me": {}, "dr": {},
+	"monsieur": {}, "madame": {}, "mademoiselle": {},
+	"h": {}, "f": {}, "homme": {}, "femme": {},
+	"mister": {}, "miss": {}, "mrs": {}, "ms": {},
+}
+
+// IsCivility reconnaît une civilité (M., Mme, Monsieur…). Les points et la casse
+// sont ignorés : « M. », « m », « M » désignent la même chose.
+func IsCivility(v string) bool {
+	s := strings.ToLower(strings.TrimSpace(v))
+	s = strings.NewReplacer(".", "", " ", "", "-", "").Replace(s)
+	if s == "" {
+		return false
+	}
+	_, ok := civilities[s]
+	return ok
 }

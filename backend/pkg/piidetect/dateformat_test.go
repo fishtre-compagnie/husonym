@@ -77,7 +77,6 @@ func TestDetectDateFormat_NonDates(t *testing.T) {
 	cases := [][]string{
 		{"alpha", "beta", "gamma"},
 		{"jean@example.fr", "marie@example.fr", "luc@example.fr"},
-		{"25 decembre 1980", "8 mars 1975", "14 juillet 1992"}, // mois en lettres : hors périmètre
 		{"25/12/1980"}, // sous minSamples
 		{},
 	}
@@ -128,6 +127,74 @@ func TestClassify_DateNaissanceSuggereSelonLeType(t *testing.T) {
 		}
 		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
 			t.Errorf("type %q : transformer = %v, attendu UNSPECIFIED (format à préserver)", dt, got.Suggested)
+		}
+	}
+}
+
+// Mois écrit en lettres : le format est non ambigu par construction (le mois est
+// nommé). time.Parse ne connaissant que les mois anglais, la valeur est
+// normalisée avant analyse.
+func TestDetectDateFormat_MoisEnLettresFrancais(t *testing.T) {
+	cases := [][]string{
+		{"25 decembre 1980", "8 mars 1975", "14 juillet 1992"},
+		{"25 décembre 1980", "8 mars 1975", "1 août 1992"}, // accents
+	}
+	for _, values := range cases {
+		got, ok := DetectDateFormat(values)
+		if !ok {
+			t.Errorf("DetectDateFormat(%v) = non détecté", values)
+			continue
+		}
+		if got.Ambiguous {
+			t.Errorf("%v : Ambiguous = true, attendu false (le mois est nommé)", values)
+		}
+		if got.Layout != "2 January 2006" {
+			t.Errorf("%v : Layout = %q, attendu \"2 January 2006\"", values, got.Layout)
+		}
+	}
+	// Un mois inexistant ne doit pas être pris pour une date.
+	if got, ok := DetectDateFormat([]string{"25 brumaire 1980", "8 floreal 1975", "3 nivose 1992"}); ok {
+		t.Errorf("mois inexistants détectés comme dates : %+v", got)
+	}
+}
+
+func TestRefinePersonCategory(t *testing.T) {
+	// Deux mots majoritaires : nom complet.
+	if cat, _ := RefinePersonCategory([]string{"Jean Dupont", "Marie Martin", "Luc Bernard"}); cat != "person_full_name" {
+		t.Errorf("noms complets classés %q", cat)
+	}
+	// Un seul mot : indistinguable prénom/nom sans dictionnaire, mais ce n'est
+	// certainement pas un nom complet.
+	if cat, _ := RefinePersonCategory([]string{"Jean", "Marie", "Luc"}); cat == "person_full_name" {
+		t.Error("valeurs mono-mot classées en nom complet")
+	}
+}
+
+func TestRefineLocationCategory(t *testing.T) {
+	adresses := []string{"12 rue Sainte-Catherine", "45 avenue de la Republique", "8 place du Capitole"}
+	if cat, _ := RefineLocationCategory(adresses); cat != "street_address" {
+		t.Errorf("adresses classées %q, attendu street_address", cat)
+	}
+	villes := []string{"Bordeaux", "Lyon", "Toulouse", "Aix-en-Provence"}
+	if cat, _ := RefineLocationCategory(villes); cat != "city" {
+		t.Errorf("villes classées %q, attendu city", cat)
+	}
+	// Une commune dont le nom contient un mot de voie ne doit pas basculer en
+	// adresse : il manque le numéro.
+	if cat, _ := RefineLocationCategory([]string{"La Chapelle-en-Serval", "Rue", "Cours-la-Ville"}); cat != "city" {
+		t.Errorf("communes classées %q, attendu city", cat)
+	}
+}
+
+func TestIsCivility(t *testing.T) {
+	for _, v := range []string{"M.", "M", "Mme", "MLLE", "monsieur", "Madame", "Dr", "F", "H"} {
+		if !IsCivility(v) {
+			t.Errorf("IsCivility(%q) = false, attendu true", v)
+		}
+	}
+	for _, v := range []string{"Jean", "Dupont", "", "Monsieur Dupont", "12"} {
+		if IsCivility(v) {
+			t.Errorf("IsCivility(%q) = true, attendu false", v)
 		}
 	}
 }

@@ -93,7 +93,17 @@ services:
 
       # Scan de contenu PII (Phase 2) : client Presidio maison, hors licence EE.
       - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
-      - PRESIDIO_DEFAULT_LANGUAGE=en
+      # « fr » mesuré meilleur sur le PIPELINE complet : F1 0,90 contre 0,88, et
+      # rappel 84 % contre 81 % (scripts/testdata/bench-presidio.py).
+      #
+      # À noter, car c'est contre-intuitif : mesuré SEUL, Presidio est moins bon
+      # en français (F1 0,47 contre 0,63) — le modèle spaCy fr classe moins bien
+      # que l'anglais. Mais dans le pipeline, ce qui compte est qu'il DÉTECTE :
+      # sur une colonne d'adresses il émet LOCATION en français et rien en
+      # anglais, et l'affinage Go (refine.go) reclasse ensuite ce LOCATION en
+      # adresse. Un signal mal étiqueté qu'un étage aval sait corriger vaut mieux
+      # qu'aucun signal — d'où l'inversion du classement.
+      - PRESIDIO_DEFAULT_LANGUAGE=fr
 
     env_file:
       - path: ./.env.api.local
@@ -178,12 +188,27 @@ services:
     networks:
       - husonym-network
 
-  # Serveur Presidio Analyzer (Microsoft, open-source MIT) pour le scan de contenu PII.
+  # Presidio Analyzer (Microsoft, MIT) francisé pour le scan de contenu PII.
+  # L'image officielle ne connaît que l'anglais et n'a aucun reconnaisseur
+  # français : les téléphones FR passent inaperçus et un NIR ressort en carte
+  # bancaire. Voir docker/presidio-fr/README.md pour les mesures.
   presidio-analyzer:
     container_name: husonym-presidio-analyzer
-    image: mcr.microsoft.com/presidio-analyzer:latest
+    build:
+      context: ./docker/presidio-fr
+      dockerfile: Dockerfile
     ports:
       - 5002:3000
+    environment:
+      # Les trois fichiers vont ensemble : le moteur d'analyse refuse de démarrer
+      # si ses langues ne correspondent pas à celles du registre.
+      - NLP_CONF_FILE=/app/conf/fr/nlp.yaml
+      - RECOGNIZER_REGISTRY_CONF_FILE=/app/conf/fr/recognizers.yaml
+      - ANALYZER_CONF_FILE=/app/conf/fr/analyzer.yaml
+    volumes:
+      - ./docker/presidio-fr/nlp.yaml:/app/conf/fr/nlp.yaml:ro
+      - ./docker/presidio-fr/recognizers.yaml:/app/conf/fr/recognizers.yaml:ro
+      - ./docker/presidio-fr/analyzer.yaml:/app/conf/fr/analyzer.yaml:ro
     networks:
       - husonym-network
 

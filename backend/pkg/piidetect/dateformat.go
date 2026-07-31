@@ -17,6 +17,7 @@ package piidetect
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -53,6 +54,11 @@ var dateCandidates = []dateCandidate{
 	{"20060102", "aaaammjj"},
 	{"2006-01-02 15:04:05", "aaaa-mm-jj hh:mm:ss"},
 	{"02/01/2006 15:04", "jj/mm/aaaa hh:mm"},
+	// Colonnes de type DATE/TIMESTAMP natif : le driver les décode en time.Time,
+	// que la sérialisation rend sous ces deux formes. Sans elles, une colonne de
+	// dates natives n'était pas reconnue par le scan de contenu.
+	{"2006-01-02 15:04:05 -0700 MST", "date native (time.Time)"},
+	{time.RFC3339, "aaaa-mm-jjThh:mm:ssZ"},
 }
 
 // labelFor retourne le libellé lisible d'un layout.
@@ -65,6 +71,42 @@ func labelFor(layout string) string {
 	return layout
 }
 
+// frenchMonths : mois français vers numéro. time.Parse ne connaît que les mois
+// anglais, donc « 25 decembre 1980 » lui échappe — on traduit avant de parser.
+// Formes accentuées et non accentuées, la base pouvant contenir les deux.
+var frenchMonths = map[string]string{
+	"janvier": "01",
+	"fevrier": "02", "février": "02",
+	"mars": "03",
+	"avril": "04",
+	"mai":   "05",
+	"juin":  "06",
+	"juillet": "07",
+	"aout":    "08", "août": "08",
+	"septembre": "09",
+	"octobre":   "10",
+	"novembre":  "11",
+	"decembre":  "12", "décembre": "12",
+}
+
+var frenchTextDateRe = regexp.MustCompile(
+	`^(\d{1,2})\s+([A-Za-zÀ-ÿ]+)\s+(\d{4})$`)
+
+// normalizeFrenchTextDate convertit « 25 decembre 1980 » en « 25/12/1980 ».
+// Retourne la valeur inchangée si elle n'a pas cette forme, de sorte que la
+// fonction puisse être appliquée sans condition à toutes les valeurs.
+func normalizeFrenchTextDate(v string) string {
+	m := frenchTextDateRe.FindStringSubmatch(strings.TrimSpace(v))
+	if m == nil {
+		return v
+	}
+	month, ok := frenchMonths[strings.ToLower(m[2])]
+	if !ok {
+		return v
+	}
+	return fmt.Sprintf("%02s/%s/%s", m[1], month, m[3])
+}
+
 // DetectDateFormat infère le format des valeurs texte d'une colonne.
 //
 // ok vaut false si les valeurs ne ressemblent pas à des dates. Quand plusieurs
@@ -72,13 +114,30 @@ func labelFor(layout string) string {
 // doit demander à l'utilisateur (ou appliquer la locale de la connexion).
 func DetectDateFormat(values []string) (DateFormatInfo, bool) {
 	clean := make([]string, 0, len(values))
+	frenchText := 0
 	for _, v := range values {
-		if t := strings.TrimSpace(v); t != "" {
-			clean = append(clean, t)
+		t := strings.TrimSpace(v)
+		if t == "" {
+			continue
 		}
+		if n := normalizeFrenchTextDate(t); n != t {
+			frenchText++
+			t = n
+		}
+		clean = append(clean, t)
 	}
 	if len(clean) < minSamples {
 		return DateFormatInfo{}, false
+	}
+
+	// Mois écrit en lettres : format non ambigu par construction (le mois est
+	// nommé, il n'y a rien à trancher entre jj/mm et mm/jj).
+	if frenchText == len(clean) {
+		return DateFormatInfo{
+			Layout: "2 January 2006",
+			Evidence: fmt.Sprintf(
+				"format « jj mois aaaa » (mois en lettres) prouvé sur %d valeurs", len(clean)),
+		}, true
 	}
 
 	// Un format est retenu seulement s'il explique TOUTES les valeurs. Le parsing
