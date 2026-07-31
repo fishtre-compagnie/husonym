@@ -149,10 +149,67 @@ function dbDataTypeToTransformerDataType(
   dataType: string
 ): TransformerDataType {
   const dt = postgresTypeToTransformerDataType(dataType);
-  if (dt === TransformerDataType.UNSPECIFIED) {
-    return mysqlTypeToTransformerDataType(dataType);
+  if (dt !== TransformerDataType.UNSPECIFIED) {
+    return dt;
   }
-  return dt;
+  const mysqlDt = mysqlTypeToTransformerDataType(dataType);
+  if (mysqlDt !== TransformerDataType.UNSPECIFIED) {
+    return mysqlDt;
+  }
+  // SQL Server manquait à la chaîne : ses types propres (nvarchar, bit,
+  // datetime2, uniqueidentifier…) retombaient en UNSPECIFIED, et le filtre de
+  // transformers ne conserve alors que ceux marqués ANY (cf. transformer-handler).
+  // Résultat : sur une base MSSQL, aucun générateur de chaîne n'était proposé
+  // pour une colonne nvarchar — ni manuellement, ni par la suggestion RGPD.
+  return mssqlTypeToTransformerDataType(dataType);
+}
+
+function mssqlTypeToTransformerDataType(
+  mssqlType: string
+): TransformerDataType {
+  const baseType = mssqlType.split('(')[0].trim().toLowerCase();
+
+  switch (baseType) {
+    case 'int':
+    case 'bigint':
+    case 'smallint':
+    case 'tinyint':
+      return TransformerDataType.INT64;
+    case 'bit':
+      return TransformerDataType.BOOLEAN;
+    case 'decimal':
+    case 'numeric':
+    case 'money':
+    case 'smallmoney':
+    case 'float':
+    case 'real':
+      return TransformerDataType.FLOAT64;
+    case 'char':
+    case 'varchar':
+    case 'text':
+    case 'nchar':
+    case 'nvarchar':
+    case 'ntext':
+      return TransformerDataType.STRING;
+    case 'date':
+    case 'datetime':
+    case 'datetime2':
+    case 'smalldatetime':
+    case 'datetimeoffset':
+    case 'time':
+      return TransformerDataType.TIME;
+    case 'uniqueidentifier':
+      return TransformerDataType.UUID;
+    case 'binary':
+    case 'varbinary':
+    case 'image':
+    case 'xml':
+    case 'json':
+    case 'sql_variant':
+      return TransformerDataType.ANY;
+    default:
+      return TransformerDataType.UNSPECIFIED;
+  }
 }
 
 function postgresTypeToTransformerDataType(

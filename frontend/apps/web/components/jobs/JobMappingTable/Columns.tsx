@@ -285,7 +285,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
       header({ column }) {
         return <SchemaColumnHeader column={column} title="RGPD" />;
       },
-      cell({ row }) {
+      cell({ row, table }) {
         return (
           // justify-start : centré, le badge ne tombait pas sous le libellé
           // « RGPD » de l'en-tête, aligné à gauche comme toutes les colonnes.
@@ -297,8 +297,21 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
               method={row.original.piiDetectionMethod}
               isAnonymized={isAnonymizingTransformer(row.original.transformer)}
               hasSuggestion={
+                // Un transformer suggéré ne suffit pas : il doit aussi être
+                // COMPATIBLE avec le type de la colonne. Generate Card Number
+                // n'accepte qu'INT64, donc une carte stockée en texte — le cas
+                // normal, sinon les zéros de tête sautent — n'a rien de
+                // proposable. Dire « non anonymisée » invitait alors à agir sans
+                // qu'aucune action soit possible.
                 row.original.suggestedTransformerSource !==
-                TransformerSource.UNSPECIFIED
+                  TransformerSource.UNSPECIFIED &&
+                (
+                  table.options.meta?.jmTable?.getAvailableTransformers(
+                    row.index
+                  ) ?? { system: [], userDefined: [] }
+                ).system.some(
+                  (t) => t.source === row.original.suggestedTransformerSource
+                )
               }
             />
           </div>
