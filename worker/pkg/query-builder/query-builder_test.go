@@ -74,7 +74,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.GoquPostgresDriver
 		table := "public.accounts"
 		limit := uint(10)
-		expected := `SELECT * FROM "public"."accounts" ORDER BY RANDOM() ASC LIMIT 10`
+		expected := `SELECT * FROM (SELECT * FROM "public"."accounts" LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.GoquPostgresDriver
 		table := "schema.table_name"
 		limit := uint(100)
-		expected := `SELECT * FROM "schema"."table_name" ORDER BY RANDOM() ASC LIMIT 100`
+		expected := `SELECT * FROM (SELECT * FROM "schema"."table_name" LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 100`
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)
@@ -96,7 +96,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.MysqlDriver
 		table := "public.accounts"
 		limit := uint(10)
-		expected := "SELECT * FROM `public`.`accounts` ORDER BY RAND() ASC LIMIT 10"
+		expected := "SELECT * FROM (SELECT * FROM `public`.`accounts` LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10"
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.MysqlDriver
 		table := "schema.table_name"
 		limit := uint(100)
-		expected := "SELECT * FROM `schema`.`table_name` ORDER BY RAND() ASC LIMIT 100"
+		expected := "SELECT * FROM (SELECT * FROM `schema`.`table_name` LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 100"
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)
@@ -117,7 +117,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.MssqlDriver
 		table := "public.accounts"
 		limit := uint(10)
-		expected := `SELECT  TOP (10) * FROM "public"."accounts" ORDER BY NEWID() ASC`
+		expected := `SELECT  TOP (10) * FROM (SELECT  TOP (1000) * FROM "public"."accounts") AS "husonym_sample" ORDER BY NEWID() ASC`
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)
@@ -128,7 +128,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		driver := sqlmanager_shared.MssqlDriver
 		table := "schema.table_name"
 		limit := uint(100)
-		expected := `SELECT  TOP (100) * FROM "schema"."table_name" ORDER BY NEWID() ASC`
+		expected := `SELECT  TOP (100) * FROM (SELECT  TOP (1000) * FROM "schema"."table_name") AS "husonym_sample" ORDER BY NEWID() ASC`
 
 		sql, err := BuildSampledSelectLimitQuery(driver, table, limit)
 		require.NoError(t, err)

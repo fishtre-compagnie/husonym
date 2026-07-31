@@ -75,6 +75,25 @@ func BuildSelectLimitQuery(
 	return sql, nil
 }
 
+// sampleWindowSize borne le nombre de lignes sur lesquelles porte le tirage
+// aléatoire. Assez large pour que l'échantillon reste varié, assez petit pour que
+// le tri soit gratuit.
+const sampleWindowSize = 1000
+
+// BuildSampledSelectLimitQuery construit une requête d'échantillonnage aléatoire.
+//
+// Le tirage porte sur une FENÊTRE bornée, pas sur la table entière. Un
+// `ORDER BY RAND() LIMIT 20` posé directement sur la table oblige le SGBD à lire
+// toutes les lignes et à les trier intégralement pour n'en rendre que 20 : le coût
+// croît avec la table, sans rapport avec la taille de l'échantillon demandé.
+// Mesuré sur une table de production MySQL, la requête dépassait 30 s, le client
+// coupait la connexion et le scan PII échouait en HTTP 500.
+//
+// Compromis assumé : l'échantillon n'est plus uniforme sur l'ensemble de la table,
+// il est tiré au hasard parmi les premières sampleWindowSize lignes. Pour
+// reconnaître la NATURE d'une colonne — l'usage réel de cette fonction — la
+// représentativité statistique n'apporte rien ; un échantillon obtenable en
+// quelques millisecondes, si.
 func BuildSampledSelectLimitQuery(
 	driver, table string, limit uint,
 ) (string, error) {
@@ -90,8 +109,12 @@ func BuildSampledSelectLimitQuery(
 
 	builder := getGoquDialect(driver)
 	sqltable := goqu.I(table)
+
+	// Fenêtre lue sans tri : le SGBD s'arrête dès qu'il a ses lignes.
+	window := builder.From(sqltable).Limit(sampleWindowSize).As("husonym_sample")
+
 	sql, _, err := builder.
-		From((sqltable)).
+		From(window).
 		Order(goqu.L(randStmt).Asc()).
 		Limit(limit).
 		ToSQL()
