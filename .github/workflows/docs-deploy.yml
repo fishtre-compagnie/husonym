@@ -51,9 +51,15 @@ jobs:
 
       # Serves build/ from Workers Static Assets on docs.husonym.com.
       # See docs/wrangler.jsonc for the routing configuration.
+      #
+      # wranglerVersion must stay pinned: the action defaults to wrangler 3.90,
+      # which predates assets-only Workers and fails with "Missing entry-point"
+      # because this config has no `main`. It matches the devDependency in
+      # docs/package.json so local and CI deploys behave the same.
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: docs
+          wranglerVersion: "4"
