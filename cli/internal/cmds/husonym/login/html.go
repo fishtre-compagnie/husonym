@@ -11,7 +11,7 @@ const (
 <!DOCTYPE html>
 <head>
     <title>{{ .Title }}</title>
-    <link rel="icon" type="image/png" href="https://assets.husonym.com/husonym/newbrand/favicon_transparent.ico" />
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/docs/static/img/husonym_favicon.png" />
     <style>
         body {
             background-color: #101010;
@@ -90,19 +90,16 @@ const (
 	`
 
 	loginPageSuccess = `
-  <div class='nav'><a href="https://www.husonym.com"><img class='husonymLogo' src="https://assets.husonym.com/husonym/newbrand/logo_light_mode.svg"></a></div>
+  <div class='nav'><a href="https://www.husonym.com"><img class='husonymLogo' src="https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/docs/static/img/logo_and_text_light_mode.png"></a></div>
   <div class='successText'>
       <h1>Login Success!</h1>
       <p>You've successfully logged in to Husonym CLI.</p>
       <p>You may now close this window and return to your terminal.</p>
   </div>
-  <div>
-      <img class='logo' src="https://assets.husonym.com/husonym/app/cliImage.png">
-  </div>
 	`
 
 	loginPageError = `
-    <div><a href="https://www.husonym.com"><img class='husonymLogo' src="https://assets.husonym.com/husonym/newbrand/logo_light_mode.svg"></a></div>
+    <div><a href="https://www.husonym.com"><img class='husonymLogo' src="https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/docs/static/img/logo_and_text_light_mode.png"></a></div>
     <div class='successText'>
         <h1>There was a problem logging you in!</h1>
         <p class="error-text">Error Code: {{ .ErrorCode }}</p>

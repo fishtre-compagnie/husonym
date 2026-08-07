@@ -1,7 +1,6 @@
 export const siteConfig = {
   name: 'husonym',
   url: 'https://app.husonym.com',
-  ogImage: 'https://assets.husonym.com/husonym/docs/husonym-og.png',
   description:
     'Open source data anonymization and synthetic data orchestration.',
   links: {

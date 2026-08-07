@@ -1,12 +1,12 @@
 <p align="center">
   <picture>
     <source
-      srcset="https://assets.husonym.com/husonym/docs/husonym-header-dark.svg"
+      srcset="docs/static/img/logo_and_text_dark_mode.png"
       media="(prefers-color-scheme: dark)"
     />
     <img
       alt="Husonym"
-      src="https://assets.husonym.com/husonym/docs/husonym-header.svg"
+      src="docs/static/img/logo_and_text_light_mode.png"
     />
   </picture>
 </p>
