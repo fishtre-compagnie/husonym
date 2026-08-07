@@ -93,7 +93,7 @@ terminationGracePeriodSeconds:
 shutdownTimeoutSeconds:
 
 husonym:
-  # -- The url to the Neoysnc API instance
+  # -- The url to the Husonym API instance
   url: http://husonym-api
   # -- Only required if running the backend in auth-mode
   apiKey:

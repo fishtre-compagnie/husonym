@@ -106,10 +106,6 @@ Each helm chart has a README that contains the full values spec.
 
 These can be found in the Github repo.
 
-
-
-
-
 ```
 api:
   db:

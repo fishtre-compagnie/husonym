@@ -64,7 +64,8 @@ const config: Config = {
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/fishtre-compagnie/husonym/blob/main/docs',
+          editUrl:
+            'https://github.com/fishtre-compagnie/husonym/blob/main/docs',
         },
         blog: false,
         theme: {

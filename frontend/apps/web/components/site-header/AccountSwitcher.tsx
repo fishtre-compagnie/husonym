@@ -139,7 +139,9 @@ function AccountSwitcherPopover(
           className="w-[200px] justify-between"
         >
           <Avatar className="mr-2 h-5 w-5">
-            <AvatarFallback>{getAvatarFallback(activeAccount?.name)}</AvatarFallback>
+            <AvatarFallback>
+              {getAvatarFallback(activeAccount?.name)}
+            </AvatarFallback>
           </Avatar>
           {activeAccount?.name}
           <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
@@ -162,7 +164,9 @@ function AccountSwitcherPopover(
                     className="text-sm cursor-pointer"
                   >
                     <Avatar className="mr-2 h-5 w-5">
-                      <AvatarFallback>{getAvatarFallback(a.name)}</AvatarFallback>
+                      <AvatarFallback>
+                        {getAvatarFallback(a.name)}
+                      </AvatarFallback>
                     </Avatar>
                     {a.name}
                     <CheckIcon
@@ -187,7 +191,9 @@ function AccountSwitcherPopover(
                     className="text-sm cursor-pointer"
                   >
                     <Avatar className="mr-2 h-5 w-5">
-                      <AvatarFallback>{getAvatarFallback(a.name)}</AvatarFallback>
+                      <AvatarFallback>
+                        {getAvatarFallback(a.name)}
+                      </AvatarFallback>
                     </Avatar>
                     {a.name}
                     <CheckIcon

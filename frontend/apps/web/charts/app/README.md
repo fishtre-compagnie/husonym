@@ -29,6 +29,9 @@ A Helm chart for the Husonym App
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
+| husonymApi.url | string | `"http://husonym-api"` | The URL to the Husonym API instance |
+| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
+| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
@@ -37,13 +40,10 @@ A Helm chart for the Husonym App
 | istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
 | jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: This will only work if it has also been enabled via the backend with a valid license |
 | nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
-| husonymApi.url | string | `"http://husonym-api"` | The URL to the Husonym API instance |
-| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | nextAuthSecret | string | `"This is an example"` | next-auth secret that is used to encrypt the session cookie |
 | nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |
 | nextPublic.appBaseUrl | string | `"http://localhost:3000"` | next public app base url. Should be the public url for the application |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |

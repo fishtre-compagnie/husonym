@@ -10,15 +10,15 @@
     "directory": "./build",
     // Docusaurus is statically generated and emits its own 404.html, so serve
     // that for unmatched paths rather than rewriting them to index.html.
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
   },
   "routes": [
     {
       "pattern": "docs.husonym.com",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
   ],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }
