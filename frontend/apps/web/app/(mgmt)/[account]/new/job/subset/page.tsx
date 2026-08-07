@@ -42,7 +42,6 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -65,7 +64,6 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
-  const posthog = usePostHog();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -182,9 +180,6 @@ export default function Page(props: PageProps): ReactElement {
           (id) => connMap.get(id)
         )
       );
-      posthog.capture('New Job Flow Complete', {
-        jobType: 'data-sync',
-      });
       toast.success('Successfully created the job!');
       clearNewJobSession(window.sessionStorage, sessionPrefix);
 

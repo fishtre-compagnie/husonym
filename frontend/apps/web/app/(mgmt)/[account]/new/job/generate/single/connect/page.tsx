@@ -41,7 +41,6 @@ import {
   ConnectionService,
 } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
@@ -57,7 +56,6 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
-  const posthog = usePostHog();
   useEffect(() => {
     if (!searchParams?.sessionId) {
       router.push(`/${account?.name}/new/job`);
@@ -104,7 +102,6 @@ export default function Page(props: PageProps): ReactElement {
     router.push(
       `/${account?.name}/new/job/generate/single/schema?sessionId=${sessionPrefix}`
     );
-    posthog.capture('New Job Flow Connect Complete', { jobType: 'generate' });
   }
 
   const errors = form.formState.errors;

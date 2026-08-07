@@ -13,7 +13,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -91,7 +91,7 @@ func (s *Service) GetJobHooks(
 	req *mgmtv1alpha1.GetJobHooksRequest,
 ) (*mgmtv1alpha1.GetJobHooksResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceGetJobHooksProcedure,
 		)
 	}
@@ -124,7 +124,7 @@ func (s *Service) GetJobHook(
 	req *mgmtv1alpha1.GetJobHookRequest,
 ) (*mgmtv1alpha1.GetJobHookResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceGetJobHookProcedure,
 		)
 	}
@@ -141,7 +141,7 @@ func (s *Service) GetJobHook(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find job hook by id")
+		return nil, husonymerrors.NewNotFound("unable to find job hook by id")
 	}
 
 	verifyResp, err := s.verifyUserHasJob(
@@ -171,7 +171,7 @@ func (s *Service) DeleteJobHook(
 	req *mgmtv1alpha1.DeleteJobHookRequest,
 ) (*mgmtv1alpha1.DeleteJobHookResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceGetJobHooksProcedure,
 		)
 	}
@@ -217,7 +217,7 @@ func (s *Service) IsJobHookNameAvailable(
 	req *mgmtv1alpha1.IsJobHookNameAvailableRequest,
 ) (*mgmtv1alpha1.IsJobHookNameAvailableResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceIsJobHookNameAvailableProcedure,
 		)
 	}
@@ -253,7 +253,7 @@ func (s *Service) CreateJobHook(
 	req *mgmtv1alpha1.CreateJobHookRequest,
 ) (*mgmtv1alpha1.CreateJobHookResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceCreateJobHookProcedure,
 		)
 	}
@@ -287,7 +287,7 @@ func (s *Service) CreateJobHook(
 	}
 	if !isValid {
 		logger.Debug("job hook creation did not pass connection id verification")
-		return nil, nucleuserrors.NewBadRequest(
+		return nil, husonymerrors.NewBadRequest(
 			"connection id specified in hook is not a part of job",
 		)
 	}
@@ -351,7 +351,7 @@ func (s *Service) UpdateJobHook(
 	}
 	if !isValid {
 		logger.Debug("job hook creation did not pass connection id verification")
-		return nil, nucleuserrors.NewBadRequest(
+		return nil, husonymerrors.NewBadRequest(
 			"connection id specified in hook is not a part of job",
 		)
 	}
@@ -457,7 +457,7 @@ func (s *Service) GetActiveJobHooksByTiming(
 	req *mgmtv1alpha1.GetActiveJobHooksByTimingRequest,
 ) (*mgmtv1alpha1.GetActiveJobHooksByTimingResponse, error) {
 	if !s.cfg.isEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.JobServiceGetActiveJobHooksByTimingProcedure,
 		)
 	}
@@ -497,7 +497,7 @@ func (s *Service) GetActiveJobHooksByTiming(
 			return nil, err
 		}
 	default:
-		return nil, nucleuserrors.NewBadRequest(
+		return nil, husonymerrors.NewBadRequest(
 			fmt.Sprintf("invalid hook timing: %T", req.GetTiming()),
 		)
 	}
@@ -532,7 +532,7 @@ func (s *Service) verifyUserHasJob(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find job id")
+		return nil, husonymerrors.NewNotFound("unable to find job id")
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)

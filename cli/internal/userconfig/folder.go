@@ -11,7 +11,7 @@ const (
 	husonymFolderName = ".husonym"
 )
 
-// Get or Creates the Nucleus folder that lives and stores persisted settings.
+// Get or Creates the Husonym folder that lives and stores persisted settings.
 //
 // 1. Checks for directory specified by env var HUSONYM_CONFIG_DIR
 // 2. Checks for existence of XDG_CONFIG_HOME and append "husonym" to it, if exists

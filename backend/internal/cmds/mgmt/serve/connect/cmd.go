@@ -115,9 +115,9 @@ func serve(ctx context.Context) error {
 
 	slogger, loglogger := husonymlogger.NewLoggers()
 
-	neoEnv := viper.GetString("NUCLEUS_ENV")
+	neoEnv := viper.GetString("HUSONYM_ENV")
 	if neoEnv != "" {
-		slogger = slogger.With("nucleusEnv", neoEnv)
+		slogger = slogger.With("husonymEnv", neoEnv)
 	}
 
 	slog.SetDefault(

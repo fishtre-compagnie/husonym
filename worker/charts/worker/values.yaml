@@ -31,7 +31,7 @@ serviceAccount:
   annotations: {}
 
 # -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
-nucleusEnv:
+husonymEnv:
 
 husonymCloud:
   # -- Whether or not this is HusonymCloud

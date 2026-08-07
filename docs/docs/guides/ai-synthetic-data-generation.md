@@ -24,7 +24,7 @@ In order to get started, you'll need the following:
 
 For this guide, I'm going to use a Postgres database from [Neon](https://neon.tech).
 
-Click on `Databases` on the left hand menu and click on the **New Database** button to create a new database. I've named my database `cust-gen` and picked the `evis` role as the owner. This is just an admin role that I'm using for this demo.
+Click on `Databases` on the left hand menu and click on the **New Database** button to create a new database. I've named my database `cust-gen` and picked an admin role as the owner. This is just an admin role that I'm using for this demo.
 
 ![new-trans](/img/cust-gen-db.png)
 

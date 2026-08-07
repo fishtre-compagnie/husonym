@@ -442,4 +442,4 @@ func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 ## Moving forward
 
-Now that you've seen how to anonymize data, generate synthetic data and create resources in Husonym, you can use the Husonym Go SDK to do much more! And if you have any questions, we're always available in Discord to help.
+Now that you've seen how to anonymize data, generate synthetic data and create resources in Husonym, you can use the Husonym Go SDK to do much more! And if you have any questions, we're always available at support@husonym.com to help.

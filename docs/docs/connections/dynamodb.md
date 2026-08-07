@@ -11,7 +11,7 @@ slug: /connections/dynamodb
 
 DynamoDB offers a fast persistent key–value datastore with built-in support for replication, autoscaling, encryption at rest, and on-demand backup among other features. It is one of the most highly requested database connections to be added to Husonym.
 
-If you are interested in using DynamoDB but don't see a feature that is required for you to use it, please reach out to us on Discord!
+If you are interested in using DynamoDB but don't see a feature that is required for you to use it, please reach out to us at support@husonym.com!
 
 ## Configuring DynamoDB
 
@@ -228,7 +228,7 @@ The default query looks basically like this: `SELECT * FROM <table>`.
 
 IF a subset is configured, a where clause is tacked on along with your provided query. Example: `SELECT * FROM <table> WHERE Id = '111'`.
 
-If this type of subsetting is not sufficient for your usecase, please reach out to us on Discord.
+If this type of subsetting is not sufficient for your usecase, please reach out to us at support@husonym.com.
 
 ## Trying out DynamoDB offline
 

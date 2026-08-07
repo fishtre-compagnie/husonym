@@ -31,7 +31,7 @@ The table shows that most of them are not required, however that is only true if
 
 The descriptions of each environment variable detail exactly what the `AUTH_*` is and why it is needed.
 
-If there is any trouble configuring authentication with Husonym, reach out to us for help on Discord.
+If there is any trouble configuring authentication with Husonym, reach out to us for help at support@husonym.com.
 
 ## How to Authenticate against Husonym API
 
@@ -99,7 +99,7 @@ This is determined by the `AUTH_API_PROVIDER` environment variable that recogniz
 The following environment variables are as follows:
 
 - `AUTH_API_BASEURL` - This is the base url for the Admin API. Auth0 calls this the Management API, while Keycloak the Admin API.
-  - For auth0, this is almost always your raw tenant url as custom domains do not work with Auth0 management API access. Example: `https://nucleus-cloud-staging.us.auth0.com`
+  - For auth0, this is almost always your raw tenant url as custom domains do not work with Auth0 management API access. Example: `https://your-tenant.us.auth0.com`
   - For keycloak, this url will look something like this: `https://auth.svcs.stage.husonym.com/admin/realms/husonym-stage`. The pattern is: `<baseurl>/admin/realms/<realm>`
 - `AUTH_API_CLIENT_ID` - The service account's client id
 - `AUTH_API_CLIENT_SECRET` - The client id secret

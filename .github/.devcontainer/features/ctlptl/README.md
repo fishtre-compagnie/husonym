@@ -7,7 +7,7 @@ Making local Kubernetes clusters fun and easy to set up
 
 ```json
 "features": {
-    "ghcr.io/nucleuscloud/devcontainer-features/ctlptl:0": {}
+    "ghcr.io/fishtre-compagnie/husonym/devcontainer-features/ctlptl:0": {}
 }
 ```
 
@@ -21,4 +21,4 @@ Making local Kubernetes clusters fun and easy to set up
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/nucleuscloud/devcontainer-features/blob/main/src/ctlptl/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/fishtre-compagnie/husonym/blob/main/.github/.devcontainer/features/ctlptl/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

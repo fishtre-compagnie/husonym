@@ -1,13 +1,7 @@
 import '@/app/globals.css';
-import { GoogleScriptProvider } from '@/components/providers/googleTag-provider';
-import {
-  PHProvider,
-  PostHogPageview,
-} from '@/components/providers/posthog-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
-import { UnifyScriptProvider } from '@/components/providers/unify-provider';
 import { Metadata } from 'next';
-import { ReactElement, Suspense } from 'react';
+import { ReactElement } from 'react';
 import BaseLayout from './BaseLayout';
 
 export const metadata: Metadata = {
@@ -31,22 +25,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <>
-            <PHProvider>
-              <BaseLayout>
-                <>
-                  <Suspense>
-                    <UnifyScriptProvider />
-                    <GoogleScriptProvider />
-                  </Suspense>
-                  <Suspense>
-                    <PostHogPageview />
-                  </Suspense>
-                  {children}
-                </>
-              </BaseLayout>
-            </PHProvider>
-          </>
+          <BaseLayout>{children}</BaseLayout>
         </ThemeProvider>
       </body>
     </html>

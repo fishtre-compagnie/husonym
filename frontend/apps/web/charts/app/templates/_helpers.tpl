@@ -72,8 +72,8 @@ PORT: {{ .Values.containerPort | quote }}
 {{- if .Values.otel.enabled }}
 OTEL_EXPORTER_OTLP_PORT: {{ .Values.otel.otlpPort | quote }} # sends to gRPC receiver
 {{- end }}
-{{- if .Values.nucleusEnv }}
-NUCLEUS_ENV: {{ .Values.nucleusEnv }}
+{{- if .Values.husonymEnv }}
+HUSONYM_ENV: {{ .Values.husonymEnv }}
 {{- end }}
 {{- if .Values.husonymApi.url }}
 HUSONYM_API_BASE_URL: {{ .Values.husonymApi.url }}
@@ -123,16 +123,6 @@ NEXT_PUBLIC_APP_BASE_URL: {{ .Values.nextPublic.appBaseUrl }}
 {{- end }}
 AUTH_ENABLED: {{ .Values.auth.enabled | default "false" | quote }}
 AUTH_TRUST_HOST: {{ .Values.auth.trustHost | default "true" | quote }}
-HUSONYM_ANALYTICS_ENABLED: {{ .Values.analytics.enabled | default "true" | quote }}
-{{- if and .Values.posthog .Values.posthog.key }}
-POSTHOG_KEY: {{ .Values.posthog.key }}
-{{- end }}
-{{- if and .Values.posthog .Values.posthog.host }}
-POSTHOG_HOST: {{ .Values.posthog.host }}
-{{- end }}
-{{- if and .Values.unify .Values.unify.key }}
-UNIFY_KEY: {{ .Values.unify.key }}
-{{- end }}
 HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
 ENABLE_RUN_LOGS: {{ .Values.enableRunLogs | default "false" | quote }}
 {{- if and .Values.protometrics .Values.protometrics.enabled }}

@@ -46,7 +46,7 @@ This is useful if you're already using golang-migrate in your database and don't
 ## Base Permissions and other requirements
 
 Husonym creates the `schema_migrations` table in the `public` schema and also creates a `husonym_api` custom schema that it dumps all of its table into.
-As of the writing of this article, the `husonym_api` schema is hardcoded into the codebase and cannot easily be changed. If this is important to you that it be something else, please reach out to us on Discord.
+As of the writing of this article, the `husonym_api` schema is hardcoded into the codebase and cannot easily be changed. If this is important to you that it be something else, please reach out to us at support@husonym.com.
 
 ### Custom Role
 

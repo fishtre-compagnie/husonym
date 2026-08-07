@@ -16,7 +16,7 @@ import (
 	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/slack-go/slack"
 )
@@ -170,7 +170,7 @@ func (s *Service) GetAccountHook(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find account hook by id")
+		return nil, husonymerrors.NewNotFound("unable to find account hook by id")
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -413,7 +413,7 @@ func (s *Service) CreateAccountHook(
 	validEvents := []int32{}
 	for _, event := range hookReq.GetEvents() {
 		if _, ok := mgmtv1alpha1.AccountHookEvent_name[int32(event)]; !ok {
-			return nil, nucleuserrors.NewBadRequest(fmt.Sprintf("invalid event: %v", event))
+			return nil, husonymerrors.NewBadRequest(fmt.Sprintf("invalid event: %v", event))
 		}
 		validEvents = append(validEvents, int32(event))
 	}
@@ -513,7 +513,7 @@ func (s *Service) UpdateAccountHook(
 	validEvents := []int32{}
 	for _, event := range req.GetEvents() {
 		if _, ok := mgmtv1alpha1.AccountHookEvent_name[int32(event)]; !ok {
-			return nil, nucleuserrors.NewBadRequest(fmt.Sprintf("invalid event: %v", event))
+			return nil, husonymerrors.NewBadRequest(fmt.Sprintf("invalid event: %v", event))
 		}
 		validEvents = append(validEvents, int32(event))
 	}
@@ -571,7 +571,7 @@ func (s *Service) GetSlackConnectionUrl(
 	req *mgmtv1alpha1.GetSlackConnectionUrlRequest,
 ) (*mgmtv1alpha1.GetSlackConnectionUrlResponse, error) {
 	if !s.cfg.isSlackEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.AccountHookServiceGetSlackConnectionUrlProcedure,
 		)
 	}
@@ -603,7 +603,7 @@ func (s *Service) HandleSlackOAuthCallback(
 	req *mgmtv1alpha1.HandleSlackOAuthCallbackRequest,
 ) (*mgmtv1alpha1.HandleSlackOAuthCallbackResponse, error) {
 	if !s.cfg.isSlackEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.AccountHookServiceHandleSlackOAuthCallbackProcedure,
 		)
 	}
@@ -682,7 +682,7 @@ func (s *Service) TestSlackConnection(
 	req *mgmtv1alpha1.TestSlackConnectionRequest,
 ) (*mgmtv1alpha1.TestSlackConnectionResponse, error) {
 	if !s.cfg.isSlackEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.AccountHookServiceTestSlackConnectionProcedure,
 		)
 	}
@@ -749,7 +749,7 @@ func (s *Service) SendSlackMessage(
 	req *mgmtv1alpha1.SendSlackMessageRequest,
 ) (*mgmtv1alpha1.SendSlackMessageResponse, error) {
 	if !s.cfg.isSlackEnabled {
-		return nil, nucleuserrors.NewNotImplementedProcedure(
+		return nil, husonymerrors.NewNotImplementedProcedure(
 			mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
 		)
 	}
@@ -779,7 +779,7 @@ func (s *Service) SendSlackMessage(
 
 	slackHook := hook.GetHook().GetConfig().GetSlack()
 	if slackHook == nil {
-		return nil, nucleuserrors.NewNotFound("slack hook not found")
+		return nil, husonymerrors.NewNotFound("slack hook not found")
 	}
 	slackChannelId := slackHook.GetChannelId()
 
@@ -792,7 +792,7 @@ func (s *Service) SendSlackMessage(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to get slack access token: %w", err)
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("slack oauth connection not found")
+		return nil, husonymerrors.NewNotFound("slack oauth connection not found")
 	}
 
 	var event *accounthook_events.Event

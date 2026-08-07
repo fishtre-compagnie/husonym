@@ -66,7 +66,7 @@ A Helm chart for the Husonym Backend API
 | husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |

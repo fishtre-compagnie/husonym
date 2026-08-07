@@ -17,7 +17,7 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
@@ -391,7 +391,7 @@ func (s *SQLConnectionDataService) GetInitStatements(
 				truncateStmtsMap[k] = stmt
 			}
 		} else if options.GetTruncateBeforeInsert() {
-			return nil, nucleuserrors.NewNotImplemented(
+			return nil, husonymerrors.NewNotImplemented(
 				"postgres truncate unsupported. table foreig keys required to build truncate statement.",
 			)
 		}
@@ -567,7 +567,7 @@ func (s *SQLConnectionDataService) areSchemaAndTableValid(
 	}
 
 	if !isValidSchema(schema, schemas) || !isValidTable(table, schemas) {
-		return nucleuserrors.NewBadRequest("must provide valid schema and table")
+		return husonymerrors.NewBadRequest("must provide valid schema and table")
 	}
 	return nil
 }

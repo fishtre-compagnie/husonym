@@ -26,16 +26,12 @@ This command generates static content into the `build` directory and can be serv
 
 ### Deployment
 
-Using SSH:
+Deployment is automated. Any push to `main` that touches `docs/**` triggers the
+[Deploy Docs](../.github/workflows/docs-deploy.yml) workflow, which builds the site
+and publishes it to GitHub Pages via `actions/deploy-pages`.
 
-```
-$ USE_SSH=true npm run deploy
-```
+The site is served at [docs.husonym.com](https://docs.husonym.com). The custom domain
+comes from [`static/CNAME`](./static/CNAME), which Docusaurus copies into `build/` — the
+matching DNS record must point at GitHub Pages.
 
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> npm run deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+No manual `npm run deploy` step is needed.

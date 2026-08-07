@@ -104,15 +104,11 @@ There are a number of other options which you'll need to consult the values file
 
 Each helm chart has a README that contains the full values spec.
 
-These can be found in the Github repo, and are also available via ArtifactHub.
+These can be found in the Github repo.
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym)](https://artifacthub.io/packages/search?repo=husonym)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-api)](https://artifacthub.io/packages/search?repo=husonym-api)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-app)](https://artifacthub.io/packages/search?repo=husonym-app)
 
-[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym-worker)](https://artifacthub.io/packages/search?repo=husonym-worker)
 
 ```
 api:
@@ -212,7 +208,7 @@ This will add the following to each service's `Deployment`.
 kind: Deployment
 metadata:
   labels:
-    tags.datadoghq.com/env: { { .Values.nucleusEnv } }
+    tags.datadoghq.com/env: { { .Values.husonymEnv } }
     tags.datadoghq.com/service: { { template "husonym-api.fullname" . } }
     tags.datadoghq.com/version:
       { { .Values.image.tag | default .Chart.AppVersion } }
@@ -220,10 +216,10 @@ spec:
   template:
     metadata:
       annotations:
-        ad.datadoghq.com/nucleus-api.logs: '[{"source":"nucleus-husonym-api","service":"{{ template "husonym-api.fullname" . }}"}]'
+        ad.datadoghq.com/husonym-api.logs: '[{"source":"husonym-api","service":"{{ template "husonym-api.fullname" . }}"}]'
       labels:
         admission.datadoghq.com/enabled: 'true'
-        tags.datadoghq.com/env: { { .Values.nucleusEnv } }
+        tags.datadoghq.com/env: { { .Values.husonymEnv } }
         tags.datadoghq.com/service: { { template "husonym-api.fullname" . } }
         tags.datadoghq.com/version:
           { { .Values.image.tag | default .Chart.AppVersion } }

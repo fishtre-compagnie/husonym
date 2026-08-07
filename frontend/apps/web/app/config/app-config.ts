@@ -1,8 +1,6 @@
 export interface SystemAppConfig {
   isAuthEnabled: boolean;
   publicAppBaseUrl: string;
-  posthog: PosthogConfig;
-  unify: UnifyConfig;
   isHusonymCloud: boolean;
   isStripeEnabled: boolean;
   enableRunLogs: boolean;
@@ -11,9 +9,8 @@ export interface SystemAppConfig {
   isJobHooksEnabled: boolean;
   isAccountHooksEnabled: boolean;
   isSlackAccountHookEnabled: boolean;
-  gtag: GtagConfig;
 
-  calendlyUpgradeLink: string;
+  upgradeLink: string;
   isGcpCloudStorageConnectionsEnabled: boolean;
   // server-side base url
   husonymApiBaseUrl: string;
@@ -21,21 +18,4 @@ export interface SystemAppConfig {
   publicHusonymApiBaseUrl: string;
   isRbacEnabled: boolean;
   isPiiDetectionJobEnabled: boolean;
-}
-
-interface PosthogConfig {
-  enabled: boolean;
-  key?: string;
-  host: string;
-}
-
-interface UnifyConfig {
-  enabled: boolean;
-  key?: string;
-}
-
-interface GtagConfig {
-  enabled: boolean;
-  key?: string;
-  conversion?: string;
 }

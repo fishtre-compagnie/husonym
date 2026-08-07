@@ -8,7 +8,7 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
@@ -186,7 +186,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccount() {
 
 		account1, err := s.db.CreateTeamAccount(s.ctx, user.ID, "myteam", testutil.GetTestLogger(t))
 		requireErrResp(t, account1, err)
-		alreadyExists := nucleuserrors.NewAlreadyExists("")
+		alreadyExists := husonymerrors.NewAlreadyExists("")
 		require.ErrorAs(t, err, &alreadyExists)
 	})
 }
@@ -258,7 +258,7 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 			testutil.GetTestLogger(t),
 		)
 		requireErrResp(t, resp, err)
-		badreqerror := nucleuserrors.NewBadRequest("")
+		badreqerror := husonymerrors.NewBadRequest("")
 		require.ErrorAs(t, err, &badreqerror)
 	})
 }
@@ -401,7 +401,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccountInvite() {
 			dbViewerRole,
 		)
 		requireErrResp(t, invite, err)
-		forbiddin := nucleuserrors.NewForbidden("")
+		forbiddin := husonymerrors.NewForbidden("")
 		require.ErrorAs(t, err, &forbiddin)
 	})
 }
@@ -456,7 +456,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 		)
 		require.Error(t, err)
 		require.Nil(t, verifyResp)
-		forbidden := nucleuserrors.NewForbidden("")
+		forbidden := husonymerrors.NewForbidden("")
 		require.ErrorAs(t, err, &forbidden)
 	})
 
@@ -481,7 +481,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 		)
 		require.Error(t, err)
 		require.Nil(t, verifyResp)
-		badrequest := nucleuserrors.NewBadRequest("")
+		badrequest := husonymerrors.NewBadRequest("")
 		require.ErrorAs(t, err, &badrequest)
 		t.Log(err.Error())
 	})

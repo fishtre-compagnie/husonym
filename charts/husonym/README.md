@@ -77,7 +77,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | api.husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
 | api.nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| api.nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| api.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | api.otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | api.otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | api.podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
@@ -113,7 +113,6 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |
 | api.volumeMounts | list | `[]` | Volumes that will be mounted to the deployment |
 | api.volumes | list | `[]` | Volumes that will be attached to the deployment |
-| app.analytics.enabled | bool | `true` | Enables analytics such as Posthog/Unify (if keys have been provided for them) |
 | app.auth.audience | string | `nil` | The audience that should be present in the JWT token |
 | app.auth.clientId | string | `nil` | The client id that will be used by the app to retrieve user tokens |
 | app.auth.clientSecret | string | `nil` | The client secret that will be used by the app |
@@ -145,11 +144,10 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |
 | app.nextPublic.appBaseUrl | string | `"http://localhost:3000"` | next public app base url. Should be the public url for the application |
 | app.nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| app.nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| app.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | app.otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | app.otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | app.podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
-| app.posthog.key | string | `"phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip"` | Posthog Key |
 | app.protometrics.enabled | bool | `false` |  |
 | app.resources.limits.cpu | string | `"500m"` | Sets the max CPU amount |
 | app.resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
@@ -163,7 +161,6 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.sidecarContainers | list | `[]` | Provide sidecars that will be appended directly to the deployment next to the user-container |
 | app.terminationGracePeriodSeconds | string | `nil` | The amount of time in seconds to wait for the pod to shut down when a termination event has occurred. |
 | app.tolerations | list | `[]` | Any tolerations that should be applied to the deployment |
-| app.unify.key | string | `nil` | Unify Key |
 | app.updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |
 | worker.autoscaling.behavior | string | `nil` | The behavior of the HPA autoscaler |
 | worker.autoscaling.enabled | bool | `false` | Whether or not to install the HPA autoscaler |
@@ -187,7 +184,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | worker.husonym.url | string | `"http://husonym-api"` | The url to the Neoysnc API instance |
 | worker.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | worker.nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| worker.nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| worker.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | worker.otel | object | `{"enabled":false,"otlpPort":4317}` | Will eventually allow sending traces. The worker does emit record-based metrics, but does not currently listen to otel.enabled. Must provide the OTEL_SDK_DISABLED=false environment variable separately today. |
 | worker.podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
 | worker.redis.kind | string | `nil` | The kind of redis instance. simpke, cluster, failover |

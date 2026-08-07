@@ -15,7 +15,7 @@ The Husonym CLI lets you view accounts, jobs and sync data locally. To get start
 
 ## MacOS
 
-Homebrew is the simplest way to install nucleus CLI on the Mac. This can also be used on Linux, as well as on Windows 10 with Windows Subsystem for Linux.
+Homebrew is the simplest way to install the Husonym CLI on the Mac. This can also be used on Linux, as well as on Windows 10 with Windows Subsystem for Linux.
 
 ### Homebrew
 
@@ -31,7 +31,7 @@ You may also install directly from our brew repository:
 brew install fishtre-compagnie/tap/husonym
 ```
 
-From then on, you can let Homebrew keep Nucleus up to date by running the following command.
+From then on, you can let Homebrew keep Husonym up to date by running the following command.
 
 ```console
 brew upgrade
@@ -39,7 +39,7 @@ brew upgrade
 
 ## MacOS/Linux Direct Download
 
-Navigate to Husonym [releases](https://github.com/fishtre-compagnie/husonym/releases) page of the CLI repository in the Nucleus Github. From there you can choose which binary to download based on your machine's architecture.
+Navigate to Husonym [releases](https://github.com/fishtre-compagnie/husonym/releases) page of the Husonym repository on GitHub. From there you can choose which binary to download based on your machine's architecture.
 
 After you've downloaded and untarred the tarball, move it into your local bin to make it easy to run. If you're using Windows 10/11, see the Windows section below for more details.
 

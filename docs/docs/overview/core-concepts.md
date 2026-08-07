@@ -12,7 +12,7 @@ The best way to learn about Husonym is to understand the core concepts of the pl
 
 ### Jobs
 
-![job](https://assets.fishtre-compagnie.com/husonym/docs/jobs-page.png)
+![job](https://assets.husonym.com/husonym/docs/jobs-page.png)
 
 Jobs are async workflows that transform data and sync it between source and destination systems. They can run on a set schedule or run ad-hoc and can be paused at any time. Under the covers, Husonym uses [Temporal](https://github.com/temporalio/temporal) as our job scheduling and execution engine and [Benthos](https://github.com/benthosdev/benthos) as our data transformation engine. Temporal handles all of the execution, retries, backoffs and the coordination of tasks within a job. While Benthos handle the data sync'ing and transformation.
 
@@ -25,7 +25,7 @@ You can create multiple jobs with different schedules, schemas and settings. You
 
 ### Runs
 
-![runs](https://assets.fishtre-compagnie.com/husonym/docs/runs-page.png)
+![runs](https://assets.husonym.com/husonym/docs/runs-page.png)
 
 <strong>Runs</strong> are instances of a job that have been executed. Runs can
 be paused and restarted at any time. Husonym exposes a lot of useful metadata
@@ -43,6 +43,6 @@ We plan to continue to expand the number of connections we offer so that we can 
 
 ### Transformers
 
-![transformers](https://assets.fishtre-compagnie.com/husonym/docs/udt-home.png)
+![transformers](https://assets.husonym.com/husonym/docs/udt-home.png)
 
 Transformers are data-type specific modules that anonymize or generate data. Transformers are defined in the job workflow and are applied to every piece of data in the column they are assigned. Husonym ships with a number of transformers already built that handle common data types such as email, physical addresses, ssn, strings, integers and more. You can also create your own custom transformers.

@@ -72,4 +72,4 @@ This is generally more efficient and more flexible way to do incremental data re
 
 ## Conclusion
 
-Full refreshes and incremental data syncs are two ways to sync data using Husonym. There are plenty of valid use-cases for both and depending on your requirements, one may make more sense than the other. If you have other requirements or questions, please don't hesitate to submit a feature request or talk to us in Discord.
+Full refreshes and incremental data syncs are two ways to sync data using Husonym. There are plenty of valid use-cases for both and depending on your requirements, one may make more sense than the other. If you have other requirements or questions, please don't hesitate to submit a feature request or email us at support@husonym.com.

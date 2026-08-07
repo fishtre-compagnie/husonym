@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/spf13/viper"
 )
 
@@ -36,7 +36,7 @@ func NewFromMssqlConnection(
 			mssqlurl = config.MssqlConfig.GetUrl()
 		} else if config.MssqlConfig.GetUrlFromEnv() != "" {
 			if !strings.HasPrefix(config.MssqlConfig.GetUrlFromEnv(), userDefinedEnvPrefix) {
-				return nil, nucleuserrors.NewBadRequest(
+				return nil, husonymerrors.NewBadRequest(
 					fmt.Sprintf(
 						"to source a url from an environment variable, the variable must have a prefix of %s",
 						userDefinedEnvPrefix,
@@ -60,7 +60,7 @@ func NewFromMssqlConnection(
 
 		return &mssqlConnectConfig{url: uriconfig.String(), user: getUserFromInfo(uriconfig.User)}, nil
 	default:
-		return nil, nucleuserrors.NewBadRequest(fmt.Sprintf("must provide valid mssql connection: %T", cc))
+		return nil, husonymerrors.NewBadRequest(fmt.Sprintf("must provide valid mssql connection: %T", cc))
 	}
 }
 

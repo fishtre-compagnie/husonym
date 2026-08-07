@@ -16,7 +16,6 @@ import {
 } from '@radix-ui/react-icons';
 import { nanoid } from 'nanoid';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, useEffect, useState } from 'react';
 import { AiOutlineExperiment } from 'react-icons/ai';
 import { Button } from '../ui/button';
@@ -97,7 +96,6 @@ export default function WelcomeRouter({
   };
 
   const router = useRouter();
-  const posthog = usePostHog();
 
   return (
     <div className="flex flex-col gap-8 justify-center items-center text-center ">
@@ -158,9 +156,6 @@ export default function WelcomeRouter({
               href ??
                 `/${account?.name}/new/job/define?${dataSyncParams.toString()}`
             );
-            posthog.capture('New Job Flow Started', {
-              jobType: selectedJobType,
-            });
           }}
         >
           <div className="flex flex-row items-center gap-2">

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 func FilterSlice[T any](slice []T, filterFn func(T) bool) []T {
@@ -58,14 +58,14 @@ func GetBearerTokenFromHeader(
 ) (string, error) {
 	unparsedToken := header.Get(key)
 	if unparsedToken == "" {
-		return "", nucleuserrors.NewUnauthenticated("must provide valid bearer token")
+		return "", husonymerrors.NewUnauthenticated("must provide valid bearer token")
 	}
 	pieces := strings.Split(unparsedToken, " ")
 	if len(pieces) != 2 {
-		return "", nucleuserrors.NewUnauthenticated("token not in proper format")
+		return "", husonymerrors.NewUnauthenticated("token not in proper format")
 	}
 	if pieces[0] != "Bearer" {
-		return "", nucleuserrors.NewUnauthenticated("must provided bearer token")
+		return "", husonymerrors.NewUnauthenticated("must provided bearer token")
 	}
 	token := pieces[1]
 	return token, nil

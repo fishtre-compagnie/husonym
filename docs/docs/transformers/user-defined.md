@@ -8,7 +8,7 @@ slug: /transformers/user-defined
 
 ## Introduction
 
-![udt](https://assets.fishtre-compagnie.com/husonym/docs/user-defined-transformers-home.png)
+![udt](https://assets.husonym.com/husonym/docs/user-defined-transformers-home.png)
 
 User defined Transformers are a great way to configure a system transformer with your own presets and publish it everywhere. User defined transformers are saved at the account level and
 can be used across multiple jobs, saving you time during the schema configuration process. There are two ways to create User Defined Transformers:
@@ -29,11 +29,11 @@ In order to create a user defined transformer, follow these steps:
 1. Navigate to the **Transformers** page and click on **+ New Transformer**.
 2. You'll be brought to the new transformer page where you can select a base transformer. A base transformer serves as the blueprint for the user defined transformer. Select the base transformer for your user defined transformer.
 
-![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new.png)
+![udt](https://assets.husonym.com/husonym/docs/udt-new.png)
 
 3. Once you've selected a base transformer, you'll be prompted to give the transformer a name and description. Additionally, you can preset custom default configurations depending on the transformer. Fill out the details and click **save**.
 
-![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new-float.png)
+![udt](https://assets.husonym.com/husonym/docs/udt-new-float.png)
 
 ### Using a User Defined Transformer
 
@@ -42,7 +42,7 @@ In order to create a user defined transformer, follow these steps:
 
 In the transformers table under the User Defined Transformer tab.
 
-![udt](https://assets.fishtre-compagnie.com/husonym/docs/udt-new-float-home-page.png)
+![udt](https://assets.husonym.com/husonym/docs/udt-new-float-home-page.png)
 
 In the Schema configuration page in the transformer select.
 

@@ -66,7 +66,7 @@ changelog:
 #   - homepage: https://www.husonym.com
 #     description: CLI for interfacing with Husonym
 #     maintainers:
-#       - Devops <devops@fishtre-compagnie.com>
+#       - Devops <devops@husonym.com>
 #     license: MIT
 #     git_url: ssh://aur@aur.archlinux.org/husonym-bin.git
 #     package: |-
@@ -76,8 +76,7 @@ changelog:
 #       # license
 #       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/husonym/LICENSE"
 #     commit_author:
-#       name: nucleusbot
-#       email: devops@fishtre-compagnie.com
+#       email: devops@husonym.com
 #     private_key: "{{ .Env.AUR_KEY }}"
 
 # dockers:

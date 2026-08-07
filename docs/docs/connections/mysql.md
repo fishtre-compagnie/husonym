@@ -44,7 +44,7 @@ For full support, the environment variable must live on both the `husonym-api` a
 
 ### Discrete Host Parameters
 
-![mysql](https://assets.fishtre-compagnie.com/husonym/docs/mysql.png)
+![mysql](https://assets.husonym.com/husonym/docs/mysql.png)
 
 This guide will help you to configure your MySQL database connection properly.
 

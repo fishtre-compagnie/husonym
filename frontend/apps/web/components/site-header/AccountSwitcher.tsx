@@ -7,7 +7,7 @@ import {
 import { ReactElement } from 'react';
 
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
-import { cn } from '@/libs/utils';
+import { cn, getAvatarFallback } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
 import { CreateTeamFormValues } from '@/yup-validations/account-switcher';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
@@ -18,7 +18,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useAccount } from '../providers/account-provider';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import {
   Command,
@@ -139,11 +139,7 @@ function AccountSwitcherPopover(
           className="w-[200px] justify-between"
         >
           <Avatar className="mr-2 h-5 w-5">
-            <AvatarImage
-              src={`https://avatar.vercel.sh/${activeAccount?.id}.png`}
-              alt={activeAccount?.name}
-            />
-            <AvatarFallback>SC</AvatarFallback>
+            <AvatarFallback>{getAvatarFallback(activeAccount?.name)}</AvatarFallback>
           </Avatar>
           {activeAccount?.name}
           <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
@@ -166,12 +162,7 @@ function AccountSwitcherPopover(
                     className="text-sm cursor-pointer"
                   >
                     <Avatar className="mr-2 h-5 w-5">
-                      <AvatarImage
-                        src={`https://avatar.vercel.sh/${a.name}.png`}
-                        alt={a.name}
-                        className="grayscale"
-                      />
-                      <AvatarFallback>SC</AvatarFallback>
+                      <AvatarFallback>{getAvatarFallback(a.name)}</AvatarFallback>
                     </Avatar>
                     {a.name}
                     <CheckIcon
@@ -196,11 +187,7 @@ function AccountSwitcherPopover(
                     className="text-sm cursor-pointer"
                   >
                     <Avatar className="mr-2 h-5 w-5">
-                      <AvatarImage
-                        src={`https://avatar.vercel.sh/${a.name}.png`}
-                        alt={a.name}
-                        className="grayscale"
-                      />
+                      <AvatarFallback>{getAvatarFallback(a.name)}</AvatarFallback>
                     </Avatar>
                     {a.name}
                     <CheckIcon

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/casbin/casbin/v2"
 )
@@ -424,7 +424,7 @@ func (r *Rbac) EnforceJob(
 		return err
 	}
 	if !ok {
-		return nucleuserrors.NewUnauthorized(
+		return husonymerrors.NewUnauthorized(
 			fmt.Sprintf("user does not have permission to %s job", action),
 		)
 	}
@@ -453,7 +453,7 @@ func (r *Rbac) EnforceConnection(
 		return err
 	}
 	if !ok {
-		return nucleuserrors.NewUnauthorized(
+		return husonymerrors.NewUnauthorized(
 			fmt.Sprintf("user does not have permission to %s connection", action),
 		)
 	}
@@ -480,7 +480,7 @@ func (r *Rbac) EnforceAccount(
 		return err
 	}
 	if !ok {
-		return nucleuserrors.NewUnauthorized(
+		return husonymerrors.NewUnauthorized(
 			fmt.Sprintf("user does not have permission to %s account", action),
 		)
 	}

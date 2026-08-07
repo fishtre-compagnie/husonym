@@ -1,12 +1,8 @@
 import { siteConfig } from '@/app/config/site';
-import {
-  ArrowTopRightIcon,
-  DiscordLogoIcon,
-  GitHubLogoIcon,
-} from '@radix-ui/react-icons';
+import { ArrowTopRightIcon, GitHubLogoIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
 import { ReactElement } from 'react';
-import { PiBookOpenText } from 'react-icons/pi';
+import { PiBookOpenText, PiEnvelopeSimple } from 'react-icons/pi';
 
 export default function SupportDrawer(): ReactElement {
   const supportLinks = [
@@ -23,9 +19,9 @@ export default function SupportDrawer(): ReactElement {
       description: 'Check out our source code.',
     },
     {
-      name: 'Discord',
-      href: siteConfig.links.discord,
-      icon: <DiscordLogoIcon />,
+      name: 'Email support',
+      href: siteConfig.links.support,
+      icon: <PiEnvelopeSimple className="h-4 w-4" />,
       description: 'Ask us a question directly!',
     },
   ];

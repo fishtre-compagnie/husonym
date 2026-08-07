@@ -26,7 +26,6 @@ import { useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { ConnectionService } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
@@ -47,7 +46,6 @@ export default function Page(props: PageProps): ReactElement {
       router.push(`/${account?.name}/new/job`);
     }
   }, [searchParams?.sessionId]);
-  const posthog = usePostHog();
 
   const sessionPrefix = getSingleOrUndefined(searchParams?.sessionId) ?? '';
   const formKey = getNewJobSessionKeys(sessionPrefix).piidetect.connect;
@@ -74,9 +72,6 @@ export default function Page(props: PageProps): ReactElement {
     router.push(
       `/${account?.name}/new/job/piidetect/schema?sessionId=${sessionPrefix}`
     );
-    posthog.capture('New Job Flow Connect Complete', {
-      jobType: 'pii-detection',
-    });
   }
 
   const { mysql, postgres, mssql } = splitConnections(connections);

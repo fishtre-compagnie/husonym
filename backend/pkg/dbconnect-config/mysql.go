@@ -9,7 +9,7 @@ import (
 	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
 )
@@ -63,7 +63,7 @@ func NewFromMysqlConnection(
 			mysqlurl = config.MysqlConfig.GetUrl()
 		} else if config.MysqlConfig.GetUrlFromEnv() != "" {
 			if !strings.HasPrefix(config.MysqlConfig.GetUrlFromEnv(), userDefinedEnvPrefix) {
-				return nil, nucleuserrors.NewBadRequest(
+				return nil, husonymerrors.NewBadRequest(
 					fmt.Sprintf(
 						"to source a url from an environment variable, the variable must have a prefix of %s",
 						userDefinedEnvPrefix,

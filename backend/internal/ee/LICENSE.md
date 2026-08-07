@@ -1,5 +1,6 @@
 The Husonym Enterprise license (the “Enterprise License”)
 Copyright (c) 2024 Nucleus Cloud Corp.
+Copyright (c) 2025 Fishtre Compagnie
 
 With regard to the Husonym Software:
 

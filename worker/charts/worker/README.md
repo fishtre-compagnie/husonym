@@ -34,7 +34,7 @@ A Helm chart for the Husonym Temporal Worker
 | husonym.url | string | `"http://husonym-api"` | The url to the Neoysnc API instance |
 | husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel | object | `{"enabled":false,"otlpPort":4317}` | Will eventually allow sending traces. The worker does emit record-based metrics, but does not currently listen to otel.enabled. Must provide the OTEL_SDK_DISABLED=false environment variable separately today. |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
 | redis.kind | string | `nil` | The kind of redis instance. simpke, cluster, failover |

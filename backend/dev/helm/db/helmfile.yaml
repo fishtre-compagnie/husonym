@@ -12,7 +12,7 @@ releases:
     values:
       - auth:
           postgresPassword: foofar
-          database: nucleus
+          database: husonym
         primary:
           persistence:
             mountPath: "/husonym/husonym-postgres"

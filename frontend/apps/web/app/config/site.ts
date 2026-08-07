@@ -1,11 +1,11 @@
 export const siteConfig = {
   name: 'husonym',
   url: 'https://app.husonym.com',
-  ogImage: 'https://ui.shadcn.com/og.jpg',
+  ogImage: 'https://assets.husonym.com/husonym/docs/husonym-og.png',
   description:
-    'Beautifully designed components built with Radix UI and Tailwind CSS.',
+    'Open source data anonymization and synthetic data orchestration.',
   links: {
-    discord: 'https://discord.com/invite/MFAMgnp4HF',
+    support: 'mailto:support@husonym.com',
     github: 'https://github.com/fishtre-compagnie/husonym',
     docs: 'https://docs.husonym.com',
   },

@@ -12,7 +12,6 @@ A Helm chart for the Husonym App
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| analytics.enabled | bool | `true` | Enables analytics such as Posthog/Unify (if keys have been provided for them) |
 | auth.audience | string | `nil` | The audience that should be present in the JWT token |
 | auth.clientId | string | `nil` | The client id that will be used by the app to retrieve user tokens |
 | auth.clientSecret | string | `nil` | The client secret that will be used by the app |
@@ -44,11 +43,10 @@ A Helm chart for the Husonym App
 | nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |
 | nextPublic.appBaseUrl | string | `"http://localhost:3000"` | next public app base url. Should be the public url for the application |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |
-| posthog.key | string | `"phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip"` | Posthog Key |
 | protometrics.enabled | bool | `false` |  |
 | resources.limits.cpu | string | `"500m"` | Sets the max CPU amount |
 | resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
@@ -62,5 +60,4 @@ A Helm chart for the Husonym App
 | sidecarContainers | list | `[]` | Provide sidecars that will be appended directly to the deployment next to the user-container |
 | terminationGracePeriodSeconds | string | `nil` | The amount of time in seconds to wait for the pod to shut down when a termination event has occurred. |
 | tolerations | list | `[]` | Any tolerations that should be applied to the deployment |
-| unify.key | string | `nil` | Unify Key |
 | updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |

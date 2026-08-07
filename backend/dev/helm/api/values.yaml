@@ -6,7 +6,7 @@ serviceAccount:
 
 db:
   host: husonym-postgresql
-  name: nucleus
+  name: husonym
   port: 5432
   username: postgres
   password: foofar
@@ -15,7 +15,7 @@ db:
 migrations:
   db:
     host: husonym-postgresql
-    name: nucleus
+    name: husonym
     port: 5432
     username: postgres
     password: foofar
@@ -31,14 +31,15 @@ istio:
 datadog:
   enabled: false
 
-nucleusEnv: dev
+husonymEnv: dev
 
 servicePort: 80
 containerPort: 8080
 
 auth:
-  baseUrl: https://auth.fishtre-compagnie.dev/
-  audience: https://api.fishtre-compagnie.com
+  # Local Keycloak realm, matching the values used by compose.auth.yml
+  baseUrl: http://keycloak:8080/realms/husonym
+  audience: husonym
 
 temporal:
   url: temporal.temporal:7233

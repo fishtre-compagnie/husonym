@@ -20,7 +20,7 @@ import (
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -185,7 +185,7 @@ func (s *Service) CheckConnectionConfig(
 			Privileges:      privs,
 		}), nil
 	default:
-		return nil, nucleuserrors.NewBadRequest(
+		return nil, husonymerrors.NewBadRequest(
 			fmt.Errorf("this method does not support this connection type %T: %w", req.Msg.GetConnectionConfig().GetConfig(), errors.ErrUnsupported).
 				Error(),
 		)
@@ -357,7 +357,7 @@ func (s *Service) GetConnection(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find connection by id")
+		return nil, husonymerrors.NewNotFound("unable to find connection by id")
 	}
 
 	user, err := s.userclient.GetUser(ctx)
@@ -471,7 +471,7 @@ func (s *Service) UpdateConnection(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find connection by id")
+		return nil, husonymerrors.NewNotFound("unable to find connection by id")
 	}
 
 	user, err := s.userclient.GetUser(ctx)
@@ -701,7 +701,7 @@ type urlEnvVarConfig interface {
 
 func checkUrlEnvVar(cfg urlEnvVarConfig, isHusonymCloud bool) error {
 	if cfg.GetUrlFromEnv() != "" && isHusonymCloud {
-		return nucleuserrors.NewBadRequest("url env var is not supported in husonym cloud")
+		return husonymerrors.NewBadRequest("url env var is not supported in husonym cloud")
 	}
 	return nil
 }

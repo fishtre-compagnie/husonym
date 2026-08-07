@@ -1,6 +1,7 @@
 MIT License
 
 Copyright (c) 2024 NUCLEUS CLOUD CORP
+Copyright (c) 2025 Fishtre Compagnie
 
 Portions of this software are licensed as follows:
 

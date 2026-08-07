@@ -50,7 +50,7 @@ const ALL_PLANS: Plan[] = [
       'Synthetic Data Generation',
       'US Region',
       'Husonym Infrastructure',
-      'Community Discord',
+      'Community support',
     ],
     planType: UserAccountType.PERSONAL,
   },
@@ -66,7 +66,7 @@ const ALL_PLANS: Plan[] = [
       'Unlimited Users',
       'US or EU Region',
       'Free-form text PII anonymization',
-      'Private Discord/Slack',
+      'Priority email support',
     ],
     planType: UserAccountType.TEAM,
   },
@@ -111,7 +111,7 @@ export default function Billing(): ReactElement {
       />
       <Plans
         account={account}
-        upgradeHref={systemAppConfigData?.calendlyUpgradeLink ?? ''}
+        upgradeHref={systemAppConfigData?.upgradeLink ?? ''}
         plans={ALL_PLANS}
         isStripeEnabled={systemAppConfigData?.isStripeEnabled ?? false}
       />
