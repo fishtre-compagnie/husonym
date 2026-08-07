@@ -27,11 +27,19 @@ This command generates static content into the `build` directory and can be serv
 ### Deployment
 
 Deployment is automated. Any push to `main` that touches `docs/**` triggers the
-[Deploy Docs](../.github/workflows/docs-deploy.yml) workflow, which builds the site
-and publishes it to GitHub Pages via `actions/deploy-pages`.
+[Deploy Docs](../.github/workflows/docs-deploy.yml) workflow, which builds the site and
+publishes `build/` to Cloudflare Workers Static Assets.
 
-The site is served at [docs.husonym.com](https://docs.husonym.com). The custom domain
-comes from [`static/CNAME`](./static/CNAME), which Docusaurus copies into `build/` — the
-matching DNS record must point at GitHub Pages.
+The site is served at [docs.husonym.com](https://docs.husonym.com), configured as a
+custom domain in [`wrangler.jsonc`](./wrangler.jsonc). Wrangler manages the DNS record
+itself, so there is no `CNAME` file to maintain.
 
-No manual `npm run deploy` step is needed.
+The workflow needs two repository secrets: `CLOUDFLARE_API_TOKEN` (with the *Edit
+Cloudflare Workers* template) and `CLOUDFLARE_ACCOUNT_ID`.
+
+To deploy by hand:
+
+```
+$ npm run build
+$ npx wrangler deploy
+```
