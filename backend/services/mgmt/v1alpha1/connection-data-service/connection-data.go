@@ -11,7 +11,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonymgob "github.com/fishtre-compagnie/husonym/internal/gob"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -251,7 +251,7 @@ func (s *Service) GetAiGeneratedData(
 
 	openaiconfig := aiconnection.GetConnectionConfig().GetOpenaiConfig()
 	if openaiconfig == nil {
-		return nil, nucleuserrors.NewBadRequest("connection must be a valid openai connection")
+		return nil, husonymerrors.NewBadRequest("connection must be a valid openai connection")
 	}
 
 	client := openai.NewClient(

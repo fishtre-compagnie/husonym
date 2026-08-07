@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var name = "evis"
+var name = "john"
 var maxCharacterLimit = int64(20)
 
 func Test_TranformFirstNameEmptyName(t *testing.T) {

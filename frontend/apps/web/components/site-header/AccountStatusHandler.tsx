@@ -48,7 +48,7 @@ export function AccountStatusHandler(props: Props) {
         />
       )}
       <Upgrade
-        calendlyLink={systemAppConfig.calendlyUpgradeLink}
+        upgradeLink={systemAppConfig.upgradeLink}
         isAccountStatusValidResp={data}
         isLoading={isLoading}
       />

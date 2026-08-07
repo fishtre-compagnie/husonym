@@ -32,7 +32,6 @@
     "class-variance-authority": "^0.7.1",
     "docusaurus-protobuffet": "^0.3.3",
     "postcss": "^8.5.15",
-    "posthog-docusaurus": "^2.0.5",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -48,7 +47,8 @@
     "cspell": "^9.3.0",
     "knip": "^6.16.1",
     "prettier": "^3.8.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.120.0"
   },
   "browserslist": {
     "production": [

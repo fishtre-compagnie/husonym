@@ -1,16 +1,14 @@
 <p align="center">
-  <!-- <img alt="husonymbanner" src="https://assets.fishtre.io/husonym/docs/husonym-header.svg" > -->
   <picture>
-  <source
-    srcset="https://assets.fishtre-compagnie.com/husonym/docs/husonym-header.svg"
-    media="(prefers-color-scheme: light)"
-  />
-  <source
-    srcset="https://assets.fishtre-compagnie.com/husonym/docs/husonym-header-dark.svg"
-    media="(prefers-color-scheme: dark), (prefers-color-scheme: no-preference)"
-  />
-  <img src="https://github-readme-stats.vercel.app/api?username=anuraghazra&show_icons=true" />
-</picture>
+    <source
+      srcset="docs/static/img/logo_and_text_dark_mode.png"
+      media="(prefers-color-scheme: dark)"
+    />
+    <img
+      alt="Husonym"
+      src="docs/static/img/logo_and_text_light_mode.png"
+    />
+  </picture>
 </p>
 
 <p align="center" style="font-size: 24px;font-weight: 500;">
@@ -20,38 +18,23 @@ Data Anonymization and Synthetic Data Orchestration
 <div align='center'>
  | <a href="https://www.husonym.com">Website</a>
  | <a href="https://docs.husonym.com">Docs</a>
- | <a href="https://www.husonym.com/blog">Blog</a>
- | <a href="https://docs.husonym.com/changelog">Changelog</a>
 </div>
 
  <br>
 
 <div align="center">
-  <a href='https://makeapullrequest.com'>
-    <img alt='PRs Welcome' src='https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=shields'/>
+  <a href="https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md">
+    <img alt="License" src="https://img.shields.io/github/license/fishtre-compagnie/husonym" />
   </a>
-  <img src="https://img.shields.io/github/license/lightdash/lightdash" />
-  <!-- <a href="https://codecov.io/gh/fishtre-compagnie/husonym">
-    <img alt="CodeCov" src="https://codecov.io/gh/fishtre-compagnie/husonym/graph/badge.svg?token=A35QDLRU04"/>
-    </a> -->
-  <a href="https://github.com/fishtre-compagnie/husonym/actions/workflows/go.yml/">
+  <a href="https://github.com/fishtre-compagnie/husonym/actions/workflows/go.yml">
     <img alt="Go Tests" src="https://github.com/fishtre-compagnie/husonym/actions/workflows/go.yml/badge.svg"/>
-  </a>
-  <a href="https://x.com/husonymcloud">
-    <img alt="Follow X" src="https://img.shields.io/twitter/follow/husonymcloud?label=Follow"/>
-  </a>
-  <a href="https://artifacthub.io/packages/search?repo=husonym">
-    <img alt="ArtifactHub Husonym" src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/husonym" />
-  </a>
-  <a href="https://gurubase.io/g/husonym">
-    <img alt="Gurubase" src="https://img.shields.io/badge/Gurubase-Ask%20Husonym%20Guru-006BFF" />
   </a>
 </div>
 
 
 ## Introduction
 
-[Husonym](https://www.husonym.com) is an way to anonymize PII, generate synthetic data and sync environments for better testing, debugging and developer experience.
+[Husonym](https://www.husonym.com) is a way to anonymize PII, generate synthetic data and sync environments for better testing, debugging and developer experience.
 
 Companies use Husonym to:
 
@@ -106,8 +89,10 @@ For more in-depth details on environment variables, Kubernetes deployments, and 
 Some resources to help you along the way:
 
 - [Docs](https://docs.husonym.com) for comprehensive documentation and guides
-
+- [GitHub Issues](https://github.com/fishtre-compagnie/husonym/issues) to report a bug or request a feature
+- [CONTRIBUTING.md](./CONTRIBUTING.md) to get set up for local development
+- <support@husonym.com> to reach us directly
 
 ## Licensing
 
-We strongly believe in free and open source software and make this repo is available under the [MIT expat license](./LICENSE.md).
+We strongly believe in free and open source software and make this repo available under the [MIT expat license](./LICENSE.md).

@@ -13,7 +13,7 @@ releases:
         serviceAccount:
           create: true
 
-        nucleusEnv: dev
+        husonymEnv: dev
 
         servicePort: 80
         containerPort: 3000

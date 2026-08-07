@@ -7,7 +7,7 @@ Generate type-safe code from SQL
 
 ```json
 "features": {
-    "ghcr.io/nucleuscloud/devcontainer-features/sqlc:1": {}
+    "ghcr.io/fishtre-compagnie/husonym/devcontainer-features/sqlc:1": {}
 }
 ```
 
@@ -21,4 +21,4 @@ Generate type-safe code from SQL
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/nucleuscloud/devcontainer-features/blob/main/src/sqlc/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/fishtre-compagnie/husonym/blob/main/.github/.devcontainer/features/sqlc/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

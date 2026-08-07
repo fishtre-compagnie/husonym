@@ -75,7 +75,7 @@ make compose/dev/auth/down
 Developing with Kubernetes via Tilt is also an option, however it is a bit more setup and is heavier. The benefits of this are that it allows you to develop more closely to what a k8s production environment could look like.
 
 > Note: This was our original way of developing Husonym but we have transitioned to a docker compose setup for development.
-> If you're trying this and run into issues. please reach out to us on Discord.
+> If you're trying this and run into issues. please reach out to us at support@husonym.com.
 
 ### Docker Desktop
 

@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 func (s *Service) GetAuthStatus(
@@ -42,7 +42,7 @@ func (s *Service) LoginCli(
 				resp.Error.ErrorDescription,
 			),
 		)
-		return nil, nucleuserrors.NewUnauthenticated("Request unauthenticated")
+		return nil, husonymerrors.NewUnauthenticated("Request unauthenticated")
 	}
 	var refreshToken *string
 	if resp.Result.RefreshToken != "" {
@@ -81,7 +81,7 @@ func (s *Service) RefreshCli(
 				resp.Error.ErrorDescription,
 			),
 		)
-		return nil, nucleuserrors.NewUnauthenticated("Unable to refresh access token")
+		return nil, husonymerrors.NewUnauthenticated("Unable to refresh access token")
 	}
 	var refreshToken *string
 	if resp.Result.RefreshToken != "" {

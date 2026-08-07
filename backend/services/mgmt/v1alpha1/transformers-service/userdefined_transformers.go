@@ -13,7 +13,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/dop251/goja"
 )
@@ -80,7 +80,7 @@ func (s *Service) GetUserDefinedTransformerById(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find transformer by id")
+		return nil, husonymerrors.NewNotFound("unable to find transformer by id")
 	}
 
 	dto, err := dtomaps.ToUserDefinedTransformerDto(&transformer, s.getSystemTransformerSourceMap())
@@ -223,7 +223,7 @@ func (s *Service) UpdateUserDefinedTransformer(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find transformer by id")
+		return nil, husonymerrors.NewNotFound("unable to find transformer by id")
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)

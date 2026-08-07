@@ -153,4 +153,4 @@ Looking pretty good! We have seeded our Neon database with 1000 rows of complete
 
 In this quick start, we walked through how to seed a PostgreSQL database with 1000 rows of synthetic data using Husonym. This is just a small test and you can expand this to generate tens and hundreds of thousands or even millions of rows of data across any relational database. Husonym handles the referential integrity.
 
-Lastly, if you want to anonymize existing data then it's a similar workflow. The only difference is that you select the [Data Sync Job](https://www.husonym.com/blog/husonym-neon-sync-job) and select a destination database.
+Lastly, if you want to anonymize existing data then it's a similar workflow. The only difference is that you select the [Data Sync Job](/guides/creating-a-sync-job) and select a destination database.

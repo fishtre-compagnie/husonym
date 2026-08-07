@@ -16,7 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v81"
@@ -242,7 +242,7 @@ func (s *Service) GetAccountBillingCheckoutSession(
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingCheckoutSessionResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		return nil, nucleuserrors.NewNotImplemented(
+		return nil, husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented",
 				strings.TrimPrefix(
@@ -312,7 +312,7 @@ func (s *Service) GetAccountBillingPortalSession(
 	req *connect.Request[mgmtv1alpha1.GetAccountBillingPortalSessionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingPortalSessionResponse], error) {
 	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		return nil, nucleuserrors.NewNotImplemented(
+		return nil, husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented",
 				strings.TrimPrefix(
@@ -347,7 +347,7 @@ func (s *Service) GetAccountBillingPortalSession(
 		return nil, err
 	}
 	if !account.StripeCustomerID.Valid {
-		return nil, nucleuserrors.NewForbidden(
+		return nil, husonymerrors.NewForbidden(
 			"requested account does not have a valid stripe customer id",
 		)
 	}
@@ -374,7 +374,7 @@ func (s *Service) GetBillingAccounts(
 		return nil, err
 	}
 	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, nucleuserrors.NewUnauthorized(
+		return nil, husonymerrors.NewUnauthorized(
 			"must provide valid authentication credentials for this endpoint",
 		)
 	}
@@ -406,7 +406,7 @@ func (s *Service) SetBillingMeterEvent(
 	req *connect.Request[mgmtv1alpha1.SetBillingMeterEventRequest],
 ) (*connect.Response[mgmtv1alpha1.SetBillingMeterEventResponse], error) {
 	if s.billingclient == nil {
-		return nil, nucleuserrors.NewUnauthorized("billing is not currently enabled")
+		return nil, husonymerrors.NewUnauthorized("billing is not currently enabled")
 	}
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
@@ -414,7 +414,7 @@ func (s *Service) SetBillingMeterEvent(
 		return nil, err
 	}
 	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, nucleuserrors.NewUnauthorized(
+		return nil, husonymerrors.NewUnauthorized(
 			"must provide valid authentication credentials for this endpoint",
 		)
 	}
@@ -435,10 +435,10 @@ func (s *Service) SetBillingMeterEvent(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("account does not exist")
+		return nil, husonymerrors.NewNotFound("account does not exist")
 	}
 	if !account.StripeCustomerID.Valid {
-		return nil, nucleuserrors.NewBadRequest("account is not an active billed customer")
+		return nil, husonymerrors.NewBadRequest("account is not an active billed customer")
 	}
 
 	var ts *int64

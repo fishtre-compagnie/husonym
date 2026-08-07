@@ -7,7 +7,7 @@ Declaratively deploy your Kubernetes manifests, Kustomize configs, and Charts as
 
 ```json
 "features": {
-    "ghcr.io/nucleuscloud/devcontainer-features/helmfile:0": {}
+    "ghcr.io/fishtre-compagnie/husonym/devcontainer-features/helmfile:0": {}
 }
 ```
 
@@ -21,4 +21,4 @@ Declaratively deploy your Kubernetes manifests, Kustomize configs, and Charts as
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/nucleuscloud/devcontainer-features/blob/main/src/helmfile/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/fishtre-compagnie/husonym/blob/main/.github/.devcontainer/features/helmfile/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

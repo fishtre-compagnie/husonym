@@ -3,7 +3,8 @@
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarFallback } from '@/libs/utils';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -59,12 +60,10 @@ function getColumns(isRbacEnabled: boolean): ColumnDef<MemberRow, any>[] {
     cell: ({ row, getValue }) => (
       <div className="flex flex-row items-center gap-4">
         <Avatar className="mr-2 h-12 w-12">
-          <AvatarImage
-            src={
-              row.original.image || `https://avatar.vercel.sh/${getValue()}.png`
-            }
-            alt={getValue()}
-          />
+          {row.original.image && (
+            <AvatarImage src={row.original.image} alt={getValue()} />
+          )}
+          <AvatarFallback>{getAvatarFallback(getValue())}</AvatarFallback>
         </Avatar>
         <span className="truncate font-medium">{getValue()}</span>
       </div>

@@ -120,7 +120,7 @@ func Test_InitStatementBuilder_Pg_Generate_InitSchema(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},
@@ -141,7 +141,7 @@ func Test_InitStatementBuilder_Pg_Generate_InitSchema(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},
@@ -441,7 +441,7 @@ func Test_InitStatementBuilder_Pg_TruncateCascade(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},
@@ -586,7 +586,7 @@ func Test_InitStatementBuilder_Pg_Truncate(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},
@@ -740,7 +740,7 @@ func Test_InitStatementBuilder_Pg_InitSchema(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},
@@ -762,7 +762,7 @@ func Test_InitStatementBuilder_Pg_InitSchema(t *testing.T) {
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: "postgresql://postgres:foofar@localhost:5435/nucleus",
+							Url: "postgresql://postgres:foofar@localhost:5435/husonym",
 						},
 					},
 				},

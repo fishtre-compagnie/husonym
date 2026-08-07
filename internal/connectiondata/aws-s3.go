@@ -17,7 +17,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -71,7 +71,7 @@ func (s *AwsS3ConnectionDataService) StreamData(
 ) error {
 	awsS3StreamCfg := config.GetAwsS3Config()
 	if awsS3StreamCfg == nil {
-		return nucleuserrors.NewBadRequest("jobId or jobRunId required for AWS S3 connections")
+		return husonymerrors.NewBadRequest("jobId or jobRunId required for AWS S3 connections")
 	}
 
 	s3Client, err := s.awsmanager.NewS3Client(ctx, s.connconfig)
@@ -99,7 +99,7 @@ func (s *AwsS3ConnectionDataService) StreamData(
 		logger.Debug(fmt.Sprintf("found run id for job in s3: %s", runId))
 		jobRunId = runId
 	default:
-		return nucleuserrors.NewInternalError("unsupported AWS S3 config id")
+		return husonymerrors.NewInternalError("unsupported AWS S3 config id")
 	}
 	logger = logger.With("runId", jobRunId)
 
@@ -209,7 +209,7 @@ func (s *AwsS3ConnectionDataService) GetSchema(
 ) ([]*mgmtv1alpha1.DatabaseColumn, error) {
 	awsCfg := config.GetAwsS3Config()
 	if config == nil {
-		return nil, nucleuserrors.NewBadRequest("jobId or jobRunId required for AWS S3 connections")
+		return nil, husonymerrors.NewBadRequest("jobId or jobRunId required for AWS S3 connections")
 	}
 
 	s3Client, err := s.awsmanager.NewS3Client(ctx, s.connconfig)
@@ -234,7 +234,7 @@ func (s *AwsS3ConnectionDataService) GetSchema(
 		}
 		jobRunId = runId
 	default:
-		return nil, nucleuserrors.NewInternalError("unsupported AWS S3 config id")
+		return nil, husonymerrors.NewInternalError("unsupported AWS S3 config id")
 	}
 
 	s3pathpieces = append(
@@ -410,7 +410,7 @@ func (s *AwsS3ConnectionDataService) getLastestJobRunFromAwsS3(
 	sort.Sort(sort.Reverse(sort.StringSlice(runIDs)))
 
 	if len(runIDs) == 0 {
-		return "", nucleuserrors.NewNotFound(
+		return "", husonymerrors.NewNotFound(
 			fmt.Sprintf(
 				"unable to find latest job run for job in s3 after processing common prefixes: %s",
 				jobId,

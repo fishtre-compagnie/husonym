@@ -11,7 +11,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 var (
@@ -23,7 +23,7 @@ func (s *Service) GetTransformPiiEntities(
 	req *connect.Request[mgmtv1alpha1.GetTransformPiiEntitiesRequest],
 ) (*connect.Response[mgmtv1alpha1.GetTransformPiiEntitiesResponse], error) {
 	if !s.cfg.IsPresidioEnabled {
-		return nil, nucleuserrors.NewNotImplemented(
+		return nil, husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
 				"%s is not implemented",
 				strings.TrimPrefix(
@@ -34,7 +34,7 @@ func (s *Service) GetTransformPiiEntities(
 		)
 	}
 	if s.entityclient == nil {
-		return nil, nucleuserrors.NewInternalError("entity service is enabled but client was nil.")
+		return nil, husonymerrors.NewInternalError("entity service is enabled but client was nil.")
 	}
 	user, err := s.userdataclient.GetUser(ctx)
 	if err != nil {

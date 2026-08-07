@@ -42,7 +42,6 @@ import {
 } from '@husonym/sdk';
 import { CheckIcon } from '@radix-ui/react-icons';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -78,7 +77,6 @@ export default function NewTransformer(): ReactElement {
   );
 
   const [openBaseSelect, setOpenBaseSelect] = useState(false);
-  const posthog = usePostHog();
 
   const form = useForm({
     resolver: yupResolver(CreateUserDefinedTransformerFormValues),
@@ -123,10 +121,6 @@ export default function NewTransformer(): ReactElement {
         transformerConfig: convertTransformerConfigSchemaToTransformerConfig(
           values.config
         ),
-      });
-      posthog.capture('New Transformer Created', {
-        source: values.source,
-        sourceName: transformers.find((t) => t.source === values.source)?.name,
       });
       toast.success('Successfully created transformer!');
       if (transformer.transformer?.id) {

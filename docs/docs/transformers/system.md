@@ -543,11 +543,11 @@ There are several ways you can mix-and-match configurations to get different pot
 
 | PreserveLength | PreserveDomain | Exclude Domains | Example Input        | Invalid Email Action | Example Output        |
 | -------------- | -------------- | --------------- | -------------------- | -------------------- | --------------------- |
-| false          | true           | `gmail.com`     | `evis@gmail.com`     | reject               | `f9nkeuh@ergwer.wewe` |
-| false          | true           | `gmail.com`     | `evis@gmail....com`  | reject               | ``                    |
+| false          | true           | `gmail.com`     | `john@gmail.com`     | reject               | `f9nkeuh@ergwer.wewe` |
+| false          | true           | `gmail.com`     | `john@gmail....com`  | reject               | ``                    |
 | true           | false          | `gmail.com`     | `f98723uh@gmail.com` | null                 | `f98723uh@gmail.com`  |
-| true           | true           | `gmail.com`     | `evis@gmail.com`     | passthrough          | `f98723uh@weefw.wefw` |
-| false          | false          | `gmail.com`     | `evis@gmail.com`     | passthrough          | `f98723uh@gmail.com`  |
+| true           | true           | `gmail.com`     | `john@gmail.com`     | passthrough          | `f98723uh@weefw.wefw` |
+| false          | false          | `gmail.com`     | `john@gmail.com`     | passthrough          | `f98723uh@gmail.com`  |
 
 ### Transform E164 Phone Number\{#transform-e164-phone-number}
 

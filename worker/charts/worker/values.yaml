@@ -31,7 +31,7 @@ serviceAccount:
   annotations: {}
 
 # -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
-nucleusEnv:
+husonymEnv:
 
 husonymCloud:
   # -- Whether or not this is HusonymCloud
@@ -93,7 +93,7 @@ terminationGracePeriodSeconds:
 shutdownTimeoutSeconds:
 
 husonym:
-  # -- The url to the Neoysnc API instance
+  # -- The url to the Husonym API instance
   url: http://husonym-api
   # -- Only required if running the backend in auth-mode
   apiKey:

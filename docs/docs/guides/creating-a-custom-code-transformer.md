@@ -30,8 +30,6 @@ In order to create a custom code transformer:
 1. Navigate to the **Transformers** page and click on **+ New Transformer**.
 2. You'll be brought to the new transformer page where you can select a base transformer. A base transformer serves as the blueprint for the user defined transformer. Select the **Transform Javascript** transformer.
 
-![tj](https://assets.fishtre-compagnie.com/husonym/docs/customcodetransformer.png)
-
 3. Give your transformer a **Name** and a **Description**.
 4. Then move onto to the **Custom Code** section. Here you can write in custom javascript code to transform your input value.
    Note that the value that you will be transforming is available at the `value` keyword and is coerced into the relevant javascript type.

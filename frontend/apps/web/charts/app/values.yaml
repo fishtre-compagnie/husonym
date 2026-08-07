@@ -31,7 +31,7 @@ serviceAccount:
   annotations: {}
 
 # -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
-nucleusEnv:
+husonymEnv:
 
 # otel Currently does not do anything but will eventaully allow emitting otel metrics and traces
 otel:
@@ -115,19 +115,6 @@ auth:
 ingress:
   # -- Enable this if using K8s ingress to expose the backend to the internet
   enabled: false
-
-analytics:
-  # -- Enables analytics such as Posthog/Unify (if keys have been provided for them)
-  enabled: true
-
-posthog:
-  # -- Posthog Key
-  key: phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip
-  # host:
-
-unify:
-  # -- Unify Key
-  key:
 
 # -- Any tolerations that should be applied to the deployment
 tolerations: []

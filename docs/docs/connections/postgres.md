@@ -204,7 +204,7 @@ Based on the connection type (source or destination) - you may see varying value
 **Please note that this is not fully encompassing and only checks permissions directly on tables themselves.
 This does not currently include functions, sequences, etc.**
 
-If you are running in to issues with permissions, please consult us on Discord.
+If you are running in to issues with permissions, please reach out to us at support@husonym.com.
 
 A successful connection will return something like this:
 

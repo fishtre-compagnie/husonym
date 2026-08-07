@@ -4,7 +4,7 @@ description: A Helm chart for Husonym that contains the api, app, and worker
 home: https://www.husonym.com
 sources:
   - https://github.com/fishtre-compagnie/husonym
-icon: https://assets.fishtre-compagnie.com/husonym/newbrand/logo_small.png
+icon: https://assets.husonym.com/husonym/brand/logo-mark.png
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

@@ -13,7 +13,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 )
 
@@ -61,7 +61,7 @@ func (s *GcpConnectionDataService) StreamData(
 ) error {
 	gcpStreamCfg := config.GetGcpCloudstorageConfig()
 	if gcpStreamCfg == nil {
-		return nucleuserrors.NewBadRequest(
+		return husonymerrors.NewBadRequest(
 			"must provide non-nil gcp cloud storage config in request",
 		)
 	}
@@ -81,7 +81,7 @@ func (s *GcpConnectionDataService) StreamData(
 		}
 		jobRunId = runId
 	default:
-		return nucleuserrors.NewNotImplemented(fmt.Sprintf("unsupported GCP Cloud Storage config id: %T", id))
+		return husonymerrors.NewNotImplemented(fmt.Sprintf("unsupported GCP Cloud Storage config id: %T", id))
 	}
 
 	onRecord := func(record map[string][]byte) error {
@@ -112,7 +112,7 @@ func (s *GcpConnectionDataService) GetSchema(
 ) ([]*mgmtv1alpha1.DatabaseColumn, error) {
 	gcpCfg := config.GetGcpCloudstorageConfig()
 	if gcpCfg == nil {
-		return nil, nucleuserrors.NewBadRequest("must provide gcp cloud storage config")
+		return nil, husonymerrors.NewBadRequest("must provide gcp cloud storage config")
 	}
 
 	gcpclient, err := s.gcpmanager.GetClient(ctx, s.logger)
@@ -131,7 +131,7 @@ func (s *GcpConnectionDataService) GetSchema(
 		}
 		jobRunId = runId
 	default:
-		return nil, nucleuserrors.NewNotImplemented(fmt.Sprintf("unsupported GCP Cloud Storage config id: %T", id))
+		return nil, husonymerrors.NewNotImplemented(fmt.Sprintf("unsupported GCP Cloud Storage config id: %T", id))
 	}
 
 	schemas, err := gcpclient.GetDbSchemaFromPrefix(

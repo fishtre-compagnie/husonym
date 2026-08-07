@@ -41,6 +41,9 @@ A Helm chart for the Husonym Backend API
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment's user-container. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
+| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
+| husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
+| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/api"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
@@ -63,10 +66,7 @@ A Helm chart for the Husonym Backend API
 | migrations.enabled | bool | `true` | Whether or not the migrations init container will be added to the deployment |
 | migrations.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the migration init container. |
 | nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
-| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
 | nodeSelector | object | `{}` | Any node selectors that should be applied to the deployment |
-| nucleusEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | otel.enabled | bool | `false` | whether or not to enable open telemetry settings |
 | otel.otlpPort | int | `4317` | Specifies the port that otel is listening on that the service will export metrics and traces to |
 | podAnnotations | object | `{}` | Provide a map of pod annotations that will be attached to the deployment's pod template annotations |

@@ -38,7 +38,6 @@ import {
 } from '@husonym/sdk';
 import { Cross2Icon, PlusIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
@@ -111,10 +110,7 @@ export default function Page(props: PageProps): ReactElement {
     name: 'destinations',
   });
 
-  const posthog = usePostHog();
-
   async function onSubmit(_values: ConnectFormValues) {
-    posthog.capture('New Job Flow Connect Complete', { jobType: 'data-sync' });
     router.push(`/${account?.name}/new/job/schema?sessionId=${sessionPrefix}`);
   }
 

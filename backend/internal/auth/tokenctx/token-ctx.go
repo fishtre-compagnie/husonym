@@ -5,7 +5,7 @@ import (
 
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 type TokenCtxResponse struct {
@@ -19,7 +19,7 @@ func GetTokenCtx(ctx context.Context) (*TokenCtxResponse, error) {
 	if err != nil {
 		jwtData, err := auth_jwt.GetTokenDataFromCtx(ctx)
 		if err != nil {
-			return nil, nucleuserrors.NewUnauthenticated("unable to find any token data in context")
+			return nil, husonymerrors.NewUnauthenticated("unable to find any token data in context")
 		}
 		return &TokenCtxResponse{JwtContextData: jwtData}, nil
 	}

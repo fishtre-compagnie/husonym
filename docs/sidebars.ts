@@ -191,11 +191,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'guides/analytics',
-      label: 'Configuring Analytics',
-    },
-    {
-      type: 'doc',
       id: 'guides/husonym-local-dev',
       label: 'Developing Husonym Locally',
     },
