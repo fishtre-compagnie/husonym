@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - docs/**
+  # Lets us redeploy the current docs without pushing a commit
+  workflow_dispatch:
 
 # One deployment at a time, cancelling any in-progress run
 concurrency:
@@ -21,6 +23,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # Fail early with a readable message rather than deep inside wrangler
+      - name: Check Cloudflare credentials are set
+        env:
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -n "$API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+              echo "Missing repository secret(s):$missing" >&2
+              echo "Create a token with the 'Edit Cloudflare Workers' template, scoped to the husonym.com zone." >&2
+              exit 1
+          fi
 
       - name: Set up Node
         uses: actions/setup-node@v6
