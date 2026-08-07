@@ -37,6 +37,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
+        with:
+          # Turns Pages on for the repo if it isn't already, so the workflow
+          # doesn't depend on a manual setting having been flipped first.
+          enablement: true
 
       - run: npm ci
       - run: npm run build
