@@ -32,6 +32,7 @@ import (
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
@@ -75,6 +76,9 @@ const (
 	openSourceAuthenticatedLicensedPostfix = "/oss-authenticated-licensed"
 	// OSS, Unauthenticated, Unlicensed
 	openSourceUnauthenticatedUnlicensedPostfix = "/oss-unauthenticated-unlicensed"
+	// OSS, Unauthenticated, Licensed with usage caps deliberately small enough for a test
+	// to reach them
+	openSourceUnauthenticatedLimitedPostfix = "/oss-unauthenticated-limited"
 	// NeoCloud, Licensed, Authenticated
 	neoCloudAuthenticatedLicensedPostfix = "/husonymcloud-authenticated"
 )
@@ -98,6 +102,7 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
+		nil,
 	)
 }
 
@@ -120,6 +125,7 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
+		nil,
 	)
 }
 
@@ -138,6 +144,7 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 		isHusonymCloud,
 		permissiveRbacClient,
 		logger,
+		nil,
 	)
 }
 
@@ -160,6 +167,34 @@ func (s *HusonymApiTestClient) setupNeoCloudMux(
 		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
+		nil,
+	)
+}
+
+// Licensed, with usage caps small enough that a test can actually reach them: one job,
+// two connections (the minimum a job needs, so the job cap stays reachable), and postgres
+// only.
+func (s *HusonymApiTestClient) setupOssLimitedMux(
+	pgcontainer *tcpostgres.PostgresTestContainer,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	isLicensed := true
+	isAuthEnabled := false
+	isHusonymCloud := false
+	maxJobs := 1
+	maxConnections := 2
+	return s.setupMux(
+		pgcontainer,
+		isAuthEnabled,
+		isLicensed,
+		isHusonymCloud,
+		rbac.NewAllowAllClient(),
+		logger,
+		&license.Limits{
+			MaxJobs:                &maxJobs,
+			MaxConnections:         &maxConnections,
+			AllowedConnectionTypes: []string{"postgres"},
+		},
 	)
 }
 
@@ -170,15 +205,22 @@ func (s *HusonymApiTestClient) setupMux(
 	isHusonymCloud bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
+	// Usage caps to put on the fake license. Nil means uncapped, which is what every
+	// variant other than the limited one wants.
+	licenseLimits *license.Limits,
 ) (*http.ServeMux, error) {
 	isPresidioEnabled := isLicensed || isHusonymCloud
 
 	maxAllowed := int64(10000)
-	var license *testutil.FakeEELicense
+	var eelicense *testutil.FakeEELicense
 	if isLicensed {
-		license = testutil.NewFakeEELicense(testutil.WithIsValid())
+		opts := []testutil.Option{testutil.WithIsValid()}
+		if licenseLimits != nil {
+			opts = append(opts, testutil.WithLimits(licenseLimits))
+		}
+		eelicense = testutil.NewFakeEELicense(opts...)
 	} else {
-		license = testutil.NewFakeEELicense()
+		eelicense = testutil.NewFakeEELicense()
 	}
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
@@ -202,9 +244,9 @@ func (s *HusonymApiTestClient) setupMux(
 		s.Mocks.Authmanagerclient,
 		billingclient,
 		rbacClient, // rbac client
-		license,
+		eelicense,
 	)
-	userclient := userdata.NewClient(userService, rbacClient, license)
+	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 
 	transformerService := v1alpha1_transformersservice.New(
 		&v1alpha1_transformersservice.Config{
@@ -213,7 +255,7 @@ func (s *HusonymApiTestClient) setupMux(
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.Presidio.Entities,
 		userclient,
-		license,
+		eelicense,
 	)
 
 	sqlmanagerclient := NewTestSqlManagerClient()
@@ -289,7 +331,7 @@ func (s *HusonymApiTestClient) setupMux(
 		presAnalyzeClient,
 		presAnonClient,
 		husonymDb,
-		license,
+		eelicense,
 	)
 
 	connectionDataService := v1alpha1_connectiondataservice.New(
