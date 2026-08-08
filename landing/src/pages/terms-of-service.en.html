@@ -1,0 +1,74 @@
+<h1>Terms of Service</h1>
+<p class="legal-updated">Last updated: {{__pageUpdated__}}</p>
+
+<p class="legal-lede">Husonym is published by Fishtre Compagnie and supplied under a
+subscription agreement. This page sets out the principles governing its use. The full terms
+applying to your organisation are those of the subscription agreement concluded with us:
+<a href="mailto:contact@husonym.com">contact@husonym.com</a>.</p>
+
+<h2>What you are supplied with</h2>
+<p>Husonym is supplied as container images and Helm charts, which you deploy in your own
+infrastructure. The right to use it is granted for the duration of your subscription, on a
+non-exclusive and non-transferable basis, for your organisation's internal purposes.</p>
+<p>The software is enabled by a signed license key, set in the
+<code class="mono">EE_LICENSE</code> environment variable of both the API and the
+worker.</p>
+
+<h2>Your data stays yours</h2>
+<p><strong>The software runs in your infrastructure. We do not access, receive or host any
+of the data you process with it.</strong> License verification itself is offline: Husonym
+never contacts us, which is what makes air-gapped deployment possible.</p>
+<p>Accordingly, in respect of the personal data you process using the software, you are the
+data controller and we do not act as a processor within the meaning of the GDPR.</p>
+<p>Husonym is an anonymization tool. Whether a resulting dataset is legally anonymous under
+the GDPR depends on your data and your configuration, and remains your assessment.</p>
+
+<h2>Usage limits</h2>
+<p>Your agreement may set limits, encoded in your license key and enforced by the software:
+a maximum number of jobs, a maximum number of connections, or the connector types
+included.</p>
+<p>Reaching a limit only prevents creating new resources: nothing already in place is
+affected, and no run in progress is interrupted. Write to us to raise a limit and we will
+issue a replacement key.</p>
+
+<h2>When a subscription ends</h2>
+<p>Husonym does not stop abruptly. It moves through four stages, each signalled in the
+interface.</p>
+
+<table class="legal-table">
+  <thead><tr><th>Stage</th><th>When</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Active</strong></td><td>more than 30 days remaining</td><td>everything works</td></tr>
+    <tr><td><strong>Expiring</strong></td><td>within 30 days of expiry</td><td>everything works, a banner shows the date</td></tr>
+    <tr><td><strong>Grace period</strong></td><td>after expiry, for a further period</td><td>everything still works</td></tr>
+    <tr><td><strong>Expired</strong></td><td>after the grace period</td><td>new runs stop</td></tr>
+  </tbody>
+</table>
+
+<div class="legal-note">
+  <p><strong>Nothing is deleted.</strong> Once the grace period ends, creating and running
+  jobs stops, but you keep access to all of your configuration and run history. You can
+  still pause, cancel a run in progress and delete resources. Runs already under way are
+  allowed to finish. Installing a renewed key restores full operation immediately, with no
+  migration and no reconfiguration.</p>
+</div>
+
+<h2>What you agree not to do</h2>
+<ul>
+  <li>circumvent, disable or tamper with the licensing mechanism, or use the software
+  beyond the limits encoded in your key;</li>
+  <li>share, publish or transfer your license key;</li>
+  <li>redistribute, resell or make the software available to third parties as a
+  service.</li>
+</ul>
+
+<h2>Intellectual property</h2>
+<p>The software and the intellectual property rights attaching to it remain the property of
+Fishtre Compagnie and its licensors. Your subscription transfers none of those rights to
+you beyond the right of use described above.</p>
+<p>Certain third-party components incorporated into the software remain governed by their
+respective authors' licences.</p>
+
+<h2>Contact us</h2>
+<p>For the full subscription agreement, a question about these terms, or to renew or change
+a license: <a href="mailto:contact@husonym.com">contact@husonym.com</a>.</p>

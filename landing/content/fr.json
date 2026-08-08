@@ -216,7 +216,8 @@
 
   "footer": {
     "ariaLabel": "Liens de pied de page",
-    "tagline": "Husonym est une solution de Fishtre Compagnie. Tous droits réservés."
+    "tagline": "Husonym est une solution de Fishtre Compagnie. Tous droits réservés.",
+    "terms": "Conditions d'utilisation"
   },
 
   "notFound": {
@@ -225,5 +226,13 @@
     "title": "Cette page a été anonymisée.",
     "body": "Il n'y a rien ici. Ou il n'y a plus rien.",
     "cta": "Retour à l'accueil"
+  },
+
+  "legal": {
+    "terms": {
+      "metaTitle": "Conditions d'utilisation — Husonym",
+      "metaDescription": "Les principes encadrant l'utilisation de Husonym : fourniture, données, limites d'usage et échéance de l'abonnement.",
+      "updated": "8 août 2026"
+    }
   }
 }

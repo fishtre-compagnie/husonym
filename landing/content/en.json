@@ -216,7 +216,8 @@
 
   "footer": {
     "ariaLabel": "Footer links",
-    "tagline": "Husonym is a Fishtre Compagnie product. All rights reserved."
+    "tagline": "Husonym is a Fishtre Compagnie product. All rights reserved.",
+    "terms": "Terms of Service"
   },
 
   "notFound": {
@@ -225,5 +226,13 @@
     "title": "This page has been anonymized.",
     "body": "There's nothing here. Or there's nothing left.",
     "cta": "Back home"
+  },
+
+  "legal": {
+    "terms": {
+      "metaTitle": "Terms of Service — Husonym",
+      "metaDescription": "The principles governing the use of Husonym: supply, data, usage limits and what happens when a subscription ends.",
+      "updated": "8 August 2026"
+    }
   }
 }

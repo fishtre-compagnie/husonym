@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{__lang__}}">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{__pageTitle__}}</title>
+<meta name="description" content="{{__pageDescription__}}" />
+<meta name="theme-color" content="#0b0f14" />
+<link rel="canonical" href="{{__canonical__}}" />
+{{__hreflangLinks__}}
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Husonym" />
+<meta property="og:title" content="{{__pageTitle__}}" />
+<meta property="og:description" content="{{__pageDescription__}}" />
+<meta property="og:image" content="{{__ogImage__}}" />
+<meta property="og:url" content="{{__canonical__}}" />
+<link rel="icon" href="/assets/favicon.ico" sizes="any" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/assets/fonts/space-grotesk.woff2" />
+<style>{{__styles__}}</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+{{> sections/nav.html}}
+
+<main id="top" class="legal">
+  <div class="container legal-inner">
+    {{__pageBody__}}
+  </div>
+</main>
+
+{{> sections/footer.html}}
+
+<script>{{__script__}}</script>
+</body>
+</html>

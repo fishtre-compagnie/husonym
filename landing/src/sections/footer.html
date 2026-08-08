@@ -1,15 +1,18 @@
 <footer class="site-footer">
   <div class="container footer-inner">
-    <a class="footer-brand" href="#top" aria-label="Husonym">
+    <a class="footer-brand" href="{{__homeBase__}}#top" aria-label="Husonym">
       <img src="/assets/logo.png" alt="Husonym" width="98" height="21" />
     </a>
     <nav class="footer-links" aria-label="{{footer.ariaLabel}}">
-      <a href="#fonctionnalites">{{nav.features}}</a>
-      <a href="#comment-ca-marche">{{nav.how}}</a>
-      <a href="#connecteurs">{{nav.connectors}}</a>
-      <a href="#securite">{{nav.security}}</a>
-      <a href="#tarifs">{{nav.pricing}}</a>
-      <a href="#contact">{{nav.contact}}</a>
+      <a href="{{__homeBase__}}#fonctionnalites">{{nav.features}}</a>
+      <a href="{{__homeBase__}}#comment-ca-marche">{{nav.how}}</a>
+      <a href="{{__homeBase__}}#connecteurs">{{nav.connectors}}</a>
+      <a href="{{__homeBase__}}#securite">{{nav.security}}</a>
+      <a href="{{__homeBase__}}#tarifs">{{nav.pricing}}</a>
+      <a href="{{__homeBase__}}#contact">{{nav.contact}}</a>
+      <!-- Absolute from the locale root, not a fragment: this nav is also rendered on the
+           legal pages themselves, where a relative link would nest paths. -->
+      <a href="{{__homeBase__}}terms-of-service">{{footer.terms}}</a>
     </nav>
     <!-- The year is an assembly token, not a catalogue string: those are substituted
          first, so a {{__year__}} sitting inside a translation would never resolve. -->
