@@ -1,0 +1,173 @@
+/* ═══ BRAND TOKENS ═════════════════════════════════════════════════════════
+   Every colour, font, radius and rhythm of the site lives in this block.
+
+   The eight background and text values come straight from the Husonym brand
+   sheet: #0B0F14 #141A22 #1F2732 #2D3A48 #5B7FA5 #A9C8E6 #E6EDF3 #FFFFFF.
+
+   The rule that matters: no other file contains a literal colour. If you find
+   yourself writing one elsewhere, a token is missing here — add it instead.
+   mask.js reads its colours back out of these custom properties at startup, so
+   no hex is hardcoded in the JavaScript either.
+
+   Dark-only, like the rest of the brand surfaces. Adding a light theme later
+   means redefining this one block under a media query and nothing else. */
+
+/* Space Grotesk, the brand face. Self-hosted so the page pulls nothing from a
+   third party and the CSP can keep font-src 'self'. Google serves ONE variable
+   file covering the whole range, hence a single @font-face with a weight RANGE:
+   the four URLs it advertises for 400/500/600/700 are byte-identical, and
+   shipping them separately would have wasted 66 KiB. */
+@font-face{
+  font-family:'Space Grotesk';
+  font-style:normal;
+  font-weight:300 700;
+  font-display:swap;
+  src:url('/assets/fonts/space-grotesk.woff2') format('woff2');
+}
+
+:root{
+  color-scheme:dark;
+
+  /* backgrounds, lightest to deepest */
+  --bg:#0b0f14;
+  --bg-alt:#141a22;
+  --bg-deep:#080b10;
+  --surface:#1f2732;
+  --surface-2:#2d3a48;
+
+  /* descent gradient, top of document to bottom (see mask.css) */
+  --depth-0:#0b0f14;
+  --depth-1:#0a0d12;
+  --depth-2:#090c10;
+  --depth-3:#07090d;
+  --depth-4:#05070a;
+
+  /* rules */
+  --line:#2d3a48;
+  --line-soft:rgba(230,237,243,.07);
+
+  /* text */
+  --text:#e6edf3;
+  --text-strong:#ffffff;
+  --text-muted:#93a7bd;          /* sits between #5B7FA5 and #A9C8E6, clears AA on --bg */
+  --text-dim:#5b7fa5;
+
+  /* Bare RGB components of the two colours that need arbitrary alpha in a dozen
+     places (translucent borders, glows, the scrollbar). Keeping them here is what
+     lets every other file write rgba(var(--accent-rgb), .3) instead of a literal.
+     Only drop shadows are exempt: those stay rgba(0,0,0,…), since a shadow is
+     black by convention rather than a brand colour. */
+  --accent-rgb:169,200,230;
+  --bg-rgb:11,15,20;
+
+  /* brand accent — the pale blue the brand sheet uses for highlights */
+  --accent:#a9c8e6;
+  --accent-strong:#e6edf3;
+  --accent-ink:#0b0f14;          /* text placed ON the accent — must clear AA */
+  --accent-soft:rgba(var(--accent-rgb),.13);
+
+  /* secondary accent — the deeper steel blue */
+  --accent-2:#5b7fa5;
+  --accent-2-soft:rgba(91,127,165,.15);
+
+  /* states. The brand palette is monochrome blue, so these are the only hues on the
+     page — deliberately muted so they read as signal rather than decoration. */
+  --ok:#7fb894;
+  --warn:#d4a259;
+  --danger:#c9737f;
+
+  /* DATA semantics — one hue per nature of field. Drives the hero, the problem
+     section, the feature mockups and the mask canvas. */
+  --data-pii:#c9737f;            /* sensitive value, in the clear */
+  --data-masked:#a9c8e6;         /* anonymized value */
+  --data-synth:#5b7fa5;          /* value generated from scratch */
+  --data-kept:#5b7fa5;           /* non-sensitive, passed through untouched */
+
+  /* typography — Space Grotesk per the brand sheet, self-hosted above. */
+  --font-display:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* geometry & rhythm */
+  --container:1180px;
+  --section-pad:clamp(4.5rem, 9vw, 8rem);
+  --radius:16px;
+  --radius-sm:10px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+  font-size:16px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img,svg{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+ul{list-style:none}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:700;text-wrap:balance;letter-spacing:-0.015em;color:var(--text)}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.container{max-width:var(--container);margin-inline:auto;padding-inline:clamp(1.25rem,5vw,2.5rem)}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:.5em;
+  font-family:var(--font-mono);font-size:.78rem;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  margin-bottom:1.1rem;
+}
+.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px 1px var(--accent)}
+/* Centred variant, so a section heading needs no inline style attribute. */
+.eyebrow.center{justify-content:center;width:100%}
+
+/* Inline code fragments in body copy (transformer names, shell commands). */
+.mono{font-family:var(--font-mono);font-size:.9em;color:var(--accent-strong)}
+
+/* ── grain overlay ── */
+.grain{
+  position:fixed;inset:0;z-index:60;pointer-events:none;
+  opacity:.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── buttons ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5em;
+  font-family:var(--font-body);font-weight:600;font-size:.95rem;
+  padding:.8em 1.5em;border-radius:100px;border:1px solid transparent;
+  transition:transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{background:var(--accent-strong);transform:translateY(-1px);box-shadow:0 8px 24px -6px rgba(var(--accent-rgb),.4)}
+.btn-ghost{border-color:var(--line);color:var(--text);background:rgba(255,255,255,.02)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent-strong)}
+.btn-sm{padding:.6em 1.2em;font-size:.85rem}
+
+/* ── reveal ── */
+.js .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1)}
+.js .reveal.is-visible{opacity:1;transform:none}
+.js .reveal-stagger > *{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1)}
+.js .reveal-stagger.is-visible > *{opacity:1;transform:none}
+.js .reveal-stagger.is-visible > *:nth-child(1){transition-delay:0s}
+.js .reveal-stagger.is-visible > *:nth-child(2){transition-delay:.08s}
+.js .reveal-stagger.is-visible > *:nth-child(3){transition-delay:.16s}
+.js .reveal-stagger.is-visible > *:nth-child(4){transition-delay:.24s}
+.js .reveal-stagger.is-visible > *:nth-child(5){transition-delay:.32s}
+@media (prefers-reduced-motion:reduce){
+  .js .reveal, .js .reveal-stagger > *{opacity:1!important;transform:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important}
+}
+
+/* ── section rhythm ── */
+section{padding-block:var(--section-pad);position:relative}
+.section-head{max-width:660px;margin-bottom:3.5rem}
+.section-head h2{font-size:clamp(1.9rem,3.4vw,2.6rem);margin-bottom:1rem}
+.section-head h2 em{font-style:normal;color:var(--accent)}
+.section-head p{color:var(--text-muted);font-size:1.08rem}
+.section-head.center{margin-inline:auto;text-align:center}

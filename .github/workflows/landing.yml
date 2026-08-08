@@ -1,0 +1,86 @@
+name: Landing
+
+on:
+  pull_request:
+    paths:
+      - landing/**
+      - .github/workflows/landing.yml
+
+concurrency:
+  group: landing-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: landing
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./landing/package-lock.json
+      - run: npm ci
+
+      # --strict turns a missing key or an untranslated string into a non-zero exit,
+      # rather than a warning nobody reads.
+      - run: npm run build -- --strict
+
+      - name: Every expected file was emitted
+        run: |
+          for f in public/index.html public/en/index.html public/404.html \
+                   public/en/404.html public/robots.txt public/sitemap.xml public/_headers; do
+            test -s "$f" || { echo "missing or empty: $f" >&2; exit 1; }
+          done
+
+      - name: No unresolved template token survived
+        run: |
+          if grep -rn '{{' public --include='*.html'; then
+            echo 'unresolved tokens in the generated pages' >&2
+            exit 1
+          fi
+
+      # The page inlines all of its CSS and JS, so its weight has to be watched
+      # deliberately — nothing else will flag it.
+      - name: Page weight budget
+        run: |
+          size=$(gzip -c public/index.html | wc -c)
+          echo "index.html: ${size} bytes gzipped"
+          if [ "$size" -gt 61440 ]; then
+            echo "over the 60 KiB gzipped budget" >&2
+            exit 1
+          fi
+
+  i18n:
+    name: Locale parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./landing/package-lock.json
+      - run: npm ci
+      # Fails on any key present in one catalogue and absent from the other.
+      - run: npm run check
+
+  worker:
+    name: Worker bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./landing/package-lock.json
+      - run: npm ci
+      # Validates the Worker bundle and the wrangler config without credentials and
+      # without deploying anything.
+      - run: npx wrangler deploy --dry-run --outdir=/tmp/landing-dry

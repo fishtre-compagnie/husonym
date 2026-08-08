@@ -1,0 +1,22 @@
+/* Problem section: a raw prod dump versus the same data through Husonym. */
+.problem{background:var(--bg-alt);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+.compare{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media (min-width:760px){ .compare{grid-template-columns:1fr 1fr} }
+.compare-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.6rem}
+.compare-card h4{font-family:var(--font-mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1.1rem;font-weight:500}
+.compare-card.is-real{border-color:rgba(var(--accent-rgb),.35)}
+.compare-card.is-real h4{color:var(--accent)}
+.mini-node{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border-radius:8px;background:var(--surface-2);margin-bottom:.5rem;font-size:.84rem;color:var(--text-muted);overflow:hidden}
+.mini-node i{width:8px;height:8px;border-radius:50%;flex:none}
+.mini-node.ghost{background:transparent;border:1px dashed var(--line);color:var(--text-dim)}
+.mini-node.flagged{outline:1px solid rgba(var(--accent-rgb),.3)}
+.mini-node .tag{margin-left:auto;font-family:var(--font-mono);font-size:.62rem;letter-spacing:.05em;color:var(--text-dim);white-space:nowrap;flex:none}
+.mini-node .tag.warn{color:var(--data-pii)}
+.mini-node .tag.ok{color:var(--ok)}
+.mini-node.flagged .tag{color:var(--accent)}
+
+/* Field-nature dots, shared with the feature mockups. */
+.d-pii{background:var(--data-pii)}
+.d-masked{background:var(--data-masked)}
+.d-synth{background:var(--data-synth)}
+.d-kept{background:var(--data-kept)}

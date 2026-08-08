@@ -1,0 +1,20 @@
+/* Pricing: a single card while the grid is not settled. */
+.pricing-solo{max-width:420px;margin-inline:auto}
+.price-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.75rem;display:flex;flex-direction:column;position:relative}
+.price-card.is-trial{border-color:rgba(var(--accent-rgb),.35);box-shadow:0 20px 40px -16px rgba(var(--accent-rgb),.2)}
+.price-card h3{font-size:1.15rem;margin-bottom:.5rem}
+.price-tagline{color:var(--text-muted);font-size:.85rem;margin-bottom:1.5rem}
+.price-value{display:flex;align-items:baseline;gap:.4rem}
+.price-amount{font-family:var(--font-display);font-size:1.9rem;font-weight:700}
+.price-cta{margin-top:1.4rem;margin-bottom:1.6rem;justify-content:center}
+.price-features{display:flex;flex-direction:column;gap:.65rem}
+.price-features li{display:flex;gap:.6rem;font-size:.85rem;color:var(--text-muted);align-items:flex-start}
+.price-features li::before{content:'✓';color:var(--accent);flex:none;font-weight:700}
+.pricing-footnote{text-align:center;color:var(--text-dim);font-size:.85rem;margin-top:2.5rem;max-width:520px;margin-inline:auto}
+
+/* Ready for the day the offering is settled: swap .pricing-solo for .pricing-grid in
+   pricing.html and add the sibling cards. Nothing else needs to change.
+.pricing-grid{display:grid;gap:1.25rem;grid-template-columns:1fr;max-width:none}
+@media (min-width:760px){.pricing-grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1040px){.pricing-grid{grid-template-columns:repeat(3,1fr)}}
+*/

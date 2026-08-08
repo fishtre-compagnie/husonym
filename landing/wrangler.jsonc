@@ -1,0 +1,80 @@
+{
+  // Marketing site for www.husonym.com: Workers Static Assets plus a small Worker whose
+  // only job is POST /api/contact. Unlike docs/wrangler.jsonc — which is assets-only and
+  // therefore has no `main` — this one has an entrypoint, so an assets `binding` is both
+  // legal and required.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "husonym-landing",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-08-08",
+  "account_id": "ac2b8f37f46bcdef343263f0bd18b8b6",
+
+  // Regenerates public/ on every `wrangler deploy` and `wrangler dev`, CI included:
+  // this makes it impossible to publish the Worker without the generated pages.
+  // The command is relative to the directory holding this file.
+  "build": {
+    "command": "node scripts/build.mjs",
+  },
+
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Unknown path serves the nearest generated 404.html, so /en/* lands on the
+    // English one.
+    "not_found_handling": "404-page",
+    // Only this branch runs the script ahead of the assets; every page is still served
+    // straight from the CDN with no Worker invocation. Note that passing an array opts
+    // out of Sec-Fetch-Mode handling, which is why worker/index.js falls back to
+    // env.ASSETS.fetch() for everything else.
+    "run_worker_first": ["/api/*"],
+  },
+
+  "routes": [
+    {
+      "pattern": "www.husonym.com",
+      "custom_domain": true,
+    },
+  ],
+
+  // Contact lead delivery. The sending domain must be onboarded first:
+  //   npx wrangler email sending enable husonym.com
+  // allowed_sender_addresses pins the From address at the platform level, so a code
+  // bug cannot send as anything else.
+  //
+  // For local testing, add "remote": true so `wrangler dev` proxies real sends instead
+  // of simulating them. Leave it out of the committed config: it would make every
+  // local run send actual mail.
+  "send_email": [
+    {
+      "name": "CONTACT_MAILER",
+      "allowed_sender_addresses": ["landing@husonym.com"],
+    },
+  ],
+
+  // Anti-flood ceiling. Counters are per Cloudflare location, so this bounds
+  // throughput rather than enforcing an exact quota. `period` accepts only 10 or 60.
+  "ratelimits": [
+    {
+      "name": "CONTACT_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 5,
+        "period": 60,
+      },
+    },
+  ],
+
+  "vars": {
+    "CONTACT_TO": "contact@husonym.com",
+    "CONTACT_FROM": "landing@husonym.com",
+    "CONTACT_FROM_NAME": "Husonym — contact form",
+    "SITE_ORIGIN": "https://www.husonym.com",
+  },
+
+  // TURNSTILE_SECRET_KEY is a secret, never a var: set it with `wrangler secret put`
+  // or through the `secrets:` input of wrangler-action.
+
+  "observability": {
+    "enabled": true,
+  },
+}

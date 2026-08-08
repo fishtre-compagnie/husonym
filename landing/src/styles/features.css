@@ -1,0 +1,79 @@
+/* Alternating feature blocks and the mockups illustrating each one.
+   Every mockup is plain HTML/CSS — no screenshots: the PNGs in docs/static/img weigh
+   200 KiB to 2.6 MiB apiece and the page inlines everything it ships. */
+.features{padding-block:0}
+.feature{display:grid;gap:2.5rem;grid-template-columns:1fr;align-items:center;padding-block:clamp(3rem,6vw,5rem)}
+.feature + .feature{border-top:1px solid var(--line-soft)}
+@media (min-width:900px){
+  .feature{grid-template-columns:1fr 1fr;gap:4rem}
+  .feature.flip .feature-text{order:2}
+  .feature.flip .feature-visual{order:1}
+}
+.feature-text h3{font-size:clamp(1.4rem,2.2vw,1.9rem);margin-bottom:1rem}
+.feature-text > p{color:var(--text-muted);font-size:1.02rem;margin-bottom:1.4rem;max-width:480px}
+.feature-list{display:flex;flex-direction:column;gap:.6rem}
+.feature-list li{display:flex;gap:.65rem;font-size:.92rem;color:var(--text-muted)}
+.feature-list li::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:.55rem}
+.feature-visual{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.5rem;min-height:280px;display:flex;flex-direction:column;justify-content:center;gap:1rem;position:relative;overflow:hidden}
+.visual-foot{font-size:.74rem;color:var(--text-dim);margin-top:.4rem}
+.mono-cell{font-family:var(--font-mono);font-size:.76rem;color:var(--accent-strong)}
+
+/* ── column mapping table (anonymization) ── */
+.table-scroll{width:100%;overflow-x:auto}
+.mock-table{width:100%;min-width:400px;border-collapse:collapse;font-size:.8rem}
+.mock-table th{text-align:left;font-family:var(--font-mono);font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);font-weight:500;padding:.5rem .6rem;border-bottom:1px solid var(--line)}
+.mock-table td{padding:.55rem .6rem;border-bottom:1px solid var(--line-soft);color:var(--text-muted)}
+.mock-table tr:last-child td{border-bottom:none}
+.type-chip{display:inline-flex;align-items:center;gap:.4rem;color:var(--text);font-family:var(--font-mono);font-size:.76rem}
+.type-chip i{width:7px;height:7px;border-radius:50%;flex:none}
+
+/* ── generation card (synthetic data) ── */
+.live-card{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:1.1rem 1.2rem}
+.live-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:1rem}
+.live-head .name{font-weight:600;font-size:.92rem}
+.live-pill{display:inline-flex;align-items:center;gap:.45rem;background:var(--accent-soft);color:var(--accent);padding:.3rem .7rem;border-radius:100px;font-size:.72rem;white-space:nowrap}
+.live-pill i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:live-pulse 1.6s ease-in-out infinite}
+@keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.prompt-box{display:flex;flex-direction:column;gap:.35rem;background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--accent-2);border-radius:8px;padding:.7rem .85rem;margin-bottom:.9rem}
+.prompt-label{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
+.prompt-text{font-size:.82rem;color:var(--text-muted)}
+.gen-row{display:flex;align-items:center;gap:.7rem;font-size:.82rem;padding:.45rem .2rem;border-bottom:1px solid var(--line-soft)}
+.gen-row .idx{font-family:var(--font-mono);font-size:.68rem;color:var(--text-dim);flex:none}
+.gen-row .gen{color:var(--data-synth)}
+
+/* ── code cards (subsetting, custom transformers, GitOps) ── */
+.code-card{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.code-card-head{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.06em;color:var(--text-dim);padding:.6rem .9rem;border-bottom:1px solid var(--line);background:var(--surface)}
+.code-block{margin:0;padding:.9rem;overflow-x:auto;font-family:var(--font-mono);font-size:.74rem;line-height:1.75;color:var(--text-muted)}
+.c-key{color:var(--accent-strong)}
+.c-str{color:var(--ok)}
+.c-op{color:var(--text-dim)}
+.c-num{color:var(--data-synth)}
+.c-cmt{color:var(--text-dim);font-style:italic}
+
+/* ── run timeline (orchestration) ── */
+.run-card{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:1.1rem 1.2rem}
+.run-head{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:1rem}
+.run-head .name{font-family:var(--font-mono);font-size:.8rem}
+.run-step{display:flex;align-items:center;gap:.7rem;font-size:.84rem;color:var(--text-muted);padding:.45rem 0;position:relative}
+/* The rail joining the dots: drawn from each step except the last. */
+.run-step:not(:last-child)::before{content:'';position:absolute;left:4px;top:1.55rem;bottom:-.45rem;width:1px;background:var(--line)}
+.run-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--line);position:relative;z-index:1}
+.run-label{flex:1;min-width:0}
+.run-meta{font-family:var(--font-mono);font-size:.68rem;color:var(--text-dim);flex:none}
+.run-step.is-done .run-dot{background:var(--ok)}
+.run-step.is-retry .run-dot{background:var(--warn)}
+.run-step.is-retry .run-meta{color:var(--warn)}
+.run-step.is-running .run-dot{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);animation:live-pulse 1.6s ease-in-out infinite}
+.run-step.is-running{color:var(--text)}
+.run-step.is-idle{color:var(--text-dim)}
+
+/* ── KPI tiles (subsetting) ── */
+.kpi-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+.kpi-tile{min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:.9rem .7rem;text-align:center}
+.kpi-tile .val{font-family:var(--font-display);font-size:clamp(1.2rem,2.2vw,1.6rem);font-weight:700;display:block;margin-bottom:.2rem;color:var(--text)}
+.kpi-tile .lbl{font-size:.7rem;color:var(--text-muted);overflow-wrap:break-word;hyphens:auto}
+@media (max-width:480px){
+  .kpi-tiles{grid-template-columns:1fr 1fr}
+  .kpi-tile:nth-child(3){grid-column:1 / -1}
+}

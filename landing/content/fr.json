@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "title": "Husonym — Anonymisation de données et données synthétiques",
+    "description": "Husonym anonymise vos bases de production, génère des données synthétiques fidèles à votre schéma et en extrait un sous-ensemble cohérent, sans casser l'intégrité référentielle.",
+    "ogTitle": "Husonym — Vos données de prod, sans vos données personnelles",
+    "ogDescription": "Anonymisez votre production, générez des données synthétiques et réduisez vos bases — pour que le dev, la CI et la préprod travaillent sur des données réalistes sans risque juridique.",
+    "ogImageAlt": "Husonym — anonymisation de données et orchestration de données synthétiques"
+  },
+
+  "mask": {
+    "probeLabel": "PII masquée"
+  },
+
+  "cta": {
+    "demoLabel": "Demander une démo"
+  },
+
+  "nav": {
+    "ariaLabel": "Navigation principale",
+    "menuToggle": "Ouvrir le menu",
+    "langSwitchAriaLabel": "Changer de langue",
+    "features": "Fonctionnalités",
+    "how": "Comment ça marche",
+    "connectors": "Connecteurs",
+    "security": "Sécurité",
+    "pricing": "Tarifs",
+    "contact": "Contact"
+  },
+
+  "hero": {
+    "eyebrow": "Anonymisation & données synthétiques",
+    "titleHtml": "Vos données de prod.<br /><em>Sans vos données personnelles.</em>",
+    "lede": "Husonym anonymise vos bases, génère des données synthétiques fidèles à votre schéma et en extrait un sous-ensemble cohérent — pour que le dev, la CI et la préprod travaillent enfin sur des données réalistes, sans risque juridique.",
+    "ctaSecondary": "Voir comment ça marche",
+    "note": "Démonstration sur vos propres tables, sans engagement.",
+    "cardTitle": "public.users · masquage",
+    "cardFoot": "44 transformers système, ou le vôtre en JavaScript"
+  },
+
+  "problem": {
+    "eyebrow": "Le dilemme",
+    "titleHtml": "Copier la prod, c'est risqué.<br />Inventer des fixtures, c'est <em>inutile</em>.",
+    "body": "Un dump de production dans un environnement de dev, c'est de la donnée personnelle qui se promène, dupliquée dans des sauvegardes que plus personne ne pilote. Des fixtures écrites à la main, c'est trois lignes par table : elles ne reproduisent aucun bug réel et pourrissent au premier changement de schéma.",
+    "dumpLabel": "Dump de production",
+    "dumpSize": "214 tables · 104 Go",
+    "uncontrolledTag": "non maîtrisé",
+    "husonymLabel": "Avec Husonym",
+    "subsetSize": "214 tables · 1,2 Go",
+    "integrityTag": "intégrité FK conservée"
+  },
+
+  "steps": {
+    "eyebrow": "Comment ça marche",
+    "title": "Quatre étapes, une fois. Ensuite, c'est un job.",
+    "step1Title": "Connectez",
+    "step1Body": "Une source, une ou plusieurs destinations : Postgres, MySQL, SQL Server, MongoDB, DynamoDB, S3, Cloud Storage.",
+    "step2Title": "Mappez",
+    "step2Body": "Husonym lit votre schéma et propose un transformer par colonne. Vous ajustez, vous prévisualisez.",
+    "step3Title": "Réduisez",
+    "step3Body": "Un filtre SQL par table. Husonym remonte les clés étrangères et vous rend un jeu de données cohérent.",
+    "step4Title": "Synchronisez",
+    "step4Body": "Le job tourne sur Temporal : reprise sur incident, rejeu, planification — et le même job appelé depuis votre CI."
+  },
+
+  "features": {
+    "anonymization": {
+      "eyebrow": "Anonymisation",
+      "title": "Le masquage se décide colonne par colonne.",
+      "body": "Quarante-quatre transformers système couvrent les types courants : email, téléphone E164, nom, adresse, numéro de sécurité sociale, carte bancaire, UUID, horodatage. Chaque colonne garde son format, sa longueur et son unicité — vos contraintes NOT NULL et UNIQUE passent.",
+      "list1": "Détection du schéma et transformer proposé par défaut sur chaque colonne",
+      "list2": "Prévisualisation du résultat avant la moindre écriture",
+      "list3": "Passthrough, Null ou valeur par défaut pour tout ce qui n'est pas sensible",
+      "thColumn": "Colonne",
+      "thTransformer": "Transformer",
+      "thPreview": "Aperçu",
+      "visualFoot": "Le format est conservé : contraintes et validations côté application continuent de passer."
+    },
+    "synthetic": {
+      "eyebrow": "Données synthétiques",
+      "title": "Pas de données ? Générez-en.",
+      "body": "Husonym remplit une base vide à partir du seul schéma. Et pour les champs qui demandent du sens — un libellé produit, un motif de consultation, un commentaire client — branchez OpenAI, Anthropic ou TogetherAI avec votre propre prompt.",
+      "list1": "Génération from scratch, sans aucune donnée de départ",
+      "list2": "Transformers LLM avec prompt personnalisé, par colonne",
+      "list3": "Volumétrie choisie : autant de lignes que votre test en demande",
+      "cardName": "support_tickets.subject",
+      "badge": "génération",
+      "promptLabel": "Prompt",
+      "prompt": "Objet réaliste d'un ticket de support pour un service de facturation en ligne, en français, 60 caractères maximum.",
+      "row1": "Facture de mars introuvable dans mon espace client",
+      "row2": "Le prélèvement a été passé deux fois ce mois-ci",
+      "row3": "Comment changer le RIB rattaché à mon abonnement ?",
+      "visualFoot": "Aucune donnée réelle n'entre dans le prompt : le modèle ne voit que votre consigne."
+    },
+    "subsetting": {
+      "eyebrow": "Subsetting",
+      "title": "104 Go en production. 1,2 Go sur votre poste. Les mêmes jointures.",
+      "body": "Un WHERE par table, et Husonym s'occupe du reste : il remonte les clés étrangères pour que le sous-ensemble reste jointurable. Les tables auto-référencées et les dépendances circulaires sont gérées dès qu'une colonne nullable du cycle sert de point d'entrée.",
+      "list1": "Un filtre SQL par table, écrit dans le dialecte de votre base",
+      "list2": "Tables liées tirées automatiquement en suivant les clés étrangères",
+      "list3": "Auto-références et cycles pris en charge",
+      "codeHead": "Filtres de subset",
+      "kpi1": "tables synchronisées",
+      "kpi2Val": "1,2 Go",
+      "kpi2": "au lieu de 104 Go",
+      "kpi3": "clé étrangère cassée"
+    },
+    "orchestration": {
+      "eyebrow": "Orchestration",
+      "title": "Un job, pas un script qu'on relance à la main.",
+      "body": "Le moteur est Temporal. Un job interrompu reprend là où il s'est arrêté, un run se rejoue à l'identique parce que le pipeline est event-sourcé, et chaque exécution laisse ses logs. Des hooks de job déclenchent le SQL que vous voulez avant et après la synchronisation.",
+      "list1": "Reprise sur incident et politique de retry par activité",
+      "list2": "Planification cron et déclenchement depuis la CLI ou l'API",
+      "list3": "Hooks SQL pré et post-synchronisation",
+      "runName": "seed-staging · run #1284",
+      "runBadge": "en cours",
+      "step1": "Vérification du compte",
+      "step2": "Génération des configurations",
+      "step3": "Initialisation du schéma",
+      "step4": "Synchronisation des tables",
+      "step5": "Hooks post-synchronisation"
+    },
+    "customCode": {
+      "eyebrow": "Transformers personnalisés",
+      "title": "Quand aucun transformer ne convient, vous écrivez le vôtre.",
+      "body": "Un transformer JavaScript reçoit la valeur de la cellule et la ligne entière, et rend ce que vous voulez. De quoi respecter un format métier, dériver une valeur d'une autre colonne ou garder une cohérence que Husonym ne peut pas deviner.",
+      "list1": "Accès à la ligne complète, pas seulement à la cellule",
+      "list2": "Réutilisable sur plusieurs colonnes et plusieurs jobs",
+      "list3": "Versionné avec le reste de votre configuration"
+    },
+    "gitops": {
+      "eyebrow": "GitOps & CI",
+      "title": "Vos jeux de données sont du code.",
+      "body": "Un provider Terraform décrit connexions, mappings et jobs à côté du reste de votre infrastructure. La CLI déclenche le job depuis un pipeline, pour hydrater la base de la CI avant de lancer les tests de bout en bout.",
+      "list1": "Provider Terraform pour les connexions, les jobs et les mappings",
+      "list2": "CLI et clés d'API pour les pipelines non interactifs",
+      "list3": "Revue en pull request de tout changement de configuration"
+    }
+  },
+
+  "connectors": {
+    "eyebrow": "Connecteurs",
+    "title": "Là où vivent vos données.",
+    "body": "Sources et destinations prises en charge aujourd'hui. Il en manque une à votre catalogue ? Parlons-en : nous ajoutons des connecteurs.",
+    "group1": "Bases relationnelles",
+    "group2": "Documents & clé-valeur",
+    "group3": "Stockage objet",
+    "group4": "Fournisseurs de modèles",
+    "footnote": "Cette liste s'étoffe à chaque version. Dites-nous quelle base vous utilisez."
+  },
+
+  "trust": {
+    "eyebrow": "Sécurité & conformité",
+    "title": "Vos données ne sortent pas de votre périmètre.",
+    "body": "Le moteur lit votre source et écrit votre destination sans qu'aucune copie ne parte ailleurs. Aucun échantillon n'est envoyé à un service tiers pour être analysé — sauf si vous branchez vous-même un fournisseur de modèles, et vous décidez alors exactement quelles colonnes y passent.",
+    "card1Title": "Accès verrouillés",
+    "card1Body": "Identifiants chiffrés au repos, accès par bastion pour les bases qui ne sont pas exposées, et un compte de service dédié plutôt que vos identifiants d'administration.",
+    "card2Title": "Un périmètre de conformité réduit",
+    "card2Body": "Une base correctement anonymisée sort vos environnements de dev et de préprod du périmètre RGPD, HIPAA, FERPA et DPDP.",
+    "card3Title": "RBAC et traçabilité",
+    "card3Body": "Rôles par compte, logs conservés pour chaque exécution, pipeline event-sourcé : chaque run est rejouable et vérifiable.",
+    "card4Title": "Ne branchez pas la production",
+    "card4Body": "On recommande de restaurer périodiquement un snapshot vers une base dédiée et de brancher Husonym dessus. Moins de charge sur la prod, moins de surface exposée.",
+    "disclaimer": "Husonym est un outil : la qualification juridique de l'anonymisation de vos traitements reste la vôtre."
+  },
+
+  "sovereignty": {
+    "eyebrow": "Souveraineté",
+    "title": "Vos données restent les vôtres.",
+    "body": "Husonym travaille sur vos données là où elles se trouvent. Rien n'est copié vers une plateforme intermédiaire, rien n'est conservé une fois le job terminé, et chaque exécution laisse une trace vérifiable de ce qui a été lu, transformé et écrit.",
+    "note": "Les modalités de mise en œuvre s'adaptent à vos contraintes d'infrastructure et de conformité. C'est le premier sujet que nous abordons en démonstration.",
+    "stat1": "donnée envoyée à un tiers",
+    "stat2": "des traitements dans votre périmètre",
+    "stat3Val": "Audit",
+    "stat3": "chaque exécution tracée"
+  },
+
+  "pricing": {
+    "eyebrow": "Tarifs",
+    "title": "Commençons par une démo.",
+    "body": "Vingt minutes sur votre schéma réel : on branche une source, on masque quelques tables, vous voyez le résultat.",
+    "demo": {
+      "name": "Démo",
+      "tagline": "Sur votre schéma, pas sur le nôtre.",
+      "price": "Gratuit",
+      "cta": "Réserver un créneau",
+      "feat1": "20 à 30 minutes en visioconférence",
+      "feat2": "On configure une connexion et un premier job avec vous",
+      "feat3": "Vous repartez avec un plan de mise en place chiffré"
+    },
+    "footnote": "Nos tarifs dépendent du volume de données, du nombre d'environnements et du niveau de support. Nous les établissons après la démonstration, une fois votre contexte connu."
+  },
+
+  "ctaFinal": {
+    "eyebrow": "Prêt à dépolluer vos environnements ?",
+    "title": "La prochaine copie de production peut partir sans PII.",
+    "body": "Vingt minutes suffisent pour le voir tourner sur vos propres tables."
+  },
+
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Parlons de votre schéma.",
+    "body": "Une question, une démo, un connecteur qui vous manque ? Écrivez-nous, on répond vite.",
+    "nameLabel": "Nom",
+    "emailLabel": "Email professionnel",
+    "companyLabel": "Société (facultatif)",
+    "messageLabel": "Message",
+    "submit": "Envoyer",
+    "sending": "Envoi en cours…",
+    "success": "Message envoyé. On vous répond très vite.",
+    "invalid": "Vérifiez les champs du formulaire.",
+    "captcha": "La vérification anti-robot a échoué. Réessayez.",
+    "tooMany": "Trop de tentatives. Réessayez dans une minute.",
+    "error": "L'envoi a échoué. Réessayez ou écrivez-nous directement.",
+    "altPrefix": "Vous préférez l'email ?"
+  },
+
+  "footer": {
+    "ariaLabel": "Liens de pied de page",
+    "tagline": "Husonym est une solution de Fishtre Compagnie. Tous droits réservés."
+  },
+
+  "notFound": {
+    "metaTitle": "Page introuvable — Husonym",
+    "code": "Erreur 404",
+    "title": "Cette page a été anonymisée.",
+    "body": "Il n'y a rien ici. Ou il n'y a plus rien.",
+    "cta": "Retour à l'accueil"
+  }
+}

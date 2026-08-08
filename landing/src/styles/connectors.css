@@ -1,0 +1,10 @@
+/* Supported sources and destinations, grouped by family. */
+.connector-groups{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media (min-width:700px){ .connector-groups{grid-template-columns:1fr 1fr} }
+.connector-group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.4rem}
+.connector-group h4{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);font-weight:500;margin-bottom:1rem}
+.src-row{display:flex;gap:.55rem;flex-wrap:wrap}
+.src-badge{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--line);border-radius:100px;padding:.35rem .8rem;font-size:.8rem;color:var(--text-muted);background:var(--surface-2)}
+.src-badge i{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+.src-badge i.alt{background:var(--accent-2)}
+.connectors-footnote{text-align:center;color:var(--text-dim);font-size:.82rem;margin-top:2rem}

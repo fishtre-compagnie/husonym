@@ -1,0 +1,79 @@
+name: Deploy Landing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - landing/**
+  # Lets us redeploy the current site without pushing a commit
+  workflow_dispatch:
+
+# One deployment at a time, cancelling any in-progress run
+concurrency:
+  group: landing-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    env:
+      # PUBLIC Turnstile site key, read by scripts/build.mjs. Declared at JOB level
+      # rather than on a step: the `build` block in wrangler.jsonc re-runs the script
+      # during the deploy, so that invocation has to see it too. Left unset, the widget
+      # is simply not rendered and the form still works.
+      HUSONYM_TURNSTILE_SITE_KEY: ${{ vars.HUSONYM_TURNSTILE_SITE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Fail early with a readable message rather than deep inside wrangler
+      - name: Check Cloudflare credentials are set
+        env:
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -n "$API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+              echo "Missing repository secret(s):$missing" >&2
+              echo "Create a token with the 'Edit Cloudflare Workers' template, scoped to the husonym.com zone." >&2
+              exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./landing/package-lock.json
+
+      - run: npm ci
+
+      # Redundant with the `build` block in wrangler.jsonc, and deliberately so: it
+      # surfaces a content error here, with a readable log, instead of halfway through
+      # a deploy.
+      - run: npm run build -- --strict
+
+      # Serves public/ from Workers Static Assets on www.husonym.com, with the Worker
+      # handling POST /api/contact. See landing/wrangler.jsonc.
+      #
+      # wranglerVersion must stay pinned, same reason as the docs deploy: the action
+      # defaults to wrangler 3.90, which predates both assets-only Workers and
+      # run_worker_first. It matches the devDependency in landing/package.json so local
+      # and CI deploys behave the same.
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: landing
+          wranglerVersion: "4"
+          secrets: |
+            TURNSTILE_SECRET_KEY
+        env:
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}

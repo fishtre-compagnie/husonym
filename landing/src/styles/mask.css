@@ -1,0 +1,68 @@
+/* "The page anonymizes itself as you scroll."
+
+   Three layers, all optional: a background that deepens with scroll depth (pure CSS),
+   a canvas of drifting data fragments that turn from legible PII into solid blocks
+   (mask.js), and a masking counter in the gutter. Loaded last so it can override the
+   solid section backgrounds and let the gradient through.
+
+   The whole effect is deliberately isolated in this file plus mask.js: deleting both,
+   and the two elements they hook onto in page.html, leaves a complete working page. */
+
+/* The gradient spans the full document height (body background, not repeated).
+   Overscroll falls back on the deepest tone. */
+html{background:var(--depth-4)}
+body{
+  background:linear-gradient(180deg,
+    var(--depth-0) 0%,  var(--depth-0) 6%,
+    var(--depth-1) 20%, var(--depth-2) 38%,
+    var(--depth-2) 56%, var(--depth-3) 74%,
+    var(--depth-4) 90%, var(--depth-4) 100%) no-repeat;
+}
+
+/* These sections carried a solid fill that hid the descent: made translucent so the
+   gradient passes through, borders kept. */
+.problem{background:rgba(var(--bg-rgb),.34)}
+.trust{background:rgba(var(--bg-rgb),.42)}
+.site-footer{background:rgba(var(--bg-rgb),.72)}
+
+/* Data fragment layer: ambient overlay in front of the scene, below the grain
+   (z-index 60) and below the nav (z-index 50, but opaque). Opacity driven by mask.js. */
+.mask-field{
+  position:fixed;inset:0;z-index:55;pointer-events:none;
+  opacity:0;transition:opacity .5s ease;
+}
+@media (prefers-reduced-motion:reduce){
+  .mask-field{transition:none}
+}
+
+/* Masking counter: a discreet readout that only surfaces while scrolling. Anchored in
+   the gutter just outside the content column, and hidden as soon as there is no gutter
+   left for it, so it never overlaps the text on a narrow screen. */
+.mask-probe{
+  position:fixed;
+  right:max(.75rem, calc((100vw - var(--container)) / 2 - 6.5rem));
+  top:0;z-index:56;
+  transform:translateY(-50%);display:flex;align-items:center;gap:.45rem;
+  pointer-events:none;font-family:var(--font-mono);
+  opacity:0;transition:opacity .45s ease;
+}
+html.is-scrolling .mask-probe{opacity:1}
+.mask-probe .tick{width:14px;height:1px;background:rgba(var(--accent-rgb),.5)}
+.mask-probe .val{
+  font-size:.7rem;color:var(--accent-strong);
+  background:rgba(var(--bg-rgb),.75);border:1px solid rgba(var(--accent-rgb),.28);
+  padding:.2rem .5rem;border-radius:100px;font-variant-numeric:tabular-nums;
+  white-space:nowrap;backdrop-filter:blur(4px);
+}
+@media (max-width:1400px){ .mask-probe{display:none} }
+@media (prefers-reduced-motion:reduce){ .mask-probe{transition:none} }
+
+/* Tinted scrollbar, extending the same idea.
+   (body{overflow-x:hidden} means <body> carries the bar, hence the global selector.) */
+html{scrollbar-width:thin;scrollbar-color:rgba(var(--accent-rgb),.4) transparent}
+::-webkit-scrollbar{width:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),.55),rgba(var(--accent-rgb),.12));
+  border-radius:11px;border:3px solid transparent;background-clip:padding-box;
+}

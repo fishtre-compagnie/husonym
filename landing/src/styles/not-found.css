@@ -1,0 +1,19 @@
+/* 404 page: full screen, the Huso standing above the message. */
+.nf{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:clamp(1.5rem,5vw,3rem);position:relative;overflow:hidden;isolation:isolate}
+.nf-mascot{position:relative;width:clamp(150px,26vw,210px);margin-bottom:1.8rem;line-height:0}
+.nf-mascot img{width:100%;height:auto;filter:drop-shadow(0 14px 30px rgba(0,0,0,.6))}
+.nf-mascot .ripple{
+  position:absolute;left:50%;bottom:4%;translate:-50% 0;
+  width:104%;aspect-ratio:3.4/1;
+  border:1px solid var(--accent-2);border-radius:50%;opacity:.28;
+}
+@media (prefers-reduced-motion:no-preference){
+  .nf-mascot .ripple{animation:ripple 5s ease-in-out infinite}
+}
+@keyframes ripple{
+  0%,100%{transform:scale(.9);opacity:.10}
+  50%{transform:scale(1.06);opacity:.3}
+}
+.nf .code{font-family:var(--font-mono);font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:.8rem}
+.nf h1{font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:.8rem}
+.nf p{color:var(--text-muted);max-width:440px;margin-bottom:2rem}

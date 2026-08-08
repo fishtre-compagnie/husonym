@@ -1,0 +1,11 @@
+/* Footer. */
+.site-footer{border-top:1px solid var(--line-soft);padding-block:2.5rem;background:var(--bg-deep)}
+.footer-inner{display:flex;flex-direction:column;gap:1.5rem;align-items:center;text-align:center}
+@media (min-width:900px){ .footer-inner{flex-direction:row;justify-content:space-between;text-align:left} }
+.footer-brand{flex:none}
+.footer-brand img{width:98px;height:auto;opacity:.85}
+/* Mirrors the nav links: if the burger script never runs, the sections stay reachable. */
+.footer-links{display:flex;gap:1.4rem;flex-wrap:wrap;justify-content:center}
+.footer-links a{font-size:.84rem;color:var(--text-muted)}
+.footer-links a:hover{color:var(--accent)}
+.footer-meta{font-size:.78rem;color:var(--text-dim);max-width:320px}
