@@ -372,11 +372,39 @@ function sha256(value) {
   return `'sha256-${crypto.createHash('sha256').update(value, 'utf8').digest('base64')}'`;
 }
 
-// Everything is inlined, so the build already holds the exact bytes of every
-// <style> and <script> block and can hash them — a CSP without 'unsafe-inline',
-// which a bundler-based site cannot get this cheaply. The shells keep the tokens
-// flush against their tags ( <style>{{__styles__}}</style> ) precisely so that the
-// hashed string is the block content, byte for byte.
+// Collects the hash of every inline <style> and <script> block from the pages actually
+// written, so the CSP describes exactly what is served.
+//
+// Derived from the output rather than from a list maintained by hand, because the hand-
+// maintained version broke the moment a page with a different stylesheet set was added:
+// its <style> hash was absent from the CSP, the browser refused the block, and the page
+// rendered as unstyled HTML. curl never notices — it does not enforce CSP — so this has to
+// be structurally impossible rather than remembered.
+function collectInlineHashes() {
+  const styles = new Set();
+  const scripts = new Set();
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(abs); continue; }
+      if (!entry.name.endsWith('.html')) continue;
+      const html = fs.readFileSync(abs, 'utf8');
+      for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) styles.add(sha256(css));
+      // Only blocks with actual content: <script src=…> carries no hashable body.
+      for (const [, js] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+        if (js.trim()) scripts.add(sha256(js));
+      }
+    }
+  };
+  walk(OUT);
+  return { styles: [...styles], scripts: [...scripts] };
+}
+
+// Everything is inlined, so the build holds the exact bytes of every <style> and <script>
+// block and can hash them — a CSP without 'unsafe-inline', which a bundler-based site
+// cannot get this cheaply. The shells keep the tokens flush against their tags
+// ( <style>{{__styles__}}</style> ) precisely so the hashed string is the block content,
+// byte for byte.
 //
 // style-src-attr stays 'unsafe-inline': a handful of style="" attributes carry data
 // (distribution bar widths). Inline style attributes cannot execute script, so this
@@ -513,7 +541,8 @@ for (const locale of LOCALES) {
 
 writeRobots();
 writeSitemap();
-writeHeaders({ styles: [sha256(pageStyles), sha256(notFoundStyles)], scripts: [sha256(script)] });
+// Must run after every page is written: the CSP is derived from the output.
+writeHeaders(collectInlineHashes());
 
 const unused = Object.keys(BASE).filter((k) => !used.has(k));
 if (unused.length) {

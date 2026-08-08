@@ -47,6 +47,33 @@ jobs:
 
       # The page inlines all of its CSS and JS, so its weight has to be watched
       # deliberately — nothing else will flag it.
+      # A page whose inline <style> is missing from the CSP renders as unstyled HTML in a
+      # browser, while curl and the build both report success — CSP is not enforced
+      # outside a browser. This caught exactly that on the terms page.
+      - name: Every inline block is covered by the CSP
+        run: |
+          python3 - <<'EOF'
+          import base64, glob, hashlib, os, re, sys
+          csp = open('public/_headers', encoding='utf-8').read()
+          missing = []
+          for f in glob.glob('public/**/*.html', recursive=True):
+              html = open(f, encoding='utf-8').read()
+              for kind, pat in (('style', r'<style>([\s\S]*?)</style>'),
+                                ('script', r'<script>([\s\S]*?)</script>')):
+                  for m in re.finditer(pat, html):
+                      body = m.group(1)
+                      if not body.strip():
+                          continue
+                      digest = 'sha256-' + base64.b64encode(
+                          hashlib.sha256(body.encode()).digest()).decode()
+                      if digest not in csp:
+                          missing.append(f"{os.path.relpath(f, 'public')} ({kind})")
+          if missing:
+              print('inline blocks absent from the CSP:', *missing, sep='\n  ')
+              sys.exit(1)
+          print('every inline block is covered by the CSP')
+          EOF
+
       - name: Page weight budget
         run: |
           size=$(gzip -c public/index.html | wc -c)
