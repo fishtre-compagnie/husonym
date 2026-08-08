@@ -323,10 +323,11 @@ func serve(ctx context.Context) error {
 	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	_ = w
 
+	// See the matching comment in the backend: NewValidLicense() was short-circuiting the
+	// cascade and granting every gated feature unconditionally. Tests only.
 	cascadelicense := license.NewCascadeLicense(
 		ncloudlicense,
 		eelicense,
-		license.NewValidLicense(),
 	)
 
 	husonymurl := shared.GetHusonymUrl()
