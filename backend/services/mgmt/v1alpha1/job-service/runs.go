@@ -527,6 +527,11 @@ func (s *Service) CreateJobRun(
 	if err := user.EnforceJob(ctx, userdata.NewDomainEntity(job.GetAccountId(), job.GetId()), rbac.JobAction_Execute); err != nil {
 		return nil, err
 	}
+	// Running a job is the paid action. Cancel and terminate are not gated: stopping work
+	// must stay possible once a license has lapsed.
+	if err := user.EnforceLicense(ctx, job.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
 	err = s.temporalmgr.TriggerSchedule(
