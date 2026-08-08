@@ -65,7 +65,19 @@
   ],
 
   "vars": {
-    "CONTACT_TO": "contact@husonym.com",
+    // Must be an address VERIFIED as an Email Routing destination, not merely an
+    // address that routes somewhere. Sending to contact@husonym.com fails with
+    // E_RECIPIENT_NOT_ALLOWED ("destination address is not a verified address"),
+    // because that address is a routing *rule*, not a destination — even though mail
+    // sent to it from the outside is delivered correctly.
+    //
+    // contact@husonym.com stays the address advertised on the site: a human writing
+    // to it is routed fine. Only this machine-to-machine hop needs the verified one.
+    //
+    // Lifting the restriction entirely (sending to arbitrary recipients, e.g. an
+    // acknowledgement back to the visitor) requires onboarding the domain onto the
+    // Email Sending product: `wrangler email sending enable husonym.com`.
+    "CONTACT_TO": "contact@fishtre.co",
     "CONTACT_FROM": "landing@husonym.com",
     "CONTACT_FROM_NAME": "Husonym — contact form",
     "SITE_ORIGIN": "https://www.husonym.com",
