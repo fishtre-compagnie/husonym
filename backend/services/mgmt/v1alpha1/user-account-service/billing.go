@@ -192,6 +192,23 @@ func (s *Service) IsAccountStatusValid(
 	}
 
 	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
+		// Self-hosted: there is no billing to consult, so the license decides.
+		//
+		// This is the choke point for scheduled work, and the reason the check belongs
+		// here rather than only in CreateJobRun. Temporal triggers scheduled workflows
+		// directly, never passing through the API, but the datasync workflow calls
+		// CheckAccountStatus before doing anything and aborts when this returns false.
+		// Gating here therefore freezes manual and scheduled runs alike.
+		//
+		// IsValid() spans the grace period, so this only bites once grace is over.
+		if s.licenseclient != nil && !s.licenseclient.IsValid() {
+			reason := "License has expired. Renew it to resume running jobs; existing configuration and run history remain available."
+			return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
+				IsValid:       false,
+				AccountStatus: mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE,
+				Reason:        &reason,
+			}), nil
+		}
 		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
 	}
 

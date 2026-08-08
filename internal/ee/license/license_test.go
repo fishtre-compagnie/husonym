@@ -75,16 +75,27 @@ func Test_getLicense(t *testing.T) {
 		require.False(t, got.IsValid())
 	})
 
-	t.Run("expiry decides validity", func(t *testing.T) {
+	// IsValid tracks "may use paid features", not "is before the expiry date". The two
+	// diverge inside the grace period, which is the whole point of having one — see
+	// Test_lifecycle for the states in detail.
+	t.Run("validity spans the grace period, not just the expiry", func(t *testing.T) {
 		future := &licenseContents{Version: "v1", Id: "1", ExpiresAt: time.Now().UTC().Add(time.Hour)}
 		got, err := getLicense(issueLicense(t, priv, future), pub)
 		require.NoError(t, err)
 		require.True(t, got.IsValid())
 
-		past := &licenseContents{Version: "v1", Id: "2", ExpiresAt: time.Now().UTC().Add(-time.Hour)}
-		got, err = getLicense(issueLicense(t, priv, past), pub)
+		justExpired := &licenseContents{Version: "v1", Id: "2", ExpiresAt: time.Now().UTC().Add(-time.Hour)}
+		got, err = getLicense(issueLicense(t, priv, justExpired), pub)
 		require.NoError(t, err)
-		require.False(t, got.IsValid())
+		require.True(t, got.IsValid(), "an hour past expiry is still inside the grace period")
+
+		longGone := &licenseContents{
+			Version: "v1", Id: "3",
+			ExpiresAt: time.Now().UTC().Add(-(DefaultGraceDays + 1) * 24 * time.Hour),
+		}
+		got, err = getLicense(issueLicense(t, priv, longGone), pub)
+		require.NoError(t, err)
+		require.False(t, got.IsValid(), "past the grace period, paid features stop")
 	})
 
 	// The point of the whole mechanism: a license signed by anyone else is rejected.
@@ -133,6 +144,126 @@ func Test_getLicense(t *testing.T) {
 				require.Nil(t, got)
 			})
 		}
+	})
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func Test_lifecycle(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	now := time.Now().UTC()
+
+	load := func(t *testing.T, c *licenseContents) *licenseContents {
+		t.Helper()
+		got, err := getLicense(issueLicense(t, priv, c), pub)
+		require.NoError(t, err)
+		return got
+	}
+
+	t.Run("states", func(t *testing.T) {
+		cases := []struct {
+			name      string
+			expiresAt time.Time
+			graceDays *int
+			want      State
+			usable    bool
+		}{
+			{"comfortably valid", now.Add(90 * 24 * time.Hour), nil, StateValid, true},
+			{"expiring within the window", now.Add(10 * 24 * time.Hour), nil, StateExpiring, true},
+			{"just expired, in grace", now.Add(-time.Hour), nil, StateGrace, true},
+			{"past grace", now.Add(-30 * 24 * time.Hour), nil, StateFrozen, false},
+			// An issuer may sell no grace at all; that must differ from saying nothing.
+			{"no grace, expired", now.Add(-time.Minute), ptr(0), StateFrozen, false},
+			{"no grace, still valid", now.Add(time.Hour), ptr(0), StateExpiring, true},
+			{"long grace keeps it usable", now.Add(-20 * 24 * time.Hour), ptr(60), StateGrace, true},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				got := load(t, &licenseContents{
+					Version: "v1", Id: "1", ExpiresAt: tc.expiresAt, GraceDays: tc.graceDays,
+				})
+				require.Equal(t, tc.want, got.State())
+				// IsValid means "may use paid features", which stays true through grace.
+				require.Equal(t, tc.usable, got.IsValid())
+			})
+		}
+	})
+
+	t.Run("grace defaults to DefaultGraceDays", func(t *testing.T) {
+		got := load(t, &licenseContents{Version: "v1", Id: "1", ExpiresAt: now})
+		require.Equal(t, now.Add(DefaultGraceDays*24*time.Hour), got.graceEndsAt())
+	})
+
+	// A negative grace must not extend validity backwards into a nonsensical window.
+	t.Run("negative grace is treated as none", func(t *testing.T) {
+		got := load(t, &licenseContents{
+			Version: "v1", Id: "1", ExpiresAt: now.Add(-time.Minute), GraceDays: ptr(-30),
+		})
+		require.Equal(t, StateFrozen, got.State())
+		require.False(t, got.IsValid())
+	})
+
+	t.Run("EELicense surfaces the lifecycle", func(t *testing.T) {
+		frozen := newFromLicenseContents(load(t, &licenseContents{
+			Version: "v1", Id: "1", ExpiresAt: now.Add(-90 * 24 * time.Hour),
+		}))
+		require.Equal(t, StateFrozen, frozen.State())
+		require.False(t, frozen.IsValid())
+
+		// Grace end is later than expiry — the difference is what we tell the customer.
+		grace := newFromLicenseContents(load(t, &licenseContents{
+			Version: "v1", Id: "1", ExpiresAt: now.Add(-time.Hour),
+		}))
+		require.Equal(t, StateGrace, grace.State())
+		require.True(t, grace.IsValid())
+		require.True(t, grace.GracePeriodEndsAt().After(grace.ExpiresAt()))
+	})
+
+	t.Run("absent license is StateNone and grants nothing", func(t *testing.T) {
+		var empty EELicense
+		require.Equal(t, StateNone, empty.State())
+		require.False(t, empty.IsValid())
+		require.Nil(t, empty.Limits())
+	})
+}
+
+func Test_Limits(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	t.Run("round-trip through the signed payload", func(t *testing.T) {
+		got, err := getLicense(issueLicense(t, priv, &licenseContents{
+			Version: "v1", Id: "1", ExpiresAt: time.Now().UTC().Add(time.Hour),
+			Limits: &Limits{
+				MaxJobs:                ptr(5),
+				MaxConnections:         ptr(3),
+				AllowedConnectionTypes: []string{"postgres", "mysql"},
+			},
+		}), pub)
+		require.NoError(t, err)
+		require.NotNil(t, got.Limits)
+		require.Equal(t, 5, *got.Limits.MaxJobs)
+		require.Equal(t, 3, *got.Limits.MaxConnections)
+	})
+
+	// nil must mean uncapped, never zero — getting this backwards would lock out every
+	// customer holding a license that predates limits.
+	t.Run("nil limits are uncapped", func(t *testing.T) {
+		var l *Limits
+		require.True(t, l.Allows("postgres"))
+		require.True(t, l.Allows("anything"))
+	})
+
+	t.Run("an empty allowlist permits everything", func(t *testing.T) {
+		l := &Limits{}
+		require.True(t, l.Allows("mssql"))
+	})
+
+	t.Run("a populated allowlist is exclusive", func(t *testing.T) {
+		l := &Limits{AllowedConnectionTypes: []string{"postgres"}}
+		require.True(t, l.Allows("postgres"))
+		require.False(t, l.Allows("mssql"))
 	})
 }
 
