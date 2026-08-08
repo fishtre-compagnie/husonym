@@ -127,7 +127,7 @@ const config: Config = {
         // The marketing site is a separate Worker (see landing/), so this has to be an
         // absolute link rather than a route.
         {
-          href: 'https://www.husonym.com',
+          href: 'https://husonym.com',
           label: 'Website',
           position: 'right',
         },

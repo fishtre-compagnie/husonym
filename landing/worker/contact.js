@@ -31,8 +31,11 @@ export async function handleContact(request, env) {
   // Cross-site POSTs from a browser carry a foreign Origin. A MISSING Origin must not
   // fail: plenty of legitimate non-browser clients send none, and this header was
   // never a real authentication check to begin with.
+  //
+  // SITE_ORIGIN is a comma-separated list so the apex and www can both be accepted
+  // while the redirect between them is being put in place.
   const origin = request.headers.get('origin');
-  if (origin && env.SITE_ORIGIN && origin !== env.SITE_ORIGIN) {
+  if (origin && env.SITE_ORIGIN && !allowedOrigins(env).includes(origin)) {
     return json({ error: 'forbidden_origin' }, 403);
   }
 
@@ -76,6 +79,13 @@ export async function handleContact(request, env) {
   }
 
   return json({ sent: true }, 200);
+}
+
+function allowedOrigins(env) {
+  return String(env.SITE_ORIGIN)
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 }
 
 async function underLimit(env, key) {

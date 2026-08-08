@@ -1,5 +1,5 @@
 {
-  // Marketing site for www.husonym.com: Workers Static Assets plus a small Worker whose
+  // Marketing site for husonym.com: Workers Static Assets plus a small Worker whose
   // only job is POST /api/contact. Unlike docs/wrangler.jsonc — which is assets-only and
   // therefore has no `main` — this one has an entrypoint, so an assets `binding` is both
   // legal and required.
@@ -29,7 +29,19 @@
     "run_worker_first": ["/api/*"],
   },
 
+  // The apex is the canonical host and serves the site.
+  //
+  // The www entry looks redundant — a zone Redirect Rule already 301s www to the apex
+  // before the Worker is ever reached, so this Worker never answers on www. Keep it
+  // anyway: registering www as a custom domain is what creates and holds the
+  // `AAAA www.husonym.com → 100:: (proxied)` record. Drop this entry and the record
+  // goes with it, www stops resolving, and the redirect rule can no longer fire on
+  // traffic that never arrives. Cheap insurance for one line of config.
   "routes": [
+    {
+      "pattern": "husonym.com",
+      "custom_domain": true,
+    },
     {
       "pattern": "www.husonym.com",
       "custom_domain": true,
@@ -80,7 +92,9 @@
     "CONTACT_TO": "contact@fishtre.co",
     "CONTACT_FROM": "landing@husonym.com",
     "CONTACT_FROM_NAME": "Husonym — contact form",
-    "SITE_ORIGIN": "https://www.husonym.com",
+    // Comma-separated list of accepted Origins. Only the apex now: www 301s away before
+    // a page can ever be served there, so no form is submitted from it.
+    "SITE_ORIGIN": "https://husonym.com",
   },
 
   // TURNSTILE_SECRET_KEY is a secret, never a var: set it with `wrangler secret put`

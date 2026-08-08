@@ -1,4 +1,4 @@
-// Entry point for the www.husonym.com Worker.
+// Entry point for the husonym.com Worker.
 //
 // Almost every request is served straight from Workers Static Assets without ever
 // reaching this code. Only /api/* is routed here first (assets.run_worker_first in

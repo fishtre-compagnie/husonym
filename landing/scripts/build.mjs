@@ -25,8 +25,10 @@ const CONTENT = path.join(ROOT, 'content');
 const ASSETS = path.join(ROOT, 'assets');
 const OUT = path.join(ROOT, 'public');
 
-// Public origin of the site, used for canonical, hreflang, og:url and sitemap.
-const SITE_URL = 'https://www.husonym.com';
+// Public origin of the site, used for canonical, hreflang, og:url, the sitemap and the
+// JSON-LD. The apex is the canonical host; www redirects to it at the zone level.
+// Changing this one constant moves every published URL.
+const SITE_URL = 'https://husonym.com';
 
 // Public site key of the Cloudflare Turnstile widget (the matching secret lives in
 // the Worker as TURNSTILE_SECRET_KEY). Left unset, the widget is not rendered at all

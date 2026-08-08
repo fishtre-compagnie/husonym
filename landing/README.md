@@ -1,6 +1,6 @@
 # Husonym landing
 
-The marketing site served at [www.husonym.com](https://www.husonym.com), in French
+The marketing site served at [husonym.com](https://husonym.com), in French
 (`/`) and English (`/en/`).
 
 No framework, no bundler, no TypeScript, no CSS framework. `scripts/build.mjs` renders
@@ -175,19 +175,22 @@ Account-level steps, not repository ones.
    `npm run deploy` from a laptop, the Worker also needs
    `npx wrangler secret put TURNSTILE_SECRET_KEY`.
 
-3. **Apex redirect** — ⛔ *not done*, and it needs two pieces, not one:
-   - a proxied DNS record on the apex — there is currently **none**, so a redirect rule
-     alone would never fire. Use the same IPv6 black hole as `docs`: `AAAA husonym.com`
-     → `100::`, proxied.
-   - a Redirect Rule in the `http_request_dynamic_redirect` phase: when
-     `http.host eq "husonym.com"`, 301 to
-     `concat("https://www.husonym.com", http.request.uri.path)` with the query string
-     preserved.
+3. **www → apex redirect** — ✅ *done.*
 
-   Create the rule *before* the DNS record: with the record in place and no rule, the
-   apex answers a 5xx instead of redirecting. And do **not** add the apex as a second
-   `custom_domain` in `wrangler.jsonc` — the site would then be served on both hostnames
-   and compete with itself for indexing.
+   **The apex is the canonical host.** `SITE_URL` in `scripts/build.mjs` is
+   `https://husonym.com`, and every canonical, hreflang, `og:url`, sitemap entry and
+   JSON-LD URL points there. Changing that one constant moves every published URL.
+
+   A zone Redirect Rule 301s `https://www.*` to the apex via `wildcard_replace`, which
+   preserves both path and query string: `www.husonym.com/en/?a=1` lands on
+   `husonym.com/en/?a=1`. A second rule upgrades http to https.
+
+   **Do not remove `www.husonym.com` from `routes` in `wrangler.jsonc`**, however
+   redundant it looks. The Worker never answers there — the zone rule runs first — but
+   registering www as a custom domain is what creates and holds the
+   `AAAA www.husonym.com → 100:: (proxied)` record. Remove it and www stops resolving
+   entirely, at which point the redirect rule has no traffic to act on: a zone rule only
+   sees requests that reach Cloudflare.
 
 ### Testing mail locally
 
