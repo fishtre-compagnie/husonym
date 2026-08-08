@@ -3,7 +3,7 @@ info:
   summary: Husonym API
   description: Husonym API
   version: 0.5
-  termsOfService: "https://www.husonym.com/terms-of-service"
+  termsOfService: "https://husonym.com/terms-of-service"
   contact:
     name: Husonym Support
     email: support@husonym.com
