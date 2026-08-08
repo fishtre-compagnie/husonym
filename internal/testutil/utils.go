@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	"io"
 	"log/slog"
 	"os"
@@ -85,6 +86,7 @@ func GetTestLogger(t testing.TB) *slog.Logger {
 
 type FakeEELicense struct {
 	isValid bool
+	limits  *license.Limits
 }
 
 type Option func(*FakeEELicense)
@@ -92,6 +94,14 @@ type Option func(*FakeEELicense)
 func WithIsValid() Option {
 	return func(f *FakeEELicense) {
 		f.isValid = true
+	}
+}
+
+// WithLimits gives the fake usage caps. Without it Limits() returns nil, which means
+// uncapped — so tests that do not care about limits are unaffected.
+func WithLimits(limits *license.Limits) Option {
+	return func(f *FakeEELicense) {
+		f.limits = limits
 	}
 }
 
@@ -109,6 +119,11 @@ func (f *FakeEELicense) IsValid() bool {
 
 func (f *FakeEELicense) ExpiresAt() time.Time {
 	return time.Now().Add(time.Hour * 24 * 365)
+}
+
+// Limits satisfies license.LimitedLicense so the fake can exercise cap enforcement.
+func (f *FakeEELicense) Limits() *license.Limits {
+	return f.limits
 }
 
 func GetConcurrentTestLogger(t testing.TB) *slog.Logger {

@@ -228,6 +228,13 @@ jobs:
   helm-backend:
     name: Backend Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-backend
     steps:
@@ -327,6 +334,13 @@ jobs:
   helm-frontend:
     name: Frontend Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-frontend
     steps:
@@ -426,6 +440,13 @@ jobs:
   helm-worker:
     name: Worker Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-worker
     steps:
@@ -526,6 +547,13 @@ jobs:
   helm-top:
     name: Umbrella Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - helm-backend
       - helm-frontend

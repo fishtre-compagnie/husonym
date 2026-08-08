@@ -19,8 +19,8 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
-	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	piidetect_job_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -373,6 +373,9 @@ func (s *Service) CreateJob(
 	}
 	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.enforceJobLimit(ctx, user, accountUuid); err != nil {
 		return nil, err
 	}
 
@@ -1987,4 +1990,35 @@ func getConnectionSchemaConfigByConnectionType(
 	default:
 		return nil, fmt.Errorf("unable to build connection schema config: unsupported connection type (%T)", conn)
 	}
+}
+
+// enforceJobLimit refuses a new job once the license's MaxJobs cap is reached.
+//
+// A nil cap means uncapped, and must never be read as zero — otherwise every customer
+// holding a license issued before limits existed would be unable to create anything.
+//
+// Counts by listing rather than with a COUNT query: there is no CountJobsByAccount in the
+// generated queries, and adding one means regenerating sqlc output. Job counts per account
+// are in the tens, so the listing is cheap; worth revisiting alongside any other sqlc
+// change rather than on its own.
+func (s *Service) enforceJobLimit(
+	ctx context.Context,
+	user *userdata.User,
+	accountUuid pgtype.UUID,
+) error {
+	limits := user.LicenseLimits()
+	if limits == nil || limits.MaxJobs == nil {
+		return nil
+	}
+	jobs, err := s.db.Q.GetJobsByAccount(ctx, s.db.Db, accountUuid)
+	if err != nil {
+		return fmt.Errorf("unable to count existing jobs against the license limit: %w", err)
+	}
+	if len(jobs) >= *limits.MaxJobs {
+		return husonymerrors.NewForbidden(fmt.Sprintf(
+			"this license allows %d job(s) and %d already exist; contact us to raise the limit",
+			*limits.MaxJobs, len(jobs),
+		))
+	}
+	return nil
 }
