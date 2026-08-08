@@ -74,6 +74,44 @@ func (s *IntegrationTestSuite) Test_CreateJob_Ok() {
 	require.NotNil(s.T(), resp.Msg.GetJob())
 }
 
+// Jobs are the paid surface: without an active license the account can still read and
+// wind down, but it cannot create or run anything.
+func (s *IntegrationTestSuite) Test_JobService_RequiresLicense() {
+	t := s.T()
+	ctx := s.ctx
+	users := s.OSSUnauthenticatedUnlicensedClients.Users()
+	jobs := s.OSSUnauthenticatedUnlicensedClients.Jobs()
+	accountId := s.createPersonalAccount(ctx, users)
+
+	t.Run("CreateJob is denied", func(t *testing.T) {
+		resp, err := jobs.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
+			AccountId: accountId,
+			JobName:   "unlicensed",
+			Mappings:  []*mgmtv1alpha1.JobMapping{},
+		}))
+		requireErrResp(t, resp, err)
+		requireConnectError(t, err, connect.CodePermissionDenied)
+	})
+
+	t.Run("CreateJobRun is denied", func(t *testing.T) {
+		resp, err := jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{
+			JobId: uuid.NewString(),
+		}))
+		requireErrResp(t, resp, err)
+		require.Error(t, err)
+	})
+
+	// Reading must keep working: a lapsed license is not a reason to lock an account out
+	// of its own configuration.
+	t.Run("GetJobs still allowed", func(t *testing.T) {
+		resp, err := jobs.GetJobs(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobsRequest{
+			AccountId: accountId,
+		}))
+		requireNoErrResp(t, resp, err)
+		require.Empty(t, resp.Msg.GetJobs())
+	})
+}
+
 func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 	t := s.T()
 	ctx := s.ctx

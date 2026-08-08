@@ -364,6 +364,13 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, err
 	}
+	// Jobs are the paid surface: creating, configuring and running one requires an active
+	// license. Reading, pausing, cancelling and deleting deliberately do not, so an
+	// account whose license lapsed keeps access to its configuration and history and can
+	// still wind things down.
+	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
 		return nil, err
@@ -720,6 +727,9 @@ func (s *Service) CreateJobDestinationConnections(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
+		return nil, err
+	}
 	accountUuid, err := husonymdb.ToUuid(jobResp.Msg.GetJob().GetAccountId())
 	if err != nil {
 		return nil, err
@@ -809,6 +819,10 @@ func (s *Service) UpdateJobSchedule(
 	if err != nil {
 		return nil, err
 	}
+	// Scheduling is what makes a job run on its own — gated like execution itself.
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
@@ -896,6 +910,15 @@ func (s *Service) PauseJob(
 		return nil, err
 	}
 
+	// Only resuming is gated. Pausing stays available without a license: an account whose
+	// licence lapsed must always be able to stop its schedules, and blocking that would
+	// leave it with jobs it can neither run nor quiet.
+	if !req.Msg.Pause {
+		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
+
 	if req.Msg.Pause {
 		logger.Debug("pausing job")
 		err = s.temporalmgr.PauseSchedule(
@@ -956,6 +979,9 @@ func (s *Service) UpdateJobSourceConnection(
 	}
 	err = user.EnforceJob(ctx, jobDto, rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -1185,6 +1211,9 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	var connectionId *string
 	if jobDto.GetSource().GetOptions() != nil {
@@ -1272,6 +1301,9 @@ func (s *Service) UpdateJobDestinationConnection(
 	}
 	err = user.EnforceJob(ctx, jobDto, rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -1559,6 +1591,9 @@ func (s *Service) SetJobWorkflowOptions(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	wfOptions := &pg_models.WorkflowOptions{}
 	if req.Msg.WorfklowOptions != nil {
@@ -1646,6 +1681,9 @@ func (s *Service) SetJobSyncOptions(
 	}
 	err = user.EnforceJob(ctx, jobResp.Msg.GetJob(), rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
 		return nil, err
 	}
 
