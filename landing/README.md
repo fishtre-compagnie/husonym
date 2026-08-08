@@ -150,9 +150,23 @@ Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and
 
 Account-level steps, not repository ones.
 
-1. **Email sending** — ⛔ *not done.* Run `npx wrangler email sending enable husonym.com`,
-   then add the SPF/DKIM/DMARC records it asks for. Until this is done every send fails
-   with `E_SENDER_NOT_VERIFIED`. Make sure `contact@husonym.com` actually receives mail.
+1. **Mail** — ✅ *working, with one constraint worth knowing.*
+
+   Email Routing is enabled on `husonym.com`: MX and SPF resolve, and
+   `contact@husonym.com` routes to a real inbox. That address stays the one advertised
+   on the site.
+
+   The Worker, however, sends to `contact@fishtre.co`. The `send_email` binding may
+   only target an address **verified as an Email Routing destination**; a routed
+   address is not one. Sending to `contact@husonym.com` fails with
+   `E_RECIPIENT_NOT_ALLOWED — destination address is not a verified address`, which
+   surfaces to the visitor as a 503 and "sending failed", even though a human writing
+   to that same address gets through fine. The distinction is easy to miss.
+
+   To send to arbitrary recipients — an acknowledgement back to the visitor, say —
+   the domain has to be onboarded onto the Email Sending product
+   (`wrangler email sending enable husonym.com`, which needs the `email_sending:write`
+   OAuth scope). Not required for the contact form as it stands.
 
 2. **Turnstile** — ✅ *done.* Widget `HUSONYM` (managed mode, `husonym.com` +
    `www.husonym.com`), site key `0x4AAAAAAEKBtepC4BVG82Ek`. The site key is the
