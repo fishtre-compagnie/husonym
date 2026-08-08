@@ -6,7 +6,7 @@ import { themes } from 'prism-react-renderer';
 
 const config: Config = {
   title: 'Husonym',
-  tagline: 'Open source Data Anonymization and Synthetic Data',
+  tagline: 'Data Anonymization and Synthetic Data',
   favicon: 'img/logo_light_mode.png',
   // Set the production url of your s here
   url: 'https://docs.husonym.com',
@@ -98,7 +98,7 @@ const config: Config = {
       {
         name: 'keywords',
         content:
-          'open source, anonymization, data anonymization, synthetic data, data privacy, data security',
+          'anonymization, data anonymization, synthetic data, test data, data privacy, data security, GDPR',
       },
     ],
     image: 'img/docsOG.png',
