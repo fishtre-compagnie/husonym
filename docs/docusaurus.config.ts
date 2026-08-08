@@ -126,7 +126,11 @@ const config: Config = {
         { to: '/api', label: 'SDK' },
         // The marketing site is a separate Worker (see landing/), so this has to be an
         // absolute link rather than a route.
-        { href: 'https://www.husonym.com', label: 'Website', position: 'right' },
+        {
+          href: 'https://www.husonym.com',
+          label: 'Website',
+          position: 'right',
+        },
       ],
     },
     footer: {
