@@ -32,8 +32,11 @@ func Test_parsePublicKey(t *testing.T) {
 	})
 }
 
-// Issues a license the way scripts/gen-cust-license.sh does: sign the contents bytes,
-// wrap contents and signature in a JSON envelope, base64 the envelope.
+// Issues a license the way Issue() does: sign the contents bytes, wrap contents and
+// signature in a JSON envelope, base64 the envelope.
+//
+// Kept separate from Issue() on purpose: Issue() validates its input and refuses to mint
+// an already-expired license, which is exactly what these tests need to construct.
 //
 // Tests mint their own throwaway keypair rather than carrying a fixture signed by the
 // production key. That keeps the suite honest about what it covers — the verification

@@ -137,6 +137,22 @@ func newFromLicenseContents(contents *licenseContents) *EELicense {
 	return &EELicense{contents: contents}
 }
 
+// NewFromValue verifies an EE_LICENSE value directly, rather than reading it from the
+// environment. It exists so tooling can check a license through exactly the same path the
+// product uses at startup — a license that "looks right" but fails verification is the one
+// mistake that would otherwise only surface at the customer's site.
+func NewFromValue(value string) (*EELicense, error) {
+	pk, err := parsePublicKey(publicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse ee public key: %w", err)
+	}
+	contents, err := getLicense(value, pk)
+	if err != nil {
+		return nil, err
+	}
+	return newFromLicenseContents(contents), nil
+}
+
 // Usage caps carried inside the signed payload. They have to live in the license rather
 // than in configuration: a limit the customer can edit is not a limit.
 //
