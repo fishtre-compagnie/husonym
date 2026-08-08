@@ -1,0 +1,23 @@
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top" aria-label="Husonym">
+      <img src="/assets/logo.png" alt="Husonym" width="112" height="24" />
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="{{nav.menuToggle}}">
+      <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <div class="nav-collapse" id="nav-menu">
+      <nav class="nav-links" aria-label="{{nav.ariaLabel}}">
+        <a href="#fonctionnalites">{{nav.features}}</a>
+        <a href="#comment-ca-marche">{{nav.how}}</a>
+        <a href="#connecteurs">{{nav.connectors}}</a>
+        <a href="#securite">{{nav.security}}</a>
+        <a href="#tarifs">{{nav.pricing}}</a>
+      </nav>
+      <div class="nav-right">
+        <div class="lang-switch" aria-label="{{nav.langSwitchAriaLabel}}">{{__langSwitcher__}}</div>
+        <a class="btn btn-primary btn-sm nav-cta" href="#contact">{{cta.demoLabel}}</a>
+      </div>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,26 @@
+<div class="feature reveal">
+  <div class="feature-text">
+    <div class="eyebrow">{{features.subsetting.eyebrow}}</div>
+    <h3>{{features.subsetting.title}}</h3>
+    <p>{{features.subsetting.body}}</p>
+    <ul class="feature-list">
+      <li>{{features.subsetting.list1}}</li>
+      <li>{{features.subsetting.list2}}</li>
+      <li>{{features.subsetting.list3}}</li>
+    </ul>
+  </div>
+  <div class="feature-visual" aria-hidden="true">
+    <div class="code-card">
+      <div class="code-card-head">{{features.subsetting.codeHead}}</div>
+      <pre class="code-block"><code><span class="c-key">public.orders</span>  <span class="c-op">WHERE</span> created_at <span class="c-op">&gt;</span> <span class="c-str">'2026-01-01'</span>
+<span class="c-key">public.users</span>   <span class="c-op">WHERE</span> country <span class="c-op">=</span> <span class="c-str">'FR'</span>
+<span class="c-cmt"># order_items, payments, addresses: pulled in</span>
+<span class="c-cmt"># automatically by following the foreign keys</span></code></pre>
+    </div>
+    <div class="kpi-tiles">
+      <div class="kpi-tile"><span class="val">214</span><span class="lbl">{{features.subsetting.kpi1}}</span></div>
+      <div class="kpi-tile"><span class="val">{{features.subsetting.kpi2Val}}</span><span class="lbl">{{features.subsetting.kpi2}}</span></div>
+      <div class="kpi-tile"><span class="val">0</span><span class="lbl">{{features.subsetting.kpi3}}</span></div>
+    </div>
+  </div>
+</div>

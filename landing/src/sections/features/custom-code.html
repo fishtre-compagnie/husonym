@@ -1,0 +1,21 @@
+<div class="feature reveal">
+  <div class="feature-text">
+    <div class="eyebrow">{{features.customCode.eyebrow}}</div>
+    <h3>{{features.customCode.title}}</h3>
+    <p>{{features.customCode.body}}</p>
+    <ul class="feature-list">
+      <li>{{features.customCode.list1}}</li>
+      <li>{{features.customCode.list2}}</li>
+      <li>{{features.customCode.list3}}</li>
+    </ul>
+  </div>
+  <div class="feature-visual" aria-hidden="true">
+    <div class="code-card">
+      <div class="code-card-head">transform_javascript &middot; <span class="mono-cell">accounts.reference</span></div>
+      <pre class="code-block"><code><span class="c-cmt">// `value` is the source cell, `input` the whole row.</span>
+<span class="c-key">const</span> region <span class="c-op">=</span> input.country <span class="c-op">===</span> <span class="c-str">'FR'</span> <span class="c-op">?</span> <span class="c-str">'EU'</span> <span class="c-op">:</span> <span class="c-str">'INT'</span>;
+<span class="c-key">const</span> serial <span class="c-op">=</span> value.slice(<span class="c-num">-4</span>).padStart(<span class="c-num">4</span>, <span class="c-str">'0'</span>);
+<span class="c-key">return</span> <span class="c-str">`ACC-</span>${region}<span class="c-str">-</span>${serial}<span class="c-str">`</span>;</code></pre>
+    </div>
+  </div>
+</div>
