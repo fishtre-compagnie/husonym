@@ -53,3 +53,8 @@ husonym_cloud_ca.key
 *_ca.key
 registry.json
 ee_license
+
+# Written by `infisical init` to bind this checkout to the project holding the signing key.
+# Not a secret, but this repository is public and there is no reason to publish which
+# Infisical workspace guards it. Run `infisical init` again on a new machine.
+.infisical.json
