@@ -170,17 +170,22 @@ pipeline, which is the revenue.
 
 ## Developing locally
 
-**Creating a job now requires a license.** `make compose/up` on its own will refuse, which
-is the intended consequence of the model and not a bug.
+**Creating a job now requires a license**, in every compose stack. A stack without one
+starts fine and refuses at the first `CreateJob` — the intended consequence of the model,
+not a bug.
 
-Issue yourself a long-lived development license once and keep it in your local env file:
+Issue yourself a long-lived development license once:
 
 ```console
-go run ./internal/ee/license/cmd/husonym-license issue \
+infisical run --env=prod -- go run ./internal/ee/license/cmd/husonym-license issue \
   --to "Development" --customer-id dev --days 3650 --note "local dev"
 ```
 
-Then set `EE_LICENSE=<value>` in `.env.api.local` and `.env.worker.local`.
+Then set `EE_LICENSE=<value>` in `.env.api.local` and `.env.worker.local`. Both compose
+files read those two paths with `required: false`, so the license reaches the containers
+without being committed. `compose.yml` did not read them until it was fixed alongside this
+document: the license was documented here long before anything injected it, and the stack
+refused with no indication why.
 
 In tests, use `testutil.NewFakeEELicense(testutil.WithIsValid())` — and
 `testutil.WithLimits(...)` to exercise caps. Never wire `license.NewValidLicense()` into
