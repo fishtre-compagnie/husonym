@@ -133,11 +133,40 @@ It prints the `EE_LICENSE` value and records the issuance in the registry. The t
 both fingerprints — that was the one failure mode guaranteed to be found by a customer
 rather than by us.
 
-Renewal worklist:
+Add `--dry-run` to validate a request and see the result without recording anything.
+
+## The registry
+
+**`~/.husonym/ee-signing/registry.json`**, next to the signing key. It does not exist until
+the first issuance creates it. Override the location with `--registry <path>` on any
+command.
 
 ```console
+# The renewal worklist: expiring soonest first, excluding licenses already frozen
 go run ./internal/ee/license/cmd/husonym-license expiring --within 45
+
+# Everything issued, with each licence's current lifecycle state
+go run ./internal/ee/license/cmd/husonym-license list
+
+# One licence in full, including the value to re-send a customer who lost theirs
+go run ./internal/ee/license/cmd/husonym-license show <license-id>
+go run ./internal/ee/license/cmd/husonym-license show <license-id> --json
+
+# Check any licence value through the exact path the product uses at startup
+go run ./internal/ee/license/cmd/husonym-license verify "$EE_LICENSE"
 ```
+
+The file is plain JSON and can be read directly, but `list` additionally shows the state
+(`valid`, `expiring`, `grace`, `frozen`), which is not stored — it is derived from the
+expiry date each time, so a stale file can never report a stale state.
+
+Prefer re-sending from `show` over issuing a replacement when a customer loses their key:
+two live licences for one contract makes the registry ambiguous about what is in the field.
+
+The registry holds customer names and working licences. It is written `0600`, lives outside
+this repository, and `.gitignore` carries a backstop in case a copy ever lands here. Back it
+up with the signing key — losing it does not break any deployment, but it loses the renewal
+pipeline, which is the revenue.
 
 ## Developing locally
 
