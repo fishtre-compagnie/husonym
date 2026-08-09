@@ -148,10 +148,13 @@ func serve(ctx context.Context) error {
 		defer profiler.Stop() //nolint:errcheck
 	}
 
+	// A cloud license or a signed EE license, and nothing else. NewValidLicense() used to
+	// close this list; because the cascade stops at the first valid entry and that one is
+	// unconditionally valid, every gated feature was granted to everyone regardless of
+	// licensing. Do not reintroduce it here — it belongs in tests only.
 	cascadelicense := license.NewCascadeLicense(
 		ncloudlicense,
 		eelicense,
-		license.NewValidLicense(),
 	)
 
 	mux := http.NewServeMux()

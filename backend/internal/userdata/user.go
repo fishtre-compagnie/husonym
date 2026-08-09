@@ -63,6 +63,16 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 	return nil
 }
 
+// LicenseLimits returns the usage caps carried by the active license, or nil when the
+// license names none — which means uncapped, never zero.
+//
+// Exposed here rather than injected into every service: the license already travels with
+// the user, and each service reaches for the user anyway to enforce access. Callers should
+// still confirm the license is valid (EnforceLicense) before reading caps from it.
+func (u *User) LicenseLimits() *license.Limits {
+	return license.LimitsOf(u.license)
+}
+
 func (u *User) IsLicensed(ctx context.Context, accountId string) (bool, error) {
 	if err := u.EnforceAccountAccess(ctx, accountId); err != nil {
 		return false, err

@@ -19,8 +19,8 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
-	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	piidetect_job_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -364,8 +364,18 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, err
 	}
+	// Jobs are the paid surface: creating, configuring and running one requires an active
+	// license. Reading, pausing, cancelling and deleting deliberately do not, so an
+	// account whose license lapsed keeps access to its configuration and history and can
+	// still wind things down.
+	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.enforceJobLimit(ctx, user, accountUuid); err != nil {
 		return nil, err
 	}
 
@@ -720,6 +730,9 @@ func (s *Service) CreateJobDestinationConnections(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
+		return nil, err
+	}
 	accountUuid, err := husonymdb.ToUuid(jobResp.Msg.GetJob().GetAccountId())
 	if err != nil {
 		return nil, err
@@ -809,6 +822,10 @@ func (s *Service) UpdateJobSchedule(
 	if err != nil {
 		return nil, err
 	}
+	// Scheduling is what makes a job run on its own — gated like execution itself.
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
@@ -896,6 +913,15 @@ func (s *Service) PauseJob(
 		return nil, err
 	}
 
+	// Only resuming is gated. Pausing stays available without a license: an account whose
+	// licence lapsed must always be able to stop its schedules, and blocking that would
+	// leave it with jobs it can neither run nor quiet.
+	if !req.Msg.Pause {
+		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
+
 	if req.Msg.Pause {
 		logger.Debug("pausing job")
 		err = s.temporalmgr.PauseSchedule(
@@ -956,6 +982,9 @@ func (s *Service) UpdateJobSourceConnection(
 	}
 	err = user.EnforceJob(ctx, jobDto, rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -1185,6 +1214,9 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	var connectionId *string
 	if jobDto.GetSource().GetOptions() != nil {
@@ -1272,6 +1304,9 @@ func (s *Service) UpdateJobDestinationConnection(
 	}
 	err = user.EnforceJob(ctx, jobDto, rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -1559,6 +1594,9 @@ func (s *Service) SetJobWorkflowOptions(
 	if err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	wfOptions := &pg_models.WorkflowOptions{}
 	if req.Msg.WorfklowOptions != nil {
@@ -1646,6 +1684,9 @@ func (s *Service) SetJobSyncOptions(
 	}
 	err = user.EnforceJob(ctx, jobResp.Msg.GetJob(), rbac.JobAction_Edit)
 	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobResp.Msg.GetJob().GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -1949,4 +1990,35 @@ func getConnectionSchemaConfigByConnectionType(
 	default:
 		return nil, fmt.Errorf("unable to build connection schema config: unsupported connection type (%T)", conn)
 	}
+}
+
+// enforceJobLimit refuses a new job once the license's MaxJobs cap is reached.
+//
+// A nil cap means uncapped, and must never be read as zero — otherwise every customer
+// holding a license issued before limits existed would be unable to create anything.
+//
+// Counts by listing rather than with a COUNT query: there is no CountJobsByAccount in the
+// generated queries, and adding one means regenerating sqlc output. Job counts per account
+// are in the tens, so the listing is cheap; worth revisiting alongside any other sqlc
+// change rather than on its own.
+func (s *Service) enforceJobLimit(
+	ctx context.Context,
+	user *userdata.User,
+	accountUuid pgtype.UUID,
+) error {
+	limits := user.LicenseLimits()
+	if limits == nil || limits.MaxJobs == nil {
+		return nil
+	}
+	jobs, err := s.db.Q.GetJobsByAccount(ctx, s.db.Db, accountUuid)
+	if err != nil {
+		return fmt.Errorf("unable to count existing jobs against the license limit: %w", err)
+	}
+	if len(jobs) >= *limits.MaxJobs {
+		return husonymerrors.NewForbidden(fmt.Sprintf(
+			"this license allows %d job(s) and %d already exist; contact us to raise the limit",
+			*limits.MaxJobs, len(jobs),
+		))
+	}
+	return nil
 }

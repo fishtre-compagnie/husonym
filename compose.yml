@@ -75,6 +75,13 @@ services:
 
       - AUTH_ENABLED=false
 
+    # Carries EE_LICENSE. Creating a job refuses without it, so this stack is unusable
+    # unless the license reaches the container. Optional so the stack still starts and the
+    # refusal comes from the product with a clear message, rather than from compose.
+    env_file:
+      - path: ./.env.api.local
+        required: false
+
     networks:
       - husonym-network
       - temporal-network
@@ -123,6 +130,12 @@ services:
       - HUSONYM_URL=http://api:8080
       - REDIS_URL=redis://default:foofar@redis:6379
       - TABLESYNC_MAX_CONCURRENCY=3
+    # The worker checks the license too: IsAccountStatusValid gates scheduled runs, which
+    # never pass through the API. Without it here, manual runs would work and scheduled
+    # ones would not.
+    env_file:
+      - path: ./.env.worker.local
+        required: false
     networks:
       - husonym-network
       - temporal-network

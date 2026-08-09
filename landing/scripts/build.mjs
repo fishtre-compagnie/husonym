@@ -50,6 +50,21 @@ const PAGE_STYLES = [
   'trust', 'sovereignty', 'pricing', 'cta', 'contact', 'footer', 'mask',
 ];
 const NOT_FOUND_STYLES = ['base', 'not-found'];
+const LEGAL_STYLES = ['base', 'nav', 'legal', 'footer'];
+
+// Standalone pages rendered from src/legal.html, one file per locale in src/pages/.
+//
+// Emitted as <slug>.html rather than <slug>/index.html: Cloudflare's html_handling serves
+// the extension-less URL directly from the flat file, whereas the directory form answers
+// /terms-of-service with a 307 to /terms-of-service/. That URL is cited in the Enterprise
+// License and in fifteen OpenAPI specs, so it should resolve without a redirect.
+//
+// Body content lives in HTML files rather than the JSON catalogues: legal copy is long,
+// structured, and reviewed as prose — squeezing it into JSON strings would make it
+// unreadable to whoever has to check it.
+const PAGES = [
+  { slug: 'terms-of-service', styles: LEGAL_STYLES, titleKey: 'legal.terms' },
+];
 
 // Scripts inlined into the page, concatenated in order. `main` drives the scroll
 // reveal, `mask` the anonymizing canvas, `contact` the form.
@@ -173,22 +188,39 @@ function renderTurnstileScript() {
 
 // Segmented FR | EN switcher: the current language is a non-clickable marker, the
 // others are links. Both languages stay visible at a glance.
-function renderLangSwitcher(currentCode) {
+// `suffix` keeps the visitor on the same page when switching language, instead of
+// dropping them back on the home page.
+function renderLangSwitcher(currentCode, suffix = '') {
   return LOCALES.map((l) => {
     const label = l.code.toUpperCase();
     if (l.code === currentCode) {
       return `<span class="is-current" aria-current="true">${label}</span>`;
     }
-    return `<a href="${l.urlPath}" hreflang="${l.code}" lang="${l.code}" title="${escapeHtml(l.name)}">${label}</a>`;
+    return `<a href="${l.urlPath}${suffix}" hreflang="${l.code}" lang="${l.code}" title="${escapeHtml(l.name)}">${label}</a>`;
   }).join('');
 }
 
-function renderHreflangLinks() {
+// Reads a catalogue value for an assembly token, falling back to the base locale. Used by
+// standalone pages, whose titles are tokens rather than {{content.keys}} in the shell.
+function catalogValue(locale, key) {
+  const value = CATALOGS[locale.code][key] ?? BASE[key];
+  if (value === undefined) {
+    console.warn(`[build] clé manquante "${key}" (locale "${locale.code}")`);
+    problems++;
+    return '';
+  }
+  used.add(key);
+  return escapeHtml(value);
+}
+
+// `suffix` appends a path below each locale root, so a standalone page points its
+// alternates at its own translations rather than at the home page.
+function renderHreflangLinks(suffix = '') {
   const links = LOCALES.map(
-    (l) => `<link rel="alternate" hreflang="${l.code}" href="${SITE_URL}${l.urlPath}" />`
+    (l) => `<link rel="alternate" hreflang="${l.code}" href="${SITE_URL}${l.urlPath}${suffix}" />`
   );
   const def = LOCALES.find((l) => l.default);
-  links.push(`<link rel="alternate" hreflang="x-default" href="${SITE_URL}${def.urlPath}" />`);
+  links.push(`<link rel="alternate" hreflang="x-default" href="${SITE_URL}${def.urlPath}${suffix}" />`);
   return links.join('\n');
 }
 
@@ -285,8 +317,9 @@ function rewriteAssetUrls(text, map) {
 
 function writeOut(locale, filename, html) {
   const outDir = path.join(OUT, locale.default ? '.' : locale.code);
-  fs.mkdirSync(outDir, { recursive: true });
   const outFile = path.join(outDir, filename);
+  // dirname, not outDir: standalone pages are emitted as <slug>/index.html.
+  fs.mkdirSync(path.dirname(outFile), { recursive: true });
   fs.writeFileSync(outFile, html, 'utf8');
   console.log(`[build] ${locale.code} → ${path.relative(ROOT, outFile)}`);
 }
@@ -303,19 +336,29 @@ function writeRobots() {
 
 function writeSitemap() {
   const lastmod = new Date().toISOString().slice(0, 10);
-  const alternates = LOCALES.map(
-    (l) => `    <xhtml:link rel="alternate" hreflang="${l.code}" href="${SITE_URL}${l.urlPath}" />`
-  );
-  alternates.push(
-    `    <xhtml:link rel="alternate" hreflang="x-default" href="${SITE_URL}${LOCALES.find((l) => l.default).urlPath}" />`
-  );
-  const urls = LOCALES.map((l) => [
-    '  <url>',
-    `    <loc>${SITE_URL}${l.urlPath}</loc>`,
-    ...alternates,
-    `    <lastmod>${lastmod}</lastmod>`,
-    '  </url>',
-  ].join('\n'));
+  const def = LOCALES.find((l) => l.default);
+
+  // One <url> per locale per page, each carrying the alternates for that same page.
+  const entriesFor = (suffix) => {
+    const alternates = LOCALES.map(
+      (l) => `    <xhtml:link rel="alternate" hreflang="${l.code}" href="${SITE_URL}${l.urlPath}${suffix}" />`
+    );
+    alternates.push(
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${SITE_URL}${def.urlPath}${suffix}" />`
+    );
+    return LOCALES.map((l) => [
+      '  <url>',
+      `    <loc>${SITE_URL}${l.urlPath}${suffix}</loc>`,
+      ...alternates,
+      `    <lastmod>${lastmod}</lastmod>`,
+      '  </url>',
+    ].join('\n'));
+  };
+
+  const urls = [
+    ...entriesFor(''),
+    ...PAGES.flatMap((p) => entriesFor(p.slug)),
+  ];
   writeRoot('sitemap.xml', [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
@@ -329,11 +372,39 @@ function sha256(value) {
   return `'sha256-${crypto.createHash('sha256').update(value, 'utf8').digest('base64')}'`;
 }
 
-// Everything is inlined, so the build already holds the exact bytes of every
-// <style> and <script> block and can hash them — a CSP without 'unsafe-inline',
-// which a bundler-based site cannot get this cheaply. The shells keep the tokens
-// flush against their tags ( <style>{{__styles__}}</style> ) precisely so that the
-// hashed string is the block content, byte for byte.
+// Collects the hash of every inline <style> and <script> block from the pages actually
+// written, so the CSP describes exactly what is served.
+//
+// Derived from the output rather than from a list maintained by hand, because the hand-
+// maintained version broke the moment a page with a different stylesheet set was added:
+// its <style> hash was absent from the CSP, the browser refused the block, and the page
+// rendered as unstyled HTML. curl never notices — it does not enforce CSP — so this has to
+// be structurally impossible rather than remembered.
+function collectInlineHashes() {
+  const styles = new Set();
+  const scripts = new Set();
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(abs); continue; }
+      if (!entry.name.endsWith('.html')) continue;
+      const html = fs.readFileSync(abs, 'utf8');
+      for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) styles.add(sha256(css));
+      // Only blocks with actual content: <script src=…> carries no hashable body.
+      for (const [, js] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+        if (js.trim()) scripts.add(sha256(js));
+      }
+    }
+  };
+  walk(OUT);
+  return { styles: [...styles], scripts: [...scripts] };
+}
+
+// Everything is inlined, so the build holds the exact bytes of every <style> and <script>
+// block and can hash them — a CSP without 'unsafe-inline', which a bundler-based site
+// cannot get this cheaply. The shells keep the tokens flush against their tags
+// ( <style>{{__styles__}}</style> ) precisely so the hashed string is the block content,
+// byte for byte.
 //
 // style-src-attr stays 'unsafe-inline': a handful of style="" attributes carry data
 // (distribution bar widths). Inline style attributes cannot execute script, so this
@@ -409,6 +480,7 @@ const rewrite = (text) => rewriteAssetUrls(text, assetMap);
 
 const pageTemplate2 = rewrite(pageTemplate);
 const notFoundTemplate2 = rewrite(notFoundTemplate);
+const legalTemplate = rewrite(stripHtmlComments(resolveIncludes(readSrc('legal.html'))));
 const pageStyles = rewrite(concatStyles(PAGE_STYLES));
 const notFoundStyles = rewrite(concatStyles(NOT_FOUND_STYLES));
 const script = rewrite(concatScripts(PAGE_SCRIPTS));
@@ -420,6 +492,9 @@ for (const locale of LOCALES) {
   writeOut(locale, 'index.html', render(pageTemplate2, locale, {
     __lang__: locale.code,
     __year__: year,
+    // Nav and footer anchors are absolute from the locale root so the same partials work
+    // on the home page and on standalone pages alike.
+    __homeBase__: locale.urlPath,
     __canonical__: `${SITE_URL}${locale.urlPath}`,
     __hreflangLinks__: renderHreflangLinks(),
     __langSwitcher__: renderLangSwitcher(locale.code),
@@ -440,11 +515,34 @@ for (const locale of LOCALES) {
     __homePath__: locale.urlPath,
     __styles__: notFoundStyles,
   }));
+
+  for (const page of PAGES) {
+    // Resolve the body's own assembly tokens before injecting it: render() substitutes
+    // assembly tokens in one pass over the shell, so anything arriving *inside*
+    // __pageBody__ would be too late and get mistaken for a missing catalogue key.
+    const body = rewrite(readSrc(path.join('pages', `${page.slug}.${locale.code}.html`)))
+      .replaceAll('{{__pageUpdated__}}', catalogValue(locale, `${page.titleKey}.updated`));
+    writeOut(locale, `${page.slug}.html`, render(legalTemplate, locale, {
+      __lang__: locale.code,
+      __year__: year,
+      __homeBase__: locale.urlPath,
+      __canonical__: `${SITE_URL}${locale.urlPath}${page.slug}`,
+      __hreflangLinks__: renderHreflangLinks(page.slug),
+      __langSwitcher__: renderLangSwitcher(locale.code, page.slug),
+      __ogImage__: ogImage,
+      __pageTitle__: catalogValue(locale, `${page.titleKey}.metaTitle`),
+      __pageDescription__: catalogValue(locale, `${page.titleKey}.metaDescription`),
+      __pageBody__: body,
+      __styles__: rewrite(concatStyles(page.styles)),
+      __script__: script,
+    }));
+  }
 }
 
 writeRobots();
 writeSitemap();
-writeHeaders({ styles: [sha256(pageStyles), sha256(notFoundStyles)], scripts: [sha256(script)] });
+// Must run after every page is written: the CSP is derived from the output.
+writeHeaders(collectInlineHashes());
 
 const unused = Object.keys(BASE).filter((k) => !used.has(k));
 if (unused.length) {

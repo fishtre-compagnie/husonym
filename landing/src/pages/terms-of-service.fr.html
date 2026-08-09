@@ -1,0 +1,79 @@
+<h1>Conditions d'utilisation</h1>
+<p class="legal-updated">Dernière mise à jour : {{__pageUpdated__}}</p>
+
+<p class="legal-lede">Husonym est édité par Fishtre Compagnie et fourni sous contrat
+d'abonnement. Cette page décrit les principes qui encadrent son utilisation. Les conditions
+complètes applicables à votre organisation sont celles du contrat d'abonnement conclu avec
+nous&nbsp;: <a href="mailto:contact@husonym.com">contact@husonym.com</a>.</p>
+
+<h2>Ce qui vous est fourni</h2>
+<p>Husonym est fourni sous forme d'images de conteneurs et de charts Helm, que vous
+déployez dans votre propre infrastructure. Le droit d'utilisation est concédé pour la durée
+de votre abonnement, à titre non exclusif et non transférable, pour les besoins internes de
+votre organisation.</p>
+<p>Le logiciel est activé par une clé de licence signée, à renseigner dans la variable
+d'environnement <code class="mono">EE_LICENSE</code> de l'API et du worker.</p>
+
+<h2>Vos données restent les vôtres</h2>
+<p><strong>Le logiciel s'exécute dans votre infrastructure. Nous n'accédons pas, ne
+recevons pas et n'hébergeons aucune des données que vous traitez avec lui.</strong> La
+vérification de la licence elle-même se fait hors ligne&nbsp;: Husonym ne nous contacte
+jamais, ce qui permet son usage en environnement isolé.</p>
+<p>En conséquence, pour les données personnelles que vous traitez à l'aide du logiciel,
+vous êtes responsable de traitement et nous n'intervenons pas en qualité de sous-traitant
+au sens du RGPD.</p>
+<p>Husonym est un outil d'anonymisation. La qualification juridique du résultat — savoir
+si un jeu de données produit est effectivement anonyme au sens du RGPD — dépend de vos
+données et de votre configuration, et relève de votre appréciation.</p>
+
+<h2>Limites d'usage</h2>
+<p>Votre contrat peut prévoir des limites, encodées dans votre clé de licence et
+appliquées par le logiciel&nbsp;: un nombre maximal de jobs, un nombre maximal de
+connexions, ou les types de connecteurs inclus.</p>
+<p>Atteindre une limite empêche uniquement de créer de nouvelles ressources&nbsp;: rien de
+ce qui existe déjà n'est affecté, et aucune exécution en cours n'est interrompue. Écrivez-
+nous pour relever une limite, nous émettons une clé de remplacement.</p>
+
+<h2>Échéance de l'abonnement</h2>
+<p>Husonym ne s'arrête pas brutalement. Il traverse quatre étapes, signalées dans
+l'interface.</p>
+
+<table class="legal-table">
+  <thead><tr><th>Étape</th><th>Quand</th><th>Effet</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Active</strong></td><td>plus de 30 jours restants</td><td>tout fonctionne</td></tr>
+    <tr><td><strong>Bientôt expirée</strong></td><td>dans les 30 jours précédant l'échéance</td><td>tout fonctionne, un bandeau indique la date</td></tr>
+    <tr><td><strong>Période de grâce</strong></td><td>après l'échéance, pour une durée complémentaire</td><td>tout fonctionne encore</td></tr>
+    <tr><td><strong>Expirée</strong></td><td>après la période de grâce</td><td>les nouvelles exécutions s'arrêtent</td></tr>
+  </tbody>
+</table>
+
+<div class="legal-note">
+  <p><strong>Rien n'est supprimé.</strong> Passée la période de grâce, la création et
+  l'exécution de jobs s'arrêtent, mais vous conservez l'accès à l'intégralité de vos
+  configurations et de votre historique. Vous pouvez toujours mettre en pause, annuler une
+  exécution en cours et supprimer des ressources. Les exécutions déjà lancées vont à leur
+  terme. L'installation d'une clé renouvelée rétablit immédiatement le fonctionnement
+  complet, sans migration ni reconfiguration.</p>
+</div>
+
+<h2>Ce que vous vous engagez à ne pas faire</h2>
+<ul>
+  <li>contourner, désactiver ou altérer le mécanisme de licence, ou utiliser le logiciel
+  au-delà des limites encodées dans votre clé&nbsp;;</li>
+  <li>partager, publier ou transférer votre clé de licence&nbsp;;</li>
+  <li>redistribuer, revendre ou mettre le logiciel à disposition de tiers sous forme de
+  service.</li>
+</ul>
+
+<h2>Propriété intellectuelle</h2>
+<p>Le logiciel et les droits de propriété intellectuelle qui s'y rattachent demeurent la
+propriété de Fishtre Compagnie et de ses concédants. Votre abonnement ne vous transfère
+aucun de ces droits au-delà du droit d'utilisation décrit ci-dessus.</p>
+<p>Certains composants tiers intégrés au logiciel restent régis par la licence de leur
+auteur respectif.</p>
+
+<h2>Nous contacter</h2>
+<p>Pour obtenir le contrat d'abonnement complet, poser une question sur ces conditions,
+renouveler ou faire évoluer une licence&nbsp;:
+<a href="mailto:contact@husonym.com">contact@husonym.com</a>.</p>

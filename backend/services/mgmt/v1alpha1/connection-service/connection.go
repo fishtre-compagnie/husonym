@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -23,8 +24,8 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
 
@@ -432,6 +433,11 @@ func (s *Service) CreateConnection(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.enforceConnectionLimits(
+		ctx, user, accountUuid, req.Msg.GetConnectionConfig(),
+	); err != nil {
+		return nil, err
+	}
 	if err := user.EnforceConnection(
 		ctx,
 		userdata.NewWildcardDomainEntity(req.Msg.GetAccountId()),
@@ -702,6 +708,75 @@ type urlEnvVarConfig interface {
 func checkUrlEnvVar(cfg urlEnvVarConfig, isHusonymCloud bool) error {
 	if cfg.GetUrlFromEnv() != "" && isHusonymCloud {
 		return husonymerrors.NewBadRequest("url env var is not supported in husonym cloud")
+	}
+	return nil
+}
+
+// connectionTypeName maps a connection config onto the stable name a license allowlist
+// uses. Kept as a plain switch rather than derived from the protobuf type name so that
+// renaming a generated type cannot silently invalidate licenses already in the field.
+func connectionTypeName(cfg *mgmtv1alpha1.ConnectionConfig) string {
+	switch cfg.GetConfig().(type) {
+	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
+		return "postgres"
+	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
+		return "mysql"
+	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
+		return "mssql"
+	case *mgmtv1alpha1.ConnectionConfig_MongoConfig:
+		return "mongodb"
+	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
+		return "dynamodb"
+	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config:
+		return "aws-s3"
+	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
+		return "gcp-cloud-storage"
+	case *mgmtv1alpha1.ConnectionConfig_OpenaiConfig:
+		return "openai"
+	default:
+		return "unknown"
+	}
+}
+
+// enforceConnectionLimits applies the license's connection caps: how many connections may
+// exist, and which types are permitted.
+//
+// Nil caps mean uncapped and must never read as zero, or a license issued before limits
+// existed would forbid everything. An empty type allowlist likewise permits everything, so
+// adding a connector to Husonym never retroactively invalidates a license.
+//
+// Counts by listing: there is no CountConnectionsByAccount in the generated queries, and
+// per-account connection counts are small. See the matching note on enforceJobLimit.
+func (s *Service) enforceConnectionLimits(
+	ctx context.Context,
+	user *userdata.User,
+	accountUuid pgtype.UUID,
+	cfg *mgmtv1alpha1.ConnectionConfig,
+) error {
+	limits := user.LicenseLimits()
+	if limits == nil {
+		return nil
+	}
+
+	if !limits.Allows(connectionTypeName(cfg)) {
+		return husonymerrors.NewForbidden(fmt.Sprintf(
+			"this license does not include %s connections; contact us to add it",
+			connectionTypeName(cfg),
+		))
+	}
+
+	if limits.MaxConnections == nil {
+		return nil
+	}
+	conns, err := s.db.Q.GetConnectionsByAccount(ctx, s.db.Db, accountUuid)
+	if err != nil {
+		return fmt.Errorf("unable to count existing connections against the license limit: %w", err)
+	}
+	if len(conns) >= *limits.MaxConnections {
+		return husonymerrors.NewForbidden(fmt.Sprintf(
+			"this license allows %d connection(s) and %d already exist; contact us to raise the limit",
+			*limits.MaxConnections, len(conns),
+		))
 	}
 	return nil
 }

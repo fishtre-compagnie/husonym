@@ -1,0 +1,27 @@
+/* Long-form legal pages. Narrow measure and generous leading: these are read carefully,
+   sometimes by a lawyer, and the marketing rhythm is wrong for that. */
+.legal{padding-top:clamp(3rem,7vw,5rem)}
+.legal-inner{max-width:780px}
+.legal h1{font-size:clamp(2rem,4vw,2.8rem);margin-bottom:.6rem}
+.legal .legal-updated{font-family:var(--font-mono);font-size:.78rem;color:var(--text-dim);margin-bottom:2.5rem}
+.legal .legal-lede{font-size:1.08rem;color:var(--text-muted);margin-bottom:2.5rem}
+.legal h2{font-size:clamp(1.2rem,2.2vw,1.45rem);margin:2.5rem 0 .9rem}
+.legal h3{font-size:1.02rem;margin:1.6rem 0 .6rem}
+.legal p{color:var(--text-muted);margin-bottom:1rem;line-height:1.75}
+.legal ul{display:flex;flex-direction:column;gap:.55rem;margin:0 0 1.2rem}
+.legal li{display:flex;gap:.65rem;color:var(--text-muted);line-height:1.7}
+.legal li::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:.7rem}
+.legal a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.legal strong{color:var(--text)}
+
+/* Callout for the point customers care about most: what happens when a licence lapses. */
+.legal-note{
+  background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--accent);
+  border-radius:var(--radius-sm);padding:1.2rem 1.4rem;margin:1.6rem 0 2rem;
+}
+.legal-note p:last-child{margin-bottom:0}
+
+.legal-table{width:100%;border-collapse:collapse;margin:1.2rem 0 2rem;font-size:.92rem}
+.legal-table th{text-align:left;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);font-weight:500;padding:.6rem .7rem;border-bottom:1px solid var(--line)}
+.legal-table td{padding:.7rem;border-bottom:1px solid var(--line-soft);color:var(--text-muted);vertical-align:top}
+.legal-table tr:last-child td{border-bottom:none}

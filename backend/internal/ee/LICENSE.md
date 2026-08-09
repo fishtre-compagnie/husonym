@@ -7,7 +7,7 @@ With regard to the Husonym Software:
 This software and associated documentation files (the "Software") may only be
 used in production, if you (and any entity that you represent) have agreed to,
 and are in compliance with, the Husonym Cloud Terms of Service, available
-at https://www.husonym.com/terms-of-service (the “Enterprise Terms”), or other
+at https://husonym.com/terms-of-service (the “Enterprise Terms”), or other
 agreement governing the use of the Software, as agreed by you and Husonym,
 and otherwise have a valid Husonym Enterprise License for the
 correct number of user seats. Subject to the foregoing sentence, you are free to

@@ -145,6 +145,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'deploy/licensing',
+      label: 'Licensing',
+    },
+    {
+      type: 'doc',
       id: 'deploy/kubernetes',
       label: 'Kubernetes',
     },
