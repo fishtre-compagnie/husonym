@@ -103,12 +103,6 @@ jobs:
         run: |
           go test -race -coverprofile=unit-coverage.out -covermode=atomic ./...
 
-      # TODO RE-ENABLE When we have codedov set up
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v7
-      #   env:
-      #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   # TODO: RE-ENABLE WHEN WE HAVE AWS CREDENTIALS SET UP
   # cli-integration-tests:
   #   name: CLI Integration Tests
@@ -144,11 +138,6 @@ jobs:
   #         TEST_S3_REGION: ${{ env.AWS_REGION }}
   #         TEST_S3_BUCKET: ${{ vars.INTEGRATION_TEST_BUCKET_NAME }}
 
-  #     - name: Upload coverage to Codecov
-  #       uses: codecov/codecov-action@v7
-  #       env:
-  #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   worker-integration-tests:
     name: Worker Integration Tests
     runs-on: ubuntu-latest
@@ -168,12 +157,6 @@ jobs:
         env:
           WORKER_INTEGRATION_TESTS_ENABLED: 1
 
-      # TODO RE-ENABLE When we have codedov set up
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v7
-      #   env:
-      #    CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -192,12 +175,6 @@ jobs:
           go test -race -timeout 1800s -coverprofile=integration-coverage.out -covermode=atomic ./internal/integration-tests/...
         env:
           INTEGRATION_TESTS_ENABLED: 1
-
-      # TODO RE-ENABLE When we have codedov set up
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v7
-      #   env:
-      #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   go-mod-tidy-check:
     name: go-mod-tidy-check

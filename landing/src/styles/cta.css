@@ -1,0 +1,5 @@
+/* Closing call to action. */
+.cta-final{text-align:center}
+.cta-final h2{font-size:clamp(2rem,4vw,3rem);max-width:720px;margin-inline:auto;margin-bottom:1.1rem}
+.cta-final .lede{color:var(--text-muted);max-width:520px;margin-inline:auto;margin-bottom:2rem}
+.cta-final-btns{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}

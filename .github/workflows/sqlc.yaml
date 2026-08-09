@@ -34,7 +34,7 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_DB: nucleus
+          POSTGRES_DB: husonym
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
         # needed because the postgres container does not provide a healthcheck
@@ -47,7 +47,7 @@ jobs:
       - name: Patch sqlc.yaml with db-prepare lint
         uses: mikefarah/yq@v4.53.3
         with:
-          cmd: sh ./backend/scripts/sqlc-prepare-patch.sh postgresql://postgres:postgres@localhost:5432/nucleus ./sqlc.yaml
+          cmd: sh ./backend/scripts/sqlc-prepare-patch.sh postgresql://postgres:postgres@localhost:5432/husonym ./sqlc.yaml
 
       - name: Set up Go
         uses: actions/setup-go@v6

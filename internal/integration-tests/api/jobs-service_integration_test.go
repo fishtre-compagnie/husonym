@@ -74,6 +74,160 @@ func (s *IntegrationTestSuite) Test_CreateJob_Ok() {
 	require.NotNil(s.T(), resp.Msg.GetJob())
 }
 
+// Jobs are the paid surface: without an active license the account can still read and
+// wind down, but it cannot create or run anything.
+func (s *IntegrationTestSuite) Test_JobService_RequiresLicense() {
+	t := s.T()
+	ctx := s.ctx
+	users := s.OSSUnauthenticatedUnlicensedClients.Users()
+	jobs := s.OSSUnauthenticatedUnlicensedClients.Jobs()
+	accountId := s.createPersonalAccount(ctx, users)
+
+	t.Run("CreateJob is denied", func(t *testing.T) {
+		resp, err := jobs.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
+			AccountId: accountId,
+			JobName:   "unlicensed",
+			Mappings:  []*mgmtv1alpha1.JobMapping{},
+		}))
+		requireErrResp(t, resp, err)
+		requireConnectError(t, err, connect.CodePermissionDenied)
+	})
+
+	t.Run("CreateJobRun is denied", func(t *testing.T) {
+		resp, err := jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{
+			JobId: uuid.NewString(),
+		}))
+		requireErrResp(t, resp, err)
+		require.Error(t, err)
+	})
+
+	// Reading must keep working: a lapsed license is not a reason to lock an account out
+	// of its own configuration.
+	t.Run("GetJobs still allowed", func(t *testing.T) {
+		resp, err := jobs.GetJobs(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobsRequest{
+			AccountId: accountId,
+		}))
+		requireNoErrResp(t, resp, err)
+		require.Empty(t, resp.Msg.GetJobs())
+	})
+}
+
+// Exercises the usage caps carried in the license against a real database, using the
+// limited harness variant: 1 job, 2 connections, postgres only.
+//
+// The caps only bite on creation, so nothing here touches anything already running.
+func (s *IntegrationTestSuite) Test_License_UsageLimits() {
+	t := s.T()
+	ctx := s.ctx
+	conns := s.OSSUnauthenticatedLimitedClients.Connections()
+	jobs := s.OSSUnauthenticatedLimitedClients.Jobs()
+	accountId := s.createPersonalAccount(ctx, s.OSSUnauthenticatedLimitedClients.Users())
+
+	createPg := func(name string) (*connect.Response[mgmtv1alpha1.CreateConnectionResponse], error) {
+		return conns.CreateConnection(ctx, connect.NewRequest(&mgmtv1alpha1.CreateConnectionRequest{
+			AccountId: accountId,
+			Name:      name,
+			ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
+					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
+						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
+							Url: "postgres://user:pass@localhost:5432/" + name,
+						},
+					},
+				},
+			},
+		}))
+	}
+
+	// A type outside the allowlist is refused regardless of how many connections exist,
+	// and the check runs before the count so the error names the real reason.
+	t.Run("a connection type outside the allowlist is refused", func(t *testing.T) {
+		resp, err := conns.CreateConnection(ctx, connect.NewRequest(&mgmtv1alpha1.CreateConnectionRequest{
+			AccountId: accountId,
+			Name:      "mysql-not-allowed",
+			ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+				Config: &mgmtv1alpha1.ConnectionConfig_MysqlConfig{
+					MysqlConfig: &mgmtv1alpha1.MysqlConnectionConfig{
+						ConnectionConfig: &mgmtv1alpha1.MysqlConnectionConfig_Url{
+							Url: "mysql://user:pass@localhost:3306/db",
+						},
+					},
+				},
+			},
+		}))
+		requireErrResp(t, resp, err)
+		requireConnectError(t, err, connect.CodePermissionDenied)
+		require.Contains(t, err.Error(), "mysql")
+	})
+
+	var srcId, destId string
+	t.Run("connections up to the cap are allowed", func(t *testing.T) {
+		src, err := createPg("source")
+		requireNoErrResp(t, src, err)
+		srcId = src.Msg.GetConnection().GetId()
+
+		dest, err := createPg("dest")
+		requireNoErrResp(t, dest, err)
+		destId = dest.Msg.GetConnection().GetId()
+	})
+
+	t.Run("one connection past the cap is refused", func(t *testing.T) {
+		resp, err := createPg("third")
+		requireErrResp(t, resp, err)
+		requireConnectError(t, err, connect.CodePermissionDenied)
+		// The message must name the limit and the count, so a customer knows what to ask
+		// for rather than just being told no.
+		require.Contains(t, err.Error(), "2 connection(s)")
+	})
+
+	createJob := func(name string) (*connect.Response[mgmtv1alpha1.CreateJobResponse], error) {
+		return jobs.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
+			AccountId: accountId,
+			JobName:   name,
+			Mappings:  []*mgmtv1alpha1.JobMapping{},
+			Source: &mgmtv1alpha1.JobSource{
+				Options: &mgmtv1alpha1.JobSourceOptions{
+					Config: &mgmtv1alpha1.JobSourceOptions_Postgres{
+						Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{ConnectionId: srcId},
+					},
+				},
+			},
+			Destinations: []*mgmtv1alpha1.CreateJobDestination{
+				{
+					ConnectionId: destId,
+					Options: &mgmtv1alpha1.JobDestinationOptions{
+						Config: &mgmtv1alpha1.JobDestinationOptions_PostgresOptions{
+							PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{},
+						},
+					},
+				},
+			},
+		}))
+	}
+
+	t.Run("the first job is allowed", func(t *testing.T) {
+		s.MockTemporalForCreateJob("limited-job")
+		resp, err := createJob("first")
+		requireNoErrResp(t, resp, err)
+	})
+
+	t.Run("a second job is refused", func(t *testing.T) {
+		resp, err := createJob("second")
+		requireErrResp(t, resp, err)
+		requireConnectError(t, err, connect.CodePermissionDenied)
+		require.Contains(t, err.Error(), "1 job(s)")
+	})
+
+	// Hitting a cap must not affect what already exists.
+	t.Run("existing resources stay readable at the cap", func(t *testing.T) {
+		resp, err := jobs.GetJobs(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobsRequest{
+			AccountId: accountId,
+		}))
+		requireNoErrResp(t, resp, err)
+		require.Len(t, resp.Msg.GetJobs(), 1)
+	})
+}
+
 func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 	t := s.T()
 	ctx := s.ctx

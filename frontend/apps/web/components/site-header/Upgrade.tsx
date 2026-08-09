@@ -24,20 +24,23 @@ import {
 import UpgradeButton from './UpgradeButton';
 
 interface UpgradeProps {
-  calendlyLink: string;
+  upgradeLink: string;
   isAccountStatusValidResp: IsAccountStatusValidResponse | undefined;
   isLoading: boolean;
 }
 
 export default function Upgrade(props: UpgradeProps): ReactElement | null {
-  const { calendlyLink, isAccountStatusValidResp, isLoading } = props;
+  const { upgradeLink, isAccountStatusValidResp, isLoading } = props;
   const { account } = useAccount();
   const { data: systemInfo } = useQuery(
     UserAccountService.method.getSystemInformation
   );
-  // always surface the upgrade button for non-husonymcloud users
+  // always surface the upgrade button for non-husonymcloud users, but only if
+  // an upgrade link has actually been configured
   if (!systemInfo?.license?.isValid && !systemInfo?.license?.isHusonymCloud) {
-    return <UpgradeButton href={calendlyLink} target="_blank" />;
+    return upgradeLink ? (
+      <UpgradeButton href={upgradeLink} target="_blank" />
+    ) : null;
   }
 
   if (isLoading || isAccountStatusValidResp?.isValid) {

@@ -1,0 +1,27 @@
+<div class="feature flip reveal">
+  <div class="feature-text">
+    <div class="eyebrow">{{features.gitops.eyebrow}}</div>
+    <h3>{{features.gitops.title}}</h3>
+    <p>{{features.gitops.body}}</p>
+    <ul class="feature-list">
+      <li>{{features.gitops.list1}}</li>
+      <li>{{features.gitops.list2}}</li>
+      <li>{{features.gitops.list3}}</li>
+    </ul>
+  </div>
+  <div class="feature-visual" aria-hidden="true">
+    <div class="code-card">
+      <div class="code-card-head">main.tf</div>
+      <pre class="code-block"><code><span class="c-key">resource</span> <span class="c-str">"husonym_job"</span> <span class="c-str">"seed_staging"</span> {
+  name        <span class="c-op">=</span> <span class="c-str">"seed-staging"</span>
+  source_id   <span class="c-op">=</span> husonym_connection.prod_replica.id
+  destination <span class="c-op">=</span> husonym_connection.staging.id
+}</code></pre>
+    </div>
+    <div class="code-card">
+      <div class="code-card-head">.github/workflows/e2e.yml</div>
+      <pre class="code-block"><code><span class="c-op">-</span> <span class="c-key">run</span>: husonym jobs trigger <span class="c-op">$</span>SEED_JOB_ID
+<span class="c-op">-</span> <span class="c-key">run</span>: npm run test:e2e</code></pre>
+    </div>
+  </div>
+</div>

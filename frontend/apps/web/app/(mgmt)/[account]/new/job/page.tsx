@@ -23,7 +23,6 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, ReactNode, use, useState } from 'react';
 import { AiOutlineExperiment } from 'react-icons/ai';
 import { PiDetective } from 'react-icons/pi';
@@ -48,7 +47,6 @@ export default function NewJob(props: PageProps): ReactElement {
   };
 
   const router = useRouter();
-  const posthog = usePostHog();
   const theme = useTheme();
 
   return (
@@ -133,9 +131,6 @@ export default function NewJob(props: PageProps): ReactElement {
               return;
             }
             router.push(href);
-            posthog.capture('New Job Flow Started', {
-              jobType: selectedJobType,
-            });
           }}
         >
           Next

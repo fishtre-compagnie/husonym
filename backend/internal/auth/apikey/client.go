@@ -12,7 +12,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
@@ -25,7 +25,7 @@ type TokenContextData struct {
 
 var (
 	ErrInvalidApiKey = errors.New("token is not a valid husonym api key")
-	ErrApiKeyExpired = nucleuserrors.NewUnauthenticated("token is expired")
+	ErrApiKeyExpired = husonymerrors.NewUnauthenticated("token is expired")
 )
 
 type Queries interface {
@@ -106,7 +106,7 @@ func (c *Client) InjectTokenCtx(
 func GetTokenDataFromCtx(ctx context.Context) (*TokenContextData, error) {
 	data, ok := ctx.Value(TokenContextKey{}).(*TokenContextData)
 	if !ok {
-		return nil, nucleuserrors.NewUnauthenticated(
+		return nil, husonymerrors.NewUnauthenticated(
 			"ctx does not contain TokenContextData or unable to cast struct",
 		)
 	}

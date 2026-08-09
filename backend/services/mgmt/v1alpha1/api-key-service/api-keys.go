@@ -11,7 +11,7 @@ import (
 	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
@@ -62,7 +62,7 @@ func (s *Service) GetAccountApiKey(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("unable to find api key")
+		return nil, husonymerrors.NewNotFound("unable to find api key")
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -92,7 +92,7 @@ func (s *Service) CreateAccountApiKey(
 	}
 
 	if user.IsApiKey() {
-		return nil, nucleuserrors.NewUnauthorized("api key user cannot create api keys")
+		return nil, husonymerrors.NewUnauthorized("api key user cannot create api keys")
 	}
 
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.Msg.GetAccountId()), rbac.AccountAction_Edit); err != nil {
@@ -142,7 +142,7 @@ func (s *Service) RegenerateAccountApiKey(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, err
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("account api key not found")
+		return nil, husonymerrors.NewNotFound("account api key not found")
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -151,7 +151,7 @@ func (s *Service) RegenerateAccountApiKey(
 	}
 
 	if user.IsApiKey() {
-		return nil, nucleuserrors.NewUnauthorized("api key user cannot regenerate api keys")
+		return nil, husonymerrors.NewUnauthorized("api key user cannot regenerate api keys")
 	}
 
 	if err := user.EnforceAccount(
@@ -209,7 +209,7 @@ func (s *Service) DeleteAccountApiKey(
 		return nil, err
 	}
 	if user.IsApiKey() {
-		return nil, nucleuserrors.NewUnauthorized("api key user cannot delete api keys")
+		return nil, husonymerrors.NewUnauthorized("api key user cannot delete api keys")
 	}
 	if err := user.EnforceAccount(
 		ctx,

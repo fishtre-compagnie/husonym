@@ -21,7 +21,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/loki"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
@@ -527,6 +527,11 @@ func (s *Service) CreateJobRun(
 	if err := user.EnforceJob(ctx, userdata.NewDomainEntity(job.GetAccountId(), job.GetId()), rbac.JobAction_Execute); err != nil {
 		return nil, err
 	}
+	// Running a job is the paid action. Cancel and terminate are not gated: stopping work
+	// must stay possible once a license has lapsed.
+	if err := user.EnforceLicense(ctx, job.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
 	err = s.temporalmgr.TriggerSchedule(
@@ -724,7 +729,7 @@ func (s *Service) streamLogs(
 ) error {
 	if s.cfg.RunLogConfig == nil || !s.cfg.RunLogConfig.IsEnabled ||
 		s.cfg.RunLogConfig.RunLogType == nil {
-		return nucleuserrors.NewNotImplemented(
+		return husonymerrors.NewNotImplemented(
 			"job run logs is not enabled. please configure or contact system administrator to enable logs.",
 		)
 	}
@@ -759,7 +764,7 @@ func (s *Service) streamLogs(
 		}
 		return nil
 	default:
-		return nucleuserrors.NewNotImplemented(
+		return husonymerrors.NewNotImplemented(
 			"streaming log pods not implemented for this container type",
 		)
 	}
@@ -793,7 +798,7 @@ func (s *Service) streamK8sWorkerPodLogs(
 	logger *slog.Logger,
 ) error {
 	if s.cfg.RunLogConfig.RunLogPodConfig == nil {
-		return nucleuserrors.NewInternalError("run logs configured but no config provided")
+		return husonymerrors.NewInternalError("run logs configured but no config provided")
 	}
 	workflowExecution, err := s.temporalmgr.GetWorkflowExecutionById(
 		ctx,
@@ -853,7 +858,7 @@ func (s *Service) streamK8sWorkerPodLogs(
 		if err != nil && !k8serrors.IsNotFound(err) {
 			return err
 		} else if err != nil && k8serrors.IsNotFound(err) {
-			return nucleuserrors.NewNotFound("pod no longer exists")
+			return husonymerrors.NewNotFound("pod no longer exists")
 		}
 
 		scanner := bufio.NewScanner(logstream)
@@ -898,10 +903,10 @@ func (s *Service) streamLokiWorkerLogs(
 ) error {
 	if s.cfg.RunLogConfig == nil || !s.cfg.RunLogConfig.IsEnabled ||
 		s.cfg.RunLogConfig.LokiRunLogConfig == nil {
-		return nucleuserrors.NewInternalError("run logs configured but no config provided")
+		return husonymerrors.NewInternalError("run logs configured but no config provided")
 	}
 	if s.cfg.RunLogConfig.LokiRunLogConfig.LabelsQuery == "" {
-		return nucleuserrors.NewInternalError("must provide a labels query for loki to filter by")
+		return husonymerrors.NewInternalError("must provide a labels query for loki to filter by")
 	}
 	workflowExecution, err := s.temporalmgr.GetWorkflowExecutionById(
 		ctx,
@@ -1073,7 +1078,7 @@ func (s *Service) GetRunContext(
 	if err != nil && !husonymdb.IsNoRows(err) {
 		return nil, fmt.Errorf("unable to retrieve run context by key: %w", err)
 	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, nucleuserrors.NewNotFound("no run context exists with the provided key")
+		return nil, husonymerrors.NewNotFound("no run context exists with the provided key")
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{
@@ -1096,7 +1101,7 @@ func (s *Service) SetRunContext(
 	}
 
 	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, nucleuserrors.NewUnauthenticated(
+		return nil, husonymerrors.NewUnauthenticated(
 			"must provide valid authentication credentials for this endpoint",
 		)
 	}
@@ -1137,7 +1142,7 @@ func (s *Service) SetRunContexts(
 		}
 
 		if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-			return nil, nucleuserrors.NewUnauthenticated(
+			return nil, husonymerrors.NewUnauthenticated(
 				"must provide valid authentication credentials for this endpoint",
 			)
 		}

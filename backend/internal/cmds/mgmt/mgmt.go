@@ -57,7 +57,7 @@ func initConfig(
 			panic(err)
 		}
 	}
-	envType := viper.GetString("NUCLEUS_ENV")
+	envType := viper.GetString("HUSONYM_ENV")
 	if envType != "" {
 		viper.SetConfigName(fmt.Sprintf(".env.%s", envType))
 		if err := viper.MergeInConfig(); err != nil {

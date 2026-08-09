@@ -10,7 +10,7 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -184,7 +184,7 @@ func (d *HusonymDb) CreateTeamAccount(
 func verifyAccountNameUnique(accounts []db_queries.HusonymApiAccount, name string) error {
 	for idx := range accounts {
 		if strings.EqualFold(accounts[idx].AccountSlug, name) {
-			return nucleuserrors.NewAlreadyExists(
+			return husonymerrors.NewAlreadyExists(
 				fmt.Sprintf("team account with the name %s already exists", name),
 			)
 		}
@@ -201,7 +201,7 @@ func getAccountById(
 			return &accounts[idx], nil
 		}
 	}
-	return nil, nucleuserrors.NewNotFound("could not find id in list of husonym accounts")
+	return nil, husonymerrors.NewNotFound("could not find id in list of husonym accounts")
 }
 
 type ConvertPersonalToTeamAccountRequest struct {
@@ -240,7 +240,7 @@ func (d *HusonymDb) ConvertPersonalToTeamAccount(
 		}
 		logger.DebugContext(ctx, "verified that requested personal account id is owned by the user")
 		if personalAccount.AccountType != int16(AccountType_Personal) {
-			return nucleuserrors.NewBadRequest("requested account conversion is not a personal account and thus cannot be converted")
+			return husonymerrors.NewBadRequest("requested account conversion is not a personal account and thus cannot be converted")
 		}
 
 		// update personal account to be team account.
@@ -340,7 +340,7 @@ func (d *HusonymDb) CreateTeamAccountInvite(
 		}
 		if account.AccountType != int16(AccountType_Team) &&
 			account.AccountType != int16(AccountType_Enterprise) {
-			return nucleuserrors.NewForbidden("unable to create team account invite: account type is not team, enterprise")
+			return husonymerrors.NewForbidden("unable to create team account invite: account type is not team, enterprise")
 		}
 
 		// update any active invites for user to expired before creating new invite
@@ -387,12 +387,12 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 	if err := d.WithTx(ctx, nil, func(dbtx BaseDBTX) error {
 		invite, err := d.Q.GetAccountInviteByToken(ctx, dbtx, token)
 		if err != nil && !IsNoRows(err) {
-			return nucleuserrors.New(err)
+			return husonymerrors.New(err)
 		} else if err != nil && IsNoRows(err) {
-			return nucleuserrors.NewBadRequest("invalid invite. unable to accept invite")
+			return husonymerrors.NewBadRequest("invalid invite. unable to accept invite")
 		}
 		if invite.Email != userEmail {
-			return nucleuserrors.NewBadRequest("invalid invite email. unable to accept invite")
+			return husonymerrors.NewBadRequest("invalid invite email. unable to accept invite")
 		}
 		if !invite.Accepted.Bool {
 			_, err = d.Q.UpdateAccountInviteToAccepted(ctx, dbtx, invite.ID)
@@ -415,11 +415,11 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 			return err
 		} else if err != nil && IsNoRows(err) {
 			if invite.Accepted.Bool {
-				return nucleuserrors.NewBadRequest("account invitation already accepted")
+				return husonymerrors.NewBadRequest("account invitation already accepted")
 			}
 
 			if invite.ExpiresAt.Time.Before(time.Now().UTC()) {
-				return nucleuserrors.NewForbidden("account invitation expired")
+				return husonymerrors.NewForbidden("account invitation expired")
 			}
 
 			err = d.Q.CreateAccountUserAssociation(ctx, dbtx, db_queries.CreateAccountUserAssociationParams{

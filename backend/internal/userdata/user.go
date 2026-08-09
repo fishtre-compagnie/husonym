@@ -9,7 +9,7 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -58,9 +58,19 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 		return err
 	}
 	if !ok {
-		return nucleuserrors.NewUnauthorized("account does not have an active license")
+		return husonymerrors.NewUnauthorized("account does not have an active license")
 	}
 	return nil
+}
+
+// LicenseLimits returns the usage caps carried by the active license, or nil when the
+// license names none — which means uncapped, never zero.
+//
+// Exposed here rather than injected into every service: the license already travels with
+// the user, and each service reaches for the user anyway to enforce access. Callers should
+// still confirm the license is valid (EnforceLicense) before reading caps from it.
+func (u *User) LicenseLimits() *license.Limits {
+	return license.LimitsOf(u.license)
 }
 
 func (u *User) IsLicensed(ctx context.Context, accountId string) (bool, error) {
@@ -89,7 +99,7 @@ func enforceAccountAccess(ctx context.Context, user *User, accountId string) err
 		// However, we still want to make a DB request to ensure the DB still says it's in the account
 		if user.apiKeyData.ApiKey == nil ||
 			husonymdb.UUIDString(user.apiKeyData.ApiKey.AccountID) != accountId {
-			return nucleuserrors.NewUnauthorized("api key is not valid for account")
+			return husonymerrors.NewUnauthorized("api key is not valid for account")
 		}
 	}
 
@@ -102,7 +112,7 @@ func enforceAccountAccess(ctx context.Context, user *User, accountId string) err
 		return fmt.Errorf("unable to check if user is in account: %w", err)
 	}
 	if !inAccountResp.Msg.GetOk() {
-		return nucleuserrors.NewUnauthorized("user is not in account")
+		return husonymerrors.NewUnauthorized("user is not in account")
 	}
 	return nil
 }

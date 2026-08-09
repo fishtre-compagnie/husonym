@@ -16,8 +16,8 @@ kubectl port-forward -n default svc/postgresql2 ${DST_PORT}:5432 &
 
 sleep 5
 
-SRC_CONN="postgresql://postgres:foofar@localhost:${SRC_PORT}/nucleus?sslmode=disable"
-DST_CONN="postgresql://postgres:foofar@localhost:${DST_PORT}/nucleus?sslmode=disable"
+SRC_CONN="postgresql://postgres:foofar@localhost:${SRC_PORT}/husonym?sslmode=disable"
+DST_CONN="postgresql://postgres:foofar@localhost:${DST_PORT}/husonym?sslmode=disable"
 
 psql '${SRC_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS husonym_api'
 psql '${DST_CONN}' -c 'CREATE SCHEMA IF NOT EXISTS husonym_api'

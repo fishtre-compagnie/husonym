@@ -8,7 +8,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	ee_transformers "github.com/fishtre-compagnie/husonym/internal/ee/transformers"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 )
 
@@ -996,7 +996,7 @@ func (s *Service) GetSystemTransformerBySource(
 
 	transformer, ok := transformerMap[req.Msg.GetSource()]
 	if !ok {
-		return nil, nucleuserrors.NewNotFound(
+		return nil, husonymerrors.NewNotFound(
 			"unable to find system transformer with provided source",
 		)
 	}

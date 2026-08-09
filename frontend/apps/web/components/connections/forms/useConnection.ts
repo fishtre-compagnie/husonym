@@ -9,7 +9,6 @@ import {
   CreateConnectionRequestSchema,
   UpdateConnectionRequestSchema,
 } from '@husonym/sdk';
-import { usePostHog } from 'posthog-js/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -71,7 +70,6 @@ export function useConnection<T extends { connectionName: string }>(
   );
   const [isLoading, setIsLoading] = useState(true);
   const [initialValues, setInitialValues] = useState<T | undefined>(undefined);
-  const posthog = usePostHog();
 
   const connectionId = useMemo(() => {
     if (mode === 'view') {
@@ -112,9 +110,6 @@ export function useConnection<T extends { connectionName: string }>(
   ): void {
     if (mode === 'create' || mode === 'clone') {
       toast.success('Connection created successfully!');
-      posthog.capture('New Connection Created', {
-        type: conn.connectionConfig?.config.case,
-      });
     } else if (mode === 'edit') {
       toast.success('Connection updated successfully!');
     }

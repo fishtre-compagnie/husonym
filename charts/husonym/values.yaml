@@ -1,9 +1,9 @@
 api:
-  # -- Enable or Disable Neoysnc Api
+  # -- Enable or Disable Husonym Api
   enabled: true
 
 app:
-  # -- Enable or Disable Neoysnc App
+  # -- Enable or Disable Husonym App
   enabled: true
 
 worker:

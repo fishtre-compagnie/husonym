@@ -46,4 +46,4 @@ The registry documentation provided a better look into what resources are availa
 
 ## Bugs or Features
 
-If there is an issue with the provider, or there is a feature that is missing, please do not hesitate to log an issue or join our Discord and ask about it.
+If there is an issue with the provider, or there is a feature that is missing, please do not hesitate to log an issue or email us at support@husonym.com.

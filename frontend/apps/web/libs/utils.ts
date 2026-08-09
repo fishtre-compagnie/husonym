@@ -11,6 +11,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Initial used by Avatar fallbacks so that we don't have to ship names or
+// account ids off to a third-party avatar service.
+export function getAvatarFallback(name?: string | null): string {
+  return name ? name[0].toUpperCase() : '?';
+}
+
 export function getSingleOrUndefined(
   item: string | string[] | undefined
 ): string | undefined {

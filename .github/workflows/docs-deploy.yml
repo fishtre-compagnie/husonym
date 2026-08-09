@@ -5,21 +5,17 @@ on:
     branches: [main]
     paths:
       - docs/**
+  # Lets us redeploy the current docs without pushing a commit
+  workflow_dispatch:
 
-# Allow GITHUB_TOKEN to deploy to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow one concurrent deployment, cancelling in-progress runs
+# One deployment at a time, cancelling any in-progress run
 concurrency:
-  group: pages
+  group: docs-deploy
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,6 +24,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Fail early with a readable message rather than deep inside wrangler
+      - name: Check Cloudflare credentials are set
+        env:
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -n "$API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+              echo "Missing repository secret(s):$missing" >&2
+              echo "Create a token with the 'Edit Cloudflare Workers' template, scoped to the husonym.com zone." >&2
+              exit 1
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -35,25 +46,20 @@ jobs:
           cache: npm
           cache-dependency-path: ./docs/package-lock.json
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v6
-
       - run: npm ci
       - run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
+      # Serves build/ from Workers Static Assets on docs.husonym.com.
+      # See docs/wrangler.jsonc for the routing configuration.
+      #
+      # wranglerVersion must stay pinned: the action defaults to wrangler 3.90,
+      # which predates assets-only Workers and fails with "Missing entry-point"
+      # because this config has no `main`. It matches the devDependency in
+      # docs/package.json so local and CI deploys behave the same.
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: docs/build
-
-  deploy:
-    name: Deploy
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: docs
+          wranglerVersion: "4"

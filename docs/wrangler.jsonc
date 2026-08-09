@@ -1,0 +1,24 @@
+{
+  // Serves the built Docusaurus site from Cloudflare Workers Static Assets.
+  // There is no Worker script: this is a pure static site, so no `main` and no
+  // assets `binding` (the binding is only valid alongside a `main` entrypoint).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "husonym-docs",
+  "compatibility_date": "2026-08-07",
+  "account_id": "ac2b8f37f46bcdef343263f0bd18b8b6",
+  "assets": {
+    "directory": "./build",
+    // Docusaurus is statically generated and emits its own 404.html, so serve
+    // that for unmatched paths rather than rewriting them to index.html.
+    "not_found_handling": "404-page",
+  },
+  "routes": [
+    {
+      "pattern": "docs.husonym.com",
+      "custom_domain": true,
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+}

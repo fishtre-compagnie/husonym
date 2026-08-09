@@ -1,0 +1,74 @@
+/* Hero: headline, CTAs and the masking-diff card behind a slow PII scan. */
+.hero{padding-top:clamp(3.5rem,8vw,6rem);overflow:hidden}
+/* stretch, not center: the visual card matches the height of the text block so the
+   two stay aligned whatever the headline length (FR and EN do not wrap alike). */
+.hero-grid{display:grid;grid-template-columns:1fr;gap:3rem;align-items:stretch}
+.hero-eyebrow{margin-bottom:1.4rem}
+/* Capped lower than a hero headline usually is: the French copy wraps to five lines
+   at 4.2rem, which stretches the visual panel (it matches the text column height) and
+   drags the mascot down with it. */
+.hero h1{font-size:clamp(2.2rem,4.4vw,3.5rem);line-height:1.08;margin-bottom:1.4rem}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .lede{font-size:clamp(1.05rem,1.6vw,1.25rem);color:var(--text-muted);max-width:620px;margin-bottom:2.2rem}
+.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem}
+.hero-note{font-size:.88rem;color:var(--text-dim)}
+
+/* Column layout rather than absolute placement: the card takes the top, the Huso the
+   bottom-right, and the two can never overlap however tall the panel gets. The panel
+   stretches to match the text column, whose height depends on the headline wrap, so
+   anything positioned absolutely here drifts — which is exactly what put the mascot
+   behind the card. */
+.hero-visual{
+  position:relative;min-height:clamp(360px,44vw,480px);
+  border-radius:var(--radius);
+  background:radial-gradient(circle at 30% 20%, var(--accent-soft), transparent 60%), var(--surface);
+  border:1px solid var(--line-soft);
+  overflow:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:1.5rem;
+}
+
+/* ── the Huso ── */
+/* Standing on two slow ripples, bottom-right, clear of the card above it. The right
+   padding keeps the wider ripple from being clipped by the panel edge. */
+.hero-mascot{
+  position:relative;align-self:flex-end;
+  width:clamp(140px,44%,215px);
+  margin:1.75rem 1.25rem 0 0;line-height:0;flex:none;
+}
+.hero-mascot img{width:100%;height:auto;filter:drop-shadow(0 14px 30px rgba(0,0,0,.55))}
+.hero-mascot .ripple{
+  position:absolute;left:50%;bottom:3%;translate:-50% 0;
+  border:1px solid var(--accent-2);border-radius:50%;
+  width:98%;aspect-ratio:3.4/1;opacity:.3;
+}
+.hero-mascot .r2{width:122%;opacity:.15;bottom:0}
+@media (prefers-reduced-motion:no-preference){
+  .hero-mascot .ripple{animation:ripple 5s ease-in-out infinite}
+  .hero-mascot .r2{animation-delay:1.6s}
+}
+@keyframes ripple{
+  0%,100%{transform:scale(.9);opacity:.10}
+  50%{transform:scale(1.06);opacity:.32}
+}
+
+.mask-card{position:relative;width:100%;flex:none;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:1rem 1.1rem;box-shadow:0 24px 48px -24px rgba(0,0,0,.7)}
+.mask-card-head{display:flex;align-items:center;gap:.7rem;margin-bottom:1rem}
+.dot-row{display:inline-flex;gap:.3rem}
+.dot-row i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.mask-card-title{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
+.mask-row{
+  display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.4rem .6rem;align-items:center;
+  padding:.6rem .7rem;border-radius:8px;background:var(--surface);border:1px solid var(--line-soft);
+  margin-bottom:.5rem;font-size:.8rem;
+}
+.mask-row .col{grid-column:1/-1;font-family:var(--font-mono);font-size:.68rem;color:var(--text-dim)}
+.mask-row .before{color:var(--data-pii);text-decoration:line-through;opacity:.75;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mask-row .arrow{color:var(--text-dim)}
+.mask-row .after{color:var(--data-masked);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mask-row .chip{grid-column:1/-1;justify-self:start;font-family:var(--font-mono);font-size:.64rem;color:var(--accent);background:var(--accent-soft);padding:.15rem .5rem;border-radius:100px}
+.mask-card-foot{margin-top:.9rem;font-size:.74rem;color:var(--text-dim);text-align:right}
+
+@media (min-width:900px){
+  .hero-grid{grid-template-columns:1.05fr 1fr}
+}

@@ -64,6 +64,9 @@ type HusonymApiTestClient struct {
 	OSSAuthenticatedLicensedClients *HusonymClients
 	// OSS, Unauthenticated, Unlicensed
 	OSSUnauthenticatedUnlicensedClients *HusonymClients
+	// OSS, Unauthenticated, Licensed with small usage caps — for exercising limit
+	// enforcement
+	OSSUnauthenticatedLimitedClients *HusonymClients
 	// NeoCloud, Authenticated, Licensed
 	HusonymCloudAuthenticatedLicensedClients *HusonymClients
 
@@ -160,6 +163,15 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceUnauthenticatedUnlicensedPostfix, ossUnauthUnlicensedMux),
 	)
 
+	ossLimitedMux, err := s.setupOssLimitedMux(pgcontainer, logger)
+	if err != nil {
+		return fmt.Errorf("unable to setup oss unauthenticated limited mux: %w", err)
+	}
+	rootmux.Handle(
+		openSourceUnauthenticatedLimitedPostfix+"/",
+		http.StripPrefix(openSourceUnauthenticatedLimitedPostfix, ossLimitedMux),
+	)
+
 	neoCloudAuthdMux, err := s.setupNeoCloudMux(ctx, pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup neo cloud authenticated mux: %w", err)
@@ -183,6 +195,9 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	)
 	s.OSSUnauthenticatedUnlicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedUnlicensedPostfix,
+	)
+	s.OSSUnauthenticatedLimitedClients = newHusonymClients(
+		s.httpsrv.URL + openSourceUnauthenticatedLimitedPostfix,
 	)
 	s.HusonymCloudAuthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + neoCloudAuthenticatedLicensedPostfix,

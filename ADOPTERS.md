@@ -2,5 +2,4 @@
 
 ## If your organization is using Husonym, please add yourself to this list!
 
-- [ChipHub](https://www.chiphub.com)
-- [HyperDrive Agile](https://www.hyperdriveagile.com)
+Open a pull request adding your organization below.

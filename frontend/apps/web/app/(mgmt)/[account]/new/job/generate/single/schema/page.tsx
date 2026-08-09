@@ -52,7 +52,6 @@ import {
 } from '@husonym/sdk';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -70,7 +69,6 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
-  const posthog = usePostHog();
 
   const [validateMappingsResponse, setValidateMappingsResponse] = useState<
     ValidateJobMappingsResponse | undefined
@@ -166,9 +164,6 @@ export default function Page(props: PageProps): ReactElement {
           (id) => connMap.get(id)
         )
       );
-      posthog.capture('New Job Created', {
-        jobType: 'generate',
-      });
 
       toast.success('Successfully created job!');
 

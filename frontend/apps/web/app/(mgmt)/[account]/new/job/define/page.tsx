@@ -96,13 +96,11 @@ export default function Page(props: PageProps): ReactElement {
   });
 
   const newJobType = getNewJobType(getSingleOrUndefined(searchParams?.jobType));
-  const posthog = usePostHog();
 
   async function onSubmit(_values: DefineFormValues) {
     if (!isScheduleEnabled) {
       form.setValue('cronSchedule', '');
     }
-    posthog.capture('New Job Flow Define Complete', { jobType: newJobType });
     if (newJobType === 'generate-table') {
       router.push(
         `/${account?.name}/new/job/generate/single/connect?sessionId=${sessionPrefix}`

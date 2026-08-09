@@ -1,0 +1,13 @@
+/* Security and compliance. */
+.trust{background:var(--bg-alt);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+.trust-grid{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media (min-width:640px){ .trust-grid{grid-template-columns:1fr 1fr} }
+@media (min-width:1000px){ .trust-grid{grid-template-columns:repeat(4,1fr)} }
+.trust-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.5rem}
+.trust-card h4{font-size:1.02rem;margin-bottom:.6rem}
+.trust-card p{color:var(--text-muted);font-size:.88rem}
+.compliance-chips{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center;margin-top:2.5rem}
+.chip-lg{font-family:var(--font-mono);font-size:.76rem;letter-spacing:.1em;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(var(--accent-rgb),.24);padding:.45rem 1rem;border-radius:100px}
+/* Deliberately plain and unhidden: naming the limit of what the tool can promise is
+   what makes the four cards above credible. Do not delete this on a copy pass. */
+.trust-disclaimer{text-align:center;color:var(--text-dim);font-size:.82rem;margin-top:1.4rem;max-width:640px;margin-inline:auto}

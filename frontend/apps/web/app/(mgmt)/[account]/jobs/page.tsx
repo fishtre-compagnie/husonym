@@ -10,7 +10,6 @@ import { useQuery } from '@connectrpc/connect-query';
 import { JobService, JobStatus } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, useMemo } from 'react';
 import { GrPowerCycle } from 'react-icons/gr';
 import { getColumns } from './components/DataTable/columns';
@@ -111,14 +110,8 @@ function JobTable(props: JobTableProps): ReactElement {
 
 function NewJobButton(): ReactElement {
   const { account } = useAccount();
-  const posthog = usePostHog();
   return (
-    <NextLink
-      href={`/${account?.name}/new/job`}
-      onClick={() => {
-        posthog.capture('clicked_new_job_button');
-      }}
-    >
+    <NextLink href={`/${account?.name}/new/job`}>
       <Button onClick={() => {}}>
         <ButtonText leftIcon={<PlusIcon />} text="New Job" />
       </Button>

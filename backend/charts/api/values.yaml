@@ -31,7 +31,7 @@ serviceAccount:
   annotations: {}
 
 # -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
-nucleusEnv:
+husonymEnv:
 
 # Currently does not do anything but will eventaully allow emitting otel metrics and traces
 otel:

@@ -2,12 +2,11 @@ import SiteFooter from '@/components/SiteFooter';
 import WelcomeDialog from '@/components/onboarding-checklist/WelcomeDialog';
 import AccountProvider from '@/components/providers/account-provider';
 import ConnectProvider from '@/components/providers/connect-provider';
-import { PostHogIdentifier } from '@/components/providers/posthog-provider';
 import TanstackQueryProvider from '@/components/providers/query-provider';
 import { SessionProvider } from '@/components/providers/session-provider';
 import SiteHeader from '@/components/site-header/SiteHeader';
 import { Toaster } from '@/components/ui/sonner';
-import { ReactElement, ReactNode, Suspense } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { auth } from './api/auth/[...nextauth]/auth';
 import { getSystemAppConfig } from './api/config/config';
 
@@ -24,9 +23,6 @@ export default async function BaseLayout(props: Props): Promise<ReactElement> {
       <TanstackQueryProvider>
         <SessionProvider session={session}>
           <AccountProvider>
-            <Suspense>
-              <PostHogIdentifier />
-            </Suspense>
             <div className="relative flex min-h-screen flex-col">
               <SiteHeader />
               <div className="flex-1 container" id="top-level-layout">

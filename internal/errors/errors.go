@@ -1,4 +1,4 @@
-package nucleuserrors
+package husonymerrors
 
 import (
 	"errors"

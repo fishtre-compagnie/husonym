@@ -13,22 +13,13 @@ export function getSystemAppConfig(): SystemAppConfig {
     isAuthEnabled: process.env.AUTH_ENABLED === 'true',
     publicAppBaseUrl:
       process.env.NEXT_PUBLIC_APP_BASE_URL ?? 'http://localhost:3000',
-    posthog: {
-      enabled: isAnalyticsEnabled(),
-      host: process.env.POSTHOG_HOST ?? 'https://app.posthog.com',
-      key: process.env.POSTHOG_KEY,
-    },
-    unify: {
-      enabled: isAnalyticsEnabled() && !!process.env.UNIFY_KEY,
-      key: process.env.UNIFY_KEY,
-    },
     isHusonymCloud,
     isStripeEnabled: process.env.STRIPE_ENABLED === 'true',
     enableRunLogs: process.env.ENABLE_RUN_LOGS === 'true',
     signInProviderId: process.env.AUTH_PROVIDER_ID,
     isMetricsServiceEnabled: process.env.METRICS_SERVICE_ENABLED === 'true',
-    calendlyUpgradeLink:
-      process.env.CALENDLY_UPGRADE_LINK ?? 'https://calendly.com/evis1/30min',
+    // Optional link surfaced by the upgrade CTA. When unset, the CTA is hidden.
+    upgradeLink: process.env.UPGRADE_LINK ?? '',
     isGcpCloudStorageConnectionsEnabled: isGcpConnectionsEnabled(),
     husonymApiBaseUrl:
       process.env.HUSONYM_API_BASE_URL ?? 'http://localhost:8080',
@@ -39,11 +30,6 @@ export function getSystemAppConfig(): SystemAppConfig {
     isSlackAccountHookEnabled:
       process.env.SLACK_ACCOUNT_HOOKS_ENABLED === 'true',
     isRbacEnabled: isHusonymCloud || process.env.RBAC_ENABLED === 'true',
-    gtag: {
-      enabled: isAnalyticsEnabled() && !!process.env.GTAG,
-      key: process.env.GTAG,
-      conversion: process.env.GTAG_CONVERSION,
-    },
     isPiiDetectionJobEnabled: process.env.PII_DETECTION_JOB_ENABLED === 'true',
   };
 }
@@ -51,9 +37,4 @@ export function getSystemAppConfig(): SystemAppConfig {
 function isGcpConnectionsEnabled(): boolean {
   const val = process.env.GCP_CS_CONNECTIONS_DISABLED;
   return val ? val === 'false' : true;
-}
-
-function isAnalyticsEnabled(): boolean {
-  const val = process.env.HUSONYM_ANALYTICS_ENABLED;
-  return val ? val === 'true' : true;
 }

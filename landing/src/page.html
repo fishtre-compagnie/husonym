@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="{{__lang__}}">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}" />
+<meta name="theme-color" content="#0b0f14" />
+<link rel="canonical" href="{{__canonical__}}" />
+{{__hreflangLinks__}}
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Husonym" />
+<meta property="og:title" content="{{meta.ogTitle}}" />
+<meta property="og:description" content="{{meta.ogDescription}}" />
+<meta property="og:image" content="{{__ogImage__}}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="{{meta.ogImageAlt}}" />
+<meta property="og:url" content="{{__canonical__}}" />
+<meta property="og:locale" content="{{__ogLocale__}}" />
+<meta property="og:locale:alternate" content="{{__ogLocaleAlt__}}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{meta.ogTitle}}" />
+<meta name="twitter:description" content="{{meta.ogDescription}}" />
+<meta name="twitter:image" content="{{__ogImage__}}" />
+<meta name="twitter:image:alt" content="{{meta.ogImageAlt}}" />
+<link rel="icon" href="/assets/favicon.ico" sizes="any" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<!-- crossorigin is required even same-origin for fonts, or the preload is discarded
+     and fetched a second time. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/assets/fonts/space-grotesk.woff2" />
+{{__turnstileScript__}}
+<script type="application/ld+json">{{__jsonLd__}}</script>
+<!-- The token sits flush against its tag on purpose: scripts/build.mjs hashes the
+     block content byte for byte to build the CSP, with no 'unsafe-inline'. -->
+<style>{{__styles__}}</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<canvas class="mask-field" aria-hidden="true"></canvas>
+<div class="mask-probe" aria-hidden="true" data-mask-label="{{mask.probeLabel}}"><span class="tick"></span><span class="val"></span></div>
+
+{{> sections/nav.html}}
+
+<main id="top">
+{{> sections/hero.html}}
+{{> sections/problem.html}}
+{{> sections/steps.html}}
+{{> sections/features.html}}
+{{> sections/connectors.html}}
+{{> sections/trust.html}}
+{{> sections/sovereignty.html}}
+{{> sections/pricing.html}}
+{{> sections/cta-final.html}}
+{{> sections/contact.html}}
+</main>
+
+{{> sections/footer.html}}
+
+<script>{{__script__}}</script>
+</body>
+</html>

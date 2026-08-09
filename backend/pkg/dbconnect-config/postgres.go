@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/spf13/viper"
 )
 
@@ -69,7 +69,7 @@ func NewFromPostgresConnection(
 			pgurl = config.PgConfig.GetUrl()
 		} else if config.PgConfig.GetUrlFromEnv() != "" {
 			if !strings.HasPrefix(config.PgConfig.GetUrlFromEnv(), userDefinedEnvPrefix) {
-				return nil, nucleuserrors.NewBadRequest(
+				return nil, husonymerrors.NewBadRequest(
 					fmt.Sprintf(
 						"to source a url from an environment variable, the variable must have a prefix of %s",
 						userDefinedEnvPrefix,

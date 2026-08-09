@@ -6,18 +6,8 @@ import { themes } from 'prism-react-renderer';
 
 const config: Config = {
   title: 'Husonym',
-  tagline: 'Open source Data Anonymization and Synthetic Data',
+  tagline: 'Data Anonymization and Synthetic Data',
   favicon: 'img/logo_light_mode.png',
-  headTags: [
-    {
-      tagName: 'script',
-      attributes: {
-        id: 'unify-snippet',
-
-        innerHTML: `!function(){window.unify||(window.unify=Object.assign([],["identify","page","startAutoPage","stopAutoPage","startAutoIdentify","stopAutoIdentify"].reduce((function(t,e){return t[e]=function(){return unify.push([e,[].slice.call(arguments)]),unify},t}),{})));var t=document.createElement("script");t.async=!0,t.setAttribute("src","https://tag.unifyintent.com/v1/3bzXn1sjuq1cb6wQF3Cp86/script.js"),t.setAttribute("data-api-key","${process.env.UNIFY_KEY}"),t.setAttribute("id","unifytag"),(document.body||document.head).appendChild(t)}();`,
-      },
-    },
-  ],
   // Set the production url of your s here
   url: 'https://docs.husonym.com',
   // Set the /<baseUrl>/ pathname under which your site is served
@@ -40,18 +30,6 @@ const config: Config = {
     locales: ['en'],
   },
   plugins: [
-    [
-      'posthog-docusaurus',
-      {
-        apiKey: process.env.POSTHOG_KEY
-          ? process.env.POSTHOG_KEY
-          : 'phc_2hFE16FGvpOmUdgVczrxrJPDJ1sp724se5w7uAte9GS',
-        appUrl: process.env.POSTHOG_HOST
-          ? process.env.POSTHOG_HOST
-          : 'https://app.posthog.com',
-        enableInDevelopment: false,
-      },
-    ],
     async function tailwindcssPlugin(context, options) {
       return {
         name: 'docusaurus-tailwindcss',
@@ -70,11 +48,9 @@ const config: Config = {
       {
         hashed: true,
         indexDocs: true,
-        indexBlog: true,
-        // The classic docs preset is served at the site root, and the
-        // changelog blog at /changelog (see presets below).
+        indexBlog: false,
+        // The classic docs preset is served at the site root.
         docsRouteBasePath: '/',
-        blogRouteBasePath: '/changelog',
         language: ['en'],
       },
     ],
@@ -88,16 +64,10 @@ const config: Config = {
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/fishtre-compagnie/husonym/blob/main/docs',
+          editUrl:
+            'https://github.com/fishtre-compagnie/husonym/blob/main/docs',
         },
-        blog: {
-          routeBasePath: '/changelog',
-          editUrl: 'https://github.com/fishtre-compagnie/husonym/blob/main/docs',
-          blogTitle: 'Husonym Changelog',
-          blogDescription: 'Husonym Changelog',
-          blogSidebarTitle: ' Changelog',
-          blogSidebarCount: 'ALL',
-        },
+        blog: false,
         theme: {
           customCss: ['./src/css/custom.css'],
         },
@@ -128,7 +98,7 @@ const config: Config = {
       {
         name: 'keywords',
         content:
-          'open source, anonymization, data anonymization, synthetic data, data privacy, data security',
+          'anonymization, data anonymization, synthetic data, test data, data privacy, data security, GDPR',
       },
     ],
     image: 'img/docsOG.png',
@@ -152,23 +122,19 @@ const config: Config = {
           className: 'header-github-link',
           'aria-label': 'GitHub repository',
         },
-        {
-          href: 'https://discord.com/invite/MFAMgnp4HF',
-          position: 'right',
-          className: 'header-discord-link',
-          'aria-label': 'Discord Server',
-        },
         { to: '/', label: 'Docs' },
         { to: '/api', label: 'SDK' },
-        { to: '/changelog', label: 'Changelog' },
+        // The marketing site is a separate Worker (see landing/), so this has to be an
+        // absolute link rather than a route.
         {
-          to: 'https://www.postman.com/payload-pilot-82848251/husonym-rest-apis/collection/6sxdkh5/mgmt-v1alpha1?action=share&creator=24215189',
-          label: 'API Reference',
+          href: 'https://husonym.com',
+          label: 'Website',
+          position: 'right',
         },
       ],
     },
     footer: {
-      copyright: `Copyright © Nucleus Cloud Corp ${new Date().getFullYear()}`,
+      copyright: `Copyright © Fishtre Compagnie ${new Date().getFullYear()}`,
     },
     prism: {
       theme: themes.github,

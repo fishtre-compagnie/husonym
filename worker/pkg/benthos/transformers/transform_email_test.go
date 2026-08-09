@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var email = "evis@gmail.com"
+var email = "john@gmail.com"
 var maxEmailCharLimit = int64(40)
 var excludedDomains = []string{"gmail.com", "hotmail.com"}
 
@@ -415,7 +415,7 @@ func Test_TransformEmailTransformerWithEmptyValuePassNull(t *testing.T) {
 }
 
 func Test_TransformEmailTransformerWithEmptyValueNilDomains(t *testing.T) {
-	nilEmail := "evis@gmail.com"
+	nilEmail := "john@gmail.com"
 
 	mapping := fmt.Sprintf(
 		`root = transform_email(value:%q,preserve_domain:true,preserve_length:true,excluded_domains:[],max_length:%d)`,
@@ -430,7 +430,7 @@ func Test_TransformEmailTransformerWithEmptyValueNilDomains(t *testing.T) {
 }
 
 func Test_TransformEmailTransformerWithEmptyValueNilDomainsNoSliceDomains(t *testing.T) {
-	nilEmail := "evis@gmail.com"
+	nilEmail := "john@gmail.com"
 
 	mapping := fmt.Sprintf(
 		`root = transform_email(value:%q,preserve_domain:true,preserve_length:true,excluded_domains:joiej,max_length:%d)`,
@@ -445,7 +445,7 @@ func Test_TransformEmailTransformerWithEmptyValueNilDomainsNoSliceDomains(t *tes
 }
 
 func Test_TransformEmailTransformerWithEmptyValueNilDomainsIntegerDomains(t *testing.T) {
-	nilEmail := "evis@gmail.com"
+	nilEmail := "john@gmail.com"
 
 	mapping := fmt.Sprintf(
 		`root = transform_email(value:%q,preserve_domain:true,preserve_length:true,excluded_domains:132412,max_length:%d)`,
@@ -457,7 +457,7 @@ func Test_TransformEmailTransformerWithEmptyValueNilDomainsIntegerDomains(t *tes
 }
 
 func Test_TransformEmailTransformerWithEmptyValueNilDomainsIntegerSliceDomains(t *testing.T) {
-	nilEmail := "evis@gmail.com"
+	nilEmail := "john@gmail.com"
 
 	mapping := fmt.Sprintf(
 		`root = transform_email(value:%q,preserve_domain:true,preserve_length:true,excluded_domains:[132,412],max_length:%d)`,

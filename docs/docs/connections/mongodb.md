@@ -13,7 +13,7 @@ MongoDB is one of the most commonly used NoSQL database in the world and Husonym
 
 This connector is still experimental and we are actively adding features to MongoDB to bring it up to the same feature parity as Postgres where relevant.
 
-If you are interested in using MongoDB but don't see a feature that is required for you to use, please reach out to us on Discord.
+If you are interested in using MongoDB but don't see a feature that is required for you to use, please reach out to us at support@husonym.com.
 
 ## Configuring MongoDB to run locally
 

@@ -20,7 +20,7 @@ releases:
         datadog:
           enabled: false
 
-        nucleusEnv: dev
+        husonymEnv: dev
 
         husonym:
           url: http://husonym-api:80

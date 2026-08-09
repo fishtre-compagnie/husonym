@@ -32,7 +32,6 @@ import { useQuery } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
 import { ConnectionConfigSchema, ConnectionService } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement, use, useEffect } from 'react';
 import { Control, useForm, useWatch } from 'react-hook-form';
 import { useSessionStorage } from 'usehooks-ts';
@@ -53,7 +52,6 @@ export default function Page(props: PageProps): ReactElement {
       router.push(`/${account?.name}/new/job`);
     }
   }, [searchParams?.sessionId]);
-  const posthog = usePostHog();
 
   const sessionPrefix = getSingleOrUndefined(searchParams?.sessionId) ?? '';
   const formKey = getNewJobSessionKeys(sessionPrefix).aigenerate.connect;
@@ -85,9 +83,6 @@ export default function Page(props: PageProps): ReactElement {
     router.push(
       `/${account?.name}/new/job/aigenerate/single/schema?sessionId=${sessionPrefix}`
     );
-    posthog.capture('New Job Flow Connect Complete', {
-      jobType: 'ai-generate',
-    });
   }
 
   const { mysql, postgres, openai } = splitConnections(connections);

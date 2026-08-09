@@ -228,6 +228,13 @@ jobs:
   helm-backend:
     name: Backend Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-backend
     steps:
@@ -286,8 +293,6 @@ jobs:
               echo "$filepath"
               yq -i '.version = strenv(CHART_VERSION)' "$filepath"
               yq -i '.appVersion = strenv(CHART_VERSION)' "$filepath"
-
-              yq -i '.annotations."artifacthub.io/prerelease" = strenv(IS_PRERELEASE)' "$filepath"
             done
 
             for filepath in $(find backend/charts/*/Chart.yaml -type f -name 'Chart.yaml') ; do
@@ -329,6 +334,13 @@ jobs:
   helm-frontend:
     name: Frontend Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-frontend
     steps:
@@ -387,8 +399,6 @@ jobs:
               echo "$filepath"
               yq -i '.version = strenv(CHART_VERSION)' "$filepath"
               yq -i '.appVersion = strenv(CHART_VERSION)' "$filepath"
-
-              yq -i '.annotations."artifacthub.io/prerelease" = strenv(IS_PRERELEASE)' "$filepath"
             done
 
             for filepath in $(find frontend/apps/web/charts/*/Chart.yaml -type f -name 'Chart.yaml') ; do
@@ -430,6 +440,13 @@ jobs:
   helm-worker:
     name: Worker Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - docker-worker
     steps:
@@ -489,8 +506,6 @@ jobs:
               echo "$filepath"
               yq -i '.version = strenv(CHART_VERSION)' "$filepath"
               yq -i '.appVersion = strenv(CHART_VERSION)' "$filepath"
-
-              yq -i '.annotations."artifacthub.io/prerelease" = strenv(IS_PRERELEASE)' "$filepath"
             done
 
             for filepath in $(find worker/charts/*/Chart.yaml -type f -name 'Chart.yaml') ; do
@@ -532,6 +547,13 @@ jobs:
   helm-top:
     name: Umbrella Helm Chart
     runs-on: ubuntu-latest
+    # Pushing an OCI chart to ghcr.io needs packages:write. Without it GITHUB_TOKEN
+    # only gets read scope and helm push fails with
+    #   403 denied: installation not allowed to Create organization package
+    # The docker jobs above already declare this; these four never did.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - helm-backend
       - helm-frontend
@@ -593,8 +615,6 @@ jobs:
               echo "$filepath"
               yq -i '.version = strenv(CHART_VERSION)' "$filepath"
               yq -i '.appVersion = strenv(CHART_VERSION)' "$filepath"
-
-              yq -i '.annotations."artifacthub.io/prerelease" = strenv(IS_PRERELEASE)' "$filepath"
             done
 
             for filepath in $(find charts/*/Chart.yaml -type f -name 'Chart.yaml') ; do
@@ -728,6 +748,10 @@ jobs:
   py-sdk-publish:
     name: Python SDK Publish
     runs-on: ubuntu-latest
+    # Désactivé pour le fork, comme py-sdk-build : le package PyPI "husonym"
+    # n'est pas le nôtre. Le `if` est répété ici pour que réactiver le build
+    # ne déclenche pas une publication par accident.
+    if: false
     needs:
       - py-sdk-build
     permissions:

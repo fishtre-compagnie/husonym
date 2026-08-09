@@ -22,7 +22,7 @@ In order to get started, you'll need the following:
 
 For this guide, I'm going to use a Postgres database from [Neon](https://neon.tech).
 
-Click on `Databases` on the left hand menu and click on the **New Database** button to create a new database. I've named my database `cust-gen` and picked the `evis` role as the owner. This is just an admin role that I'm using for this demo.
+Click on `Databases` on the left hand menu and click on the **New Database** button to create a new database. I've named my database `cust-gen` and picked an admin role as the owner. This is just an admin role that I'm using for this demo.
 
 ![new-trans](/img/cust-gen-db.png)
 
@@ -62,7 +62,7 @@ Nice! Looks like we can see our database and table and that our permissions are 
 
 ## Creating a Custom Transformer
 
-Husonym has the notion of Transformers. Transformers are modules that can generate synthetic data or anonymize existing data. We ship Husonym with 40+ transformers out of the box but you can also create your own [custom transformers](https://www.husonym.com/blog/introducing-custom-transformers) in code which is what we're going to do for this use case.
+Husonym has the notion of Transformers. Transformers are modules that can generate synthetic data or anonymize existing data. We ship Husonym with 40+ transformers out of the box but you can also create your own [custom transformers](/transformers/user-defined) in code which is what we're going to do for this use case.
 
 Click on **Transformers** in the top navigation menu and then the **+ New Transformer** button.
 

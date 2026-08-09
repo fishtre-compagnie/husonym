@@ -15,7 +15,6 @@ import { getSingleOrUndefined } from '@/libs/utils';
 import { useMutation, useQuery } from '@connectrpc/connect-query';
 import { Connection, ConnectionService, JobService } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import { FormEvent, ReactElement, use, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useSessionStorage } from 'usehooks-ts';
@@ -44,7 +43,6 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
-  const posthog = usePostHog();
 
   useEffect(() => {
     if (!searchParams?.sessionId) {
@@ -128,9 +126,6 @@ export default function Page(props: PageProps): ReactElement {
           (id) => connectionsRecord[id]
         )
       );
-      posthog.capture('New Job Flow Complete', {
-        jobType: 'pii-detection',
-      });
       toast.success('Successfully created job!');
 
       resetForm();

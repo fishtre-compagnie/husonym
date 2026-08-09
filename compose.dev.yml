@@ -20,13 +20,12 @@ services:
       - 3000:3000
     environment:
       - HOSTNAME=0.0.0.0
-      - NUCLEUS_ENV=dev
+      - HUSONYM_ENV=dev
       - NEXTAUTH_SECRET=foo
       - NEXTAUTH_URL=http://localhost:3000
       - HUSONYM_API_BASE_URL=http://api:8080
       - NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
 
-      - POSTHOG_KEY=phc_qju45RhNvCDwYVdRyUjtWuWsOmLFaQZi3fmztMBaJip
 
       - AUTH_ENABLED=false
 
@@ -48,7 +47,7 @@ services:
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=nucleus
+      - POSTGRES_DB=husonym
       - POSTGRES_PASSWORD=foofar
       - PGUSER=postgres
     healthcheck:
@@ -73,14 +72,14 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8080
-      - NUCLEUS_ENV=dev
+      - HUSONYM_ENV=dev
       - APP_BASEURL=http://localhost:3000
       - TEMPORAL_URL=temporal:7233
       - DB_AUTO_MIGRATE=true
       - DB_SCHEMA_DIR=/workspace/backend/sql/postgresql/schema
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_NAME=nucleus
+      - DB_NAME=husonym
       - DB_USER=postgres
       - DB_PASS=foofar
       - DB_SSL_DISABLE=true
@@ -125,7 +124,7 @@ services:
     ports:
       - 2346:2345 # DLV Worker
     environment:
-      - NUCLEUS_ENV=dev
+      - HUSONYM_ENV=dev
       - TEMPORAL_URL=temporal:7233
       - TEMPORAL_NAMESPACE=default
       - TEMPORAL_TASK_QUEUE=sync-job

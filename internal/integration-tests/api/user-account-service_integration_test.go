@@ -13,7 +13,7 @@ import (
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -911,7 +911,7 @@ func (s *IntegrationTestSuite) Test_GetBillingAccounts() {
 			connect.NewRequest(&mgmtv1alpha1.GetBillingAccountsRequest{}),
 		)
 		requireErrResp(t, resp, err)
-		unautherr := nucleuserrors.NewUnauthorized("")
+		unautherr := husonymerrors.NewUnauthorized("")
 		require.ErrorAs(t, err, &unautherr)
 	})
 }
@@ -1045,7 +1045,7 @@ func (s *IntegrationTestSuite) Test_SetBillingMeterEvent() {
 			}),
 		)
 		requireErrResp(t, resp, err)
-		badreqerr := nucleuserrors.NewBadRequest("")
+		badreqerr := husonymerrors.NewBadRequest("")
 		require.ErrorAs(t, err, &badreqerr)
 	})
 
@@ -1055,7 +1055,7 @@ func (s *IntegrationTestSuite) Test_SetBillingMeterEvent() {
 			connect.NewRequest(&mgmtv1alpha1.SetBillingMeterEventRequest{}),
 		)
 		requireErrResp(t, resp, err)
-		unautherr := nucleuserrors.NewUnauthorized("")
+		unautherr := husonymerrors.NewUnauthorized("")
 		require.ErrorAs(t, err, &unautherr)
 	})
 

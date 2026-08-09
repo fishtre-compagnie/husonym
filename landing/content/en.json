@@ -1,0 +1,238 @@
+{
+  "meta": {
+    "title": "Husonym — Data anonymization and synthetic data",
+    "description": "Husonym anonymizes your production databases, generates synthetic data that matches your schema, and carves out a consistent subset — without breaking referential integrity.",
+    "ogTitle": "Husonym — Production data, without the personal data",
+    "ogDescription": "Anonymize production, generate synthetic data and subset your databases — so dev, CI and staging run on realistic data with no legal exposure.",
+    "ogImageAlt": "Husonym — data anonymization and synthetic data orchestration"
+  },
+
+  "mask": {
+    "probeLabel": "PII masked"
+  },
+
+  "cta": {
+    "demoLabel": "Book a demo"
+  },
+
+  "nav": {
+    "ariaLabel": "Main navigation",
+    "menuToggle": "Open menu",
+    "langSwitchAriaLabel": "Change language",
+    "features": "Features",
+    "how": "How it works",
+    "connectors": "Connectors",
+    "security": "Security",
+    "pricing": "Pricing",
+    "contact": "Contact"
+  },
+
+  "hero": {
+    "eyebrow": "Anonymization & synthetic data",
+    "titleHtml": "Production data.<br /><em>Without the personal data.</em>",
+    "lede": "Husonym anonymizes your databases, generates synthetic data that matches your schema, and carves out a referentially intact subset — so dev, CI and staging finally run on realistic data, with no legal exposure.",
+    "ctaSecondary": "See how it works",
+    "note": "A walkthrough on your own tables, with no commitment.",
+    "cardTitle": "public.users · masking",
+    "cardFoot": "44 built-in transformers, or your own in JavaScript"
+  },
+
+  "problem": {
+    "eyebrow": "The trade-off",
+    "titleHtml": "Copying prod is a liability.<br />Hand-written fixtures are <em>useless</em>.",
+    "body": "A production dump in a dev environment is personal data on the loose, duplicated into backups nobody owns any more. Hand-written fixtures are three rows per table: they reproduce no real bug and rot the moment the schema changes.",
+    "dumpLabel": "Production dump",
+    "dumpSize": "214 tables · 104 GB",
+    "uncontrolledTag": "unmanaged",
+    "husonymLabel": "With Husonym",
+    "subsetSize": "214 tables · 1.2 GB",
+    "integrityTag": "FK integrity intact"
+  },
+
+  "steps": {
+    "eyebrow": "How it works",
+    "title": "Four steps, once. After that it's a job.",
+    "step1Title": "Connect",
+    "step1Body": "One source, one or many destinations: Postgres, MySQL, SQL Server, MongoDB, DynamoDB, S3, Cloud Storage.",
+    "step2Title": "Map",
+    "step2Body": "Husonym reads your schema and proposes a transformer per column. You adjust, you preview.",
+    "step3Title": "Subset",
+    "step3Body": "One SQL filter per table. Husonym walks the foreign keys and hands you a consistent dataset.",
+    "step4Title": "Sync",
+    "step4Body": "The job runs on Temporal: retries, replay, scheduling — and the same job called from your CI."
+  },
+
+  "features": {
+    "anonymization": {
+      "eyebrow": "Anonymization",
+      "title": "Masking is decided column by column.",
+      "body": "Forty-four built-in transformers cover the common types: email, E164 phone, name, address, SSN, card number, UUID, timestamp. Every column keeps its format, its length and its uniqueness — your NOT NULL and UNIQUE constraints still hold.",
+      "list1": "Schema detection, with a transformer proposed on each column",
+      "list2": "Preview the result before anything is written",
+      "list3": "Passthrough, Null or column default for everything that isn't sensitive",
+      "thColumn": "Column",
+      "thTransformer": "Transformer",
+      "thPreview": "Preview",
+      "visualFoot": "Format is preserved: constraints and application-side validation keep passing."
+    },
+    "synthetic": {
+      "eyebrow": "Synthetic data",
+      "title": "No data? Generate it.",
+      "body": "Husonym fills an empty database from the schema alone. And for the fields that need to mean something — a product label, a reason for a visit, a customer comment — plug in OpenAI, Anthropic or TogetherAI with your own prompt.",
+      "list1": "Generation from scratch, with no seed data at all",
+      "list2": "LLM transformers with a custom prompt, per column",
+      "list3": "Pick the volume: as many rows as your test actually needs",
+      "cardName": "support_tickets.subject",
+      "badge": "generating",
+      "promptLabel": "Prompt",
+      "prompt": "A realistic support ticket subject for an online billing service, in English, 60 characters maximum.",
+      "row1": "Cannot find my March invoice in the customer portal",
+      "row2": "I was charged twice for this month's subscription",
+      "row3": "How do I change the bank account on my plan?",
+      "visualFoot": "No real data reaches the prompt: the model only ever sees your instruction."
+    },
+    "subsetting": {
+      "eyebrow": "Subsetting",
+      "title": "104 GB in production. 1.2 GB on your laptop. The same joins.",
+      "body": "One WHERE per table, and Husonym handles the rest: it walks the foreign keys so the subset stays joinable. Self-referencing tables and circular dependencies are supported, as soon as a nullable column in the cycle gives it an entry point.",
+      "list1": "One SQL filter per table, written in your database's own dialect",
+      "list2": "Related tables pulled in automatically by following foreign keys",
+      "list3": "Self-references and cycles handled",
+      "codeHead": "Subset filters",
+      "kpi1": "tables synced",
+      "kpi2Val": "1.2 GB",
+      "kpi2": "instead of 104 GB",
+      "kpi3": "broken foreign key"
+    },
+    "orchestration": {
+      "eyebrow": "Orchestration",
+      "title": "A job, not a script somebody re-runs by hand.",
+      "body": "The engine is Temporal. An interrupted job resumes where it stopped, a run replays identically because the pipeline is event-sourced, and every execution leaves its logs behind. Job hooks fire whatever SQL you want before and after the sync.",
+      "list1": "Failure recovery and a retry policy per activity",
+      "list2": "Cron scheduling, plus triggering from the CLI or the API",
+      "list3": "Pre-sync and post-sync SQL hooks",
+      "runName": "seed-staging · run #1284",
+      "runBadge": "running",
+      "step1": "Account status check",
+      "step2": "Configuration generation",
+      "step3": "Schema initialization",
+      "step4": "Table synchronization",
+      "step5": "Post-sync hooks"
+    },
+    "customCode": {
+      "eyebrow": "Custom transformers",
+      "title": "When no transformer fits, you write your own.",
+      "body": "A JavaScript transformer receives the cell value and the whole row, and returns whatever you need. Enough to honour a business format, derive a value from another column, or hold a consistency Husonym cannot guess at.",
+      "list1": "Access to the full row, not just the cell",
+      "list2": "Reusable across columns and across jobs",
+      "list3": "Versioned alongside the rest of your configuration"
+    },
+    "gitops": {
+      "eyebrow": "GitOps & CI",
+      "title": "Your datasets are code.",
+      "body": "A Terraform provider describes connections, mappings and jobs next to the rest of your infrastructure. The CLI triggers the job from a pipeline, seeding the CI database before the end-to-end suite runs.",
+      "list1": "Terraform provider for connections, jobs and mappings",
+      "list2": "CLI and API keys for non-interactive pipelines",
+      "list3": "Every configuration change reviewed in a pull request"
+    }
+  },
+
+  "connectors": {
+    "eyebrow": "Connectors",
+    "title": "Wherever your data lives.",
+    "body": "Sources and destinations supported today. Missing one from your stack? Let's talk — we add connectors.",
+    "group1": "Relational databases",
+    "group2": "Document & key-value",
+    "group3": "Object storage",
+    "group4": "Model providers",
+    "footnote": "This list grows with every release. Tell us which database you run."
+  },
+
+  "trust": {
+    "eyebrow": "Security & compliance",
+    "title": "Your data never leaves your perimeter.",
+    "body": "The engine reads your source and writes your destination without a copy going anywhere else. No sample is shipped to a third-party service for analysis — unless you wire up a model provider yourself, and you then decide exactly which columns reach it.",
+    "card1Title": "Locked-down access",
+    "card1Body": "Credentials encrypted at rest, bastion access for databases that aren't publicly reachable, and a dedicated service account rather than your admin credentials.",
+    "card2Title": "A smaller compliance scope",
+    "card2Body": "A properly anonymized database takes your dev and staging environments out of GDPR, HIPAA, FERPA and DPDP scope.",
+    "card3Title": "RBAC and an audit trail",
+    "card3Body": "Roles per account, logs kept for every execution, an event-sourced pipeline: every run is replayable and auditable.",
+    "card4Title": "Don't point it at production",
+    "card4Body": "We recommend restoring a snapshot to a dedicated database on a schedule and pointing Husonym at that. Less load on prod, less exposed surface.",
+    "disclaimer": "Husonym is a tool: whether your processing legally qualifies as anonymized remains your call."
+  },
+
+  "sovereignty": {
+    "eyebrow": "Sovereignty",
+    "title": "Your data stays yours.",
+    "body": "Husonym works on your data where it already lives. Nothing is copied to an intermediate platform, nothing is retained once the job finishes, and every execution leaves an auditable record of what was read, transformed and written.",
+    "note": "How it is put in place adapts to your infrastructure and compliance constraints. It is the first thing we go through in a demo.",
+    "stat1": "data sent to a third party",
+    "stat2": "of processing inside your perimeter",
+    "stat3Val": "Audit",
+    "stat3": "every run on record"
+  },
+
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Let's start with a demo.",
+    "body": "Twenty minutes on your real schema: we wire up a source, mask a few tables, and you see the result.",
+    "demo": {
+      "name": "Demo",
+      "tagline": "On your schema, not ours.",
+      "price": "Free",
+      "cta": "Book a slot",
+      "feat1": "20 to 30 minutes over video",
+      "feat2": "We set up a connection and a first job with you",
+      "feat3": "You leave with a costed rollout plan"
+    },
+    "footnote": "Our pricing depends on data volume, number of environments and support level. We put a figure on it after the demo, once we know your context."
+  },
+
+  "ctaFinal": {
+    "eyebrow": "Ready to clean up your environments?",
+    "title": "The next production copy can ship without PII.",
+    "body": "Twenty minutes is enough to watch it run against your own tables."
+  },
+
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Let's talk about your schema.",
+    "body": "A question, a demo, a connector you're missing? Write to us — we answer quickly.",
+    "nameLabel": "Name",
+    "emailLabel": "Work email",
+    "companyLabel": "Company (optional)",
+    "messageLabel": "Message",
+    "submit": "Send",
+    "sending": "Sending…",
+    "success": "Message sent. We'll get back to you shortly.",
+    "invalid": "Please check the form fields.",
+    "captcha": "The bot check failed. Please try again.",
+    "tooMany": "Too many attempts. Try again in a minute.",
+    "error": "Sending failed. Try again, or email us directly.",
+    "altPrefix": "Prefer email?"
+  },
+
+  "footer": {
+    "ariaLabel": "Footer links",
+    "tagline": "Husonym is a Fishtre Compagnie product. All rights reserved.",
+    "terms": "Terms of Service"
+  },
+
+  "notFound": {
+    "metaTitle": "Page not found — Husonym",
+    "code": "Error 404",
+    "title": "This page has been anonymized.",
+    "body": "There's nothing here. Or there's nothing left.",
+    "cta": "Back home"
+  },
+
+  "legal": {
+    "terms": {
+      "metaTitle": "Terms of Service — Husonym",
+      "metaDescription": "The principles governing the use of Husonym: supply, data, usage limits and what happens when a subscription ends.",
+      "updated": "8 August 2026"
+    }
+  }
+}

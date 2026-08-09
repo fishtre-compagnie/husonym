@@ -38,10 +38,10 @@ func NewCmd() *cobra.Command {
 func run(ctx context.Context) error {
 	slogger, _ := husonymlogger.NewLoggers()
 
-	neoenv := viper.GetString("NUCLEUS_ENV")
+	neoenv := viper.GetString("HUSONYM_ENV")
 	if neoenv != "" {
 		slogger = slogger.With(
-			"nucleusEnv", neoenv,
+			"husonymEnv", neoenv,
 			"env", neoenv,
 			"husonymEnv", neoenv,
 		)

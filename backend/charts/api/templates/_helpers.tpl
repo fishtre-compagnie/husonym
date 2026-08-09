@@ -81,8 +81,8 @@ PORT: {{ .Values.containerPort | quote }}
 {{- if .Values.otel.enabled }}
 OTEL_EXPORTER_OTLP_PORT: {{ .Values.otel.otlpPort | quote }} # sends to gRPC receiver
 {{- end }}
-{{- if .Values.nucleusEnv }}
-NUCLEUS_ENV: {{ .Values.nucleusEnv }}
+{{- if .Values.husonymEnv }}
+HUSONYM_ENV: {{ .Values.husonymEnv }}
 {{- end }}
 {{- if and .Values.auth .Values.auth.enabled }}
 AUTH_ENABLED: {{ .Values.auth.enabled | default "false" | quote }}

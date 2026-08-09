@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	nucleuserrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/serviceerror"
 	workflowpb "go.temporal.io/api/workflow/v1"
@@ -413,7 +413,7 @@ func getLatestWorkflow(
 	}
 	executions := resp.GetExecutions()
 	if len(executions) == 0 {
-		return nil, nucleuserrors.NewNotFound(fmt.Sprintf("workflow not found for %q", workflowId))
+		return nil, husonymerrors.NewNotFound(fmt.Sprintf("workflow not found for %q", workflowId))
 	}
 	return executions[0], nil
 }

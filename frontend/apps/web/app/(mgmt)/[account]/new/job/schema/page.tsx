@@ -46,7 +46,6 @@ import {
   VirtualForeignKeySchema,
 } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
-import { usePostHog } from 'posthog-js/react';
 import {
   ReactElement,
   use,
@@ -90,7 +89,6 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
-  const posthog = usePostHog();
   const [validateMappingsResponse, setValidateMappingsResponse] = useState<
     ValidateJobMappingsResponse | undefined
   >();
@@ -217,9 +215,6 @@ export default function Page(props: PageProps): ReactElement {
             (id) => connMap.get(id)
           )
         );
-        posthog.capture('New Job Flow Complete', {
-          jobType: 'data-sync',
-        });
         toast.success('Successfully created job!');
 
         clearNewJobSession(window.sessionStorage, sessionPrefix);
@@ -237,7 +232,6 @@ export default function Page(props: PageProps): ReactElement {
       }
       return;
     }
-    posthog.capture('New Job Flow Schema Complete', { jobType: 'data-sync' });
     router.push(`/${account?.name}/new/job/subset?sessionId=${sessionPrefix}`);
   }
 

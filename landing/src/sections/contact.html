@@ -1,0 +1,52 @@
+<section class="contact" id="contact">
+  <div class="container">
+    <div class="section-head center reveal">
+      <div class="eyebrow center">{{contact.eyebrow}}</div>
+      <h2>{{contact.title}}</h2>
+      <p>{{contact.body}}</p>
+    </div>
+
+    <form class="contact-form reveal" data-contact-form novalidate>
+      <div class="contact-row">
+        <label class="contact-field">
+          <span>{{contact.nameLabel}}</span>
+          <input type="text" name="name" required maxlength="200" autocomplete="name" />
+        </label>
+        <label class="contact-field">
+          <span>{{contact.emailLabel}}</span>
+          <input type="email" name="email" required maxlength="320" autocomplete="email" />
+        </label>
+      </div>
+      <label class="contact-field">
+        <span>{{contact.companyLabel}}</span>
+        <input type="text" name="company" maxlength="200" autocomplete="organization" />
+      </label>
+      <label class="contact-field">
+        <span>{{contact.messageLabel}}</span>
+        <textarea name="message" required maxlength="5000" rows="5"></textarea>
+      </label>
+      <!-- Honeypot: invisible to a human, filled in by bots — the Worker answers with a
+           fake 200 when this field carries a value. -->
+      <div class="contact-trap" aria-hidden="true">
+        <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <!-- Turnstile injects its own hidden `cf-turnstile-response` input. The container
+           stays empty (and the script absent) when no site key is set at build time; the
+           Worker likewise only verifies when ITS secret is set. -->
+      {{__turnstileWidget__}}
+      <div class="contact-actions">
+        <button class="btn btn-primary" type="submit" data-contact-submit>{{contact.submit}}</button>
+        <p class="contact-status" data-contact-status role="status"></p>
+      </div>
+      <!-- Status wording lives in the DOM so contact.js never needs the catalogue. -->
+      <span hidden data-msg-sending>{{contact.sending}}</span>
+      <span hidden data-msg-success>{{contact.success}}</span>
+      <span hidden data-msg-invalid>{{contact.invalid}}</span>
+      <span hidden data-msg-captcha>{{contact.captcha}}</span>
+      <span hidden data-msg-limit>{{contact.tooMany}}</span>
+      <span hidden data-msg-error>{{contact.error}}</span>
+    </form>
+
+    <p class="contact-alt">{{contact.altPrefix}} <a href="mailto:contact@husonym.com">contact@husonym.com</a></p>
+  </div>
+</section>

@@ -1,0 +1,51 @@
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="eyebrow hero-eyebrow">{{hero.eyebrow}}</div>
+      <h1>{{hero.titleHtml}}</h1>
+      <p class="lede">{{hero.lede}}</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#contact">{{cta.demoLabel}}</a>
+        <a class="btn btn-ghost" href="#comment-ca-marche">{{hero.ctaSecondary}}</a>
+      </div>
+      <p class="hero-note">{{hero.note}}</p>
+    </div>
+    <div class="hero-visual reveal" aria-hidden="true">
+      <div class="mask-card">
+        <div class="mask-card-head">
+          <span class="dot-row"><i></i><i></i><i></i></span>
+          <span class="mask-card-title">{{hero.cardTitle}}</span>
+        </div>
+        <div class="mask-row">
+          <span class="col">users.email</span>
+          <span class="before">marie.dupont@acme.fr</span>
+          <span class="arrow">&rarr;</span>
+          <span class="after">kel.varnsen@example.org</span>
+          <span class="chip">transform_email</span>
+        </div>
+        <div class="mask-row">
+          <span class="col">users.phone</span>
+          <span class="before">+33 6 12 34 56 78</span>
+          <span class="arrow">&rarr;</span>
+          <span class="after">+33 6 88 41 07 92</span>
+          <span class="chip">transform_phone_number</span>
+        </div>
+        <div class="mask-row">
+          <span class="col">patients.ssn</span>
+          <span class="before">1 84 07 75 116 300</span>
+          <span class="arrow">&rarr;</span>
+          <span class="after">2 91 03 33 042 118</span>
+          <span class="chip">generate_ssn</span>
+        </div>
+        <div class="mask-card-foot">{{hero.cardFoot}}</div>
+      </div>
+      <!-- After the card in the DOM, because the panel is a flex column: source order
+           is what puts the card on top and the Huso at the bottom. -->
+      <div class="hero-mascot">
+        <span class="ripple r1"></span>
+        <span class="ripple r2"></span>
+        <img src="/assets/mascot.png" alt="" width="440" height="547" />
+      </div>
+    </div>
+  </div>
+</section>

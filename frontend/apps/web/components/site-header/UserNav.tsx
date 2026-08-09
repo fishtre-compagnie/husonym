@@ -10,19 +10,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getAvatarFallback } from '@/libs/utils';
 import { GearIcon } from '@radix-ui/react-icons';
 import { signOut, useSession } from 'next-auth/react';
-import { usePostHog } from 'posthog-js/react';
 import { ReactElement } from 'react';
 import { toast } from 'sonner';
 
 export function UserNav(): ReactElement | null {
   const session = useSession();
-  const posthog = usePostHog();
 
   const avatarImageSrc = session.data?.user?.image ?? '';
   const avatarImageAlt = session.data?.user?.name ?? 'unknown';
-  const avatarFallback = getAvatarFallback(session.data?.user?.name);
+  const userName = session.data?.user?.name;
+  const avatarFallback = userName ? getAvatarFallback(userName) : <GearIcon />;
 
   if (session.status === 'unauthenticated') {
     return null;
@@ -67,7 +67,6 @@ export function UserNav(): ReactElement | null {
           <DropdownMenuItem
             className="cursor-pointer"
             onClick={async () => {
-              posthog.reset();
               try {
                 await signOut({
                   callbackUrl: `/api/auth/provider-sign-out?idToken=${session.data.idToken}`,
@@ -84,8 +83,4 @@ export function UserNav(): ReactElement | null {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-function getAvatarFallback(name?: string | null): string | ReactElement {
-  return !!name ? name[0].toUpperCase() : <GearIcon />;
 }

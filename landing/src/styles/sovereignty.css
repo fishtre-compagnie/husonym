@@ -1,0 +1,12 @@
+/* Sovereignty band: who holds the data, stated without committing to a deployment
+   model or a distribution model. */
+.sovereignty-inner{display:grid;gap:2.5rem;grid-template-columns:1fr;align-items:center}
+@media (min-width:900px){ .sovereignty-inner{grid-template-columns:1.4fr 1fr;gap:4rem} }
+.sovereignty-text h2{font-size:clamp(1.7rem,3vw,2.3rem);margin-bottom:1rem}
+.sovereignty-text p{color:var(--text-muted);max-width:560px}
+.sovereignty-text p + p{margin-top:1rem}
+.sovereignty-note{font-size:.88rem;color:var(--text-dim)}
+.sovereignty-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+.sovereignty-stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:1.1rem .6rem;text-align:center}
+.sovereignty-stat .val{display:block;font-family:var(--font-display);font-weight:700;font-size:1.3rem;color:var(--accent);margin-bottom:.3rem}
+.sovereignty-stat .lbl{font-size:.7rem;color:var(--text-muted)}

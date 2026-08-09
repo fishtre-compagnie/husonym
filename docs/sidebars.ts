@@ -145,6 +145,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'deploy/licensing',
+      label: 'Licensing',
+    },
+    {
+      type: 'doc',
       id: 'deploy/kubernetes',
       label: 'Kubernetes',
     },
@@ -188,11 +193,6 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'guides/using-husonym-in-ci',
       label: 'Using Husonym in CI',
-    },
-    {
-      type: 'doc',
-      id: 'guides/analytics',
-      label: 'Configuring Analytics',
     },
     {
       type: 'doc',

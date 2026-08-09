@@ -1,0 +1,106 @@
+{
+  // Marketing site for husonym.com: Workers Static Assets plus a small Worker whose
+  // only job is POST /api/contact. Unlike docs/wrangler.jsonc — which is assets-only and
+  // therefore has no `main` — this one has an entrypoint, so an assets `binding` is both
+  // legal and required.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "husonym-landing",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-08-08",
+  "account_id": "ac2b8f37f46bcdef343263f0bd18b8b6",
+
+  // Regenerates public/ on every `wrangler deploy` and `wrangler dev`, CI included:
+  // this makes it impossible to publish the Worker without the generated pages.
+  // The command is relative to the directory holding this file.
+  "build": {
+    "command": "node scripts/build.mjs",
+  },
+
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Unknown path serves the nearest generated 404.html, so /en/* lands on the
+    // English one.
+    "not_found_handling": "404-page",
+    // Only this branch runs the script ahead of the assets; every page is still served
+    // straight from the CDN with no Worker invocation. Note that passing an array opts
+    // out of Sec-Fetch-Mode handling, which is why worker/index.js falls back to
+    // env.ASSETS.fetch() for everything else.
+    "run_worker_first": ["/api/*"],
+  },
+
+  // The apex is the canonical host and serves the site.
+  //
+  // The www entry looks redundant — a zone Redirect Rule already 301s www to the apex
+  // before the Worker is ever reached, so this Worker never answers on www. Keep it
+  // anyway: registering www as a custom domain is what creates and holds the
+  // `AAAA www.husonym.com → 100:: (proxied)` record. Drop this entry and the record
+  // goes with it, www stops resolving, and the redirect rule can no longer fire on
+  // traffic that never arrives. Cheap insurance for one line of config.
+  "routes": [
+    {
+      "pattern": "husonym.com",
+      "custom_domain": true,
+    },
+    {
+      "pattern": "www.husonym.com",
+      "custom_domain": true,
+    },
+  ],
+
+  // Contact lead delivery. The sending domain must be onboarded first:
+  //   npx wrangler email sending enable husonym.com
+  // allowed_sender_addresses pins the From address at the platform level, so a code
+  // bug cannot send as anything else.
+  //
+  // For local testing, add "remote": true so `wrangler dev` proxies real sends instead
+  // of simulating them. Leave it out of the committed config: it would make every
+  // local run send actual mail.
+  "send_email": [
+    {
+      "name": "CONTACT_MAILER",
+      "allowed_sender_addresses": ["landing@husonym.com"],
+    },
+  ],
+
+  // Anti-flood ceiling. Counters are per Cloudflare location, so this bounds
+  // throughput rather than enforcing an exact quota. `period` accepts only 10 or 60.
+  "ratelimits": [
+    {
+      "name": "CONTACT_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 5,
+        "period": 60,
+      },
+    },
+  ],
+
+  "vars": {
+    // Must be an address VERIFIED as an Email Routing destination, not merely an
+    // address that routes somewhere. Sending to contact@husonym.com fails with
+    // E_RECIPIENT_NOT_ALLOWED ("destination address is not a verified address"),
+    // because that address is a routing *rule*, not a destination — even though mail
+    // sent to it from the outside is delivered correctly.
+    //
+    // contact@husonym.com stays the address advertised on the site: a human writing
+    // to it is routed fine. Only this machine-to-machine hop needs the verified one.
+    //
+    // Lifting the restriction entirely (sending to arbitrary recipients, e.g. an
+    // acknowledgement back to the visitor) requires onboarding the domain onto the
+    // Email Sending product: `wrangler email sending enable husonym.com`.
+    "CONTACT_TO": "contact@fishtre.co",
+    "CONTACT_FROM": "landing@husonym.com",
+    "CONTACT_FROM_NAME": "Husonym — contact form",
+    // Comma-separated list of accepted Origins. Only the apex now: www 301s away before
+    // a page can ever be served there, so no form is submitted from it.
+    "SITE_ORIGIN": "https://husonym.com",
+  },
+
+  // TURNSTILE_SECRET_KEY is a secret, never a var: set it with `wrangler secret put`
+  // or through the `secrets:` input of wrangler-action.
+
+  "observability": {
+    "enabled": true,
+  },
+}
