@@ -17,6 +17,7 @@ package main
 
 import (
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -124,13 +125,13 @@ func runIssue(args []string) error {
 		return err
 	}
 
-	keyBytes, err := os.ReadFile(*keyPath)
+	keyBytes, source, err := loadSigningKey(*keyPath)
 	if err != nil {
-		return fmt.Errorf("unable to read signing key at %s: %w", *keyPath, err)
+		return err
 	}
 	priv, err := license.ParsePrivateKey(keyBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("signing key from %s: %w", source, err)
 	}
 
 	// Catch the failure that would otherwise only surface at the customer's site: a
@@ -387,4 +388,42 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
+}
+
+const signingKeyEnv = "HUSONYM_EE_SIGNING_KEY"
+
+// loadSigningKey prefers the environment over the filesystem, so the key can be injected
+// by a secret manager and never written to disk:
+//
+//	infisical run -- go run ./internal/ee/license/cmd/husonym-license issue …
+//
+// Accepts the PEM directly or base64 of it. Both because a multi-line value survives some
+// secret managers and shells intact and not others, and a key that fails to load at the
+// moment you need to issue a licence is a bad time to discover which kind you have.
+//
+// Returns the source alongside the bytes purely so errors can say where the key came from.
+func loadSigningKey(keyPath string) (key []byte, source string, err error) {
+	if raw := strings.TrimSpace(os.Getenv(signingKeyEnv)); raw != "" {
+		if strings.HasPrefix(raw, "-----BEGIN") {
+			return []byte(raw), "$" + signingKeyEnv, nil
+		}
+		decoded, derr := base64.StdEncoding.DecodeString(raw)
+		if derr != nil {
+			return nil, "", fmt.Errorf(
+				"$%s is set but is neither PEM nor base64-encoded PEM", signingKeyEnv)
+		}
+		return decoded, "$" + signingKeyEnv + " (base64)", nil
+	}
+
+	bytes, rerr := os.ReadFile(keyPath)
+	if rerr != nil {
+		if os.IsNotExist(rerr) {
+			return nil, "", fmt.Errorf(
+				"no signing key: %s is unset and %s does not exist\n"+
+					"  supply one with --key, or inject it as $%s (PEM or base64)",
+				signingKeyEnv, keyPath, signingKeyEnv)
+		}
+		return nil, "", fmt.Errorf("unable to read signing key at %s: %w", keyPath, rerr)
+	}
+	return bytes, keyPath, nil
 }
