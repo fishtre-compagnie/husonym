@@ -52,9 +52,9 @@ mv husonym /usr/local/bin/husonym
 
 ### Verifying the download is genuine
 
-Every release ships a `checksums.txt` listing the SHA-256 of each artifact, and a
-`checksums.txt.sig` signing that file with our release key. Checking both tells you the
-binary is the one we published and has not been altered in transit.
+Every release ships a `husonym_<version>_SHA256SUMS` listing the SHA-256 of each artifact,
+and a `husonym_<version>_SHA256SUMS.sig` signing that file with our release key. Checking
+both tells you the binary is the one we published and has not been altered in transit.
 
 Import the key once. It is published in the repository at
 [`cli/release-signing-key.asc`](https://github.com/fishtre-compagnie/husonym/blob/main/cli/release-signing-key.asc),
@@ -71,8 +71,8 @@ curl -fsSL https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/cli/
 Then, from the directory holding the downloaded artifacts:
 
 ```console
-gpg --verify checksums.txt.sig checksums.txt
-sha256sum --check --ignore-missing checksums.txt
+gpg --verify husonym_0.1.1_SHA256SUMS.sig husonym_0.1.1_SHA256SUMS
+sha256sum --check --ignore-missing husonym_0.1.1_SHA256SUMS
 ```
 
 The first command must report a good signature from `Husonym Release Signing`; the second
