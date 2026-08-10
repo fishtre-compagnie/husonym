@@ -50,6 +50,35 @@ tar xzf husonym_0.2.14_darwin_arm64.tar.gz husonym
 mv husonym /usr/local/bin/husonym
 ```
 
+### Verifying the download is genuine
+
+Every release ships a `checksums.txt` listing the SHA-256 of each artifact, and a
+`checksums.txt.sig` signing that file with our release key. Checking both tells you the
+binary is the one we published and has not been altered in transit.
+
+Import the key once. It is published in the repository at
+[`cli/release-signing-key.asc`](https://github.com/fishtre-compagnie/husonym/blob/main/cli/release-signing-key.asc),
+and its fingerprint is:
+
+```
+8585 8A2C F1D8 0B7D D030  D21A F31E ADE2 B79F 906B
+```
+
+```console
+curl -fsSL https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/cli/release-signing-key.asc | gpg --import
+```
+
+Then, from the directory holding the downloaded artifacts:
+
+```console
+gpg --verify checksums.txt.sig checksums.txt
+sha256sum --check --ignore-missing checksums.txt
+```
+
+The first command must report a good signature from `Husonym Release Signing`; the second
+must report `OK` for your archive. `gpg` will also warn that the key is not certified by a
+trusted signature — that is expected, and why the fingerprint above is worth comparing.
+
 ### Verifying your installation
 
 Once you've successfully installed the CLI, verify your installation by following these steps:
