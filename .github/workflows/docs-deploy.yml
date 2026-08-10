@@ -22,7 +22,7 @@ jobs:
         working-directory: docs
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Fail early with a readable message rather than deep inside wrangler
       - name: Check Cloudflare credentials are set

@@ -25,7 +25,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -102,7 +102,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -168,7 +168,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -239,7 +239,7 @@ jobs:
       - docker-backend
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -345,7 +345,7 @@ jobs:
       - docker-frontend
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -451,7 +451,7 @@ jobs:
       - docker-worker
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -560,7 +560,7 @@ jobs:
       - helm-worker
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
@@ -671,7 +671,7 @@ jobs:
         working-directory: cli
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -726,7 +726,7 @@ jobs:
         working-directory: python
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Package Version
         id: package_version
@@ -789,7 +789,7 @@ jobs:
   #       working-directory: frontend
   #   steps:
   #     - name: Checkout
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v7
 
   #     - name: Install jq
   #       run: sudo apt-get install jq
