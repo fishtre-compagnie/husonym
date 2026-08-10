@@ -245,7 +245,7 @@ jobs:
 
       - name: Restore benchmark cache
         id: cache-restore
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: main-benchmark.txt
           key: benchmarks-main
@@ -261,7 +261,7 @@ jobs:
 
       - name: Cache main branch benchmark results
         if: steps.cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: main-benchmark.txt
           key: benchmarks-main
@@ -306,7 +306,7 @@ jobs:
       # if this is main branch, cache the results
       - name: Cache main branch benchmark results
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: branch-benchmark.txt
           key: benchmarks-main
