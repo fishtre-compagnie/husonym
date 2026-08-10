@@ -657,6 +657,13 @@ jobs:
   cli:
     name: CLI
     runs-on: ubuntu-latest
+    # GoReleaser creates the GitHub release, uploads the binaries and calls
+    # releases/generate-notes for the changelog. All of that needs contents:write —
+    # without it the default GITHUB_TOKEN is read-only and the run dies at the very end
+    # with "403 Resource not accessible by integration", after a 17-minute build.
+    # Same omission the helm jobs had.
+    permissions:
+      contents: write
     #  for now, only build when we cut a new tag
     if: startsWith(github.ref, 'refs/tags/')
     defaults:
