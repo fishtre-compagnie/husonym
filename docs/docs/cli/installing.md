@@ -13,29 +13,7 @@ Instructions on how to get the Husonym CLI installed on your local machine.
 Husonym is delivered through a Command Line Interface (CLI) to make it easy for developers to use in their native workflows.
 The Husonym CLI lets you view accounts, jobs and sync data locally. To get started with Husonym, follow the instructions below to download the CLI.
 
-## MacOS
-
-Homebrew is the simplest way to install the Husonym CLI on the Mac. This can also be used on Linux, as well as on Windows 10 with Windows Subsystem for Linux.
-
-### Homebrew
-
-The easiest way to install the CLI is by using Homebrew. If you don't have Homebrew installed, follow these [instructions](https://docs.brew.sh/Installation). Next, open a new terminal window and use the following command:
-
-```console
-brew install husonym
-```
-
-You may also install directly from our brew repository:
-
-```console
-brew install fishtre-compagnie/tap/husonym
-```
-
-From then on, you can let Homebrew keep Husonym up to date by running the following command.
-
-```console
-brew upgrade
-```
+The CLI is distributed as a signed release archive. Download the one matching your platform, verify it, and put it on your `PATH`.
 
 ## MacOS/Linux Direct Download
 
@@ -52,9 +30,9 @@ mv husonym /usr/local/bin/husonym
 
 ### Verifying the download is genuine
 
-Every release ships a `checksums.txt` listing the SHA-256 of each artifact, and a
-`checksums.txt.sig` signing that file with our release key. Checking both tells you the
-binary is the one we published and has not been altered in transit.
+Every release ships a `husonym_<version>_SHA256SUMS` listing the SHA-256 of each artifact,
+and a `husonym_<version>_SHA256SUMS.sig` signing that file with our release key. Checking
+both tells you the binary is the one we published and has not been altered in transit.
 
 Import the key once. It is published in the repository at
 [`cli/release-signing-key.asc`](https://github.com/fishtre-compagnie/husonym/blob/main/cli/release-signing-key.asc),
@@ -71,8 +49,8 @@ curl -fsSL https://raw.githubusercontent.com/fishtre-compagnie/husonym/main/cli/
 Then, from the directory holding the downloaded artifacts:
 
 ```console
-gpg --verify checksums.txt.sig checksums.txt
-sha256sum --check --ignore-missing checksums.txt
+gpg --verify husonym_0.1.1_SHA256SUMS.sig husonym_0.1.1_SHA256SUMS
+sha256sum --check --ignore-missing husonym_0.1.1_SHA256SUMS
 ```
 
 The first command must report a good signature from `Husonym Release Signing`; the second
@@ -158,29 +136,3 @@ Flags:
 
 Use "husonym [command] --help" for more information about a command.
 ```
-
-## Docker
-
-A Docker image is published that matches each official release of Husonym CLI. Each versioned image includes the Husonym CLI release with the same version number.
-
-These images wrap the Husonym executable, allowing you to run Husonym subcommands by passing in their names and arguments as part of `docker run`.
-
-The list of images can be found on [Github](https://github.com/fishtre-compagnie/husonym/pkgs/container/husonym%2Fcli).
-
-### Configuration
-
-The container will need further configuration so that Husonym can access configuration files, and possibly source code if the plan is to issue source-code deployments with Husonym CLI.
-
-See the example below for how to login to the CLI, and then view a list of environments in a Husonym account.
-
-```console
-docker run -it --rm -p 4242:4242 --mount source=husonymcfg,target=/root/.config/.husonym ghcr.io/fishtre-compagnie/husonym/cli:latest login
-```
-
-```console
-docker run -it --rm --mount source=husonymcfg,target=/root/.config/.husonym ghcr.io/fishtre-compagnie/husonym/cli:latest accounts ls
-```
-
-The command above will print out a list of environments that are in the account associated with the logged in credentials. Note that the port mapping isn't required here, as that is only necessary during the login flow.
-
-The docker volume is necessary in order to persist the Husonym CLI configuration data between runs. This today is namely used to persist auth data used during the login process so that it can be used with the other CLI commands.
