@@ -23,7 +23,12 @@ import {
   SystemTransformer,
   UserDefinedTransformer,
 } from '@husonym/sdk';
-import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
+import {
+  CheckIcon,
+  Cross2Icon,
+  MagnifyingGlassIcon,
+  ReloadIcon,
+} from '@radix-ui/react-icons';
 import { useState } from 'react';
 import ApplyDefaultTransformersButton from './ApplyDefaultTransformersButton';
 import ExportJobMappingsButton from './ExportJobMappingsButton';
@@ -50,6 +55,11 @@ interface DataTableToolbarProps<TData> {
 
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
+
+  // Scan de contenu PII (Presidio) — présent seulement pour les jobs sync.
+  showPiiScan?: boolean;
+  onScanContent?(): void;
+  isScanningPii?: boolean;
 }
 
 const DEFAULT_TRANSFORMER_BUTTON_TEXT = 'Bulk set transformers';
@@ -66,6 +76,9 @@ export function SchemaTableToolbar<TData>({
   onApplyDefaultClick,
   hasMissingSourceColumnMappings,
   onRemoveMissingSourceColumnMappings,
+  showPiiScan,
+  onScanContent,
+  isScanningPii,
 }: DataTableToolbarProps<TData>) {
   const tableState = table.getState();
   const isFiltered = tableState.columnFilters.length > 0;
@@ -171,6 +184,26 @@ export function SchemaTableToolbar<TData>({
               onClick={onRemoveMissingSourceColumnMappings}
             >
               <ButtonText text="Remove Missing Source Column Mappings" />
+            </Button>
+          )}
+          {showPiiScan && (
+            <Button
+              variant="outline"
+              type="button"
+              disabled={isScanningPii}
+              onClick={() => onScanContent?.()}
+              title="Analyse le contenu échantillonné des colonnes (Presidio) pour détecter des données personnelles, y compris dans des colonnes mal nommées. Les transformers suggérés sont appliqués automatiquement."
+            >
+              <ButtonText
+                leftIcon={
+                  isScanningPii ? (
+                    <ReloadIcon className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <MagnifyingGlassIcon className="h-3 w-3" />
+                  )
+                }
+                text={isScanningPii ? 'Scan en cours…' : 'Scan de contenu (RGPD)'}
+              />
             </Button>
           )}
           {displayApplyDefaultTransformersButton && (

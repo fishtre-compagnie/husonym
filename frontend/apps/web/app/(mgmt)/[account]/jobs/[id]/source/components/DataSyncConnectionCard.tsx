@@ -927,6 +927,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               data={formMappings}
               virtualForeignKeys={formVirtualForeignKeys}
               jobType="sync"
+              sourceConnectionId={sourceConnectionId}
               constraintHandler={schemaConstraintHandler}
               schema={connectionSchemaDataMap?.schemaMap ?? {}}
               isSchemaDataReloading={isSchemaMapValidating}

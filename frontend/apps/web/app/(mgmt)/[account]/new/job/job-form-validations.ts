@@ -28,6 +28,9 @@ export const WorkflowSettingsSchema = Yup.object({
   runTimeout: Yup.number()
     .optional()
     .min(0, 'The Job Run Timeout cannot be less than 0 minutes'),
+  // Transformation engine (JobEngine enum value): 0 = default (deployment),
+  // 1 = Athanor, 2 = Benthos (legacy).
+  engine: Yup.number().optional(),
 });
 
 export type WorkflowSettingsSchema = Yup.InferType<

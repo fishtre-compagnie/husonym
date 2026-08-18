@@ -91,6 +91,10 @@ services:
 
       - AUTH_ENABLED=false
 
+      # Scan de contenu PII (Phase 2) : client Presidio maison, hors licence EE.
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_DEFAULT_LANGUAGE=en
+
     env_file:
       - path: ./.env.api.local
         required: false
@@ -171,6 +175,15 @@ services:
       MYSQL_DATABASE: octopus
       MYSQL_USER: husonym
       MYSQL_PASSWORD: husonympass
+    networks:
+      - husonym-network
+
+  # Serveur Presidio Analyzer (Microsoft, open-source MIT) pour le scan de contenu PII.
+  presidio-analyzer:
+    container_name: husonym-presidio-analyzer
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    ports:
+      - 5002:3000
     networks:
       - husonym-network
 

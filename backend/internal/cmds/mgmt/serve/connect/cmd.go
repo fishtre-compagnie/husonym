@@ -72,6 +72,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
@@ -756,10 +757,25 @@ func serve(ctx context.Context) error {
 		),
 	)
 
+	// Le scan de contenu PII (ConnectionDataService) utilise un client Presidio
+	// MAISON (backend/pkg/presidio), indépendant du code sous licence EE : la
+	// fonctionnalité reste libre en production. Il suffit que PRESIDIO_ANALYZER_URL
+	// soit défini.
+	var connectionPiiAnalyzer presidio.Analyzer
+	if endpoint := getPresidioAnalyzeEndpoint(); endpoint != "" {
+		connectionPiiAnalyzer = presidio.NewClient(
+			endpoint,
+			presidio.WithHeaders(getPresidioHttpHeaders()),
+		)
+	}
 	connectionDataService := v1alpha1_connectiondataservice.New(
-		&v1alpha1_connectiondataservice.Config{},
+		&v1alpha1_connectiondataservice.Config{
+			IsPresidioEnabled:       connectionPiiAnalyzer != nil,
+			PresidioDefaultLanguage: getPresidioDefaultLanguage(),
+		},
 		connectionService,
 		connectiondatabuilder,
+		connectionPiiAnalyzer,
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewConnectionDataServiceHandler(

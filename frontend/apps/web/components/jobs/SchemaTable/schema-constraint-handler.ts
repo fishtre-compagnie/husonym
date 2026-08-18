@@ -9,6 +9,7 @@ import {
   PrimaryConstraint,
   PrimaryConstraintSchema,
   TransformerDataType,
+  TransformerSource,
   UniqueConstraints,
   UniqueConstraintsSchema,
   VirtualForeignConstraint,
@@ -31,6 +32,10 @@ export interface SchemaConstraintHandler {
   getIsGenerated(key: ColumnKey): boolean;
   getGeneratedType(key: ColumnKey): string | undefined;
   getIdentityType(key: ColumnKey): string | undefined;
+  // Détection RGPD (heuristique côté backend, cf. pkg/piidetect)
+  getIsSensitive(key: ColumnKey): boolean;
+  getDataCategory(key: ColumnKey): string | undefined;
+  getSuggestedTransformerSource(key: ColumnKey): TransformerSource;
 }
 
 export interface ColumnKey {
@@ -49,6 +54,9 @@ interface ColDetails {
   columnDefault?: string;
   generatedType?: string;
   identityGeneration?: string;
+  isSensitive: boolean;
+  dataCategory?: string;
+  suggestedTransformerSource: TransformerSource;
 }
 
 export function getSchemaConstraintHandler(
@@ -121,6 +129,18 @@ export function getSchemaConstraintHandler(
     },
     getIdentityType(key) {
       return colmap[fromColKey(key)]?.identityGeneration;
+    },
+    getIsSensitive(key) {
+      return colmap[fromColKey(key)]?.isSensitive ?? false;
+    },
+    getDataCategory(key) {
+      return colmap[fromColKey(key)]?.dataCategory;
+    },
+    getSuggestedTransformerSource(key) {
+      return (
+        colmap[fromColKey(key)]?.suggestedTransformerSource ??
+        TransformerSource.UNSPECIFIED
+      );
     },
   };
 }
@@ -304,6 +324,9 @@ function buildColDetailsMap(
         columnDefault: dbcol.columnDefault,
         generatedType: dbcol.generatedType,
         identityGeneration: dbcol.identityGeneration,
+        isSensitive: dbcol.isSensitive,
+        dataCategory: dbcol.dataCategory || undefined,
+        suggestedTransformerSource: dbcol.suggestedTransformerSource,
       };
     });
   });

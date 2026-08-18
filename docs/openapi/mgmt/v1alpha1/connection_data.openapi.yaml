@@ -34,6 +34,81 @@ components:
          `Value` type union.
 
          The JSON representation for `NullValue` is JSON `null`.
+    mgmt.v1alpha1.PiiConfidence:
+      type: string
+      title: PiiConfidence
+      enum:
+        - PII_CONFIDENCE_UNSPECIFIED
+        - PII_CONFIDENCE_CONFIRMED
+        - PII_CONFIDENCE_NEEDS_REVIEW
+      description: |-
+        Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il
+         dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
+    mgmt.v1alpha1.PiiDetectionMethod:
+      type: string
+      title: PiiDetectionMethod
+      enum:
+        - PII_DETECTION_METHOD_UNSPECIFIED
+        - PII_DETECTION_METHOD_COLUMN_NAME
+        - PII_DETECTION_METHOD_CHECKSUM
+        - PII_DETECTION_METHOD_CONTENT
+        - PII_DETECTION_METHOD_FORMAT
+      description: Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
+    mgmt.v1alpha1.TransformerSource:
+      type: string
+      title: TransformerSource
+      enum:
+        - TRANSFORMER_SOURCE_UNSPECIFIED
+        - TRANSFORMER_SOURCE_PASSTHROUGH
+        - TRANSFORMER_SOURCE_GENERATE_DEFAULT
+        - TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_EMAIL
+        - TRANSFORMER_SOURCE_TRANSFORM_EMAIL
+        - TRANSFORMER_SOURCE_GENERATE_BOOL
+        - TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_CITY
+        - TRANSFORMER_SOURCE_GENERATE_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_FIRST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_FLOAT64
+        - TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_FULL_NAME
+        - TRANSFORMER_SOURCE_GENERATE_GENDER
+        - TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_INT64
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_INT64
+        - TRANSFORMER_SOURCE_GENERATE_LAST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_SHA256HASH
+        - TRANSFORMER_SOURCE_GENERATE_SSN
+        - TRANSFORMER_SOURCE_GENERATE_STATE
+        - TRANSFORMER_SOURCE_GENERATE_STREET_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_STRING
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_UNIXTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_USERNAME
+        - TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_UUID
+        - TRANSFORMER_SOURCE_GENERATE_ZIPCODE
+        - TRANSFORMER_SOURCE_TRANSFORM_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_FIRST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_FLOAT64
+        - TRANSFORMER_SOURCE_TRANSFORM_FULL_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64
+        - TRANSFORMER_SOURCE_TRANSFORM_LAST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_NULL
+        - TRANSFORMER_SOURCE_GENERATE_CATEGORICAL
+        - TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE
+        - TRANSFORMER_SOURCE_USER_DEFINED
+        - TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_COUNTRY
+        - TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
+        - TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME
+        - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
+        - TRANSFORMER_SOURCE_TRANSFORM_UUID
+        - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
     google.protobuf.ListValue:
       type: object
       properties:
@@ -178,6 +253,82 @@ components:
           minLength: 1
           description: The unique identifier of the job run to get the data stream for.
       title: AwsS3StreamConfig
+      additionalProperties: false
+    mgmt.v1alpha1.ColumnPiiDetection:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+        table:
+          type: string
+          title: table
+        column:
+          type: string
+          title: column
+        entityType:
+          type: string
+          title: entity_type
+          description: 'Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if none.'
+        score:
+          type: number
+          title: score
+          format: float
+          description: Average score of the detected entity in [0,1].
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: Recommended transformer for this entity.
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: True if the column is considered personal data (GDPR).
+        matchCount:
+          type: integer
+          title: match_count
+          description: Number of sampled values in which the entity was found.
+        sampledCount:
+          type: integer
+          title: sampled_count
+          description: Total number of non-empty sampled values analyzed.
+        dataCategory:
+          type: string
+          title: data_category
+          description: 'Catégorie sémantique déduite de l''entité (ex: "email", "nir"). Alimente le libellé du badge.'
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: |-
+            Niveau de confiance. Une détection issue d'une clé de contrôle est CONFIRMED,
+             une détection Presidio est NEEDS_REVIEW.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: Détail lisible de la preuve, pour l'infobulle.
+      title: ColumnPiiDetection
+      additionalProperties: false
+      description: PII detected in a column by analyzing sampled content (Presidio).
+    mgmt.v1alpha1.ColumnSampleValue:
+      type: object
+      properties:
+        value:
+          type: string
+          title: value
+          description: Représentation textuelle de la valeur. Vide si is_null.
+        isNull:
+          type: boolean
+          title: is_null
+          description: |-
+            Distingue un NULL d'une chaîne vide — la différence compte pour juger d'une
+             colonne (« vide » et « absent » ne se traitent pas pareil).
+      title: ColumnSampleValue
       additionalProperties: false
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
@@ -406,6 +557,37 @@ components:
           type: string
           title: identity_generation
           description: Populated if the column is an identity. The value is the type of the identity column it is. For example, postgres is 'd' for generated by default, or 'a' for generated always.
+        dataCategory:
+          type: string
+          title: data_category
+          description: 'Nature sémantique détectée pour cette colonne (heuristique nom+type SQL). Ex: "email", "phone_number", "person_full_name". Vide si rien de détecté.'
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: True si la colonne est considérée comme une donnée à caractère personnel (RGPD).
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: Transformer recommandé pour anonymiser cette colonne. TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: |-
+            Niveau de confiance de la détection. Seul CONFIRMED autorise l'application
+             automatique du transformer suggéré.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: |-
+            Détail lisible de la preuve, pour l'infobulle. Ex: "clé NIR valide sur 18/18 valeurs",
+             "format jj/mm/aaaa prouvé (14 valeurs avec jour > 12)", "format ambigu : jj/mm ou mm/jj".
       title: DatabaseColumn
       additionalProperties: false
     mgmt.v1alpha1.DatabaseTable:
@@ -422,6 +604,55 @@ components:
           minLength: 1
           description: The table name
       title: DatabaseTable
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to scan.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table to scan.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to scan.
+        columns:
+          type: array
+          items:
+            type: string
+          title: columns
+          description: Columns to analyze. Empty means every column of the table.
+        sampleSize:
+          type: integer
+          title: sample_size
+          description: Number of sampled values per column (default 20).
+        scoreThreshold:
+          type: number
+          title: score_threshold
+          format: float
+          description: Presidio score threshold in [0,1] (default 0.5).
+        language:
+          type: string
+          title: language
+          description: 'Content language (ISO 639-1). Default: server default or "en".'
+      title: DetectPiiInConnectionDataRequest
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataResponse:
+      type: object
+      properties:
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiDetection'
+          title: detections
+      title: DetectPiiInConnectionDataResponse
       additionalProperties: false
     mgmt.v1alpha1.DynamoDBSchemaConfig:
       type: object
@@ -668,6 +899,48 @@ components:
       title: Table
       additionalProperties: false
       description: A table in a schema
+    mgmt.v1alpha1.GetColumnSampleValuesRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to read from.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to read.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column whose values are returned.
+        limit:
+          type: integer
+          title: limit
+          description: Number of rows to return (default 20, max 200).
+      title: GetColumnSampleValuesRequest
+      additionalProperties: false
+      description: |-
+        Échantillon des valeurs d'une colonne, pour lever un doute sur une détection
+         RGPD en regardant les données réelles.
+    mgmt.v1alpha1.GetColumnSampleValuesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+          title: values
+      title: GetColumnSampleValuesResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetConnectionDataStreamRequest:
       type: object
       properties:
@@ -1466,6 +1739,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesResponse'
+  /mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: DetectPiiInConnectionData
+      description: |-
+        Scans sampled column content through Presidio to detect PII (deep scan).
+         Complements the name-based heuristic returned by GetConnectionSchema.
+      operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetColumnSampleValues
+      description: |-
+        Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
+         une détection RGPD en consultant les données réelles.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesResponse'
 tags:
   - name: mgmt.v1alpha1.ConnectionDataService
     description: |-
