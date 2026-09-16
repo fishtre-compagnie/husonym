@@ -215,3 +215,14 @@ CREATE TABLE test_virtual_index (
     email_lower VARCHAR(100) GENERATED ALWAYS AS (LOWER(email)) VIRTUAL
 );
 CREATE INDEX idx_email_lower ON test_virtual_index (email_lower);
+
+-- Prefix-indexed columns. On a utf8mb4 column past 768 characters a full-column index
+-- exceeds InnoDB's 3072-byte key limit, so losing the prefix does not degrade the index:
+-- it makes the statement fail outright (Error 1071).
+CREATE TABLE test_prefix_index (
+    id INT PRIMARY KEY,
+    endpoint VARCHAR(1024) NOT NULL,
+    label VARCHAR(255) NOT NULL,
+    UNIQUE KEY uniq_prefix_endpoint (endpoint(255)),
+    KEY idx_prefix_mixed (label, endpoint(100))
+);

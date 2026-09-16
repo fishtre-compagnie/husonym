@@ -45,6 +45,7 @@ SELECT
     s.INDEX_NAME as index_name,
     s.INDEX_TYPE as index_type,
     s.SEQ_IN_INDEX as seq_in_index,
+    s.SUB_PART as sub_part,
     s.NULLABLE as nullable
 FROM information_schema.statistics s
 LEFT JOIN information_schema.table_constraints tc
@@ -93,6 +94,7 @@ func (q *mariadbQuerier) GetIndicesBySchemasAndTables(
 			&i.IndexName,
 			&i.IndexType,
 			&i.SeqInIndex,
+			&i.SubPart,
 			&i.Nullable,
 		); err != nil {
 			return nil, err

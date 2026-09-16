@@ -354,6 +354,7 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 			{Schema: schema, Table: "order"},
 			{Schema: schema, Table: "defaults_test"},
 			{Schema: schema, Table: "test_virtual_index"},
+			{Schema: schema, Table: "test_prefix_index"},
 		}
 		tables = append(tables, flavor.extraInitTables...)
 
@@ -400,6 +401,31 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 		require.False(t, s2.Valid, "DEFAULT NULL should round trip as NULL")
 		require.Equal(t, 42, n1, "numeric default should round trip")
 		require.Len(t, u, 36, "uuid() default should produce a uuid, not a literal string")
+
+		// functional check: index prefix lengths must round trip. A lost prefix is not a
+		// degraded index, it is a statement the target rejects once the key passes 3072
+		// bytes — and on a shorter column it would silently widen the index instead.
+		prefixRows, err := target.DB.QueryContext(
+			context.Background(),
+			fmt.Sprintf(
+				`SELECT index_name, column_name, sub_part FROM information_schema.statistics
+				 WHERE table_schema = '%s' AND table_name = 'test_prefix_index';`,
+				schema,
+			),
+		)
+		require.NoError(t, err)
+		defer prefixRows.Close()
+		subParts := map[string]*int64{}
+		for prefixRows.Next() {
+			var indexName, columnName string
+			var subPart *int64
+			require.NoError(t, prefixRows.Scan(&indexName, &columnName, &subPart))
+			subParts[indexName+"."+columnName] = subPart
+		}
+		require.NoError(t, prefixRows.Err())
+		require.Equal(t, int64(255), *subParts["uniq_prefix_endpoint.endpoint"], "unique constraint prefix")
+		require.Equal(t, int64(100), *subParts["idx_prefix_mixed.endpoint"], "secondary index prefix")
+		require.Nil(t, subParts["idx_prefix_mixed.label"], "a fully indexed column must stay unprefixed")
 	})
 
 	t.Run("Exec", func(t *testing.T) {
