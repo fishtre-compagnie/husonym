@@ -21,6 +21,7 @@ import (
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
+	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -157,7 +158,7 @@ func NewTestDataSyncWorkflowEnv(
 		workflowEnv.maxIterations,
 		anonymizationclient,
 		workflowEnv.Redisclient,
-		false, // enableAthanor : chemin Benthos par défaut dans les tests d'intégration
+		sync_activity.NewAthanorPolicy(false, "", ""), // chemin Benthos par défaut dans les tests d'intégration
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {
