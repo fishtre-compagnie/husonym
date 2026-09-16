@@ -59,9 +59,27 @@ func BuildNonForeignKeyConstraintFingerprint(nf *NonForeignKeyConstraint) string
 		nf.TableName,
 		strings.Join(sortedCols, ","),
 		nf.Definition,
+		// Empty when no column is partly indexed, and BuildFingerprint concatenates its
+		// parts without a separator, so every prefix-less constraint keeps the
+		// fingerprint it already had.
+		joinColumnPrefixes(nf.ColumnPrefixes),
 	}
 
 	return BuildFingerprint(parts...)
+}
+
+// joinColumnPrefixes renders prefix lengths sorted by column, so that the column order
+// reported by the database cannot move the fingerprint.
+func joinColumnPrefixes(prefixes map[string]int64) string {
+	if len(prefixes) == 0 {
+		return ""
+	}
+	pairs := make([]string, 0, len(prefixes))
+	for col, subPart := range prefixes {
+		pairs = append(pairs, fmt.Sprintf("%s:%d", col, subPart))
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, ",")
 }
 
 // BuildFingerprint creates a stable hash for a table trigger that includes

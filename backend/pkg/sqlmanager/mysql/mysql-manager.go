@@ -2,6 +2,7 @@ package sqlmanager_mysql
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -456,6 +457,50 @@ func jsonRawToSlice[T any](j json.RawMessage) ([]T, error) {
 	return elements, nil
 }
 
+// constraintColumnPrefix pairs a constraint column with its index prefix length, as
+// reported by information_schema.statistics.SUB_PART. Both are nullable: a CHECK
+// constraint has no column, and a column indexed in full has no prefix.
+type constraintColumnPrefix struct {
+	Column  *string `json:"column"`
+	SubPart *int64  `json:"sub_part"`
+}
+
+// parseConstraintColumnPrefixes keys prefix lengths by column name. The query aggregates
+// them as objects rather than as a parallel array because JSON_ARRAYAGG takes no ORDER BY,
+// which would let a length land on the wrong column of a composite key.
+func parseConstraintColumnPrefixes(j json.RawMessage) (map[string]int64, error) {
+	entries, err := jsonRawToSlice[constraintColumnPrefix](j)
+	if err != nil {
+		return nil, err
+	}
+	prefixes := map[string]int64{}
+	for _, entry := range entries {
+		if entry.Column == nil || entry.SubPart == nil {
+			continue
+		}
+		prefixes[*entry.Column] = *entry.SubPart
+	}
+	return prefixes, nil
+}
+
+// escapeMysqlColumnWithPrefix renders `col`(255) for a partly indexed column. The suffix
+// goes outside the backticks: MySQL reads it as a prefix length, not as part of the
+// identifier.
+func escapeMysqlColumnWithPrefix(col string, prefixes map[string]int64) string {
+	if subPart, ok := prefixes[col]; ok {
+		return fmt.Sprintf("%s(%d)", EscapeMysqlColumn(col), subPart)
+	}
+	return EscapeMysqlColumn(col)
+}
+
+func escapeMysqlColumnsWithPrefixes(cols []string, prefixes map[string]int64) []string {
+	escaped := make([]string, 0, len(cols))
+	for _, col := range cols {
+		escaped = append(escaped, escapeMysqlColumnWithPrefix(col, prefixes))
+	}
+	return escaped
+}
+
 func (m *MysqlManager) GetRolePermissionsMap(ctx context.Context) (map[string][]string, error) {
 	querier, err := m.getQuerier(ctx)
 	if err != nil {
@@ -480,6 +525,9 @@ type indexInfo struct {
 	indexName string
 	indexType string
 	columns   []string
+	// columnPrefixes holds index prefix lengths by column name, for the columns that
+	// carry one. Expression columns never do.
+	columnPrefixes map[string]int64
 }
 
 func (m *MysqlManager) GetTableInitStatements(
@@ -591,21 +639,26 @@ func (m *MysqlManager) GetTableInitStatements(
 				if record.ColumnName.Valid {
 					if _, exists := indexmap[key.String()][record.IndexName]; !exists {
 						indexmap[key.String()][record.IndexName] = &indexInfo{
-							indexName: record.IndexName,
-							indexType: record.IndexType,
-							columns:   []string{},
+							indexName:      record.IndexName,
+							indexType:      record.IndexType,
+							columns:        []string{},
+							columnPrefixes: map[string]int64{},
 						}
 					}
 					indexmap[key.String()][record.IndexName].columns = append(
 						indexmap[key.String()][record.IndexName].columns,
 						record.ColumnName.String,
 					)
+					if record.SubPart.Valid {
+						indexmap[key.String()][record.IndexName].columnPrefixes[record.ColumnName.String] = record.SubPart.Int64
+					}
 				} else if record.Expression.Valid {
 					if _, exists := indexmap[key.String()][record.IndexName]; !exists {
 						indexmap[key.String()][record.IndexName] = &indexInfo{
-							indexName: record.IndexName,
-							indexType: record.IndexType,
-							columns:   []string{},
+							indexName:      record.IndexName,
+							indexType:      record.IndexType,
+							columns:        []string{},
+							columnPrefixes: map[string]int64{},
 						}
 					}
 					indexmap[key.String()][record.IndexName].columns = append(
@@ -758,6 +811,10 @@ func (m *MysqlManager) GetTableConstraintsByTables(
 		for _, notNullableInt := range notNullableInts {
 			notNullable = append(notNullable, notNullableInt == 1)
 		}
+		columnPrefixes, err := parseConstraintColumnPrefixes(constraint.ConstraintColumnPrefixes)
+		if err != nil {
+			return nil, err
+		}
 		key := sqlmanager_shared.SchemaTable{
 			Schema: constraint.SchemaName,
 			Table:  constraint.TableName,
@@ -798,6 +855,7 @@ func (m *MysqlManager) GetTableConstraintsByTables(
 				SchemaName:     constraint.SchemaName,
 				TableName:      constraint.TableName,
 				Columns:        constraintCols,
+				ColumnPrefixes: columnPrefixes,
 				Definition:     checkStr,
 			}
 			constraint.Fingerprint = sqlmanager_shared.BuildNonForeignKeyConstraintFingerprint(constraint)
@@ -992,13 +1050,17 @@ func buildAlterStatementByConstraint(
 	if err != nil {
 		return nil, err
 	}
+	columnPrefixes, err := parseConstraintColumnPrefixes(c.ConstraintColumnPrefixes)
+	if err != nil {
+		return nil, err
+	}
 	switch c.ConstraintType {
 	case "PRIMARY KEY":
 		stmt := fmt.Sprintf(
 			"ALTER TABLE `%s`.`%s` ADD PRIMARY KEY (%s);",
 			c.SchemaName,
 			c.TableName,
-			strings.Join(EscapeMysqlColumns(constraintCols), ","),
+			strings.Join(escapeMysqlColumnsWithPrefixes(constraintCols, columnPrefixes), ","),
 		)
 		return &sqlmanager_shared.AlterTableStatement{
 			Statement: wrapIdempotentConstraint(
@@ -1015,7 +1077,7 @@ func buildAlterStatementByConstraint(
 			c.SchemaName,
 			c.TableName,
 			c.ConstraintName,
-			strings.Join(EscapeMysqlColumns(constraintCols), ","),
+			strings.Join(escapeMysqlColumnsWithPrefixes(constraintCols, columnPrefixes), ","),
 		)
 		return &sqlmanager_shared.AlterTableStatement{
 			Statement: wrapIdempotentConstraint(
@@ -1335,8 +1397,13 @@ func wrapIdempotentConstraint(
 	constraintname,
 	constraintStmt string,
 ) string {
-	procedureName := fmt.Sprintf("HusonymAddConstraint_%s", hashInput(schema, table, constraintname))[:64]
+	procedureName := buildProcedureName(
+		"HusonymAddConstraint_",
+		hashInput(schema, table, constraintname),
+	)
 	stmt := fmt.Sprintf(`
+DROP PROCEDURE IF EXISTS %[1]s;
+
 CREATE PROCEDURE %[1]s()
 BEGIN
     DECLARE constraint_exists INT DEFAULT 0;
@@ -1358,6 +1425,42 @@ DROP PROCEDURE %[1]s;
 	return strings.TrimSpace(stmt)
 }
 
+// maxIdentifierLength is what MySQL allows for a procedure name.
+const maxIdentifierLength = 64
+
+// buildProcedureName fits a prefix, a fingerprint of what the procedure acts on, and a
+// per-statement token into one identifier. The token is what keeps two runs apart: the
+// fingerprint alone is a pure function of the table being altered, so concurrent runs
+// touching the same table would build the same name and collide on CREATE PROCEDURE —
+// one of them failing on an error that says nothing about its own schema.
+//
+// The statements these names go into open with DROP PROCEDURE IF EXISTS, so that the
+// reconcile path's statement-by-statement replay does not trip over what a failed batch
+// left behind. Note that MySQL checks ALTER ROUTINE before it checks existence: a
+// destination user holding only CREATE ROUTINE could run the previous create/call/drop
+// cycle but is refused this DROP.
+func buildProcedureName(prefix, fingerprint string) string {
+	suffix := uniqueSuffix()
+	room := maxIdentifierLength - len(prefix) - len(suffix) - 1
+	if room > len(fingerprint) {
+		room = len(fingerprint)
+	}
+	if room < 0 {
+		room = 0
+	}
+	return fmt.Sprintf("%s%s_%s", prefix, fingerprint[:room], suffix)
+}
+
+func uniqueSuffix() string {
+	buf := make([]byte, 6)
+	if _, err := rand.Read(buf); err != nil {
+		// rand.Read does not fail in practice; an empty token only costs the protection
+		// against concurrent runs, so the statement is still worth generating.
+		return ""
+	}
+	return hex.EncodeToString(buf)
+}
+
 func hashInput(input ...string) string {
 	hasher := sha256.New()
 	for _, in := range input {
@@ -1366,9 +1469,17 @@ func hashInput(input ...string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
+// indexTakesColumnPrefixes reports whether an index type accepts a prefix length on its
+// key parts. SPATIAL does not, and reports a SUB_PART of 32 anyway — that is the R-tree
+// key size, not a prefix, and copying it back makes MySQL reject the statement with
+// "Incorrect prefix key" (1089). FULLTEXT reports no prefix, and takes none either.
+func indexTakesColumnPrefixes(indexType string) bool {
+	return !strings.EqualFold(indexType, "spatial") &&
+		!strings.EqualFold(indexType, "fulltext")
+}
+
 func createIndexStmt(schema, table string, idxInfo *indexInfo, columnInput []string) string {
-	if strings.EqualFold(idxInfo.indexType, "spatial") ||
-		strings.EqualFold(idxInfo.indexType, "fulltext") {
+	if !indexTakesColumnPrefixes(idxInfo.indexType) {
 		return fmt.Sprintf(
 			"ALTER TABLE %s.%s ADD %s INDEX %s (%s);",
 			EscapeMysqlColumn(schema),
@@ -1396,17 +1507,24 @@ func wrapIdempotentIndex(
 	hashParams := []string{schema, table, idxInfo.indexName}
 	hashParams = append(hashParams, idxInfo.columns...)
 
+	prefixes := idxInfo.columnPrefixes
+	if !indexTakesColumnPrefixes(idxInfo.indexType) {
+		prefixes = nil
+	}
+
 	columnInput := []string{}
 	for _, col := range idxInfo.columns {
 		if strings.HasPrefix(col, "(") {
 			columnInput = append(columnInput, col)
 		} else {
-			columnInput = append(columnInput, EscapeMysqlColumn(col))
+			columnInput = append(columnInput, escapeMysqlColumnWithPrefix(col, prefixes))
 		}
 	}
-	procedureName := fmt.Sprintf("HusonymAddIndex_%s", hashInput(hashParams...))[:64]
+	procedureName := buildProcedureName("HusonymAddIndex_", hashInput(hashParams...))
 	indexStmt := createIndexStmt(schema, table, idxInfo, columnInput)
 	stmt := fmt.Sprintf(`
+DROP PROCEDURE IF EXISTS %[1]s;
+
 CREATE PROCEDURE %[1]s()
 BEGIN
     DECLARE index_exists INT DEFAULT 0;

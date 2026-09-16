@@ -219,6 +219,9 @@ type NonForeignKeyConstraint struct {
 	SchemaName     string
 	TableName      string
 	Columns        []string
+	// ColumnPrefixes holds index prefix lengths by column name, for the columns that
+	// carry one. MySQL only, and empty for a constraint indexing its columns in full.
+	ColumnPrefixes map[string]int64
 	Definition     string
 	Deferrable     bool
 }

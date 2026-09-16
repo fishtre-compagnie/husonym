@@ -75,6 +75,7 @@ create table information_schema.statistics (
   index_name text not null,
   index_type text not null,
   seq_in_index bigint,
+  sub_part bigint null,
   nullable text not null
 );
 

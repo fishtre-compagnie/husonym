@@ -354,6 +354,8 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 			{Schema: schema, Table: "order"},
 			{Schema: schema, Table: "defaults_test"},
 			{Schema: schema, Table: "test_virtual_index"},
+			{Schema: schema, Table: "test_prefix_index"},
+			{Schema: schema, Table: "test_prefix_pk"},
 		}
 		tables = append(tables, flavor.extraInitTables...)
 
@@ -400,6 +402,52 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 		require.False(t, s2.Valid, "DEFAULT NULL should round trip as NULL")
 		require.Equal(t, 42, n1, "numeric default should round trip")
 		require.Len(t, u, 36, "uuid() default should produce a uuid, not a literal string")
+
+		// functional check: index prefix lengths must round trip. A lost prefix is not a
+		// degraded index, it is a statement the target rejects once the key passes 3072
+		// bytes — and on a shorter column it would silently widen the index instead.
+		prefixRows, err := target.DB.QueryContext(
+			context.Background(),
+			fmt.Sprintf(
+				`SELECT table_name, index_name, column_name, sub_part FROM information_schema.statistics
+				 WHERE table_schema = '%s' AND table_name IN ('test_prefix_index', 'test_prefix_pk');`,
+				schema,
+			),
+		)
+		require.NoError(t, err)
+		defer prefixRows.Close()
+		subParts := map[string]*int64{}
+		for prefixRows.Next() {
+			var tableName, indexName, columnName string
+			var subPart *int64
+			require.NoError(t, prefixRows.Scan(&tableName, &indexName, &columnName, &subPart))
+			subParts[tableName+"."+indexName+"."+columnName] = subPart
+		}
+		require.NoError(t, prefixRows.Err())
+
+		requirePrefix := func(key string, expected *int64, msg string) {
+			// Keyed lookups return nil for a missing index too, so the key has to be
+			// asserted before its value: otherwise an index that never made it to the
+			// target reads as an unprefixed one.
+			require.Contains(t, subParts, key, "%s: index missing from the target", msg)
+			if expected == nil {
+				require.Nil(t, subParts[key], msg)
+				return
+			}
+			require.NotNil(t, subParts[key], msg)
+			require.Equal(t, *expected, *subParts[key], msg)
+		}
+		prefixOf := func(n int64) *int64 { return &n }
+
+		requirePrefix("test_prefix_index.uniq_prefix_endpoint.endpoint", prefixOf(255), "unique constraint prefix")
+		requirePrefix("test_prefix_index.idx_prefix_mixed.endpoint", prefixOf(100), "secondary index prefix")
+		requirePrefix("test_prefix_index.idx_prefix_mixed.label", nil, "a fully indexed column stays unprefixed")
+		requirePrefix("test_prefix_index.idx_prefix_text.body", prefixOf(20), "a TEXT column cannot be indexed without a length")
+		requirePrefix("test_prefix_pk.PRIMARY.url", prefixOf(100), "primary key prefix")
+		// Spatial and fulltext keys must have reached the target at all: a prefix copied
+		// onto either of them is rejected outright rather than degraded.
+		require.Contains(t, subParts, "test_prefix_index.sp_prefix_geom.geom", "spatial index missing from the target")
+		require.Contains(t, subParts, "test_prefix_index.ft_prefix_body.body", "fulltext index missing from the target")
 	})
 
 	t.Run("Exec", func(t *testing.T) {

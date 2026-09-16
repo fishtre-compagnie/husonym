@@ -215,3 +215,28 @@ CREATE TABLE test_virtual_index (
     email_lower VARCHAR(100) GENERATED ALWAYS AS (LOWER(email)) VIRTUAL
 );
 CREATE INDEX idx_email_lower ON test_virtual_index (email_lower);
+
+-- Prefix-indexed columns. On a utf8mb4 column past 768 characters a full-column index
+-- exceeds InnoDB's 3072-byte key limit, so losing the prefix does not degrade the index:
+-- it makes the statement fail outright (Error 1071).
+CREATE TABLE test_prefix_index (
+    id INT PRIMARY KEY,
+    endpoint VARCHAR(1024) NOT NULL,
+    label VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    geom GEOMETRY NOT NULL,
+    UNIQUE KEY uniq_prefix_endpoint (endpoint(255)),
+    KEY idx_prefix_mixed (label, endpoint(100)),
+    -- A TEXT column cannot be indexed without a length at all (Error 1170)
+    KEY idx_prefix_text (body(20)),
+    -- SPATIAL reports a SUB_PART of 32 that is not a prefix, and FULLTEXT takes none:
+    -- neither may end up with a length in the generated statement
+    FULLTEXT KEY ft_prefix_body (body),
+    SPATIAL KEY sp_prefix_geom (geom)
+);
+
+-- Prefix on a primary key, which goes through the constraint path rather than the index one
+CREATE TABLE test_prefix_pk (
+    url VARCHAR(1024) NOT NULL,
+    PRIMARY KEY (url(100))
+);

@@ -57,6 +57,9 @@ SELECT
     COALESCE(kcu.referenced_table_schema, 'NULL') AS referenced_schema_name,
     COALESCE(kcu.referenced_table_name, 'NULL') AS referenced_table_name,
     JSON_ARRAYAGG(kcu.referenced_column_name) AS referenced_column_names,
+    -- Keyed by column name rather than aggregated positionally: JSON_ARRAYAGG takes
+    -- no ORDER BY, so a parallel array could pair a length with the wrong column.
+    JSON_ARRAYAGG(JSON_OBJECT('column', kcu.column_name, 'sub_part', s.sub_part)) AS constraint_column_prefixes,
     rc.update_rule as update_rule,
     rc.delete_rule as delete_rule,
     IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS check_clause -- hack to fix this bug https://bugs.mysql.com/
@@ -77,6 +80,11 @@ LEFT JOIN information_schema.referential_constraints as rc
 LEFT JOIN information_schema.check_constraints as cc
 	ON tc.constraint_schema = cc.constraint_schema
 	AND tc.constraint_name = cc.constraint_name
+LEFT JOIN information_schema.statistics as s
+	ON s.table_schema = tc.table_schema
+	AND s.table_name = tc.table_name
+	AND s.index_name = tc.constraint_name
+	AND s.column_name = kcu.column_name
 WHERE
     tc.table_schema IN (sqlc.slice('schemas'))
 GROUP BY
@@ -101,6 +109,9 @@ SELECT
     COALESCE(kcu.referenced_table_schema, 'NULL') AS referenced_schema_name,
     COALESCE(kcu.referenced_table_name, 'NULL') AS referenced_table_name,
     JSON_ARRAYAGG(kcu.referenced_column_name) AS referenced_column_names,
+    -- Keyed by column name rather than aggregated positionally: JSON_ARRAYAGG takes
+    -- no ORDER BY, so a parallel array could pair a length with the wrong column.
+    JSON_ARRAYAGG(JSON_OBJECT('column', kcu.column_name, 'sub_part', s.sub_part)) AS constraint_column_prefixes,
     rc.update_rule as update_rule,
     rc.delete_rule as delete_rule,
     IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS check_clause -- hack to fix this bug https://bugs.mysql.com/
@@ -121,6 +132,11 @@ LEFT JOIN information_schema.referential_constraints as rc
 LEFT JOIN information_schema.check_constraints as cc
 	ON tc.constraint_schema = cc.constraint_schema
 	AND tc.constraint_name = cc.constraint_name
+LEFT JOIN information_schema.statistics as s
+	ON s.table_schema = tc.table_schema
+	AND s.table_name = tc.table_name
+	AND s.index_name = tc.constraint_name
+	AND s.column_name = kcu.column_name
 WHERE
     tc.table_schema = sqlc.arg('schema')
     AND tc.table_name IN (sqlc.slice('tables'))
@@ -248,6 +264,7 @@ SELECT
     s.INDEX_NAME as index_name,
     s.INDEX_TYPE as index_type,
     s.SEQ_IN_INDEX as seq_in_index,
+    s.SUB_PART as sub_part,
     s.NULLABLE as nullable
 FROM information_schema.statistics s
 LEFT JOIN information_schema.table_constraints tc
