@@ -370,9 +370,7 @@ function DonutCard({
                         className="inline-block h-3 w-3 rounded-sm"
                         style={{ backgroundColor: s.color }}
                       />
-                      <span
-                        className={cn(active === i && 'font-medium')}
-                      >
+                      <span className={cn(active === i && 'font-medium')}>
                         {s.name}
                       </span>
                     </span>

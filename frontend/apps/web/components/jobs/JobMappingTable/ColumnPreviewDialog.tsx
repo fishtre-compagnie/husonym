@@ -76,7 +76,8 @@ export default function ColumnPreviewDialog({
 
   const filled = values?.filter((v) => !v.isNull && v.value !== '').length ?? 0;
   const nulls = values?.filter((v) => v.isNull).length ?? 0;
-  const empties = values?.filter((v) => !v.isNull && v.value === '').length ?? 0;
+  const empties =
+    values?.filter((v) => !v.isNull && v.value === '').length ?? 0;
   const distinct = new Set(
     values?.filter((v) => !v.isNull).map((v) => v.value) ?? []
   ).size;
@@ -88,7 +89,10 @@ export default function ColumnPreviewDialog({
           <DialogTitle className="flex items-center gap-2">
             <span className="font-mono text-base">{column}</span>
             {dataType && (
-              <Badge variant="outline" className="font-mono text-xs font-normal">
+              <Badge
+                variant="outline"
+                className="font-mono text-xs font-normal"
+              >
                 {dataType}
               </Badge>
             )}
@@ -122,8 +126,8 @@ export default function ColumnPreviewDialog({
                 ligne(s)
               </span>
               <span>
-                <strong className="text-foreground">{distinct}</strong> valeur(s)
-                distincte(s)
+                <strong className="text-foreground">{distinct}</strong>{' '}
+                valeur(s) distincte(s)
               </span>
               {nulls > 0 && <span>{nulls} NULL</span>}
               {empties > 0 && <span>{empties} vide(s)</span>}

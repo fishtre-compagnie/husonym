@@ -202,7 +202,9 @@ export function SchemaTableToolbar<TData>({
                     <MagnifyingGlassIcon className="h-3 w-3" />
                   )
                 }
-                text={isScanningPii ? 'Scan en cours…' : 'Scan de contenu (RGPD)'}
+                text={
+                  isScanningPii ? 'Scan en cours…' : 'Scan de contenu (RGPD)'
+                }
               />
             </Button>
           )}
