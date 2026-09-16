@@ -1,7 +1,7 @@
-// Package consistency implémente la cohérence d'anonymisation déterministe SANS
-// ÉTAT (RFC §8) : « la même donnée d'entrée produit toujours la même donnée de
-// sortie, dans tous les SGBD, tous les runs » — obtenu par dérivation
-// cryptographique, sans base de correspondance à administrer.
+// Package consistency implements STATELESS deterministic anonymization
+// consistency (RFC §8): "the same input always produces the same output, across
+// every database and every run" — obtained by cryptographic derivation, with no
+// mapping store to operate.
 //
 // La hiérarchie de dérivation (HMAC-SHA256 à chaque étage) :
 //
@@ -25,6 +25,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
+	"math"
 	"strings"
 )
 
@@ -34,8 +35,8 @@ type Deriver struct {
 	scopeKey []byte
 }
 
-// New construit un Deriver à partir de la clé de projet (le secret, fourni par le
-// Key Service — jamais journalisé) et d'un scope de cohérence.
+// New builds a Deriver from the project key (the secret, provided by the Key
+// Service — never written to logs) and a consistency scope.
 //
 // Le scope définit la portée de l'égalité déterministe :
 //   - "org"          : cohérence maximale (même valeur → même sortie dans toute l'organisation)
@@ -93,17 +94,30 @@ func (s Seed) Index(n int) int {
 	if n <= 0 {
 		panic("consistency: Index requiert n > 0")
 	}
-	return int(s.Uint64() % uint64(n))
+	// Le reste est strictement inférieur à n, donc tient dans un int par
+	// construction : la conversion ne peut pas déborder.
+	return int(s.Uint64() % uint64(n)) //nolint:gosec // reste < n, borné par un int
 }
 
-// IntInRange renvoie un entier déterministe dans [min, max] (bornes incluses).
-// Si min > max, les bornes sont échangées.
-func (s Seed) IntInRange(min, max int64) int64 {
-	if min > max {
-		min, max = max, min
+// IntInRange renvoie un entier déterministe dans [lo, hi] (bornes incluses).
+// Si lo > hi, les bornes sont échangées.
+//
+// La largeur se calcule en arithmétique non signée : `hi - lo` déborde dès que la
+// plage couvre plus de la moitié de l'espace int64, et le calcul naïf donnait
+// alors une largeur nulle, donc un modulo par zéro — panique sur [MinInt64,
+// MaxInt64].
+func (s Seed) IntInRange(lo, hi int64) int64 {
+	if lo > hi {
+		lo, hi = hi, lo
 	}
-	span := uint64(max-min) + 1
-	return min + int64(s.Uint64()%span)
+	//nolint:gosec // réinterprétation non signée voulue : l'écart reste exact
+	span := uint64(hi) - uint64(lo) // exact même quand hi-lo déborde en signé
+	if span == math.MaxUint64 {
+		// Plage int64 entière : toute valeur convient, et span+1 déborderait.
+		return int64(s.Uint64()) //nolint:gosec // toute la plage int64 est valide
+	}
+	offset := s.Uint64() % (span + 1) // offset <= span, donc lo+offset <= hi
+	return lo + int64(offset)         //nolint:gosec // repli modulaire voulu, résultat dans [lo, hi]
 }
 
 // Float01 renvoie un flottant déterministe dans [0, 1) — pratique pour seeder un
@@ -120,8 +134,8 @@ func (s Seed) Bytes() []byte {
 	return out
 }
 
-// Canonicalizer normalise une valeur d'entrée avant dérivation, pour que des
-// variantes équivalentes convergent vers la même graine.
+// Canonicalizer normalizes an input value before derivation, so that equivalent
+// spellings converge on the same seed.
 type Canonicalizer func(string) string
 
 // DefaultCanonicalizer : espaces de bordure supprimés + minuscules (Unicode).

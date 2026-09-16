@@ -1,6 +1,9 @@
 package consistency
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 var projectKey = []byte("clé-de-projet-secrète-de-test-32b")
 
@@ -87,6 +90,30 @@ func TestSeedPrimitives(t *testing.T) {
 	again := New(projectKey, "org").Domain("hr.salary").Seed("emp-123")
 	if s.IntInRange(1, 1_000_000) != again.IntInRange(1, 1_000_000) {
 		t.Fatal("la dérivation doit être reproductible")
+	}
+}
+
+// Les plages très larges débordaient le calcul de largeur en arithmétique signée :
+// sur [MinInt64, MaxInt64] la largeur tombait à zéro, et le modulo paniquait.
+func TestIntInRangeExtremes(t *testing.T) {
+	s := New(projectKey, "org").Domain("hr.salary").Seed("emp-123")
+
+	cases := [][2]int64{
+		{math.MinInt64, math.MaxInt64}, // plage entière
+		{math.MinInt64, 0},             // moitié basse
+		{0, math.MaxInt64},             // moitié haute
+		{math.MinInt64, math.MinInt64}, // singleton à la borne
+		{math.MaxInt64, math.MinInt64}, // bornes inversées
+	}
+	for _, c := range cases {
+		lo, hi := c[0], c[1]
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		got := s.IntInRange(c[0], c[1])
+		if got < lo || got > hi {
+			t.Fatalf("IntInRange(%d, %d) = %d, hors bornes", c[0], c[1], got)
+		}
 	}
 }
 

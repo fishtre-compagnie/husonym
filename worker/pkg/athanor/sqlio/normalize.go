@@ -14,6 +14,7 @@ package sqlio
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 )
@@ -92,7 +93,7 @@ func auto(v any) (any, error) {
 	case int64:
 		return x, nil
 	case uint:
-		return int64(x), nil
+		return unsignedToInt64(uint64(x))
 	case uint8:
 		return int64(x), nil
 	case uint16:
@@ -100,7 +101,7 @@ func auto(v any) (any, error) {
 	case uint32:
 		return int64(x), nil
 	case uint64:
-		return int64(x), nil
+		return unsignedToInt64(x)
 	case float32:
 		return float64(x), nil
 	case float64:
@@ -110,6 +111,18 @@ func auto(v any) (any, error) {
 	default:
 		return v, nil // type inconnu : laissé tel quel plutôt que d'échouer
 	}
+}
+
+// unsignedToInt64 canonicalizes an unsigned integer without corrupting the ones
+// that do not fit in an int64. MySQL BIGINT UNSIGNED reaches 2^64-1: converting
+// silently would yield a NEGATIVE value, hence a wrong consistency seed and a wrong
+// write at the destination. Past MaxInt64 the value is preserved as is, exactly as
+// `auto` already does for unknown types.
+func unsignedToInt64(x uint64) (any, error) {
+	if x > math.MaxInt64 {
+		return x, nil
+	}
+	return int64(x), nil
 }
 
 func toString(v any) (any, error) {
@@ -138,6 +151,9 @@ func toInt64(v any) (any, error) {
 		}
 		if f, ok := nv.(float64); ok {
 			return int64(f), nil
+		}
+		if u, ok := nv.(uint64); ok {
+			return nil, fmt.Errorf("normalize: %d dépasse les bornes d'un int64", u)
 		}
 		return nv, nil
 	case []byte:

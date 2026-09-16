@@ -1,6 +1,7 @@
 package sqlio
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -92,4 +93,34 @@ func fmtVal(v any) string {
 		return s
 	}
 	return ""
+}
+
+// Un BIGINT UNSIGNED MySQL monte à 2^64-1. Le convertir en int64 sans garde le
+// rendrait négatif en silence : graine de cohérence fausse, écriture fausse.
+func TestNormalize_UnsignedBeyondInt64(t *testing.T) {
+	n := NewNormalizer()
+
+	const huge = uint64(math.MaxInt64) + 1
+	got, err := n.Normalize("col", huge)
+	if err != nil {
+		t.Fatalf("Normalize(%d) erreur: %v", huge, err)
+	}
+	if got != any(huge) {
+		t.Fatalf("Normalize(%d) = %#v (%T), la valeur devait être préservée", huge, got, got)
+	}
+
+	// Sous la limite, la canonisation en int64 reste la règle.
+	got, err = n.Normalize("col", uint64(math.MaxInt64))
+	if err != nil {
+		t.Fatalf("Normalize(MaxInt64) erreur: %v", err)
+	}
+	if got != any(int64(math.MaxInt64)) {
+		t.Fatalf("Normalize(MaxInt64) = %#v (%T), attendu int64", got, got)
+	}
+
+	// Forcé en Integer, un dépassement doit se dire plutôt que se taire.
+	forced := NewNormalizer().With("col", Integer)
+	if _, err := forced.Normalize("col", huge); err == nil {
+		t.Fatalf("Normalize(%d) forcé en Integer: une erreur était attendue", huge)
+	}
 }
