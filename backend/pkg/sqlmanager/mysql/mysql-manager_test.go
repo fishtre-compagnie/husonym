@@ -145,6 +145,31 @@ func Test_WrapIdempotentIndex_CarriesPrefixLength(t *testing.T) {
 	require.Contains(t, actual, "ADD INDEX `idx_mixed` (`a`, `b`(50), (lower(`c`))) USING BTREE;")
 }
 
+func Test_WrapIdempotentIndex_LeavesSpatialAndFulltextAlone(t *testing.T) {
+	// A spatial key part reports a SUB_PART of 32, which is the R-tree key size and not a
+	// prefix. Copying it back yields "Incorrect prefix key" (1089) and, because BatchExec
+	// sends twenty statements at a time, takes the whole index block down with it.
+	t.Run("spatial", func(t *testing.T) {
+		actual := wrapIdempotentIndex("db", "t", &indexInfo{
+			indexName:      "sp_g",
+			indexType:      "SPATIAL",
+			columns:        []string{"g"},
+			columnPrefixes: map[string]int64{"g": 32},
+		})
+		require.Contains(t, actual, "ADD SPATIAL INDEX `sp_g` (`g`);")
+	})
+
+	t.Run("fulltext", func(t *testing.T) {
+		actual := wrapIdempotentIndex("db", "t", &indexInfo{
+			indexName:      "ft_body",
+			indexType:      "FULLTEXT",
+			columns:        []string{"body"},
+			columnPrefixes: map[string]int64{"body": 20},
+		})
+		require.Contains(t, actual, "ADD FULLTEXT INDEX `ft_body` (`body`);")
+	})
+}
+
 func Test_IdempotentWrappers_AreConcurrencySafe(t *testing.T) {
 	constraintStmt := "ALTER TABLE `db`.`t` ADD CONSTRAINT `uniq` UNIQUE (`a`);"
 

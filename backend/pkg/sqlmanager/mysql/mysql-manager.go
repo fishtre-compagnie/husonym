@@ -1433,6 +1433,12 @@ const maxIdentifierLength = 64
 // fingerprint alone is a pure function of the table being altered, so concurrent runs
 // touching the same table would build the same name and collide on CREATE PROCEDURE —
 // one of them failing on an error that says nothing about its own schema.
+//
+// The statements these names go into open with DROP PROCEDURE IF EXISTS, so that the
+// reconcile path's statement-by-statement replay does not trip over what a failed batch
+// left behind. Note that MySQL checks ALTER ROUTINE before it checks existence: a
+// destination user holding only CREATE ROUTINE could run the previous create/call/drop
+// cycle but is refused this DROP.
 func buildProcedureName(prefix, fingerprint string) string {
 	suffix := uniqueSuffix()
 	room := maxIdentifierLength - len(prefix) - len(suffix) - 1
@@ -1463,9 +1469,17 @@ func hashInput(input ...string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
+// indexTakesColumnPrefixes reports whether an index type accepts a prefix length on its
+// key parts. SPATIAL does not, and reports a SUB_PART of 32 anyway — that is the R-tree
+// key size, not a prefix, and copying it back makes MySQL reject the statement with
+// "Incorrect prefix key" (1089). FULLTEXT reports no prefix, and takes none either.
+func indexTakesColumnPrefixes(indexType string) bool {
+	return !strings.EqualFold(indexType, "spatial") &&
+		!strings.EqualFold(indexType, "fulltext")
+}
+
 func createIndexStmt(schema, table string, idxInfo *indexInfo, columnInput []string) string {
-	if strings.EqualFold(idxInfo.indexType, "spatial") ||
-		strings.EqualFold(idxInfo.indexType, "fulltext") {
+	if !indexTakesColumnPrefixes(idxInfo.indexType) {
 		return fmt.Sprintf(
 			"ALTER TABLE %s.%s ADD %s INDEX %s (%s);",
 			EscapeMysqlColumn(schema),
@@ -1493,12 +1507,17 @@ func wrapIdempotentIndex(
 	hashParams := []string{schema, table, idxInfo.indexName}
 	hashParams = append(hashParams, idxInfo.columns...)
 
+	prefixes := idxInfo.columnPrefixes
+	if !indexTakesColumnPrefixes(idxInfo.indexType) {
+		prefixes = nil
+	}
+
 	columnInput := []string{}
 	for _, col := range idxInfo.columns {
 		if strings.HasPrefix(col, "(") {
 			columnInput = append(columnInput, col)
 		} else {
-			columnInput = append(columnInput, escapeMysqlColumnWithPrefix(col, idxInfo.columnPrefixes))
+			columnInput = append(columnInput, escapeMysqlColumnWithPrefix(col, prefixes))
 		}
 	}
 	procedureName := buildProcedureName("HusonymAddIndex_", hashInput(hashParams...))
