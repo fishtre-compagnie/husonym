@@ -53,13 +53,14 @@ func RunTable(
 		return err
 	}
 
-	// Upsert (do update) : il faut les colonnes de conflit. Postgres et SQL Server
-	// les exigent explicitement ; on les introspecte si le job ne les fournit pas.
-	// (MySQL n'en a pas besoin — ON DUPLICATE KEY se déclenche sur toute clé unique.)
+	// Upsert (do update) needs the conflict target columns. Postgres and SQL Server
+	// require them explicitly; we introspect them when the job does not supply them.
+	// (MySQL does not need them — ON DUPLICATE KEY fires on any unique key.)
 	pkColumns := wc.PKColumns
 	if wc.OnConflict == sqlio.ConflictDoUpdate && len(pkColumns) == 0 {
 		pkColumns, err = primaryKeyColumns(ctx, src, dialect, schema, table)
 		if err != nil {
+			//nolint:misspell // message produit, rédigé en français
 			return fmt.Errorf("runner: introspection des clés primaires de %s.%s: %w", schema, table, err)
 		}
 	}

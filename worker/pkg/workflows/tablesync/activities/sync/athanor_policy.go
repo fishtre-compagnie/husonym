@@ -12,10 +12,10 @@ type AthanorPolicy struct {
 	overrides      map[string]bool // jobID -> forcé activé/désactivé
 }
 
-// NewAthanorPolicy construit la politique. enabledJobs / disabledJobs sont des
-// listes d'IDs de jobs (séparées par des virgules) qui forcent respectivement
-// l'activation / la désactivation d'Athanor pour ces jobs, quel que soit le
-// défaut. En cas de présence dans les deux, l'activation explicite l'emporte.
+// NewAthanorPolicy builds the policy. enabledJobs / disabledJobs are
+// comma-separated job ID lists that respectively force Athanor on or off for those
+// jobs, whatever the default is. A job listed in both is turned on: an explicit
+// enable wins.
 func NewAthanorPolicy(defaultEnabled bool, enabledJobs, disabledJobs string) AthanorPolicy {
 	overrides := map[string]bool{}
 	for _, id := range splitIDs(disabledJobs) {

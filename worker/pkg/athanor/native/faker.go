@@ -1,11 +1,11 @@
 // Package native contient les transformers écrits pour le nouveau moteur
 // (par opposition aux transformers Benthos existants, enveloppés via l'adaptateur).
 //
-// DictFaker est le premier : c'est le PONT concret entre les Mouvements 1 et 2.
-// Il satisfait l'interface transform.ValueTransformer (M1) et tire son
-// déterminisme du module de cohérence cryptographique (M2). Deux fondations
-// isolées qui, ici, composent en un transformer réel, déterministe et cohérent
-// inter-bases.
+// DictFaker is the first one: the working BRIDGE between Movements 1 and 2. It
+// satisfies the transform.ValueTransformer interface (M1) and draws its determinism
+// from the cryptographic consistency module (M2). Two foundations built in
+// isolation, composing here into a real transformer — deterministic and consistent
+// across databases.
 package native
 
 import (

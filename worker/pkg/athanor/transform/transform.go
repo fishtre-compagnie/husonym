@@ -1,19 +1,18 @@
-// Package transform définit l'interface de transformer de la prochaine génération
-// du moteur d'anonymisation (nom de code Athanor).
+// Package transform defines the transformer interface of the next-generation
+// anonymization engine (code name Athanor).
 //
-// MOUVEMENT 1 de la refonte (stratégie Strangler Fig) : on pose ici l'interface
-// cible — un transformer n'est plus figé à « une valeur d'une colonne », mais
-// devient un nœud typé avec quatre PORTÉES possibles (RFC §11) :
+// MOVEMENT 1 of the rework (Strangler Fig approach): this is the target
+// interface. A transformer is no longer pinned to "one value of one column"; it
+// becomes a typed node with four possible SCOPES (RFC §11):
 //
-//	Value   T -> T'                     (hash, faker, masque…) — le modèle actuel
-//	Row     Row -> Row                  (lit/écrit plusieurs colonnes)
-//	Table   flux de batches -> batches  (shuffle, préservation d'agrégats)
-//	Dataset accès au graphe entier      (résolution d'entités inter-tables)
+//	Value   T -> T'                      (hash, faker, mask…) — today's model
+//	Row     Row -> Row                   (reads/writes several columns)
+//	Table   stream of batches -> batches (shuffle, aggregate preservation)
+//	Dataset access to the whole graph    (cross-table entity resolution)
 //
-// Rien n'est cassé : les transformers Benthos existants sont enveloppés en portée
-// Value via benthos_adapter.go, sans modification du code actuel. Les portées Row
-// et suivantes sont les capacités NOUVELLES que le modèle actuel ne peut pas
-// exprimer (cf. example_row.go).
+// Nothing breaks: the existing Benthos transformers are wrapped at Value scope by
+// benthos_adapter.go, leaving today's code untouched. Row scope and beyond are the
+// NEW capabilities that the current model cannot express (see example_row.go).
 package transform
 
 import "context"
@@ -31,8 +30,8 @@ type Ctx struct {
 // Background renvoie un Ctx neutre, pratique pour les tests et les appels simples.
 func Background() Ctx { return Ctx{Context: context.Background()} }
 
-// ValueTransformer — portée VALUE : transforme une valeur en une autre.
-// C'est le contrat que tout transformer Neosync existant satisfait via l'adaptateur.
+// ValueTransformer — VALUE scope: turns one value into another.
+// Every existing Neosync transformer satisfies this contract through the adapter.
 type ValueTransformer interface {
 	TransformValue(ctx Ctx, in any) (out any, err error)
 }

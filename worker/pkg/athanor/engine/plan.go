@@ -1,10 +1,10 @@
 package engine
 
-// plan.go — première tranche du COMPILATEUR (RFC §5) et du GRAPHE DE DÉPENDANCES
-// (RFC §6). Compile transforme une description déclarative (Spec) en plan
-// exécutable et validé : colonnes existantes, pas de conflit d'écriture, et
-// RowTransformers ordonnés par leurs dépendances de colonnes (tri topologique
-// avec détection de cycle). Un plan qui compile s'exécute.
+// plan.go — first slice of the COMPILER (RFC §5) and of the DEPENDENCY GRAPH
+// (RFC §6). Compile turns a declarative description (Spec) into a validated,
+// executable plan: columns must exist, no write conflict, and RowTransformers
+// ordered by their column dependencies (topological sort with cycle detection).
+// A plan that compiles, runs.
 
 import (
 	"fmt"
@@ -32,9 +32,9 @@ type Plan struct {
 	rowOrder []int                      // indices d'origine, pour l'explicabilité
 }
 
-// Compile valide la Spec contre un schéma (l'ensemble des colonnes disponibles)
-// et produit un Plan. Erreurs possibles : colonne inconnue, conflit d'écriture,
-// cycle de dépendances entre RowTransformers.
+// Compile validates the Spec against a schema (the set of available columns) and
+// produces a Plan. Possible errors: unknown column, write conflict, dependency
+// cycle between RowTransformers.
 func Compile(schema []string, spec Spec) (*Plan, error) {
 	known := make(map[string]bool, len(schema))
 	for _, c := range schema {
@@ -49,6 +49,7 @@ func Compile(schema []string, spec Spec) (*Plan, error) {
 			return nil, fmt.Errorf("compile: colonne inconnue dans un binding valeur: %q", vb.Column)
 		}
 		if prev, ok := writers[vb.Column]; ok {
+			//nolint:misspell // message produit, rédigé en français
 			return nil, fmt.Errorf("compile: conflit d'écriture sur %q (%s et binding valeur)", vb.Column, prev)
 		}
 		writers[vb.Column] = "binding valeur"
@@ -65,6 +66,7 @@ func Compile(schema []string, spec Spec) (*Plan, error) {
 				return nil, fmt.Errorf("compile: transformer ligne #%d écrit une colonne inconnue: %q", i, c)
 			}
 			if prev, ok := writers[c]; ok {
+				//nolint:misspell // message produit, rédigé en français
 				return nil, fmt.Errorf("compile: conflit d'écriture sur %q (%s et transformer ligne #%d)", c, prev, i)
 			}
 			writers[c] = fmt.Sprintf("transformer ligne #%d", i)

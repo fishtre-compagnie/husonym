@@ -44,7 +44,7 @@ func (p *Plan) Execute(ctx transform.Ctx, b *Batch) error {
 // moteur ne garde qu'un batch à la fois en mémoire (RFC §7.3).
 type BatchSource func() (*Batch, bool)
 
-// Sink consomme un batch transformé (écriture destination, collecte de preview…).
+// Sink consumes a transformed batch (destination write, preview gathering…).
 type Sink func(*Batch) error
 
 // Run exécute le plan sur tous les batches de la source, en flux. La mémoire

@@ -23,7 +23,8 @@ var (
 	// Une adresse postale française commence typiquement par un numéro et
 	// comporte un type de voie. « Bordeaux » n'a ni l'un ni l'autre.
 	streetTypeRe = regexp.MustCompile(
-		`(?i)\b(rue|avenue|av|boulevard|bd|place|cours|chemin|impasse|all[ée]e|route|quai|square|villa|passage|sentier|esplanade|faubourg|promenade)\b`)
+		`(?i)\b(rue|avenue|av|boulevard|bd|place|cours|chemin|impasse|all[ée]e|route|quai` +
+			`|square|villa|passage|sentier|esplanade|faubourg|promenade)\b`)
 	leadingNumberRe = regexp.MustCompile(`^\s*\d+\s*(bis|ter|quater)?\s*,?\s+\S`)
 	whitespaceRe    = regexp.MustCompile(`\s+`)
 )

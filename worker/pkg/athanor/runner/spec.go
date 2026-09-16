@@ -1,10 +1,10 @@
-// Package runner intègre le moteur Athanor au format de job Neosync : il traduit
-// les mappings d'un job en plan exécutable, et exécute l'anonymisation d'une
-// table de bout en bout (lecture SQL → moteur → écriture SQL).
+// Package runner plugs the Athanor engine into the Neosync job format: it turns a
+// job's mappings into an executable plan and anonymizes a table end to end
+// (SQL read → engine → SQL write).
 //
-// C'est la clé de voûte de l'intégration : elle relie le format de configuration
-// existant (mgmtv1alpha1.JobMapping) au nouveau moteur (engine + sqlio), en
-// réutilisant l'adaptateur des transformers existants (transform.WrapNeosyncConfig).
+// It is the keystone of the integration, tying the existing configuration format
+// (mgmtv1alpha1.JobMapping) to the new engine (engine + sqlio) while reusing the
+// adapter for existing transformers (transform.WrapNeosyncConfig).
 package runner
 
 import (

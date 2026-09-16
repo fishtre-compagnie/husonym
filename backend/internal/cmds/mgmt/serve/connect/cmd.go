@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/otelconnect"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
@@ -24,7 +25,6 @@ import (
 	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -52,6 +52,7 @@ import (
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
@@ -72,14 +73,13 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
-	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
@@ -757,10 +757,9 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	// Le scan de contenu PII (ConnectionDataService) utilise un client Presidio
-	// MAISON (backend/pkg/presidio), indépendant du code sous licence EE : la
-	// fonctionnalité reste libre en production. Il suffit que PRESIDIO_ANALYZER_URL
-	// soit défini.
+	// The PII content scan (ConnectionDataService) uses an IN-HOUSE Presidio client
+	// (backend/pkg/presidio), independent from the EE-licensed code: the feature
+	// stays free to run in production. It only needs PRESIDIO_ANALYZER_URL to be set.
 	var connectionPiiAnalyzer presidio.Analyzer
 	if endpoint := getPresidioAnalyzeEndpoint(); endpoint != "" {
 		connectionPiiAnalyzer = presidio.NewClient(

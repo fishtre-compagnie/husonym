@@ -35,7 +35,7 @@ type rule struct {
 	category  string
 	sensitive bool
 	suggested mgmtv1alpha1.TransformerSource
-	// keywords recherchés en sous-chaîne sur le nom normalisé.
+	// keywords matched as substrings against the normalized name.
 	keywords []string
 	// tokenOnly : mots-clés recherchés UNIQUEMENT comme token entier (évite les
 	// faux positifs des mots courts, ex. "nom" dans "prenom", "tel" dans "hotel").
@@ -298,10 +298,10 @@ func Classify(columnName, dataType string) (Classification, bool) {
 	return Classification{}, false
 }
 
-// SuggestionForEntity mappe une entité Presidio (analyse de contenu) vers une
-// Classification (catégorie, sensibilité, transformer suggéré). ok vaut false si
-// l'entité n'a pas de transformer adapté. dataType permet de choisir la variante
-// numérique du téléphone.
+// SuggestionForEntity maps a Presidio entity (content analysis) to a
+// Classification (category, sensitivity, suggested transformer). ok is false when
+// the entity has no suitable transformer. dataType selects the numeric flavor of
+// the phone transformer.
 func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 	switch strings.ToUpper(entity) {
 	case "EMAIL_ADDRESS":

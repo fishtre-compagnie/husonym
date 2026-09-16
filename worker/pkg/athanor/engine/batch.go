@@ -1,14 +1,14 @@
-// Package engine est le cœur d'exécution vectorisé du nouveau moteur (RFC §7).
+// Package engine is the vectorized execution core of the new engine (RFC §7).
 //
-// L'unité de travail est le BATCH colonnaire : un lot de lignes stocké par
-// colonnes, traité en boucles serrées. C'est le remplaçant du traitement
-// ligne-à-ligne de Benthos. Le compilateur (plan.go) transforme une description
-// déclarative en plan exécutable ; Execute (engine.go) applique ce plan à un batch.
+// The unit of work is the columnar BATCH: a chunk of rows stored column by column
+// and processed in tight loops. It replaces Benthos' row-at-a-time processing. The
+// compiler (plan.go) turns a declarative description into an executable plan;
+// Execute (engine.go) applies that plan to a batch.
 //
-// Périmètre de cet incrément (Mouvement 3, cœur) : colonnes en []any, car les
-// transformers actuels opèrent sur `any` (M1). Les colonnes typées + kernels
-// vectorisés natifs (le gain supplémentaire mesuré au spike) viendront pour les
-// transformers natifs — sans changer ce contrat.
+// Scope of this increment (Movement 3, core): columns as []any, because today's
+// transformers operate on `any` (M1). Typed columns plus native vectorized kernels
+// — the extra gain measured during the spike — will come with native transformers,
+// without changing this contract.
 package engine
 
 import (

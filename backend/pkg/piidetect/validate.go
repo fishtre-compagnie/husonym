@@ -60,10 +60,9 @@ type validator struct {
 	fn   func(string) bool
 }
 
-// L'ORDRE EST SIGNIFIANT : du plus contraint au moins contraint. Le premier
-// validateur qui atteint le seuil de confirmation gagne, ce qui évite qu'un
-// contrôle générique (Luhn) ne rafle une valeur qu'un contrôle spécifique
-// (NIR mod 97) revendique légitimement.
+// ORDER MATTERS: from the most constrained check to the least. The first validator
+// that reaches the confirmation threshold wins, which keeps a generic check (Luhn)
+// from claiming a value that a specific one (NIR mod 97) legitimately owns.
 var validators = []validator{
 	{
 		category:  "email",
@@ -130,9 +129,9 @@ var validators = []validator{
 	// IsFrenchPostalCode reste exporté pour valider une valeur ponctuelle.
 }
 
-// ClassifyValues analyse les valeurs échantillonnées d'une colonne et retourne la
-// classification la plus spécifique atteignant un seuil exploitable. ok vaut false
-// si aucun validateur ne ressort.
+// ClassifyValues examines the sampled values of a column and returns the most
+// specific classification that reaches a usable threshold. ok is false when no
+// validator stands out.
 func ClassifyValues(values []string, dataType string) (ContentClassification, bool) {
 	clean := make([]string, 0, len(values))
 	for _, v := range values {
@@ -210,7 +209,7 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 
 var (
 	emailRe    = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	digitsOnly = regexp.MustCompile(`^[0-9]+$`)
+	digitsOnly = regexp.MustCompile(`^\d+$`)
 	nonDigit   = regexp.MustCompile(`[^0-9A-Za-z]`)
 )
 
@@ -249,9 +248,9 @@ func luhn(digits string) bool {
 	return sum%10 == 0
 }
 
-// IsNIR valide un numéro de sécurité sociale français : 15 chiffres dont 2 de clé,
-// clé = 97 - (les 13 premiers chiffres mod 97). La Corse utilise 2A/2B en
-// département, remplacés respectivement par 19 et 18 dans le calcul.
+// IsNIR validates a French social security number: 15 digits, the last 2 being the
+// checksum, computed as 97 - (first 13 digits mod 97). Corsica uses 2A/2B as the
+// department code, replaced by 19 and 18 respectively in the computation.
 func IsNIR(v string) bool {
 	s := strip(v)
 	if len(s) != 15 {

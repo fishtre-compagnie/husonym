@@ -1,15 +1,15 @@
 // Inférence du format des dates stockées en TEXTE.
 //
-// Une colonne typée DATE/TIMESTAMP n'a pas de format : le driver renvoie une
-// valeur normalisée, "jj/mm/aaaa" n'est qu'un affichage. Le problème ne se pose
-// donc que pour les dates stockées en VARCHAR — cas hérité mais fréquent.
+// A column typed DATE/TIMESTAMP has no format: the driver returns a normalized
+// value, and "dd/mm/yyyy" is only a rendering. The question therefore only arises
+// for dates stored in VARCHAR — a legacy case, but a common one.
 //
 // Deux usages, le second étant le plus important :
-//   1. DÉTECTER : savoir qu'une colonne texte contient des dates.
-//   2. RESTITUER : réécrire la date anonymisée DANS LE MÊME FORMAT. Si la source
-//      contient "25/12/1980" et qu'on écrit "1985-03-14", l'application qui relit
-//      la base cible ne parse plus rien. Le format inféré doit donc redescendre
-//      jusqu'au transformer.
+//  1. DÉTECTER : savoir qu'une colonne texte contient des dates.
+//  2. RESTITUER : réécrire la date anonymisée DANS LE MÊME FORMAT. Si la source
+//     contient "25/12/1980" et qu'on écrit "1985-03-14", l'application qui relit
+//     la base cible ne parse plus rien. Le format inféré doit donc redescendre
+//     jusqu'au transformer.
 //
 // Le raisonnement se fait au niveau COLONNE, pas valeur par valeur : une colonne
 // est homogène. Un format n'est retenu que s'il explique TOUTES les valeurs.
@@ -71,30 +71,30 @@ func labelFor(layout string) string {
 	return layout
 }
 
-// frenchMonths : mois français vers numéro. time.Parse ne connaît que les mois
-// anglais, donc « 25 decembre 1980 » lui échappe — on traduit avant de parser.
-// Formes accentuées et non accentuées, la base pouvant contenir les deux.
+// frenchMonths maps French month names to their number. time.Parse only knows
+// English months, so "25 décembre 1980" escapes it — we translate before parsing.
+// Accented and unaccented spellings both appear in real databases.
 var frenchMonths = map[string]string{
 	"janvier": "01",
 	"fevrier": "02", "février": "02",
-	"mars": "03",
-	"avril": "04",
-	"mai":   "05",
-	"juin":  "06",
+	"mars":    "03",
+	"avril":   "04",
+	"mai":     "05",
+	"juin":    "06",
 	"juillet": "07",
 	"aout":    "08", "août": "08",
 	"septembre": "09",
 	"octobre":   "10",
 	"novembre":  "11",
-	"decembre":  "12", "décembre": "12",
+	"decembre":  "12", "décembre": "12", //nolint:misspell // mois français, pas un mot anglais
 }
 
 var frenchTextDateRe = regexp.MustCompile(
 	`^(\d{1,2})\s+([A-Za-zÀ-ÿ]+)\s+(\d{4})$`)
 
-// normalizeFrenchTextDate convertit « 25 decembre 1980 » en « 25/12/1980 ».
-// Retourne la valeur inchangée si elle n'a pas cette forme, de sorte que la
-// fonction puisse être appliquée sans condition à toutes les valeurs.
+// normalizeFrenchTextDate turns "25 décembre 1980" into "25/12/1980". Values that
+// do not have this shape are returned untouched, so the function can be applied
+// unconditionally to every value.
 func normalizeFrenchTextDate(v string) string {
 	m := frenchTextDateRe.FindStringSubmatch(strings.TrimSpace(v))
 	if m == nil {
@@ -109,9 +109,9 @@ func normalizeFrenchTextDate(v string) string {
 
 // DetectDateFormat infère le format des valeurs texte d'une colonne.
 //
-// ok vaut false si les valeurs ne ressemblent pas à des dates. Quand plusieurs
-// formats restent possibles, on ne tranche PAS : Ambiguous est levé et l'appelant
-// doit demander à l'utilisateur (ou appliquer la locale de la connexion).
+// ok is false when the values do not look like dates. When several formats remain
+// possible we do NOT pick one: Ambiguous is raised and the caller must ask the user
+// (or apply the connection locale).
 func DetectDateFormat(values []string) (DateFormatInfo, bool) {
 	clean := make([]string, 0, len(values))
 	frenchText := 0

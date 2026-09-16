@@ -1,27 +1,26 @@
 package transform
 
-// benthos_adapter.go — LA couture du Mouvement 1.
+// benthos_adapter.go — THE seam of Movement 1.
 //
-// Tous les transformers Neosync existants (générateurs, transforms, JS, PII,
-// passthrough) convergent vers un seul type dans le worker actuel :
+// Every existing Neosync transformer (generators, transforms, JS, PII,
+// passthrough) converges on a single type in today's worker:
 //
 //	type TransformerExecutor struct {
 //	    Opts   any
 //	    Mutate func(value any, opts any) (any, error)
 //	}
 //
-// On n'enveloppe donc PAS chaque transformer un par un : on enveloppe
-// l'exécuteur. En une passe, tout le catalogue actuel devient utilisable derrière
-// la nouvelle interface ValueTransformer — sans toucher au code existant, et de
-// façon totalement réversible.
+// So we do NOT wrap each transformer one by one: we wrap the executor. In a single
+// pass the whole current catalog becomes usable behind the new ValueTransformer
+// interface — without touching existing code, and fully reversibly.
 
 import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
-// neosyncValueAdapter enveloppe un *TransformerExecutor Neosync derrière
-// l'interface ValueTransformer d'Athanor.
+// neosyncValueAdapter wraps a Neosync *TransformerExecutor behind Athanor's
+// ValueTransformer interface.
 type neosyncValueAdapter struct {
 	exec *te.TransformerExecutor
 }

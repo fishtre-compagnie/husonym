@@ -1,15 +1,15 @@
 package sqlio
 
-// writer.go — un RowWriter qui écrit réellement dans une destination SQL, par
-// INSERT groupés, via database/sql standard. Driver-agnostique : on abstrait la
-// destination par Execer (que *sql.DB et *sql.Tx satisfont) et on isole les
-// spécificités de dialecte (placeholders, quoting) derrière Dialect.
+// writer.go — a RowWriter that really writes to a SQL destination, through
+// batched INSERTs over the standard database/sql. Driver-agnostic: the destination
+// is abstracted by Execer (satisfied by both *sql.DB and *sql.Tx) and dialect
+// specifics (placeholders, quoting) are isolated behind Dialect.
 //
-// Gestion des conflits de clé (RFC §7.4 — rejeu idempotent) : par défaut un INSERT
-// sec (le plus rapide). Si une stratégie onConflict est configurée sur la
-// destination du job, on délègue la construction de la requête au query-builder
-// partagé (pkg/query-builder), déjà utilisé par le chemin Benthos — même
-// sémantique « do nothing » / « do update » (upsert), sans dupliquer le SQL.
+// Key conflict handling (RFC §7.4 — idempotent replay): a plain INSERT by default,
+// the fastest path. When an onConflict policy is configured on the job's
+// destination, query building is delegated to the shared query-builder
+// (pkg/query-builder) already used by the Benthos path — same "do nothing" /
+// "do update" (upsert) semantics, without duplicating the SQL.
 
 import (
 	"context"
@@ -98,26 +98,26 @@ func maxRowsForParams(maxParams, numCols int) int {
 	return 1
 }
 
-// ConflictAction décrit quoi faire quand une ligne insérée entre en conflit avec
-// une clé (PK/unique) existante en destination.
+// ConflictAction describes what to do when an inserted row collides with an
+// existing key (PK/unique) at the destination.
 type ConflictAction int
 
 const (
-	// ConflictNone : INSERT simple (comportement historique). Un conflit échoue.
+	// ConflictNone: plain INSERT (historical behavior). A collision fails.
 	ConflictNone ConflictAction = iota
-	// ConflictDoNothing : on ignore la ligne en conflit (INSERT IGNORE / ON CONFLICT DO NOTHING).
+	// ConflictDoNothing: skip the colliding row (INSERT IGNORE / ON CONFLICT DO NOTHING).
 	ConflictDoNothing
-	// ConflictDoUpdate : upsert — on met à jour la ligne existante (ON DUPLICATE
-	// KEY UPDATE / ON CONFLICT DO UPDATE). Pour Postgres, requiert les colonnes de
-	// conflit (PKColumns) ; MySQL n'en a pas besoin (déclenché sur toute clé unique).
+	// ConflictDoUpdate: upsert — update the existing row (ON DUPLICATE KEY UPDATE /
+	// ON CONFLICT DO UPDATE). Postgres needs the conflict target columns
+	// (PKColumns); MySQL does not (it fires on any unique key).
 	ConflictDoUpdate
 )
 
 // WriterOption configure un SQLWriter à la construction.
 type WriterOption func(*SQLWriter)
 
-// WithOnConflict fixe la stratégie de conflit. pkColumns n'est utile qu'en
-// ConflictDoUpdate sous Postgres (colonnes de la contrainte de conflit).
+// WithOnConflict sets the conflict policy. pkColumns only matters for
+// ConflictDoUpdate on Postgres (the columns of the conflict target).
 func WithOnConflict(action ConflictAction, pkColumns []string) WriterOption {
 	return func(w *SQLWriter) {
 		w.conflict = action
@@ -168,10 +168,10 @@ func NewSQLWriter(ctx context.Context, db Execer, dialect Dialect, schema, table
 	return w
 }
 
-// WriteBatch insère toutes les lignes du lot, en découpant si besoin pour
-// respecter les limites du SGBD (MaxRowsPerInsert : nb de paramètres/tuples).
-// Chaque sous-lot part en INSERT « maison » (chemin rapide) ou, si une stratégie
-// de conflit est configurée, via le query-builder partagé.
+// WriteBatch inserts every row of the batch, splitting it when needed to stay
+// within the database limits (MaxRowsPerInsert: parameter/tuple count). Each chunk
+// goes out as an in-house INSERT (the fast path) or, when a conflict policy is
+// configured, through the shared query-builder.
 func (w *SQLWriter) WriteBatch(columns []string, rows [][]any) error {
 	if len(rows) == 0 {
 		return nil
@@ -202,8 +202,8 @@ func (w *SQLWriter) WriteBatch(columns []string, rows [][]any) error {
 	return nil
 }
 
-// writeBatchPlain émet un unique INSERT multi-lignes (sans gestion de conflit).
-// L'appelant garantit que len(rows) respecte déjà MaxRowsPerInsert.
+// writeBatchPlain emits a single multi-row INSERT (no conflict handling).
+// The caller guarantees that len(rows) already honors MaxRowsPerInsert.
 func (w *SQLWriter) writeBatchPlain(columns []string, rows [][]any) error {
 	quoted := make([]string, len(columns))
 	for i, c := range columns {

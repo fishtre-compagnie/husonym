@@ -86,7 +86,7 @@ func (a *Activity) runAthanor(
 	job := jobResp.Msg.GetJob()
 	mappings := job.GetMappings()
 
-	// 2) Connexions source/destination, dérivées du job (pas du RunContext).
+	// 2) Source/destination connections, derived from the job (not the RunContext).
 	srcConnID, err := sourceConnectionID(job.GetSource())
 	if err != nil {
 		return err
@@ -99,10 +99,12 @@ func (a *Activity) runAthanor(
 
 	srcInput, err := getConnectionById(srcConnID)
 	if err != nil {
+		//nolint:misspell // message produit, rédigé en français
 		return fmt.Errorf("athanor: connexion source %q: %w", srcConnID, err)
 	}
 	dstInput, err := getConnectionById(dstConnID)
 	if err != nil {
+		//nolint:misspell // message produit, rédigé en français
 		return fmt.Errorf("athanor: connexion destination %q: %w", dstConnID, err)
 	}
 
@@ -146,7 +148,7 @@ func (a *Activity) runAthanor(
 	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize, wc, deriver)
 }
 
-// sourceConnectionID extrait l'id de connexion source selon le dialecte du job.
+// sourceConnectionID extracts the source connection id for the job's dialect.
 func sourceConnectionID(src *mgmtv1alpha1.JobSource) (string, error) {
 	opts := src.GetOptions()
 	switch {
@@ -240,7 +242,9 @@ func conflictFromPostgres(oc *mgmtv1alpha1.PostgresOnConflictConfig) sqlio.Confl
 	if oc.GetUpdate() != nil {
 		return sqlio.ConflictDoUpdate
 	}
-	if oc.GetNothing() != nil || oc.GetDoNothing() {
+	// GetDoNothing est déprécié au profit de GetNothing, mais reste lu : les jobs
+	// enregistrés avant le changement de proto portent encore l'ancien champ.
+	if oc.GetNothing() != nil || oc.GetDoNothing() { //nolint:staticcheck // compat des jobs existants
 		return sqlio.ConflictDoNothing
 	}
 	return sqlio.ConflictNone

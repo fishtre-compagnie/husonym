@@ -2,10 +2,10 @@
 // Analyzer (open-source, MIT). Il expose uniquement l'endpoint POST /analyze dont
 // nous avons besoin pour le scan de contenu PII.
 //
-// Ce client est volontairement indépendant du paquet internal/ee/presidio (qui est
-// sous licence Enterprise) afin que la détection PII par contenu reste utilisable
-// en production sans dépendance à du code sous licence EE. L'API REST de Presidio
-// est publique : https://microsoft.github.io/presidio/api-docs/api-docs.html
+// This client is deliberately independent from the internal/ee/presidio package
+// (which is Enterprise-licensed), so that content-based PII detection stays usable
+// in production without depending on EE code. The Presidio REST API is public:
+// https://microsoft.github.io/presidio/api-docs/api-docs.html
 package presidio
 
 import (

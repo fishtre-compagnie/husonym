@@ -21,9 +21,9 @@ const (
 
 // GetColumnSampleValues retourne les premières valeurs d'une colonne.
 //
-// Sert la levée de doute : quand une détection est marquée « à vérifier », voir
-// les données réelles est le moyen le plus direct de trancher. Contrairement au
-// scan PII, aucune analyse n'est faite ici — on renvoie les valeurs telles quelles.
+// This serves doubt resolution: when a detection is flagged "needs review", seeing
+// the real data is the most direct way to settle it. Unlike the PII scan, nothing is
+// examined here — the values are returned as they are.
 func (s *Service) GetColumnSampleValues(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetColumnSampleValuesRequest],
@@ -71,8 +71,8 @@ func (s *Service) GetColumnSampleValues(
 		}
 		raw, ok := row[column]
 		if !ok {
-			// La colonne n'existe pas dans la table : autant le dire clairement
-			// plutôt que de renvoyer une liste vide qui ressemble à « aucune donnée ».
+			// The column is absent from the table: say so plainly rather than return
+			// an empty list, which would read as "no data".
 			return nil, connect.NewError(
 				connect.CodeNotFound,
 				fmt.Errorf("colonne %q absente de %s.%s",

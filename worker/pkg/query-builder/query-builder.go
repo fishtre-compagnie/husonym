@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/doug-martin/goqu/v9"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
-	"github.com/doug-martin/goqu/v9"
 
 	// import the dialect
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
@@ -82,12 +82,12 @@ const sampleWindowSize = 1000
 
 // BuildSampledSelectLimitQuery construit une requête d'échantillonnage aléatoire.
 //
-// Le tirage porte sur une FENÊTRE bornée, pas sur la table entière. Un
-// `ORDER BY RAND() LIMIT 20` posé directement sur la table oblige le SGBD à lire
-// toutes les lignes et à les trier intégralement pour n'en rendre que 20 : le coût
-// croît avec la table, sans rapport avec la taille de l'échantillon demandé.
-// Mesuré sur une table de production MySQL, la requête dépassait 30 s, le client
-// coupait la connexion et le scan PII échouait en HTTP 500.
+// The draw happens over a bounded WINDOW, not the whole table. An
+// `ORDER BY RAND() LIMIT 20` applied straight to the table forces the database to
+// read every row and sort all of them to return 20: the cost grows with the table,
+// unrelated to the requested sample size. Measured on a production MySQL table, the
+// query went past 30 s, the client dropped the link and the PII scan failed with an
+// HTTP 500.
 //
 // Compromis assumé : l'échantillon n'est plus uniforme sur l'ensemble de la table,
 // il est tiré au hasard parmi les premières sampleWindowSize lignes. Pour

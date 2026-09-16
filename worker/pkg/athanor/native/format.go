@@ -71,10 +71,9 @@ func (f *PhoneFaker) TransformValue(_ transform.Ctx, in any) (any, error) {
 
 var _ transform.ValueTransformer = (*PhoneFaker)(nil)
 
-// FullNameFaker compose un nom complet déterministe « Prénom Nom » à partir de
-// deux dictionnaires. Les deux indices sont dérivés de moitiés distinctes de la
-// graine, pour que prénom et nom varient indépendamment tout en restant
-// déterministes pour une même entrée.
+// FullNameFaker composes a deterministic "First Last" name from two dictionaries.
+// Both indices are derived from distinct halves of the seed, so that first and last
+// name vary independently while staying deterministic for a given input.
 type FullNameFaker struct {
 	domain      *consistency.Domain
 	first, last []string

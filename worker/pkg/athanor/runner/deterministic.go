@@ -25,10 +25,10 @@ import (
 // l'adaptateur Benthos aléatoire. Un deriver nil désactive tout (comportement
 // historique).
 //
-// On traite ensemble les variantes Generate* et Transform* : sous Athanor, toutes
-// deviennent une fonction déterministe de la valeur d'entrée (RFC §8). Les
-// dictionnaires (prénom, nom, ville) passent par DictFaker ; les formats
-// quasi-uniques (email, téléphone) par des fakers dédiés dérivés de la graine.
+// Generate* and Transform* variants are handled together: under Athanor both
+// become a deterministic function of the input value (RFC §8). Dictionary-backed
+// kinds (first name, last name, city) go through DictFaker; near-unique formats
+// (email, phone) through dedicated fakers derived from the seed.
 func deterministicValueTransformer(
 	d *consistency.Deriver,
 	cfg *mgmtv1alpha1.TransformerConfig,

@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -33,7 +34,7 @@ const (
 	sampleTimeout = 15 * time.Second
 )
 
-// rowCollector accumule les lignes échantillonnées (gob) en mémoire.
+// rowCollector gathers the sampled rows (gob-encoded) in memory.
 type rowCollector struct {
 	rows [][]byte
 }
@@ -80,9 +81,9 @@ func (s *Service) DetectPiiInConnectionData(
 		sampleSize = defaultSampleSize
 	}
 
-	// Délai propre à l'échantillonnage : au-delà, l'erreur est explicite et
-	// actionnable. Sans lui, c'est le client qui abandonne, et le serveur ne
-	// remonte qu'un « context canceled » que l'UI affiche en HTTP 500 opaque.
+	// A deadline of its own for sampling: past it, the error is explicit and
+	// actionable. Without it the client gives up first, and the server only reports
+	// a "context canceled" that the UI surfaces as an opaque HTTP 500.
 	sampleCtx, cancelSample := context.WithTimeout(ctx, sampleTimeout)
 	defer cancelSample()
 
@@ -174,8 +175,8 @@ func (s *Service) DetectPiiInConnectionData(
 				Score:                      1,
 				SuggestedTransformerSource: cc.Suggested,
 				IsSensitive:                cc.Sensitive,
-				MatchCount:                 uint32(len(values)),
-				SampledCount:               uint32(len(values)),
+				MatchCount:                 sampleCount(values),
+				SampledCount:               sampleCount(values),
 				DataCategory:               cc.Category,
 				PiiConfidence:              cc.Confidence,
 				PiiDetectionMethod:         cc.Method,
@@ -200,8 +201,8 @@ func (s *Service) DetectPiiInConnectionData(
 					EntityType:   "DATE",
 					Score:        1,
 					IsSensitive:  sensitive,
-					MatchCount:   uint32(len(values)),
-					SampledCount: uint32(len(values)),
+					MatchCount:   sampleCount(values),
+					SampledCount: sampleCount(values),
 					DataCategory: dateCategory(sensitive),
 					// Le transformer reste au choix de l'utilisateur : aucun
 					// générateur ne sait restituer la date dans le format source.
@@ -257,11 +258,12 @@ func (s *Service) DetectPiiInConnectionData(
 			Score:                      float32(avgScore),
 			SuggestedTransformerSource: suggestion.Suggested,
 			IsSensitive:                suggestion.Sensitive,
-			MatchCount:                 uint32(matchCount),
-			SampledCount:               uint32(len(values)),
+			MatchCount:                 clampUint32(matchCount),
+			SampledCount:               sampleCount(values),
 			DataCategory:               suggestion.Category,
 			PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
 			PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+			//nolint:misspell // message produit, rédigé en français
 			PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
 				entity, matchCount, len(values), avgScore),
 		})
@@ -272,9 +274,9 @@ func (s *Service) DetectPiiInConnectionData(
 	}), nil
 }
 
-// analyzeColumn analyse chaque valeur individuellement (le NER reconnaît mieux un
-// nom/lieu isolé qu'au sein d'une liste) et retourne l'entité dominante parmi les
-// entités mappables, son score moyen et le nombre de valeurs où elle apparaît.
+// analyzeColumn examines each value on its own (NER recognizes an isolated
+// name/place better than one buried in a list) and returns the dominant entity
+// among the mappable ones, its mean score, and how many values carry it.
 func (s *Service) analyzeColumn(
 	ctx context.Context,
 	values []string,
@@ -358,17 +360,33 @@ func valueToText(v any) string {
 	}
 }
 
-func truncateRunes(s string, max int) string {
+// sampleCount convertit une taille d'échantillon vers le type du proto. La borne
+// est explicite : l'échantillon vaut quelques dizaines de valeurs, mais une
+// conversion nue depuis un int laisserait un dépassement possible sans le dire.
+func sampleCount(values []string) uint32 { return clampUint32(len(values)) }
+
+// clampUint32 ramène un compteur positif dans les bornes du type du proto.
+func clampUint32(n int) uint32 {
+	if n < 0 {
+		return 0
+	}
+	if n > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(n)
+}
+
+func truncateRunes(s string, limit int) string {
 	r := []rune(s)
-	if len(r) <= max {
+	if len(r) <= limit {
 		return s
 	}
-	return string(r[:max])
+	return string(r[:limit])
 }
 
 // nonTextualRe reconnaît une valeur dépourvue de contenu langagier : nombre
 // (entier, décimal, signé), booléen, ou horodatage déjà écarté par l'étage 2.
-var nonTextualRe = regexp.MustCompile(`^[+-]?[0-9]+([.,][0-9]+)?$`)
+var nonTextualRe = regexp.MustCompile(`^[+-]?\d+([.,]\d+)?$`)
 
 // base64ishRe : suite continue de caractères de l'alphabet base64 / base64url.
 // Le point et l'arobase en sont absents, ce qui laisse passer emails et URLs.
