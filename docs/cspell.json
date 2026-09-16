@@ -95,8 +95,16 @@
     "lastname",
     "jackc"
   ],
-  "flagWords": ["hte"],
-  "files": ["blog/**/*.md*", "docs/**/*.md*"],
+  "flagWords": [
+    "hte"
+  ],
+  "files": [
+    "blog/**/*.md*",
+    "docs/**/*.md*"
+  ],
+  "ignorePaths": [
+    "docs/guides/detection-rgpd.md"
+  ],
   "useGitignore": true,
   "dictionaries": [
     "en_US",
