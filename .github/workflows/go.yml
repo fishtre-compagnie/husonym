@@ -230,6 +230,12 @@ jobs:
   benchmark:
     name: benchmarks
     runs-on: ubuntu-latest
+    # Le job publie le comparatif benchstat en commentaire de la PR : sans ce
+    # droit, l'étape échoue sur « Resource not accessible by integration » alors
+    # que les benchmarks, eux, se sont bien exécutés.
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
