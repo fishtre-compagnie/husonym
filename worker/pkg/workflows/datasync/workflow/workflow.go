@@ -10,11 +10,13 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
@@ -486,6 +488,11 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 
 	logger.Info("data syncs completed")
 
+	err = runReferentialIntegrityCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs)
+	if err != nil {
+		return nil, err
+	}
+
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
@@ -641,6 +648,43 @@ func runPostTableSyncActivity(
 		return err
 	}
 	return nil
+}
+
+// runReferentialIntegrityCheck verifies, once every table is written, that no destination
+// row references a missing parent. Runs started before the check existed replay without it.
+func runReferentialIntegrityCheck(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	version := workflow.GetVersion(ctx, "referential-integrity-check", workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var tables []*referentialintegrity_activity.TableForeignKeys
+	for _, cfg := range configs {
+		if cfg.RunType == runconfigs.RunTypeInsert && len(cfg.ForeignKeys) > 0 {
+			tables = append(tables, &referentialintegrity_activity.TableForeignKeys{
+				Schema: cfg.TableSchema, Table: cfg.TableName, ForeignKeys: cfg.ForeignKeys,
+			})
+		}
+	}
+	if len(tables) == 0 {
+		return nil
+	}
+	logger.Info("scheduling referential integrity check", "tables", len(tables))
+	var resp *referentialintegrity_activity.CheckReferentialIntegrityResponse
+	var integrityActivity *referentialintegrity_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 30 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		integrityActivity.CheckReferentialIntegrity,
+		&referentialintegrity_activity.CheckReferentialIntegrityRequest{JobId: jobId, Tables: tables},
+	).Get(ctx, &resp)
 }
 
 func runRedisCleanUpActivity(

@@ -8,6 +8,7 @@ import (
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
@@ -51,6 +52,7 @@ func Register(
 		eelicense,
 	)
 	redisCleanUpActivity := syncrediscleanup_activity.New(redisclient)
+	referentialIntegrityActivity := referentialintegrity_activity.New(jobclient, connclient, sqlmanager)
 
 	wf := datasync_workflow.New(eelicense)
 
@@ -61,4 +63,5 @@ func Register(
 	w.RegisterActivity(accountStatusActivity.CheckAccountStatus)
 	w.RegisterActivity(runPostTableSyncActivity.RunPostTableSync)
 	w.RegisterActivity(jobhookByTimingActivity.RunJobHooksByTiming)
+	w.RegisterActivity(referentialIntegrityActivity.CheckReferentialIntegrity)
 }
