@@ -1,7 +1,9 @@
 # Banc d'essai des moteurs (Benthos / Athanor)
 
-Statut : conception validée le 2026-09-17. Rien n'est encore implémenté. Référence visuelle : page « Pièges par
-SGBD » (schéma d'écriture par SGBD, structures de FK du banc, tableau des particularités).
+Statut : conception validée le 2026-09-17, amendée le même jour après un second challenge (défauts du calcul
+partagé, intégrité, analyse de schéma, structure du banc). Implémentation du banc en cours dans `bench/`.
+Référence visuelle : page « Pièges par SGBD » (schéma d'écriture par SGBD, structures de FK du banc, tableau des
+particularités).
 
 ## Objectif
 
@@ -22,6 +24,29 @@ deux moteurs puis vérifie automatiquement les résultats. Chaque moteur est com
 - Filtre des FK nullables mesuré sur la source : `EXISTS` ou `x IS NOT NULL AND x IN (…)` coûtent ~0 ;
   `x IN (…)` seul déclenche un parcours complet de table (sémantique de `NULL IN`).
 
+## Défauts du calcul partagé relevés à la lecture du code (2026-09-17)
+
+Ils touchent les deux moteurs. Chacun devient un cas du banc avant d'être corrigé.
+
+- **`OR` de premier niveau dans un `WHERE` de subset** : les conditions sont ajoutées sans parenthèses
+  (`query.Where(goqu.L(cond))`, `select-query-builder/querybuilder.go`). Vérifié sur goqu :
+  `WHERE (t.a = 1 OR t.b = 2 AND (t.id > ?))`. La pagination relit les lignes `a = 1` ; combiné à une jointure de
+  subset ou à une seconde racine, des lignes hors subset passent. Pas encore rejoué sur le builder complet.
+- **« Do nothing » MySQL = `INSERT IGNORE`** (goqu), activé par les deux moteurs à chaque nouvelle tentative :
+  masque la troncature, le `NOT NULL` remplacé par le défaut implicite, l'`ENUM` invalide et la collision sur
+  n'importe quelle clé unique. Piste : `ON DUPLICATE KEY UPDATE pk = pk`.
+- **Table sans clé et reprise** : « do nothing » n'a aucune clé sur laquelle entrer en conflit, la page est réécrite
+  en double ; des lignes strictement identiques ne se paginent pas par curseur.
+- **Colonnes de tri de repli** (`runconfigs/builder.go`, `getOrderByColumns`) : premier index unique, même
+  nullable, puis toutes les colonnes triées par nom (`TEXT`, `JSON`, nullables comprises). Une table sans clé
+  fiable doit être lue en un seul flux.
+- **Qualification du `WHERE` MySQL** : seul le membre gauche des comparaisons est qualifié ; `IS NULL`, `BETWEEN`,
+  `DATE(col) = …` donnent une colonne ambiguë sous jointure (échec franc).
+
+Propres à Athanor, à confirmer par le banc : `BIT` et `GEOMETRY` absents de `binaryDatabaseTypes` (convertis en
+`string`) ; si `SET FOREIGN_KEY_CHECKS=1` échoue, la connexion retourne au pool FK coupées (`Rollback` ne rétablit
+pas une variable de session) ; une FK auto-référencée `NOT NULL` semble rejetée comme dépendance circulaire.
+
 ## Conception de l'intégrité référentielle d'Athanor (améliore Benthos)
 
 1. **FK nullables** : filtre à la lecture dans la source (`CASE WHEN EXISTS (sélection du parent) THEN col END`),
@@ -33,6 +58,24 @@ deux moteurs puis vérifie automatiquement les résultats. Chaque moteur est com
    Avec `skipForeignKeyViolations` : `NULL` ou suppression en cascade ; sans : échec en listant les orphelins.
 
 Les FK virtuelles sont traitées comme les réelles (Benthos écrit leurs orphelins).
+
+Amendements validés le 2026-09-17 :
+
+- **L'étape 3 est une réparation, pas un simple filet** : l'`EXISTS` de l'étape 1 s'appuie sur la sélection
+  source du parent ; si l'étape 2 écarte ce parent, ou si la source change entre deux tables, la référence écrite
+  est orpheline. L'étape 3 itère jusqu'à stabilité et journalise ce qu'elle modifie.
+- **Elle ne répare que si la destination a été vidée par le run.** Sinon elle détecte et échoue : une réparation
+  toucherait des lignes que le run n'a pas écrites.
+- **L'étape 2 ne contrôle que les FK dont le parent est réduit** (par subset ou par écartement en cascade) ; le
+  reste relève de l'étape 3. Le raccourci « la FK du chemin est garantie par la jointure » est faux avec deux
+  racines (parent filtré par R1 et R2, enfant joint par R1 seulement).
+- Clé primaire transformée : la FK est traduite via Redis **avant** le contrôle en destination.
+- SQL Server : une seule revalidation `WITH CHECK`, en fin de run (par lot elle serait quadratique et échouerait
+  sur un cycle), avec reprise si un worker tué laisse les contraintes désactivées.
+- PostgreSQL : le contrôle des droits tente `SET LOCAL session_replication_role` dans une transaction annulée
+  plutôt que de lire `rolsuper` (services managés sans vrai superutilisateur). Alternative à étudier en phase 3 :
+  créer les FK après le chargement quand Husonym crée le schéma.
+- Écarté : remonter les parents manquants (fermeture vers le haut), qui ferait entrer des données hors subset.
 
 Précisions issues du challenge, vérifiées dans `worker/pkg/select-query-builder` et `internal/runconfigs` :
 
@@ -71,9 +114,19 @@ Trois moments : test de connexion dans l'UI (choix source / destination, état p
 bloquant. `CheckConnectionConfig` reçoit le rôle et le moteur et renvoie une liste de contrôles, en conservant la
 liste de droits existante. Scénarios du banc : destination sans droits, source sur un réplica.
 
-## Piste à challenger : analyse complète du schéma avant run
+## Analyse du schéma avant run
 
-Proposée, non décidée. Un rapport produit avant le premier run (et à la configuration du job) qui détecte ce que
+Décidé le 2026-09-17 : **analyse statique uniquement, produite par le calcul du plan, après le banc.**
+
+- Les constats sont un sous-produit de `GenerateBenthosConfigs`, qui charge déjà colonnes, clés et index : un
+  analyseur séparé qui redérive le chemin de subset finirait par diverger du moteur.
+- Aucun scan de données sur la source avant run (anti-join par FK = parcours complets sur une base partagée) :
+  l'étape 2 traite les orphelins de la source, l'étape 3 donne les chiffres réels sur la destination.
+- Un seul rapport de pré-vol (droits, structure, transformers), une seule échelle (bloquant, avertissement,
+  information), les trois moments du contrôle des droits. La détection RGPD reste distincte ; le pré-vol peut
+  utiliser son résultat (« colonne PII en passthrough »). N'afficher que ce qui concerne les tables du job.
+
+Proposition d'origine : un rapport produit avant le premier run (et à la configuration du job) qui détecte ce que
 le banc teste : colonnes de tri non uniques ou nullables, orphelins déjà présents dans la source, auto-références
 et cycles, chemins de subset en « diamant », FK nullables sur le chemin du subset, associations polymorphes sans
 FK (candidates à une FK virtuelle), collations ou types divergents entre FK et parent, types non gérés, colonnes
@@ -96,6 +149,9 @@ Priorité **P1** : perte ou fuite de données, corruption silencieuse. **P2** : 
 - Nombre de lignes exactement égal à la taille de page (page vide finale) ; table vide ; une seule ligne.
 - Source modifiée pendant le run (insertions avant le curseur, mises à jour de colonnes de tri).
 - Tri sur plusieurs colonnes.
+- **Table sans clé suivie d'une reprise** (« do nothing » n'a aucune clé sur laquelle entrer en conflit : page en
+  double) ; **erreur masquée par `INSERT IGNORE`** lors d'une reprise ; **worker tué en cours de page** (remonté de
+  P3). Ces trois cas demandent une page plus grande que le lot d'écriture et une panne provoquée.
 
 ### Subset et clés étrangères (P1)
 
@@ -115,6 +171,13 @@ Priorité **P1** : perte ou fuite de données, corruption silencieuse. **P2** : 
 - Clause `WHERE` relative au temps (à figer pour la reproductibilité) ; `WHERE` avec sous-requête, guillemets,
   noms réservés.
 - Subset par FK désactivé (`IsNotForeignKeySafeSubset`).
+- **`WHERE` avec `OR` de premier niveau** : seul sous pagination, et combiné à une seconde racine (fuite).
+- **Deux racines de subset** sur le même graphe (intersection attendue) ; parent filtré par deux racines alors
+  que l'enfant ne le rejoint que par une.
+- Table rattachée au subset **uniquement par une FK virtuelle**.
+- Ligne **`id = 0` sur une colonne `AUTO_INCREMENT`** (renumérotée sans `NO_AUTO_VALUE_ON_ZERO`), souvent la cible
+  de la sentinelle `id_parent = 0`.
+- **Trigger en destination qui écrit dans une table elle aussi synchronisée.**
 - `ON DELETE CASCADE` / `SET NULL` en destination, interaction avec `truncateBeforeInsert`.
 
 ### Transformers (P1)
@@ -147,6 +210,12 @@ Priorité **P1** : perte ou fuite de données, corruption silencieuse. **P2** : 
   `bytea`, `money`, `tsvector`, contraintes `DEFERRABLE`.
 - SQL Server (phase 3) : `IDENTITY`, `rowversion`, colonnes calculées, `hierarchyid`, `xml`, `datetimeoffset`.
 
+- FK auto-référencée `NOT NULL` (ligne racine qui se référence elle-même) ; `WHERE` avec `IS NULL`, `BETWEEN` ou une
+  fonction, sous jointure (colonne ambiguë) ; colonnes `latin1` contenant de l'UTF-8 (mojibake) ;
+  `lower_case_table_names` différent entre source et destination ; tables partitionnées ;
+  `sql_generate_invisible_primary_key`. `BIT(64)` et `GEOMETRY` à travers le normaliseur d'Athanor sont à traiter
+  en P1 (corruption silencieuse possible).
+
 ### Destination et configuration du job (P2)
 
 - Destination au schéma différent (colonne en plus `NOT NULL` sans défaut, ordre des colonnes différent,
@@ -157,17 +226,129 @@ Priorité **P1** : perte ou fuite de données, corruption silencieuse. **P2** : 
 
 ### Exploitation (P3)
 
-- Worker tué en cours de page (reprise idempotente) ; perte de connexion ; délai de requête source.
+- Perte de connexion ; délai de requête source. (Worker tué en cours de page : remonté en P1.)
 - `sql_mode` ou fuseau différents entre source et destination.
 - Échelle : 1 million de lignes, table avec 20 FK nullables filtrées, sous-requêtes de subset à plusieurs jointures.
 
 ## Outil
 
-- Générateur Go, graine fixe, taille paramétrable, une description de schéma pour les trois SGBD.
-- Orchestration : chargement, création des jobs des deux moteurs, runs l'un après l'autre sur source figée,
-  durées par table, comparaison ligne à ligne, contrôle des orphelins (FK virtuelles comprises), vérifications
-  d'attendu par cas, rapport.
-- Une commande `make`.
+Structure validée le 2026-09-17, dans `bench/` (versionné, module Go du dépôt).
+
+- **Un job par cas et par moteur** : un cas qui fait échouer le run ne masque pas les autres. L'attendu d'un cas
+  peut être « le run échoue avec tel message ».
+- **Attendu stocké hors du job**, dans un schéma `bench_oracle` de la source : `expected_rows(case_id, table,
+  row_key, verdict, null_columns)` et `expected_columns(case_id, table, column, rule)` (règles : `unchanged`, `null`,
+  `not_in_source_set`, `unique`, `max_len`, `stable_across_runs`, `matches_parent`). Table sans clé : `row_key` est une
+  empreinte du contenu.
+- `make bench/correctness` : petit volume, `MAX_TABLE_SYNC_PAGE_LIMIT=100` sur le worker, jobs en parallèle.
+  `make bench/perf` : schéma combiné à l'échelle, 5 runs par moteur en alternance, worker redémarré entre les
+  runs, durée par table, lignes par seconde, pic mémoire du conteneur. `make bench` enchaîne les deux.
+- Dossiers : `cmd/enginebench` (CLI `list | run | verify`), `schema` (modèle neutre et DDL par SGBD), `cases` (un
+  fichier par famille), `gen` (chargement de la source depuis la graine de chaque cas), `oracle` (attendu), `env`
+  (serveurs), `orchestrate` (API Connect), `verify`, `report`, `baseline.json` (écarts connus).
+- `compose.bench.yml` se pose sur `compose.dev.yml` : trois MySQL 8.0 jetables en `tmpfs` (source `3309`,
+  destination Benthos `3310`, destination Athanor `3311`), et le worker recréé avec la taille de page du banc.
+  Les destinations du premier test réel (`3307`, `3308`) ne sont pas touchées. `make bench/up`, `make bench/down`.
+- Le banc lit la taille de page dans le plan stocké du run et s'arrête si elle diffère de la sienne : sans ce
+  contrôle, les cas de pagination passeraient sans être exercés.
+- Valeurs comparées dans le texte que la base imprime (hexadécimal pour le binaire), lu de la même façon dans la
+  source et la destination : aucun type Go n'arrondit une valeur entre les deux.
+- Rapport : `bench/out/<date>-<commit>/report.json` et `report.md` ; code de sortie non nul si un cas régresse par
+  rapport à `baseline.json`. Critère d'acceptation des corrections : la baseline se vide.
+
+## Passage du banc (2026-09-17, commit `7691bda2` + banc, page de 100 lignes)
+
+50 cas MySQL, un job par cas et par moteur, verdicts identiques sur deux passages complets. La source est en
+`super_read_only` pendant tous les runs (scénario « source sur un réplica ») : aucun moteur n'y écrit.
+`retry-keyless-table-duplicates` demande des pages de 2 500 lignes (`make bench/large-pages`).
+
+| Priorité | Moteur | OK | Écart | Échec du run | Run sans fin | Échec attendu absent |
+|---|---|---|---|---|---|---|
+| P1 | Benthos | 24 | 8 | 4 | 5 | 0 |
+| P1 | Athanor | 22 | 14 | 4 | 0 | 1 |
+| P2 | Benthos | 4 | 1 | 1 | 3 | 0 |
+| P2 | Athanor | 4 | 0 | 4 | 0 | 1 |
+
+Constats principaux :
+
+- **Benthos ne fait pas échouer un run sur une erreur d'écriture non classée : il réessaie jusqu'au délai de
+  l'activité (10 min).** Vu sur valeur hors bornes, troncature, `NOT NULL`, colonne générée, droit `INSERT` refusé,
+  colonne ambiguë, clé binaire dans le jeton. Le banc arrête ces runs après 3 min (« run sans fin »).
+- **Pertes silencieuses communes** (run réussi) : page finissant sur `NULL` (150 lignes sur 250), lignes identiques
+  à cheval sur deux pages (5 sur 155), FK nullable sur le chemin du subset (10 sur 20), orphelins de FK virtuelle,
+  trigger de destination qui écrit dans une table synchronisée (10 lignes en trop).
+- **Corruptions silencieuses propres à Benthos** : microsecondes de `DATETIME(6)` et `TIMESTAMP(6)` mises à zéro,
+  grands nombres JSON arrondis, `ON UPDATE CURRENT_TIMESTAMP` réécrit par la passe de mise à jour, lignes à FK
+  nullable orpheline dans la source écartées au lieu d'être gardées à `NULL`.
+- **Propres à Athanor** : orphelins écrits sur tous les cas de FK hors chemin (FK suspendues, intégrité à
+  implémenter) ; `OR` avec deux racines : 10 lignes hors subset (Benthos est sauvé par le refus de la FK) ;
+  nouvelle tentative en `INSERT IGNORE` : troncature acceptée et run réussi ; table sans clé : 2 000 lignes en
+  double après un échec partiel de page ; colonnes générées : échec du run même en valeur par défaut.
+- **Jeton de reprise** : `BIGINT UNSIGNED` au-delà de 2^53 casse les deux moteurs ; `DATETIME(6)` casse Benthos ;
+  `BINARY(16)` casse les deux ; `DECIMAL`, clé composite et collation insensible à la casse passent.
+- `OR` de premier niveau sous pagination : `Duplicate entry` dès la page 2 sur les deux moteurs. `id = 0` en
+  `AUTO_INCREMENT` : renuméroté, `Duplicate entry` sur les deux. FK auto-référencée `NOT NULL` : refusée comme
+  dépendance circulaire. Destination sans droit d'écriture : aucun contrôle au démarrage, Athanor échoue au premier
+  `INSERT`, Benthos réessaie sans fin.
+- Durées : Benthos met 5 à 22 s par cas (16 à 22 s avec subset par FK), Athanor 0,4 à 1,7 s. Cause non analysée.
+
+| Cas | Priorité | Benthos | Athanor |
+|---|---|---|---|
+| `destination-trigger-writes-synced-table` | P1 | écart | écart |
+| `fk-composite-partially-null` | P1 | OK | écart |
+| `fk-cycle-two-tables` | P1 | OK | écart |
+| `fk-diamond` | P1 | OK | écart |
+| `fk-nullable-on-subset-path` | P1 | écart | écart |
+| `fk-self-reference-nullable` | P1 | OK | écart |
+| `fk-several-to-same-parent` | P1 | OK | écart |
+| `fk-source-orphans` | P1 | écart | écart |
+| `fk-virtual` | P1 | écart | écart |
+| `fk-virtual-only-path` | P1 | OK | OK |
+| `page-binary16-key` | P1 | run sans fin | échec du run |
+| `page-case-insensitive-key` | P1 | OK | OK |
+| `page-composite-key` | P1 | OK | OK |
+| `page-datetime6-key` | P1 | échec du run | OK |
+| `page-decimal-key` | P1 | OK | OK |
+| `page-duplicate-rows` | P1 | écart | écart |
+| `page-empty-and-single-row` | P1 | OK | OK |
+| `page-exact-multiple` | P1 | OK | OK |
+| `page-null-order-values` | P1 | écart | écart |
+| `page-unsigned-bigint-key` | P1 | échec du run | échec du run |
+| `retry-insert-ignore-masks-truncation` | P1 | run sans fin | échec attendu absent |
+| `retry-keyless-table-duplicates` | P1 | OK | écart |
+| `subset-parent-filtered-twice` | P1 | OK | écart |
+| `subset-two-roots` | P1 | OK | OK |
+| `tr-constant-on-unique-column` | P1 | OK | OK |
+| `tr-generate-personal-data` | P1 | OK | OK |
+| `tr-null-on-not-null-column` | P1 | run sans fin | OK |
+| `tr-null-on-nullable-column` | P1 | OK | OK |
+| `tr-order-column-transformed` | P1 | OK | OK |
+| `tr-output-longer-than-column` | P1 | run sans fin | OK |
+| `types-auto-increment-zero` | P1 | échec du run | échec du run |
+| `types-binary` | P1 | OK | OK |
+| `types-decimal-float` | P1 | OK | OK |
+| `types-enum-set-bit` | P1 | OK | OK |
+| `types-geometry` | P1 | OK | OK |
+| `types-integers` | P1 | run sans fin | OK |
+| `types-json` | P1 | écart | OK |
+| `types-temporal` | P1 | écart | OK |
+| `types-text` | P1 | OK | OK |
+| `where-or-paginated` | P1 | échec du run | échec du run |
+| `where-or-two-roots` | P1 | OK | écart |
+| `columns-generated-default` | P2 | OK | échec du run |
+| `columns-generated-passthrough` | P2 | run sans fin | échec du run |
+| `columns-invisible` | P2 | OK | OK |
+| `columns-on-update-timestamp` | P2 | écart | OK |
+| `fk-self-reference-not-null` | P2 | échec du run | échec du run |
+| `identifiers-quoting` | P2 | OK | OK |
+| `rights-destination-read-only-account` | P2 | run sans fin | échec attendu absent |
+| `table-partitioned` | P2 | OK | OK |
+| `where-unqualified-under-join` | P2 | run sans fin | échec du run |
+
+Restent à écrire : propagation d'une clé primaire transformée vers les FK (règle de correspondance parent à
+ajouter), JavaScript à état partagé, dates zéro et `sql_mode`, mojibake `latin1`, destination au schéma différent,
+`onConflict`, FK vers une table absente du job, worker réellement tué en cours de page, sentinelle `parent_id = 0`
+(attendu à décider), `lower_case_table_names`, `sql_generate_invisible_primary_key`, mode `bench/perf`.
 
 ## Ordre
 
