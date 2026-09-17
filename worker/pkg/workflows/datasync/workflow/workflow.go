@@ -17,6 +17,7 @@ import (
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
 	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
+	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
@@ -154,6 +155,11 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 			reason,
 			errInvalidAccountStatusError,
 		)
+	}
+
+	err = runPrivilegeCheck(ctx, logger, req.JobId)
+	if err != nil {
+		return nil, err
 	}
 
 	info := workflow.GetInfo(ctx)
@@ -648,6 +654,28 @@ func runPostTableSyncActivity(
 		return err
 	}
 	return nil
+}
+
+// runPrivilegeCheck stops the run before anything is read or written when a connection
+// lacks what its role in the job needs. Runs started before the check existed replay
+// without it.
+func runPrivilegeCheck(ctx workflow.Context, logger log.Logger, jobId string) error {
+	version := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	logger.Info("scheduling privilege check")
+	var resp *runprivileges_activity.CheckRunPrivilegesResponse
+	var privilegesActivity *runprivileges_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 2 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		privilegesActivity.CheckRunPrivileges,
+		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId},
+	).Get(ctx, &resp)
 }
 
 // runReferentialIntegrityCheck verifies, once every table is written, that no destination

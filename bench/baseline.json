@@ -136,8 +136,8 @@
     "benthos": "gap"
   },
   "rights-destination-read-only-account": {
-    "athanor": "failure_expected",
-    "benthos": "failure_expected"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "subset-parent-filtered-twice": {
     "athanor": "ok",
