@@ -48,12 +48,37 @@ func columnIndex(columns []string, name string) int {
 // keyPublisher publishes the new values of the referenced columns of a table once the
 // rows holding them are written. Source values come from the row observer, in read
 // order; it must therefore be the outermost writer, the one no row is dropped before.
+//
+// A row the writers under it leave out is not published: its key would send the tables
+// referencing it to a parent row the destination never received.
 type keyPublisher struct {
 	ctx     context.Context
 	store   KeyStore
 	keys    []*tableplan.PublishedKey
 	sources map[string][]any // column → source values read and not yet written
 	inner   sqlio.RowWriter
+	// surviving holds, while a batch is being written, the indexes of the rows no writer
+	// has left out yet.
+	surviving []int
+}
+
+// dropped takes out of the surviving rows the ones a writer left out. Their indexes are
+// those of the batch that writer received, which is what is left of the batch at that
+// point of the chain; they come in ascending order.
+func (p *keyPublisher) dropped(dropped []int) {
+	if p.surviving == nil || len(dropped) == 0 {
+		return
+	}
+	kept := p.surviving[:0:0]
+	next := 0
+	for i, row := range p.surviving {
+		if next < len(dropped) && dropped[next] == i {
+			next++
+			continue
+		}
+		kept = append(kept, row)
+	}
+	p.surviving = kept
 }
 
 func (p *keyPublisher) observe(columns []string, row []any) {
@@ -65,13 +90,15 @@ func (p *keyPublisher) observe(columns []string, row []any) {
 }
 
 func (p *keyPublisher) WriteBatch(columns []string, rows [][]any) error {
-	published := make(map[string]map[string][]byte, len(p.keys))
+	// The new value of each row, kept per row: which of them is published is only known
+	// once the writers under this one have had their say.
+	byRow := make(map[string][]*publishedValue, len(p.keys))
 	for _, key := range p.keys {
 		idx := columnIndex(columns, key.Column)
 		if idx < 0 || len(p.sources[key.Column]) < len(rows) {
 			return fmt.Errorf("runner: clé publiée %q absente des lignes écrites", key.Column)
 		}
-		pairs := make(map[string][]byte, len(rows))
+		values := make([]*publishedValue, len(rows))
 		for r, row := range rows {
 			source := p.sources[key.Column][r]
 			if source == nil {
@@ -81,15 +108,28 @@ func (p *keyPublisher) WriteBatch(columns []string, rows [][]any) error {
 			if err != nil {
 				return fmt.Errorf("runner: clé %q: %w", key.Column, err)
 			}
-			pairs[sourceText(source)] = encoded
+			values[r] = &publishedValue{source: sourceText(source), encoded: encoded}
 		}
 		p.sources[key.Column] = p.sources[key.Column][len(rows):]
-		published[key.Store] = pairs
+		byRow[key.Store] = values
 	}
+
+	p.surviving = make([]int, len(rows))
+	for i := range p.surviving {
+		p.surviving[i] = i
+	}
+	defer func() { p.surviving = nil }()
 	if err := p.inner.WriteBatch(columns, rows); err != nil {
 		return err
 	}
-	for store, pairs := range published {
+
+	for store, values := range byRow {
+		pairs := make(map[string][]byte, len(p.surviving))
+		for _, r := range p.surviving {
+			if value := values[r]; value != nil {
+				pairs[value.source] = value.encoded
+			}
+		}
 		if len(pairs) == 0 {
 			continue
 		}
@@ -100,6 +140,12 @@ func (p *keyPublisher) WriteBatch(columns []string, rows [][]any) error {
 	return nil
 }
 
+// publishedValue is the new value of a published key, under the source value it replaces.
+type publishedValue struct {
+	source  string
+	encoded []byte
+}
+
 // keyTranslator replaces, in the rows about to be written, the foreign key values whose
 // parent key is transformed by the new value of that key.
 type keyTranslator struct {
@@ -108,7 +154,7 @@ type keyTranslator struct {
 	table       string
 	foreignKeys []*tableplan.ForeignKey
 	skip        bool
-	onDiscard   func(rows int)
+	onDiscard   func(dropped []int)
 	inner       sqlio.RowWriter
 }
 
@@ -168,7 +214,7 @@ func (t *keyTranslator) translate(fk *tableplan.ForeignKey, columns []string, ro
 	}
 
 	kept := rows[:0:0]
-	discarded := 0
+	var dropped []int
 	for r, row := range rows {
 		switch {
 		case !parentMissing[r]:
@@ -179,7 +225,7 @@ func (t *keyTranslator) translate(fk *tableplan.ForeignKey, columns []string, ro
 				}
 			}
 		case t.skip:
-			discarded++
+			dropped = append(dropped, r)
 			continue
 		default:
 			return nil, fmt.Errorf("runner: une ligne de %s viole la clé étrangère (%s) vers %s.%s : parent non copié",
@@ -187,8 +233,8 @@ func (t *keyTranslator) translate(fk *tableplan.ForeignKey, columns []string, ro
 		}
 		kept = append(kept, row)
 	}
-	if discarded > 0 {
-		t.onDiscard(discarded)
+	if len(dropped) > 0 {
+		t.onDiscard(dropped)
 	}
 	return kept, nil
 }

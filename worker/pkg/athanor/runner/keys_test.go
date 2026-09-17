@@ -2,6 +2,8 @@ package runner
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -64,7 +66,7 @@ func Test_keysArePublishedThenFollowed(t *testing.T) {
 	discarded := 0
 	translator := &keyTranslator{
 		ctx: ctx, store: store, table: "shop.COMMANDE", inner: child, skip: true,
-		onDiscard:   func(rows int) { discarded += rows },
+		onDiscard:   func(dropped []int) { discarded += len(dropped) },
 		foreignKeys: []*tableplan.ForeignKey{clientKey(true)},
 	}
 	require.NoError(t, translator.WriteBatch([]string{"id", "client_id"},
@@ -105,4 +107,51 @@ func Test_translatedForeignKeys_SelfReference(t *testing.T) {
 	translated, err := translatedForeignKeys(plan)
 	require.NoError(t, err)
 	require.Empty(t, translated)
+}
+
+// droppingWriter leaves out the rows at the given indexes of the batch it receives, the
+// way the parent check and the key translator do, and says which ones.
+type droppingWriter struct {
+	drop      []int
+	onDiscard func(dropped []int)
+	inner     *capturingWriter
+}
+
+func (w *droppingWriter) WriteBatch(columns []string, rows [][]any) error {
+	kept := rows[:0:0]
+	for r, row := range rows {
+		if slices.Contains(w.drop, r) {
+			continue
+		}
+		kept = append(kept, row)
+	}
+	w.onDiscard(w.drop)
+	return w.inner.WriteBatch(columns, kept)
+}
+
+// A row the writers under the publisher leave out has no key published: a child following
+// it would otherwise reference a parent row the destination never received.
+func Test_keysOfDiscardedRowsAreNotPublished(t *testing.T) {
+	ctx := context.Background()
+	store := memoryKeyStore{}
+
+	written := &capturingWriter{}
+	publisher := &keyPublisher{
+		ctx: ctx, store: store, sources: map[string][]any{},
+		keys: []*tableplan.PublishedKey{{Column: "id", Store: "store-client-id"}},
+	}
+	// The second row of the batch is the one whose mandatory parent is missing.
+	publisher.inner = &droppingWriter{drop: []int{1}, onDiscard: publisher.dropped, inner: written}
+
+	columns := []string{"id", "reference"}
+	for _, source := range [][]any{{int64(1), "CL-1"}, {int64(2), "CL-2"}, {int64(3), "CL-3"}} {
+		publisher.observe(columns, source)
+	}
+	require.NoError(t, publisher.WriteBatch(columns, [][]any{
+		{int64(1000001), "CL-1"}, {int64(1000002), "CL-2"}, {int64(1000003), "CL-3"},
+	}))
+
+	require.Len(t, written.rows, 2)
+	require.ElementsMatch(t, []string{"1", "3"}, slices.Sorted(maps.Keys(store["store-client-id"])),
+		"only the keys of the rows that were written are published")
 }

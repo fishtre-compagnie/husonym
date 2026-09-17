@@ -44,12 +44,13 @@ type parentCheckWriter struct {
 	table     string
 	checks    []ParentCheck
 	skip      bool
-	onDiscard func(rows int)
+	onDiscard func(dropped []int)
 }
 
 // NewParentCheckWriter wraps a writer so that rows referencing a missing parent never
-// reach it. With skip they are left out and counted through onDiscard; without, the
-// first one fails the write, as the foreign key itself would have.
+// reach it. With skip they are left out and reported through onDiscard, by their index in
+// the batch this writer was given; without, the first one fails the write, as the foreign
+// key itself would have.
 func NewParentCheckWriter(
 	ctx context.Context,
 	tx Tx,
@@ -58,7 +59,7 @@ func NewParentCheckWriter(
 	table string,
 	checks []ParentCheck,
 	skip bool,
-	onDiscard func(rows int),
+	onDiscard func(dropped []int),
 ) RowWriter {
 	if len(checks) == 0 {
 		return inner
@@ -72,16 +73,16 @@ func NewParentCheckWriter(
 func (w *parentCheckWriter) WriteBatch(columns []string, rows [][]any) error {
 	for i := range w.checks {
 		check := &w.checks[i]
-		kept, err := w.rowsWithParent(check, columns, rows)
+		kept, dropped, err := w.rowsWithParent(check, columns, rows)
 		if err != nil {
 			return err
 		}
-		if missing := len(rows) - len(kept); missing > 0 {
+		if len(dropped) > 0 {
 			if !w.skip {
 				return fmt.Errorf("sqlio: %d ligne(s) de %s violent la clé étrangère (%s) vers %s.%s : parent absent de la destination",
-					missing, w.table, strings.Join(check.Columns, ", "), check.ParentSchema, check.ParentTable)
+					len(dropped), w.table, strings.Join(check.Columns, ", "), check.ParentSchema, check.ParentTable)
 			}
-			w.onDiscard(missing)
+			w.onDiscard(dropped)
 			rows = kept
 		}
 	}
@@ -89,10 +90,14 @@ func (w *parentCheckWriter) WriteBatch(columns []string, rows [][]any) error {
 }
 
 // rowsWithParent returns the rows whose key references an existing parent row, or holds
-// the "no parent" value. The database compares the keys itself, with its own collation
-// and type rules: it is sent the distinct keys of the batch and answers with the ordinals
-// of the ones it found.
-func (w *parentCheckWriter) rowsWithParent(check *ParentCheck, columns []string, rows [][]any) ([][]any, error) {
+// the "no parent" value, and the indexes of the ones it leaves out. The database compares
+// the keys itself, with its own collation and type rules: it is sent the distinct keys of
+// the batch and answers with the ordinals of the ones it found.
+func (w *parentCheckWriter) rowsWithParent(
+	check *ParentCheck,
+	columns []string,
+	rows [][]any,
+) (kept [][]any, dropped []int, err error) {
 	indexes := make([]int, len(check.Columns))
 	for i, name := range check.Columns {
 		indexes[i] = -1
@@ -102,7 +107,7 @@ func (w *parentCheckWriter) rowsWithParent(check *ParentCheck, columns []string,
 			}
 		}
 		if indexes[i] < 0 {
-			return nil, fmt.Errorf("sqlio: colonne de clé étrangère %q absente du lot écrit dans %s", name, w.table)
+			return nil, nil, fmt.Errorf("sqlio: colonne de clé étrangère %q absente du lot écrit dans %s", name, w.table)
 		}
 	}
 
@@ -135,17 +140,19 @@ func (w *parentCheckWriter) rowsWithParent(check *ParentCheck, columns []string,
 	for start := 0; start < len(keys); start += maxKeysPerLookup {
 		end := min(start+maxKeysPerLookup, len(keys))
 		if err := w.lookup(check, keys[start:end], start, found); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	kept := make([][]any, 0, len(rows))
+	kept = make([][]any, 0, len(rows))
 	for r, row := range rows {
 		if rowOrdinal[r] < 0 || found[rowOrdinal[r]] {
 			kept = append(kept, row)
+			continue
 		}
+		dropped = append(dropped, r)
 	}
-	return kept, nil
+	return kept, dropped, nil
 }
 
 // lookup marks the keys that have a parent row:

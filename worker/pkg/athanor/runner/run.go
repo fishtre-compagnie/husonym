@@ -145,7 +145,13 @@ func RunTablePage(
 	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
 		var w sqlio.RowWriter = sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table,
 			sqlio.WithOnConflict(wc.OnConflict, pkColumns))
-		discard := func(rows int) { result.RowsDiscarded += rows }
+		// Rows a writer leaves out are counted, and taken out of the keys the table
+		// publishes: a key published for a row that was not written would send its
+		// children to a parent the destination never received.
+		discard := func(dropped []int) {
+			result.RowsDiscarded += len(dropped)
+			publisher.dropped(dropped)
+		}
 		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan),
 			wc.SkipForeignKeyViolations, discard)
 		if len(translated) > 0 {

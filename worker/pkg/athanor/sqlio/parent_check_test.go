@@ -42,7 +42,7 @@ func TestParentCheckWriter_DiscardsRowsWithoutParent(t *testing.T) {
 	require.NoError(t, err)
 	inner, discarded := &recordingWriter{}, 0
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.FACTURE",
-		factureCheck(nil), true, func(rows int) { discarded += rows })
+		factureCheck(nil), true, func(dropped []int) { discarded += len(dropped) })
 
 	require.NoError(t, w.WriteBatch([]string{"id", "commande_id"},
 		[][]any{{int64(1), int64(7)}, {int64(2), int64(1007)}, {int64(3), int64(7)}}))
@@ -62,7 +62,7 @@ func TestParentCheckWriter_FailsWithoutSkip(t *testing.T) {
 	require.NoError(t, err)
 	inner := &recordingWriter{}
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.FACTURE",
-		factureCheck(nil), false, func(int) {})
+		factureCheck(nil), false, func([]int) {})
 
 	err = w.WriteBatch([]string{"id", "commande_id"}, [][]any{{int64(1), int64(1007)}})
 	require.ErrorContains(t, err, "violent la clé étrangère (commande_id) vers shop.COMMANDE")
@@ -81,7 +81,7 @@ func TestParentCheckWriter_KeepsNoParentValue(t *testing.T) {
 	require.NoError(t, err)
 	inner, zero := &recordingWriter{}, "0"
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.AVOIR",
-		factureCheck(&zero), true, func(int) {})
+		factureCheck(&zero), true, func([]int) {})
 
 	require.NoError(t, w.WriteBatch([]string{"id", "commande_id"}, [][]any{{int64(1), int64(0)}}))
 	require.Len(t, inner.rows, 1)
