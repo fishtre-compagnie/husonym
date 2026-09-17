@@ -10,7 +10,8 @@
         compose/dev/up compose/dev/down \
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
-				generate/backend
+				generate/backend \
+				bench bench/up bench/down bench/correctness bench/large-pages
 default: help
 
 help:
@@ -134,6 +135,26 @@ compose/dev/auth/up: ## Composes up the development environment with auth. - Req
 
 compose/dev/auth/down: ## Composes down the development environment with auth
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(DEV_AUTH_COMPOSE_FILE) down
+
+# Engine test bench (plans/banc-essai-moteurs.md)
+BENCH_COMPOSE_FILE = bench/compose.bench.yml
+BENCH_SERVICES = bench-source bench-dest-benthos bench-dest-athanor
+
+bench: bench/up bench/correctness ## Stands up the engine test bench and runs it
+
+bench/up: ## Starts the bench MySQL servers and restarts the dev worker with a small page size
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
+
+bench/down: ## Removes the bench MySQL servers and gives the dev worker its page size back
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) rm -sfv $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/correctness: ## Runs every bench case on both engines and checks them against their expectation
+	go run ./bench/cmd/enginebench run
+
+bench/large-pages: ## Restarts the dev worker with 2500-row pages, for the cases a page must fail half written (then: BENCH_PAGE_LIMIT=2500 go run ./bench/cmd/enginebench run -cases <ids>)
+	BENCH_PAGE_LIMIT=2500 docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
 
 helm/docs: ## Generates documentation for the repository's helm charts.
 	./scripts/gen-helmdocs.sh

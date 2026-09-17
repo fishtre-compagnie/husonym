@@ -1,0 +1,202 @@
+{
+  "columns-generated-default": {
+    "athanor": "run_failed",
+    "benthos": "ok"
+  },
+  "columns-generated-passthrough": {
+    "athanor": "run_failed",
+    "benthos": "run_timeout"
+  },
+  "columns-invisible": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "columns-on-update-timestamp": {
+    "athanor": "ok",
+    "benthos": "gap"
+  },
+  "destination-trigger-writes-synced-table": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "fk-composite-partially-null": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-cycle-two-tables": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-diamond": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-nullable-on-subset-path": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "fk-self-reference-not-null": {
+    "athanor": "run_failed",
+    "benthos": "run_failed"
+  },
+  "fk-self-reference-nullable": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-several-to-same-parent": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-source-orphans": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "fk-virtual": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "fk-virtual-only-path": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "identifiers-quoting": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-binary16-key": {
+    "athanor": "run_failed",
+    "benthos": "run_timeout"
+  },
+  "page-case-insensitive-key": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-composite-key": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-datetime6-key": {
+    "athanor": "ok",
+    "benthos": "run_failed"
+  },
+  "page-decimal-key": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-duplicate-rows": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "page-empty-and-single-row": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-exact-multiple": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "page-null-order-values": {
+    "athanor": "gap",
+    "benthos": "gap"
+  },
+  "page-unsigned-bigint-key": {
+    "athanor": "run_failed",
+    "benthos": "run_failed"
+  },
+  "retry-insert-ignore-masks-truncation": {
+    "athanor": "failure_expected",
+    "benthos": "run_timeout"
+  },
+  "retry-keyless-table-duplicates": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "rights-destination-read-only-account": {
+    "athanor": "failure_expected",
+    "benthos": "run_timeout"
+  },
+  "subset-parent-filtered-twice": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "subset-two-roots": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "table-partitioned": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "tr-constant-on-unique-column": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "tr-generate-personal-data": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "tr-null-on-not-null-column": {
+    "athanor": "ok",
+    "benthos": "run_timeout"
+  },
+  "tr-null-on-nullable-column": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "tr-order-column-transformed": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "tr-output-longer-than-column": {
+    "athanor": "ok",
+    "benthos": "run_timeout"
+  },
+  "types-auto-increment-zero": {
+    "athanor": "run_failed",
+    "benthos": "run_failed"
+  },
+  "types-binary": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "types-decimal-float": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "types-enum-set-bit": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "types-geometry": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "types-integers": {
+    "athanor": "ok",
+    "benthos": "run_timeout"
+  },
+  "types-json": {
+    "athanor": "ok",
+    "benthos": "gap"
+  },
+  "types-temporal": {
+    "athanor": "ok",
+    "benthos": "gap"
+  },
+  "types-text": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "where-or-paginated": {
+    "athanor": "run_failed",
+    "benthos": "run_failed"
+  },
+  "where-or-two-roots": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
+  "where-unqualified-under-join": {
+    "athanor": "run_failed",
+    "benthos": "run_timeout"
+  }
+}

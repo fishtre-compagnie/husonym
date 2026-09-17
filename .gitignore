@@ -60,3 +60,6 @@ ee_license
 # Not a secret, but this repository is public and there is no reason to publish which
 # Infisical workspace guards it. Run `infisical init` again on a new machine.
 .infisical.json
+
+# Reports of the engine test bench
+bench/out/

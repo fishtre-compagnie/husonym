@@ -1,0 +1,43 @@
+# Engine test bench: a frozen source and one destination per engine, next to the
+# development stack. Use it on top of compose.dev.yml (see `make bench/up`): the worker
+# then pages every 100 rows, so small tables cross page boundaries.
+#
+# The data is generated and the password guards nothing: tmpfs keeps the servers
+# disposable and fast.
+
+x-bench-mysql: &bench-mysql
+  image: mysql:8.0
+  environment:
+    MYSQL_ROOT_PASSWORD: bench
+  tmpfs:
+    - /var/lib/mysql
+  networks:
+    - husonym-network
+  healthcheck:
+    test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-pbench']
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
+services:
+  worker:
+    environment:
+      - MAX_TABLE_SYNC_PAGE_LIMIT=${BENCH_PAGE_LIMIT:-100}
+
+  bench-source:
+    <<: *bench-mysql
+    container_name: husonym-bench-source
+    ports:
+      - 127.0.0.1:3309:3306
+
+  bench-dest-benthos:
+    <<: *bench-mysql
+    container_name: husonym-bench-dest-benthos
+    ports:
+      - 127.0.0.1:3310:3306
+
+  bench-dest-athanor:
+    <<: *bench-mysql
+    container_name: husonym-bench-dest-athanor
+    ports:
+      - 127.0.0.1:3311:3306
