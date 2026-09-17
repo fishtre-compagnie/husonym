@@ -145,6 +145,10 @@ func TestClassify(t *testing.T) {
 			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
 		},
 		{"id générique", "id", "int", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
+		{"clé étrangère user_id", "user_id", "uuid", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
+		{"clé étrangère userId", "userId", "int", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
+		{"clé étrangère email_fk", "email_fk", "int", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
+		{"audit created_by_user", "created_by_user", "int", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
 		{"created_at", "created_at", "timestamp", false, "", false, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED},
 	}
 

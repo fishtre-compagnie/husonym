@@ -78,6 +78,9 @@ var rules = []rule{
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_USERNAME,
 		keywords:  []string{"username", "login"},
 		tokenOnly: []string{"user", "pseudo"},
+		// created_by_user, updated_by_user : colonnes d'audit qui référencent un
+		// utilisateur, pas son login.
+		excludeTokens: []string{"by"},
 	},
 	{
 		category:  "person_first_name",
@@ -182,6 +185,11 @@ var rules = []rule{
 	},
 }
 
+// referenceSuffixes : dernier token d'une colonne qui référence une autre ligne
+// (user_id, email_uuid, client_fk). Le nom de l'entité référencée n'en fait pas
+// une donnée personnelle, et lui suggérer un générateur casserait la clé étrangère.
+var referenceSuffixes = map[string]bool{"id": true, "uuid": true, "guid": true, "fk": true, "ref": true, "key": true}
+
 var (
 	nonAlnum      = regexp.MustCompile(`[^a-z0-9]+`)
 	numericTypeRe = regexp.MustCompile(`int|serial|numeric|decimal|number|float|double|real`)
@@ -244,6 +252,9 @@ func Classify(columnName, dataType string) (Classification, bool) {
 		return Classification{}, false
 	}
 	tokens := tokenize(columnName)
+	if len(tokens) > 1 && referenceSuffixes[tokens[len(tokens)-1]] {
+		return Classification{}, false
+	}
 	tokenSet := make(map[string]struct{}, len(tokens))
 	for _, t := range tokens {
 		tokenSet[t] = struct{}{}

@@ -18,6 +18,7 @@ package piidetect
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -188,8 +189,12 @@ func DetectDateFormat(values []string) (DateFormatInfo, bool) {
 // date seule ne l'est pas (created_at, updated_at...), d'où ce filtre par le nom.
 var birthDateHints = []string{
 	"birthdate", "birthday", "dateofbirth", "datenaissance", "datedenaissance",
-	"naissance", "dob", "ddn", "nele", "nee",
+	"naissance",
 }
+
+// birthDateTokens : indices trop courts pour une recherche en sous-chaîne
+// ("nee" est dans "annee" et "donnee") ; ils ne comptent que comme token entier.
+var birthDateTokens = []string{"dob", "ddn", "nele", "nee"}
 
 // IsBirthDateName indique si le nom de colonne désigne une date de naissance.
 func IsBirthDateName(columnName string) bool {
@@ -199,6 +204,12 @@ func IsBirthDateName(columnName string) bool {
 	}
 	for _, h := range birthDateHints {
 		if strings.Contains(norm, h) {
+			return true
+		}
+	}
+	tokens := tokenize(columnName)
+	for _, h := range birthDateTokens {
+		if slices.Contains(tokens, h) {
 			return true
 		}
 	}

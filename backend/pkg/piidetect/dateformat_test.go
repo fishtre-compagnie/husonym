@@ -91,13 +91,13 @@ func TestDetectDateFormat_NonDates(t *testing.T) {
 func TestIsBirthDateName(t *testing.T) {
 	for _, n := range []string{
 		"date_naissance", "dateNaissance", "birthdate", "birth_date",
-		"date_of_birth", "dob", "ddn", "DATE_DE_NAISSANCE",
+		"date_of_birth", "dob", "ddn", "DATE_DE_NAISSANCE", "nee_le", "date_nee",
 	} {
 		if !IsBirthDateName(n) {
 			t.Errorf("IsBirthDateName(%q) = false, attendu true", n)
 		}
 	}
-	for _, n := range []string{"created_at", "updated_at", "date_commande", "invoice_date", ""} {
+	for _, n := range []string{"created_at", "updated_at", "date_commande", "invoice_date", "date_annee", "date_donnee", "annee", ""} {
 		if IsBirthDateName(n) {
 			t.Errorf("IsBirthDateName(%q) = true, attendu false", n)
 		}
