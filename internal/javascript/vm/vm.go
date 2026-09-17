@@ -28,6 +28,7 @@ type Options struct {
 	functions       []*javascript_functions.FunctionDefinition
 	consoleEnabled  bool
 	valueApi        javascript_functions.ValueApi
+	globalAliases   map[string]string // alias -> target global
 }
 
 type Option func(*Options)
@@ -62,6 +63,17 @@ func WithJsRegistry(registry *require.Registry) Option {
 func WithFunctions(functions ...*javascript_functions.FunctionDefinition) Option {
 	return func(opts *Options) {
 		opts.functions = functions
+	}
+}
+
+// WithGlobalAlias exposes the global object `target` under a second name. Both names
+// refer to the same object, so properties set through one are visible through the other.
+func WithGlobalAlias(alias, target string) Option {
+	return func(opts *Options) {
+		if opts.globalAliases == nil {
+			opts.globalAliases = map[string]string{}
+		}
+		opts.globalAliases[alias] = target
 	}
 }
 
@@ -106,6 +118,16 @@ func NewRunner(opts ...Option) (*Runner, error) {
 	for _, function := range options.functions {
 		if err := registerFunction(runner, function); err != nil {
 			return nil, err
+		}
+	}
+
+	for alias, target := range options.globalAliases {
+		targetValue := vm.GlobalObject().Get(target)
+		if targetValue == nil {
+			return nil, fmt.Errorf("cannot alias global %s: global %s is not defined", alias, target)
+		}
+		if err := vm.GlobalObject().Set(alias, targetValue); err != nil {
+			return nil, fmt.Errorf("failed to set global alias %s: %w", alias, err)
 		}
 	}
 

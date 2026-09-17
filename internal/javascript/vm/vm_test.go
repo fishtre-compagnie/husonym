@@ -68,6 +68,33 @@ func TestRunner(t *testing.T) {
 		wg.Wait()
 	})
 
+	t.Run("with_global_alias_shares_the_object", func(t *testing.T) {
+		customFn := javascript_functions.NewFunctionDefinition(
+			"current",
+			"hello",
+			func(r javascript_functions.Runner) javascript_functions.Function {
+				return func(ctx context.Context, call goja.FunctionCall, rt *goja.Runtime, l *slog.Logger) (any, error) {
+					return "hello", nil
+				}
+			},
+		)
+		runner, err := NewRunner(WithFunctions(customFn), WithGlobalAlias("legacy", "current"))
+		require.NoError(t, err)
+
+		program := goja.MustCompile("test.js", `
+			legacy.shared = "set through the alias";
+			[legacy.hello(), current.shared].join(" / ");
+		`, true)
+		result, err := runner.Run(context.Background(), program)
+		require.NoError(t, err)
+		require.Equal(t, "hello / set through the alias", result.String())
+	})
+
+	t.Run("with_global_alias_on_undefined_target", func(t *testing.T) {
+		_, err := NewRunner(WithGlobalAlias("legacy", "missing"))
+		require.Error(t, err)
+	})
+
 	t.Run("with_functions", func(t *testing.T) {
 		customFn := javascript_functions.NewFunctionDefinition(
 			"test",

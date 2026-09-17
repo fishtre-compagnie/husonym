@@ -13,7 +13,12 @@ import (
 )
 
 const (
-	namespace = "husonym"
+	// Namespace is the global object exposing the husonym functions to JavaScript.
+	Namespace = "husonym"
+	// LegacyNamespace is the name the same object had before the Neosync rename.
+	LegacyNamespace = "neosync"
+
+	namespace = Namespace
 )
 
 func Get(

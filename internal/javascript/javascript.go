@@ -27,6 +27,9 @@ func NewDefaultValueRunner(
 		javascript_vm.WithConsole(),
 		javascript_vm.WithJsRegistry(goja_require.NewRegistry()),
 		javascript_vm.WithFunctions(functions...),
+		// Code written for Neosync, before the rename, reaches these functions (and keeps
+		// shared state) through the `neosync` global. It must keep working unchanged.
+		javascript_vm.WithGlobalAlias(husonym_functions.LegacyNamespace, husonym_functions.Namespace),
 	)
 }
 
