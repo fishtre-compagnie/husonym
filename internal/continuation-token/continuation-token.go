@@ -8,12 +8,11 @@
 package continuation_token
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"time"
+
+	"github.com/fishtre-compagnie/husonym/internal/typedvalue"
 )
 
 func FromTokenString(tokenStr string) (*ContinuationToken, error) {
@@ -67,24 +66,6 @@ func (c *ContinuationToken) Encode() (string, error) {
 	return base64.StdEncoding.EncodeToString(encoded), nil
 }
 
-const (
-	typeNull   = "null"
-	typeBool   = "bool"
-	typeInt    = "int"
-	typeUint   = "uint"
-	typeFloat  = "float"
-	typeString = "string"
-	typeBytes  = "bytes"
-	typeTime   = "time"
-)
-
-// typedValue is one order value in the token. Numbers travel as text: JSON numbers are
-// read back as float64.
-type typedValue struct {
-	Type  string `json:"t"`
-	Value string `json:"v,omitempty"`
-}
-
 type contentsJSON struct {
 	LastReadOrderValues []json.RawMessage `json:"lastReadOrderValues"`
 }
@@ -92,19 +73,17 @@ type contentsJSON struct {
 func (c Contents) MarshalJSON() ([]byte, error) {
 	out := contentsJSON{LastReadOrderValues: make([]json.RawMessage, len(c.LastReadOrderValues))}
 	for i, value := range c.LastReadOrderValues {
-		typed, err := encodeValue(value)
+		encoded, err := typedvalue.Marshal(value)
 		if err != nil {
 			return nil, fmt.Errorf("continuation token: order value %d: %w", i, err)
-		}
-		encoded, err := json.Marshal(typed)
-		if err != nil {
-			return nil, err
 		}
 		out.LastReadOrderValues[i] = encoded
 	}
 	return json.Marshal(out)
 }
 
+// UnmarshalJSON also reads the tokens written before values were typed: a run in flight
+// during an upgrade still resumes with them, as approximately as it did before.
 func (c *Contents) UnmarshalJSON(data []byte) error {
 	var in contentsJSON
 	if err := json.Unmarshal(data, &in); err != nil {
@@ -112,88 +91,11 @@ func (c *Contents) UnmarshalJSON(data []byte) error {
 	}
 	c.LastReadOrderValues = make([]any, len(in.LastReadOrderValues))
 	for i, raw := range in.LastReadOrderValues {
-		value, err := decodeValue(raw)
+		value, err := typedvalue.Unmarshal(raw)
 		if err != nil {
 			return fmt.Errorf("continuation token: order value %d: %w", i, err)
 		}
 		c.LastReadOrderValues[i] = value
 	}
 	return nil
-}
-
-func encodeValue(value any) (typedValue, error) {
-	switch v := value.(type) {
-	case nil:
-		return typedValue{Type: typeNull}, nil
-	case bool:
-		return typedValue{Type: typeBool, Value: strconv.FormatBool(v)}, nil
-	case int:
-		return typedValue{Type: typeInt, Value: strconv.FormatInt(int64(v), 10)}, nil
-	case int8:
-		return typedValue{Type: typeInt, Value: strconv.FormatInt(int64(v), 10)}, nil
-	case int16:
-		return typedValue{Type: typeInt, Value: strconv.FormatInt(int64(v), 10)}, nil
-	case int32:
-		return typedValue{Type: typeInt, Value: strconv.FormatInt(int64(v), 10)}, nil
-	case int64:
-		return typedValue{Type: typeInt, Value: strconv.FormatInt(v, 10)}, nil
-	case uint:
-		return typedValue{Type: typeUint, Value: strconv.FormatUint(uint64(v), 10)}, nil
-	case uint8:
-		return typedValue{Type: typeUint, Value: strconv.FormatUint(uint64(v), 10)}, nil
-	case uint16:
-		return typedValue{Type: typeUint, Value: strconv.FormatUint(uint64(v), 10)}, nil
-	case uint32:
-		return typedValue{Type: typeUint, Value: strconv.FormatUint(uint64(v), 10)}, nil
-	case uint64:
-		return typedValue{Type: typeUint, Value: strconv.FormatUint(v, 10)}, nil
-	case float32:
-		return typedValue{Type: typeFloat, Value: strconv.FormatFloat(float64(v), 'g', -1, 32)}, nil
-	case float64:
-		return typedValue{Type: typeFloat, Value: strconv.FormatFloat(v, 'g', -1, 64)}, nil
-	case string:
-		return typedValue{Type: typeString, Value: v}, nil
-	case []byte:
-		return typedValue{Type: typeBytes, Value: base64.StdEncoding.EncodeToString(v)}, nil
-	case time.Time:
-		return typedValue{Type: typeTime, Value: v.Format(time.RFC3339Nano)}, nil
-	default:
-		return typedValue{}, fmt.Errorf("type %T cannot be carried exactly to the next page", value)
-	}
-}
-
-func decodeValue(raw json.RawMessage) (any, error) {
-	// Tokens written before values were typed hold bare JSON values. A run in flight
-	// during an upgrade still resumes with them, as approximately as it did before.
-	if trimmed := bytes.TrimSpace(raw); len(trimmed) == 0 || trimmed[0] != '{' {
-		var legacy any
-		if err := json.Unmarshal(raw, &legacy); err != nil {
-			return nil, err
-		}
-		return legacy, nil
-	}
-	var typed typedValue
-	if err := json.Unmarshal(raw, &typed); err != nil {
-		return nil, err
-	}
-	switch typed.Type {
-	case typeNull:
-		return nil, nil
-	case typeBool:
-		return strconv.ParseBool(typed.Value)
-	case typeInt:
-		return strconv.ParseInt(typed.Value, 10, 64)
-	case typeUint:
-		return strconv.ParseUint(typed.Value, 10, 64)
-	case typeFloat:
-		return strconv.ParseFloat(typed.Value, 64)
-	case typeString:
-		return typed.Value, nil
-	case typeBytes:
-		return base64.StdEncoding.DecodeString(typed.Value)
-	case typeTime:
-		return time.Parse(time.RFC3339Nano, typed.Value)
-	default:
-		return nil, fmt.Errorf("unknown value type %q", typed.Type)
-	}
 }
