@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"sync"
 
-	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
-	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
-	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
-	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
+	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
+	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 

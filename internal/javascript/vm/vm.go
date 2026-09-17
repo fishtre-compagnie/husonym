@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"sync"
 
-	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 )
 
 type Runner struct {

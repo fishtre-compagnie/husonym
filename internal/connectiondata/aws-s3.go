@@ -14,13 +14,13 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type AwsS3ConnectionDataService struct {

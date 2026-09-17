@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	"io"
 	"log/slog"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 
 	"github.com/neilotoole/slogt"
 	"github.com/testcontainers/testcontainers-go"

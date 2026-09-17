@@ -3,8 +3,8 @@ package auth0
 import (
 	"context"
 
-	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/auth0/go-auth0/management"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 )
 
 var _ authmgmt.Interface = &Auth0MgmtClient{} // ensures it always conforms to the interface

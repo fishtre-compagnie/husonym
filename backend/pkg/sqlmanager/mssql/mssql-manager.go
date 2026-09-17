@@ -9,13 +9,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/doug-martin/goqu/v9"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	ee_sqlmanager_mssql "github.com/fishtre-compagnie/husonym/internal/ee/mssql-manager"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
 

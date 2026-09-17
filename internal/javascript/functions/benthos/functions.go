@@ -9,8 +9,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	"github.com/dop251/goja"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 )
 
 const (

@@ -55,7 +55,7 @@ const ExpiringWindow = 30 * 24 * time.Hour
 
 // IsValid answers one question: may this deployment use the paid features right now.
 // It is deliberately true throughout the grace period, so every caller that gates on it
-// inherits the grace behaviour without knowing the lifecycle exists.
+// inherits the grace behavior without knowing the lifecycle exists.
 //
 // Use State() when the distinction matters — warning banners, logs, diagnostics.
 type EEInterface interface {

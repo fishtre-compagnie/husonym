@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dyntypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/sync/errgroup"

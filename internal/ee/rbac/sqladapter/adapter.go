@@ -84,7 +84,7 @@ func NewAdapterWithContext(ctx context.Context, db *sql.DB, driverName, tableNam
 
 	// check adapter table
 	if !dao.IsTableExist(ctx) {
-		if err = dao.CreateTable(ctx); err != nil {
+		if err := dao.CreateTable(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -114,24 +114,22 @@ func getAdapterDriverNameIndex(driverName string) (adapterDriverNameIndex, error
 // Adapter  defines the database adapter for Casbin.
 // It can load policy lines from connected database or save policy lines.
 type Adapter struct {
-	dao dao
+	dao *dao
 
 	// Could not be removed until Casbin adapter interface support context as the first parameter.
 	ctx context.Context
 
-	filtered interface{}
+	filtered any
 }
 
 // loadPolicyLine  load a policy line to model.
-func (Adapter) loadPolicyLine(line rule, model model.Model) error {
-	// return persist.LoadPolicyLine(strings.Join(line.Data(), ","), model)
-
-	return persist.LoadPolicyArray(line.Data(), model)
+func (*Adapter) loadPolicyLine(line *rule, m model.Model) error {
+	return persist.LoadPolicyArray(line.Data(), m)
 }
 
 // genArgs generate args from ptype and rule.
-func (Adapter) genArgs(ptype string, rule []string) []interface{} {
-	args := make([]interface{}, maxParameterCount)
+func (*Adapter) genArgs(ptype string, rule []string) []any {
+	args := make([]any, maxParameterCount)
 	args[0] = ptype
 
 	for idx := range rule {
@@ -146,12 +144,12 @@ func (Adapter) genArgs(ptype string, rule []string) []interface{} {
 }
 
 // LoadPolicy  load all policy rules from the storage.
-func (adapter *Adapter) LoadPolicy(model model.Model) error {
-	return adapter.LoadPolicyCtx(adapter.ctx, model)
+func (adapter *Adapter) LoadPolicy(m model.Model) error {
+	return adapter.LoadPolicyCtx(adapter.ctx, m)
 }
 
 // LoadPolicyCtx loads all policy rules from the storage with context.
-func (adapter *Adapter) LoadPolicyCtx(ctx context.Context, model model.Model) error {
+func (adapter *Adapter) LoadPolicyCtx(ctx context.Context, m model.Model) error {
 	lines, err := adapter.dao.SelectAll(ctx)
 	if err != nil {
 		return err
@@ -159,8 +157,8 @@ func (adapter *Adapter) LoadPolicyCtx(ctx context.Context, model model.Model) er
 
 	adapter.filtered = nil
 
-	for _, line := range lines {
-		if err = adapter.loadPolicyLine(line, model); err != nil {
+	for idx := range lines {
+		if err := adapter.loadPolicyLine(&lines[idx], m); err != nil {
 			return err
 		}
 	}
@@ -169,26 +167,26 @@ func (adapter *Adapter) LoadPolicyCtx(ctx context.Context, model model.Model) er
 }
 
 // SavePolicy  save policy rules to the storage.
-func (adapter Adapter) SavePolicy(model model.Model) error {
-	return adapter.SavePolicyCtx(adapter.ctx, model)
+func (adapter *Adapter) SavePolicy(m model.Model) error {
+	return adapter.SavePolicyCtx(adapter.ctx, m)
 }
 
 // SavePolicyCtx saves all policy rules to the storage with context.
-func (adapter Adapter) SavePolicyCtx(ctx context.Context, model model.Model) error {
+func (adapter *Adapter) SavePolicyCtx(ctx context.Context, m model.Model) error {
 	if adapter.filtered != nil {
 		return errors.New("could not save filtered policies")
 	}
 
-	args := make([][]interface{}, 0, 128)
+	args := make([][]any, 0, 128)
 
-	for ptype, ast := range model["p"] {
+	for ptype, ast := range m["p"] {
 		for _, rule := range ast.Policy {
 			arg := adapter.genArgs(ptype, rule)
 			args = append(args, arg)
 		}
 	}
 
-	for ptype, ast := range model["g"] {
+	for ptype, ast := range m["g"] {
 		for _, rule := range ast.Policy {
 			arg := adapter.genArgs(ptype, rule)
 			args = append(args, arg)
@@ -199,27 +197,27 @@ func (adapter Adapter) SavePolicyCtx(ctx context.Context, model model.Model) err
 }
 
 // AddPolicy  add one policy rule to the storage.
-func (adapter Adapter) AddPolicy(sec string, ptype string, rule []string) error {
+func (adapter *Adapter) AddPolicy(sec, ptype string, rule []string) error {
 	return adapter.AddPolicyCtx(adapter.ctx, sec, ptype, rule)
 }
 
 // AddPolicyCtx adds a policy rule to the storage with context.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) AddPolicyCtx(ctx context.Context, sec string, ptype string, rule []string) error {
+func (adapter *Adapter) AddPolicyCtx(ctx context.Context, sec, ptype string, rule []string) error {
 	args := adapter.genArgs(ptype, rule)
 
 	return adapter.dao.InsertRow(ctx, args...)
 }
 
 // AddPolicies  add multiple policy rules to the storage.
-func (adapter Adapter) AddPolicies(sec string, ptype string, rules [][]string) error {
+func (adapter *Adapter) AddPolicies(sec, ptype string, rules [][]string) error {
 	return adapter.AddPoliciesCtx(adapter.ctx, sec, ptype, rules)
 }
 
 // AddPoliciesCtx adds policy rules to the storage.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) AddPoliciesCtx(ctx context.Context, sec string, ptype string, rules [][]string) error {
-	args := make([][]interface{}, 0, len(rules))
+func (adapter *Adapter) AddPoliciesCtx(ctx context.Context, sec, ptype string, rules [][]string) error {
+	args := make([][]any, 0, len(rules))
 
 	for _, rule := range rules {
 		arg := adapter.genArgs(ptype, rule)
@@ -230,24 +228,30 @@ func (adapter Adapter) AddPoliciesCtx(ctx context.Context, sec string, ptype str
 }
 
 // RemovePolicy  remove policy rules from the storage.
-func (adapter Adapter) RemovePolicy(sec, ptype string, rule []string) error {
+func (adapter *Adapter) RemovePolicy(sec, ptype string, rule []string) error {
 	return adapter.RemovePolicyCtx(adapter.ctx, sec, ptype, rule)
 }
 
 // RemovePolicyCtx removes a policy rule from the storage with context.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) RemovePolicyCtx(ctx context.Context, sec string, ptype string, rule []string) error {
+func (adapter *Adapter) RemovePolicyCtx(ctx context.Context, sec, ptype string, rule []string) error {
 	return adapter.dao.DeleteByArgs(ctx, ptype, rule)
 }
 
 // RemoveFilteredPolicy  remove policy rules that match the filter from the storage.
-func (adapter Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
+func (adapter *Adapter) RemoveFilteredPolicy(sec, ptype string, fieldIndex int, fieldValues ...string) error {
 	return adapter.RemoveFilteredPolicyCtx(adapter.ctx, sec, ptype, fieldIndex, fieldValues...)
 }
 
 // RemoveFilteredPolicyCtx removes policy rules that match the filter from the storage with context.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) RemoveFilteredPolicyCtx(ctx context.Context, sec string, ptype string, fieldIndex int, fieldValues ...string) error {
+func (adapter *Adapter) RemoveFilteredPolicyCtx(
+	ctx context.Context,
+	sec string,
+	ptype string,
+	fieldIndex int,
+	fieldValues ...string,
+) error {
 	whereCondition, whereArgs := adapter.dao.GenFilteredCondition(ptype, fieldIndex, fieldValues...)
 
 	return adapter.dao.DeleteByCondition(ctx, whereCondition, whereArgs...)
@@ -255,14 +259,14 @@ func (adapter Adapter) RemoveFilteredPolicyCtx(ctx context.Context, sec string, 
 
 // RemovePolicies removes policy rules from the storage.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) RemovePolicies(sec string, ptype string, rules [][]string) (err error) {
+func (adapter *Adapter) RemovePolicies(sec, ptype string, rules [][]string) (err error) {
 	return adapter.RemovePoliciesCtx(adapter.ctx, sec, ptype, rules)
 }
 
 // RemovePoliciesCtx removes policy rules from the storage.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) RemovePoliciesCtx(ctx context.Context, sec string, ptype string, rules [][]string) error {
-	args := make([][]interface{}, len(rules))
+func (adapter *Adapter) RemovePoliciesCtx(ctx context.Context, sec, ptype string, rules [][]string) error {
+	args := make([][]any, len(rules))
 
 	for idx, rule := range rules {
 		arg := adapter.genArgs(ptype, rule)
@@ -274,14 +278,14 @@ func (adapter Adapter) RemovePoliciesCtx(ctx context.Context, sec string, ptype 
 
 // LoadFilteredPolicy  load policy rules that match the Filter.
 // filterPtr must be a pointer.
-func (adapter *Adapter) LoadFilteredPolicy(model model.Model, filterPtr interface{}) error {
-	return adapter.LoadFilteredPolicyCtx(adapter.ctx, model, filterPtr)
+func (adapter *Adapter) LoadFilteredPolicy(m model.Model, filterPtr any) error {
+	return adapter.LoadFilteredPolicyCtx(adapter.ctx, m, filterPtr)
 }
 
 // LoadFilteredPolicyCtx loads only policy rules that match the filter.
-func (adapter *Adapter) LoadFilteredPolicyCtx(ctx context.Context, model model.Model, filterPtr interface{}) error {
+func (adapter *Adapter) LoadFilteredPolicyCtx(ctx context.Context, m model.Model, filterPtr any) error {
 	if filterPtr == nil {
-		return adapter.LoadPolicy(model)
+		return adapter.LoadPolicy(m)
 	}
 
 	filter, ok := filterPtr.(*Filter)
@@ -289,13 +293,14 @@ func (adapter *Adapter) LoadFilteredPolicyCtx(ctx context.Context, model model.M
 		return errors.New("invalid filter type")
 	}
 
-	lines, err := adapter.dao.SelectByFilter(ctx, filter.genData())
+	filters := filter.genData()
+	lines, err := adapter.dao.SelectByFilter(ctx, &filters)
 	if err != nil {
 		return err
 	}
 
-	for _, line := range lines {
-		if err = adapter.loadPolicyLine(line, model); err != nil {
+	for idx := range lines {
+		if err := adapter.loadPolicyLine(&lines[idx], m); err != nil {
 			return err
 		}
 	}
@@ -306,24 +311,24 @@ func (adapter *Adapter) LoadFilteredPolicyCtx(ctx context.Context, model model.M
 }
 
 // IsFiltered  returns true if the loaded policy rules has been filtered.
-func (adapter Adapter) IsFiltered() bool {
+func (adapter *Adapter) IsFiltered() bool {
 	return adapter.IsFilteredCtx(adapter.ctx)
 }
 
 // IsFilteredCtx returns true if the loaded policy has been filtered.
-func (adapter Adapter) IsFilteredCtx(ctx context.Context) bool {
+func (adapter *Adapter) IsFilteredCtx(ctx context.Context) bool {
 	return adapter.filtered != nil
 }
 
 // UpdatePolicy update a policy rule from storage.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) UpdatePolicy(sec, ptype string, oldRule, newRule []string) error {
+func (adapter *Adapter) UpdatePolicy(sec, ptype string, oldRule, newRule []string) error {
 	return adapter.UpdatePolicyCtx(adapter.ctx, sec, ptype, oldRule, newRule)
 }
 
 // UpdatePolicyCtx updates a policy rule from storage.
 // This is part of the Auto-Save feature.
-func (adapter Adapter) UpdatePolicyCtx(ctx context.Context, sec string, ptype string, oldRule, newRule []string) error {
+func (adapter *Adapter) UpdatePolicyCtx(ctx context.Context, sec, ptype string, oldRule, newRule []string) error {
 	oldArgs := adapter.genArgs(ptype, oldRule)
 	newArgs := adapter.genArgs(ptype, newRule)
 
@@ -331,17 +336,17 @@ func (adapter Adapter) UpdatePolicyCtx(ctx context.Context, sec string, ptype st
 }
 
 // UpdatePolicies updates policy rules to storage.
-func (adapter Adapter) UpdatePolicies(sec, ptype string, oldRules, newRules [][]string) (err error) {
+func (adapter *Adapter) UpdatePolicies(sec, ptype string, oldRules, newRules [][]string) (err error) {
 	return adapter.UpdatePoliciesCtx(adapter.ctx, sec, ptype, oldRules, newRules)
 }
 
 // UpdatePoliciesCtx updates some policy rules to storage, like db, redis.
-func (adapter Adapter) UpdatePoliciesCtx(ctx context.Context, sec string, ptype string, oldRules, newRules [][]string) error {
+func (adapter *Adapter) UpdatePoliciesCtx(ctx context.Context, sec, ptype string, oldRules, newRules [][]string) error {
 	if len(oldRules) != len(newRules) {
 		return errors.New("old rules size not equal to new rules size")
 	}
 
-	args := make([][]interface{}, 0, len(oldRules)+len(newRules))
+	args := make([][]any, 0, len(oldRules)+len(newRules))
 
 	for idx := range oldRules {
 		oldArgs := adapter.genArgs(ptype, oldRules[idx])
@@ -353,34 +358,45 @@ func (adapter Adapter) UpdatePoliciesCtx(ctx context.Context, sec string, ptype 
 }
 
 // UpdateFilteredPolicies deletes old rules and adds new rules.
-func (adapter Adapter) UpdateFilteredPolicies(sec, ptype string, newRules [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
+func (adapter *Adapter) UpdateFilteredPolicies(
+	sec, ptype string,
+	newRules [][]string,
+	fieldIndex int,
+	fieldValues ...string,
+) ([][]string, error) {
 	return adapter.UpdateFilteredPoliciesCtx(adapter.ctx, sec, ptype, newRules, fieldIndex, fieldValues...)
 }
 
 // UpdateFilteredPoliciesCtx deletes old rules and adds new rules.
-func (adapter Adapter) UpdateFilteredPoliciesCtx(ctx context.Context, sec string, ptype string, newRules [][]string, fieldIndex int, fieldValues ...string) (oldPolicies [][]string, err error) {
+func (adapter *Adapter) UpdateFilteredPoliciesCtx(
+	ctx context.Context,
+	sec string,
+	ptype string,
+	newRules [][]string,
+	fieldIndex int,
+	fieldValues ...string,
+) ([][]string, error) {
 	whereCondition, whereArgs := adapter.dao.GenFilteredCondition(ptype, fieldIndex, fieldValues...)
 
-	var oldRules []rule
-	oldRules, err = adapter.dao.SelectByCondition(ctx, whereCondition, whereArgs...)
+	oldRules, err := adapter.dao.SelectByCondition(ctx, whereCondition, whereArgs...)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := make([][]interface{}, 0, len(newRules))
+	args := make([][]any, 0, len(newRules))
 	for _, policy := range newRules {
 		arg := adapter.genArgs(ptype, policy)
 		args = append(args, arg)
 	}
 
-	if err = adapter.dao.UpdateFilteredRows(ctx, whereCondition, whereArgs, args); err != nil {
-		return
+	if err := adapter.dao.UpdateFilteredRows(ctx, whereCondition, whereArgs, args); err != nil {
+		return nil, err
 	}
 
-	oldPolicies = make([][]string, 0, len(oldRules))
-	for _, rule := range oldRules {
-		oldPolicies = append(oldPolicies, rule.Data())
+	oldPolicies := make([][]string, 0, len(oldRules))
+	for idx := range oldRules {
+		oldPolicies = append(oldPolicies, oldRules[idx].Data())
 	}
 
-	return
+	return oldPolicies, nil
 }

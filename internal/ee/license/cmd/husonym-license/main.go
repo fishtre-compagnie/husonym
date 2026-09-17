@@ -61,7 +61,7 @@ func main() {
 	case "verify":
 		err = runVerify(os.Args[2:])
 	case "-h", "--help", "help":
-		fmt.Print(usage)
+		fmt.Fprint(os.Stdout, usage)
 		return
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", os.Args[1], usage)
@@ -163,7 +163,7 @@ func runIssue(args []string) error {
 		}
 	}
 
-	issued, err := license.Issue(license.IssueRequest{
+	issued, err := license.Issue(&license.IssueRequest{
 		Id:         *id,
 		IssuedTo:   *to,
 		CustomerId: *customerId,
@@ -180,7 +180,7 @@ func runIssue(args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := reg.Add(license.RegistryEntry{
+		if err := reg.Add(&license.RegistryEntry{
 			Id:             issued.Id,
 			IssuedTo:       issued.IssuedTo,
 			CustomerId:     issued.CustomerId,
@@ -199,16 +199,16 @@ func runIssue(args []string) error {
 		}
 	}
 
-	fmt.Printf("issued %s to %s (customer %s)\n", issued.Id, issued.IssuedTo, issued.CustomerId)
-	fmt.Printf("  expires    %s\n", issued.ExpiresAt.Format(time.RFC3339))
-	fmt.Printf("  grace      %s\n", graceLabel(issued.GraceDays))
-	fmt.Printf("  limits     %s\n", limitsLabel(issued.Limits))
+	fmt.Fprintf(os.Stdout, "issued %s to %s (customer %s)\n", issued.Id, issued.IssuedTo, issued.CustomerId)
+	fmt.Fprintf(os.Stdout, "  expires    %s\n", issued.ExpiresAt.Format(time.RFC3339))
+	fmt.Fprintf(os.Stdout, "  grace      %s\n", graceLabel(issued.GraceDays))
+	fmt.Fprintf(os.Stdout, "  limits     %s\n", limitsLabel(issued.Limits))
 	if *dryRun {
-		fmt.Printf("  registry   not written (--dry-run)\n")
+		fmt.Fprintf(os.Stdout, "  registry   not written (--dry-run)\n")
 	} else {
-		fmt.Printf("  registry   %s\n", *registryPath)
+		fmt.Fprintf(os.Stdout, "  registry   %s\n", *registryPath)
 	}
-	fmt.Printf("\nEE_LICENSE=%s\n", issued.Encoded)
+	fmt.Fprintf(os.Stdout, "\nEE_LICENSE=%s\n", issued.Encoded)
 	return nil
 }
 
@@ -235,16 +235,17 @@ func runList(args []string, expiringOnly bool) error {
 	}
 	if len(entries) == 0 {
 		if expiringOnly {
-			fmt.Printf("nothing expiring within %d days\n", *within)
+			fmt.Fprintf(os.Stdout, "nothing expiring within %d days\n", *within)
 		} else {
-			fmt.Printf("no licenses recorded in %s\n", *registryPath)
+			fmt.Fprintf(os.Stdout, "no licenses recorded in %s\n", *registryPath)
 		}
 		return nil
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "STATE\tID\tCUSTOMER\tISSUED TO\tEXPIRES\tIN\tLIMITS")
-	for _, e := range entries {
+	for i := range entries {
+		e := &entries[i]
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			e.State(), e.Id, e.CustomerId, truncate(e.IssuedTo, 24),
 			e.ExpiresAt.Format("2006-01-02"), humanDays(e.ExpiresAt), limitsLabel(e.Limits))
@@ -255,7 +256,7 @@ func runList(args []string, expiringOnly bool) error {
 
 	if !expiringOnly {
 		if frozen := reg.Frozen(); len(frozen) > 0 {
-			fmt.Printf("\n%d frozen (past grace)\n", len(frozen))
+			fmt.Fprintf(os.Stdout, "\n%d frozen (past grace)\n", len(frozen))
 		}
 	}
 	return nil
@@ -286,21 +287,21 @@ func runShow(args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(out))
+		fmt.Fprintln(os.Stdout, string(out))
 		return nil
 	}
 
-	fmt.Printf("%s — %s (customer %s)\n", entry.Id, entry.IssuedTo, entry.CustomerId)
-	fmt.Printf("  state      %s\n", entry.State())
-	fmt.Printf("  issued     %s\n", entry.IssuedAt.Format(time.RFC3339))
-	fmt.Printf("  expires    %s (%s)\n", entry.ExpiresAt.Format(time.RFC3339), humanDays(entry.ExpiresAt))
-	fmt.Printf("  grace      %s\n", graceLabel(entry.GraceDays))
-	fmt.Printf("  limits     %s\n", limitsLabel(entry.Limits))
-	fmt.Printf("  signed by  %s\n", entry.KeyFingerprint)
+	fmt.Fprintf(os.Stdout, "%s — %s (customer %s)\n", entry.Id, entry.IssuedTo, entry.CustomerId)
+	fmt.Fprintf(os.Stdout, "  state      %s\n", entry.State())
+	fmt.Fprintf(os.Stdout, "  issued     %s\n", entry.IssuedAt.Format(time.RFC3339))
+	fmt.Fprintf(os.Stdout, "  expires    %s (%s)\n", entry.ExpiresAt.Format(time.RFC3339), humanDays(entry.ExpiresAt))
+	fmt.Fprintf(os.Stdout, "  grace      %s\n", graceLabel(entry.GraceDays))
+	fmt.Fprintf(os.Stdout, "  limits     %s\n", limitsLabel(entry.Limits))
+	fmt.Fprintf(os.Stdout, "  signed by  %s\n", entry.KeyFingerprint)
 	if entry.Note != "" {
-		fmt.Printf("  note       %s\n", entry.Note)
+		fmt.Fprintf(os.Stdout, "  note       %s\n", entry.Note)
 	}
-	fmt.Printf("\nEE_LICENSE=%s\n", entry.Encoded)
+	fmt.Fprintf(os.Stdout, "\nEE_LICENSE=%s\n", entry.Encoded)
 	return nil
 }
 
@@ -317,12 +318,12 @@ func runVerify(args []string) error {
 	if err != nil {
 		return fmt.Errorf("license does not verify against this build: %w", err)
 	}
-	fmt.Printf("verifies against this build\n")
-	fmt.Printf("  state    %s\n", ee.State())
-	fmt.Printf("  expires  %s (%s)\n", ee.ExpiresAt().Format(time.RFC3339), humanDays(ee.ExpiresAt()))
-	fmt.Printf("  grace to %s\n", ee.GracePeriodEndsAt().Format(time.RFC3339))
-	fmt.Printf("  usable   %t\n", ee.IsValid())
-	fmt.Printf("  limits   %s\n", limitsLabel(ee.Limits()))
+	fmt.Fprintf(os.Stdout, "verifies against this build\n")
+	fmt.Fprintf(os.Stdout, "  state    %s\n", ee.State())
+	fmt.Fprintf(os.Stdout, "  expires  %s (%s)\n", ee.ExpiresAt().Format(time.RFC3339), humanDays(ee.ExpiresAt()))
+	fmt.Fprintf(os.Stdout, "  grace to %s\n", ee.GracePeriodEndsAt().Format(time.RFC3339))
+	fmt.Fprintf(os.Stdout, "  usable   %t\n", ee.IsValid())
+	fmt.Fprintf(os.Stdout, "  limits   %s\n", limitsLabel(ee.Limits()))
 	return nil
 }
 
@@ -399,7 +400,7 @@ const signingKeyEnv = "HUSONYM_EE_SIGNING_KEY"
 //
 // Accepts the PEM directly or base64 of it. Both because a multi-line value survives some
 // secret managers and shells intact and not others, and a key that fails to load at the
-// moment you need to issue a licence is a bad time to discover which kind you have.
+// moment you need to issue a license is a bad time to discover which kind you have.
 //
 // Returns the source alongside the bytes purely so errors can say where the key came from.
 func loadSigningKey(keyPath string) (key []byte, source string, err error) {

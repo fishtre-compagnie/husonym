@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
 	"github.com/fishtre-compagnie/husonym/internal/javascript"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
-	"github.com/dop251/goja"
 )
 
 type TransformerExecutor struct {

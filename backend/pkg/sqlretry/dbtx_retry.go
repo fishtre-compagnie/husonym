@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v5"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
 	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
-	"github.com/cenkalti/backoff/v5"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lib/pq"

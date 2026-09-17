@@ -11,10 +11,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/doug-martin/goqu/v9"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
 

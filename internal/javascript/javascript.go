@@ -3,12 +3,12 @@ package javascript
 import (
 	"log/slog"
 
+	goja_require "github.com/dop251/goja_nodejs/require"
 	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	benthos_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/benthos"
 	husonym_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/husonym"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
-	goja_require "github.com/dop251/goja_nodejs/require"
 )
 
 // Comes full featured, but expects a value api that the benthos/husonym functions can manipulate

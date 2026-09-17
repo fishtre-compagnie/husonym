@@ -365,7 +365,7 @@ func (s *Service) CreateJob(
 		return nil, err
 	}
 	// Jobs are the paid surface: creating, configuring and running one requires an active
-	// license. Reading, pausing, cancelling and deleting deliberately do not, so an
+	// license. Reading, pausing, canceling and deleting deliberately do not, so an
 	// account whose license lapsed keeps access to its configuration and history and can
 	// still wind things down.
 	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
@@ -914,7 +914,7 @@ func (s *Service) PauseJob(
 	}
 
 	// Only resuming is gated. Pausing stays available without a license: an account whose
-	// licence lapsed must always be able to stop its schedules, and blocking that would
+	// license lapsed must always be able to stop its schedules, and blocking that would
 	// leave it with jobs it can neither run nor quiet.
 	if !req.Msg.Pause {
 		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {

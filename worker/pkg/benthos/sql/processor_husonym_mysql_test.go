@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/doug-martin/goqu/v9"
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/redpanda-data/benthos/v4/public/service"
 	"github.com/stretchr/testify/require"
 )

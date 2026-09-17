@@ -49,13 +49,25 @@ func openWithRetry(t *testing.T, dsn string) *sql.DB {
 func mappings() []*mgmtv1alpha1.JobMapping {
 	return []*mgmtv1alpha1.JobMapping{
 		{Schema: "appdb", Table: "clients", Column: "id", Transformer: &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}}}}},
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
+			},
+		}},
 		{Schema: "appdb", Table: "clients", Column: "prenom", Transformer: &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateFirstNameConfig{GenerateFirstNameConfig: &mgmtv1alpha1.GenerateFirstName{}}}}},
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_GenerateFirstNameConfig{GenerateFirstNameConfig: &mgmtv1alpha1.GenerateFirstName{}},
+			},
+		}},
 		{Schema: "appdb", Table: "clients", Column: "nom", Transformer: &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateLastNameConfig{GenerateLastNameConfig: &mgmtv1alpha1.GenerateLastName{}}}}},
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_GenerateLastNameConfig{GenerateLastNameConfig: &mgmtv1alpha1.GenerateLastName{}},
+			},
+		}},
 		{Schema: "appdb", Table: "clients", Column: "email", Transformer: &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformEmailConfig{TransformEmailConfig: &mgmtv1alpha1.TransformEmail{}}}}},
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_TransformEmailConfig{TransformEmailConfig: &mgmtv1alpha1.TransformEmail{}},
+			},
+		}},
 	}
 }
 

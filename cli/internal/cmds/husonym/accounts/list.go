@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"github.com/fatih/color"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
-	"github.com/fatih/color"
 	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
 )

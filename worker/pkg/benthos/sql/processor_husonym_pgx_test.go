@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/doug-martin/goqu/v9"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
-	"github.com/doug-martin/goqu/v9"
 	"github.com/lib/pq"
 	"github.com/redpanda-data/benthos/v4/public/service"
 	"github.com/stretchr/testify/require"

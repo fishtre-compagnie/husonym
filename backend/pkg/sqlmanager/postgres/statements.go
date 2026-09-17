@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/doug-martin/goqu/v9"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
-	"github.com/doug-martin/goqu/v9"
 )
 
 // Finds any schemas referenced in datatypes that don't exist in tables and returns the statements to create them

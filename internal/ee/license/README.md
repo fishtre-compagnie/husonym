@@ -35,7 +35,7 @@ the same license yields the same state on any instance at any moment.
 
 **`IsValid()` means "may use paid features", not "is before the expiry date".** The two
 diverge during grace, and that is deliberate: every caller gating on `IsValid()` inherits
-the grace behaviour without knowing the lifecycle exists. Use `State()` when the
+the grace behavior without knowing the lifecycle exists. Use `State()` when the
 distinction matters — banners, logs, diagnostics.
 
 Why a grace period rather than a hard stop: a lapsed license is usually a slow invoice, and

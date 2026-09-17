@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"connectrpc.com/connect"
+	"github.com/dop251/goja"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -15,7 +16,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/dop251/goja"
 )
 
 func (s *Service) GetUserDefinedTransformers(

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/doug-martin/goqu/v9"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
 

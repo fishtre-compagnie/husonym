@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/dop251/goja"
 	"github.com/fishtre-compagnie/husonym/internal/benthos_slogger"
 	"github.com/fishtre-compagnie/husonym/internal/javascript"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
-	"github.com/dop251/goja"
 
 	"github.com/redpanda-data/benthos/v4/public/service"
 )

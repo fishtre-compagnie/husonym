@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/auth0/go-jwt-middleware/v2/jwks"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
 type ClientConfig struct {
