@@ -104,8 +104,8 @@
     "benthos": "ok"
   },
   "page-duplicate-rows": {
-    "athanor": "gap",
-    "benthos": "gap"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "page-empty-and-single-row": {
     "athanor": "ok",
@@ -116,8 +116,8 @@
     "benthos": "ok"
   },
   "page-null-order-values": {
-    "athanor": "gap",
-    "benthos": "gap"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "page-unsigned-bigint-key": {
     "athanor": "ok",
