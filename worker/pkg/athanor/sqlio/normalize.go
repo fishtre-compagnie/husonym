@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,6 +44,34 @@ func NewNormalizer() *Normalizer { return &Normalizer{byColumn: map[string]Kind{
 // With fixe le Kind d'une colonne (surcharge du mode Auto). Chaînable.
 func (n *Normalizer) With(column string, k Kind) *Normalizer {
 	n.byColumn[column] = k
+	return n
+}
+
+// binaryDatabaseTypes lists the database type names (as reported by
+// sql.ColumnType.DatabaseTypeName for pgx, go-sql-driver/mysql and go-mssqldb) whose
+// values are true binary. Their []byte must reach the destination untouched: turned
+// into a string, they fail as invalid UTF-8 or get corrupted by escape parsing.
+var binaryDatabaseTypes = map[string]bool{
+	"BYTEA":      true, // PostgreSQL
+	"BINARY":     true, // MySQL, SQL Server
+	"VARBINARY":  true, // MySQL, SQL Server
+	"TINYBLOB":   true, // MySQL
+	"BLOB":       true, // MySQL (TEXT columns are reported as TEXT)
+	"MEDIUMBLOB": true, // MySQL
+	"LONGBLOB":   true, // MySQL
+	"IMAGE":      true, // SQL Server
+}
+
+// NormalizerForColumnTypes builds a normalizer from the database type name of each
+// column (same order as columns): binary types are declared Binary, everything else
+// stays Auto.
+func NormalizerForColumnTypes(columns, databaseTypeNames []string) *Normalizer {
+	n := NewNormalizer()
+	for i, col := range columns {
+		if i < len(databaseTypeNames) && binaryDatabaseTypes[strings.ToUpper(databaseTypeNames[i])] {
+			n.With(col, Binary)
+		}
+	}
 	return n
 }
 

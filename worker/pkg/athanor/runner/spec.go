@@ -13,6 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/native"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
@@ -37,7 +38,6 @@ func SpecForTable(
 			continue
 		}
 		col := m.GetColumn()
-		cols = append(cols, col)
 
 		jmt := m.GetTransformer()
 		if jmt == nil {
@@ -47,8 +47,18 @@ func SpecForTable(
 		if cfg == nil {
 			return nil, engine.Spec{}, fmt.Errorf("runner: colonne %q: config de transformer nil", col)
 		}
+		if cfg.GetGenerateDefaultConfig() != nil {
+			// Ni lue ni écrite : l'omettre de l'INSERT laisse la destination appliquer
+			// la valeur par défaut de la colonne.
+			continue
+		}
+		cols = append(cols, col)
 		if cfg.GetPassthroughConfig() != nil {
 			continue // colonne conservée : aucun binding nécessaire
+		}
+		if cfg.GetNullconfig() != nil {
+			spec.Values = append(spec.Values, engine.ValueBinding{Column: col, T: native.Null{}})
+			continue
 		}
 
 		// Cohérence déterministe (RFC §8) : chemin prioritaire pour les types

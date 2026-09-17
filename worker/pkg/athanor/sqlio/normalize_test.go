@@ -124,3 +124,23 @@ func TestNormalize_UnsignedBeyondInt64(t *testing.T) {
 		t.Fatalf("Normalize(%d) forcé en Integer: une erreur était attendue", huge)
 	}
 }
+
+// Une colonne binaire (bytea, blob…) garde ses octets ; une colonne texte renvoyée
+// en []byte (MySQL) reste convertie en string.
+func TestNormalizerForColumnTypes(t *testing.T) {
+	raw := []byte{0xff, 0x00, 0x5c}
+	n := NormalizerForColumnTypes([]string{"photo", "nom"}, []string{"bytea", "VARCHAR"})
+
+	got, err := n.Normalize("photo", raw)
+	if err != nil {
+		t.Fatalf("Normalize binaire: %v", err)
+	}
+	if b, ok := got.([]byte); !ok || string(b) != string(raw) {
+		t.Fatalf("binaire attendu intact, obtenu %#v", got)
+	}
+
+	got, err = n.Normalize("nom", []byte("Jean"))
+	if err != nil || got != "Jean" {
+		t.Fatalf("texte attendu \"Jean\", obtenu %#v (err %v)", got, err)
+	}
+}

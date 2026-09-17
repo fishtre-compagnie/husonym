@@ -145,7 +145,3 @@ func batchToRows(b *engine.Batch) [][]any {
 	}
 	return rows
 }
-
-// NOTE (suite M3b) : le scan en *any renvoie, selon le driver, du []byte pour
-// certains types texte. Une couche de correspondance type SGBD ↔ type Go
-// (par colonne, depuis le Catalog) sera nécessaire avant le câblage prod.

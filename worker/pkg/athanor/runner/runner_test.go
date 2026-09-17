@@ -112,6 +112,39 @@ func TestSpecForTable_NoDeriverFallsBack(t *testing.T) {
 	}
 }
 
+// Null doit produire un vrai NULL SQL (pas la chaîne "null"), et Default doit
+// sortir la colonne de l'INSERT pour laisser la destination appliquer son défaut.
+func TestSpecForTable_NullAndDefault(t *testing.T) {
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "public", Table: "clients", Column: "id", Transformer: passthrough()},
+		{Schema: "public", Table: "clients", Column: "note", Transformer: &mgmtv1alpha1.JobMappingTransformer{
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_Nullconfig{Nullconfig: &mgmtv1alpha1.Null{}},
+			},
+		}},
+		{Schema: "public", Table: "clients", Column: "cree_le", Transformer: &mgmtv1alpha1.JobMappingTransformer{
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_GenerateDefaultConfig{GenerateDefaultConfig: &mgmtv1alpha1.GenerateDefault{}},
+			},
+		}},
+	}
+
+	cols, spec, err := SpecForTable(mappings, "public", "clients", nil)
+	if err != nil {
+		t.Fatalf("SpecForTable: %v", err)
+	}
+	if len(cols) != 2 || cols[0] != "id" || cols[1] != "note" {
+		t.Fatalf("la colonne Default ne doit être ni lue ni écrite, colonnes: %v", cols)
+	}
+	if len(spec.Values) != 1 || spec.Values[0].Column != "note" {
+		t.Fatalf("bindings inattendus: %+v", spec.Values)
+	}
+	out, err := spec.Values[0].T.TransformValue(transform.Background(), "texte")
+	if err != nil || out != nil {
+		t.Fatalf("Null doit renvoyer nil, obtenu %#v (err %v)", out, err)
+	}
+}
+
 func TestSpecForTable_NoMapping(t *testing.T) {
 	_, _, err := SpecForTable(nil, "public", "vide", nil)
 	if err == nil {
@@ -171,5 +204,23 @@ func TestWhereForTable(t *testing.T) {
 	}
 	if got := WhereForTable(nil, "demo", "clients"); got != "" {
 		t.Fatalf("source nil: attendu \"\", obtenu %q", got)
+	}
+}
+
+// Deux emails qui ne diffèrent que par la casse sont deux lignes distinctes en
+// source : ils doivent rester distincts pour ne pas violer une contrainte unique.
+func TestDeterministicEmail_PreservesCaseDistinction(t *testing.T) {
+	cfg := &mgmtv1alpha1.TransformerConfig{
+		Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{}},
+	}
+	vt, ok := deterministicValueTransformer(consistency.New([]byte("clé-test"), "org"), cfg)
+	if !ok {
+		t.Fatal("GenerateEmail doit passer par le chemin déterministe")
+	}
+	ctx := transform.Background()
+	a, _ := vt.TransformValue(ctx, "Bob@x.com")
+	b, _ := vt.TransformValue(ctx, "bob@x.com")
+	if a == b {
+		t.Fatalf("emails de casse différente fusionnés en %v", a)
 	}
 }

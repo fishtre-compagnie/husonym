@@ -72,9 +72,20 @@ func RunTable(
 	}
 	// rows (*sql.Rows) satisfait sqlio.RowReader ; Pipeline le referme.
 
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("runner: types des colonnes de %s.%s: %w", schema, table, err)
+	}
+	typeNames := make([]string, len(colTypes))
+	for i, ct := range colTypes {
+		typeNames[i] = ct.DatabaseTypeName()
+	}
+
 	w := sqlio.NewSQLWriter(ctx, dst, dialect, schema, table,
 		sqlio.WithOnConflict(wc.OnConflict, pkColumns))
-	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w)
+	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w,
+		sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(cols, typeNames)))
 }
 
 // primaryKeyColumns introspecte les colonnes de clé primaire d'une table via
