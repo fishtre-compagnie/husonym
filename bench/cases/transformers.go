@@ -25,6 +25,7 @@ func transformerCases() []*Case {
 			"libelle", nullTransformer(), "cannot be null"),
 		transformerOnOrderColumn(),
 		transformerOnPrimaryKey(),
+		transformedKeyOfDiscardedRow(),
 	}
 }
 
@@ -222,6 +223,94 @@ func transformerOnPrimaryKey() *Case {
 					parrain = i%20 + 1
 				}
 				emit.Row(commandeTable, []any{i, (i-1)%20 + 1, parrain}, Kept())
+			}
+		},
+	}
+}
+
+// transformedKeyOfDiscardedRow: FACTURE holds a transformed primary key, and its own
+// mandatory foreign key to COMMANDE is a diamond — the subset keeps invoices of the
+// station whose order belongs to the other station, and those rows are left out at write
+// time because their order is not in the destination. Their new key must not be published:
+// a line following it would then point to an invoice the destination never received.
+func transformedKeyOfDiscardedRow() *Case {
+	follows := ColumnSpec{Rules: []Rule{RuleFollowsParent}}
+	return &Case{
+		ID:       "tr-key-of-discarded-row",
+		Priority: P1,
+		Title:    "Clé transformée d'une ligne écartée à l'écriture : la fille ne doit pas la suivre",
+		Tables: []*schema.Table{
+			stationTable(),
+			{
+				Name: commandeTable,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: stationIDColumn, Type: schema.Int64()},
+				},
+				PrimaryKey:  []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_commande_station", stationIDColumn, "STATION")},
+			},
+			{
+				Name: "FACTURE",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: stationIDColumn, Type: schema.Int64()},
+					{Name: "commande_id", Type: schema.Int64()},
+				},
+				PrimaryKey: []string{idColumn},
+				Indexes:    []schema.Index{{Name: "uq_facture_reference", Columns: []string{"reference"}, Unique: true}},
+				ForeignKeys: []schema.ForeignKey{
+					foreignKeyToID("fk_facture_station", stationIDColumn, "STATION"),
+					foreignKeyToID("fk_facture_commande", "commande_id", commandeTable),
+				},
+			},
+			{
+				Name: "LIGNE",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "facture_id", Type: schema.Int64(), Nullable: true},
+					{Name: "libelle", Type: schema.Varchar(40)},
+				},
+				PrimaryKey:  []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_ligne_facture", "facture_id", "FACTURE")},
+			},
+		},
+		// FACTURE is identified by its reference: its key is transformed.
+		Identity: map[string][]string{"FACTURE": {"reference"}},
+		Job: Job{
+			Where:                    map[string]string{"STATION": fmt.Sprintf("id = %d", stationKept)},
+			SubsetByForeignKeys:      true,
+			SkipForeignKeyViolations: true,
+			Columns: map[string]map[string]ColumnSpec{
+				"FACTURE": {idColumn: {
+					Transformer: transformJavascript("return value + 1000000;"),
+					Rules:       []Rule{RuleNotInSourceSet, RuleUnique},
+				}},
+				"LIGNE": {"facture_id": follows},
+			},
+		},
+		Seed: func(p Params, emit Emitter) {
+			seedStations(emit)
+			for i := int64(1); i <= 10; i++ {
+				emit.Row(commandeTable, []any{i, stationKept}, Kept())
+				emit.Row(commandeTable, []any{1000 + i, stationDropped}, Dropped())
+			}
+			for i := int64(1); i <= 10; i++ {
+				// Facturée par la station du subset, pour une commande de la station du subset.
+				emit.Row("FACTURE", []any{i, fmt.Sprintf("FA-%04d", i), stationKept, i}, Kept())
+				// Facturée par la station du subset, pour une commande de l'autre station :
+				// retenue par le subset, écartée à l'écriture faute de commande parente.
+				emit.Row("FACTURE", []any{100 + i, fmt.Sprintf("FA-%04d", 100+i), stationKept, 1000 + i}, Dropped())
+				// Hors subset de bout en bout.
+				emit.Row("FACTURE", []any{1000 + i, fmt.Sprintf("FA-%04d", 1000+i), stationDropped, 1000 + i}, Dropped())
+			}
+			for i := int64(1); i <= 10; i++ {
+				emit.Row("LIGNE", []any{i, i, "ligne d'une facture copiée"}, Kept())
+				// Sa facture est écartée à l'écriture : la ligne reste, sans facture.
+				emit.Row("LIGNE", []any{100 + i, 100 + i, "ligne d'une facture écartée"}, Kept("facture_id"))
+				emit.Row("LIGNE", []any{1000 + i, 1000 + i, "ligne hors subset"}, Dropped())
+				emit.Row("LIGNE", []any{2000 + i, nil, "ligne sans facture"}, Kept())
 			}
 		},
 	}

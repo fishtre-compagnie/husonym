@@ -159,6 +159,10 @@
     "athanor": "ok",
     "benthos": "ok"
   },
+  "tr-key-of-discarded-row": {
+    "athanor": "gap",
+    "benthos": "run_failed"
+  },
   "tr-null-on-not-null-column": {
     "athanor": "ok",
     "benthos": "ok"

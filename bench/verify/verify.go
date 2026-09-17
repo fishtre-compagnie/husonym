@@ -208,6 +208,11 @@ func checkFollowsParent(result *TableResult, c *cases.Case, t *schema.Table, col
 		if len(rows.source[key]) == 0 {
 			continue // already counted as unexpected
 		}
+		if want := rows.expected[key]; want != nil && slices.Contains(want.NullColumns, column) {
+			// The row is expected to hold NULL there, whatever its source value: its parent
+			// was left out of the destination, so there is no parent to follow.
+			continue
+		}
 		sourceValue := rows.source[key][0][columnIndex]
 		for _, dest := range rows.dest[key] {
 			destValue := dest[columnIndex]
