@@ -57,6 +57,7 @@ type RunConfig struct {
 	orderByColumns   []string                      // columns to order by
 	splitColumnPaths bool                          // whether to split column paths
 	subsetPaths      []*SubsetPath                 // holds one (or more) shortest paths from this table to any table that has a where clause.
+	foreignKeys      []*ForeignKey                 // every foreign key of the table to a table of the job, virtual ones included
 }
 
 func NewRunConfig(
@@ -133,6 +134,12 @@ func (rc *RunConfig) SubsetPaths() []*SubsetPath {
 		return []*SubsetPath{}
 	}
 	return rc.subsetPaths
+}
+
+// ForeignKeys returns every foreign key of the table to a table of the job, virtual
+// ones included, whether or not the subset follows it.
+func (rc *RunConfig) ForeignKeys() []*ForeignKey {
+	return rc.foreignKeys
 }
 
 func (rc *RunConfig) OrderByColumns() []string {

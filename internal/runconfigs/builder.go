@@ -303,6 +303,7 @@ func (b *runConfigBuilder) buildInsertConfig() *RunConfig {
 		orderByColumns: b.getOrderByColumns(),
 		dependsOn:      b.getDependsOn(),
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
 	return config
 }
@@ -329,6 +330,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		orderByColumns: orderByColumns,
 		dependsOn:      []*DependsOn{},
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
 
 	// Track which columns still need to be inserted (that aren’t handled by constraints).
@@ -451,7 +453,26 @@ func (b *runConfigBuilder) buildUpdateConfig(
 		orderByColumns: orderByColumns,
 		dependsOn:      dependsOn,
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
+}
+
+func (b *runConfigBuilder) getForeignKeys() []*ForeignKey {
+	foreignKeys := make([]*ForeignKey, 0, len(b.foreignKeys))
+	for _, fc := range b.foreignKeys {
+		if fc == nil || fc.ForeignKey == nil {
+			continue
+		}
+		referenceSchema, referenceTable := sqlmanager_shared.SplitTableKey(fc.ForeignKey.Table)
+		foreignKeys = append(foreignKeys, &ForeignKey{
+			Columns:          fc.Columns,
+			NotNullable:      fc.NotNullable,
+			ReferenceSchema:  referenceSchema,
+			ReferenceTable:   referenceTable,
+			ReferenceColumns: fc.ForeignKey.Columns,
+		})
+	}
+	return foreignKeys
 }
 
 func (b *runConfigBuilder) getDependsOn() []*DependsOn {

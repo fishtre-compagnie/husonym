@@ -25,6 +25,22 @@ type QueryBuilder struct {
 	subsetByForeignKeyConstraints bool
 	aliasCounter                  int
 	pageLimit                     uint
+	// configsByTable gives the run config of every table of the job, to read how a
+	// referenced table is itself selected.
+	configsByTable map[string]*runconfigs.RunConfig
+}
+
+// WithRunConfigs tells the builder about every table of the job. Without it, foreign
+// keys to rows left out of the subset are read as they are.
+func (qb *QueryBuilder) WithRunConfigs(configs []*runconfigs.RunConfig) *QueryBuilder {
+	qb.configsByTable = make(map[string]*runconfigs.RunConfig, len(configs))
+	for _, config := range configs {
+		// Every run config of a table shares its where clause and subset paths.
+		if _, ok := qb.configsByTable[config.Table()]; !ok {
+			qb.configsByTable[config.Table()] = config
+		}
+	}
+	return qb
 }
 
 func NewSelectQueryBuilder(
@@ -121,9 +137,17 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 	query := dialect.From(rootAliasExpression)
 
 	// Select columns for the root table
+	projections, err := qb.nullableForeignKeyProjections(rootTable, rootAlias)
+	if err != nil {
+		return nil, nil, false, err
+	}
 	cols := make([]exp.Expression, len(rootTable.SelectColumns()))
 	for i, col := range rootTable.SelectColumns() {
-		cols[i] = rootAliasExpression.Col(col)
+		if projection, ok := projections[col]; ok {
+			cols[i] = projection
+		} else {
+			cols[i] = rootAliasExpression.Col(col)
+		}
 	}
 	query = query.Select(toAnySlice(cols)...)
 
@@ -295,6 +319,90 @@ func (qb *QueryBuilder) addSubsetJoins(
 		}
 	}
 	return query, isSubset, nil
+}
+
+// nullableForeignKeyProjections returns, for the nullable columns of the foreign keys
+// whose parent table is reduced by the subset, an expression reading NULL when the
+// referenced row is not selected:
+//
+//	CASE WHEN col IS NULL OR EXISTS (selection of the parent row) THEN col END
+//
+// A kept row then never references a row left out. Only the value read changes, never
+// the rows kept, so tables stay independent of each other and cycles or self-references
+// need no special care. Mandatory foreign keys cannot be set to NULL: the engine checks
+// them when it writes.
+func (qb *QueryBuilder) nullableForeignKeyProjections(
+	table *runconfigs.RunConfig,
+	rootAlias string,
+) (map[string]exp.Expression, error) {
+	projections := map[string]exp.Expression{}
+	for _, fk := range table.ForeignKeys() {
+		if !isNullableForeignKey(fk) {
+			continue
+		}
+		parent, ok := qb.configsByTable[fk.ReferenceSchema+"."+fk.ReferenceTable]
+		if !ok || !qb.isReduced(parent) {
+			continue
+		}
+		parentSelected, err := qb.parentRowIsSelected(parent, fk, rootAlias)
+		if err != nil {
+			return nil, err
+		}
+		// Under MATCH SIMPLE a key with one NULL column references nothing: its other
+		// columns are left as they are.
+		referencesNothing := []exp.Expression{}
+		for i, col := range fk.Columns {
+			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
+				referencesNothing = append(referencesNothing, goqu.T(rootAlias).Col(col).IsNull())
+			}
+		}
+		keep := goqu.Or(append(referencesNothing, parentSelected)...)
+		for i, col := range fk.Columns {
+			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
+				projections[col] = goqu.Case().When(keep, goqu.T(rootAlias).Col(col)).As(col)
+			}
+		}
+	}
+	return projections, nil
+}
+
+// isReduced reports whether the job copies only part of the table.
+func (qb *QueryBuilder) isReduced(table *runconfigs.RunConfig) bool {
+	if qb.subsetByForeignKeyConstraints {
+		return len(table.SubsetPaths()) > 0
+	}
+	return table.WhereClause() != nil && *table.WhereClause() != ""
+}
+
+// parentRowIsSelected returns EXISTS (the row the foreign key references, selected the
+// way the sync of the parent table selects it). The subquery has aliases of its own: the
+// parent may be the table itself, or one already joined by the outer query.
+func (qb *QueryBuilder) parentRowIsSelected(
+	parent *runconfigs.RunConfig,
+	fk *runconfigs.ForeignKey,
+	rootAlias string,
+) (exp.Expression, error) {
+	alias := qb.generateUniqueAlias("fk_", parent.Table())
+	parentTable := goqu.S(parent.SchemaTable().Schema).Table(parent.SchemaTable().Table).As(alias)
+	selection := qb.getDialect().From(parentTable).Select(goqu.L("1"))
+
+	switch {
+	case qb.subsetByForeignKeyConstraints:
+		var err error
+		if selection, _, err = qb.addSubsetJoins(selection, parent, alias); err != nil {
+			return nil, err
+		}
+	default:
+		condition, err := qb.qualifyWhereCondition(nil, alias, *parent.WhereClause())
+		if err != nil {
+			return nil, err
+		}
+		selection = selection.Where(goqu.L(condition))
+	}
+	for i, col := range fk.Columns {
+		selection = selection.Where(goqu.T(alias).Col(fk.ReferenceColumns[i]).Eq(goqu.T(rootAlias).Col(col)))
+	}
+	return goqu.L("EXISTS ?", selection), nil
 }
 
 // isNullableForeignKey reports whether one column of the key accepts NULL: under MATCH

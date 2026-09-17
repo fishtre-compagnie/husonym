@@ -119,12 +119,55 @@ func Test_BuildQuery_NullableForeignKeyOnSubsetPath(t *testing.T) {
 	require.NoError(t, err)
 
 	commande := queries["shop.commande.insert"].Query
-	require.Equal(t, 2, strings.Count(commande, "LEFT JOIN"), commande)
-	require.NotContains(t, commande, "INNER JOIN", commande)
-	require.Regexp(t, "`commande`.`fournisseur_id` IS NULL\\) OR \\(.*id = 1\\)", commande)
+	_, joins, found := strings.Cut(commande, "FROM `shop`.`commande` AS `commande`")
+	require.True(t, found, commande)
+	require.Equal(t, 2, strings.Count(joins, "LEFT JOIN"), commande)
+	require.NotContains(t, joins, "INNER JOIN", commande)
+	require.Regexp(t, "`commande`.`fournisseur_id` IS NULL\\) OR \\(.*id = 1\\)", joins)
+	// The value read is NULL when the referenced row is not selected by its own sync.
+	require.Regexp(t, "CASE +WHEN \\(\\(`commande`.`fournisseur_id` IS NULL\\) OR EXISTS \\(SELECT 1 FROM `shop`.`fournisseur` AS `t_[0-9a-f]+` INNER JOIN", commande)
+	require.Contains(t, commande, "THEN `commande`.`fournisseur_id` END AS `fournisseur_id`")
 
 	fournisseur := queries["shop.fournisseur.insert"].Query
 	require.Equal(t, 1, strings.Count(fournisseur, "INNER JOIN"), fournisseur)
 	require.NotContains(t, fournisseur, "LEFT JOIN", fournisseur)
 	require.NotContains(t, fournisseur, "IS NULL", fournisseur)
+}
+
+// A nullable self-reference is never on a subset path. The subquery selects the table
+// under an alias of its own, so its columns are not confused with the outer row's.
+func Test_BuildQuery_NullableSelfReferenceOutOfSubset(t *testing.T) {
+	configs, err := runconfigs.BuildRunConfigs(
+		map[string][]*sqlmanager_shared.ForeignConstraint{
+			"shop.commande": {
+				{
+					Columns: []string{"groupe_id"}, NotNullable: []bool{false},
+					ForeignKey: &sqlmanager_shared.ForeignKey{Table: "shop.commande", Columns: []string{"id"}},
+				},
+				{
+					Columns: []string{"station_id"}, NotNullable: []bool{true},
+					ForeignKey: &sqlmanager_shared.ForeignKey{Table: "shop.station", Columns: []string{"id"}},
+				},
+			},
+		},
+		map[string]string{"shop.station": "id = 1"},
+		map[string][]string{"shop.station": {"id"}, "shop.commande": {"id"}},
+		map[string][]string{"shop.station": {"id"}, "shop.commande": {"id", "station_id", "groupe_id"}},
+		map[string][][]string{}, map[string][][]string{},
+	)
+	require.NoError(t, err)
+	queries, err := BuildSelectQueryMap(sqlmanager_shared.MysqlDriver, configs, true, 100)
+	require.NoError(t, err)
+
+	for _, id := range []string{"shop.commande.insert", "shop.commande.update.1"} {
+		query := queries[id]
+		require.NotNil(t, query, id)
+		require.Regexp(t,
+			"EXISTS \\(SELECT 1 FROM `shop`.`commande` AS `(t_[0-9a-f]+)` INNER JOIN `shop`.`station` .* AND \\(`t_[0-9a-f]+`.`id` = `commande`.`groupe_id`\\)",
+			query.Query, id)
+		require.Contains(t, query.PageQuery, "EXISTS", id)
+	}
+
+	// The station table is not reduced through a foreign key of its own: nothing to project.
+	require.NotContains(t, queries["shop.station.insert"].Query, "EXISTS")
 }
