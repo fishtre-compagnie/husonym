@@ -345,10 +345,52 @@ Constats principaux :
 | `table-partitioned` | P2 | OK | OK |
 | `where-unqualified-under-join` | P2 | run sans fin | échec du run |
 
-Restent à écrire : propagation d'une clé primaire transformée vers les FK (règle de correspondance parent à
-ajouter), JavaScript à état partagé, dates zéro et `sql_mode`, mojibake `latin1`, destination au schéma différent,
-`onConflict`, FK vers une table absente du job, worker réellement tué en cours de page, sentinelle `parent_id = 0`
-(attendu à décider), `lower_case_table_names`, `sql_generate_invisible_primary_key`, mode `bench/perf`.
+## État après les premières corrections (2026-09-17, 57 cas)
+
+Corrigé dans le calcul partagé, donc pour les deux moteurs : parenthèses autour du `WHERE` de l'utilisateur ;
+jeton de reprise typé (entiers au-delà de 2^53, binaire, dates) ; pagination seulement sur une clé sans colonne
+nullable, table sans clé lue en un seul flux ; FK nullable sur le chemin du subset en `LEFT JOIN` ; toutes les
+colonnes du `WHERE` MySQL qualifiées ; « do nothing » MySQL sans `INSERT IGNORE`. Dans Benthos : erreurs MySQL
+permanentes déclarées critiques (plus de run qui réessaie dix minutes), fractions de seconde conservées. Dans
+Athanor : une transaction par page (plus de doublons après un échec partiel).
+
+| Priorité | Moteur | OK | Écart | Échec du run | Run sans fin | Échec attendu absent |
+|---|---|---|---|---|---|---|
+| P1 | Athanor | 33 | 10 | 2 | 0 | 0 |
+| P1 | Benthos | 37 | 6 | 2 | 0 | 0 |
+| P2 | Athanor | 8 | 0 | 3 | 0 | 1 |
+| P2 | Benthos | 8 | 1 | 2 | 0 | 1 |
+
+Cas encore hors attendu :
+
+| Cas | Priorité | Benthos | Athanor |
+|---|---|---|---|
+| `destination-trigger-writes-synced-table` | P1 | écart | écart |
+| `fk-composite-partially-null` | P1 | OK | écart |
+| `fk-cycle-two-tables` | P1 | OK | écart |
+| `fk-diamond` | P1 | OK | écart |
+| `fk-self-reference-nullable` | P1 | OK | écart |
+| `fk-several-to-same-parent` | P1 | OK | écart |
+| `fk-source-orphans` | P1 | écart | écart |
+| `fk-virtual` | P1 | écart | écart |
+| `retry-keyless-table-duplicates` | P1 | écart | OK |
+| `subset-parent-filtered-twice` | P1 | OK | écart |
+| `tr-primary-key-transformed` | P1 | OK | écart |
+| `types-auto-increment-zero` | P1 | échec du run | échec du run |
+| `types-integers` | P1 | échec du run | OK |
+| `types-json` | P1 | écart | OK |
+| `types-zero-dates` | P1 | écart | échec du run |
+| `columns-generated-default` | P2 | OK | échec du run |
+| `columns-generated-passthrough` | P2 | échec du run | échec du run |
+| `columns-on-update-timestamp` | P2 | écart | OK |
+| `fk-self-reference-not-null` | P2 | échec du run | échec du run |
+| `rights-destination-read-only-account` | P2 | échec attendu absent | échec attendu absent |
+
+Constat d'exploitation : le worker garde les connexions d'un run ouvertes une minute ou plus après sa fin ; un
+passage complet du banc dépasse les 151 connexions par défaut de MySQL (serveurs du banc portés à 1 000).
+
+Restent à écrire : JavaScript à état partagé, destination de SGBD ou de schéma très différent, worker réellement
+tué en cours de page, `lower_case_table_names`, `sql_generate_invisible_primary_key`, mode `bench/perf`.
 
 ## Ordre
 
