@@ -208,17 +208,44 @@ export function SchemaTable(props: Props): ReactElement {
     column: string;
   }): ResolvedPii => resolvePiiWith(contentPii, colKey);
 
-  // Applique automatiquement le transformer suggéré par la détection DÉTERMINISTE
-  // (par NOM) aux colonnes encore en passthrough (jamais d'écrasement d'un choix
-  // explicite). La détection par CONTENU (Presidio) est faillible : elle ne fait
-  // qu'ALERTER (badge), sans jamais modifier le transformer.
-  const applyNamePiiSuggestions = (): void => {
-    data.forEach((d, idx) => {
+  // Le scan de contenu est asynchrone : pendant qu'il tourne, l'utilisateur peut
+  // ajouter ou retirer des tables, ou choisir un transformer. Les suggestions
+  // s'appliquent donc à l'état COURANT, lu via cette ref, et non à la copie de
+  // `data` capturée au lancement — dont les indices ne désignent plus les mêmes
+  // lignes et qui voit encore en passthrough une colonne réglée entre-temps.
+  const latest = useRef({
+    data,
+    onTransformerUpdate,
+    getAvailableTransformers,
+  });
+  useEffect(() => {
+    latest.current = { data, onTransformerUpdate, getAvailableTransformers };
+  });
+
+  // Applique à chaque colonne encore en passthrough le transformer que `pick`
+  // suggère (UNSPECIFIED = rien). Ne touche jamais :
+  //  - un choix explicite de l'utilisateur ;
+  //  - une clé primaire ou étrangère (réelle ou virtuelle) : lui donner son propre
+  //    générateur casserait l'intégrité référentielle (users.email et
+  //    orders.user_email recevraient chacun des valeurs différentes). La colonne
+  //    reste signalée par son badge ; le choix revient à l'utilisateur.
+  // Retourne le nombre de colonnes modifiées.
+  const applyPiiSuggestions = (
+    pick: (colKey: {
+      schema: string;
+      table: string;
+      column: string;
+    }) => TransformerSource
+  ): number => {
+    const {
+      data: rows,
+      onTransformerUpdate: update,
+      getAvailableTransformers: available,
+    } = latest.current;
+    let applied = 0;
+    rows.forEach((d, idx) => {
       const colKey = { schema: d.schema, table: d.table, column: d.column };
-      if (!constraintHandler.getIsSensitive(colKey)) {
-        return;
-      }
-      const source = constraintHandler.getSuggestedTransformerSource(colKey);
+      const source = pick(colKey);
       if (source === TransformerSource.UNSPECIFIED) {
         return;
       }
@@ -226,47 +253,18 @@ export function SchemaTable(props: Props): ReactElement {
       if (currentCase && currentCase !== 'passthroughConfig') {
         return; // choix explicite : on ne touche pas
       }
-      const sys = getAvailableTransformers(idx).system.find(
-        (t) => t.source === source
-      );
+      if (
+        constraintHandler.getIsPrimaryKey(colKey) ||
+        constraintHandler.getIsForeignKey(colKey)[0] ||
+        constraintHandler.getIsVirtualForeignKey(colKey)[0]
+      ) {
+        return;
+      }
+      const sys = available(idx).system.find((t) => t.source === source);
       if (!sys) {
         return;
       }
-      onTransformerUpdate(
-        idx,
-        convertJobMappingTransformerToForm(
-          create(JobMappingTransformerSchema, { config: sys.config })
-        )
-      );
-    });
-  };
-
-  // Applique le transformer suggéré par une détection de contenu CONFIRMÉE
-  // (clé de contrôle vérifiée). Ne touche jamais une colonne dont le transformer
-  // a déjà été choisi explicitement. Retourne le nombre de colonnes modifiées.
-  const applyContentPiiSuggestions = (
-    content: Record<string, ContentPii>
-  ): number => {
-    let applied = 0;
-    data.forEach((d, idx) => {
-      const c = content[`${d.schema}.${d.table}.${d.column}`];
-      if (!c || c.confidence !== PiiConfidence.CONFIRMED) {
-        return;
-      }
-      if (c.source === TransformerSource.UNSPECIFIED) {
-        return; // pas de générateur adapté (IBAN, SIRET, date...)
-      }
-      const currentCase = d.transformer?.config?.case;
-      if (currentCase && currentCase !== 'passthroughConfig') {
-        return;
-      }
-      const sys = getAvailableTransformers(idx).system.find(
-        (t) => t.source === c.source
-      );
-      if (!sys) {
-        return;
-      }
-      onTransformerUpdate(
+      update(
         idx,
         convertJobMappingTransformerToForm(
           create(JobMappingTransformerSchema, { config: sys.config })
@@ -276,6 +274,28 @@ export function SchemaTable(props: Props): ReactElement {
     });
     return applied;
   };
+
+  // Détection DÉTERMINISTE par NOM : appliquée automatiquement.
+  const applyNamePiiSuggestions = (): void => {
+    applyPiiSuggestions((colKey) =>
+      constraintHandler.getIsSensitive(colKey)
+        ? constraintHandler.getSuggestedTransformerSource(colKey)
+        : TransformerSource.UNSPECIFIED
+    );
+  };
+
+  // Détection de contenu CONFIRMÉE (clé de contrôle vérifiée) : appliquée comme
+  // celle par nom. Une détection statistique ou ambiguë ne l'est jamais.
+  const applyContentPiiSuggestions = (
+    content: Record<string, ContentPii>
+  ): number =>
+    applyPiiSuggestions((colKey) => {
+      const c = content[`${colKey.schema}.${colKey.table}.${colKey.column}`];
+      // UNSPECIFIED : pas de générateur adapté (IBAN, SIRET, date...).
+      return c?.confidence === PiiConfidence.CONFIRMED
+        ? c.source
+        : TransformerSource.UNSPECIFIED;
+    });
 
   const onScanContent = async (): Promise<void> => {
     if (!sourceConnectionId) {
