@@ -110,3 +110,40 @@ func TestToDriverValue(t *testing.T) {
 		require.Equal(t, c.want, got)
 	}
 }
+
+// A session whose settings could not be restored must not go back to the pool: the next
+// table would be written with foreign key checks off, and nothing would say so.
+func TestInTransaction_SessionDiscardedWhenNotRestored(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("INSERT INTO").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).
+		WillReturnError(errors.New("connexion perdue"))
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("KILL CONNECTION CONNECTION_ID()")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	ctx := context.Background()
+	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
+		return NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users").WriteBatch([]string{"id"}, [][]any{{int64(1)}})
+	})
+	// The page is rolled back rather than committed on a session left in an unknown state.
+	require.ErrorContains(t, err, "rétablissement de la session")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A dialect setting nothing on its session has nothing to throw away.
+func TestInTransaction_NoSessionToDiscard(t *testing.T) {
+	stmt, ok := PostgresDialect{}.DiscardSessionStatement()
+	require.False(t, ok)
+	require.Empty(t, stmt)
+	stmt, ok = MSSQLDialect{}.DiscardSessionStatement()
+	require.False(t, ok)
+	require.Empty(t, stmt)
+}

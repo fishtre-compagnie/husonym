@@ -55,6 +55,11 @@ type Dialect interface {
 	// that let the destination store the source values as they are instead of adjusting
 	// them to its own settings.
 	FaithfulWriteStatements() (begin, end []string)
+	// DiscardSessionStatement returns the statement making the database drop the connection
+	// of the caller, and false when the dialect sets nothing on its session. It is what a
+	// session whose settings could not be restored is thrown away with, instead of going
+	// back to the pool with foreign key checks off.
+	DiscardSessionStatement() (string, bool)
 }
 
 // PostgresDialect : placeholders $1, $2… et identifiants entre guillemets doubles.
@@ -76,6 +81,9 @@ func (PostgresDialect) ForeignKeyChecksStatements() (disable, enable string, ok 
 }
 
 func (PostgresDialect) FaithfulWriteStatements() (begin, end []string) { return nil, nil }
+
+// PostgreSQL: nothing is set on the session, so nothing is left behind.
+func (PostgresDialect) DiscardSessionStatement() (string, bool) { return "", false }
 
 // MySQLDialect : placeholders ? et identifiants entre accents graves.
 type MySQLDialect struct{}
@@ -109,6 +117,13 @@ func (MySQLDialect) FaithfulWriteStatements() (begin, end []string) {
 		}
 }
 
+// MySQL keeps FOREIGN_KEY_CHECKS and sql_mode on the session, which a rollback does not
+// undo: a connection whose settings could not be restored is killed rather than returned
+// to the pool, where the next table would be written with its foreign keys off.
+func (MySQLDialect) DiscardSessionStatement() (string, bool) {
+	return "KILL CONNECTION CONNECTION_ID()", true
+}
+
 // MSSQLDialect : SQL Server — placeholders @p1, @p2… (ordinaux, mappés
 // positionnellement par go-mssqldb) et identifiants entre crochets.
 type MSSQLDialect struct{}
@@ -136,6 +151,9 @@ func (MSSQLDialect) ForeignKeyChecksStatements() (disable, enable string, ok boo
 }
 
 func (MSSQLDialect) FaithfulWriteStatements() (begin, end []string) { return nil, nil }
+
+// SQL Server: nothing is set on the session, so nothing is left behind.
+func (MSSQLDialect) DiscardSessionStatement() (string, bool) { return "", false }
 
 // maxRowsForParams renvoie le nombre de lignes tenant sous une limite de
 // paramètres, au moins 1 (une ligne large peut à elle seule dépasser la limite —
