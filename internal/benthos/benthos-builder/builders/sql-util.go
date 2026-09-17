@@ -17,6 +17,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
@@ -1657,4 +1659,45 @@ func withoutNullableColumns(
 		}
 	}
 	return filtered
+}
+
+// planForeignKeys describes, per run config, the foreign keys of its table for the
+// engine-neutral plan: which parents the job copies only in part, and which value of a
+// mandatory key means "no parent".
+func planForeignKeys(
+	runConfigs []*rc.RunConfig,
+	subsetByForeignKeyConstraints bool,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) map[string][]*tableplan.ForeignKey {
+	reduced := make(map[string]bool, len(runConfigs))
+	for _, config := range runConfigs {
+		if subsetByForeignKeyConstraints {
+			reduced[config.Table()] = len(config.SubsetPaths()) > 0
+		} else {
+			reduced[config.Table()] = config.WhereClause() != nil && *config.WhereClause() != ""
+		}
+	}
+
+	byConfig := make(map[string][]*tableplan.ForeignKey, len(runConfigs))
+	for _, config := range runConfigs {
+		for _, fk := range config.ForeignKeys() {
+			planned := &tableplan.ForeignKey{
+				Columns:       fk.Columns,
+				NotNull:       fk.NotNullable,
+				ParentSchema:  fk.ReferenceSchema,
+				ParentTable:   fk.ReferenceTable,
+				ParentColumns: fk.ReferenceColumns,
+				ParentReduced: reduced[fk.ReferenceSchema+"."+fk.ReferenceTable],
+			}
+			// parent_id NOT NULL DEFAULT 0: the default stands for "no parent".
+			if len(fk.Columns) == 1 && planned.IsMandatory() {
+				if info, ok := columnInfo[config.Table()][fk.Columns[0]]; ok && info.ColumnDefault != "" {
+					noParent := strings.Trim(info.ColumnDefault, "'")
+					planned.NoParentValue = &noParent
+				}
+			}
+			byConfig[config.Id()] = append(byConfig[config.Id()], planned)
+		}
+	}
+	return byConfig
 }

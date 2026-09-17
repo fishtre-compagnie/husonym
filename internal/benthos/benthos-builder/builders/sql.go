@@ -245,6 +245,11 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		return nil, fmt.Errorf("unable to build benthos sql source config responses: %w", err)
 	}
 
+	foreignKeys := planForeignKeys(runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints, groupedColumnInfo)
+	for _, config := range configs {
+		config.ForeignKeys = foreignKeys[config.Name]
+	}
+
 	return configs, nil
 }
 

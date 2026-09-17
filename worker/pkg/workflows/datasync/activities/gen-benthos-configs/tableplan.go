@@ -24,6 +24,7 @@ func toTablePlan(config *benthosbuilder.BenthosConfigResponse) *tableplan.TableP
 		PageQuery:      input.PagedQuery,
 		OrderByColumns: input.OrderByColumns,
 		Columns:        config.Columns,
+		ForeignKeys:    config.ForeignKeys,
 	}
 	if input.ExpectedTotalRows != nil {
 		plan.PageLimit = *input.ExpectedTotalRows

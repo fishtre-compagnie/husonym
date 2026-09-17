@@ -20,7 +20,7 @@ func InTransaction(
 	db TxBeginner,
 	dialect Dialect,
 	disableForeignKeyChecks bool,
-	write func(Execer) error,
+	write func(Tx) error,
 ) (err error) {
 	var disable, enable string
 	if disableForeignKeyChecks {

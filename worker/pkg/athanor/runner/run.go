@@ -27,6 +27,9 @@ type WriteConfig struct {
 	// DisableForeignKeyChecks writes the page with foreign key checks off, so the table
 	// is written in one pass whatever the order of its rows. The dialect must allow it.
 	DisableForeignKeyChecks bool
+	// SkipForeignKeyViolations leaves out the rows whose mandatory parent is missing;
+	// without it the first one fails the page.
+	SkipForeignKeyViolations bool
 }
 
 // Destination is where a table is written: each page in a transaction of its own.
@@ -51,6 +54,8 @@ type TablePage struct {
 // PageResult tells what a page read and whether the table has more pages.
 type PageResult struct {
 	RowsRead int
+	// RowsDiscarded counts the rows left out because a mandatory parent was missing.
+	RowsDiscarded int
 	// LastOrderValues are the order column values of the last source row read, before
 	// any transformation: the next page resumes after them.
 	LastOrderValues []any
@@ -123,8 +128,11 @@ func RunTablePage(
 	}
 
 	// The page is written in one transaction: whole or not at all.
-	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Execer) error {
-		w := sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table, sqlio.WithOnConflict(wc.OnConflict, pkColumns))
+	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
+		var w sqlio.RowWriter = sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table,
+			sqlio.WithOnConflict(wc.OnConflict, pkColumns))
+		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan),
+			wc.SkipForeignKeyViolations, func(rows int) { result.RowsDiscarded += rows })
 		return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
 			sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
 			sqlio.WithRowObserver(observe),
@@ -145,6 +153,27 @@ func RunTablePage(
 		result.HasMore = result.RowsRead >= plan.PageLimit
 	}
 	return result, nil
+}
+
+// parentChecks returns the foreign keys to verify when writing: the mandatory ones whose
+// parent table the job copies only in part. A mandatory self-reference is not among them:
+// its parent rows belong to the page being written.
+func parentChecks(plan *tableplan.TablePlan) []sqlio.ParentCheck {
+	var checks []sqlio.ParentCheck
+	for _, fk := range plan.ForeignKeys {
+		selfReference := fk.ParentSchema == plan.Schema && fk.ParentTable == plan.Table
+		if !fk.IsMandatory() || !fk.ParentReduced || selfReference {
+			continue
+		}
+		checks = append(checks, sqlio.ParentCheck{
+			Columns:       fk.Columns,
+			ParentSchema:  fk.ParentSchema,
+			ParentTable:   fk.ParentTable,
+			ParentColumns: fk.ParentColumns,
+			NoParentValue: fk.NoParentValue,
+		})
+	}
+	return checks
 }
 
 // pageQuery returns the query reading a page and its arguments. The first page uses

@@ -38,6 +38,39 @@ type TablePlan struct {
 	// Columns are the columns this pass writes: every inserted column for an insert,
 	// the deferred columns for an update.
 	Columns []string `json:"columns"`
+
+	// ForeignKeys are the foreign keys of the table to tables of the job, virtual ones
+	// included. The query already reads NULL for nullable keys to rows left out of the
+	// subset; the engine checks the mandatory ones when it writes.
+	ForeignKeys []*ForeignKey `json:"foreignKeys,omitempty"`
+}
+
+// ForeignKey is one foreign key of a table, declared in the database or virtual.
+type ForeignKey struct {
+	Columns []string `json:"columns"`
+	// NotNull tells, per column, whether it refuses NULL.
+	NotNull       []bool   `json:"notNull"`
+	ParentSchema  string   `json:"parentSchema"`
+	ParentTable   string   `json:"parentTable"`
+	ParentColumns []string `json:"parentColumns"`
+	// ParentReduced is set when the job copies only part of the parent table: a row of
+	// this table can then reference a parent row that is not copied.
+	ParentReduced bool `json:"parentReduced"`
+	// NoParentValue is the value meaning "no parent" in a mandatory single-column key:
+	// the default of a NOT NULL column (parent_id NOT NULL DEFAULT 0). Rows holding it
+	// reference nothing on purpose and are legitimate.
+	NoParentValue *string `json:"noParentValue,omitempty"`
+}
+
+// IsMandatory reports whether no column of the key accepts NULL: the key cannot be
+// cleared, a row whose parent is missing cannot be written.
+func (fk *ForeignKey) IsMandatory() bool {
+	for _, notNull := range fk.NotNull {
+		if !notNull {
+			return false
+		}
+	}
+	return len(fk.NotNull) > 0
 }
 
 // IsPaged reports whether the plan reads its table page by page.

@@ -225,6 +225,10 @@ func (a *Activity) runAthanor(
 		return nil, err
 	}
 	logger.Info("moteur=athanor : page écrite", "lignes", res.RowsRead, "pageSuivante", res.HasMore)
+	if res.RowsDiscarded > 0 {
+		logger.Warn("moteur=athanor : lignes écartées, parent obligatoire absent de la destination",
+			"schema", plan.Schema, "table", plan.Table, "lignes", res.RowsDiscarded)
+	}
 
 	resp := &SyncTableResponse{}
 	if res.HasMore {
@@ -315,11 +319,20 @@ func writeConfigForDest(dst *mgmtv1alpha1.JobDestination) runner.WriteConfig {
 	opts := dst.GetOptions()
 	switch {
 	case opts.GetMysqlOptions() != nil:
-		return runner.WriteConfig{OnConflict: conflictFromMysql(opts.GetMysqlOptions().GetOnConflict())}
+		return runner.WriteConfig{
+			OnConflict:               conflictFromMysql(opts.GetMysqlOptions().GetOnConflict()),
+			SkipForeignKeyViolations: opts.GetMysqlOptions().GetSkipForeignKeyViolations(),
+		}
 	case opts.GetPostgresOptions() != nil:
-		return runner.WriteConfig{OnConflict: conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict())}
+		return runner.WriteConfig{
+			OnConflict:               conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict()),
+			SkipForeignKeyViolations: opts.GetPostgresOptions().GetSkipForeignKeyViolations(),
+		}
 	case opts.GetMssqlOptions() != nil:
-		return runner.WriteConfig{OnConflict: conflictFromMssql(opts.GetMssqlOptions().GetOnConflict())}
+		return runner.WriteConfig{
+			OnConflict:               conflictFromMssql(opts.GetMssqlOptions().GetOnConflict()),
+			SkipForeignKeyViolations: opts.GetMssqlOptions().GetSkipForeignKeyViolations(),
+		}
 	default:
 		return runner.WriteConfig{}
 	}

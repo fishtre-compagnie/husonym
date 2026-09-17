@@ -13,6 +13,7 @@ import (
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 )
@@ -33,6 +34,8 @@ type BenthosConfigResponse struct {
 	BenthosDsns             []*bb_shared.BenthosDsn
 	RedisConfig             []*bb_shared.BenthosRedisConfig
 	ColumnIdentityCursors   map[string]*tablesync_shared.IdentityCursor
+	// ForeignKeys are the foreign keys of the table, for the engine-neutral plan.
+	ForeignKeys []*tableplan.ForeignKey
 }
 
 // Combines a connection type and job type to uniquely identify a builder configuration

@@ -27,7 +27,7 @@ func TestInTransaction_ForeignKeyChecksDisabled(t *testing.T) {
 	mock.ExpectCommit()
 
 	ctx := context.Background()
-	require.NoError(t, InTransaction(ctx, db, MySQLDialect{}, true, func(tx Execer) error {
+	require.NoError(t, InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
 		w := NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users")
 		return w.WriteBatch([]string{"id", "manager_id"}, [][]any{{int64(1), int64(2)}, {int64(2), nil}})
 	}))
@@ -46,7 +46,7 @@ func TestInTransaction_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
 	mock.ExpectRollback()
 
 	ctx := context.Background()
-	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Execer) error {
+	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
 		return NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users").WriteBatch([]string{"id"}, [][]any{{int64(1)}})
 	})
 	require.ErrorContains(t, err, "duplicate entry")
@@ -58,7 +58,7 @@ func TestInTransaction_ForeignKeyChecksUnsupportedDialect(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	require.Error(t, InTransaction(context.Background(), db, PostgresDialect{}, true, func(Execer) error { return nil }))
+	require.Error(t, InTransaction(context.Background(), db, PostgresDialect{}, true, func(Tx) error { return nil }))
 }
 
 // Without foreign key checks to turn off, a page is still written whole or not at all:
@@ -74,7 +74,7 @@ func TestInTransaction_PageIsAtomic(t *testing.T) {
 	mock.ExpectRollback()
 
 	ctx := context.Background()
-	err = InTransaction(ctx, db, PostgresDialect{}, false, func(tx Execer) error {
+	err = InTransaction(ctx, db, PostgresDialect{}, false, func(tx Tx) error {
 		w := NewSQLWriter(ctx, tx, PostgresDialect{}, "public", "journal")
 		if err := w.WriteBatch([]string{"message"}, [][]any{{"lot 1"}}); err != nil {
 			return err
