@@ -256,7 +256,7 @@ func Test_BuildInsertQuery(t *testing.T) {
 				{"name": "Bob", "email": "bob@fake.com"},
 			},
 			onConflictDoNothing: true,
-			expected:            "INSERT IGNORE INTO `public`.`users` (`email`, `name`) VALUES (?, ?), (?, ?)",
+			expected:            "INSERT INTO `public`.`users` (`email`, `name`) VALUES (?, ?), (?, ?) ON DUPLICATE KEY UPDATE `email`=`email`",
 			expectedArgs:        []any{"alice@fake.com", "Alice", "bob@fake.com", "Bob"},
 		},
 		{

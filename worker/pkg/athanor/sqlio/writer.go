@@ -135,7 +135,8 @@ type ConflictAction int
 const (
 	// ConflictNone: plain INSERT (historical behavior). A collision fails.
 	ConflictNone ConflictAction = iota
-	// ConflictDoNothing: skip the colliding row (INSERT IGNORE / ON CONFLICT DO NOTHING).
+	// ConflictDoNothing: skip the colliding row (ON CONFLICT DO NOTHING; on MySQL a
+	// duplicate key update that changes nothing, never INSERT IGNORE).
 	ConflictDoNothing
 	// ConflictDoUpdate: upsert — update the existing row (ON DUPLICATE KEY UPDATE /
 	// ON CONFLICT DO UPDATE). Postgres needs the conflict target columns

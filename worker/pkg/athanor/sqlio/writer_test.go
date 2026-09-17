@@ -68,8 +68,9 @@ func TestSQLWriter_MySQL_OnConflictDoNothing(t *testing.T) {
 	if err := w.WriteBatch([]string{"id"}, [][]any{{int64(1)}}); err != nil {
 		t.Fatalf("WriteBatch: %v", err)
 	}
-	if !strings.Contains(e.query, "INSERT IGNORE") {
-		t.Fatalf("MySQL do-nothing attendu (INSERT IGNORE), obtenu: %q", e.query)
+	// Never INSERT IGNORE: it would also swallow truncations and invalid values.
+	if strings.Contains(e.query, "IGNORE") || !strings.Contains(e.query, "ON DUPLICATE KEY UPDATE `id`=`id`") {
+		t.Fatalf("MySQL do-nothing attendu sans IGNORE (ON DUPLICATE KEY UPDATE id=id), obtenu: %q", e.query)
 	}
 }
 

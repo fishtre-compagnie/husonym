@@ -2,6 +2,7 @@ package querybuilder
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/doug-martin/goqu/v9"
@@ -133,7 +134,18 @@ func BuildInsertQuery(
 	sqltable := goqu.S(schema).Table(table)
 	insert := builder.Insert(sqltable).Prepared(true).Rows(records)
 	// adds on conflict do nothing to insert query
-	if *onConflictDoNothing {
+	mysqlDoNothing := *onConflictDoNothing && driver == sqlmanager_shared.MysqlDriver && len(records) > 0
+	switch {
+	case mysqlDoNothing:
+		// MySQL spells "do nothing" INSERT IGNORE, which skips rows already there but
+		// also downgrades every other error to a warning: values too long are truncated,
+		// NULL in a NOT NULL column becomes the implicit default, invalid ENUM values become
+		// ''. Assigning a column to itself on a duplicate key skips the row and nothing else.
+		column := firstColumn(records[0])
+		insert = insert.OnConflict(goqu.DoUpdate("", goqu.Record{
+			column: exp.NewIdentifierExpression("", "", column),
+		}))
+	case *onConflictDoNothing:
 		insert = insert.OnConflict(goqu.DoNothing())
 	}
 
@@ -145,7 +157,22 @@ func BuildInsertQuery(
 		}
 		return "", nil, err
 	}
+	if mysqlDoNothing {
+		// goqu writes every MySQL conflict clause on top of INSERT IGNORE
+		query = strings.Replace(query, "INSERT IGNORE INTO", "INSERT INTO", 1)
+	}
 	return query, args, nil
+}
+
+// firstColumn returns the first column of a record in name order, so the same rows
+// always build the same query.
+func firstColumn(record goqu.Record) string {
+	columns := make([]string, 0, len(record))
+	for column := range record {
+		columns = append(columns, column)
+	}
+	slices.Sort(columns)
+	return columns[0]
 }
 
 func BuildUpdateQuery(
