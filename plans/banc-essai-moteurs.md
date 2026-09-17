@@ -1,6 +1,7 @@
 # Banc d'essai des moteurs (Benthos / Athanor)
 
-Statut : conception validée dans son principe le 2026-09-17, périmètre des cas à arbitrer.
+Statut : conception validée le 2026-09-17. Rien n'est encore implémenté. Référence visuelle : page « Pièges par
+SGBD » (schéma d'écriture par SGBD, structures de FK du banc, tableau des particularités).
 
 ## Objectif
 
@@ -32,6 +33,53 @@ deux moteurs puis vérifie automatiquement les résultats. Chaque moteur est com
    Avec `skipForeignKeyViolations` : `NULL` ou suppression en cascade ; sans : échec en listant les orphelins.
 
 Les FK virtuelles sont traitées comme les réelles (Benthos écrit leurs orphelins).
+
+Précisions issues du challenge, vérifiées dans `worker/pkg/select-query-builder` et `internal/runconfigs` :
+
+- Le subset suit, depuis chaque table à `WHERE`, **le plus court chemin** vers chaque table et **la première FK**
+  trouvée entre deux tables, nullable ou non, traduite en `INNER JOIN`. Une FK hors chemin n'est jamais filtrée,
+  même obligatoire (cas « diamant ») ; une FK auto-référencée n'est jamais sur un chemin.
+- Le filtre ne doit toucher que les **valeurs projetées**, jamais les **lignes retenues** : c'est ce qui exclut
+  toute récursion, même en cas de cycle. Un filtre qui retire des lignes rendrait les tables interdépendantes.
+- La sous-requête reprend la sélection du parent avec des alias propres (le builder nomme la racine par le nom de
+  la table : collision en auto-référence), sans `ORDER BY` (refusé par SQL Server sans `TOP`) ni `LIMIT` (refusé
+  par MySQL dans `IN`). FK composite : `EXISTS` (SQL Server refuse `(a, b) IN`). Sémantique `MATCH SIMPLE` : une
+  colonne déjà `NULL` suffit à satisfaire la contrainte ; ne mettre à `NULL` que les colonnes nullables.
+- Mesure sur la source réelle (`COMMANDE_MONTEUR`) : sans filtre 67 ms ; `EXISTS` 61 ms ; `x IS NOT NULL AND x IN`
+  62 ms ; `x IN` seul ~0,5 s (parcours complet pour la sémantique de `NULL IN`). Retenu : `EXISTS`.
+- Sans `skipForeignKeyViolations`, Benthos échoue : Athanor doit détecter et échouer, pas annuler en silence.
+- Écart commun aux deux moteurs à corriger dans le builder partagé : une FK nullable sur le chemin du subset
+  (`INNER JOIN`) exclut les lignes où elle vaut `NULL`.
+
+## Contrôle des droits selon le rôle de la connexion
+
+Décidé le 2026-09-17. Le test de connexion actuel (`CheckConnectionConfig`) ignore le rôle : il vérifie que la
+connexion aboutit et liste les droits table par table. Le rôle dépend de l'usage (une connexion peut être source
+d'un job et destination d'un autre) : on contrôle le couple connexion + rôle, et le moteur pour la destination.
+
+| Contrôle | Source | Destination |
+|---|---|---|
+| Serveur accessible en écriture | non requis (réplica accepté) | bloquant : MySQL `@@read_only` / `@@super_read_only`, PostgreSQL `pg_is_in_recovery()`, SQL Server `DATABASEPROPERTYEX('Updateability')` et réplica secondaire |
+| Lecture des tables du job | bloquant | — |
+| Lecture des métadonnées de FK | bloquant (PostgreSQL masque dans `information_schema` les contraintes des tables sans droit : subset faux sans erreur) | — |
+| Écriture et DDL | — | bloquant |
+| Suspension des FK (Athanor) | — | bloquant : superutilisateur PostgreSQL (ou `GRANT SET ON PARAMETER`, PG 15+), `ALTER` SQL Server |
+| Longue lecture sur réplica PostgreSQL | avertissement (`max_standby_streaming_delay`) | — |
+
+Trois moments : test de connexion dans l'UI (choix source / destination, état par contrôle, explication et
+`GRANT` à exécuter) ; création ou modification d'un job ; **démarrage d'un run, qui s'arrête** sur un contrôle
+bloquant. `CheckConnectionConfig` reçoit le rôle et le moteur et renvoie une liste de contrôles, en conservant la
+liste de droits existante. Scénarios du banc : destination sans droits, source sur un réplica.
+
+## Piste à challenger : analyse complète du schéma avant run
+
+Proposée, non décidée. Un rapport produit avant le premier run (et à la configuration du job) qui détecte ce que
+le banc teste : colonnes de tri non uniques ou nullables, orphelins déjà présents dans la source, auto-références
+et cycles, chemins de subset en « diamant », FK nullables sur le chemin du subset, associations polymorphes sans
+FK (candidates à une FK virtuelle), collations ou types divergents entre FK et parent, types non gérés, colonnes
+générées, triggers en destination, transformers risqués (constante sur colonne unique, sortie plus longue que la
+colonne). À challenger : périmètre, coût sur une grosse base de production, recoupement avec le contrôle des
+droits et la détection RGPD existante.
 
 ## Cas à couvrir
 
@@ -123,6 +171,9 @@ Priorité **P1** : perte ou fuite de données, corruption silencieuse. **P2** : 
 
 ## Ordre
 
-1. Banc MySQL (P1 puis P2), passage de Benthos et d'Athanor actuel : liste chiffrée des écarts.
-2. Corrections d'Athanor avec le banc comme critère d'acceptation.
-3. Extension PostgreSQL et SQL Server.
+1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
+   des écarts de chacun.
+2. Corrections avec le banc comme critère d'acceptation : intégrité référentielle, contrôle des droits, écarts
+   du builder partagé (« Benthos amélioré »), puis le reste d'Athanor (Redis, identités, conversions).
+3. Extension PostgreSQL et SQL Server (une passe via `session_replication_role` et `NOCHECK CONSTRAINT`).
+4. Comparaison finale mesurée : durée, lignes/s, mémoire, exactitude contre l'attendu.

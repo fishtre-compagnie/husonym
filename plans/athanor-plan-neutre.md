@@ -1,6 +1,8 @@
 # Athanor : plan d'exécution commun aux deux moteurs
 
 Statut : décisions validées le 2026-09-17, implémentation en cours sur `feat/athanor-moteur-m1-m3`.
+La suite (banc d'essai, intégrité référentielle, contrôle des droits) est détaillée dans
+[banc-essai-moteurs.md](banc-essai-moteurs.md).
 
 ## Objectif
 
@@ -39,16 +41,31 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    Le scope inclut toujours l'identifiant (run, job ou compte) : deux comptes ne partagent jamais de sorties.
 4. **Clé de dérivation obligatoire** (`ATHANOR_CONSISTENCY_KEY`) : plus de clé de démo codée en dur, qui
    permettait de retrouver par force brute les valeurs à faible entropie.
+5. **Une passe par table, FK suspendues pendant l'écriture**, sur les trois SGBD : Husonym a les droits complets
+   sur la destination (serveur autonome ou primaire, jamais un réplica). MySQL `SET FOREIGN_KEY_CHECKS=0`
+   (session, fait) ; PostgreSQL `SET LOCAL session_replication_role = replica` (transaction, superutilisateur,
+   suspend aussi les triggers utilisateur) ; SQL Server `NOCHECK CONSTRAINT ALL` puis
+   `WITH CHECK CHECK CONSTRAINT ALL` (portée table, la revalidation refuse les orphelins). Les passes de
+   mise à jour du plan deviennent sans effet.
+6. **Faire mieux que Benthos quand c'est possible** (principe utilisateur) : les deux moteurs doivent rester
+   comparables, donc une amélioration placée dans le calcul partagé (builder de requêtes, plan, contrôles) profite
+   aux deux ; « Benthos amélioré » est la référence à battre.
+7. **Transformers JavaScript d'une table dans une seule VM**, ligne par ligne, dans l'ordre des mappings, avec
+   `input` : des transformers réels gardent un état partagé entre colonnes via le global `neosync` (fait).
 
 ## Étapes
 
-1. Portée de cohérence par job (proto, stockage, UI création + réglages) et clé obligatoire.
-2. Plan neutre : type sérialisable, production dans `GenerateBenthosConfigs`, stockage en run context.
-3. Athanor lit le plan : passes insert/update, requête avec subset, pagination par clé + jeton de
-   continuation, `DO NOTHING` en reprise.
-4. Écriture : destinations multiples et hétérogènes, identités/générées/défauts, conversions de types par SGBD.
-5. Propagation des FK via Redis, identique à Benthos.
-6. Benchmark comparatif sur un même plan (temps, lignes/s, mémoire) avant toute décision de retrait de Benthos.
+1. ✅ Portée de cohérence par job (proto, stockage, UI création + réglages) et clé obligatoire (`39a854f6`).
+2. ✅ Plan neutre : type sérialisable, production dans `GenerateBenthosConfigs`, stockage en run context
+   (`5175df77`).
+3. ✅ MySQL / à faire PostgreSQL et SQL Server : Athanor lit le plan, pagination par clé + jeton de continuation,
+   `DO NOTHING` en reprise, une passe FK suspendues (`e01e091c`) ; JavaScript dans une VM par table (`5f166f4e`).
+4. Intégrité référentielle en trois étapes et banc d'essai : voir [banc-essai-moteurs.md](banc-essai-moteurs.md).
+5. Écriture : destinations multiples et hétérogènes, identités/générées/défauts, conversions de types par SGBD.
+6. Propagation des FK via Redis (clés primaires transformées), identique à Benthos.
+7. Contrôle des droits selon le rôle de la connexion : voir [banc-essai-moteurs.md](banc-essai-moteurs.md).
+8. Comparaison mesurée sur le banc (temps, lignes/s, mémoire, exactitude) avant toute décision de retrait de
+   Benthos.
 
 Hors périmètre Athanor tant que non demandé : MongoDB, DynamoDB, S3/GCS, jobs de génération (Benthos reste le
 moteur, choix explicite et journalisé).
