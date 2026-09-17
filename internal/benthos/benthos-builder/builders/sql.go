@@ -519,8 +519,11 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						WhereColumns:             benthosConfig.PrimaryKeys,
 
 						Batching: &husonym_benthos.Batching{
-							Period:     destOpts.BatchPeriod,
-							Count:      destOpts.BatchCount,
+							Period: destOpts.BatchPeriod,
+							Count:  destOpts.BatchCount,
+							// The last row of a page flushes the batch it lands in, instead of
+							// waiting for the period: see husonym_benthos.LastRowOfPageMetaKey.
+							Check:      husonym_benthos.LastRowOfPageCheck,
 							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 					},
@@ -596,8 +599,11 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						Suffix:                      suffix,
 
 						Batching: &husonym_benthos.Batching{
-							Period:     destOpts.BatchPeriod,
-							Count:      destOpts.BatchCount,
+							Period: destOpts.BatchPeriod,
+							Count:  destOpts.BatchCount,
+							// The last row of a page flushes the batch it lands in, instead of
+							// waiting for the period: see husonym_benthos.LastRowOfPageMetaKey.
+							Check:      husonym_benthos.LastRowOfPageCheck,
 							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 						MaxInFlight: int(destOpts.MaxInFlight),
