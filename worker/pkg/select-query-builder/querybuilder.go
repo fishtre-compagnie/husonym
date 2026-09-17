@@ -71,6 +71,20 @@ func (qb *QueryBuilder) BuildQuery(
 		return "", nil, "", false, err
 	}
 
+	// Without order columns the table cannot be paged: it is read in a single pass, so
+	// the query must not stop at the first page.
+	if len(runconfig.OrderByColumns()) == 0 {
+		sql, args, err := query.ToSQL()
+		if err != nil {
+			return "", nil, "", false, fmt.Errorf(
+				"unable to convert structured query to string for %s: %w",
+				runconfig.Id(),
+				err,
+			)
+		}
+		return sql, args, "", notFkSafe, nil
+	}
+
 	sql, args, err := query.Limit(qb.pageLimit).ToSQL()
 	if err != nil {
 		return "", nil, "", false, fmt.Errorf(

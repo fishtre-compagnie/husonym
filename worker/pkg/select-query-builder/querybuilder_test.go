@@ -56,3 +56,22 @@ func Test_BuildQuery_WhereWithTopLevelOr(t *testing.T) {
 		})
 	}
 }
+
+// A table without order columns is read in a single pass: no LIMIT, no page query.
+func Test_BuildQuery_TableWithoutKeyIsNotPaged(t *testing.T) {
+	configs, err := runconfigs.BuildRunConfigs(
+		map[string][]*sqlmanager_shared.ForeignConstraint{},
+		map[string]string{},
+		map[string][]string{},
+		map[string][]string{"shop.journal": {"niveau", "message"}},
+		map[string][][]string{}, map[string][][]string{},
+	)
+	require.NoError(t, err)
+	queries, err := BuildSelectQueryMap(sqlmanager_shared.MysqlDriver, configs, false, 100)
+	require.NoError(t, err)
+	query := queries["shop.journal.insert"]
+	require.NotNil(t, query)
+	require.NotContains(t, query.Query, "LIMIT")
+	require.NotContains(t, query.Query, "ORDER BY")
+	require.Empty(t, query.PageQuery)
+}

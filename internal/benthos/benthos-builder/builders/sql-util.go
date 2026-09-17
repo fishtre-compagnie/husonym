@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -1634,4 +1635,26 @@ func getTableDeferrableMap(
 		}
 	}
 	return tableDeferrableMap, nil
+}
+
+// withoutNullableColumns keeps, per table, the unique keys whose columns are all NOT
+// NULL: only those can order the pages of a table sync. A unique index accepts any
+// number of NULLs, which keyset pagination ("col > last value") never reads past.
+func withoutNullableColumns(
+	uniqueKeys map[string][][]string,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) map[string][][]string {
+	filtered := make(map[string][][]string, len(uniqueKeys))
+	for table, keys := range uniqueKeys {
+		for _, key := range keys {
+			nullable := slices.ContainsFunc(key, func(column string) bool {
+				info, ok := columnInfo[table][column]
+				return !ok || info.IsNullable
+			})
+			if !nullable {
+				filtered[table] = append(filtered[table], key)
+			}
+		}
+	}
+	return filtered
 }

@@ -84,7 +84,7 @@ func TestGetOrderByColumns_WithPrimaryKeys(t *testing.T) {
 		primaryKeys: []string{"id"},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"id"}, orderByColumns)
 }
@@ -95,7 +95,7 @@ func TestGetOrderByColumns_WithUniqueConstraints(t *testing.T) {
 		uniqueConstraints: [][]string{{"email"}, {"name"}},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"email"}, orderByColumns)
 }
@@ -107,21 +107,22 @@ func TestGetOrderByColumns_WithUniqueIndexes(t *testing.T) {
 		uniqueIndexes:     [][]string{{"name"}, {"email"}},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"name"}, orderByColumns)
 }
 
-func TestGetOrderByColumns_FallbackToSortedColumns(t *testing.T) {
+// A table without any key is not paged: ordering it on every column loses the rows that
+// are equal on all of them once they sit across a page boundary.
+func TestGetOrderByColumns_NoneWithoutKey(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"id", "name", "email"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{},
 		uniqueIndexes:     [][]string{},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
-
-	assert.Equal(t, []string{"email", "id", "name"}, orderByColumns)
+	assert.Empty(t, builder.getOrderByColumns())
 }
 
 func TestBuildInsertConfig(t *testing.T) {

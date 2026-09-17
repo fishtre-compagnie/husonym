@@ -205,8 +205,8 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		tableSubsetMap,
 		tableConstraints.PrimaryKeyConstraints,
 		tableColMap,
-		tableConstraints.UniqueIndexes,
-		tableConstraints.UniqueConstraints,
+		withoutNullableColumns(tableConstraints.UniqueIndexes, groupedColumnInfo),
+		withoutNullableColumns(tableConstraints.UniqueConstraints, groupedColumnInfo),
 	)
 	if err != nil {
 		return nil, err

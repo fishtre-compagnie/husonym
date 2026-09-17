@@ -300,7 +300,7 @@ func (b *runConfigBuilder) buildInsertConfig() *RunConfig {
 		insertColumns:  b.columns,
 		primaryKeys:    b.primaryKeys,
 		whereClause:    b.whereClause,
-		orderByColumns: b.getOrderByColumns(b.columns),
+		orderByColumns: b.getOrderByColumns(),
 		dependsOn:      b.getDependsOn(),
 		subsetPaths:    b.subsetPaths,
 	}
@@ -317,7 +317,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		where = b.whereClause
 	}
 
-	orderByColumns := b.getOrderByColumns(b.columns)
+	orderByColumns := b.getOrderByColumns()
 	insertConfig := &RunConfig{
 		id:             fmt.Sprintf("%s.%s", b.table, RunTypeInsert),
 		table:          b.table,
@@ -465,9 +465,15 @@ func (b *runConfigBuilder) getDependsOn() []*DependsOn {
 	return dependsOn
 }
 
-// getOrderByColumns returns order by columns for a table, prioritizing primary keys,
-// then unique constraints, then unique indexes, and finally falling back to sorted select columns.
-func (b *runConfigBuilder) getOrderByColumns(selectColumns []string) []string {
+// getOrderByColumns returns the columns a table is paged on: its primary key, else a
+// unique constraint, else a unique index. Callers must only pass unique constraints and
+// indexes whose columns are all NOT NULL: "col > last value" skips NULLs, and a page
+// ending on a NULL loses the rest of the table.
+//
+// A table with none of them has no order columns and is read in a single pass. Paging
+// it on every column, as was done before, cannot work: rows equal on all columns cannot
+// be told apart, so the ones past a page boundary are lost.
+func (b *runConfigBuilder) getOrderByColumns() []string {
 	if len(b.primaryKeys) > 0 {
 		return b.primaryKeys
 	}
@@ -480,7 +486,5 @@ func (b *runConfigBuilder) getOrderByColumns(selectColumns []string) []string {
 		return b.uniqueIndexes[0]
 	}
 
-	sc := slices.Clone(selectColumns)
-	slices.Sort(sc)
-	return sc
+	return nil
 }
