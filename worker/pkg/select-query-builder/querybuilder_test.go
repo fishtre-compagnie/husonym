@@ -1,6 +1,7 @@
 package selectquerybuilder
 
 import (
+	"strings"
 	"testing"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -74,4 +75,56 @@ func Test_BuildQuery_TableWithoutKeyIsNotPaged(t *testing.T) {
 	require.NotContains(t, query.Query, "LIMIT")
 	require.NotContains(t, query.Query, "ORDER BY")
 	require.Empty(t, query.PageQuery)
+}
+
+func Test_qualifyMysqlWhereColumnNames(t *testing.T) {
+	for clause, want := range map[string]string{
+		"ferme_le IS NULL":                                     "t_1.ferme_le is null",
+		"id = 1 OR 3 = id":                                     "t_1.id = 1 or 3 = t_1.id",
+		"cree_le BETWEEN '2024-01-01' AND now()":               "t_1.cree_le between '2024-01-01' and now()",
+		"DATE(cree_le) = '2024-01-01'":                         "date(t_1.cree_le) = '2024-01-01'",
+		"station.id IN (1, 2)":                                 "t_1.id in (1, 2)",
+		"id IN (SELECT station_id FROM autre WHERE actif = 1)": "t_1.id in (select station_id from autre where actif = 1)",
+	} {
+		got, err := qualifyMysqlWhereColumnNames("SELECT * FROM station WHERE "+clause, nil, "t_1")
+		require.NoError(t, err, clause)
+		require.Equal(t, "select * from station where "+want, got, clause)
+	}
+}
+
+// A nullable foreign key on the subset path keeps the rows holding NULL, and so do the
+// joins after it; a mandatory one keeps its INNER JOIN and bare clause.
+func Test_BuildQuery_NullableForeignKeyOnSubsetPath(t *testing.T) {
+	fk := func(column, parent string, notNull bool) *sqlmanager_shared.ForeignConstraint {
+		return &sqlmanager_shared.ForeignConstraint{
+			Columns: []string{column}, NotNullable: []bool{notNull},
+			ForeignKey: &sqlmanager_shared.ForeignKey{Table: parent, Columns: []string{"id"}},
+		}
+	}
+	configs, err := runconfigs.BuildRunConfigs(
+		map[string][]*sqlmanager_shared.ForeignConstraint{
+			"shop.fournisseur": {fk("station_id", "shop.station", true)},
+			"shop.commande":    {fk("fournisseur_id", "shop.fournisseur", false)},
+		},
+		map[string]string{"shop.station": "id = 1"},
+		map[string][]string{"shop.station": {"id"}, "shop.fournisseur": {"id"}, "shop.commande": {"id"}},
+		map[string][]string{
+			"shop.station": {"id"}, "shop.fournisseur": {"id", "station_id"},
+			"shop.commande": {"id", "fournisseur_id"},
+		},
+		map[string][][]string{}, map[string][][]string{},
+	)
+	require.NoError(t, err)
+	queries, err := BuildSelectQueryMap(sqlmanager_shared.MysqlDriver, configs, true, 100)
+	require.NoError(t, err)
+
+	commande := queries["shop.commande.insert"].Query
+	require.Equal(t, 2, strings.Count(commande, "LEFT JOIN"), commande)
+	require.NotContains(t, commande, "INNER JOIN", commande)
+	require.Regexp(t, "`commande`.`fournisseur_id` IS NULL\\) OR \\(.*id = 1\\)", commande)
+
+	fournisseur := queries["shop.fournisseur.insert"].Query
+	require.Equal(t, 1, strings.Count(fournisseur, "INNER JOIN"), fournisseur)
+	require.NotContains(t, fournisseur, "LEFT JOIN", fournisseur)
+	require.NotContains(t, fournisseur, "IS NULL", fournisseur)
 }

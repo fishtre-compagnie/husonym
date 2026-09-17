@@ -204,6 +204,25 @@ func (qb *QueryBuilder) addSubsetJoins(
 		rootTable.Table(): rootAlias,
 	}
 
+	// A nullable foreign key on a subset path must not remove the rows holding NULL:
+	// they reference nothing out of the subset. Its join, and every join after it in the
+	// chain, is a LEFT JOIN, and the clause of the root becomes "the key is NULL, or the
+	// root matches". An edge shared by several chains is a LEFT JOIN as soon as one of them
+	// needs it: a chain without nullable key keeps its bare clause, which rejects the
+	// NULL-extended rows just like an INNER JOIN.
+	leftJoins := make(map[string]bool)
+	for _, subset := range subsets {
+		nullableSeen := false
+		for _, step := range subset.JoinSteps {
+			if isNullableForeignKey(step.ForeignKey) {
+				nullableSeen = true
+			}
+			if nullableSeen {
+				leftJoins[step.FromKey+"->"+step.ToKey] = true
+			}
+		}
+	}
+
 	// To avoid adding duplicate joins, track them using a key "fromKey->toKey"
 	addedJoins := make(map[string]bool)
 	for _, subset := range subsets {
@@ -219,11 +238,10 @@ func (qb *QueryBuilder) addSubsetJoins(
 			continue
 		}
 
+		// keyIsNull gathers, along the chain, "this nullable foreign key holds a NULL".
+		var keyIsNull []exp.Expression
 		for idx, step := range subset.JoinSteps {
 			edgeKey := step.FromKey + "->" + step.ToKey
-			if addedJoins[edgeKey] {
-				continue
-			}
 			// Ensure the parent (fromKey) already has an alias.
 			parentAlias, ok := tableAliasMap[step.FromKey]
 			if !ok {
@@ -239,18 +257,27 @@ func (qb *QueryBuilder) addSubsetJoins(
 				childAlias = qb.generateUniqueAlias(prefix, childTable)
 				tableAliasMap[step.ToKey] = childAlias
 			}
-			// Build join conditions based on the foreign key.
-			joinConditions := make([]exp.Expression, len(step.ForeignKey.Columns))
 			for i, col := range step.ForeignKey.Columns {
-				joinConditions[i] = goqu.T(childAlias).
-					Col(step.ForeignKey.ReferenceColumns[i]).
-					Eq(goqu.T(parentAlias).Col(col))
+				if i < len(step.ForeignKey.NotNullable) && !step.ForeignKey.NotNullable[i] {
+					keyIsNull = append(keyIsNull, goqu.T(parentAlias).Col(col).IsNull())
+				}
 			}
-			query = query.InnerJoin(
-				goqu.I(childTable).As(childAlias),
-				goqu.On(joinConditions...),
-			)
-			addedJoins[edgeKey] = true
+
+			if !addedJoins[edgeKey] {
+				// Build join conditions based on the foreign key.
+				joinConditions := make([]exp.Expression, len(step.ForeignKey.Columns))
+				for i, col := range step.ForeignKey.Columns {
+					joinConditions[i] = goqu.T(childAlias).
+						Col(step.ForeignKey.ReferenceColumns[i]).
+						Eq(goqu.T(parentAlias).Col(col))
+				}
+				if leftJoins[edgeKey] {
+					query = query.LeftJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+				} else {
+					query = query.InnerJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+				}
+				addedJoins[edgeKey] = true
+			}
 
 			// If this is the last step in chain and there's a subset condition, apply it
 			if idx == len(subset.JoinSteps)-1 && subset.Subset != "" {
@@ -259,11 +286,26 @@ func (qb *QueryBuilder) addSubsetJoins(
 				if err != nil {
 					return nil, false, err
 				}
-				query = query.Where(goqu.L(qualifiedCondition))
+				if len(keyIsNull) == 0 {
+					query = query.Where(goqu.L(qualifiedCondition))
+				} else {
+					query = query.Where(goqu.Or(append(keyIsNull, goqu.L(qualifiedCondition))...))
+				}
 			}
 		}
 	}
 	return query, isSubset, nil
+}
+
+// isNullableForeignKey reports whether one column of the key accepts NULL: under MATCH
+// SIMPLE a single NULL is enough for the key to reference nothing.
+func isNullableForeignKey(fk *runconfigs.ForeignKey) bool {
+	for _, notNull := range fk.NotNullable {
+		if !notNull {
+			return true
+		}
+	}
+	return false
 }
 
 // generateUniqueAlias produces a short alias from a prefix and table name.
@@ -393,21 +435,24 @@ func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (str
 
 	switch stmt := stmt.(type) { //nolint:gocritic
 	case *sqlparser.Select:
+		// Every column of the clause belongs to the filtered table, wherever it stands:
+		// left or right of a comparison, under IS NULL, BETWEEN, IN or a function. Once the
+		// table is joined to its children, a bare column that both tables have is
+		// ambiguous. Subqueries name their own tables and are left alone.
 		err = sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-			switch node := node.(type) { //nolint:gocritic
-			case *sqlparser.ComparisonExpr:
-				if col, ok := node.Left.(*sqlparser.ColName); ok {
-					s := ""
-					if schema != nil && *schema != "" {
-						s = *schema
-					}
-					col.Qualifier.Qualifier = sqlparser.NewTableIdent(s)
-					col.Qualifier.Name = sqlparser.NewTableIdent(table)
-				}
+			switch node := node.(type) {
+			case *sqlparser.Subquery:
 				return false, nil
+			case *sqlparser.ColName:
+				s := ""
+				if schema != nil && *schema != "" {
+					s = *schema
+				}
+				node.Qualifier.Qualifier = sqlparser.NewTableIdent(s)
+				node.Qualifier.Name = sqlparser.NewTableIdent(table)
 			}
 			return true, nil
-		}, stmt)
+		}, stmt.Where)
 		if err != nil {
 			return "", err
 		}

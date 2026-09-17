@@ -40,8 +40,8 @@
     "benthos": "ok"
   },
   "fk-nullable-on-subset-path": {
-    "athanor": "gap",
-    "benthos": "gap"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "fk-parent-outside-job": {
     "athanor": "ok",
@@ -224,7 +224,7 @@
     "benthos": "ok"
   },
   "where-unqualified-under-join": {
-    "athanor": "run_failed",
-    "benthos": "run_failed"
+    "athanor": "ok",
+    "benthos": "ok"
   }
 }
