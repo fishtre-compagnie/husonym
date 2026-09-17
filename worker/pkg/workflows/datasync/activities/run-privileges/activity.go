@@ -94,9 +94,10 @@ func (a *Activity) CheckRunPrivileges(
 	)
 	var findings []string
 	if sourceID := job.GetSource().GetOptions().GetMysql().GetConnectionId(); sourceID != "" {
-		found, err := a.checkConnection(ctx, session, sourceID, slogger, func(name string, db privilegesDb) ([]string, error) {
-			return checkSource(ctx, db, name, tables)
-		})
+		found, err := a.checkConnection(ctx, session, sourceID, slogger,
+			func(name string, db privilegesDb) ([]string, error) {
+				return checkSource(ctx, db, name, tables)
+			})
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +131,8 @@ func (a *Activity) checkConnection(
 	slogger *slog.Logger,
 	check func(name string, db privilegesDb) ([]string, error),
 ) ([]string, error) {
-	connResp, err := a.connclient.GetConnection(ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionID}))
+	connResp, err := a.connclient.GetConnection(ctx,
+		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionID}))
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve connection %s: %w", connectionID, err)
 	}
@@ -184,7 +186,8 @@ func checkSource(ctx context.Context, db privilegesDb, name string, tables []str
 	var findings []string
 	for _, table := range tables {
 		if missing := missingPrivileges(granted[table], sourcePrivileges); len(missing) > 0 {
-			findings = append(findings, fmt.Sprintf("source %q cannot read %s (missing %s)", name, table, strings.Join(missing, ", ")))
+			findings = append(findings,
+				fmt.Sprintf("source %q cannot read %s (missing %s)", name, table, strings.Join(missing, ", ")))
 		}
 	}
 	return findings, nil
@@ -224,7 +227,8 @@ func checkDestination(
 			continue
 		}
 		if missing := missingPrivileges(privileges, destinationPrivileges); len(missing) > 0 {
-			findings = append(findings, fmt.Sprintf("destination %q cannot write %s (missing %s)", name, table, strings.Join(missing, ", ")))
+			findings = append(findings,
+				fmt.Sprintf("destination %q cannot write %s (missing %s)", name, table, strings.Join(missing, ", ")))
 		}
 	}
 	return findings, nil
