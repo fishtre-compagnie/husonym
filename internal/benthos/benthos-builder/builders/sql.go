@@ -202,6 +202,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 
 	tableSubsetMap := buildTableSubsetMap(sourceTableOpts, groupedTableMapping)
 	tableColMap := getTableColMapFromMappings(groupedMappings)
+	primaryKeyToForeignKeysMap := getPrimaryKeyDependencyMap(filteredForeignKeysMap)
+	b.primaryKeyToForeignKeysMap = primaryKeyToForeignKeysMap
+
 	runConfigs, err := rc.BuildRunConfigs(
 		filteredForeignKeysMap,
 		tableSubsetMap,
@@ -209,13 +212,11 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		tableColMap,
 		withoutNullableColumns(tableConstraints.UniqueIndexes, groupedColumnInfo),
 		withoutNullableColumns(tableConstraints.UniqueConstraints, groupedColumnInfo),
+		rc.WithTransformedParentKeys(transformedParentKeys(primaryKeyToForeignKeysMap, colTransformerMap)),
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	primaryKeyToForeignKeysMap := getPrimaryKeyDependencyMap(filteredForeignKeysMap)
-	b.primaryKeyToForeignKeysMap = primaryKeyToForeignKeysMap
 
 	configQueryMap, err := b.selectQueryBuilder.BuildSelectQueryMap(
 		db.Driver(),
@@ -734,4 +735,23 @@ func mergeSourceDestinationColumnInfo(
 	}
 
 	return mergedCols
+}
+
+// transformedParentKeys lists, per table, the referenced columns a transformer changes.
+// A foreign key to one of them holds a value the writer can only know once that table has
+// been written, so it is not a column an update pass can fill from the source.
+func transformedParentKeys(
+	referencedColumns map[string]map[string][]*bb_internal.ReferenceKey,
+	colTransformerMap map[string]map[string]*mgmtv1alpha1.JobMappingTransformer,
+) map[string][]string {
+	byTable := map[string][]string{}
+	for table, columns := range referencedColumns {
+		for column := range columns {
+			if shouldProcessStrict(colTransformerMap[table][column]) {
+				byTable[table] = append(byTable[table], column)
+			}
+		}
+		slices.Sort(byTable[table])
+	}
+	return byTable
 }

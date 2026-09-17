@@ -20,6 +20,8 @@ type tableConfigsBuilder struct {
 	foreignKeys          map[string][]*sqlmanager_shared.ForeignConstraint
 	circularDependencies map[string]bool
 	subsetPaths          map[string][]*SubsetPath
+	// transformedParentKeys names, per table, the referenced columns a transformer changes.
+	transformedParentKeys map[string][]string
 }
 
 func newTableConfigsBuilder(
@@ -29,14 +31,16 @@ func newTableConfigsBuilder(
 	uniqueIndexes map[string][][]string,
 	uniqueConstraints map[string][][]string,
 	foreignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
+	transformedParentKeys map[string][]string,
 ) *tableConfigsBuilder {
 	b := &tableConfigsBuilder{
-		columns:           columns,
-		primaryKeys:       primaryKeys,
-		whereClauses:      whereClauses,
-		uniqueIndexes:     uniqueIndexes,
-		uniqueConstraints: uniqueConstraints,
-		foreignKeys:       foreignKeys,
+		columns:               columns,
+		primaryKeys:           primaryKeys,
+		whereClauses:          whereClauses,
+		uniqueIndexes:         uniqueIndexes,
+		uniqueConstraints:     uniqueConstraints,
+		foreignKeys:           foreignKeys,
+		transformedParentKeys: transformedParentKeys,
 	}
 
 	b.sortForeignConstraints()
@@ -64,6 +68,7 @@ func (b *tableConfigsBuilder) Build(table sqlmanager_shared.SchemaTable) []*RunC
 		b.foreignKeys[tableKey],
 		b.circularDependencies[tableKey],
 		b.subsetPaths[tableKey],
+		b.transformedParentKeys,
 	).Build()
 }
 
@@ -254,6 +259,7 @@ type runConfigBuilder struct {
 	foreignKeys                []*sqlmanager_shared.ForeignConstraint
 	isPartOfCircularDependency bool
 	subsetPaths                []*SubsetPath
+	transformedParentKeys      map[string][]string
 }
 
 func newRunConfigBuilder(
@@ -266,6 +272,7 @@ func newRunConfigBuilder(
 	foreignKeys []*sqlmanager_shared.ForeignConstraint,
 	isPartOfCircularDependency bool,
 	subsetPaths []*SubsetPath,
+	transformedParentKeys map[string][]string,
 ) *runConfigBuilder {
 	return &runConfigBuilder{
 		table:                      table,
@@ -277,6 +284,7 @@ func newRunConfigBuilder(
 		foreignKeys:                foreignKeys,
 		isPartOfCircularDependency: isPartOfCircularDependency,
 		subsetPaths:                subsetPaths,
+		transformedParentKeys:      transformedParentKeys,
 	}
 }
 
@@ -357,7 +365,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 			// Mark this column as handled in constraints (so we don’t insert it again later).
 			remainingColumns[col] = false
 
-			if fc.NotNullable[i] {
+			if fc.NotNullable[i] || b.mustFollowParent(fc, i) {
 				insertCols = append(insertCols, col)
 				insertFkCols = append(insertFkCols, fc.ForeignKey.Columns[i])
 			} else {
@@ -405,6 +413,23 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 	// Insert config should be at the front, then any update configs follow.
 	configs := append([]*RunConfig{insertConfig}, updateConfigs...)
 	return configs
+}
+
+// mustFollowParent reports whether a nullable foreign key column must be written by the
+// insert pass all the same, and therefore wait for the table it references.
+//
+// A column referencing a key a transformer changes cannot be filled from the source value:
+// it must hold the new value of the parent row, which only exists once that table has been
+// written. Leaving it to an update pass writes it too early for whoever writes everything
+// in one pass, and too early for the redis lookup of the insert pass.
+//
+// A table inside a circular dependency keeps its update pass: it cannot wait for a parent
+// that waits for it.
+func (b *runConfigBuilder) mustFollowParent(fc *sqlmanager_shared.ForeignConstraint, i int) bool {
+	if b.isPartOfCircularDependency || fc.ForeignKey == nil {
+		return false
+	}
+	return slices.Contains(b.transformedParentKeys[fc.ForeignKey.Table], fc.ForeignKey.Columns[i])
 }
 
 func (b *runConfigBuilder) buildUpdateConfig(

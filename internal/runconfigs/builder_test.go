@@ -32,6 +32,7 @@ func TestNewTableConfigsBuilder(t *testing.T) {
 		uniqueIndexes,
 		uniqueConstraints,
 		foreignKeys,
+		nil,
 	)
 
 	assert.NotNil(t, builder)
@@ -174,6 +175,7 @@ func TestBuild_TableConfigsBuilder(t *testing.T) {
 		uniqueIndexes,
 		uniqueConstraints,
 		foreignKeys,
+		nil,
 	)
 
 	configs := builder.Build(sqlmanager_shared.SchemaTable{Schema: "public", Table: "users"})
