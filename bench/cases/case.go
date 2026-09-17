@@ -91,6 +91,9 @@ type Job struct {
 	SkipForeignKeyViolations bool
 	// Columns configures the columns that are not plain passthrough: table, then column.
 	Columns map[string]map[string]ColumnSpec
+	// TruncateBeforeInsert has the run empty the destination tables first. Every row of the
+	// destination then comes from the run, which lets it repair the orphans it finds.
+	TruncateBeforeInsert bool
 	// OnConflictUpdate writes with "on conflict do update" instead of a plain insert.
 	OnConflictUpdate bool
 	// ExcludedTables exist in the source and in the destination but are left out of the

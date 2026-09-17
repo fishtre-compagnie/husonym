@@ -10,6 +10,7 @@ func legacyForeignKeyCases() []*Case {
 	return []*Case{
 		fkVirtualOnlyPath(),
 		fkSourceOrphans(),
+		fkSourceOrphansDestinationKept(),
 		fkSelfReferenceNotNull(),
 		fkSentinelZeroVirtual(),
 		fkParentOutsideJob(),
@@ -51,12 +52,30 @@ func fkVirtualOnlyPath() *Case {
 
 // fkSourceOrphans: the source itself holds orphans, written one day with foreign key
 // checks off. No subset: the whole tables are copied. A mandatory reference to nothing
-// cannot be written, a nullable one is cleared.
+// cannot be written, a nullable one is cleared. The run empties the destination first, so
+// it may repair what it finds there.
 func fkSourceOrphans() *Case {
+	c := sourceOrphansCase("fk-source-orphans",
+		"Orphelins déjà présents dans la source, sur FK obligatoire et sur FK nullable")
+	c.Job.TruncateBeforeInsert = true
+	return c
+}
+
+// fkSourceOrphansDestinationKept: same orphans, but the run does not empty the
+// destination. It cannot tell its rows from the ones already there, so it must not repair
+// anything: the only correct outcome is a failed run listing the orphans.
+func fkSourceOrphansDestinationKept() *Case {
+	c := sourceOrphansCase("fk-source-orphans-destination-kept",
+		"Orphelins de la source et destination non vidée : échec listant les orphelins, aucune réparation")
+	c.ExpectRunError = "referential integrity check failed"
+	return c
+}
+
+func sourceOrphansCase(id, title string) *Case {
 	return &Case{
-		ID:       "fk-source-orphans",
+		ID:       id,
 		Priority: P1,
-		Title:    "Orphelins déjà présents dans la source, sur FK obligatoire et sur FK nullable",
+		Title:    title,
 		Tables: []*schema.Table{
 			{
 				Name:       commandeTable,

@@ -28,15 +28,15 @@
     "benthos": "gap"
   },
   "fk-composite-partially-null": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-cycle-two-tables": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-diamond": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-nullable-on-subset-path": {
@@ -52,7 +52,7 @@
     "benthos": "run_failed"
   },
   "fk-self-reference-nullable": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-sentinel-zero-virtual": {
@@ -60,16 +60,20 @@
     "benthos": "ok"
   },
   "fk-several-to-same-parent": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-source-orphans": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "gap"
   },
+  "fk-source-orphans-destination-kept": {
+    "athanor": "ok",
+    "benthos": "failure_expected"
+  },
   "fk-virtual": {
-    "athanor": "gap",
-    "benthos": "gap"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "fk-virtual-only-path": {
     "athanor": "ok",
@@ -136,7 +140,7 @@
     "benthos": "failure_expected"
   },
   "subset-parent-filtered-twice": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "subset-two-roots": {
@@ -172,7 +176,7 @@
     "benthos": "ok"
   },
   "tr-primary-key-transformed": {
-    "athanor": "gap",
+    "athanor": "run_failed",
     "benthos": "ok"
   },
   "types-auto-increment-zero": {

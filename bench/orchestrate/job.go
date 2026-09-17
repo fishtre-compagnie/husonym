@@ -95,7 +95,10 @@ func (c *Client) CreateJob(
 			Options: &mgmtv1alpha1.JobDestinationOptions{
 				Config: &mgmtv1alpha1.JobDestinationOptions_MysqlOptions{MysqlOptions: &mgmtv1alpha1.MysqlDestinationConnectionOptions{
 					SkipForeignKeyViolations: cs.Job.SkipForeignKeyViolations,
-					OnConflict:               onConflict,
+					TruncateTable: &mgmtv1alpha1.MysqlTruncateTableConfig{
+						TruncateBeforeInsert: cs.Job.TruncateBeforeInsert,
+					},
+					OnConflict: onConflict,
 				}},
 			},
 		}},
