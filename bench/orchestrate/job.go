@@ -151,6 +151,12 @@ func (r *RunResult) Succeeded() bool {
 // run still going by then is terminated and reported as timed out, not as an error of
 // the bench: an engine that retries a failing write for minutes is a finding.
 func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (*RunResult, error) {
+	// The runs a job already has: the perf mode runs the same job several times, and the
+	// one being waited for is the one that was not there before.
+	previous, err := c.runIDs(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := c.jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobID})); err != nil {
 		return nil, fmt.Errorf("orchestrate: start run of %s: %w", jobID, err)
 	}
@@ -167,7 +173,7 @@ func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (
 			return c.terminate(ctx, jobID, lastSeen, timeout)
 		case <-ticker.C:
 		}
-		run, err := c.latestRun(ctx, jobID)
+		run, err := c.newRun(ctx, jobID, previous)
 		if err != nil {
 			return nil, err
 		}
@@ -214,23 +220,48 @@ func (c *Client) terminate(
 	return &RunResult{RunID: run.GetId(), Status: run.GetStatus(), Duration: timeout, Errors: errs, TimedOut: true}, nil
 }
 
-// latestRun returns the only run of a bench job, or nil while the API does not list it
-// yet: CreateJobRun returns before the workflow is visible.
-func (c *Client) latestRun(ctx context.Context, jobID string) (*mgmtv1alpha1.JobRun, error) {
+// newRun returns the run of a job that is not among the ones it already had, or nil while
+// the API does not list it yet: CreateJobRun returns before the workflow is visible.
+// Waiting for a new run, rather than for the only one, is what lets a job be run again:
+// an earlier run is already final, and would be reported at once as the result of this one.
+func (c *Client) newRun(
+	ctx context.Context,
+	jobID string,
+	previous map[string]bool,
+) (*mgmtv1alpha1.JobRun, error) {
 	resp, err := c.jobs.GetJobRuns(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunsRequest{
 		Id: &mgmtv1alpha1.GetJobRunsRequest_JobId{JobId: jobID},
 	}))
 	if err != nil {
 		return nil, fmt.Errorf("orchestrate: runs of %s: %w", jobID, err)
 	}
-	runs := resp.Msg.GetJobRuns()
-	if len(runs) == 0 {
-		return nil, nil
+	var found *mgmtv1alpha1.JobRun
+	for _, run := range resp.Msg.GetJobRuns() {
+		if previous[run.GetId()] {
+			continue
+		}
+		if found != nil {
+			return nil, fmt.Errorf("orchestrate: job %s started %s and %s at once",
+				jobID, found.GetId(), run.GetId())
+		}
+		found = run
 	}
-	if len(runs) > 1 {
-		return nil, fmt.Errorf("orchestrate: job %s has %d runs, expected one", jobID, len(runs))
+	return found, nil
+}
+
+// runIDs returns the runs a job already has.
+func (c *Client) runIDs(ctx context.Context, jobID string) (map[string]bool, error) {
+	resp, err := c.jobs.GetJobRuns(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunsRequest{
+		Id: &mgmtv1alpha1.GetJobRunsRequest_JobId{JobId: jobID},
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("orchestrate: runs of %s: %w", jobID, err)
 	}
-	return runs[0], nil
+	ids := map[string]bool{}
+	for _, run := range resp.Msg.GetJobRuns() {
+		ids[run.GetId()] = true
+	}
+	return ids, nil
 }
 
 func isFinal(status mgmtv1alpha1.JobRunStatus) bool {

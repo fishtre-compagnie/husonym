@@ -241,8 +241,20 @@ Structure validée le 2026-09-17, dans `bench/` (versionné, module Go du dépô
   `not_in_source_set`, `unique`, `max_len`, `stable_across_runs`, `matches_parent`). Table sans clé : `row_key` est une
   empreinte du contenu.
 - `make bench/correctness` : petit volume, `MAX_TABLE_SYNC_PAGE_LIMIT=100` sur le worker, jobs en parallèle.
-  `make bench/perf` : schéma combiné à l'échelle, 5 runs par moteur en alternance, worker redémarré entre les
-  runs, durée par table, lignes par seconde, pic mémoire du conteneur. `make bench` enchaîne les deux.
+  `make bench/perf` : schéma combiné à l'échelle, worker à sa taille de page normale, 5 tours par moteur en
+  alternance, worker redémarré avant chaque run et destination vidée. `make bench` enchaîne correction et
+  perf.
+
+  Le mode perf (`bench/perf`, commande `enginebench perf [-scale n] [-rounds n] [-skip-load]`) mesure un job
+  seul sur la machine. Jeu de données : une table copiée entière, un subset sur deux niveaux de clés
+  obligatoires, une clé nullable hors du chemin du subset, une table sans clé, des lignes larges (JSON, texte,
+  décimaux, binaire, 20 colonnes de remplissage), et une clé transformée que les filles suivent par Redis.
+  L'échelle multiplie une unité de 31 000 lignes ; 100 donne les ~3,1 millions de lignes de la comparaison.
+  Le rapport donne la durée médiane des tours et son étendue, les lignes écrites par seconde, ce que le run
+  ajoute à la mémoire du conteneur (mesurée par échantillonnage, la référence étant prise juste avant le run :
+  le conteneur porte la chaîne Go et le rechargeur, dont la mémoire écrase celle du run), la répartition du
+  temps par activité, et **les lignes écrites par table pour chaque moteur** — c'est ce dernier tableau qui
+  dit que les deux moteurs ont fait le même travail.
 - Dossiers : `cmd/enginebench` (CLI `list | run | verify`), `schema` (modèle neutre et DDL par SGBD), `cases` (un
   fichier par famille), `gen` (chargement de la source depuis la graine de chaque cas), `oracle` (attendu), `env`
   (serveurs), `orchestrate` (API Connect), `verify`, `report`, `baseline.json` (écarts connus).
