@@ -11,7 +11,7 @@
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
 				generate/backend \
-				bench bench/up bench/down bench/correctness bench/large-pages
+				bench bench/up bench/down bench/correctness bench/large-pages bench/perf bench/perf-up
 default: help
 
 help:
@@ -152,6 +152,13 @@ bench/down: ## Removes the bench MySQL servers and gives the dev worker its page
 
 bench/correctness: ## Runs every bench case on both engines and checks them against their expectation
 	go run ./bench/cmd/enginebench run
+
+bench/perf-up: ## Starts the bench MySQL servers with the worker at its normal page size, for measuring
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/perf: bench/perf-up ## Measures both engines on the dataset at scale (durations, rows/s, memory)
+	go run ./bench/cmd/enginebench perf
 
 bench/large-pages: ## Restarts the dev worker with 2500-row pages, for the cases a page must fail half written (then: BENCH_PAGE_LIMIT=2500 go run ./bench/cmd/enginebench run -cases <ids>)
 	BENCH_PAGE_LIMIT=2500 docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker

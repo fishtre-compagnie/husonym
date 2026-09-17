@@ -289,3 +289,33 @@ func (c *Client) PlanPageLimit(ctx context.Context, runID, database, table strin
 	}
 	return plan.PageLimit, nil
 }
+
+// Activity is one activity of a run, as the event history tells it.
+type Activity struct {
+	Type     string        `json:"type"`
+	Duration time.Duration `json:"duration"`
+}
+
+// Activities returns the activities of a run with the time each of them took. The perf
+// mode reads there what a run spends its time on: generating the configs, initializing
+// the schema, syncing each table, checking the integrity at the end.
+func (c *Client) Activities(ctx context.Context, runID string) ([]Activity, error) {
+	resp, err := c.jobs.GetJobRunEvents(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunEventsRequest{
+		JobRunId: runID, AccountId: c.accountID,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("orchestrate: events of %s: %w", runID, err)
+	}
+	var activities []Activity
+	for _, event := range resp.Msg.GetEvents() {
+		start, closed := event.GetStartTime(), event.GetCloseTime()
+		if start == nil || closed == nil {
+			continue
+		}
+		activities = append(activities, Activity{
+			Type:     event.GetType(),
+			Duration: closed.AsTime().Sub(start.AsTime()),
+		})
+	}
+	return activities, nil
+}

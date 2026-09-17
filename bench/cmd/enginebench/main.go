@@ -5,6 +5,7 @@
 //	enginebench list                         the cases
 //	enginebench run [-cases a,b] [-parallel n] [-update-baseline]
 //	enginebench verify [-cases a,b]          check the destinations again, without running
+//	enginebench perf [-scale n] [-rounds n]  measure both engines on a dataset at scale
 package main
 
 import (
@@ -36,7 +37,7 @@ var errRegressions = errors.New("cases did worse than the baseline")
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: enginebench list | run | verify")
+		fmt.Fprintln(os.Stderr, "usage: enginebench list | run | verify | perf")
 		os.Exit(2)
 	}
 	var err error
@@ -47,6 +48,8 @@ func main() {
 		err = run(os.Args[2:], true)
 	case "verify":
 		err = run(os.Args[2:], false)
+	case "perf":
+		err = perfMode(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}
