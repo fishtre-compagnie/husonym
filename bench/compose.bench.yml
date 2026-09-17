@@ -7,6 +7,10 @@
 
 x-bench-mysql: &bench-mysql
   image: mysql:8.0
+  # The worker keeps the connections of a run open for a minute or more after it ends:
+  # a full pass of the bench, one job per case, goes beyond the 151 connections MySQL
+  # allows by default.
+  command: --max-connections=1000
   environment:
     MYSQL_ROOT_PASSWORD: bench
   tmpfs:

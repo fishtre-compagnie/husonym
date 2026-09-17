@@ -5,7 +5,7 @@
   },
   "columns-generated-passthrough": {
     "athanor": "run_failed",
-    "benthos": "run_timeout"
+    "benthos": "run_failed"
   },
   "columns-invisible": {
     "athanor": "ok",
@@ -84,8 +84,8 @@
     "benthos": "ok"
   },
   "page-binary16-key": {
-    "athanor": "run_failed",
-    "benthos": "run_timeout"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "page-case-insensitive-key": {
     "athanor": "ok",
@@ -97,7 +97,7 @@
   },
   "page-datetime6-key": {
     "athanor": "ok",
-    "benthos": "run_failed"
+    "benthos": "ok"
   },
   "page-decimal-key": {
     "athanor": "ok",
@@ -120,20 +120,20 @@
     "benthos": "gap"
   },
   "page-unsigned-bigint-key": {
-    "athanor": "run_failed",
-    "benthos": "run_failed"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "retry-insert-ignore-masks-truncation": {
-    "athanor": "failure_expected",
-    "benthos": "run_timeout"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "retry-keyless-table-duplicates": {
-    "athanor": "gap",
-    "benthos": "ok"
+    "athanor": "ok",
+    "benthos": "gap"
   },
   "rights-destination-read-only-account": {
     "athanor": "failure_expected",
-    "benthos": "run_timeout"
+    "benthos": "failure_expected"
   },
   "subset-parent-filtered-twice": {
     "athanor": "gap",
@@ -157,7 +157,7 @@
   },
   "tr-null-on-not-null-column": {
     "athanor": "ok",
-    "benthos": "run_timeout"
+    "benthos": "ok"
   },
   "tr-null-on-nullable-column": {
     "athanor": "ok",
@@ -169,7 +169,7 @@
   },
   "tr-output-longer-than-column": {
     "athanor": "ok",
-    "benthos": "run_timeout"
+    "benthos": "ok"
   },
   "tr-primary-key-transformed": {
     "athanor": "gap",
@@ -197,7 +197,7 @@
   },
   "types-integers": {
     "athanor": "ok",
-    "benthos": "run_timeout"
+    "benthos": "run_failed"
   },
   "types-json": {
     "athanor": "ok",
@@ -205,7 +205,7 @@
   },
   "types-temporal": {
     "athanor": "ok",
-    "benthos": "gap"
+    "benthos": "ok"
   },
   "types-text": {
     "athanor": "ok",
@@ -216,15 +216,15 @@
     "benthos": "gap"
   },
   "where-or-paginated": {
-    "athanor": "run_failed",
-    "benthos": "run_failed"
+    "athanor": "ok",
+    "benthos": "ok"
   },
   "where-or-two-roots": {
-    "athanor": "gap",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "where-unqualified-under-join": {
     "athanor": "run_failed",
-    "benthos": "run_timeout"
+    "benthos": "run_failed"
   }
 }
