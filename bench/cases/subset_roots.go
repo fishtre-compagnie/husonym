@@ -18,8 +18,8 @@ func subsetRootsCases() []*Case {
 func twoRootsJob() Job {
 	return Job{
 		Where: map[string]string{
-			"STATION": fmt.Sprintf("id = %d", stationKept),
-			"CLIENT":  "actif = 1",
+			"STATION":       fmt.Sprintf("id = %d", stationKept),
+			clientTableName: "actif = 1",
 		},
 		SubsetByForeignKeys:      true,
 		SkipForeignKeyViolations: true,
@@ -69,7 +69,7 @@ func subsetParentFilteredTwice() *Case {
 				PrimaryKey: []string{idColumn},
 				ForeignKeys: []schema.ForeignKey{
 					foreignKeyToID("fk_contrat_station", stationIDColumn, "STATION"),
-					foreignKeyToID("fk_contrat_client", "client_id", "CLIENT"),
+					foreignKeyToID("fk_contrat_client", "client_id", clientTableName),
 				},
 			},
 			{
@@ -82,7 +82,7 @@ func subsetParentFilteredTwice() *Case {
 				PrimaryKey: []string{idColumn},
 				ForeignKeys: []schema.ForeignKey{
 					foreignKeyToID("fk_avenant_contrat", "contrat_id", "CONTRAT"),
-					foreignKeyToID("fk_avenant_client", "client_id", "CLIENT"),
+					foreignKeyToID("fk_avenant_client", "client_id", clientTableName),
 				},
 			},
 		},

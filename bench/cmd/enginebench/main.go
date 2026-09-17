@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -340,7 +341,8 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		return err
 	}
 	if result.Succeeded() && !result.TimedOut {
-		pageLimit, err := b.client.PlanPageLimit(ctx, result.RunID, c.Database(), c.Tables[0].Name)
+		planned := slices.IndexFunc(c.Tables, func(t *schema.Table) bool { return !c.IsExcluded(t.Name) })
+		pageLimit, err := b.client.PlanPageLimit(ctx, result.RunID, c.Database(), c.Tables[planned].Name)
 		if err != nil {
 			return err
 		}

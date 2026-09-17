@@ -11,6 +11,8 @@ func legacyForeignKeyCases() []*Case {
 		fkVirtualOnlyPath(),
 		fkSourceOrphans(),
 		fkSelfReferenceNotNull(),
+		fkSentinelZeroVirtual(),
+		fkParentOutsideJob(),
 	}
 }
 
@@ -120,6 +122,93 @@ func fkSelfReferenceNotNull() *Case {
 					parent = i + 1
 				}
 				emit.Row("CATEGORIE", []any{i, parent}, Kept())
+			}
+		},
+	}
+}
+
+// fkSentinelZeroVirtual: parent_id NOT NULL DEFAULT 0, where 0 means "no parent", and a
+// relation the database never declared. The user describes it as a virtual foreign key
+// to get the subset right. Rows holding the sentinel are legitimate business rows: they
+// must be kept as they are, neither dropped for lack of a parent 0 nor counted as orphans.
+func fkSentinelZeroVirtual() *Case {
+	return &Case{
+		ID:       "fk-sentinel-zero-virtual",
+		Priority: P1,
+		Title:    "Sentinelle parent_id = 0 sur FK virtuelle NOT NULL : lignes métier à garder telles quelles",
+		Tables: []*schema.Table{
+			stationTable(),
+			{
+				Name: commandeTable,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: stationIDColumn, Type: schema.Int64()},
+				},
+				PrimaryKey:  []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_commande_station", stationIDColumn, "STATION")},
+			},
+			{
+				Name: "AVOIR",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: stationIDColumn, Type: schema.Int64()},
+					{Name: "commande_id", Type: schema.Int64(), Default: "0"},
+				},
+				PrimaryKey: []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{
+					foreignKeyToID("fk_avoir_station", stationIDColumn, "STATION"),
+					{
+						Name: "vfk_avoir_commande", Columns: []string{"commande_id"},
+						RefTable: commandeTable, RefColumns: []string{idColumn}, Virtual: true, Sentinel: "0",
+					},
+				},
+			},
+		},
+		Job: subsetOnStationJob(),
+		Seed: func(p Params, emit Emitter) {
+			seedStations(emit)
+			for i := int64(1); i <= 10; i++ {
+				emit.Row(commandeTable, []any{i, stationKept}, Kept())
+				emit.Row(commandeTable, []any{1000 + i, stationDropped}, Dropped())
+				emit.Row("AVOIR", []any{i, stationKept, i}, Kept())
+				emit.Row("AVOIR", []any{100 + i, stationKept, int64(0)}, Kept())
+				emit.Row("AVOIR", []any{1000 + i, stationDropped, int64(0)}, Dropped())
+			}
+		},
+	}
+}
+
+// fkParentOutsideJob: PAYS is a reference table the user leaves out of the job, already
+// filled at the destination by other means. The mandatory foreign key to it must not
+// keep its children from being written.
+func fkParentOutsideJob() *Case {
+	return &Case{
+		ID:       "fk-parent-outside-job",
+		Priority: P1,
+		Title:    "FK obligatoire vers une table absente du job, déjà remplie en destination",
+		Tables: []*schema.Table{
+			{
+				Name:       "PAYS",
+				Columns:    []schema.Column{{Name: idColumn, Type: schema.Int64()}, {Name: "nom", Type: schema.Varchar(40)}},
+				PrimaryKey: []string{idColumn},
+			},
+			{
+				Name: clientTableName,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "pays_id", Type: schema.Int64()},
+				},
+				PrimaryKey:  []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_client_pays", "pays_id", "PAYS")},
+			},
+		},
+		Job:              Job{ExcludedTables: []string{"PAYS"}},
+		DestinationSetup: []string{"INSERT INTO {db}.`PAYS` (`id`, `nom`) VALUES (1, 'France'), (2, 'Belgique')"},
+		Seed: func(p Params, emit Emitter) {
+			emit.Row("PAYS", []any{int64(1), "France"}, Kept())
+			emit.Row("PAYS", []any{int64(2), "Belgique"}, Kept())
+			for i := int64(1); i <= 20; i++ {
+				emit.Row(clientTableName, []any{i, i%2 + 1}, Kept())
 			}
 		},
 	}

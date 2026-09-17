@@ -116,6 +116,10 @@ type ForeignKey struct {
 	RefColumns []string
 	// OnDelete is written as is (CASCADE, SET NULL); empty keeps the database default.
 	OnDelete string
+	// Sentinel is a value of a single-column foreign key that means "no parent" without
+	// being NULL (parent_id NOT NULL DEFAULT 0), as a SQL literal. It references nothing on
+	// purpose and is not an orphan.
+	Sentinel string
 	// Virtual foreign keys are not declared in the database: the job receives them as
 	// virtual foreign keys, the way users describe legacy relations.
 	Virtual bool

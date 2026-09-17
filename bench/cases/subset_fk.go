@@ -23,6 +23,7 @@ func subsetForeignKeyCases() []*Case {
 const (
 	idColumn        = "id"
 	commandeTable   = "COMMANDE"
+	clientTableName = "CLIENT"
 	stationIDColumn = "station_id"
 
 	stationKept    = int64(1)

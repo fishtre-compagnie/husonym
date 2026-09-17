@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -90,11 +91,35 @@ func (r *Result) Gaps() int {
 
 // Case verifies the destination of one case against its expectation.
 func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c *cases.Case) (*Result, error) {
-	result := &Result{}
+	// Every table is read first: a rule on a foreign key needs the rows of its parent.
+	data := map[string]*tableRows{}
 	for _, t := range c.Tables {
-		tableResult, err := verifyTable(ctx, source, destination, r, c, t)
+		if c.IsExcluded(t.Name) {
+			continue
+		}
+		rows, err := readTable(ctx, source, destination, r, c, t)
 		if err != nil {
 			return nil, fmt.Errorf("verify: %s.%s: %w", c.ID, t.Name, err)
+		}
+		data[t.Name] = rows
+	}
+
+	result := &Result{}
+	for _, t := range c.Tables {
+		if c.IsExcluded(t.Name) {
+			continue
+		}
+		rows := data[t.Name]
+		tableResult, err := compareTable(t, rows.expected, rows.rules, rows.source, rows.dest)
+		if err != nil {
+			return nil, fmt.Errorf("verify: %s.%s: %w", c.ID, t.Name, err)
+		}
+		for column, rules := range rows.rules {
+			if slices.Contains(rules, cases.RuleFollowsParent) {
+				if err := checkFollowsParent(tableResult, c, t, column, data); err != nil {
+					return nil, fmt.Errorf("verify: %s.%s: %w", c.ID, t.Name, err)
+				}
+			}
 		}
 		result.Tables = append(result.Tables, tableResult)
 
@@ -115,32 +140,89 @@ func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c
 // row is a table row in canonical text, in column order.
 type row []string
 
-func verifyTable(
+// tableRows is what verifying a table needs: its expectation and its rows on both
+// sides, grouped by oracle key.
+type tableRows struct {
+	expected     map[string]*oracle.ExpectedRow
+	rules        map[string][]cases.Rule
+	source, dest map[string][]row
+}
+
+func readTable(
 	ctx context.Context,
 	source, destination *sql.DB,
 	r schema.Renderer,
 	c *cases.Case,
 	t *schema.Table,
-) (*TableResult, error) {
-	expected, err := oracle.ReadRows(ctx, source, c.ID, t.Name)
-	if err != nil {
+) (*tableRows, error) {
+	var rows tableRows
+	var err error
+	if rows.expected, err = oracle.ReadRows(ctx, source, c.ID, t.Name); err != nil {
 		return nil, err
 	}
-	rules, err := oracle.ReadColumnRules(ctx, source, c.ID, t.Name)
-	if err != nil {
+	if rows.rules, err = oracle.ReadColumnRules(ctx, source, c.ID, t.Name); err != nil {
 		return nil, err
 	}
 	identity := columnIndexes(t, c.IdentityColumns(t.Name))
-	sourceRows, err := readRows(ctx, source, r, c.Database(), t, identity)
-	if err != nil {
+	if rows.source, err = readRows(ctx, source, r, c.Database(), t, identity); err != nil {
 		return nil, fmt.Errorf("source: %w", err)
 	}
-	destRows, err := readRows(ctx, destination, r, c.Database(), t, identity)
-	if err != nil {
+	if rows.dest, err = readRows(ctx, destination, r, c.Database(), t, identity); err != nil {
 		return nil, fmt.Errorf("destination: %w", err)
 	}
+	return &rows, nil
+}
 
-	return compareTable(t, expected, rules, sourceRows, destRows)
+// checkFollowsParent verifies a foreign key whose parent key is transformed: each
+// destination row must reference the parent row its source row references, identified by
+// the identity columns of the parent rather than by its changed key.
+func checkFollowsParent(result *TableResult, c *cases.Case, t *schema.Table, column string, data map[string]*tableRows) error {
+	var fk *schema.ForeignKey
+	for i := range t.ForeignKeys {
+		if len(t.ForeignKeys[i].Columns) == 1 && t.ForeignKeys[i].Columns[0] == column {
+			fk = &t.ForeignKeys[i]
+		}
+	}
+	if fk == nil {
+		return fmt.Errorf("column %s: rule %s needs a single-column foreign key", column, cases.RuleFollowsParent)
+	}
+	parent, parentRows := c.Table(fk.RefTable), data[fk.RefTable]
+	if parent == nil || parentRows == nil {
+		return fmt.Errorf("column %s: parent table %s is not verified", column, fk.RefTable)
+	}
+	refIndex := columnIndexes(parent, fk.RefColumns)[0]
+	parentKeyOf := func(rowsByKey map[string][]row) map[string]string {
+		byRef := map[string]string{}
+		for key, rows := range rowsByKey {
+			for _, parentRow := range rows {
+				byRef[parentRow[refIndex]] = key
+			}
+		}
+		return byRef
+	}
+	sourceParents, destParents := parentKeyOf(parentRows.source), parentKeyOf(parentRows.dest)
+
+	columnIndex := columnIndexes(t, []string{column})[0]
+	rows := data[t.Name]
+	for _, key := range sortedKeys(rows.dest) {
+		if len(rows.source[key]) == 0 {
+			continue // already counted as unexpected
+		}
+		sourceValue := rows.source[key][0][columnIndex]
+		for _, dest := range rows.dest[key] {
+			destValue := dest[columnIndex]
+			switch {
+			case sourceValue == nullText && destValue == nullText:
+			case sourceValue == nullText || destValue == nullText:
+				result.violationf(column, cases.RuleFollowsParent, "%s de %s : %s alors que la source a %s",
+					column, readable(key), display(destValue), display(sourceValue))
+			case destParents[destValue] == "" || destParents[destValue] != sourceParents[sourceValue]:
+				result.violationf(column, cases.RuleFollowsParent, "%s de %s : référence %s au lieu du parent %s",
+					column, readable(key), display(destValue), readable(sourceParents[sourceValue]))
+			}
+		}
+	}
+	return nil
 }
 
 // compareTable counts the gaps between the destination rows of a table and its
@@ -254,6 +336,8 @@ func checkRules(
 						}
 					}
 				}
+			case cases.RuleFollowsParent:
+				// Needs the rows of the parent table: see checkFollowsParent.
 			default:
 				return fmt.Errorf("column %s: rule %q is not verified by the bench", column, rule)
 			}
@@ -329,6 +413,9 @@ func countOrphans(
 	for i := range fk.Columns {
 		conditions = append(conditions, "c."+r.QuoteIdent(fk.Columns[i])+" IS NOT NULL")
 		joins = append(joins, "p."+r.QuoteIdent(fk.RefColumns[i])+" = c."+r.QuoteIdent(fk.Columns[i]))
+	}
+	if fk.Sentinel != "" {
+		conditions = append(conditions, "c."+r.QuoteIdent(fk.Columns[0])+" <> "+fk.Sentinel)
 	}
 	//nolint:gosec // identifiers come from the case definitions and are quoted
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s.%s c WHERE %s AND NOT EXISTS (SELECT 1 FROM %s.%s p WHERE %s)",

@@ -15,6 +15,14 @@
     "athanor": "ok",
     "benthos": "gap"
   },
+  "destination-column-order": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "destination-extra-not-null-column": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
   "destination-trigger-writes-synced-table": {
     "athanor": "gap",
     "benthos": "gap"
@@ -35,12 +43,20 @@
     "athanor": "gap",
     "benthos": "gap"
   },
+  "fk-parent-outside-job": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
   "fk-self-reference-not-null": {
     "athanor": "run_failed",
     "benthos": "run_failed"
   },
   "fk-self-reference-nullable": {
     "athanor": "gap",
+    "benthos": "ok"
+  },
+  "fk-sentinel-zero-virtual": {
+    "athanor": "ok",
     "benthos": "ok"
   },
   "fk-several-to-same-parent": {
@@ -60,6 +76,10 @@
     "benthos": "ok"
   },
   "identifiers-quoting": {
+    "athanor": "ok",
+    "benthos": "ok"
+  },
+  "on-conflict-update-unique-key": {
     "athanor": "ok",
     "benthos": "ok"
   },
@@ -151,6 +171,10 @@
     "athanor": "ok",
     "benthos": "run_timeout"
   },
+  "tr-primary-key-transformed": {
+    "athanor": "gap",
+    "benthos": "ok"
+  },
   "types-auto-increment-zero": {
     "athanor": "run_failed",
     "benthos": "run_failed"
@@ -186,6 +210,10 @@
   "types-text": {
     "athanor": "ok",
     "benthos": "ok"
+  },
+  "types-zero-dates": {
+    "athanor": "run_failed",
+    "benthos": "gap"
   },
   "where-or-paginated": {
     "athanor": "run_failed",

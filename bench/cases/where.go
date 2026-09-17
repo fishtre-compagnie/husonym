@@ -55,7 +55,7 @@ const (
 
 func clientTable() *schema.Table {
 	return &schema.Table{
-		Name: "CLIENT",
+		Name: clientTableName,
 		Columns: []schema.Column{
 			{Name: idColumn, Type: schema.Int64()},
 			{Name: "actif", Type: schema.Bool()},
@@ -65,8 +65,8 @@ func clientTable() *schema.Table {
 }
 
 func seedClients(emit Emitter) {
-	emit.Row("CLIENT", []any{clientKept, int64(1)}, Kept())
-	emit.Row("CLIENT", []any{clientOut, int64(0)}, Dropped())
+	emit.Row(clientTableName, []any{clientKept, int64(1)}, Kept())
+	emit.Row(clientTableName, []any{clientOut, int64(0)}, Dropped())
 }
 
 func commandeOfStationAndClient() *schema.Table {
@@ -80,7 +80,7 @@ func commandeOfStationAndClient() *schema.Table {
 		PrimaryKey: []string{idColumn},
 		ForeignKeys: []schema.ForeignKey{
 			foreignKeyToID("fk_commande_station", stationIDColumn, "STATION"),
-			foreignKeyToID("fk_commande_client", "client_id", "CLIENT"),
+			foreignKeyToID("fk_commande_client", "client_id", clientTableName),
 		},
 	}
 }
@@ -96,8 +96,8 @@ func whereOrTwoRoots() *Case {
 		Tables:   []*schema.Table{stationTable(), clientTable(), commandeOfStationAndClient()},
 		Job: Job{
 			Where: map[string]string{
-				"STATION": fmt.Sprintf("id = %d OR id = %d", stationKept, stationTwin),
-				"CLIENT":  "actif = 1",
+				"STATION":       fmt.Sprintf("id = %d OR id = %d", stationKept, stationTwin),
+				clientTableName: "actif = 1",
 			},
 			SubsetByForeignKeys:      true,
 			SkipForeignKeyViolations: true,

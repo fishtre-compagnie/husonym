@@ -42,6 +42,9 @@ func (c *Client) CreateJob(
 	tables := make([]*mgmtv1alpha1.MysqlSourceTableOption, 0, len(cs.Tables))
 	var virtualFks []*mgmtv1alpha1.VirtualForeignConstraint
 	for _, t := range cs.Tables {
+		if cs.IsExcluded(t.Name) {
+			continue
+		}
 		for i := range t.Columns {
 			column := t.Columns[i].Name
 			transformer := passthrough()
@@ -70,6 +73,12 @@ func (c *Client) CreateJob(
 	}
 
 	attempts := max(cs.Job.SyncAttempts, 1)
+	var onConflict *mgmtv1alpha1.MysqlOnConflictConfig
+	if cs.Job.OnConflictUpdate {
+		onConflict = &mgmtv1alpha1.MysqlOnConflictConfig{
+			Strategy: &mgmtv1alpha1.MysqlOnConflictConfig_Update{Update: &mgmtv1alpha1.MysqlOnConflictConfig_MysqlOnConflictUpdate{}},
+		}
+	}
 	resp, err := c.jobs.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
 		AccountId: c.accountID,
 		JobName:   jobName(cs.ID, engine, runTag),
@@ -86,6 +95,7 @@ func (c *Client) CreateJob(
 			Options: &mgmtv1alpha1.JobDestinationOptions{
 				Config: &mgmtv1alpha1.JobDestinationOptions_MysqlOptions{MysqlOptions: &mgmtv1alpha1.MysqlDestinationConnectionOptions{
 					SkipForeignKeyViolations: cs.Job.SkipForeignKeyViolations,
+					OnConflict:               onConflict,
 				}},
 			},
 		}},

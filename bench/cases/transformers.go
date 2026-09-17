@@ -24,6 +24,7 @@ func transformerCases() []*Case {
 			"Transformer Null sur une colonne NOT NULL : échec explicite, jamais de valeur par défaut implicite",
 			"libelle", nullTransformer(), "cannot be null"),
 		transformerOnOrderColumn(),
+		transformerOnPrimaryKey(),
 	}
 }
 
@@ -52,7 +53,7 @@ func transformersGeneratePersonalData() *Case {
 		Priority: P1,
 		Title:    "Email et prénom générés : aucune valeur source recopiée, unicité de l'email respectée",
 		Tables: []*schema.Table{{
-			Name: "CLIENT",
+			Name: clientTableName,
 			Columns: []schema.Column{
 				{Name: idColumn, Type: schema.Int64()},
 				{Name: "email", Type: schema.Varchar(120)},
@@ -61,7 +62,7 @@ func transformersGeneratePersonalData() *Case {
 			PrimaryKey: []string{idColumn},
 			Indexes:    []schema.Index{{Name: "uq_client_email", Columns: []string{"email"}, Unique: true}},
 		}},
-		Job: Job{Columns: map[string]map[string]ColumnSpec{"CLIENT": {
+		Job: Job{Columns: map[string]map[string]ColumnSpec{clientTableName: {
 			"email": {
 				Transformer: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
 					GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
@@ -78,7 +79,7 @@ func transformersGeneratePersonalData() *Case {
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= int64(5*p.PageLimit); i++ {
 				email := fmt.Sprintf("personne.reelle.%d@source.invalid", i)
-				emit.Row("CLIENT", []any{i, email, fmt.Sprintf("Prénom-Source-%d", i)}, Kept())
+				emit.Row(clientTableName, []any{i, email, fmt.Sprintf("Prénom-Source-%d", i)}, Kept())
 			}
 		},
 	}
@@ -91,19 +92,19 @@ func transformerNull() *Case {
 		Priority: P1,
 		Title:    "Transformer Null sur une colonne nullable : NULL réel, pas la chaîne 'null'",
 		Tables: []*schema.Table{{
-			Name: "CLIENT",
+			Name: clientTableName,
 			Columns: []schema.Column{
 				{Name: idColumn, Type: schema.Int64()},
 				{Name: "commentaire", Type: schema.Varchar(60), Nullable: true},
 			},
 			PrimaryKey: []string{idColumn},
 		}},
-		Job: Job{Columns: map[string]map[string]ColumnSpec{"CLIENT": {
+		Job: Job{Columns: map[string]map[string]ColumnSpec{clientTableName: {
 			"commentaire": {Transformer: nullTransformer(), Rules: []Rule{RuleNull}},
 		}}},
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= 20; i++ {
-				emit.Row("CLIENT", []any{i, fmt.Sprintf("remarque personnelle %d", i)}, Kept())
+				emit.Row(clientTableName, []any{i, fmt.Sprintf("remarque personnelle %d", i)}, Kept())
 			}
 		},
 	}
@@ -165,6 +166,62 @@ func transformerOnOrderColumn() *Case {
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= int64(2*p.PageLimit+p.PageLimit/2); i++ {
 				emit.Row("DOSSIER", []any{i, fmt.Sprintf("D-%06d", i)}, Kept())
+			}
+		},
+	}
+}
+
+// transformerOnPrimaryKey: the primary key of CLIENT is transformed and the foreign keys
+// to it are left in passthrough, the way users configure it: the engine must carry each
+// new key to the rows referencing it, nullable references included.
+func transformerOnPrimaryKey() *Case {
+	follows := ColumnSpec{Rules: []Rule{RuleFollowsParent}}
+	return &Case{
+		ID:       "tr-primary-key-transformed",
+		Priority: P1,
+		Title:    "Clé primaire transformée : les FK en passthrough doivent suivre la nouvelle clé",
+		Tables: []*schema.Table{
+			{
+				Name: clientTableName,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "reference", Type: schema.Varchar(20)},
+				},
+				PrimaryKey: []string{idColumn},
+				Indexes:    []schema.Index{{Name: "uq_client_reference", Columns: []string{"reference"}, Unique: true}},
+			},
+			{
+				Name: commandeTable,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "client_id", Type: schema.Int64()},
+					{Name: "parrain_id", Type: schema.Int64(), Nullable: true},
+				},
+				PrimaryKey: []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{
+					foreignKeyToID("fk_commande_client", "client_id", clientTableName),
+					foreignKeyToID("fk_commande_parrain", "parrain_id", clientTableName),
+				},
+			},
+		},
+		Identity: map[string][]string{clientTableName: {"reference"}},
+		Job: Job{Columns: map[string]map[string]ColumnSpec{
+			clientTableName: {idColumn: {
+				Transformer: transformJavascript("return value + 1000000;"),
+				Rules:       []Rule{RuleNotInSourceSet, RuleUnique},
+			}},
+			commandeTable: {"client_id": follows, "parrain_id": follows},
+		}},
+		Seed: func(p Params, emit Emitter) {
+			for i := int64(1); i <= 20; i++ {
+				emit.Row(clientTableName, []any{i, fmt.Sprintf("CL-%04d", i)}, Kept())
+			}
+			for i := int64(1); i <= 60; i++ {
+				var parrain any
+				if i%3 == 0 {
+					parrain = i%20 + 1
+				}
+				emit.Row(commandeTable, []any{i, (i-1)%20 + 1, parrain}, Kept())
 			}
 		},
 	}

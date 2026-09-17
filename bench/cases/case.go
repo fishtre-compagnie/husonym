@@ -8,6 +8,7 @@ package cases
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -66,6 +67,10 @@ const (
 	RuleNotInSourceSet Rule = "not_in_source_set"
 	// RuleUnique: no two destination rows share a value.
 	RuleUnique Rule = "unique"
+	// RuleFollowsParent: the column is a single-column foreign key whose parent key is
+	// transformed; its destination value must reference the same parent row as in the
+	// source, whatever the new key of that parent is.
+	RuleFollowsParent Rule = "follows_parent"
 )
 
 // ColumnSpec configures one column of the job: its transformer and the rules its
@@ -86,6 +91,11 @@ type Job struct {
 	SkipForeignKeyViolations bool
 	// Columns configures the columns that are not plain passthrough: table, then column.
 	Columns map[string]map[string]ColumnSpec
+	// OnConflictUpdate writes with "on conflict do update" instead of a plain insert.
+	OnConflictUpdate bool
+	// ExcludedTables exist in the source and in the destination but are left out of the
+	// job, the way a user skips a reference table filled by other means.
+	ExcludedTables []string
 	// SyncAttempts is the number of attempts a table sync gets. Default 1: a retry rewrites
 	// its page with "do nothing", which would hide the very errors the bench is after.
 	// Cases about retries ask for more.
@@ -156,6 +166,11 @@ func (c *Case) Table(name string) *schema.Table {
 		}
 	}
 	return nil
+}
+
+// IsExcluded reports whether the table is left out of the job.
+func (c *Case) IsExcluded(table string) bool {
+	return slices.Contains(c.Job.ExcludedTables, table)
 }
 
 // Spec returns the job spec of a column; ok is false for a plain passthrough column.
