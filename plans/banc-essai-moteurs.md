@@ -492,6 +492,33 @@ Mesuré sur la même source, le même soir, worker à sa taille de page normale 
 - `main` ne peut pas exécuter ce job : il échoue en 84 s sur `ReferenceError: neosync is not defined`
   (transformers JavaScript, corrigé par la branche).
 
+## Comparaison mesurée (2026-09-18, commit `f648a7c6`, échelle 100)
+
+Schéma combiné, 3 100 000 lignes en source, 1 725 000 écrites après subset. Un job seul sur la machine,
+worker redémarré avant chaque run, destination vidée, 5 tours par moteur en alternance.
+
+| Moteur | Durée médiane | min | max | Lignes/s | Mémoire du run |
+|---|---|---|---|---|---|
+| Benthos | 159,5 s | 140,8 s | 174,0 s | 10 813 | 143 Mio |
+| **Athanor** | **24,8 s** | 24,6 s | 27,9 s | **69 514** | **50 Mio** |
+
+**Athanor est 6,4 fois plus rapide, prend 2,9 fois moins de mémoire et varie dix fois moins** (étendue de
+3,3 s contre 33,2 s). Les deux moteurs écrivent exactement les mêmes lignes, table par table : c'est le
+tableau du rapport qui l'établit.
+
+Le temps est entièrement dans les syncs de table : cumul de 301,1 s pour Benthos contre 33,9 s pour Athanor,
+le reste (génération des configs, init de schéma, contrôle des droits, contrôle d'intégrité de fin de run)
+étant identique et négligeable pour les deux — le contrôle d'intégrité coûte 1,2 s à Benthos et 1,4 s à
+Athanor, soit 6 % du run d'Athanor.
+
+**La taille des lots n'explique pas l'écart.** Benthos écrit par 100 lignes et Athanor par 1 000 : à parité
+(`-batch-count 1000`, 3 tours), Benthos met 156,3 à 169,5 s, soit rien de gagné, et double la mémoire qu'il
+tient (254 Mio). Son coût est ce qu'il fait de chaque ligne, une par une dans le flux, pas la façon dont il
+les écrit.
+
+Limites à énoncer avec ces chiffres : tout tourne sur une seule machine (source, deux destinations, worker,
+Temporal, API se disputent le processeur), MySQL seul, source et destination homogènes, une seule destination.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

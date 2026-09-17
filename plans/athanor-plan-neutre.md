@@ -69,8 +69,10 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    auto-référencée vers une clé transformée refusée (une passe).
 7. ✅ MySQL, au démarrage du run : contrôle des droits selon le rôle de la connexion. À faire : test de connexion
    et configuration du job (proto `CheckConnectionConfig`), PostgreSQL, SQL Server.
-8. Comparaison mesurée sur le banc (temps, lignes/s, mémoire, exactitude) avant toute décision de retrait de
-   Benthos : mode `bench/perf` à écrire. Prérequis levé le 2026-09-17 au soir : l'écart de durée observé
+8. ✅ Comparaison mesurée sur le banc (`bench/perf`, 3,1 M lignes, 5 tours par moteur) : Athanor 24,8 s de
+   médiane contre 159,5 s, 69 500 lignes/s contre 10 800, 50 Mio contre 143 Mio, et dix fois moins de
+   variation, pour des lignes écrites identiques table par table. À parité de taille de lot, Benthos ne gagne
+   rien. Détail et limites dans [banc-essai-moteurs.md](banc-essai-moteurs.md). Prérequis levé le 2026-09-17 au soir : l'écart de durée observé
    jusque-là était la période de lot de Benthos (5 s par sync de table), pas une différence de moteur ; voir
    [banc-essai-moteurs.md](banc-essai-moteurs.md). À l'échelle du banc de correction, les deux moteurs sont
    indiscernables une fois cette période neutralisée.
