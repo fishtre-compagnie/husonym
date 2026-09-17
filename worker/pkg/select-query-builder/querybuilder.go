@@ -303,7 +303,10 @@ func (qb *QueryBuilder) qualifyWhereCondition(
 		return "", fmt.Errorf("unable to qualify where column names")
 	}
 	startIndex := index + len("where")
-	return strings.TrimSpace(updatedSql[startIndex:]), nil
+	// The condition is ANDed with the ones the builder adds (other subset roots, page
+	// cursor). Without parentheses a top-level OR would swallow them: "a OR b AND cursor"
+	// reads the 'a' rows again on every page and lets rows out of the subset through.
+	return "(" + strings.TrimSpace(updatedSql[startIndex:]) + ")", nil
 }
 
 func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (string, error) {
