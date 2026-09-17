@@ -17,6 +17,7 @@ func subsetForeignKeyCases() []*Case {
 		fkSeveralToSameParent(),
 		fkCompositePartiallyNull(),
 		fkVirtual(),
+		fkParentKeyCollation(),
 	}
 }
 
@@ -399,6 +400,71 @@ func fkVirtual() *Case {
 				emit.Row("EVENEMENT", []any{100 + i, stationKept, nil}, Kept())
 				emit.Row("EVENEMENT", []any{200 + i, stationKept, 1000 + i}, Kept("commande_id"))
 				emit.Row("EVENEMENT", []any{1000 + i, stationDropped, 1000 + i}, Dropped())
+			}
+		},
+	}
+}
+
+// fkParentKeyCollation: the key of CATALOGUE is text compared with a collation of its own,
+// where "REF-A-01" and "ref-a-01" are two different codes. Athanor checks in the
+// destination, batch by batch, that the parent of a mandatory foreign key is there, and
+// sends the keys of the batch as parameters of a derived table: the comparison must stay
+// the one of the column, not the one the connection happens to use.
+func fkParentKeyCollation() *Case {
+	const binary = "utf8mb4_bin"
+	return &Case{
+		ID:       "fk-parent-key-collation",
+		Priority: P1,
+		Title:    "Clé étrangère textuelle à collation propre : le parent se compare comme la base le fait",
+		Tables: []*schema.Table{
+			stationTable(),
+			{
+				Name: "CATALOGUE",
+				Columns: []schema.Column{
+					{Name: "code", Type: schema.Varchar(20), Collation: binary},
+					{Name: stationIDColumn, Type: schema.Int64()},
+				},
+				PrimaryKey:  []string{"code"},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_catalogue_station", stationIDColumn, "STATION")},
+			},
+			{
+				Name: "ARTICLE",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: stationIDColumn, Type: schema.Int64()},
+					{Name: "catalogue_code", Type: schema.Varchar(20), Collation: binary},
+				},
+				PrimaryKey: []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{
+					foreignKeyToID("fk_article_station", stationIDColumn, "STATION"),
+					{
+						Name: "fk_article_catalogue", Columns: []string{"catalogue_code"},
+						RefTable: "CATALOGUE", RefColumns: []string{"code"},
+					},
+				},
+			},
+		},
+		Job: subsetOnStationJob(),
+		Seed: func(p Params, emit Emitter) {
+			seedStations(emit)
+			for i := int64(1); i <= 5; i++ {
+				emit.Row("CATALOGUE", []any{fmt.Sprintf("REF-A-%02d", i), stationKept}, Kept())
+				emit.Row("CATALOGUE", []any{fmt.Sprintf("REF-B-%02d", i), stationDropped}, Dropped())
+			}
+			id := int64(0)
+			for i := int64(1); i <= 5; i++ {
+				id++
+				emit.Row("ARTICLE", []any{id, stationKept, fmt.Sprintf("REF-A-%02d", i)}, Kept())
+				// Le code n'existe que pour l'autre station : article retenu par le subset,
+				// sans parent en destination.
+				id++
+				emit.Row("ARTICLE", []any{id, stationKept, fmt.Sprintf("REF-B-%02d", i)}, Dropped())
+				// Même code à la casse près : deux codes différents pour cette collation,
+				// donc un orphelin de la source, à écarter comme tel.
+				id++
+				emit.Row("ARTICLE", []any{id, stationKept, fmt.Sprintf("ref-a-%02d", i)}, Dropped())
+				id++
+				emit.Row("ARTICLE", []any{id, stationDropped, fmt.Sprintf("REF-B-%02d", i)}, Dropped())
 			}
 		},
 	}
