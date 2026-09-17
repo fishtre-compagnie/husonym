@@ -60,7 +60,7 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    (`5175df77`).
 3. ✅ MySQL / à faire PostgreSQL et SQL Server : Athanor lit le plan, pagination par clé + jeton de continuation,
    `DO NOTHING` en reprise, une passe FK suspendues (`e01e091c`) ; JavaScript dans une VM par table (`5f166f4e`).
-4. ✅ MySQL : intégrité référentielle en trois étapes et banc d'essai (`bench/`, 59 cas) : voir
+4. ✅ MySQL : intégrité référentielle en trois étapes et banc d'essai (`bench/`, 58 cas) : voir
    [banc-essai-moteurs.md](banc-essai-moteurs.md). Le plan porte les FK de la table, les colonnes générées et
    les clés publiées.
 5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL) ; à faire : destinations multiples
