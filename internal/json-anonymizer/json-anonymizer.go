@@ -391,7 +391,7 @@ func initTransformerExecutors(
 	executors := []*transformer_executor.TransformerExecutor{}
 	execOpts := []transformer_executor.TransformerExecutorOption{
 		transformer_executor.WithLogger(logger),
-		transformer_executor.WithUserDefinedTransformerResolver(newUdtResolver(transformerClient)),
+		transformer_executor.WithUserDefinedTransformerResolver(transformer_executor.NewUserDefinedTransformerResolver(transformerClient)),
 	}
 	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
 		anonymizeConfig.anonymize != nil {
@@ -437,7 +437,7 @@ func initDefaultTransformerExecutors(
 ) (*DefaultExecutors, error) {
 	execOpts := []transformer_executor.TransformerExecutorOption{
 		transformer_executor.WithLogger(logger),
-		transformer_executor.WithUserDefinedTransformerResolver(newUdtResolver(transformerClient)),
+		transformer_executor.WithUserDefinedTransformerResolver(transformer_executor.NewUserDefinedTransformerResolver(transformerClient)),
 	}
 	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
 		anonymizeConfig.anonymize != nil {

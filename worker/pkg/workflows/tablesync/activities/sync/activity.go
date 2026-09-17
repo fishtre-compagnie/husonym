@@ -47,6 +47,7 @@ type Activity struct {
 	benthosStreamManager benthosstream.BenthosStreamManagerClient
 	temporalclient       temporalclient.Client
 	anonymizationClient  mgmtv1alpha1connect.AnonymizationServiceClient
+	transformerclient    mgmtv1alpha1connect.TransformersServiceClient
 	redisclient          redis.UniversalClient
 	athanorPolicy        AthanorPolicy
 }
@@ -60,6 +61,7 @@ func New(
 	benthosStreamManager benthosstream.BenthosStreamManagerClient,
 	tclient temporalclient.Client,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
 	athanorPolicy AthanorPolicy,
 ) *Activity {
@@ -72,6 +74,7 @@ func New(
 		benthosStreamManager: benthosStreamManager,
 		temporalclient:       tclient,
 		anonymizationClient:  anonymizationClient,
+		transformerclient:    transformerclient,
 		redisclient:          redisclient,
 		athanorPolicy:        athanorPolicy,
 	}

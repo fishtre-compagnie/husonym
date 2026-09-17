@@ -157,6 +157,7 @@ func NewTestDataSyncWorkflowEnv(
 		husonymApi.Mocks.TemporalClient,
 		workflowEnv.maxIterations,
 		anonymizationclient,
+		transformerclient,
 		workflowEnv.Redisclient,
 		sync_activity.NewAthanorPolicy(false, "", ""), // chemin Benthos par défaut dans les tests d'intégration
 	)

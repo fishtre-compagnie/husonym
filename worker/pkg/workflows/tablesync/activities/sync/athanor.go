@@ -20,6 +20,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 	"github.com/google/uuid"
 )
 
@@ -145,7 +147,19 @@ func (a *Activity) runAthanor(
 		"cohérence", "déterministe",
 	)
 
-	return runner.RunTable(ctx, srcDB, dstDB, dialect, mappings, metadata.Schema, metadata.Table, where, athanorBatchSize, wc, deriver)
+	// Mêmes capacités que le chemin Benthos : transformers définis par l'utilisateur
+	// et TransformPiiText (y compris depuis le JavaScript), via l'API liée au compte.
+	execOpts := []te.TransformerExecutorOption{
+		te.WithLogger(logger),
+		te.WithUserDefinedTransformerResolver(te.NewUserDefinedTransformerResolver(a.transformerclient)),
+		te.WithTransformPiiTextApi(transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)),
+	}
+
+	return runner.RunTable(
+		ctx, srcDB, dstDB, dialect, mappings,
+		metadata.Schema, metadata.Table, where,
+		athanorBatchSize, wc, deriver, execOpts...,
+	)
 }
 
 // sourceConnectionID extracts the source connection id for the job's dialect.

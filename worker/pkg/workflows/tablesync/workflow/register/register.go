@@ -29,6 +29,7 @@ func Register(
 	temporalclient client.Client,
 	maxIterations int,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
 	athanorPolicy sync_activity.AthanorPolicy,
 ) {
@@ -44,6 +45,7 @@ func Register(
 		benthosStreamManager,
 		temporalclient,
 		anonymizationClient,
+		transformerclient,
 		redisclient,
 		athanorPolicy,
 	)

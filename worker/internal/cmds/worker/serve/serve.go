@@ -406,6 +406,7 @@ func serve(ctx context.Context) error {
 		temporalClient,
 		maxIterations,
 		anonymizationclient,
+		transformerclient,
 		redisclient,
 		athanorPolicy,
 	)
