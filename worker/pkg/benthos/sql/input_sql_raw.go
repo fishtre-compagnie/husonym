@@ -283,7 +283,15 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 			s.rows = nil
 			return nil, nil, fmt.Errorf("order by column %s not found", col)
 		}
-		lastReadOrderValues[i] = val
+		// The record mapper wraps dates, binaries and bits in types made for the
+		// pipeline. The cursor of the next page needs what the driver binds.
+		orderValue, err := toDriverOrderValue(s.driver, val)
+		if err != nil {
+			_ = s.rows.Close()
+			s.rows = nil
+			return nil, nil, fmt.Errorf("order by column %s: %w", col, err)
+		}
+		lastReadOrderValues[i] = orderValue
 	}
 	if len(lastReadOrderValues) > 0 {
 		s.logger.Debug(fmt.Sprintf("last read order values: %v", lastReadOrderValues))
@@ -322,4 +330,21 @@ func (s *pooledInput) Close(ctx context.Context) error {
 		s.db = nil // not closing here since it's managed by the pool
 	}
 	return nil
+}
+
+// toDriverOrderValue unwraps a mapped record value into the value its driver binds.
+func toDriverOrderValue(driver string, value any) (any, error) {
+	switch driver {
+	case sqlmanager_shared.MysqlDriver:
+		unwrapped, _, err := getMysqlHusonymValue(value)
+		return unwrapped, err
+	case sqlmanager_shared.PostgresDriver:
+		unwrapped, _, err := getPgxHusonymValue(value)
+		return unwrapped, err
+	case sqlmanager_shared.MssqlDriver:
+		unwrapped, _, err := getMssqlHusonymValue(value)
+		return unwrapped, err
+	default:
+		return value, nil
+	}
 }

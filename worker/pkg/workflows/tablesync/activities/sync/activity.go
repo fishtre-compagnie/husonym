@@ -211,11 +211,16 @@ func (a *Activity) SyncTable(
 	}
 
 	var continuationTokenToReturn *string
+	var continuationTokenErr error
 	hasMorePages := func(lastReadOrderValues []any) {
 		token := continuation_token.NewFromContents(
 			continuation_token.NewContents(lastReadOrderValues),
 		)
-		tokenStr := token.String()
+		tokenStr, err := token.Encode()
+		if err != nil {
+			continuationTokenErr = err
+			return
+		}
 		continuationTokenToReturn = &tokenStr
 	}
 
@@ -253,6 +258,10 @@ func (a *Activity) SyncTable(
 	err = <-syncResultChan
 	if err != nil {
 		return nil, fmt.Errorf("could not successfully complete sync activity: %w", err)
+	}
+
+	if continuationTokenErr != nil {
+		return nil, fmt.Errorf("could not hand over to the next page: %w", continuationTokenErr)
 	}
 
 	logger.Info("sync complete")

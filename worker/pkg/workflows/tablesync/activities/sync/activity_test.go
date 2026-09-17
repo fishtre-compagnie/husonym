@@ -203,9 +203,10 @@ output:
 	env.RegisterActivity(activity.SyncTable)
 
 	t.Run("valid continuation token", func(t *testing.T) {
-		validToken := continuation_token.
+		validToken, err := continuation_token.
 			NewFromContents(continuation_token.NewContents([]any{"dummy"})).
-			String()
+			Encode()
+		require.NoError(t, err)
 
 		val, err := env.ExecuteActivity(activity.SyncTable, &SyncTableRequest{
 			Id:                "test",

@@ -228,7 +228,10 @@ func (a *Activity) runAthanor(
 
 	resp := &SyncTableResponse{}
 	if res.HasMore {
-		token := continuation_token.NewFromContents(continuation_token.NewContents(res.LastOrderValues)).String()
+		token, terr := continuation_token.NewFromContents(continuation_token.NewContents(res.LastOrderValues)).Encode()
+		if terr != nil {
+			return nil, fmt.Errorf("athanor: %s.%s: %w", plan.Schema, plan.Table, terr)
+		}
 		resp.ContinuationToken = &token
 	}
 	return resp, nil
