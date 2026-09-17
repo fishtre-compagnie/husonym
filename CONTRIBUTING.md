@@ -81,6 +81,48 @@ Some code is generated and should not be edited by hand:
 If your change touches a `.proto` file or a `.sql` query, regenerate and commit
 the result alongside your change.
 
+## Releasing
+
+Pushing a `v*.*.*` tag on `main` runs `Artifact Release`, which publishes the container
+images, the Helm charts and the CLI binaries.
+
+```console
+git tag -a v0.2.0 -m 'Husonym v0.2.0'
+git push origin v0.2.0
+```
+
+The tag is what produces the `latest` image tag: `metadata-action` derives it from
+`type=semver`, so a push to `main` alone publishes `main` and `sha-…` tags but never
+`latest`. Since `compose.yml`, the README and the deploy docs all point at `:latest`,
+**a release is what makes those instructions true** — this is not a cosmetic step.
+
+Tagging is therefore outward-facing. It moves `latest`, which is the reference customers
+follow.
+
+### Release signing
+
+The CLI release is signed: GoReleaser signs `checksums.txt`, so a user can verify a
+download came from us. See [Installing the CLI](./docs/docs/cli/installing.md) for the
+verification steps we ask of them.
+
+Two halves have to stay in sync, and this is the part that is easy to get wrong:
+
+- **Infisical** (`prod`) holds `GPG_PRIVATE_KEY`, `GPG_PRIVATE_KEY_PASSPHRASE` and
+  `GPG_REVOCATION_CERT` — the source of truth and the only off-machine copy.
+- **GitHub Actions secrets** hold `GPG_PRIVATE_KEY` and `GPG_PRIVATE_KEY_PASSPHRASE`,
+  because the workflow reads `${{ secrets.* }}` and cannot reach Infisical. Storing the
+  key only in Infisical does not work.
+
+Rotating means replacing both, and committing the new public key to
+[`cli/release-signing-key.asc`](./cli/release-signing-key.asc) — whose fingerprint is
+quoted in the install docs and must be updated there too. Signatures already made stay
+verifiable with the old public key, so old releases do not break.
+
+The key carries no expiry date, deliberately: an expired key would fail a release with no
+warning, months after anyone last thought about it. Revocation is the escape hatch instead,
+which is why the revocation certificate is kept in Infisical rather than generated on the
+day it is needed.
+
 ## Reporting bugs and requesting features
 
 Open a [GitHub issue](https://github.com/fishtre-compagnie/husonym/issues) using
