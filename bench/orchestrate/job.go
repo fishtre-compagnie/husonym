@@ -73,6 +73,10 @@ func (c *Client) CreateJob(
 	}
 
 	attempts := max(cs.Job.SyncAttempts, 1)
+	var batch *mgmtv1alpha1.BatchConfig
+	if count := cs.Job.BatchCount; count > 0 {
+		batch = &mgmtv1alpha1.BatchConfig{Count: &count}
+	}
 	var onConflict *mgmtv1alpha1.MysqlOnConflictConfig
 	if cs.Job.OnConflictUpdate {
 		onConflict = &mgmtv1alpha1.MysqlOnConflictConfig{
@@ -99,6 +103,7 @@ func (c *Client) CreateJob(
 						TruncateBeforeInsert: cs.Job.TruncateBeforeInsert,
 					},
 					OnConflict: onConflict,
+					Batch:      batch,
 				}},
 			},
 		}},

@@ -54,10 +54,12 @@ func (m *Measure) RowsPerSecond() float64 {
 
 // Report is one pass of the perf mode.
 type Report struct {
-	Date       time.Time      `json:"date"`
-	Commit     string         `json:"commit"`
-	Scale      int            `json:"scale"`
-	Rounds     int            `json:"rounds"`
+	Date   time.Time `json:"date"`
+	Commit string    `json:"commit"`
+	Scale  int       `json:"scale"`
+	Rounds int       `json:"rounds"`
+	// BatchCount is the batch size the destinations were given, zero for the default.
+	BatchCount uint32         `json:"batchCount"`
 	SourceRows map[string]int `json:"sourceRows"`
 	Measures   []*Measure     `json:"measures"`
 }
@@ -96,8 +98,12 @@ func (r *Report) measuresOf(engine env.Engine) []*Measure {
 func (r *Report) Markdown() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Comparaison mesurée des moteurs\n\n")
-	fmt.Fprintf(&b, "- Date : %s\n- Commit : `%s`\n- Échelle : %d (%d lignes en source)\n- Tours par moteur : %d\n\n",
+	fmt.Fprintf(&b, "- Date : %s\n- Commit : `%s`\n- Échelle : %d (%d lignes en source)\n- Tours par moteur : %d\n",
 		r.Date.Format("2006-01-02 15:04:05"), r.Commit, r.Scale, sum(r.SourceRows), r.Rounds)
+	if r.BatchCount > 0 {
+		fmt.Fprintf(&b, "- Lignes par lot en destination : %d\n", r.BatchCount)
+	}
+	b.WriteString("\n")
 	b.WriteString("Chaque run est seul sur la machine, sur un worker redémarré et une destination vidée.\n\n")
 
 	b.WriteString("## Synthèse\n\n")

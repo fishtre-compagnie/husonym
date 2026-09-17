@@ -21,6 +21,7 @@ func perfMode(args []string) error {
 	outDir := flags.String("out", "bench/out", "directory receiving the reports")
 	runTimeout := flags.Duration("run-timeout", 30*time.Minute, "time given to one run before it is terminated")
 	skipLoad := flags.Bool("skip-load", false, "reuse the source loaded by a previous pass")
+	batchCount := flags.Int("batch-count", 0, "rows a destination writes at once (0 keeps the default)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -43,6 +44,7 @@ func perfMode(args []string) error {
 		Rounds:     *rounds,
 		RunTimeout: *runTimeout,
 		SkipLoad:   *skipLoad,
+		BatchCount: uint32(*batchCount), //nolint:gosec // a batch size, given on the command line
 		Log:        func(format string, args ...any) { fmt.Fprintf(os.Stdout, format+"\n", args...) },
 	}
 	report, err := runner.Run(ctx)

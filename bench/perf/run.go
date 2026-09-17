@@ -28,7 +28,9 @@ type Runner struct {
 	RunTimeout    time.Duration
 	// SkipLoad reuses the source of a previous pass instead of loading it again.
 	SkipLoad bool
-	Log      func(format string, args ...any)
+	// BatchCount is how many rows a destination writes at once; zero keeps the default.
+	BatchCount uint32
+	Log        func(format string, args ...any)
 }
 
 // Run loads the source, then runs the dataset with each engine in turn, as many rounds as
@@ -36,10 +38,12 @@ type Runner struct {
 // favor the one that always runs first.
 func (r *Runner) Run(ctx context.Context) (*Report, error) {
 	dataset := Dataset()
+	dataset.Job.BatchCount = r.BatchCount
 	report := &Report{
-		Date:   time.Now(),
-		Scale:  r.Scale,
-		Rounds: r.Rounds,
+		Date:       time.Now(),
+		Scale:      r.Scale,
+		Rounds:     r.Rounds,
+		BatchCount: r.BatchCount,
 	}
 
 	if !r.SkipLoad {

@@ -99,6 +99,9 @@ type Job struct {
 	// ExcludedTables exist in the source and in the destination but are left out of the
 	// job, the way a user skips a reference table filled by other means.
 	ExcludedTables []string
+	// BatchCount is how many rows a destination writes at once; zero keeps the default of
+	// the product. It is what tells a difference of engine from a difference of setting.
+	BatchCount uint32
 	// SyncAttempts is the number of attempts a table sync gets. Default 1: a retry rewrites
 	// its page with "do nothing", which would hide the very errors the bench is after.
 	// Cases about retries ask for more.
