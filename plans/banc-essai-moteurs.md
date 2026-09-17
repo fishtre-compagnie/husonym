@@ -455,6 +455,31 @@ Deux cas ajoutés : `tr-key-of-discarded-row` (P1, hors attendu sur les deux mot
 `fk-parent-key-collation` (P1, OK sur les deux : le contrôle des parents compare bien avec la
 collation de la colonne, pas celle de la connexion — garde-fou pour PostgreSQL et SQL Server).
 
+## Test de recette rejoué (2026-09-17 au soir, job `demo-outil-franchise`, 66 tables)
+
+Mesuré sur la même source, le même soir, worker à sa taille de page normale (100 000).
+
+| Moteur | Commit `14c7a56a` (début de session) | Avec les corrections de la session |
+|---|---|---|
+| Benthos | 461 s | **361 s** |
+| Athanor | 48 s | **42 s** |
+
+- **Contenu : 66 tables identiques sur 66** entre les deux destinations (empreinte `crc32` par ligne sur
+  toutes les colonnes). La seule colonne qui diffère est `REF_STATION_MONTAGE.DT_DERNIER_IMPORT`, une date que
+  l'application de recette met à jour entre les deux runs — écart de source, pas de moteur. La comparaison
+  précédente donnait 55 tables sur 66.
+- **Zéro orphelin** dans les deux destinations, sur toutes les clés étrangères du schéma. Le premier test réel
+  en comptait 36 côté Athanor.
+- Le plancher de 5 s par table a disparu : durée médiane d'une sync de table passée de **5 s à 0,2 s**
+  (73 syncs sous 5 s sur 90, contre 10 sur 66 auparavant), et **aucun** lot vidé par période sur tout le run.
+- Le mur de Benthos reste dominé par trois tables (211 s, 71 s, 70 s) avec un plafond de parallélisme à 3.
+- Attribution vérifiée : rejouer sans le seul changement d'ordre des clés donne 383 s (contre 361 s avec) —
+  ce changement ne coûte rien. La référence de 176 s du premier test réel n'est pas comparable : elle précède
+  le travail d'exactitude de la session précédente (filtres `EXISTS` sur les FK nullables, contrôle
+  d'intégrité de fin de run, contrôle des droits), qui coûte du temps et que les 461 s incluent.
+- `main` ne peut pas exécuter ce job : il échoue en 84 s sur `ReferenceError: neosync is not defined`
+  (transformers JavaScript, corrigé par la branche).
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
