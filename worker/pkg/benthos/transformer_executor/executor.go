@@ -133,7 +133,7 @@ func InitializeTransformerByConfigType(
 			return nil, fmt.Errorf("generate javascript config is nil")
 		}
 
-		valueApi := newAnonValueApi()
+		valueApi := NewAnonValueApi()
 		transformPiiTextApi := execCfg.resolvePiiTextApi()
 
 		runner, err := javascript.NewDefaultValueRunner(valueApi, transformPiiTextApi, execCfg.logger)
@@ -171,7 +171,7 @@ func InitializeTransformerByConfigType(
 			return nil, fmt.Errorf("transform javascript config is nil")
 		}
 
-		valueApi := newAnonValueApi()
+		valueApi := NewAnonValueApi()
 		transformPiiTextApi := execCfg.resolvePiiTextApi()
 		runner, err := javascript.NewDefaultValueRunner(valueApi, transformPiiTextApi, execCfg.logger)
 		if err != nil {

@@ -199,10 +199,17 @@ func (a *Activity) runAthanor(
 
 	// Mêmes capacités que le chemin Benthos : transformers définis par l'utilisateur
 	// et TransformPiiText (y compris depuis le JavaScript), via l'API liée au compte.
-	execOpts := []te.TransformerExecutorOption{
-		te.WithLogger(logger),
-		te.WithUserDefinedTransformerResolver(te.NewUserDefinedTransformerResolver(a.transformerclient)),
-		te.WithTransformPiiTextApi(transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)),
+	resolver := te.NewUserDefinedTransformerResolver(a.transformerclient)
+	piiTextApi := transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)
+	env := &runner.TransformEnv{
+		Resolver:   resolver,
+		PiiTextApi: piiTextApi,
+		Logger:     logger,
+		ExecOptions: []te.TransformerExecutorOption{
+			te.WithLogger(logger),
+			te.WithUserDefinedTransformerResolver(resolver),
+			te.WithTransformPiiTextApi(piiTextApi),
+		},
 	}
 
 	res, err := runner.RunTablePage(ctx, srcDB, dstDB, dialect, &runner.TablePage{
@@ -212,7 +219,7 @@ func (a *Activity) runAthanor(
 		Write:            wc,
 		Deriver:          deriver,
 		AfterOrderValues: after,
-		ExecOptions:      execOpts,
+		Env:              env,
 	})
 	if err != nil {
 		return nil, err

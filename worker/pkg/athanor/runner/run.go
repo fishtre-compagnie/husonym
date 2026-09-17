@@ -10,7 +10,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
-	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
 // Querier est la source de lecture. *database/sql.DB, *sql.Tx et le
@@ -48,7 +47,7 @@ type TablePage struct {
 	// AfterOrderValues are the order column values of the last row of the previous
 	// page; nil reads the first page.
 	AfterOrderValues []any
-	ExecOptions      []te.TransformerExecutorOption
+	Env              *TransformEnv
 }
 
 // PageResult tells what a page read and whether the table has more pages.
@@ -71,7 +70,7 @@ func RunTablePage(
 	page *TablePage,
 ) (*PageResult, error) {
 	plan := page.Plan
-	_, spec, err := SpecForTable(page.Mappings, plan.Schema, plan.Table, page.Deriver, page.ExecOptions...)
+	_, spec, err := SpecForTable(ctx, page.Mappings, plan.Schema, plan.Table, page.Deriver, page.Env)
 	if err != nil {
 		return nil, err
 	}

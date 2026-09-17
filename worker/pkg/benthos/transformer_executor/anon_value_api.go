@@ -8,49 +8,52 @@ import (
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 
-type anonValueApi struct {
+// AnonValueApi exposes a single message to the JavaScript functions of a runner
+// (benthos.v0_msg_as_structured, husonym.patchStructuredMessage…) outside of a Benthos stream.
+type AnonValueApi struct {
 	message *service.Message
 }
 
-var _ javascript_functions.ValueApi = (*anonValueApi)(nil)
+var _ javascript_functions.ValueApi = (*AnonValueApi)(nil)
 
-func newAnonValueApi() *anonValueApi {
-	return &anonValueApi{}
+// NewAnonValueApi returns a value API with no message; set one with SetMessage.
+func NewAnonValueApi() *AnonValueApi {
+	return &AnonValueApi{}
 }
 
-func (b *anonValueApi) SetMessage(message *service.Message) {
+func (b *AnonValueApi) SetMessage(message *service.Message) {
 	b.message = message
 }
 
-func (b *anonValueApi) Message() *service.Message {
+func (b *AnonValueApi) Message() *service.Message {
 	return b.message
 }
 
-func (b *anonValueApi) SetBytes(bytes []byte) {
+func (b *AnonValueApi) SetBytes(bytes []byte) {
 	b.message.SetBytes(bytes)
 }
 
-func (b *anonValueApi) AsBytes() ([]byte, error) {
+func (b *AnonValueApi) AsBytes() ([]byte, error) {
 	return b.message.AsBytes()
 }
 
-func (b *anonValueApi) SetStructured(value any) {
+func (b *AnonValueApi) SetStructured(value any) {
 	b.message.SetStructured(value)
 }
 
-func (b *anonValueApi) AsStructured() (any, error) {
+func (b *AnonValueApi) AsStructured() (any, error) {
 	return b.message.AsStructured()
 }
 
-func (b *anonValueApi) MetaGet(key string) (any, bool) {
+func (b *AnonValueApi) MetaGet(key string) (any, bool) {
 	return b.message.MetaGet(key)
 }
 
-func (b *anonValueApi) MetaSetMut(key string, value any) {
+func (b *AnonValueApi) MetaSetMut(key string, value any) {
 	b.message.MetaSetMut(key, value)
 }
 
-func (b *anonValueApi) GetPropertyPathValue(propertyPath string) (any, error) {
+func (b *AnonValueApi) GetPropertyPathValue(propertyPath string) (any, error) {
 	if b.message == nil {
 		return nil, fmt.Errorf("message is nil")
 	}

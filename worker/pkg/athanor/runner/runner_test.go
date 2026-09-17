@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestSpecForTable(t *testing.T) {
 		{Schema: "public", Table: "autre", Column: "x", Transformer: transformInt64()}, // autre table : ignorée
 	}
 
-	cols, spec, err := SpecForTable(mappings, "public", "clients", nil)
+	cols, spec, err := SpecForTable(context.Background(), mappings, "public", "clients", nil, nil)
 	if err != nil {
 		t.Fatalf("SpecForTable: %v", err)
 	}
@@ -82,7 +83,7 @@ func TestSpecForTable_Deterministic(t *testing.T) {
 		{Schema: "public", Table: "clients", Column: "prenom", Transformer: generateFirstName()},
 	}
 	d := consistency.New([]byte("clé-test"), "org")
-	_, spec, err := SpecForTable(mappings, "public", "clients", d)
+	_, spec, err := SpecForTable(context.Background(), mappings, "public", "clients", d, nil)
 	if err != nil {
 		t.Fatalf("SpecForTable: %v", err)
 	}
@@ -105,7 +106,7 @@ func TestSpecForTable_NoDeriverFallsBack(t *testing.T) {
 	mappings := []*mgmtv1alpha1.JobMapping{
 		{Schema: "public", Table: "clients", Column: "prenom", Transformer: generateFirstName()},
 	}
-	_, spec, err := SpecForTable(mappings, "public", "clients", nil)
+	_, spec, err := SpecForTable(context.Background(), mappings, "public", "clients", nil, nil)
 	if err != nil {
 		t.Fatalf("SpecForTable: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestSpecForTable_NullAndDefault(t *testing.T) {
 		}},
 	}
 
-	cols, spec, err := SpecForTable(mappings, "public", "clients", nil)
+	cols, spec, err := SpecForTable(context.Background(), mappings, "public", "clients", nil, nil)
 	if err != nil {
 		t.Fatalf("SpecForTable: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestSpecForTable_NullAndDefault(t *testing.T) {
 }
 
 func TestSpecForTable_NoMapping(t *testing.T) {
-	_, _, err := SpecForTable(nil, "public", "vide", nil)
+	_, _, err := SpecForTable(context.Background(), nil, "public", "vide", nil, nil)
 	if err == nil {
 		t.Fatal("aucun mapping pour la table doit être une erreur")
 	}
