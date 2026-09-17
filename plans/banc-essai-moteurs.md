@@ -345,49 +345,57 @@ Constats principaux :
 | `table-partitioned` | P2 | OK | OK |
 | `where-unqualified-under-join` | P2 | run sans fin | échec du run |
 
-## État après les premières corrections (2026-09-17, 57 cas)
+## État au 2026-09-17 au soir (58 cas)
 
 Corrigé dans le calcul partagé, donc pour les deux moteurs : parenthèses autour du `WHERE` de l'utilisateur ;
 jeton de reprise typé (entiers au-delà de 2^53, binaire, dates) ; pagination seulement sur une clé sans colonne
 nullable, table sans clé lue en un seul flux ; FK nullable sur le chemin du subset en `LEFT JOIN` ; toutes les
-colonnes du `WHERE` MySQL qualifiées ; « do nothing » MySQL sans `INSERT IGNORE`. Dans Benthos : erreurs MySQL
-permanentes déclarées critiques (plus de run qui réessaie dix minutes), fractions de seconde conservées. Dans
-Athanor : une transaction par page (plus de doublons après un échec partiel).
+colonnes du `WHERE` MySQL qualifiées ; « do nothing » MySQL sans `INSERT IGNORE` ; **étape 1 de l'intégrité** (FK
+nullable lue à `NULL` quand la ligne parente n'est pas sélectionnée) ; **étape 3** (contrôle des orphelins en fin de
+run, réparation seulement si le run a vidé la destination) ; **contrôle des droits au démarrage du run** (MySQL).
 
-| Priorité | Moteur | OK | Écart | Échec du run | Run sans fin | Échec attendu absent |
-|---|---|---|---|---|---|---|
-| P1 | Athanor | 33 | 10 | 2 | 0 | 0 |
-| P1 | Benthos | 37 | 6 | 2 | 0 | 0 |
-| P2 | Athanor | 8 | 0 | 3 | 0 | 1 |
-| P2 | Benthos | 8 | 1 | 2 | 0 | 1 |
+Dans Benthos : erreurs MySQL permanentes déclarées critiques (plus de run qui réessaie dix minutes), fractions de
+seconde conservées. Dans Athanor : une transaction par page ; **étape 2 de l'intégrité** (parents obligatoires
+vérifiés à l'écriture, valeur sentinelle respectée) ; colonnes générées laissées à la destination ; `id = 0` et
+`0000-00-00` écrits tels quels ; **clés transformées suivies par les FK via Redis**.
+
+| Priorité | Moteur | OK | Écart | Échec du run | Échec attendu absent |
+|---|---|---|---|---|---|
+| P1 | Athanor | 44 | 2 | 0 | 0 |
+| P1 | Benthos | 38 | 5 | 2 | 1 |
+| P2 | Athanor | 11 | 0 | 1 | 0 |
+| P2 | Benthos | 9 | 1 | 2 | 0 |
 
 Cas encore hors attendu :
 
 | Cas | Priorité | Benthos | Athanor |
 |---|---|---|---|
 | `destination-trigger-writes-synced-table` | P1 | écart | écart |
-| `fk-composite-partially-null` | P1 | OK | écart |
-| `fk-cycle-two-tables` | P1 | OK | écart |
-| `fk-diamond` | P1 | OK | écart |
-| `fk-self-reference-nullable` | P1 | OK | écart |
-| `fk-several-to-same-parent` | P1 | OK | écart |
-| `fk-source-orphans` | P1 | écart | écart |
-| `fk-virtual` | P1 | écart | écart |
+| `fk-source-orphans` | P1 | écart | OK |
+| `fk-source-orphans-destination-kept` | P1 | échec attendu absent | OK |
 | `retry-keyless-table-duplicates` | P1 | écart | OK |
-| `subset-parent-filtered-twice` | P1 | OK | écart |
-| `tr-primary-key-transformed` | P1 | OK | écart |
-| `types-auto-increment-zero` | P1 | échec du run | échec du run |
+| `types-auto-increment-zero` | P1 | échec du run | OK |
 | `types-integers` | P1 | échec du run | OK |
 | `types-json` | P1 | écart | OK |
-| `types-zero-dates` | P1 | écart | échec du run |
-| `columns-generated-default` | P2 | OK | échec du run |
-| `columns-generated-passthrough` | P2 | échec du run | échec du run |
+| `types-zero-dates` | P1 | écart | écart |
+| `columns-generated-passthrough` | P2 | échec du run | OK |
 | `columns-on-update-timestamp` | P2 | écart | OK |
 | `fk-self-reference-not-null` | P2 | échec du run | échec du run |
-| `rights-destination-read-only-account` | P2 | échec attendu absent | échec attendu absent |
 
-Constat d'exploitation : le worker garde les connexions d'un run ouvertes une minute ou plus après sa fin ; un
-passage complet du banc dépasse les 151 connexions par défaut de MySQL (serveurs du banc portés à 1 000).
+Restent hors attendu sur Athanor : le trigger de destination qui écrit dans une table synchronisée (MySQL ne sait
+pas suspendre un trigger : à signaler au pré-vol, ou à retirer puis recréer), la FK auto-référencée `NOT NULL`
+(refusée comme dépendance circulaire par le calcul des passes, alors qu'Athanor écrit en une passe), les dates à
+mois ou jour nul (`2024-00-00`, converties par le pilote dès la lecture : `parseTime`).
+
+Limites connues de ce qui a été ajouté : la lecture des privilèges suppose un compte `'user'@'%'` (un compte sur
+hôte précis ou par rôle est « inconnu » et ne bloque pas) ; une clé auto-référencée vers une clé transformée est
+refusée par Athanor ; PostgreSQL et SQL Server ne sont pas encore couverts par le contrôle des parents (types des
+paramètres) ni par le contrôle des droits.
+
+Constats d'exploitation : le worker garde les connexions d'un run ouvertes une minute ou plus après sa fin ; un
+passage complet du banc dépasse les 151 connexions par défaut de MySQL (serveurs du banc portés à 1 000). Observé
+une fois sur cinq, sous charge : un run Benthos terminé « réussi » avec une table vide après une erreur
+d'écriture (`types-integers`), course dans l'arrêt du flux sur erreur.
 
 Restent à écrire : JavaScript à état partagé, destination de SGBD ou de schéma très différent, worker réellement
 tué en cours de page, `lower_case_table_names`, `sql_generate_invisible_primary_key`, mode `bench/perf`.

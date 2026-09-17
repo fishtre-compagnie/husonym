@@ -60,12 +60,17 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    (`5175df77`).
 3. ✅ MySQL / à faire PostgreSQL et SQL Server : Athanor lit le plan, pagination par clé + jeton de continuation,
    `DO NOTHING` en reprise, une passe FK suspendues (`e01e091c`) ; JavaScript dans une VM par table (`5f166f4e`).
-4. Intégrité référentielle en trois étapes et banc d'essai : voir [banc-essai-moteurs.md](banc-essai-moteurs.md).
-5. Écriture : destinations multiples et hétérogènes, identités/générées/défauts, conversions de types par SGBD.
-6. Propagation des FK via Redis (clés primaires transformées), identique à Benthos.
-7. Contrôle des droits selon le rôle de la connexion : voir [banc-essai-moteurs.md](banc-essai-moteurs.md).
+4. ✅ MySQL : intégrité référentielle en trois étapes et banc d'essai (`bench/`, 59 cas) : voir
+   [banc-essai-moteurs.md](banc-essai-moteurs.md). Le plan porte les FK de la table, les colonnes générées et
+   les clés publiées.
+5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL) ; à faire : destinations multiples
+   et hétérogènes, identités PostgreSQL et SQL Server, conversions de types par SGBD.
+6. ✅ Propagation des FK via Redis (clés primaires transformées), mêmes hachages que Benthos ; clé
+   auto-référencée vers une clé transformée refusée (une passe).
+7. ✅ MySQL, au démarrage du run : contrôle des droits selon le rôle de la connexion. À faire : test de connexion
+   et configuration du job (proto `CheckConnectionConfig`), PostgreSQL, SQL Server.
 8. Comparaison mesurée sur le banc (temps, lignes/s, mémoire, exactitude) avant toute décision de retrait de
-   Benthos.
+   Benthos : mode `bench/perf` à écrire.
 
 Hors périmètre Athanor tant que non demandé : MongoDB, DynamoDB, S3/GCS, jobs de génération (Benthos reste le
 moteur, choix explicite et journalisé).
