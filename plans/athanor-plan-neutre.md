@@ -70,7 +70,14 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
 7. ✅ MySQL, au démarrage du run : contrôle des droits selon le rôle de la connexion. À faire : test de connexion
    et configuration du job (proto `CheckConnectionConfig`), PostgreSQL, SQL Server.
 8. Comparaison mesurée sur le banc (temps, lignes/s, mémoire, exactitude) avant toute décision de retrait de
-   Benthos : mode `bench/perf` à écrire.
+   Benthos : mode `bench/perf` à écrire. Prérequis levé le 2026-09-17 au soir : l'écart de durée observé
+   jusque-là était la période de lot de Benthos (5 s par sync de table), pas une différence de moteur ; voir
+   [banc-essai-moteurs.md](banc-essai-moteurs.md). À l'échelle du banc de correction, les deux moteurs sont
+   indiscernables une fois cette période neutralisée.
+9. Défaut ouvert : une FK nullable qui suit une clé transformée, sur une table à subset, est écrite avant la
+   table qui publie la clé (la passe d'insertion n'en dépend pas, la dépendance est portée par la passe de mise
+   à jour qu'Athanor ignore). Athanor la met à `NULL`, Benthos échoue sur Redis. Choix à arbitrer : dépendance
+   rendue au calcul partagé, ou passes de mise à jour exécutées par Athanor.
 
 Hors périmètre Athanor tant que non demandé : MongoDB, DynamoDB, S3/GCS, jobs de génération (Benthos reste le
 moteur, choix explicite et journalisé).

@@ -400,6 +400,61 @@ d'écriture (`types-integers`), course dans l'arrêt du flux sur erreur.
 Restent à écrire : JavaScript à état partagé, destination de SGBD ou de schéma très différent, worker réellement
 tué en cours de page, `lower_case_table_names`, `sql_generate_invisible_primary_key`, mode `bench/perf`.
 
+## Reprise du 2026-09-17 (soir) : la durée mesurée jusqu'ici était un minuteur
+
+Le passage complet sortait en code 0 sur 58 cas (Athanor 54 OK, Benthos 47). Trois constats
+et quatre corrections.
+
+**L'écart de durée entre les moteurs n'était pas un écart de moteur.** Mesuré cas par cas,
+run isolé : `fk-diamond` (3 tables, 52 lignes) prenait 15,9 s avec Benthos et 1,2 s avec
+Athanor. Les journaux montrent cinq secondes exactement entre la dernière ligne lue et
+l'écriture du dernier lot. Cause : la police de lot d'une destination valait `count: 100,
+period: 5s` (`getParsedBatchingConfig`, défaut hérité de Neosync). Le batcher de benthos vide
+ce qu'il détient quand son entrée se ferme, mais l'entrée ne se ferme qu'une fois ses lignes
+acquittées, et les lignes d'un lot partiel sont justement celles qui attendent
+(`component/input/async_reader.go`) : seule la période les libérait, une période par page.
+L'arithmétique collait sur tout le banc (1 table → 5,9 s ; 3 → 15,9 s ; 4 → 21,6 s) et sur le
+test de recette (66 tables → 2 min 56 s).
+
+Corrigé en marquant, dans notre entrée SQL, la dernière ligne d'une page (lecture avec une
+ligne d'avance) et en faisant vider le lot sur ce marqueur (`check` de la police de lot). La
+période reste : elle libère les lignes que le marqueur n'atteint pas, et la sortie `error`
+la garde pour arrêter l'activité sans attendre la fin de la page. Retirer la période sans le
+marqueur bloque le flux jusqu'au délai de l'activité — essayé, vérifié.
+
+Effet, verdicts inchangés sur les 58 cas : cumul Benthos 562 s → 185 s.
+
+**Les durées du banc de correction ne sont pas des mesures.** Sur les mêmes 10 cas et le même
+code, en ne changeant que le parallélisme : Athanor 12,9 s cumulé (médiane 1 252 ms) à
+`-parallel 1` contre 19,0 s (1 857 ms) à `-parallel 6` ; Benthos 12,2 s (1 248 ms) contre
+24,6 s (2 071 ms). À cette échelle les deux moteurs sont indiscernables : tout est coût fixe
+d'orchestration. Seul le mode `perf` (runs isolés, worker redémarré) donnera des chiffres.
+
+**Deux pertes silencieuses corrigées dans Athanor.**
+
+- Une session dont les réglages n'ont pas pu être rétablis (`SET FOREIGN_KEY_CHECKS=1`,
+  `sql_mode`) retournait au pool telle quelle, un `Rollback` ne défaisant pas un réglage de
+  session : la table suivante écrite sur cette connexion l'était clés étrangères coupées.
+  La connexion est maintenant tuée plutôt que rendue.
+- Le publieur de clés transformées publiait la nouvelle clé de **toutes** les lignes du lot,
+  y compris celles que les écrivains sous lui venaient d'écarter (parent obligatoire absent,
+  parent non copié) : une table fille traduisait alors sa clé vers une ligne que la
+  destination n'a jamais reçue. Les écrivains disent désormais quelles lignes ils écartent,
+  et le publieur les retire de ce qu'il publie.
+
+**Défaut restant, commun aux deux moteurs, découvert par le cas `tr-key-of-discarded-row` :**
+la passe d'insertion d'une table à subset laisse ses FK nullables à une passe de mise à jour
+(`buildConstraintHandlingConfigs`), donc rien ne la fait attendre la table qui publie la
+clé. Athanor écrit cette colonne dans sa passe unique, avant que la clé existe, et la met à
+`NULL` ; Benthos échoue sur la lecture Redis (`redis: nil`). Les deux verdicts sont enregistrés
+comme écarts connus. Choix à faire : rendre la dépendance au parent au calcul partagé quand
+la clé du parent est transformée (profite aux deux moteurs, mais peut recréer un cycle), ou
+faire exécuter les passes de mise à jour à Athanor.
+
+Deux cas ajoutés : `tr-key-of-discarded-row` (P1, hors attendu sur les deux moteurs) et
+`fk-parent-key-collation` (P1, OK sur les deux : le contrôle des parents compare bien avec la
+collation de la colonne, pas celle de la connexion — garde-fou pour PostgreSQL et SQL Server).
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
