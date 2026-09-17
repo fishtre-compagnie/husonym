@@ -121,6 +121,7 @@ import {
   VirtualForeignConstraint,
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
+  ConsistencyScope,
   JobEngine,
   WorkflowOptions,
   WorkflowOptionsSchema,
@@ -480,12 +481,13 @@ function toPiiDetectTableScanFilter(
 export function toWorkflowOptions(
   values?: WorkflowSettingsSchema
 ): WorkflowOptions | undefined {
-  if (values?.runTimeout || values?.engine) {
+  if (values?.runTimeout || values?.engine || values?.consistencyScope) {
     return create(WorkflowOptionsSchema, {
       runTimeout: values.runTimeout
         ? convertMinutesToNanoseconds(values.runTimeout)
         : undefined,
       engine: values.engine ?? JobEngine.UNSPECIFIED,
+      consistencyScope: values.consistencyScope ?? ConsistencyScope.UNSPECIFIED,
     });
   }
   return undefined;

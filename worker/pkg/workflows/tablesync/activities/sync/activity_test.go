@@ -106,7 +106,7 @@ output:
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -198,7 +198,7 @@ output:
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 	env.RegisterActivity(activity.SyncTable)
 
@@ -242,7 +242,7 @@ func Test_Sync_Run_No_BenthosConfig(t *testing.T) {
 
 	benthosStreamManager := benthosstream.NewBenthosStreamManager()
 	temporalclient := tmprl_mocks.NewClient(t)
-	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil, nil, AthanorPolicy{})
+	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil, nil, AthanorConfig{})
 
 	env.RegisterActivity(activity.SyncTable)
 
@@ -332,7 +332,7 @@ metrics:
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -427,7 +427,7 @@ func Test_Sync_Run_Processor_Error(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -516,7 +516,7 @@ output:
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -627,7 +627,7 @@ output:
 		nil,
 		nil,
 		nil,
-		AthanorPolicy{},
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)

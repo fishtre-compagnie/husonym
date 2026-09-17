@@ -2,6 +2,14 @@ package sync_activity
 
 import "strings"
 
+// AthanorConfig groups the deployment settings of the Athanor engine.
+type AthanorConfig struct {
+	Policy AthanorPolicy
+	// ConsistencyKey is the secret deterministic consistency derives from
+	// (ATHANOR_CONSISTENCY_KEY). Athanor refuses to run a job without it.
+	ConsistencyKey string
+}
+
 // AthanorPolicy décide, PAR JOB, si le moteur Athanor est utilisé (au lieu de
 // Benthos). C'est l'opt-in par job : un défaut global (ENABLE_ATHANOR_ENGINE)
 // surchargeable par des listes d'identifiants de jobs. Ça permet une migration

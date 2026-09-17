@@ -2472,18 +2472,23 @@ type WorkflowOptions struct {
 	// Engine : moteur de transformation choisi pour ce job (enum JobEngine stocké
 	// en int32). 0 = unspecified = défaut déploiement.
 	Engine int32 `json:"engine,omitempty"`
+	// ConsistencyScope : portée de la cohérence déterministe (enum ConsistencyScope
+	// stocké en int32). 0 = unspecified = run.
+	ConsistencyScope int32 `json:"consistencyScope,omitempty"`
 }
 
 func (a *WorkflowOptions) ToDto() *mgmtv1alpha1.WorkflowOptions {
 	return &mgmtv1alpha1.WorkflowOptions{
-		RunTimeout: a.RunTimeout,
-		Engine:     mgmtv1alpha1.JobEngine(a.Engine),
+		RunTimeout:       a.RunTimeout,
+		Engine:           mgmtv1alpha1.JobEngine(a.Engine),
+		ConsistencyScope: mgmtv1alpha1.ConsistencyScope(a.ConsistencyScope),
 	}
 }
 
 func (a *WorkflowOptions) FromDto(dto *mgmtv1alpha1.WorkflowOptions) {
 	a.RunTimeout = dto.RunTimeout
 	a.Engine = int32(dto.GetEngine())
+	a.ConsistencyScope = int32(dto.GetConsistencyScope())
 }
 
 type ActivityOptions struct {

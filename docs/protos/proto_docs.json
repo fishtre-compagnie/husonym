@@ -10981,6 +10981,34 @@
           ]
         },
         {
+          "name": "ConsistencyScope",
+          "longName": "ConsistencyScope",
+          "fullName": "mgmt.v1alpha1.ConsistencyScope",
+          "description": "Reach of deterministic consistency: the same input value produces the same output\nvalue everywhere inside the scope, and unrelated outputs outside of it.",
+          "values": [
+            {
+              "name": "CONSISTENCY_SCOPE_UNSPECIFIED",
+              "number": "0",
+              "description": "Same as CONSISTENCY_SCOPE_RUN."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_RUN",
+              "number": "1",
+              "description": "Consistent within a single run only; outputs cannot be linked across runs."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_JOB",
+              "number": "2",
+              "description": "Consistent across every run of the same job."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_ACCOUNT",
+              "number": "3",
+              "description": "Consistent across every job of the account. Outputs stay linkable over time:\nthis is pseudonymization, not anonymization, in the GDPR sense."
+            }
+          ]
+        },
+        {
           "name": "DatabaseErrorCode",
           "longName": "DatabaseError.DatabaseErrorCode",
           "fullName": "mgmt.v1alpha1.DatabaseError.DatabaseErrorCode",
@@ -18746,6 +18774,18 @@
               "type": "JobEngine",
               "longType": "JobEngine",
               "fullType": "mgmt.v1alpha1.JobEngine",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "consistency_scope",
+              "description": "How far deterministic consistency reaches (Athanor only). Unspecified = run.",
+              "label": "",
+              "type": "ConsistencyScope",
+              "longType": "ConsistencyScope",
+              "fullType": "mgmt.v1alpha1.ConsistencyScope",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",

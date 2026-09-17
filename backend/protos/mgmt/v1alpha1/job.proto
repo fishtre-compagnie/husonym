@@ -677,6 +677,22 @@ message WorkflowOptions {
   optional int64 run_timeout = 8;
   // Which transformation engine runs this job. Unspecified = deployment default.
   JobEngine engine = 9;
+  // How far deterministic consistency reaches (Athanor only). Unspecified = run.
+  ConsistencyScope consistency_scope = 10;
+}
+
+// Reach of deterministic consistency: the same input value produces the same output
+// value everywhere inside the scope, and unrelated outputs outside of it.
+enum ConsistencyScope {
+  // Same as CONSISTENCY_SCOPE_RUN.
+  CONSISTENCY_SCOPE_UNSPECIFIED = 0;
+  // Consistent within a single run only; outputs cannot be linked across runs.
+  CONSISTENCY_SCOPE_RUN = 1;
+  // Consistent across every run of the same job.
+  CONSISTENCY_SCOPE_JOB = 2;
+  // Consistent across every job of the account. Outputs stay linkable over time:
+  // this is pseudonymization, not anonymization, in the GDPR sense.
+  CONSISTENCY_SCOPE_ACCOUNT = 3;
 }
 
 // Config that contains various timeouts that are configured in the underlying temporal workflow(s) and activities

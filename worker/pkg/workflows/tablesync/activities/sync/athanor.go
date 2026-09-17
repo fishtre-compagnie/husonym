@@ -12,7 +12,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -44,10 +43,10 @@ func jobIDFromRunID(runID string) (string, error) {
 // useAthanorForJob décide, PAR JOB, si Athanor doit traiter ce run. Priorité au
 // champ `engine` du job (réglé dans l'UI, WorkflowOptions) ; à défaut
 // (UNSPECIFIED) ou en cas d'échec de lecture, on retombe sur la policy de
-// déploiement (AthanorPolicy, variables d'env).
+// déploiement (AthanorConfig.Policy, variables d'env).
 func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string, logger *slog.Logger) bool {
 	jobID, _ := jobIDFromRunID(jobRunID)
-	deploymentDefault := a.athanorPolicy.EnabledFor(jobID)
+	deploymentDefault := a.athanor.Policy.EnabledFor(jobID)
 	if jobID == "" {
 		return deploymentDefault
 	}
@@ -132,9 +131,12 @@ func (a *Activity) runAthanor(
 	// Gestion des conflits de clé (onConflict) dérivée des options de destination.
 	wc := writeConfigForDest(dests[0])
 
-	// Cohérence déterministe (RFC §8) : dériveur construit pour ce run. La même
-	// valeur d'entrée produira la même sortie, sur toutes les lignes/tables/runs.
-	deriver := consistencyDeriver()
+	// Cohérence déterministe (RFC §8) : la même valeur d'entrée produit la même
+	// sortie partout dans la portée choisie pour le job (run par défaut).
+	deriver, err := consistencyDeriver(a.athanor.ConsistencyKey, job, req.JobRunId)
+	if err != nil {
+		return err
+	}
 
 	logger.Info("moteur=athanor : anonymisation de table",
 		"schema", metadata.Schema,
@@ -144,7 +146,7 @@ func (a *Activity) runAthanor(
 		"dstConn", dstConnID,
 		"where", where,
 		"onConflict", wc.OnConflict,
-		"cohérence", "déterministe",
+		"cohérence", job.GetWorkflowOptions().GetConsistencyScope().String(),
 	)
 
 	// Mêmes capacités que le chemin Benthos : transformers définis par l'utilisateur
@@ -207,16 +209,30 @@ func dialectFor(conn connectionmanager.ConnectionInput) (sqlio.Dialect, error) {
 	}
 }
 
-// consistencyDeriver construit le dériveur de cohérence déterministe (RFC §8).
-// La clé de projet vient de ATHANOR_CONSISTENCY_KEY ; à défaut, une clé de démo
-// (bouchon en attendant le Key Service, RFC §8.4). Scope "org" = cohérence
-// maximale (même valeur → même sortie dans toute l'organisation, inter-runs).
-func consistencyDeriver() *consistency.Deriver {
-	key := os.Getenv("ATHANOR_CONSISTENCY_KEY")
+// consistencyDeriver builds the deterministic consistency deriver (RFC §8) for the
+// job's scope. The key is mandatory: anyone who knows it can recover low-entropy
+// values (phone numbers, first names) by brute force, so a built-in default would
+// make every output reversible.
+//
+// The scope always embeds the run, job or account id: outputs never match across
+// two runs (run), two jobs (job) or two accounts (account).
+func consistencyDeriver(key string, job *mgmtv1alpha1.Job, jobRunID string) (*consistency.Deriver, error) {
 	if key == "" {
-		key = "husonym-athanor-demo-key"
+		return nil, fmt.Errorf("athanor: ATHANOR_CONSISTENCY_KEY n'est pas défini ; la clé de dérivation est obligatoire")
 	}
-	return consistency.New([]byte(key), "org")
+	var scope string
+	switch s := job.GetWorkflowOptions().GetConsistencyScope(); s {
+	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_UNSPECIFIED,
+		mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_RUN:
+		scope = "run:" + jobRunID
+	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_JOB:
+		scope = "job:" + job.GetId()
+	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_ACCOUNT:
+		scope = "account:" + job.GetAccountId()
+	default:
+		return nil, fmt.Errorf("athanor: portée de cohérence inconnue %v", s)
+	}
+	return consistency.New([]byte(key), scope), nil
 }
 
 // writeConfigForDest dérive la politique d'écriture (gestion des conflits de clé)

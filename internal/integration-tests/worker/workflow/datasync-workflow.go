@@ -159,7 +159,8 @@ func NewTestDataSyncWorkflowEnv(
 		anonymizationclient,
 		transformerclient,
 		workflowEnv.Redisclient,
-		sync_activity.NewAthanorPolicy(false, "", ""), // chemin Benthos par défaut dans les tests d'intégration
+		// chemin Benthos par défaut dans les tests d'intégration
+		sync_activity.AthanorConfig{Policy: sync_activity.NewAthanorPolicy(false, "", "")},
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {

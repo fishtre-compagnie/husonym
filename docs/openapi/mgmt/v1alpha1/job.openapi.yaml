@@ -70,6 +70,17 @@ components:
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
       description: An enumeration of column warning codes
+    mgmt.v1alpha1.ConsistencyScope:
+      type: string
+      title: ConsistencyScope
+      enum:
+        - CONSISTENCY_SCOPE_UNSPECIFIED
+        - CONSISTENCY_SCOPE_RUN
+        - CONSISTENCY_SCOPE_JOB
+        - CONSISTENCY_SCOPE_ACCOUNT
+      description: |-
+        Reach of deterministic consistency: the same input value produces the same output
+         value everywhere inside the scope, and unrelated outputs outside of it.
     mgmt.v1alpha1.DatabaseError.DatabaseErrorCode:
       type: string
       title: DatabaseErrorCode
@@ -6245,6 +6256,11 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.JobEngine'
           title: engine
           description: Which transformation engine runs this job. Unspecified = deployment default.
+        consistencyScope:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConsistencyScope'
+          title: consistency_scope
+          description: How far deterministic consistency reaches (Athanor only). Unspecified = run.
       title: WorkflowOptions
       additionalProperties: false
     connect-protocol-version:

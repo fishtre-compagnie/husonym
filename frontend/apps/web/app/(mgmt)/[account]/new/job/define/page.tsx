@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import ConsistencyScopeSelect from '@/components/jobs/Form/ConsistencyScopeSelect';
 import { JobEngine, JobService } from '@husonym/sdk';
 import { DEFAULT_CRON_STRING } from '../../../jobs/[id]/components/ScheduleCard';
 import { getNewJobSessionKeys } from '../../../jobs/util';
@@ -285,6 +286,28 @@ export default function Page(props: PageProps): ReactElement {
                             </SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="workflowSettings.consistencyScope"
+                    render={({ field }) => (
+                      <FormItem className="pt-4">
+                        <FormLabel>Consistency scope</FormLabel>
+                        <FormDescription>
+                          Deterministic consistency (Athanor engine only): the
+                          same source value gets the same anonymized value
+                          everywhere in this scope. Beyond a single run, outputs
+                          stay linkable over time.
+                        </FormDescription>
+                        <FormControl>
+                          <ConsistencyScopeSelect
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

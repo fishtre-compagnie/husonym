@@ -389,11 +389,19 @@ func serve(ctx context.Context) error {
 	}
 	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
 	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
-	athanorPolicy := sync_activity.NewAthanorPolicy(
-		viper.GetBool("ENABLE_ATHANOR_ENGINE"),
-		viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
-		viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
-	)
+	athanorConfig := sync_activity.AthanorConfig{
+		Policy: sync_activity.NewAthanorPolicy(
+			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
+			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
+			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
+		),
+		ConsistencyKey: viper.GetString("ATHANOR_CONSISTENCY_KEY"),
+	}
+	if athanorConfig.ConsistencyKey == "" {
+		// Un job peut choisir Athanor dans l'UI quel que soit le défaut de
+		// déploiement : on prévient dès le démarrage plutôt qu'au premier run.
+		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine will fail")
+	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
 		w,
@@ -408,7 +416,7 @@ func serve(ctx context.Context) error {
 		anonymizationclient,
 		transformerclient,
 		redisclient,
-		athanorPolicy,
+		athanorConfig,
 	)
 
 	schemainit_workflow_register.Register(

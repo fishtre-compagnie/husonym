@@ -19,6 +19,13 @@ class JobEngine(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     JOB_ENGINE_ATHANOR: _ClassVar[JobEngine]
     JOB_ENGINE_BENTHOS: _ClassVar[JobEngine]
 
+class ConsistencyScope(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    CONSISTENCY_SCOPE_UNSPECIFIED: _ClassVar[ConsistencyScope]
+    CONSISTENCY_SCOPE_RUN: _ClassVar[ConsistencyScope]
+    CONSISTENCY_SCOPE_JOB: _ClassVar[ConsistencyScope]
+    CONSISTENCY_SCOPE_ACCOUNT: _ClassVar[ConsistencyScope]
+
 class JobStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     JOB_STATUS_UNSPECIFIED: _ClassVar[JobStatus]
@@ -63,6 +70,10 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
 JOB_ENGINE_UNSPECIFIED: JobEngine
 JOB_ENGINE_ATHANOR: JobEngine
 JOB_ENGINE_BENTHOS: JobEngine
+CONSISTENCY_SCOPE_UNSPECIFIED: ConsistencyScope
+CONSISTENCY_SCOPE_RUN: ConsistencyScope
+CONSISTENCY_SCOPE_JOB: ConsistencyScope
+CONSISTENCY_SCOPE_ACCOUNT: ConsistencyScope
 JOB_STATUS_UNSPECIFIED: JobStatus
 JOB_STATUS_ENABLED: JobStatus
 JOB_STATUS_PAUSED: JobStatus
@@ -698,12 +709,14 @@ class JobTypeConfig(_message.Message):
     def __init__(self, sync: _Optional[_Union[JobTypeConfig.JobTypeSync, _Mapping]] = ..., pii_detect: _Optional[_Union[JobTypeConfig.JobTypePiiDetect, _Mapping]] = ...) -> None: ...
 
 class WorkflowOptions(_message.Message):
-    __slots__ = ("run_timeout", "engine")
+    __slots__ = ("run_timeout", "engine", "consistency_scope")
     RUN_TIMEOUT_FIELD_NUMBER: _ClassVar[int]
     ENGINE_FIELD_NUMBER: _ClassVar[int]
+    CONSISTENCY_SCOPE_FIELD_NUMBER: _ClassVar[int]
     run_timeout: int
     engine: JobEngine
-    def __init__(self, run_timeout: _Optional[int] = ..., engine: _Optional[_Union[JobEngine, str]] = ...) -> None: ...
+    consistency_scope: ConsistencyScope
+    def __init__(self, run_timeout: _Optional[int] = ..., engine: _Optional[_Union[JobEngine, str]] = ..., consistency_scope: _Optional[_Union[ConsistencyScope, str]] = ...) -> None: ...
 
 class ActivityOptions(_message.Message):
     __slots__ = ("schedule_to_close_timeout", "start_to_close_timeout", "retry_policy")

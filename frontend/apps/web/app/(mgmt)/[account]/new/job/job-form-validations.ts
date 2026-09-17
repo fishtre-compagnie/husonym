@@ -31,6 +31,9 @@ export const WorkflowSettingsSchema = Yup.object({
   // Transformation engine (JobEngine enum value): 0 = default (deployment),
   // 1 = Athanor, 2 = Benthos (legacy).
   engine: Yup.number().optional(),
+  // Deterministic consistency reach (ConsistencyScope enum value), Athanor only:
+  // 0 = run (default), 2 = job, 3 = account.
+  consistencyScope: Yup.number().optional(),
 });
 
 export type WorkflowSettingsSchema = Yup.InferType<

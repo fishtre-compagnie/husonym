@@ -11,6 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import ConsistencyScopeSelect from '@/components/jobs/Form/ConsistencyScopeSelect';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -22,7 +23,7 @@ import {
 import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
-import { Job, JobEngine, JobService } from '@husonym/sdk';
+import { ConsistencyScope, Job, JobEngine, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -46,6 +47,8 @@ export default function WorkflowSettingsCard({
         ? convertNanosecondsToMinutes(job.workflowOptions.runTimeout)
         : 0,
       engine: job?.workflowOptions?.engine ?? JobEngine.UNSPECIFIED,
+      consistencyScope:
+        job?.workflowOptions?.consistencyScope ?? ConsistencyScope.UNSPECIFIED,
     },
   });
   const { account } = useAccount();
@@ -135,6 +138,28 @@ export default function WorkflowSettingsCard({
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="consistencyScope"
+              render={({ field }) => (
+                <FormItem className="pt-4">
+                  <FormLabel>Consistency scope</FormLabel>
+                  <FormDescription>
+                    Deterministic consistency (Athanor engine only): the same
+                    source value gets the same anonymized value everywhere in
+                    this scope. Beyond a single run, outputs stay linkable over
+                    time.
+                  </FormDescription>
+                  <FormControl>
+                    <ConsistencyScopeSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

@@ -49,7 +49,7 @@ type Activity struct {
 	anonymizationClient  mgmtv1alpha1connect.AnonymizationServiceClient
 	transformerclient    mgmtv1alpha1connect.TransformersServiceClient
 	redisclient          redis.UniversalClient
-	athanorPolicy        AthanorPolicy
+	athanor              AthanorConfig
 }
 
 func New(
@@ -63,7 +63,7 @@ func New(
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
-	athanorPolicy AthanorPolicy,
+	athanor AthanorConfig,
 ) *Activity {
 	return &Activity{
 		connclient:           connclient,
@@ -76,7 +76,7 @@ func New(
 		anonymizationClient:  anonymizationClient,
 		transformerclient:    transformerclient,
 		redisclient:          redisclient,
-		athanorPolicy:        athanorPolicy,
+		athanor:              athanor,
 	}
 }
 

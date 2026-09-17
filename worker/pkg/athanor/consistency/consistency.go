@@ -6,7 +6,7 @@
 // La hiérarchie de dérivation (HMAC-SHA256 à chaque étage) :
 //
 //	cléProjet  (secret, fourni par le Key Service)
-//	  └─ cléScope   = HMAC(cléProjet, "scope:"+scope)          scope = org | project:… | run:…
+//	  └─ cléScope   = HMAC(cléProjet, "scope:"+scope)          scope = run:… | job:… | account:…
 //	       └─ cléDomaine = HMAC(cléScope, "domain:"+typeSémantique)
 //	            └─ graine(valeur) = HMAC(cléDomaine, canonicalize(valeur))
 //
@@ -39,9 +39,9 @@ type Deriver struct {
 // Service — never written to logs) and a consistency scope.
 //
 // Le scope définit la portée de l'égalité déterministe :
-//   - "org"          : cohérence maximale (même valeur → même sortie dans toute l'organisation)
-//   - "project:<id>" : cohérence limitée à un projet
-//   - "run:<id>"     : graine éphémère (jeux de données jetables, cohérence non désirée entre runs)
+//   - "run:<id>"     : cohérence limitée à un run (sorties non reliables d'un run à l'autre)
+//   - "job:<id>"     : cohérence entre les runs d'un même job
+//   - "account:<id>" : cohérence dans tout le compte (pseudonymisation au sens du RGPD)
 func New(projectKey []byte, scope string) *Deriver {
 	return &Deriver{scopeKey: mac(projectKey, "scope:"+scope)}
 }
