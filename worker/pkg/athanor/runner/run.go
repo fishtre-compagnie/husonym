@@ -24,14 +24,12 @@ type Querier interface {
 type WriteConfig struct {
 	OnConflict sqlio.ConflictAction
 	PKColumns  []string
-	// DisableForeignKeyChecks writes each batch with foreign key checks off, so the
-	// table is written in one pass whatever the order of its rows. The destination must
-	// support transactions and the dialect must allow it.
+	// DisableForeignKeyChecks writes the page with foreign key checks off, so the table
+	// is written in one pass whatever the order of its rows. The dialect must allow it.
 	DisableForeignKeyChecks bool
 }
 
-// Destination is where a table is written: plain statements, plus transactions when
-// foreign key checks are turned off.
+// Destination is where a table is written: each page in a transaction of its own.
 type Destination interface {
 	sqlio.Execer
 	sqlio.TxBeginner
@@ -108,12 +106,6 @@ func RunTablePage(
 		typeNames[i] = ct.DatabaseTypeName()
 	}
 
-	writerOpts := []sqlio.WriterOption{sqlio.WithOnConflict(wc.OnConflict, pkColumns)}
-	if wc.DisableForeignKeyChecks {
-		writerOpts = append(writerOpts, sqlio.WithForeignKeyChecksDisabled(dst))
-	}
-	w := sqlio.NewSQLWriter(ctx, dst, dialect, plan.Schema, plan.Table, writerOpts...)
-
 	result := &PageResult{}
 	var orderIdx []int
 	observe := func(columns []string, row []any) {
@@ -130,10 +122,18 @@ func RunTablePage(
 		}
 	}
 
-	if err := sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
-		sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
-		sqlio.WithRowObserver(observe),
-	); err != nil {
+	// The page is written in one transaction: whole or not at all.
+	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Execer) error {
+		w := sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table, sqlio.WithOnConflict(wc.OnConflict, pkColumns))
+		return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
+			sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
+			sqlio.WithRowObserver(observe),
+		)
+	})
+	if err != nil {
+		// Pipeline closes the rows it was given; they are still open when the
+		// transaction could not even start.
+		_ = rows.Close()
 		return nil, err
 	}
 

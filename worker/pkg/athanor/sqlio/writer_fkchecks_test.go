@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A batch written without foreign key checks runs in one transaction, and checks are
+// A page written without foreign key checks runs in one transaction, and checks are
 // turned back on before the connection returns to the pool.
-func TestSQLWriter_ForeignKeyChecksDisabled(t *testing.T) {
+func TestInTransaction_ForeignKeyChecksDisabled(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
@@ -26,12 +26,15 @@ func TestSQLWriter_ForeignKeyChecksDisabled(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
-	w := NewSQLWriter(context.Background(), db, MySQLDialect{}, "web", "users", WithForeignKeyChecksDisabled(db))
-	require.NoError(t, w.WriteBatch([]string{"id", "manager_id"}, [][]any{{int64(1), int64(2)}, {int64(2), nil}}))
+	ctx := context.Background()
+	require.NoError(t, InTransaction(ctx, db, MySQLDialect{}, true, func(tx Execer) error {
+		w := NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users")
+		return w.WriteBatch([]string{"id", "manager_id"}, [][]any{{int64(1), int64(2)}, {int64(2), nil}})
+	}))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestSQLWriter_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
+func TestInTransaction_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
@@ -42,19 +45,44 @@ func TestSQLWriter_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectRollback()
 
-	w := NewSQLWriter(context.Background(), db, MySQLDialect{}, "web", "users", WithForeignKeyChecksDisabled(db))
-	err = w.WriteBatch([]string{"id"}, [][]any{{int64(1)}})
+	ctx := context.Background()
+	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Execer) error {
+		return NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users").WriteBatch([]string{"id"}, [][]any{{int64(1)}})
+	})
 	require.ErrorContains(t, err, "duplicate entry")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestSQLWriter_ForeignKeyChecksUnsupportedDialect(t *testing.T) {
+func TestInTransaction_ForeignKeyChecksUnsupportedDialect(t *testing.T) {
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	w := NewSQLWriter(context.Background(), db, PostgresDialect{}, "public", "users", WithForeignKeyChecksDisabled(db))
-	require.Error(t, w.WriteBatch([]string{"id"}, [][]any{{int64(1)}}))
+	require.Error(t, InTransaction(context.Background(), db, PostgresDialect{}, true, func(Execer) error { return nil }))
+}
+
+// Without foreign key checks to turn off, a page is still written whole or not at all:
+// several batches commit together, and a failing one leaves nothing behind.
+func TestInTransaction_PageIsAtomic(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO").WillReturnError(errors.New("bench: injected failure"))
+	mock.ExpectRollback()
+
+	ctx := context.Background()
+	err = InTransaction(ctx, db, PostgresDialect{}, false, func(tx Execer) error {
+		w := NewSQLWriter(ctx, tx, PostgresDialect{}, "public", "journal")
+		if err := w.WriteBatch([]string{"message"}, [][]any{{"lot 1"}}); err != nil {
+			return err
+		}
+		return w.WriteBatch([]string{"message"}, [][]any{{"lot 2"}})
+	})
+	require.ErrorContains(t, err, "injected failure")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestToDriverValue(t *testing.T) {

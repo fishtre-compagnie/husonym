@@ -16,7 +16,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -156,15 +155,6 @@ func WithOnConflict(action ConflictAction, pkColumns []string) WriterOption {
 	}
 }
 
-// WithForeignKeyChecksDisabled writes each batch in a transaction with foreign key
-// checks turned off, so a table can be written in a single pass whatever the order of
-// its rows and of the tables it references. The dialect must support it.
-func WithForeignKeyChecksDisabled(db TxBeginner) WriterOption {
-	return func(w *SQLWriter) {
-		w.txBeginner = db
-	}
-}
-
 // WithLogger surcharge le logger (par défaut slog.Default()).
 func WithLogger(l *slog.Logger) WriterOption {
 	return func(w *SQLWriter) {
@@ -185,7 +175,6 @@ type SQLWriter struct {
 	conflict      ConflictAction
 	pkColumns     []string
 	logger        *slog.Logger
-	txBeginner    TxBeginner // non nil : lots écrits en transaction, FK désactivées
 }
 
 // NewSQLWriter construit un writer. schema peut être vide (table non qualifiée).
@@ -226,40 +215,7 @@ func (w *SQLWriter) WriteBatch(columns []string, rows [][]any) error {
 			row[i] = converted
 		}
 	}
-	if w.txBeginner == nil {
-		return w.writeChunks(w.db, columns, rows)
-	}
-	return w.writeWithoutForeignKeyChecks(columns, rows)
-}
-
-// writeWithoutForeignKeyChecks writes the batch in one transaction with foreign key
-// checks off. The setting belongs to the connection, which returns to the pool after
-// the transaction: checks are always turned back on first, even when a write fails.
-func (w *SQLWriter) writeWithoutForeignKeyChecks(columns []string, rows [][]any) (err error) {
-	disable, enable, ok := w.dialect.ForeignKeyChecksStatements()
-	if !ok {
-		return fmt.Errorf("sqlio: %s ne permet pas de désactiver les clés étrangères", w.dialect.Driver())
-	}
-	tx, err := w.txBeginner.BeginTx(w.ctx, nil)
-	if err != nil {
-		return fmt.Errorf("sqlio: ouverture de transaction sur %s: %w", w.ref, err)
-	}
-	if _, err := tx.ExecContext(w.ctx, disable); err != nil {
-		return errors.Join(fmt.Errorf("sqlio: désactivation des clés étrangères: %w", err), tx.Rollback())
-	}
-	defer func() {
-		if _, rerr := tx.ExecContext(w.ctx, enable); rerr != nil {
-			err = errors.Join(err, fmt.Errorf("sqlio: réactivation des clés étrangères: %w", rerr))
-		}
-		if err != nil {
-			err = errors.Join(err, tx.Rollback())
-			return
-		}
-		if cerr := tx.Commit(); cerr != nil {
-			err = fmt.Errorf("sqlio: validation de la transaction sur %s: %w", w.ref, cerr)
-		}
-	}()
-	return w.writeChunks(tx, columns, rows)
+	return w.writeChunks(w.db, columns, rows)
 }
 
 // writeChunks splits the batch to stay within the database limits and writes each chunk.
