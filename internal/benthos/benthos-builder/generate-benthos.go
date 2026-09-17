@@ -145,6 +145,7 @@ func convertToResponse(sourceConfig *bb_internal.BenthosSourceConfig) *BenthosCo
 		RedisConfig:             sourceConfig.RedisConfig,
 		ColumnIdentityCursors:   sourceConfig.ColumnIdentityCursors,
 		ForeignKeys:             sourceConfig.ForeignKeys,
+		GeneratedColumns:        sourceConfig.GeneratedColumns,
 	}
 }
 

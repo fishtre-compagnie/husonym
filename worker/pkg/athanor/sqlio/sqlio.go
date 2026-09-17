@@ -13,6 +13,7 @@ package sqlio
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
@@ -39,6 +40,14 @@ type Option func(*config)
 type config struct {
 	norm     *Normalizer
 	observer func(columns []string, row []any)
+	written  []string
+}
+
+// WithWrittenColumns restricts what reaches the writer to these columns, in this order.
+// The others are still read and handed to the transformers, which may need them, but the
+// destination computes them itself: generated columns, columns left to their default.
+func WithWrittenColumns(columns []string) Option {
+	return func(c *config) { c.written = columns }
 }
 
 // WithNormalizer surcharge le normaliseur de types (par défaut : mode Auto pour
@@ -86,6 +95,15 @@ func Pipeline(
 	plan, err := engine.Compile(cols, spec)
 	if err != nil {
 		return err
+	}
+	written := cols
+	if cfg.written != nil {
+		for _, name := range cfg.written {
+			if !slices.Contains(cols, name) {
+				return fmt.Errorf("sqlio: colonne à écrire %q absente de la lecture", name)
+			}
+		}
+		written = cfg.written
 	}
 
 	n := len(cols)
@@ -136,19 +154,19 @@ func Pipeline(
 			return xerr
 		}
 
-		if werr := w.WriteBatch(cols, batchToRows(b)); werr != nil {
+		if werr := w.WriteBatch(written, batchToRows(b, written)); werr != nil {
 			return fmt.Errorf("sqlio: écriture d'un batch: %w", werr)
 		}
 	}
 }
 
-// batchToRows reconvertit un batch colonnaire en lignes, pour les destinations
-// orientées lignes (INSERT/COPY).
-func batchToRows(b *engine.Batch) [][]any {
+// batchToRows reconvertit les colonnes demandées d'un batch colonnaire en lignes, pour les
+// destinations orientées lignes (INSERT/COPY).
+func batchToRows(b *engine.Batch, columns []string) [][]any {
 	rows := make([][]any, b.N)
 	for j := 0; j < b.N; j++ {
-		row := make([]any, len(b.Names))
-		for i, name := range b.Names {
+		row := make([]any, len(columns))
+		for i, name := range columns {
 			row[i] = b.Cols[name][j]
 		}
 		rows[j] = row

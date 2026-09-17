@@ -51,6 +51,10 @@ type Dialect interface {
 	// checks off and back on, and false when the database offers none usable by a
 	// regular user.
 	ForeignKeyChecksStatements() (disable, enable string, ok bool)
+	// FaithfulWriteStatements returns the session statements, and the ones undoing them,
+	// that let the destination store the source values as they are instead of adjusting
+	// them to its own settings.
+	FaithfulWriteStatements() (begin, end []string)
 }
 
 // PostgresDialect : placeholders $1, $2… et identifiants entre guillemets doubles.
@@ -71,6 +75,8 @@ func (PostgresDialect) ForeignKeyChecksStatements() (disable, enable string, ok 
 	return "", "", false
 }
 
+func (PostgresDialect) FaithfulWriteStatements() (begin, end []string) { return nil, nil }
+
 // MySQLDialect : placeholders ? et identifiants entre accents graves.
 type MySQLDialect struct{}
 
@@ -86,6 +92,21 @@ func (MySQLDialect) MaxRowsPerInsert(numCols int) int { return maxRowsForParams(
 // MySQL : variable de session, modifiable sans privilège particulier.
 func (MySQLDialect) ForeignKeyChecksStatements() (disable, enable string, ok bool) {
 	return "SET FOREIGN_KEY_CHECKS=0", "SET FOREIGN_KEY_CHECKS=1", true
+}
+
+// MySQL adjusts what it is given according to sql_mode. Legacy rows hold what a laxer mode
+// once let in: an id 0 in an AUTO_INCREMENT column, which a plain insert renumbers
+// (orphaning whatever references 0), and zero dates, which the strict default refuses.
+// Like mysqldump, the write keeps 0 as a value; it also accepts zero dates. Strict mode
+// stays: a value too long still fails instead of being truncated.
+func (MySQLDialect) FaithfulWriteStatements() (begin, end []string) {
+	return []string{
+			"SET @husonym_sql_mode = @@SESSION.sql_mode",
+			"SET SESSION sql_mode = CONCAT(REPLACE(REPLACE(@@SESSION.sql_mode, 'NO_ZERO_IN_DATE', ''), " +
+				"'NO_ZERO_DATE', ''), ',NO_AUTO_VALUE_ON_ZERO')",
+		}, []string{
+			"SET SESSION sql_mode = @husonym_sql_mode",
+		}
 }
 
 // MSSQLDialect : SQL Server — placeholders @p1, @p2… (ordinaux, mappés
@@ -113,6 +134,8 @@ func (MSSQLDialect) MaxRowsPerInsert(numCols int) int {
 func (MSSQLDialect) ForeignKeyChecksStatements() (disable, enable string, ok bool) {
 	return "", "", false
 }
+
+func (MSSQLDialect) FaithfulWriteStatements() (begin, end []string) { return nil, nil }
 
 // maxRowsForParams renvoie le nombre de lignes tenant sous une limite de
 // paramètres, au moins 1 (une ligne large peut à elle seule dépasser la limite —

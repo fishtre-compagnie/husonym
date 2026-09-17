@@ -13,8 +13,10 @@ import (
 //
 // With disableForeignKeyChecks, foreign key checks are off for the transaction, so a
 // table is written in one pass whatever the order of its rows and of the tables it
-// references. The setting belongs to the connection, which returns to the pool after the
-// transaction: checks are always turned back on first, even when the write fails.
+// references. The session is also set to store values as they are (see
+// Dialect.FaithfulWriteStatements). These settings belong to the connection, which
+// returns to the pool after the transaction: they are always undone first, even when the
+// write fails.
 func InTransaction(
 	ctx context.Context,
 	db TxBeginner,
@@ -22,26 +24,27 @@ func InTransaction(
 	disableForeignKeyChecks bool,
 	write func(Tx) error,
 ) (err error) {
-	var disable, enable string
+	begin, end := dialect.FaithfulWriteStatements()
 	if disableForeignKeyChecks {
-		var ok bool
-		if disable, enable, ok = dialect.ForeignKeyChecksStatements(); !ok {
+		disable, enable, ok := dialect.ForeignKeyChecksStatements()
+		if !ok {
 			return fmt.Errorf("sqlio: %s ne permet pas de désactiver les clés étrangères", dialect.Driver())
 		}
+		begin, end = append([]string{disable}, begin...), append(end, enable)
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sqlio: ouverture de transaction: %w", err)
 	}
-	if disable != "" {
-		if _, err := tx.ExecContext(ctx, disable); err != nil {
-			return errors.Join(fmt.Errorf("sqlio: désactivation des clés étrangères: %w", err), tx.Rollback())
+	for _, stmt := range begin {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return errors.Join(fmt.Errorf("sqlio: réglage de la session d'écriture (%s): %w", stmt, err), tx.Rollback())
 		}
 	}
 	defer func() {
-		if enable != "" {
-			if _, rerr := tx.ExecContext(ctx, enable); rerr != nil {
-				err = errors.Join(err, fmt.Errorf("sqlio: réactivation des clés étrangères: %w", rerr))
+		for _, stmt := range end {
+			if _, rerr := tx.ExecContext(ctx, stmt); rerr != nil {
+				err = errors.Join(err, fmt.Errorf("sqlio: rétablissement de la session d'écriture (%s): %w", stmt, rerr))
 			}
 		}
 		if err != nil {

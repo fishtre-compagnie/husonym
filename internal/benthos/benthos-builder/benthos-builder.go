@@ -36,6 +36,8 @@ type BenthosConfigResponse struct {
 	ColumnIdentityCursors   map[string]*tablesync_shared.IdentityCursor
 	// ForeignKeys are the foreign keys of the table, for the engine-neutral plan.
 	ForeignKeys []*tableplan.ForeignKey
+	// GeneratedColumns are the columns the destination computes itself.
+	GeneratedColumns []string
 }
 
 // Combines a connection type and job type to uniquely identify a builder configuration

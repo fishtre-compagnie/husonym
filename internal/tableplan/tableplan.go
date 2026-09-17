@@ -39,6 +39,10 @@ type TablePlan struct {
 	// the deferred columns for an update.
 	Columns []string `json:"columns"`
 
+	// GeneratedColumns are the columns the destination computes itself (GENERATED ALWAYS
+	// AS …): they are read, since transformers may need them, and never written.
+	GeneratedColumns []string `json:"generatedColumns,omitempty"`
+
 	// ForeignKeys are the foreign keys of the table to tables of the job, virtual ones
 	// included. The query already reads NULL for nullable keys to rows left out of the
 	// subset; the engine checks the mandatory ones when it writes.

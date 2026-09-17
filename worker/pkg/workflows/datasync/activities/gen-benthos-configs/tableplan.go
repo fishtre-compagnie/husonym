@@ -16,15 +16,16 @@ func toTablePlan(config *benthosbuilder.BenthosConfigResponse) *tableplan.TableP
 		return nil
 	}
 	plan := &tableplan.TablePlan{
-		Id:             config.Name,
-		Schema:         config.TableSchema,
-		Table:          config.TableName,
-		RunType:        config.RunType,
-		Query:          input.Query,
-		PageQuery:      input.PagedQuery,
-		OrderByColumns: input.OrderByColumns,
-		Columns:        config.Columns,
-		ForeignKeys:    config.ForeignKeys,
+		Id:               config.Name,
+		Schema:           config.TableSchema,
+		Table:            config.TableName,
+		RunType:          config.RunType,
+		Query:            input.Query,
+		PageQuery:        input.PagedQuery,
+		OrderByColumns:   input.OrderByColumns,
+		Columns:          config.Columns,
+		ForeignKeys:      config.ForeignKeys,
+		GeneratedColumns: config.GeneratedColumns,
 	}
 	if input.ExpectedTotalRows != nil {
 		plan.PageLimit = *input.ExpectedTotalRows

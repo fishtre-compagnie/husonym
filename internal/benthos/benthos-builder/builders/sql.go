@@ -248,6 +248,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	foreignKeys := planForeignKeys(runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints, groupedColumnInfo)
 	for _, config := range configs {
 		config.ForeignKeys = foreignKeys[config.Name]
+		config.GeneratedColumns = generatedColumns(
+			groupedColumnInfo[sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)],
+		)
 	}
 
 	return configs, nil

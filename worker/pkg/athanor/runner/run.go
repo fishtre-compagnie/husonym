@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -73,7 +74,7 @@ func RunTablePage(
 	page *TablePage,
 ) (*PageResult, error) {
 	plan := page.Plan
-	_, spec, err := SpecForTable(ctx, page.Mappings, plan.Schema, plan.Table, page.Deriver, page.Env)
+	mapped, spec, err := SpecForTable(ctx, page.Mappings, plan.Schema, plan.Table, page.Deriver, page.Env)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +137,7 @@ func RunTablePage(
 		return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
 			sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
 			sqlio.WithRowObserver(observe),
+			sqlio.WithWrittenColumns(writtenColumns(mapped, plan.GeneratedColumns)),
 		)
 	})
 	if err != nil {
@@ -153,6 +155,19 @@ func RunTablePage(
 		result.HasMore = result.RowsRead >= plan.PageLimit
 	}
 	return result, nil
+}
+
+// writtenColumns are the mapped columns the destination accepts a value for. Columns
+// mapped to their default are not among the mapped ones; generated columns are left to
+// the destination whatever their mapping says.
+func writtenColumns(mapped, generated []string) []string {
+	written := make([]string, 0, len(mapped))
+	for _, column := range mapped {
+		if !slices.Contains(generated, column) {
+			written = append(written, column)
+		}
+	}
+	return written
 }
 
 // parentChecks returns the foreign keys to verify when writing: the mandatory ones whose

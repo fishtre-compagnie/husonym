@@ -1,10 +1,10 @@
 {
   "columns-generated-default": {
-    "athanor": "run_failed",
+    "athanor": "ok",
     "benthos": "ok"
   },
   "columns-generated-passthrough": {
-    "athanor": "run_failed",
+    "athanor": "ok",
     "benthos": "run_failed"
   },
   "columns-invisible": {
@@ -180,7 +180,7 @@
     "benthos": "ok"
   },
   "types-auto-increment-zero": {
-    "athanor": "run_failed",
+    "athanor": "ok",
     "benthos": "run_failed"
   },
   "types-binary": {
@@ -216,7 +216,7 @@
     "benthos": "ok"
   },
   "types-zero-dates": {
-    "athanor": "run_failed",
+    "athanor": "gap",
     "benthos": "gap"
   },
   "where-or-paginated": {

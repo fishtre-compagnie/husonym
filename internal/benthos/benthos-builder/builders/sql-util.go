@@ -1701,3 +1701,17 @@ func planForeignKeys(
 	}
 	return byConfig
 }
+
+// generatedColumns returns, in name order, the columns of a table the database computes
+// itself and refuses any value for. Identity columns are not among them: they accept the
+// values of the source.
+func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) []string {
+	var generated []string
+	for name, info := range columns {
+		if !info.UpdateAllowed && info.IdentityGeneration == nil {
+			generated = append(generated, name)
+		}
+	}
+	slices.Sort(generated)
+	return generated
+}

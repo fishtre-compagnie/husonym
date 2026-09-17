@@ -20,9 +20,12 @@ func TestInTransaction_ForeignKeyChecksDisabled(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `web`.`users` (`id`, `manager_id`) VALUES (?, ?), (?, ?)")).
 		WithArgs(int64(1), int64(2), int64(2), nil).
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
@@ -41,7 +44,10 @@ func TestInTransaction_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("INSERT INTO").WillReturnError(errors.New("duplicate entry"))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectRollback()
 
