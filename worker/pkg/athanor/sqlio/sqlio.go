@@ -37,13 +37,20 @@ type RowWriter interface {
 type Option func(*config)
 
 type config struct {
-	norm *Normalizer
+	norm     *Normalizer
+	observer func(columns []string, row []any)
 }
 
 // WithNormalizer surcharge le normaliseur de types (par défaut : mode Auto pour
 // toutes les colonnes, ce qui suffit dans la plupart des cas).
 func WithNormalizer(n *Normalizer) Option {
 	return func(c *config) { c.norm = n }
+}
+
+// WithRowObserver is called with every source row, normalized but before any
+// transformation. The row must not be modified.
+func WithRowObserver(fn func(columns []string, row []any)) Option {
+	return func(c *config) { c.observer = fn }
 }
 
 // Pipeline lit la source par batches, compile la Spec contre le schéma réel de
@@ -103,6 +110,9 @@ func Pipeline(
 					return fmt.Errorf("sqlio: normalisation colonne %q: %w", cols[i], nerr)
 				}
 				vals[i] = nv
+			}
+			if cfg.observer != nil {
+				cfg.observer(cols, vals)
 			}
 			data = append(data, vals)
 		}

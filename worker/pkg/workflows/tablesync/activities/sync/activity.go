@@ -192,14 +192,22 @@ func (a *Activity) SyncTable(
 		return nil, err
 	}
 
-	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Le moteur
-	// traite la table complète en une passe : pas de token de continuation.
+	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Athanor exécute le
+	// plan neutre de la table ; sans plan (source non SQL), Benthos reste le moteur.
 	if a.useAthanorForJob(ctx, req.JobRunId, logger) {
-		if aerr := a.runAthanor(ctx, req, metadata, session, getConnectionById, logger); aerr != nil {
-			return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
+		plan, perr := a.getTablePlan(ctx, req)
+		if perr != nil {
+			return nil, perr
 		}
-		logger.Info("sync complete (athanor)")
-		return &SyncTableResponse{}, nil
+		if plan != nil {
+			resp, aerr := a.runAthanor(ctx, req, plan, info.Attempt, session, getConnectionById, logger)
+			if aerr != nil {
+				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
+			}
+			logger.Info("sync complete (athanor)", "hasMorePages", resp.ContinuationToken != nil)
+			return resp, nil
+		}
+		logger.Info("moteur=athanor demandé, mais aucun plan pour cette table (source non SQL) : Benthos exécute la synchro")
 	}
 
 	var continuationTokenToReturn *string

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
@@ -25,67 +25,177 @@ type Querier interface {
 type WriteConfig struct {
 	OnConflict sqlio.ConflictAction
 	PKColumns  []string
+	// DisableForeignKeyChecks writes each batch with foreign key checks off, so the
+	// table is written in one pass whatever the order of its rows. The destination must
+	// support transactions and the dialect must allow it.
+	DisableForeignKeyChecks bool
 }
 
-// RunTable exécute l'anonymisation d'une table via le moteur Athanor :
-// SELECT sur la source → plan compilé depuis les mappings → INSERT sur la
-// destination, en flux par batches. src et dst peuvent être deux bases
-// différentes (prod → staging).
-//
-// Le subsetting est géré via `where` (clause SQL sans le mot-clé WHERE) et la
-// gestion des conflits de clé via `wc` (do nothing / upsert). Restent à porter,
-// par rapport au chemin Benthos : destinations multiples, SGBD hétérogènes
-// source/destination, et l'upsert Postgres (nécessite les colonnes PK).
-func RunTable(
+// Destination is where a table is written: plain statements, plus transactions when
+// foreign key checks are turned off.
+type Destination interface {
+	sqlio.Execer
+	sqlio.TxBeginner
+}
+
+// TablePage is one page of a table sync, as described by its plan.
+type TablePage struct {
+	Plan      *tableplan.TablePlan
+	Mappings  []*mgmtv1alpha1.JobMapping
+	BatchSize int
+	Write     WriteConfig
+	Deriver   *consistency.Deriver
+	// AfterOrderValues are the order column values of the last row of the previous
+	// page; nil reads the first page.
+	AfterOrderValues []any
+	ExecOptions      []te.TransformerExecutorOption
+}
+
+// PageResult tells what a page read and whether the table has more pages.
+type PageResult struct {
+	RowsRead int
+	// LastOrderValues are the order column values of the last source row read, before
+	// any transformation: the next page resumes after them.
+	LastOrderValues []any
+	HasMore         bool
+}
+
+// RunTablePage anonymizes one page of a table with the Athanor engine: it reads the
+// page described by the plan (subset included), transforms it and writes it to the
+// destination, in batches. src and dst may be two different databases (prod → staging).
+func RunTablePage(
 	ctx context.Context,
 	src Querier,
-	dst sqlio.Execer,
+	dst Destination,
 	dialect sqlio.Dialect,
-	mappings []*mgmtv1alpha1.JobMapping,
-	schema, table, where string,
-	batchSize int,
-	wc WriteConfig,
-	deriver *consistency.Deriver,
-	opts ...te.TransformerExecutorOption,
-) error {
-	cols, spec, err := SpecForTable(mappings, schema, table, deriver, opts...)
+	page *TablePage,
+) (*PageResult, error) {
+	plan := page.Plan
+	_, spec, err := SpecForTable(page.Mappings, plan.Schema, plan.Table, page.Deriver, page.ExecOptions...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Upsert (do update) needs the conflict target columns. Postgres and SQL Server
 	// require them explicitly; we introspect them when the job does not supply them.
 	// (MySQL does not need them — ON DUPLICATE KEY fires on any unique key.)
+	wc := page.Write
 	pkColumns := wc.PKColumns
 	if wc.OnConflict == sqlio.ConflictDoUpdate && len(pkColumns) == 0 {
-		pkColumns, err = primaryKeyColumns(ctx, src, dialect, schema, table)
+		pkColumns, err = primaryKeyColumns(ctx, src, dialect, plan.Schema, plan.Table)
 		if err != nil {
 			//nolint:misspell // message produit, rédigé en français
-			return fmt.Errorf("runner: introspection des clés primaires de %s.%s: %w", schema, table, err)
+			return nil, fmt.Errorf("runner: introspection des clés primaires de %s.%s: %w", plan.Schema, plan.Table, err)
 		}
 	}
 
-	query := buildSelect(dialect, schema, table, cols, where)
-	rows, err := src.QueryContext(ctx, query)
+	query, args, err := pageQuery(plan, dialect, page.AfterOrderValues)
 	if err != nil {
-		return fmt.Errorf("runner: lecture de %s.%s: %w", schema, table, err)
+		return nil, err
+	}
+	rows, err := src.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("runner: lecture de %s.%s: %w", plan.Schema, plan.Table, err)
 	}
 	// rows (*sql.Rows) satisfait sqlio.RowReader ; Pipeline le referme.
 
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
 		_ = rows.Close()
-		return fmt.Errorf("runner: types des colonnes de %s.%s: %w", schema, table, err)
+		return nil, fmt.Errorf("runner: types des colonnes de %s.%s: %w", plan.Schema, plan.Table, err)
 	}
 	typeNames := make([]string, len(colTypes))
 	for i, ct := range colTypes {
 		typeNames[i] = ct.DatabaseTypeName()
 	}
 
-	w := sqlio.NewSQLWriter(ctx, dst, dialect, schema, table,
-		sqlio.WithOnConflict(wc.OnConflict, pkColumns))
-	return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, batchSize, spec, w,
-		sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(cols, typeNames)))
+	writerOpts := []sqlio.WriterOption{sqlio.WithOnConflict(wc.OnConflict, pkColumns)}
+	if wc.DisableForeignKeyChecks {
+		writerOpts = append(writerOpts, sqlio.WithForeignKeyChecksDisabled(dst))
+	}
+	w := sqlio.NewSQLWriter(ctx, dst, dialect, plan.Schema, plan.Table, writerOpts...)
+
+	result := &PageResult{}
+	var orderIdx []int
+	observe := func(columns []string, row []any) {
+		if orderIdx == nil {
+			orderIdx = columnIndexes(columns, plan.OrderByColumns)
+		}
+		result.RowsRead++
+		if len(orderIdx) == len(plan.OrderByColumns) {
+			last := make([]any, len(orderIdx))
+			for i, idx := range orderIdx {
+				last[i] = row[idx]
+			}
+			result.LastOrderValues = last
+		}
+	}
+
+	if err := sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
+		sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
+		sqlio.WithRowObserver(observe),
+	); err != nil {
+		return nil, err
+	}
+
+	if plan.IsPaged() {
+		if len(orderIdx) != len(plan.OrderByColumns) && result.RowsRead > 0 {
+			return nil, fmt.Errorf("runner: colonnes de tri %v absentes de la lecture de %s.%s",
+				plan.OrderByColumns, plan.Schema, plan.Table)
+		}
+		result.HasMore = result.RowsRead >= plan.PageLimit
+	}
+	return result, nil
+}
+
+// pageQuery returns the query reading a page and its arguments. The first page uses
+// the plan query as is; the next ones resume after the last order values read, with
+// the lexicographic arguments the paged query expects: for n order columns, the i-th
+// OR condition takes the first i values, then the page size (first for SQL Server).
+func pageQuery(plan *tableplan.TablePlan, dialect sqlio.Dialect, after []any) (query string, args []any, err error) {
+	if after == nil {
+		return plan.Query, nil, nil
+	}
+	if !plan.IsPaged() {
+		return "", nil, fmt.Errorf("runner: reprise demandée sur %s.%s, dont le plan n'est pas paginé",
+			plan.Schema, plan.Table)
+	}
+	if len(after) != len(plan.OrderByColumns) {
+		return "", nil, fmt.Errorf("runner: %d valeurs de reprise pour %d colonnes de tri",
+			len(after), len(plan.OrderByColumns))
+	}
+	_, isMSSQL := dialect.(sqlio.MSSQLDialect)
+	if isMSSQL {
+		args = append(args, plan.PageLimit)
+	}
+	for i := range after {
+		args = append(args, after[:i+1]...)
+	}
+	if !isMSSQL {
+		args = append(args, plan.PageLimit)
+	}
+	return plan.PageQuery, args, nil
+}
+
+func columnIndexes(columns, wanted []string) []int {
+	idx := make([]int, 0, len(wanted))
+	for _, w := range wanted {
+		for i, c := range columns {
+			if c == w {
+				idx = append(idx, i)
+				break
+			}
+		}
+	}
+	return idx
+}
+
+func columnsOf(types []*sql.ColumnType) []string {
+	names := make([]string, len(types))
+	for i, ct := range types {
+		names[i] = ct.Name()
+	}
+	return names
 }
 
 // primaryKeyColumns introspecte les colonnes de clé primaire d'une table via
@@ -119,24 +229,4 @@ ORDER BY kcu.ordinal_position`, d.Placeholder(1), d.Placeholder(2))
 		cols = append(cols, c)
 	}
 	return cols, rows.Err()
-}
-
-// buildSelect construit le SELECT de lecture, identifiants quotés selon le
-// dialecte. where est la clause de subsetting (sans le mot-clé WHERE) ; vide = pas
-// de filtre. Elle n'est PAS paramétrée : elle provient de la config du job et doit
-// être valide telle quelle (contrat Neosync, cf. proto where_clause).
-func buildSelect(d sqlio.Dialect, schema, table string, cols []string, where string) string {
-	quoted := make([]string, len(cols))
-	for i, c := range cols {
-		quoted[i] = d.QuoteIdent(c)
-	}
-	ref := d.QuoteIdent(table)
-	if schema != "" {
-		ref = d.QuoteIdent(schema) + "." + ref
-	}
-	q := fmt.Sprintf("SELECT %s FROM %s", strings.Join(quoted, ", "), ref)
-	if strings.TrimSpace(where) != "" {
-		q += " WHERE " + where
-	}
-	return q
 }

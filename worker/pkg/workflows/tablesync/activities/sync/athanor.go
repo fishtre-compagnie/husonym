@@ -1,12 +1,11 @@
 package sync_activity
 
 // athanor.go — aiguillage vers le moteur d'anonymisation Athanor, en alternative
-// au stream Benthos, activé par le flag ENABLE_ATHANOR_ENGINE.
+// au stream Benthos, choisi par job.
 //
-// Portée volontairement bornée pour ce premier câblage : une seule destination,
-// source et destination de MÊME SGBD (PostgreSQL ou MySQL). Le subsetting (WHERE)
-// est géré ; restent à porter l'upsert/onConflict, les destinations multiples et
-// les SGBD hétérogènes.
+// Athanor exécute le plan neutre calculé par GenerateBenthosConfigs (subset,
+// pagination, passes). Restent à porter : destinations multiples, SGBD différents
+// entre source et destination, passes de mise à jour hors MySQL.
 
 import (
 	"context"
@@ -16,11 +15,15 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/google/uuid"
 )
 
@@ -65,87 +68,132 @@ func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string, logger
 	}
 }
 
+// getTablePlan loads the engine-neutral plan of this table sync. It returns nil, and no
+// error, when the run has none: only SQL sources get a plan.
+func (a *Activity) getTablePlan(ctx context.Context, req *SyncTableRequest) (*tableplan.TablePlan, error) {
+	resp, err := a.jobclient.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{
+			JobRunId:   req.JobRunId,
+			ExternalId: shared.GetTablePlanExternalId(req.Id),
+			AccountId:  req.AccountId,
+		},
+	}))
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("athanor: lecture du plan de %s: %w", req.Id, err)
+	}
+	return tableplan.Unmarshal(resp.Msg.GetValue())
+}
+
 func (a *Activity) runAthanor(
 	ctx context.Context,
 	req *SyncTableRequest,
-	metadata *SyncMetadata,
+	plan *tableplan.TablePlan,
+	attempt int32,
 	session connectionmanager.SessionInterface,
 	getConnectionById func(connectionId string) (connectionmanager.ConnectionInput, error),
 	logger *slog.Logger,
-) error {
+) (*SyncTableResponse, error) {
 	// 1) Job + mappings. Le JobRunId a la forme "<jobId>-<timestamp>" ; on en
 	// extrait le jobId et on lit le job directement (GetJob = lecture en base),
 	// sans passer par GetJobRun (qui interroge Temporal et échoue en cours de run).
 	jobID, err := jobIDFromRunID(req.JobRunId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	jobResp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
 	if err != nil {
-		return fmt.Errorf("athanor: récupération du job %q: %w", jobID, err)
+		return nil, fmt.Errorf("athanor: récupération du job %q: %w", jobID, err)
 	}
 	job := jobResp.Msg.GetJob()
-	mappings := job.GetMappings()
 
 	// 2) Source/destination connections, derived from the job (not the RunContext).
 	srcConnID, err := sourceConnectionID(job.GetSource())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dests := job.GetDestinations()
 	if len(dests) != 1 {
-		return fmt.Errorf("athanor: %d destination(s) ; le câblage initial en gère une seule", len(dests))
+		return nil, fmt.Errorf("athanor: %d destination(s) ; le câblage initial en gère une seule", len(dests))
 	}
 	dstConnID := dests[0].GetConnectionId()
 
 	srcInput, err := getConnectionById(srcConnID)
 	if err != nil {
 		//nolint:misspell // message produit, rédigé en français
-		return fmt.Errorf("athanor: connexion source %q: %w", srcConnID, err)
+		return nil, fmt.Errorf("athanor: connexion source %q: %w", srcConnID, err)
 	}
 	dstInput, err := getConnectionById(dstConnID)
 	if err != nil {
 		//nolint:misspell // message produit, rédigé en français
-		return fmt.Errorf("athanor: connexion destination %q: %w", dstConnID, err)
+		return nil, fmt.Errorf("athanor: connexion destination %q: %w", dstConnID, err)
 	}
 
 	// 3) Dialecte : source et destination doivent être du même SGBD supporté.
 	dialect, err := homogeneousDialect(srcInput, dstInput)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// 4) Handles SQL (le SqlDbtx satisfait à la fois Querier et Execer).
+	// 4) Passes de mise à jour. Quand la destination permet de couper la
+	// vérification des clés étrangères, la passe d'insertion écrit déjà toutes les
+	// colonnes : les passes de mise à jour n'ont plus rien à faire.
+	_, _, fkChecksOff := dialect.ForeignKeyChecksStatements()
+	if plan.RunType == runconfigs.RunTypeUpdate {
+		if fkChecksOff {
+			logger.Info("moteur=athanor : passe de mise à jour déjà couverte par la passe d'insertion",
+				"schema", plan.Schema, "table", plan.Table, "colonnes", plan.Columns)
+			return &SyncTableResponse{}, nil
+		}
+		return nil, fmt.Errorf("athanor: passe de mise à jour de %s.%s non supportée sur %s",
+			plan.Schema, plan.Table, dialect.Driver())
+	}
+
+	// 5) Handles SQL (le SqlDbtx satisfait Querier, Execer et BeginTx).
 	srcDB, err := a.sqlconnmanager.GetConnection(session, srcInput, logger)
 	if err != nil {
-		return fmt.Errorf("athanor: ouverture de la source: %w", err)
+		return nil, fmt.Errorf("athanor: ouverture de la source: %w", err)
 	}
 	dstDB, err := a.sqlconnmanager.GetConnection(session, dstInput, logger)
 	if err != nil {
-		return fmt.Errorf("athanor: ouverture de la destination: %w", err)
+		return nil, fmt.Errorf("athanor: ouverture de la destination: %w", err)
 	}
 
-	// Subsetting : clause WHERE éventuelle configurée pour cette table.
-	where := runner.WhereForTable(job.GetSource(), metadata.Schema, metadata.Table)
-
 	// Gestion des conflits de clé (onConflict) dérivée des options de destination.
+	// Une nouvelle tentative réécrit une page déjà partiellement écrite : comme
+	// Benthos, on ignore alors les lignes déjà présentes.
 	wc := writeConfigForDest(dests[0])
+	if attempt > 1 && wc.OnConflict == sqlio.ConflictNone {
+		wc.OnConflict = sqlio.ConflictDoNothing
+	}
+	wc.DisableForeignKeyChecks = fkChecksOff
+
+	var after []any
+	if req.ContinuationToken != nil {
+		token, terr := continuation_token.FromTokenString(*req.ContinuationToken)
+		if terr != nil {
+			return nil, fmt.Errorf("athanor: jeton de continuation illisible: %w", terr)
+		}
+		after = token.Contents.LastReadOrderValues
+	}
 
 	// Cohérence déterministe (RFC §8) : la même valeur d'entrée produit la même
 	// sortie partout dans la portée choisie pour le job (run par défaut).
 	deriver, err := consistencyDeriver(a.athanor.ConsistencyKey, job, req.JobRunId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	logger.Info("moteur=athanor : anonymisation de table",
-		"schema", metadata.Schema,
-		"table", metadata.Table,
-		"colonnes", len(mappings),
+		"schema", plan.Schema,
+		"table", plan.Table,
 		"srcConn", srcConnID,
 		"dstConn", dstConnID,
-		"where", where,
+		"reprise", after != nil,
 		"onConflict", wc.OnConflict,
+		"clésÉtrangèresCoupées", wc.DisableForeignKeyChecks,
 		"cohérence", job.GetWorkflowOptions().GetConsistencyScope().String(),
 	)
 
@@ -157,11 +205,26 @@ func (a *Activity) runAthanor(
 		te.WithTransformPiiTextApi(transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)),
 	}
 
-	return runner.RunTable(
-		ctx, srcDB, dstDB, dialect, mappings,
-		metadata.Schema, metadata.Table, where,
-		athanorBatchSize, wc, deriver, execOpts...,
-	)
+	res, err := runner.RunTablePage(ctx, srcDB, dstDB, dialect, &runner.TablePage{
+		Plan:             plan,
+		Mappings:         job.GetMappings(),
+		BatchSize:        athanorBatchSize,
+		Write:            wc,
+		Deriver:          deriver,
+		AfterOrderValues: after,
+		ExecOptions:      execOpts,
+	})
+	if err != nil {
+		return nil, err
+	}
+	logger.Info("moteur=athanor : page écrite", "lignes", res.RowsRead, "pageSuivante", res.HasMore)
+
+	resp := &SyncTableResponse{}
+	if res.HasMore {
+		token := continuation_token.NewFromContents(continuation_token.NewContents(res.LastOrderValues)).String()
+		resp.ContinuationToken = &token
+	}
+	return resp, nil
 }
 
 // sourceConnectionID extracts the source connection id for the job's dialect.

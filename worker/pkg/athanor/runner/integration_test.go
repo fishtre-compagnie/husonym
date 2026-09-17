@@ -20,6 +20,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 )
 
@@ -105,8 +107,38 @@ func TestIntegration_MySQL_RunTable(t *testing.T) {
 	}
 
 	// EXÉCUTION DU MOTEUR ATHANOR, source -> cible, batch de 2.
-	if err := RunTable(ctx, src, dst, sqlio.MySQLDialect{}, mappings(), "appdb", "clients", "", 2, WriteConfig{}, nil); err != nil {
-		t.Fatalf("RunTable: %v", err)
+	// Pages de 3 lignes et lots de 2 : la table de 5 lignes se lit en deux pages.
+	plan := &tableplan.TablePlan{
+		Id:             "appdb.clients.insert",
+		Schema:         "appdb",
+		Table:          "clients",
+		RunType:        runconfigs.RunTypeInsert,
+		Query:          "SELECT `id`, `prenom`, `nom`, `email` FROM `appdb`.`clients` ORDER BY `id` LIMIT 3",
+		PageQuery:      "SELECT `id`, `prenom`, `nom`, `email` FROM `appdb`.`clients` WHERE (`id` > ?) ORDER BY `id` LIMIT ?",
+		PageLimit:      3,
+		OrderByColumns: []string{"id"},
+	}
+	var after []any
+	pages := 0
+	for {
+		res, err := RunTablePage(ctx, src, dst, sqlio.MySQLDialect{}, &TablePage{
+			Plan:             plan,
+			Mappings:         mappings(),
+			BatchSize:        2,
+			Write:            WriteConfig{DisableForeignKeyChecks: true},
+			AfterOrderValues: after,
+		})
+		if err != nil {
+			t.Fatalf("RunTablePage: %v", err)
+		}
+		pages++
+		if !res.HasMore {
+			break
+		}
+		after = res.LastOrderValues
+	}
+	if pages != 2 {
+		t.Fatalf("attendu 2 pages, obtenu %d", pages)
 	}
 
 	// Vérification de la cible.

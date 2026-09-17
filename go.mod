@@ -9,6 +9,7 @@ require (
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.9.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/auth0/go-auth0 v1.42.1
@@ -128,7 +129,6 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
-	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
 	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.33.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.57.0 // indirect

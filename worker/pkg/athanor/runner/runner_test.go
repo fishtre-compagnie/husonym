@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"reflect"
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/native"
@@ -152,58 +154,40 @@ func TestSpecForTable_NoMapping(t *testing.T) {
 	}
 }
 
-func TestBuildSelect(t *testing.T) {
-	got := buildSelect(sqlio.PostgresDialect{}, "public", "clients", []string{"id", "age"}, "")
-	want := `SELECT "id", "age" FROM "public"."clients"`
-	if got != want {
-		t.Fatalf("buildSelect:\n  obtenu %q\n  voulu  %q", got, want)
+func TestPageQuery(t *testing.T) {
+	plan := &tableplan.TablePlan{
+		Schema:         "web",
+		Table:          "users",
+		Query:          "SELECT * FROM users LIMIT 100",
+		PageQuery:      "SELECT * FROM users WHERE (a > ?) OR (a = ? AND b > ?) LIMIT ?",
+		PageLimit:      100,
+		OrderByColumns: []string{"a", "b"},
 	}
 
-	got = buildSelect(sqlio.MySQLDialect{}, "", "clients", []string{"id"}, "")
-	want = "SELECT `id` FROM `clients`"
-	if got != want {
-		t.Fatalf("buildSelect mysql:\n  obtenu %q\n  voulu  %q", got, want)
+	query, args, err := pageQuery(plan, sqlio.MySQLDialect{}, nil)
+	if err != nil || query != plan.Query || args != nil {
+		t.Fatalf("première page : %q %v (err %v)", query, args, err)
 	}
 
-	// Avec subsetting : la clause WHERE est ajoutée telle quelle.
-	got = buildSelect(sqlio.PostgresDialect{}, "public", "clients", []string{"id"}, "id > 100 AND actif = true")
-	want = `SELECT "id" FROM "public"."clients" WHERE id > 100 AND actif = true`
-	if got != want {
-		t.Fatalf("buildSelect where:\n  obtenu %q\n  voulu  %q", got, want)
+	query, args, err = pageQuery(plan, sqlio.MySQLDialect{}, []any{int64(7), "x"})
+	if err != nil || query != plan.PageQuery {
+		t.Fatalf("page suivante : %q (err %v)", query, err)
 	}
-}
-
-func TestWhereForTable(t *testing.T) {
-	where := "age >= 18"
-	source := &mgmtv1alpha1.JobSource{
-		Options: &mgmtv1alpha1.JobSourceOptions{
-			Config: &mgmtv1alpha1.JobSourceOptions_Mysql{
-				Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{
-					Schemas: []*mgmtv1alpha1.MysqlSourceSchemaOption{
-						{
-							Schema: "demo",
-							Tables: []*mgmtv1alpha1.MysqlSourceTableOption{
-								{Table: "clients", WhereClause: &where},
-								{Table: "commandes"},
-							},
-						},
-					},
-				},
-			},
-		},
+	if want := []any{int64(7), int64(7), "x", 100}; !reflect.DeepEqual(args, want) {
+		t.Fatalf("arguments MySQL : %v, attendu %v", args, want)
 	}
 
-	if got := WhereForTable(source, "demo", "clients"); got != where {
-		t.Fatalf("clients: attendu %q, obtenu %q", where, got)
+	// SQL Server : TOP en tête de requête, donc la taille de page d'abord.
+	_, args, _ = pageQuery(plan, sqlio.MSSQLDialect{}, []any{int64(7), "x"})
+	if want := []any{100, int64(7), int64(7), "x"}; !reflect.DeepEqual(args, want) {
+		t.Fatalf("arguments SQL Server : %v, attendu %v", args, want)
 	}
-	if got := WhereForTable(source, "demo", "commandes"); got != "" {
-		t.Fatalf("commandes: attendu \"\", obtenu %q", got)
+
+	if _, _, err := pageQuery(plan, sqlio.MySQLDialect{}, []any{int64(7)}); err == nil {
+		t.Fatal("un nombre de valeurs de reprise différent des colonnes de tri doit être refusé")
 	}
-	if got := WhereForTable(source, "demo", "inconnue"); got != "" {
-		t.Fatalf("table inconnue: attendu \"\", obtenu %q", got)
-	}
-	if got := WhereForTable(nil, "demo", "clients"); got != "" {
-		t.Fatalf("source nil: attendu \"\", obtenu %q", got)
+	if _, _, err := pageQuery(&tableplan.TablePlan{Query: "SELECT 1"}, sqlio.MySQLDialect{}, []any{1}); err == nil {
+		t.Fatal("une reprise sur un plan non paginé doit être refusée")
 	}
 }
 
