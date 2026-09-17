@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -18,6 +19,7 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
@@ -245,9 +247,24 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		return nil, fmt.Errorf("unable to build benthos sql source config responses: %w", err)
 	}
 
-	foreignKeys := planForeignKeys(runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints, groupedColumnInfo)
+	keyStore := func(table, column string) string {
+		if !shouldProcessStrict(colTransformerMap[table][column]) {
+			return ""
+		}
+		return husonym_benthos.HashBenthosCacheKey(job.Id, params.JobRunId, table, column)
+	}
+	foreignKeys := planForeignKeys(runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints, groupedColumnInfo, keyStore)
 	for _, config := range configs {
 		config.ForeignKeys = foreignKeys[config.Name]
+		tableKey := sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)
+		for column := range primaryKeyToForeignKeysMap[tableKey] {
+			if store := keyStore(tableKey, column); store != "" {
+				config.PublishedKeys = append(config.PublishedKeys, &tableplan.PublishedKey{Column: column, Store: store})
+			}
+		}
+		slices.SortFunc(config.PublishedKeys, func(a, b *tableplan.PublishedKey) int {
+			return strings.Compare(a.Column, b.Column)
+		})
 		config.GeneratedColumns = generatedColumns(
 			groupedColumnInfo[sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)],
 		)

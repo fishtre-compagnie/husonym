@@ -50,6 +50,9 @@ type TablePage struct {
 	// page; nil reads the first page.
 	AfterOrderValues []any
 	Env              *TransformEnv
+	// Keys carries transformed keys from the tables holding them to the foreign keys
+	// following them; required only when the plan says so.
+	Keys KeyStore
 }
 
 // PageResult tells what a page read and whether the table has more pages.
@@ -92,6 +95,14 @@ func RunTablePage(
 		}
 	}
 
+	translated, err := translatedForeignKeys(plan)
+	if err != nil {
+		return nil, err
+	}
+	if (len(translated) > 0 || len(plan.PublishedKeys) > 0) && page.Keys == nil {
+		return nil, fmt.Errorf("runner: %s.%s suit ou publie des clés transformées, ce qui demande Redis", plan.Schema, plan.Table)
+	}
+
 	query, args, err := pageQuery(plan, dialect, page.AfterOrderValues)
 	if err != nil {
 		return nil, err
@@ -113,8 +124,10 @@ func RunTablePage(
 	}
 
 	result := &PageResult{}
+	publisher := &keyPublisher{ctx: ctx, store: page.Keys, keys: plan.PublishedKeys, sources: map[string][]any{}}
 	var orderIdx []int
 	observe := func(columns []string, row []any) {
+		publisher.observe(columns, row)
 		if orderIdx == nil {
 			orderIdx = columnIndexes(columns, plan.OrderByColumns)
 		}
@@ -132,8 +145,19 @@ func RunTablePage(
 	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
 		var w sqlio.RowWriter = sqlio.NewSQLWriter(ctx, tx, dialect, plan.Schema, plan.Table,
 			sqlio.WithOnConflict(wc.OnConflict, pkColumns))
+		discard := func(rows int) { result.RowsDiscarded += rows }
 		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan),
-			wc.SkipForeignKeyViolations, func(rows int) { result.RowsDiscarded += rows })
+			wc.SkipForeignKeyViolations, discard)
+		if len(translated) > 0 {
+			w = &keyTranslator{
+				ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table, foreignKeys: translated,
+				skip: wc.SkipForeignKeyViolations, onDiscard: discard, inner: w,
+			}
+		}
+		if len(plan.PublishedKeys) > 0 {
+			publisher.inner = w
+			w = publisher
+		}
 		return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
 			sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
 			sqlio.WithRowObserver(observe),

@@ -38,6 +38,8 @@ type BenthosConfigResponse struct {
 	ForeignKeys []*tableplan.ForeignKey
 	// GeneratedColumns are the columns the destination computes itself.
 	GeneratedColumns []string
+	// PublishedKeys are the transformed columns other tables reference.
+	PublishedKeys []*tableplan.PublishedKey
 }
 
 // Combines a connection type and job type to uniquely identify a builder configuration

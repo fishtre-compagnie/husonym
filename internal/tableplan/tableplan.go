@@ -43,10 +43,22 @@ type TablePlan struct {
 	// AS …): they are read, since transformers may need them, and never written.
 	GeneratedColumns []string `json:"generatedColumns,omitempty"`
 
+	// PublishedKeys are the columns of the table that foreign keys of other tables
+	// reference and that a transformer changes: each new value is published, under the
+	// source one, for those foreign keys to follow.
+	PublishedKeys []*PublishedKey `json:"publishedKeys,omitempty"`
+
 	// ForeignKeys are the foreign keys of the table to tables of the job, virtual ones
 	// included. The query already reads NULL for nullable keys to rows left out of the
 	// subset; the engine checks the mandatory ones when it writes.
 	ForeignKeys []*ForeignKey `json:"foreignKeys,omitempty"`
+}
+
+// PublishedKey is a referenced column whose transformed values are published.
+type PublishedKey struct {
+	Column string `json:"column"`
+	// Store names where the values are published: a Redis hash, source value to new value.
+	Store string `json:"store"`
 }
 
 // ForeignKey is one foreign key of a table, declared in the database or virtual.
@@ -60,6 +72,9 @@ type ForeignKey struct {
 	// ParentReduced is set when the job copies only part of the parent table: a row of
 	// this table can then reference a parent row that is not copied.
 	ParentReduced bool `json:"parentReduced"`
+	// ParentKeyStores gives, per column, where the new values of the referenced column are
+	// published when a transformer changes it, and "" when it is copied as it is.
+	ParentKeyStores []string `json:"parentKeyStores,omitempty"`
 	// NoParentValue is the value meaning "no parent" in a mandatory single-column key:
 	// the default of a NOT NULL column (parent_id NOT NULL DEFAULT 0). Rows holding it
 	// reference nothing on purpose and are legitimate.

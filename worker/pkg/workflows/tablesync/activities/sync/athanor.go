@@ -4,8 +4,9 @@ package sync_activity
 // au stream Benthos, choisi par job.
 //
 // Athanor exécute le plan neutre calculé par GenerateBenthosConfigs (subset,
-// pagination, passes). Restent à porter : destinations multiples, SGBD différents
-// entre source et destination, passes de mise à jour hors MySQL.
+// pagination, passes, clés transformées suivies par les clés étrangères). Restent à
+// porter : destinations multiples, SGBD différents entre source et destination, passes
+// de mise à jour hors MySQL.
 
 import (
 	"context"
@@ -220,6 +221,7 @@ func (a *Activity) runAthanor(
 		Deriver:          deriver,
 		AfterOrderValues: after,
 		Env:              env,
+		Keys:             newRedisKeyStore(a.redisclient),
 	})
 	if err != nil {
 		return nil, err

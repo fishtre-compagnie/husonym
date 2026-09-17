@@ -115,6 +115,8 @@ type BenthosSourceConfig struct {
 	ForeignKeys []*tableplan.ForeignKey
 	// GeneratedColumns are the columns the destination computes itself.
 	GeneratedColumns []string
+	// PublishedKeys are the transformed columns other tables reference.
+	PublishedKeys []*tableplan.PublishedKey
 }
 
 // BenthosDestinationConfig represents a Benthos destination configuration

@@ -1662,12 +1662,14 @@ func withoutNullableColumns(
 }
 
 // planForeignKeys describes, per run config, the foreign keys of its table for the
-// engine-neutral plan: which parents the job copies only in part, and which value of a
-// mandatory key means "no parent".
+// engine-neutral plan: which parents the job copies only in part, which value of a
+// mandatory key means "no parent", and where the new values of a transformed parent key
+// are published (keyStore, "" for a column copied as it is).
 func planForeignKeys(
 	runConfigs []*rc.RunConfig,
 	subsetByForeignKeyConstraints bool,
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	keyStore func(table, column string) string,
 ) map[string][]*tableplan.ForeignKey {
 	reduced := make(map[string]bool, len(runConfigs))
 	for _, config := range runConfigs {
@@ -1688,6 +1690,10 @@ func planForeignKeys(
 				ParentTable:   fk.ReferenceTable,
 				ParentColumns: fk.ReferenceColumns,
 				ParentReduced: reduced[fk.ReferenceSchema+"."+fk.ReferenceTable],
+			}
+			parentKey := fk.ReferenceSchema + "." + fk.ReferenceTable
+			for _, parentColumn := range fk.ReferenceColumns {
+				planned.ParentKeyStores = append(planned.ParentKeyStores, keyStore(parentKey, parentColumn))
 			}
 			// parent_id NOT NULL DEFAULT 0: the default stands for "no parent".
 			if len(fk.Columns) == 1 && planned.IsMandatory() {
