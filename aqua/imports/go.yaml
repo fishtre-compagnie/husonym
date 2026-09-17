@@ -1,0 +1,3 @@
+# Toolchain Go du backend, du worker et du CLI (même version que go.mod).
+packages:
+  - name: golang/go@go1.26.4

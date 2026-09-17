@@ -1,0 +1,4 @@
+# Reformate les lignes Go trop longues (golines -w), la même règle que le formatter golines
+# de .golangci.yaml.
+packages:
+  - name: segmentio/golines@v0.13.0

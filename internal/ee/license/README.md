@@ -196,7 +196,9 @@ production code: it is unconditionally valid and used to short-circuit the whole
 The private key is the one asset that cannot be replaced. Lose it and no customer can ever
 be renewed; leak it and anyone can license themselves.
 
-**It is held in Infisical.** Inject it rather than copying it to disk — the tool reads
+**It is held in Infisical.** The CLI is pinned by aqua (`aqua policy allow aqua/aqua-policy.yaml`
+then `aqua i`, see CONTRIBUTING.md); bind the checkout once with `infisical login` and
+`infisical init`. Inject the key rather than copying it to disk — the tool reads
 `HUSONYM_EE_SIGNING_KEY`, accepting the PEM directly or base64 of it, and prefers it over
 `--key`:
 

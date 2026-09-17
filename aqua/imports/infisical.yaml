@@ -1,0 +1,6 @@
+# CLI Infisical : injecte la clé de signature des licences (HUSONYM_EE_SIGNING_KEY) sans
+# l'écrire sur disque, voir internal/ee/license/README.md. Absent du registre standard
+# aqua, d'où l'entrée dans registry.yaml.
+packages:
+  - name: Infisical/cli@v0.43.110
+    registry: local
