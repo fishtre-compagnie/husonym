@@ -156,6 +156,9 @@ type Case struct {
 	// a domain — have to be there first. {db} and {q:name} are replaced as in
 	// DestinationSetup.
 	SchemaSetup []string
+	// SchemaSetupFor holds the schema setup statements one database writes its own way — a
+	// collation — run after SchemaSetup on that database only.
+	SchemaSetupFor map[schema.Dialect][]string
 	// DestinationSetup statements run on each destination once its empty tables exist:
 	// what a real destination holds beyond the tables (triggers, extra columns). {db} is
 	// replaced by the schema of the case and {q:name} by an identifier, both quoted the

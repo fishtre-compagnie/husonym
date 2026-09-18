@@ -203,11 +203,11 @@ func pageBinaryKey() *Case {
 		})
 }
 
-// pageCaseInsensitiveKey: under the default MySQL collation "k0002" and "K0002" are the
-// same key and the order ignores case; an engine comparing keys itself would disagree.
+// pageCaseInsensitiveKey: under a collation ignoring case "k0002" and "K0002" are the same
+// key and the order ignores case; an engine comparing keys itself would disagree. MySQL
+// compares text that way by default. PostgreSQL needs a nondeterministic ICU collation,
+// declared in the schema of the case, with which keyset pagination must still work.
 func pageCaseInsensitiveKey() *Case {
-	// MySQL compares text without regard to case by default; PostgreSQL does not, and
-	// saying so there needs a collation of its own — a case of its own too.
 	c := exoticKeyCase("page-case-insensitive-key", "Clé texte sous collation insensible à la casse",
 		"LIBELLE", schema.Varchar(20),
 		func(_ Params, i int) any {
@@ -216,7 +216,10 @@ func pageCaseInsensitiveKey() *Case {
 			}
 			return fmt.Sprintf("k%04d", i)
 		})
-	c.Dialects = mysqlOnly
+	c.SchemaSetupFor = map[schema.Dialect][]string{schema.Postgres: {
+		"CREATE COLLATION {db}.{q:insensible} (provider = icu, locale = 'und-u-ks-level2', deterministic = false)",
+	}}
+	c.Tables[0].Columns[0].Collation = map[schema.Dialect]string{schema.Postgres: "{db}.{q:insensible}"}
 	return c
 }
 

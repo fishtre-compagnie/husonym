@@ -18,15 +18,15 @@ func retryCases() []*Case {
 }
 
 // retryInsertIgnoreMasksTruncation: the destination column is narrower than the source
-// one. The first attempt fails on "Data too long", as it should; the retry, written with
-// INSERT IGNORE, truncates the values and completes. The only correct outcome is the
-// failed run.
+// one. The first attempt fails on the too long value, as it should; the retry, written with
+// "do nothing", must fail the same way. MySQL's INSERT IGNORE truncated the values and
+// completed; PostgreSQL's ON CONFLICT DO NOTHING is not expected to, which the case keeps.
+// The only correct outcome is the failed run.
 func retryInsertIgnoreMasksTruncation() *Case {
 	return &Case{
 		ID:       "retry-insert-ignore-masks-truncation",
-		Dialects: mysqlOnly,
 		Priority: P1,
-		Title:    "Nouvelle tentative en INSERT IGNORE : la troncature refusée à la première tentative passe en silence",
+		Title:    "Nouvelle tentative en « do nothing » : la troncature refusée à la première tentative reste refusée",
 		Tables: []*schema.Table{{
 			Name: "ARTICLE",
 			Columns: []schema.Column{
@@ -35,9 +35,15 @@ func retryInsertIgnoreMasksTruncation() *Case {
 			},
 			PrimaryKey: []string{idColumn},
 		}},
-		DestinationSetup: []string{"ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(5) NOT NULL"},
-		Job:              Job{SyncAttempts: 3},
-		ExpectRunError:   map[schema.Dialect]string{schema.MySQL: "Data too long"},
+		DestinationSetupFor: map[schema.Dialect][]string{
+			schema.MySQL:    {"ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(5) NOT NULL"},
+			schema.Postgres: {"ALTER TABLE {db}.{q:ARTICLE} ALTER COLUMN {q:libelle} TYPE varchar(5)"},
+		},
+		Job: Job{SyncAttempts: 3},
+		ExpectRunError: map[schema.Dialect]string{
+			schema.MySQL:    "Data too long",
+			schema.Postgres: "value too long for type character varying(5)",
+		},
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= 20; i++ {
 				emit.Row("ARTICLE", []any{i, fmt.Sprintf("libellé bien trop long %d", i)}, Kept())

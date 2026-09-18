@@ -15,13 +15,29 @@ func destinationCases() []*Case {
 		destinationTriggerRestoredByNextRun(),
 		destinationTriggerSpecialName(),
 		destinationTriggersMysqlCreation(),
-		// Both tell a MySQL message apart, and reorder columns, which PostgreSQL cannot.
 		destinationDiffers("destination-column-order",
 			"Destination dont les colonnes sont dans un autre ordre, avec une colonne nullable en plus",
-			"", "ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(40) NOT NULL FIRST, ADD `ajoutee` INT NULL AFTER `libelle`"),
+			map[schema.Dialect][]string{
+				schema.MySQL: {"ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(40) NOT NULL FIRST, " +
+					"ADD `ajoutee` INT NULL AFTER `libelle`"},
+				// PostgreSQL cannot move a column: the table is created again in the other order.
+				schema.Postgres: {
+					"DROP TABLE {db}.{q:ARTICLE}",
+					"CREATE TABLE {db}.{q:ARTICLE} ({q:libelle} varchar(40) NOT NULL, {q:ajoutee} integer, " +
+						"{q:id} bigint NOT NULL PRIMARY KEY, {q:code} varchar(10) NOT NULL)",
+					"CREATE UNIQUE INDEX {q:ARTICLE_uq_article_code} ON {db}.{q:ARTICLE} ({q:code})",
+				},
+			}, nil),
 		destinationDiffers("destination-extra-not-null-column",
 			"Destination avec une colonne NOT NULL sans défaut en plus : échec explicite",
-			"doesn't have a default value", "ALTER TABLE {db}.`ARTICLE` ADD `obligatoire` INT NOT NULL"),
+			map[schema.Dialect][]string{
+				schema.MySQL:    {"ALTER TABLE {db}.{q:ARTICLE} ADD {q:obligatoire} INT NOT NULL"},
+				schema.Postgres: {"ALTER TABLE {db}.{q:ARTICLE} ADD {q:obligatoire} integer NOT NULL"},
+			},
+			map[schema.Dialect]string{
+				schema.MySQL:    "doesn't have a default value",
+				schema.Postgres: `null value in column "obligatoire"`,
+			}),
 		onConflictUpdateOnUniqueKey(),
 	}
 }
@@ -205,17 +221,16 @@ func seedArticles(emit Emitter) {
 }
 
 // destinationDiffers: the destination table is not the copy of the source one. runError
-// is empty when the difference must not matter.
-func destinationDiffers(id, title, runError, alter string) *Case {
+// is nil when the difference must not matter.
+func destinationDiffers(id, title string, setup map[schema.Dialect][]string, runError map[schema.Dialect]string) *Case {
 	return &Case{
-		ID:               id,
-		Priority:         P2,
-		Title:            title,
-		Tables:           []*schema.Table{articleTable()},
-		Dialects:         mysqlOnly,
-		DestinationSetup: []string{alter},
-		ExpectRunError:   map[schema.Dialect]string{schema.MySQL: runError},
-		Seed:             func(p Params, emit Emitter) { seedArticles(emit) },
+		ID:                  id,
+		Priority:            P2,
+		Title:               title,
+		Tables:              []*schema.Table{articleTable()},
+		DestinationSetupFor: setup,
+		ExpectRunError:      runError,
+		Seed:                func(p Params, emit Emitter) { seedArticles(emit) },
 	}
 }
 

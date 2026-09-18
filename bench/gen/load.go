@@ -31,7 +31,7 @@ const (
 func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
 	container := c.Schema()
 	stmts := r.CreateContainerStatements(container)
-	for _, stmt := range c.SchemaSetup {
+	for _, stmt := range append(slices.Clone(c.SchemaSetup), c.SchemaSetupFor[r.Dialect()]...) {
 		stmts = append(stmts, renderStatement(r, container, stmt))
 	}
 	for _, t := range c.Tables {

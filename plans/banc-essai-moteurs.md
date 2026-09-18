@@ -754,6 +754,22 @@ Cinq cas (quatre neutres, un propre à MySQL) : compte suffisant par rôle (gard
 bloquer à tort), compte par rôle en lecture seule, destination à vider, triggers impossibles à
 suspendre, definer étranger.
 
+## Cas jumeaux PostgreSQL (2026-09-18)
+
+Quatre cas écrits pour MySQL seul deviennent neutres, chaque SGBD avec sa préparation et ses
+mots : colonne `NOT NULL` en plus en destination, ordre des colonnes différent (PostgreSQL ne sait
+pas déplacer une colonne : la table de destination est recréée dans l'autre ordre), troncature
+refusée à la première tentative et qui doit le rester à la reprise (`ALTER COLUMN … TYPE`), clé
+texte sous collation insensible à la casse (collation ICU non déterministe déclarée dans le schéma
+du cas, `SchemaSetupFor`). Tous passent sur les deux moteurs, pagination par curseur comprise.
+
+**`retry-keyless-table-duplicates` n'exerce plus rien.** Il provoquait son échec par un trigger
+posé sur `JOURNAL`, table du job : depuis que le run retire les triggers de ses tables, ce trigger
+est retiré avant l'écriture et aucune panne n'a lieu. Il sera refait avec un worker réellement tué
+en cours de page, sur les deux SGBD.
+
+Le banc compte 81 cas : 53 neutres, 17 propres à MySQL, 11 propres à PostgreSQL.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
