@@ -2,9 +2,11 @@ package javascript_vm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
@@ -12,10 +14,30 @@ import (
 	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 )
 
+// DefaultTimeLimit is how long one run of a program may take. A program transforms one
+// row or one value, which takes microseconds: the limit only stops a script that would
+// never end, and leaves room for a function that calls a service (transformPiiText).
+const DefaultTimeLimit = 10 * time.Second
+
+// ErrTimeLimit is the error a run stopped by the time limit wraps.
+var ErrTimeLimit = errors.New("javascript: the script ran past its time limit")
+
+// ErrModuleFile is what require() returns for anything but a module built into the
+// runner: a script never reads a file of the machine it runs on.
+var ErrModuleFile = errors.New("javascript: scripts cannot load files")
+
 type Runner struct {
 	vm      *goja.Runtime
 	options Options
 	mu      sync.Mutex
+
+	// runCtx is the context of the run in progress, handed to the Go functions the
+	// script calls.
+	runCtx context.Context
+	// interruptMu guards run, the token of the run in progress: an interrupt fired for a
+	// run that has ended must not reach the next one.
+	interruptMu sync.Mutex
+	run         *struct{}
 }
 
 func (r *Runner) ValueApi() javascript_functions.ValueApi {
@@ -23,12 +45,12 @@ func (r *Runner) ValueApi() javascript_functions.ValueApi {
 }
 
 type Options struct {
-	logger          *slog.Logger
-	requireRegistry *require.Registry
-	functions       []*javascript_functions.FunctionDefinition
-	consoleEnabled  bool
-	valueApi        javascript_functions.ValueApi
-	globalAliases   map[string]string // alias -> target global
+	logger         *slog.Logger
+	functions      []*javascript_functions.FunctionDefinition
+	consoleEnabled bool
+	valueApi       javascript_functions.ValueApi
+	globalAliases  map[string]string // alias -> target global
+	timeLimit      time.Duration
 }
 
 type Option func(*Options)
@@ -45,15 +67,6 @@ func WithValueApi(valueApi javascript_functions.ValueApi) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(opts *Options) {
 		opts.logger = logger
-	}
-}
-
-// Sets the require registry for the runner
-// This allows custom modules to be registered with the runner
-// If the logger is provided, the console module will be registered with the logger
-func WithJsRegistry(registry *require.Registry) Option {
-	return func(opts *Options) {
-		opts.requireRegistry = registry
 	}
 }
 
@@ -77,42 +90,48 @@ func WithGlobalAlias(alias, target string) Option {
 	}
 }
 
+// WithConsole exposes console, printed through the logger, and require() for the
+// modules built into the runner: require() never loads a file.
 func WithConsole() Option {
 	return func(opts *Options) {
 		opts.consoleEnabled = true
 	}
 }
 
+// WithTimeLimit replaces DefaultTimeLimit.
+func WithTimeLimit(limit time.Duration) Option {
+	return func(opts *Options) {
+		opts.timeLimit = limit
+	}
+}
+
 // Creates a new JS Runner
 func NewRunner(opts ...Option) (*Runner, error) {
-	options := Options{logger: slog.Default()}
+	options := Options{logger: slog.Default(), timeLimit: DefaultTimeLimit}
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	vm := goja.New()
 
-	// if the stars align, we'll register the custom console module with the logger
-	// must come before requireRegistry.Enable()
-	if options.requireRegistry != nil && options.consoleEnabled && options.logger != nil {
-		options.requireRegistry.RegisterNativeModule(
-			console.ModuleName,
-			console.RequireWithPrinter(newConsoleLogger(stdPrefix, options.logger)),
-		)
-	}
-
-	if options.requireRegistry != nil {
-		options.requireRegistry.Enable(vm)
-	}
-
-	// must come after requireRegistry.Enable()
 	if options.consoleEnabled {
+		// The registry's default loader reads the file system: a script could then
+		// require() any JSON or JavaScript file of the host.
+		registry := require.NewRegistry(require.WithLoader(refuseModuleFile))
+		if options.logger != nil {
+			registry.RegisterNativeModule(
+				console.ModuleName,
+				console.RequireWithPrinter(newConsoleLogger(stdPrefix, options.logger)),
+			)
+		}
+		registry.Enable(vm)
 		console.Enable(vm)
 	}
 
 	runner := &Runner{
 		vm:      vm,
 		options: options,
+		runCtx:  context.Background(),
 	}
 
 	for _, function := range options.functions {
@@ -134,9 +153,44 @@ func NewRunner(opts ...Option) (*Runner, error) {
 	return runner, nil
 }
 
+func refuseModuleFile(string) ([]byte, error) {
+	return nil, ErrModuleFile
+}
+
+// Run runs a program. It stops, with an error wrapping ErrTimeLimit, when the program
+// runs past the time limit, and with the context's error when the context ends first.
 func (r *Runner) Run(ctx context.Context, program *goja.Program) (goja.Value, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	run := &struct{}{}
+	r.interruptMu.Lock()
+	r.run = run
+	r.interruptMu.Unlock()
+	interrupt := func(reason error) {
+		r.interruptMu.Lock()
+		defer r.interruptMu.Unlock()
+		if r.run == run {
+			r.vm.Interrupt(reason)
+		}
+	}
+	timer := time.AfterFunc(r.options.timeLimit, func() {
+		interrupt(fmt.Errorf("%w (%s)", ErrTimeLimit, r.options.timeLimit))
+	})
+	stopOnDone := context.AfterFunc(ctx, func() { interrupt(context.Cause(ctx)) })
+	r.runCtx = ctx
+
+	defer func() {
+		timer.Stop()
+		stopOnDone()
+		r.runCtx = context.Background()
+		r.interruptMu.Lock()
+		r.run = nil
+		r.interruptMu.Unlock()
+		// No interrupt can be fired for this run any more: one fired too late, after the
+		// program ended, would otherwise stop the next run at its start.
+		r.vm.ClearInterrupt()
+	}()
 	return r.vm.RunProgram(program)
 }
 
@@ -156,7 +210,7 @@ func registerFunction(runner *Runner, function *javascript_functions.FunctionDef
 	if err := targetObj.Set(function.Name(), func(call goja.FunctionCall, rt *goja.Runtime) goja.Value {
 		l := runner.options.logger.With("function", function.Name())
 		fn := function.Ctor()(runner)
-		result, err := fn(context.Background(), call, rt, l)
+		result, err := fn(runner.runCtx, call, rt, l)
 		if err != nil {
 			// This _has_ to be a panic so that the error is properly thrown in the JS runtime
 			// Otherwise things like try/catch will not work properly

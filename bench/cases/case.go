@@ -368,6 +368,7 @@ func All() []*Case {
 	all = append(all, columnCases()...)
 	all = append(all, destinationCases()...)
 	all = append(all, transformerCases()...)
+	all = append(all, ruleCases()...)
 	all = append(all, retryCases()...)
 	all = append(all, rightsCases()...)
 	all = append(all, postgresTypeCases()...)

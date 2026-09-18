@@ -3,7 +3,6 @@ package javascript
 import (
 	"log/slog"
 
-	goja_require "github.com/dop251/goja_nodejs/require"
 	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	benthos_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/benthos"
 	husonym_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/husonym"
@@ -25,7 +24,6 @@ func NewDefaultValueRunner(
 		javascript_vm.WithValueApi(valueApi),
 		javascript_vm.WithLogger(logger),
 		javascript_vm.WithConsole(),
-		javascript_vm.WithJsRegistry(goja_require.NewRegistry()),
 		javascript_vm.WithFunctions(functions...),
 		// Code written for Neosync, before the rename, reaches these functions (and keeps
 		// shared state) through the `neosync` global. It must keep working unchanged.
@@ -40,7 +38,6 @@ func NewDefaultRunner(
 	return javascript_vm.NewRunner(
 		javascript_vm.WithLogger(logger),
 		javascript_vm.WithConsole(),
-		javascript_vm.WithJsRegistry(goja_require.NewRegistry()),
 	)
 }
 
