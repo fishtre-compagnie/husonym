@@ -31,13 +31,18 @@ type Runner struct {
 	options Options
 	mu      sync.Mutex
 
-	// runCtx is the context of the run in progress, handed to the Go functions the
-	// script calls.
-	runCtx context.Context
+	// runCtx and runLogger are those of the run in progress, handed to the Go functions
+	// the script calls and to its console.
+	runCtx    context.Context
+	runLogger *slog.Logger
 	// interruptMu guards run, the token of the run in progress: an interrupt fired for a
 	// run that has ended must not reach the next one.
 	interruptMu sync.Mutex
 	run         *struct{}
+
+	// The sealed state every run starts from (see isolation.go).
+	namespaces   []*namespace
+	sealedGlobal *goja.Object
 }
 
 func (r *Runner) ValueApi() javascript_functions.ValueApi {
@@ -111,27 +116,28 @@ func NewRunner(opts ...Option) (*Runner, error) {
 	for _, opt := range opts {
 		opt(&options)
 	}
+	if options.logger == nil {
+		options.logger = slog.Default()
+	}
 
 	vm := goja.New()
+	runner := &Runner{
+		vm:        vm,
+		options:   options,
+		runCtx:    context.Background(),
+		runLogger: options.logger,
+	}
 
 	if options.consoleEnabled {
 		// The registry's default loader reads the file system: a script could then
 		// require() any JSON or JavaScript file of the host.
 		registry := require.NewRegistry(require.WithLoader(refuseModuleFile))
-		if options.logger != nil {
-			registry.RegisterNativeModule(
-				console.ModuleName,
-				console.RequireWithPrinter(newConsoleLogger(stdPrefix, options.logger)),
-			)
-		}
+		registry.RegisterNativeModule(
+			console.ModuleName,
+			console.RequireWithPrinter(newConsoleLogger(stdPrefix, func() *slog.Logger { return runner.runLogger })),
+		)
 		registry.Enable(vm)
 		console.Enable(vm)
-	}
-
-	runner := &Runner{
-		vm:      vm,
-		options: options,
-		runCtx:  context.Background(),
 	}
 
 	for _, function := range options.functions {
@@ -150,6 +156,9 @@ func NewRunner(opts ...Option) (*Runner, error) {
 		}
 	}
 
+	if err := runner.seal(); err != nil {
+		return nil, err
+	}
 	return runner, nil
 }
 
@@ -157,11 +166,32 @@ func refuseModuleFile(string) ([]byte, error) {
 	return nil, ErrModuleFile
 }
 
-// Run runs a program. It stops, with an error wrapping ErrTimeLimit, when the program
-// runs past the time limit, and with the context's error when the context ends first.
-func (r *Runner) Run(ctx context.Context, program *goja.Program) (goja.Value, error) {
+// RunOption configures one run.
+type RunOption func(*Runner)
+
+// WithRunLogger prints the run's console and the logs of the functions it calls through
+// logger, instead of the runner's.
+func WithRunLogger(logger *slog.Logger) RunOption {
+	return func(r *Runner) {
+		if logger != nil {
+			r.runLogger = logger
+		}
+	}
+}
+
+// Run runs a program, from the state the runner was sealed in: nothing a previous run
+// left reaches it (see isolation.go). It stops, with an error wrapping ErrTimeLimit, when
+// the program runs past the time limit, and with the context's error when the context
+// ends first. The Go functions the program calls receive ctx.
+func (r *Runner) Run(ctx context.Context, program *goja.Program, opts ...RunOption) (goja.Value, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if err := r.resetState(); err != nil {
+		return nil, err
+	}
+	for _, opt := range opts {
+		opt(r)
+	}
 
 	run := &struct{}{}
 	r.interruptMu.Lock()
@@ -184,6 +214,7 @@ func (r *Runner) Run(ctx context.Context, program *goja.Program) (goja.Value, er
 		timer.Stop()
 		stopOnDone()
 		r.runCtx = context.Background()
+		r.runLogger = r.options.logger
 		r.interruptMu.Lock()
 		r.run = nil
 		r.interruptMu.Unlock()
@@ -201,14 +232,15 @@ func registerFunction(runner *Runner, function *javascript_functions.FunctionDef
 		targetObj = targetObjValue.ToObject(runner.vm)
 	}
 	if targetObj == nil {
-		if err := runner.vm.GlobalObject().Set(function.Namespace(), map[string]any{}); err != nil {
+		// A JavaScript object, not a wrapped Go map: sealing the runner freezes it.
+		targetObj = runner.vm.NewObject()
+		if err := runner.vm.GlobalObject().Set(function.Namespace(), targetObj); err != nil {
 			return fmt.Errorf("failed to set global %s object: %w", function.Namespace(), err)
 		}
-		targetObj = runner.vm.GlobalObject().Get(function.Namespace()).ToObject(runner.vm)
 	}
 
 	if err := targetObj.Set(function.Name(), func(call goja.FunctionCall, rt *goja.Runtime) goja.Value {
-		l := runner.options.logger.With("function", function.Name())
+		l := runner.runLogger.With("function", function.Name())
 		fn := function.Ctor()(runner)
 		result, err := fn(runner.runCtx, call, rt, l)
 		if err != nil {

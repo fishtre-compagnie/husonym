@@ -1,10 +1,12 @@
 package javascript_userland
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
 
+	"github.com/dop251/goja"
 	"github.com/google/uuid"
 )
 
@@ -35,6 +37,26 @@ function fn_%s(value){
   %s
 };
 `, sanitizeFunctionName(fnNameSuffix), jsCode)
+}
+
+// FailedColumn returns the column, among columns, whose function a failed run of a program
+// assembled by GetFunction was in: the innermost function of the error's stack that is a
+// column's. It is "" when the error carries no stack or none of the columns is on it.
+func FailedColumn(err error, columns []string) string {
+	var stacked interface{ Stack() []goja.StackFrame }
+	if !errors.As(err, &stacked) {
+		return ""
+	}
+	byFunction := make(map[string]string, len(columns))
+	for _, column := range columns {
+		byFunction["fn_"+sanitizeFunctionName(column)] = column
+	}
+	for _, frame := range stacked.Stack() {
+		if column, ok := byFunction[frame.FuncName()]; ok {
+			return column
+		}
+	}
+	return ""
 }
 
 func sanitizeFunctionName(input string) string {

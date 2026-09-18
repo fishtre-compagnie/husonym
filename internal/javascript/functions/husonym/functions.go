@@ -2,6 +2,7 @@ package husonym_functions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime/debug"
@@ -21,14 +22,14 @@ const (
 	namespace = Namespace
 )
 
-func Get(
-	transformPiiTextApi transformers.TransformPiiTextApi,
-) ([]*javascript_functions.FunctionDefinition, error) {
+// Get returns the husonym functions. transformPiiText calls the PII text API the run's
+// context holds (transformers.ContextWithPiiTextApi), and fails without one.
+func Get() ([]*javascript_functions.FunctionDefinition, error) {
 	generatorFns, err := getHusonymGenerators()
 	if err != nil {
 		return nil, err
 	}
-	transformerFns, err := getHusonymTransformers(transformPiiTextApi)
+	transformerFns, err := getHusonymTransformers()
 	if err != nil {
 		return nil, err
 	}
@@ -158,62 +159,85 @@ func getHusonymGenerators() ([]*javascript_functions.FunctionDefinition, error) 
 	return fns, nil
 }
 
-func getHusonymTransformers(
-	transformPiiTextApi transformers.TransformPiiTextApi,
-) ([]*javascript_functions.FunctionDefinition, error) {
+func getHusonymTransformers() ([]*javascript_functions.FunctionDefinition, error) {
 	husonymTransformers := transformers.GetHusonymTransformers()
-	if transformPiiTextApi != nil {
-		husonymTransformers = append(
-			husonymTransformers,
-			transformers.NewTransformPiiText(transformPiiTextApi),
-		)
-	}
-	fns := make([]*javascript_functions.FunctionDefinition, 0, len(husonymTransformers))
+	fns := make([]*javascript_functions.FunctionDefinition, 0, len(husonymTransformers)+1)
 	for _, f := range husonymTransformers {
-		templateData, err := f.GetJsTemplateData()
+		fn, err := transformerFunction(f, func(context.Context) (transformers.HusonymTransformer, error) {
+			return f, nil
+		})
 		if err != nil {
 			return nil, err
 		}
-
-		fn := javascript_functions.NewFunctionDefinition(
-			namespace,
-			templateData.Name,
-			func(r javascript_functions.Runner) javascript_functions.Function {
-				return func(ctx context.Context, call goja.FunctionCall, rt *goja.Runtime, l *slog.Logger) (result any, err error) {
-					defer func() {
-						if r := recover(); r != nil {
-							// we set the named "err" argument to the error so that it can be returned
-							err = fmt.Errorf(
-								"panic recovered: %s.%s: %v",
-								namespace,
-								templateData.Name,
-								r,
-							)
-							l.Error(
-								"recovered from panic in custom husonym function",
-								"error", err,
-								"function", fmt.Sprintf("%s.%s", namespace, templateData.Name),
-								"stack", string(debug.Stack()),
-							)
-						}
-					}()
-					var (
-						value any
-						opts  map[string]any
-					)
-
-					if err := javascript_functions.ParseFunctionArguments(call, &value, &opts); err != nil {
-						return nil, err
-					}
-					goOpts, err := f.ParseOptions(opts)
-					if err != nil {
-						return nil, err
-					}
-					return f.Transform(value, goOpts)
-				}
-			},
-		)
 		fns = append(fns, fn)
 	}
-	return fns, nil
+
+	// The API is the one of the account the script runs for, which changes from one run to
+	// the next: it comes with the run's context.
+	piiText, err := transformerFunction(transformers.NewTransformPiiText(nil),
+		func(ctx context.Context) (transformers.HusonymTransformer, error) {
+			api := transformers.PiiTextApiFromContext(ctx)
+			if api == nil {
+				return nil, errors.New("transformPiiText is not available here")
+			}
+			return transformers.NewTransformPiiText(api), nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	return append(fns, piiText), nil
+}
+
+// transformerFunction exposes a transformer to scripts, under the name of template. The
+// transformer that runs is the one resolve returns for the run.
+func transformerFunction(
+	template transformers.HusonymTransformer,
+	resolve func(context.Context) (transformers.HusonymTransformer, error),
+) (*javascript_functions.FunctionDefinition, error) {
+	templateData, err := template.GetJsTemplateData()
+	if err != nil {
+		return nil, err
+	}
+	return javascript_functions.NewFunctionDefinition(
+		namespace,
+		templateData.Name,
+		func(r javascript_functions.Runner) javascript_functions.Function {
+			return func(ctx context.Context, call goja.FunctionCall, rt *goja.Runtime, l *slog.Logger) (result any, err error) {
+				defer func() {
+					if r := recover(); r != nil {
+						// we set the named "err" argument to the error so that it can be returned
+						err = fmt.Errorf(
+							"panic recovered: %s.%s: %v",
+							namespace,
+							templateData.Name,
+							r,
+						)
+						l.Error(
+							"recovered from panic in custom husonym function",
+							"error", err,
+							"function", fmt.Sprintf("%s.%s", namespace, templateData.Name),
+							"stack", string(debug.Stack()),
+						)
+					}
+				}()
+				var (
+					value any
+					opts  map[string]any
+				)
+
+				if err := javascript_functions.ParseFunctionArguments(call, &value, &opts); err != nil {
+					return nil, err
+				}
+				f, err := resolve(ctx)
+				if err != nil {
+					return nil, err
+				}
+				goOpts, err := f.ParseOptions(opts)
+				if err != nil {
+					return nil, err
+				}
+				return f.Transform(value, goOpts)
+			}
+		},
+	), nil
 }

@@ -54,10 +54,15 @@ func (b *AnonValueApi) MetaSetMut(key string, value any) {
 }
 
 func (b *AnonValueApi) GetPropertyPathValue(propertyPath string) (any, error) {
-	if b.message == nil {
+	return propertyPathValue(b.message, propertyPath)
+}
+
+// propertyPathValue returns the value a top-level key holds in a structured message.
+func propertyPathValue(message *service.Message, propertyPath string) (any, error) {
+	if message == nil {
 		return nil, fmt.Errorf("message is nil")
 	}
-	structuredValue, err := b.message.AsStructured()
+	structuredValue, err := message.AsStructured()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get structured message: %w", err)
 	}

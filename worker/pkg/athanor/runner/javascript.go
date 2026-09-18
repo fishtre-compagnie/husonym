@@ -18,9 +18,7 @@ import (
 
 	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/internal/javascript"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
-	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
@@ -62,11 +60,11 @@ func javascriptColumnOf(column string, cfg *mgmtv1alpha1.TransformerConfig) (jav
 
 // javascriptRows is the row transformer running every JavaScript column of a table.
 type javascriptRows struct {
-	reads    []string
-	writes   []string
-	runner   *javascript_vm.Runner
-	valueApi *te.AnonValueApi
-	program  *goja.Program
+	reads      []string
+	writes     []string
+	program    *goja.Program
+	piiTextApi transformers.TransformPiiTextApi
+	logger     *slog.Logger
 }
 
 func newJavascriptRows(tableColumns []string, columns []javascriptColumn, env *TransformEnv) (*javascriptRows, error) {
@@ -91,12 +89,7 @@ func newJavascriptRows(tableColumns []string, columns []javascriptColumn, env *T
 	if logger == nil {
 		logger = slog.Default()
 	}
-	valueApi := te.NewAnonValueApi()
-	vm, err := javascript.NewDefaultValueRunner(valueApi, env.PiiTextApi, logger)
-	if err != nil {
-		return nil, fmt.Errorf("runner: création de la VM JavaScript: %w", err)
-	}
-	return &javascriptRows{reads: tableColumns, writes: writes, runner: vm, valueApi: valueApi, program: program}, nil
+	return &javascriptRows{reads: tableColumns, writes: writes, program: program, piiTextApi: env.PiiTextApi, logger: logger}, nil
 }
 
 func (j *javascriptRows) Reads() []string  { return j.reads }
@@ -113,24 +106,30 @@ func (j *javascriptRows) TransformRow(ctx transform.Ctx, row transform.Row) erro
 	}
 	msg := service.NewMessage(nil)
 	msg.SetStructured(input)
-	j.valueApi.SetMessage(msg)
-	defer j.valueApi.SetMessage(nil)
 
 	runCtx := ctx.Context
 	if runCtx == nil {
 		runCtx = context.Background()
 	}
-	if _, err := j.runner.Run(runCtx, j.program); err != nil {
+	// A runner of the process-wide pool: each run starts from a clean state, so the row
+	// shares its state between its columns and never with the next one.
+	out, err := te.RunJavascript(runCtx, j.program, msg, j.piiTextApi, j.logger)
+	if err != nil {
+		// The columns share one program: the error names the one it came from. It never
+		// quotes a value of the row, since it ends up in the run history and the logs.
+		if column := javascript_userland.FailedColumn(err, j.writes); column != "" {
+			return fmt.Errorf("runner: colonne %q : exécution du JavaScript : %w", column, err)
+		}
 		return fmt.Errorf("runner: exécution du JavaScript: %w", err)
 	}
 
-	out, err := j.valueApi.Message().AsStructured()
+	structured, err := out.AsStructured()
 	if err != nil {
 		return fmt.Errorf("runner: lecture du résultat JavaScript: %w", err)
 	}
-	outMap, ok := out.(map[string]any)
+	outMap, ok := structured.(map[string]any)
 	if !ok {
-		return fmt.Errorf("runner: résultat JavaScript inattendu (%T)", out)
+		return fmt.Errorf("runner: résultat JavaScript inattendu (%T)", structured)
 	}
 	for _, col := range j.writes {
 		if err := row.Set(col, outMap[col]); err != nil {

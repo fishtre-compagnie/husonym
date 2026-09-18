@@ -13,6 +13,24 @@ import (
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 )
 
+type piiTextApiKey struct{}
+
+// ContextWithPiiTextApi hands the PII text API of the account a script runs for to the
+// JavaScript functions it calls: a JavaScript VM goes from one account to the next, the
+// API does not.
+func ContextWithPiiTextApi(ctx context.Context, api TransformPiiTextApi) context.Context {
+	if api == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, piiTextApiKey{}, api)
+}
+
+// PiiTextApiFromContext returns the API ContextWithPiiTextApi set, or nil.
+func PiiTextApiFromContext(ctx context.Context) TransformPiiTextApi {
+	api, _ := ctx.Value(piiTextApiKey{}).(TransformPiiTextApi)
+	return api
+}
+
 // Minimal interface that includes the config and value
 // To be used deep in the transformers so we don't have to be aware of the account id at the benthos level
 type TransformPiiTextApi interface {
