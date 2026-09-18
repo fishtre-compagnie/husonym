@@ -66,6 +66,36 @@
       "algorithm": "sha256"
     },
     {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Darwin_arm64.tar.gz",
+      "checksum": "B84B788551D80A46C9FD56F92F0257A2F833E3432CECD0132E45257BE1DB3CC5",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Darwin_x86_64.tar.gz",
+      "checksum": "50A595D68F3C821C51ACA0F70E4023A0C5111185EDE9A36662B6597C22AFA5B8",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Linux_arm64.tar.gz",
+      "checksum": "9F95A4CBD1427F4D22DFDF0E9CF3138B72C3F4AEDCE0CC6FA89E75BA0074B711",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Linux_x86_64.tar.gz",
+      "checksum": "A1B0A9191BCAB64688B483115293706F841D98048C0F918D7ACA89600BBA845B",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Windows_arm64.tar.gz",
+      "checksum": "664500670DDE8C256BD4BC0D0B847A6C3CA9BC846F28C4DE15E98375A5C035C3",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Windows_x86_64.tar.gz",
+      "checksum": "20E50B14DC80A823CA92FEBEE1B246C41156D9AE85414D64839F2231B0817592",
+      "algorithm": "sha256"
+    },
+    {
       "id": "http/golang.org/dl/go1.26.4.darwin-amd64.tar.gz",
       "checksum": "05DC9B5F9997744520AAEBB3D5DEAA7C755371AEBBFB7F97C2511A9F3367538D",
       "algorithm": "sha256"

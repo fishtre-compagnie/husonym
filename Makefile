@@ -10,7 +10,7 @@
         compose/dev/up compose/dev/down \
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
-				generate/backend \
+				generate/backend generate/mocks \
 				bench bench/up bench/up-lower-case bench/down bench/correctness bench/perf bench/perf-up bench/pg-perf-up
 default: help
 
@@ -76,6 +76,9 @@ build/frontend: ## Builds the frontend (don't do this if intending to develop lo
 
 generate/backend: ## Runs the backend generate script
 	@cd ./backend && make gen
+
+generate/mocks: ## Regenerates the mocks declared in .mockery.yml (after generate/backend when an interface changed)
+	mockery
 
 # Linting
 lint: ## Lints the project

@@ -1,0 +1,4 @@
+# Génère les mocks déclarés dans .mockery.yml (make generate/mocks). Reste en v2 : la v3
+# change le format de cette configuration.
+packages:
+  - name: vektra/mockery@v2.53.7
