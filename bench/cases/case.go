@@ -173,10 +173,6 @@ type Case struct {
 	// is replaced by the schema of the case and {user} by the account. Each database
 	// grants in its own syntax, hence one list per database.
 	DestinationGrants map[schema.Dialect][]string
-	// MinPageLimit is the smallest worker page size the case makes sense with; below it
-	// the case is reported as not exercised. Retry cases need pages larger than a write
-	// batch, so that a page can fail half written.
-	MinPageLimit int
 	// ExpectRunError, when set for the database of the pass, expects the run to fail with
 	// a message containing it. The text is the one the database itself prints, and two
 	// databases refuse the same thing in their own words; a database the map does not name

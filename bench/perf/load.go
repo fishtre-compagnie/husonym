@@ -3,6 +3,7 @@ package perf
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"math/rand/v2"
 	"strings"
@@ -42,9 +43,20 @@ func Load(ctx context.Context, db *sql.DB, r schema.Renderer, dataset *cases.Cas
 		return nil, fmt.Errorf("perf: %w", err)
 	}
 	defer conn.Close()
-	for _, stmt := range []string{"SET FOREIGN_KEY_CHECKS=0", "SET UNIQUE_CHECKS=0", "SET SESSION sql_log_bin=0"} {
-		if _, err := conn.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "sql_log_bin") {
+	// The connection is closed for good once loaded, so its session settings die with it.
+	defer func() { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }()
+	for _, stmt := range r.LoadSessionStatements() {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
 			return nil, fmt.Errorf("perf: %s: %w", stmt, err)
+		}
+	}
+	// MySQL loads faster without checking unique keys and without a binary log; the rows
+	// are generated unique, and the source is not replicated.
+	if r.Dialect() == schema.MySQL {
+		for _, stmt := range []string{"SET UNIQUE_CHECKS=0", "SET SESSION sql_log_bin=0"} {
+			if _, err := conn.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "sql_log_bin") {
+				return nil, fmt.Errorf("perf: %s: %w", stmt, err)
+			}
 		}
 	}
 
@@ -76,9 +88,8 @@ func loadTable(
 	for i, name := range columns {
 		quoted[i] = r.QuoteIdent(name)
 	}
-	tuple := "(" + strings.TrimSuffix(strings.Repeat("?,", len(columns)), ",") + ")"
-	prefix := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES ",
-		r.QuoteIdent(database), r.QuoteIdent(t.Name), strings.Join(quoted, ", "))
+	prefix := fmt.Sprintf("INSERT INTO %s.%s (%s)%s VALUES ",
+		r.QuoteIdent(database), r.QuoteIdent(t.Name), strings.Join(quoted, ", "), r.InsertOverride())
 
 	perInsert := min(rowsPerInsert, 60_000/len(columns))
 	generator := rowGenerator(t.Name, scale)
@@ -87,11 +98,17 @@ func loadTable(
 	for written < rows {
 		batch = batch[:0]
 		count := min(perInsert, rows-written)
+		tuples := make([]string, count)
+		marks := make([]string, len(columns))
 		for i := 0; i < count; i++ {
+			for j := range marks {
+				marks[j] = r.Placeholder(len(batch) + j + 1)
+			}
+			tuples[i] = "(" + strings.Join(marks, ",") + ")"
 			batch = append(batch, generator(written+i+1)...)
 		}
 		//nolint:gosec // identifiers come from the dataset and are quoted
-		query := prefix + strings.TrimSuffix(strings.Repeat(tuple+",", count), ",")
+		query := prefix + strings.Join(tuples, ",")
 		if _, err := conn.ExecContext(ctx, query, batch...); err != nil {
 			return fmt.Errorf("perf: insert into %s: %w", t.Name, err)
 		}
@@ -117,7 +134,7 @@ func rowGenerator(table string, scale int) func(n int) []any {
 	switch table {
 	case ReferentielTable:
 		return func(n int) []any {
-			return []any{int64(n), fmt.Sprintf("REF-%07d", n), fmt.Sprintf("Référence %d", n), int64(n % 2)}
+			return []any{int64(n), fmt.Sprintf("REF-%07d", n), fmt.Sprintf("Référence %d", n), n%2 == 1}
 		}
 	case ClientTable:
 		return func(n int) []any {

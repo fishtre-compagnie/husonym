@@ -29,8 +29,9 @@ const (
 	VerdictRunFailed Verdict = "run_failed"
 	// VerdictRunTimeout: the run was still going when the bench stopped waiting for it.
 	VerdictRunTimeout Verdict = "run_timeout"
-	// VerdictNotExercised: the bench settings cannot trigger what the case is about (page
-	// size too small); the case was not run and the baseline keeps its last verdict.
+	// VerdictNotExercised: the run never reached the state the case is about (a run that
+	// ended before its triggers were caught out of the way, a page that never waited on the
+	// bench); nothing was checked and the baseline keeps its last verdict.
 	VerdictNotExercised Verdict = "not_exercised"
 	// VerdictFailureExpected: the case expects the run to fail with a given message, and
 	// it completed or failed with another one.

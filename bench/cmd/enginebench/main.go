@@ -345,13 +345,6 @@ func (b *bench) runCase(ctx context.Context, c *cases.Case, execute bool) (*repo
 	caseReport := &report.CaseReport{ID: c.ID, Priority: c.Priority.String(), Title: c.Title}
 	for _, engine := range env.Engines {
 		outcome := &report.Outcome{Engine: engine}
-		if c.MinPageLimit > b.env.Params.PageLimit {
-			outcome.Verdict = report.VerdictNotExercised
-			outcome.RunStatus = fmt.Sprintf("page de %d lignes requise", c.MinPageLimit)
-			caseReport.Outcomes = append(caseReport.Outcomes, outcome)
-			b.progress(c, outcome)
-			continue
-		}
 		if execute {
 			if err := b.execute(ctx, c, engine, outcome); err != nil {
 				return nil, err
