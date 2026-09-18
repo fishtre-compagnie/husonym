@@ -24,6 +24,10 @@
       "athanor": "ok",
       "benthos": "ok"
     },
+    "fk-composite-column-order": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "fk-composite-partially-null": {
       "athanor": "ok",
       "benthos": "ok"
@@ -239,6 +243,10 @@
       "athanor": "ok",
       "benthos": "run_failed"
     },
+    "fk-composite-column-order": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "fk-composite-partially-null": {
       "athanor": "ok",
       "benthos": "ok"
@@ -296,8 +304,8 @@
       "benthos": "ok"
     },
     "on-conflict-update-unique-key": {
-      "athanor": "run_failed",
-      "benthos": "run_failed"
+      "athanor": "ok",
+      "benthos": "ok"
     },
     "page-binary16-key": {
       "athanor": "ok",

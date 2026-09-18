@@ -100,6 +100,11 @@ func destinationDiffers(id, title, runError, alter string) *Case {
 // onConflictUpdateOnUniqueKey: the destination already holds articles, some under the
 // same primary key with an old label, one under another primary key but the same unique
 // code. After an upsert the destination must hold exactly the source rows.
+//
+// On MySQL the upsert fires on any unique key, and settles both conflicts. PostgreSQL's
+// ON CONFLICT DO UPDATE names one target and settles only that one: the conflict on the
+// code has no answer a copy could give without guessing which row to keep. The run must
+// then fail on it, in the database's own words, rather than drop or merge a row silently.
 func onConflictUpdateOnUniqueKey() *Case {
 	return &Case{
 		ID:       "on-conflict-update-unique-key",
@@ -111,7 +116,10 @@ func onConflictUpdateOnUniqueKey() *Case {
 			"INSERT INTO {db}.{q:ARTICLE} ({q:id}, {q:code}, {q:libelle}) VALUES " +
 				"(1, 'C0001', 'ancien libellé'), (2, 'C0002', 'ancien libellé'), (900, 'C0003', 'même code, autre id')",
 		},
-		Job:  Job{OnConflictUpdate: true},
+		Job: Job{OnConflictUpdate: true},
+		ExpectRunError: map[schema.Dialect]string{
+			schema.Postgres: "duplicate key value violates unique constraint",
+		},
 		Seed: func(p Params, emit Emitter) { seedArticles(emit) },
 	}
 }

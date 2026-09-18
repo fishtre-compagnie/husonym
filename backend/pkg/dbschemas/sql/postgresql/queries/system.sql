@@ -693,13 +693,15 @@ SELECT
     -- Name of the table that holds the foreign key constraint
     referencing_tbl.relname AS referencing_table,
 
-    -- Array of column names in the referencing table involved in the constraint,
-    -- ordered by the column's ordinal position (attnum) to maintain the defined column order.
-    array_agg(referencing_attr.attname ORDER BY referencing_attr.attnum)::TEXT[] AS referencing_columns,
+    -- Array of column names in the referencing table involved in the constraint, in the
+    -- order the constraint declares them (conkey), which pairs each one with the column of
+    -- confkey at the same position. The order of the columns in the table (attnum) is not
+    -- that order: FOREIGN KEY (b, a) REFERENCES p (x, y) pairs b with x.
+    array_agg(referencing_attr.attname ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::TEXT[] AS referencing_columns,
 
     -- Array of boolean values indicating whether each referencing column is NOT NULL,
     -- ordered to correspond with the column names.
-    array_agg(referencing_attr.attnotnull ORDER BY referencing_attr.attnum)::BOOL[] AS not_nullable,
+    array_agg(referencing_attr.attnotnull ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::BOOL[] AS not_nullable,
 
     -- Schema of the referenced table (the table that the foreign key points to)
     referenced_schema.nspname::TEXT AS referenced_schema,
@@ -731,7 +733,7 @@ FROM
     -- Lateral join to aggregate the names of the columns in the referenced table
     LEFT JOIN LATERAL (
         SELECT
-            array_agg(referenced_attr.attname) AS foreign_column_names
+            array_agg(referenced_attr.attname ORDER BY array_position(constraint_def.confkey, referenced_attr.attnum)) AS foreign_column_names
         FROM
             pg_catalog.pg_attribute AS referenced_attr
         WHERE
@@ -764,13 +766,15 @@ SELECT
     -- Name of the table that holds the foreign key constraint
     referencing_tbl.relname AS referencing_table,
 
-    -- Array of column names in the referencing table involved in the constraint,
-    -- ordered by the column's ordinal position (attnum) to maintain the defined column order.
-    array_agg(referencing_attr.attname ORDER BY referencing_attr.attnum)::TEXT[] AS referencing_columns,
+    -- Array of column names in the referencing table involved in the constraint, in the
+    -- order the constraint declares them (conkey), which pairs each one with the column of
+    -- confkey at the same position. The order of the columns in the table (attnum) is not
+    -- that order: FOREIGN KEY (b, a) REFERENCES p (x, y) pairs b with x.
+    array_agg(referencing_attr.attname ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::TEXT[] AS referencing_columns,
 
     -- Array of boolean values indicating whether each referencing column is NOT NULL,
     -- ordered to correspond with the column names.
-    array_agg(referencing_attr.attnotnull ORDER BY referencing_attr.attnum)::BOOL[] AS not_nullable,
+    array_agg(referencing_attr.attnotnull ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::BOOL[] AS not_nullable,
 
     -- Schema of the referenced table (the table that the foreign key points to)
     referenced_schema.nspname::TEXT AS referenced_schema,
@@ -802,7 +806,7 @@ FROM
     -- Lateral join to aggregate the names of the columns in the referenced table
     LEFT JOIN LATERAL (
         SELECT
-            array_agg(referenced_attr.attname) AS foreign_column_names
+            array_agg(referenced_attr.attname ORDER BY array_position(constraint_def.confkey, referenced_attr.attnum)) AS foreign_column_names
         FROM
             pg_catalog.pg_attribute AS referenced_attr
         WHERE

@@ -16,6 +16,7 @@ func subsetForeignKeyCases() []*Case {
 		fkCycleTwoTables(),
 		fkSeveralToSameParent(),
 		fkCompositePartiallyNull(),
+		fkCompositeColumnOrder(),
 		fkVirtual(),
 		fkParentKeyCollation(),
 	}
@@ -349,6 +350,59 @@ func fkCompositePartiallyNull() *Case {
 				// Référence incomplète : ne contraint rien, y compris vers une station hors subset.
 				emit.Row("COLIS", []any{200 + n, stationKept, stationDropped, nil}, Kept())
 				emit.Row("COLIS", []any{300 + n, stationKept, stationDropped, n}, Kept("lot_station_id", "lot_numero"))
+			}
+		},
+	}
+}
+
+// fkCompositeColumnOrder: a composite key whose columns are not declared in the order
+// they stand in the table. COLIS holds lot_numero before lot_station_id, and the key pairs
+// lot_station_id with LOT.station_id and lot_numero with LOT.numero. Whatever reads the
+// key must pair the columns in the order of the constraint: pairing them in the order of
+// the table joins COLIS on numero = station_id, keeps parcels of the lot left out and
+// drops parcels of the lot kept, without an error.
+func fkCompositeColumnOrder() *Case {
+	return &Case{
+		ID:       "fk-composite-column-order",
+		Priority: P1,
+		Title:    "FK composite déclarée dans un autre ordre que les colonnes de la table",
+		Tables: []*schema.Table{
+			stationTable(),
+			{
+				Name: "LOT",
+				Columns: []schema.Column{
+					{Name: stationIDColumn, Type: schema.Int64()},
+					{Name: "numero", Type: schema.Int64()},
+				},
+				PrimaryKey:  []string{stationIDColumn, "numero"},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_lot_station", stationIDColumn, "STATION")},
+			},
+			{
+				Name: "COLIS",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "lot_numero", Type: schema.Int64()},
+					{Name: "lot_station_id", Type: schema.Int64()},
+				},
+				PrimaryKey: []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{{
+					Name: "fk_colis_lot", Columns: []string{"lot_station_id", "lot_numero"},
+					RefTable: "LOT", RefColumns: []string{stationIDColumn, "numero"},
+				}},
+			},
+		},
+		Job: subsetOnStationJob(),
+		Seed: func(p Params, emit Emitter) {
+			seedStations(emit)
+			for n := int64(1); n <= 10; n++ {
+				emit.Row("LOT", []any{stationKept, n}, Kept())
+				emit.Row("LOT", []any{stationDropped, n}, Dropped())
+			}
+			// Read the wrong way round, parcel n of either station points at lot 1 or 2 of
+			// station n: some parcels of the lot kept would go, some of the other would stay.
+			for n := int64(1); n <= 10; n++ {
+				emit.Row("COLIS", []any{n, n, stationKept}, Kept())
+				emit.Row("COLIS", []any{100 + n, n, stationDropped}, Dropped())
 			}
 		},
 	}
