@@ -595,9 +595,10 @@ func (p *PostgresManager) GetSchemaTableTriggers(
 	output := make([]*sqlmanager_shared.TableTrigger, 0, len(rows))
 	for _, row := range rows {
 		trigger := &sqlmanager_shared.TableTrigger{
-			Schema:      row.SchemaName,
-			Table:       row.TableName,
-			TriggerName: row.TriggerName,
+			Schema:       row.SchemaName,
+			Table:        row.TableName,
+			TriggerName:  row.TriggerName,
+			EnabledState: row.EnabledState,
 			Definition: wrapPgIdempotentTrigger(
 				row.SchemaName,
 				row.TableName,

@@ -121,6 +121,10 @@ type TableTrigger struct {
 	TriggerSchema *string
 	TriggerName   string
 	Definition    string
+	// EnabledState is, on PostgreSQL, when the trigger fires: O in origin and local
+	// sessions (the default), R in replica sessions only, A always, D never. Empty on the
+	// other databases, whose triggers are either there or not.
+	EnabledState string
 }
 
 func (t *TableTrigger) GetFingerprint() string {

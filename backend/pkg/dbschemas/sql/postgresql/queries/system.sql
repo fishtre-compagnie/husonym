@@ -536,7 +536,10 @@ SELECT
     n.nspname AS schema_name,
     c.relname AS table_name,
     t.tgname AS trigger_name,
-    pg_catalog.pg_get_triggerdef(t.oid, true) AS definition
+    pg_catalog.pg_get_triggerdef(t.oid, true) AS definition,
+    -- When the trigger fires: O origin and local sessions, R replica sessions only,
+    -- A always, D disabled.
+    t.tgenabled::TEXT AS enabled_state
 FROM pg_catalog.pg_trigger t
 JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace

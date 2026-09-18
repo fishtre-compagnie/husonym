@@ -162,6 +162,9 @@ type Case struct {
 	// way the database quotes — a statement every database understands is then written
 	// once.
 	DestinationSetup []string
+	// DestinationSetupFor holds the setup statements one database writes its own way — a
+	// trigger body, a function — run after DestinationSetup on that database only.
+	DestinationSetupFor map[schema.Dialect][]string
 	// DestinationGrants, when set for the database of the pass, makes the job write with a
 	// restricted account holding only these privileges instead of the administrator. {db}
 	// is replaced by the schema of the case and {user} by the account. Each database

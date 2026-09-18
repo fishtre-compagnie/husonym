@@ -24,6 +24,10 @@
       "athanor": "ok",
       "benthos": "ok"
     },
+    "destination-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "fk-composite-column-order": {
       "athanor": "ok",
       "benthos": "ok"
@@ -242,6 +246,14 @@
     "columns-generated-passthrough": {
       "athanor": "ok",
       "benthos": "run_failed"
+    },
+    "destination-replica-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "destination-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
     },
     "fk-composite-column-order": {
       "athanor": "ok",

@@ -10,6 +10,7 @@ import (
 func destinationCases() []*Case {
 	return []*Case{
 		destinationTriggerWritesSyncedTable(),
+		destinationReplicaTriggerWritesSyncedTable(),
 		// Both tell a MySQL message apart, and reorder columns, which PostgreSQL cannot.
 		destinationDiffers("destination-column-order",
 			"Destination dont les colonnes sont dans un autre ordre, avec une colonne nullable en plus",
@@ -26,13 +27,52 @@ func destinationCases() []*Case {
 // orders fires it: the history gets rows of its own, which collide with the ones copied
 // from the source or pile up next to them.
 func destinationTriggerWritesSyncedTable() *Case {
+	return triggerWritesSyncedTable("destination-trigger-writes-synced-table",
+		"Trigger en destination qui écrit dans une table elle aussi synchronisée",
+		map[schema.Dialect][]string{
+			schema.MySQL: {
+				"CREATE TRIGGER {db}.`trg_commande_histo` AFTER INSERT ON {db}.`COMMANDE` FOR EACH ROW " +
+					"INSERT INTO {db}.`COMMANDE_HISTO` (`commande_id`, `action`) VALUES (NEW.`id`, 'trigger')",
+			},
+			schema.Postgres: postgresHistoryTrigger(""),
+		})
+}
+
+// destinationReplicaTriggerWritesSyncedTable: the same trigger, set ENABLE REPLICA. It fires
+// only in a session whose replication role is replica — the very role Athanor writes a
+// page in to suspend foreign keys, and one Benthos never takes. Left to the role, it would
+// fire for one engine and not for the other.
+func destinationReplicaTriggerWritesSyncedTable() *Case {
+	c := triggerWritesSyncedTable("destination-replica-trigger-writes-synced-table",
+		"Trigger ENABLE REPLICA en destination : il ne se déclenche qu'en rôle replica",
+		map[schema.Dialect][]string{schema.Postgres: postgresHistoryTrigger("REPLICA")})
+	c.Dialects = postgresOnly
+	return c
+}
+
+// postgresHistoryTrigger logs every new order into COMMANDE_HISTO, as the MySQL trigger does:
+// PostgreSQL runs a function where MySQL runs an inline body. enable is the state it is set
+// to afterwards, "" leaving it enabled the usual way.
+func postgresHistoryTrigger(enable string) []string {
+	stmts := []string{
+		"CREATE FUNCTION {db}.{q:trg_commande_histo}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN " +
+			"INSERT INTO {db}.{q:COMMANDE_HISTO} ({q:commande_id}, {q:action}) VALUES (NEW.{q:id}, 'trigger'); " +
+			"RETURN NEW; END $$",
+		"CREATE TRIGGER {q:trg_commande_histo} AFTER INSERT ON {db}.{q:COMMANDE} FOR EACH ROW " +
+			"EXECUTE FUNCTION {db}.{q:trg_commande_histo}()",
+	}
+	if enable != "" {
+		stmts = append(stmts, "ALTER TABLE {db}.{q:COMMANDE} ENABLE "+enable+" TRIGGER {q:trg_commande_histo}")
+	}
+	return stmts
+}
+
+func triggerWritesSyncedTable(id, title string, setup map[schema.Dialect][]string) *Case {
 	return &Case{
-		ID: "destination-trigger-writes-synced-table",
-		// MySQL writes a trigger body inline, where PostgreSQL calls a function; and the
-		// two do not suspend a trigger the same way, which is what the case is about.
-		Dialects: mysqlOnly,
-		Priority: P1,
-		Title:    "Trigger en destination qui écrit dans une table elle aussi synchronisée",
+		ID:                  id,
+		Priority:            P1,
+		Title:               title,
+		DestinationSetupFor: setup,
 		Tables: []*schema.Table{
 			{
 				Name:       commandeTable,
@@ -49,10 +89,6 @@ func destinationTriggerWritesSyncedTable() *Case {
 				PrimaryKey:  []string{idColumn},
 				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_histo_commande", "commande_id", commandeTable)},
 			},
-		},
-		DestinationSetup: []string{
-			"CREATE TRIGGER {db}.`trg_commande_histo` AFTER INSERT ON {db}.`COMMANDE` FOR EACH ROW " +
-				"INSERT INTO {db}.`COMMANDE_HISTO` (`commande_id`, `action`) VALUES (NEW.`id`, 'trigger')",
 		},
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= 10; i++ {

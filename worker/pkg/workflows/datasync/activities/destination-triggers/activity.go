@@ -54,8 +54,8 @@ type RestoreTriggersResponse struct {
 	Restored int
 }
 
-// SuspendTriggers drops the triggers the destinations hold on the tables of the job, after
-// recording what creates them again in the run context of this run. RestoreTriggers reads
+// SuspendTriggers takes out of the way the triggers the destinations hold on the tables of
+// the job, after recording what puts them back in the run context of this run. RestoreTriggers reads
 // that record, so a restore running on another worker puts back exactly what was taken.
 func (a *Activity) SuspendTriggers(
 	ctx context.Context,
@@ -124,8 +124,8 @@ func (a *Activity) RestoreTriggers(
 	return response, nil
 }
 
-// suspendOne drops the triggers one destination holds on the tables of the job, and
-// returns what puts them back.
+// suspendOne takes out of the way the triggers one destination holds on the tables of
+// the job, and returns what puts them back.
 func (a *Activity) suspendOne(
 	ctx context.Context,
 	db triggerReader,
@@ -140,12 +140,12 @@ func (a *Activity) suspendOne(
 	}
 	triggers := toTriggers(driver, found)
 	for _, trigger := range triggers {
-		// Logged before dropping: a run terminated before it restores them leaves, in its
+		// Logged before suspending: a run terminated before it restores them leaves, in its
 		// own history, the statements that put them back.
 		logger.Warn("suspending a destination trigger for the time of the run",
 			"connectionId", connectionID, "trigger", trigger.Name, "table", trigger.Table,
-			"create", trigger.Create)
-		if err := db.Exec(ctx, trigger.DropStatement()); err != nil {
+			"restore", trigger.Restore)
+		if err := db.Exec(ctx, trigger.Suspend); err != nil {
 			return nil, fmt.Errorf("unable to suspend the trigger %s of %s.%s, which writes what the run writes: %w",
 				trigger.Name, trigger.Schema, trigger.Table, err)
 		}
@@ -162,9 +162,9 @@ func restoreOne(
 ) (int, error) {
 	restored := 0
 	for _, trigger := range triggers {
-		if err := db.Exec(ctx, trigger.Create); err != nil {
+		if err := db.Exec(ctx, trigger.Restore); err != nil {
 			return restored, fmt.Errorf("unable to restore the trigger %s of %s.%s: %w\n%s",
-				trigger.Name, trigger.Schema, trigger.Table, err, trigger.Create)
+				trigger.Name, trigger.Schema, trigger.Table, err, trigger.Restore)
 		}
 		logger.Info("destination trigger restored", "trigger", trigger.Name, "table", trigger.Table)
 		restored++

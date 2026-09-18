@@ -11,6 +11,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/bench/cases"
@@ -60,7 +61,7 @@ func PrepareDestination(ctx context.Context, db *sql.DB, r schema.Renderer, c *c
 	if err := CreateSchema(ctx, db, r, c); err != nil {
 		return err
 	}
-	for _, stmt := range c.DestinationSetup {
+	for _, stmt := range append(slices.Clone(c.DestinationSetup), c.DestinationSetupFor[r.Dialect()]...) {
 		stmt = renderStatement(r, c.Schema(), stmt)
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: destination setup: %w\n%s", c.ID, err, stmt)
