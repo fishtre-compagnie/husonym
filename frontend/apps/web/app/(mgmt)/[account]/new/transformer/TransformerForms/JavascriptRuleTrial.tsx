@@ -119,10 +119,10 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       <div className="space-y-0.5">
         <Label>Essayer la règle</Label>
         <div className="text-sm text-muted-foreground">
-          La règle s’exécute sur les lignes ci-dessous comme dans un job
-          Athanor : son état ne passe pas d’une ligne à la suivante. Les
-          fonctions pseudo.* dérivent ici d’une clé tirée pour l’essai : leurs
-          sorties ont la forme de celles d’un run, pas leurs valeurs.
+          La règle s’exécute sur les lignes ci-dessous comme dans un job Athanor
+          : son état ne passe pas d’une ligne à la suivante. Les fonctions
+          pseudo.* dérivent ici d’une clé tirée pour l’essai : leurs sorties ont
+          la forme de celles d’un run, pas leurs valeurs.
         </div>
       </div>
       <div className="flex flex-col gap-1">

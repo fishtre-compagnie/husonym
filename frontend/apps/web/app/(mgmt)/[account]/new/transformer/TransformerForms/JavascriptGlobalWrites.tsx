@@ -9,7 +9,9 @@ interface Props {
 // Avertit quand une règle écrit hors de ses variables : un script qui comptait garder
 // une valeur d'une ligne à la suivante (un pseudonyme déjà tiré, par exemple) ne la
 // retrouve plus, et risque de rendre la valeur source.
-export default function JavascriptGlobalWrites(props: Props): ReactElement | null {
+export default function JavascriptGlobalWrites(
+  props: Props
+): ReactElement | null {
   const { globalWrites } = props;
   if (globalWrites.length === 0) {
     return null;
