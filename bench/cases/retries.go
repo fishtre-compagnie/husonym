@@ -7,8 +7,9 @@ import (
 )
 
 // retryCases exercise the second attempt of a table sync. Both engines then rewrite the
-// page with "do nothing", which on MySQL is INSERT IGNORE: it skips rows already there,
-// and also downgrades every other error to a warning.
+// page with "do nothing". On MySQL that was once INSERT IGNORE, which skips the rows
+// already there and also downgrades every other error to a warning; the cases keep it
+// from coming back.
 func retryCases() []*Case {
 	return []*Case{
 		retryInsertIgnoreMasksTruncation(),

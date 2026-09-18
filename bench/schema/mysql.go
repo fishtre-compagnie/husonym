@@ -69,6 +69,15 @@ func (MySQLRenderer) Account(user string) string { return "'" + user + "'@'%'" }
 // is the one its connection opens.
 func (MySQLRenderer) ConnectionDatabase(_, caseSchema string) string { return caseSchema }
 
+// A MySQL trigger runs with the rights of its definer, the sql_mode and the collation it was
+// created with, and in its place among the triggers of the same event.
+func (MySQLRenderer) TriggerStateQuery() string {
+	return "SELECT CONCAT_WS(' | ', EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, " +
+		"ACTION_ORDER, DEFINER, SQL_MODE, CHARACTER_SET_CLIENT, COLLATION_CONNECTION, ACTION_STATEMENT) " +
+		"FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = ? " +
+		"ORDER BY EVENT_OBJECT_TABLE, EVENT_MANIPULATION, ACTION_TIMING, ACTION_ORDER"
+}
+
 func (r MySQLRenderer) AccountStatements(user, password string) []string {
 	return []string{
 		"DROP USER IF EXISTS " + r.Account(user),

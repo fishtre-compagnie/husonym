@@ -218,11 +218,16 @@ SELECT
     ACTION_STATEMENT AS statement,
     EVENT_MANIPULATION AS event_type,
     ACTION_ORIENTATION AS orientation,
-    ACTION_TIMING AS timing
+    ACTION_TIMING AS timing,
+    ACTION_ORDER AS action_order,
+    DEFINER AS definer,
+    SQL_MODE AS sql_mode,
+    COLLATION_CONNECTION AS collation_connection
 FROM
     information_schema.TRIGGERS
 WHERE
-    EVENT_OBJECT_SCHEMA = sqlc.arg('schema') AND EVENT_OBJECT_TABLE IN (sqlc.slice('tables'));
+    EVENT_OBJECT_SCHEMA = sqlc.arg('schema') AND EVENT_OBJECT_TABLE IN (sqlc.slice('tables'))
+ORDER BY EVENT_OBJECT_TABLE, EVENT_MANIPULATION, ACTION_TIMING, ACTION_ORDER;
 
 
 -- name: GetDatabaseTableSchemasBySchemasAndTables :many

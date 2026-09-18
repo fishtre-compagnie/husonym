@@ -106,7 +106,11 @@ create table information_schema.triggers (
   action_statement longtext not null,
   event_manipulation text not null,
   action_orientation text not null,
-  action_timing text not null
+  action_timing text not null,
+  action_order bigint not null,
+  definer text not null,
+  sql_mode text not null,
+  collation_connection text not null
 );
 
 create table information_schema.check_constraints (

@@ -16,7 +16,11 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
-const pollInterval = time.Second
+const (
+	pollInterval = time.Second
+	// stopPollInterval is how often a run waiting for a condition is looked at.
+	stopPollInterval = 100 * time.Millisecond
+)
 
 var jobEngines = map[env.Engine]mgmtv1alpha1.JobEngine{
 	env.Benthos: mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS,
@@ -234,6 +238,9 @@ type RunResult struct {
 	// TimedOut is set when the run had not finished in the time the bench gives it; it
 	// was then terminated.
 	TimedOut bool
+	// Interrupted is set when the run was terminated on purpose, as soon as the condition
+	// it was run until held.
+	Interrupted bool
 }
 
 // Succeeded reports whether the run completed.
@@ -245,6 +252,18 @@ func (r *RunResult) Succeeded() bool {
 // run still going by then is terminated and reported as timed out, not as an error of
 // the bench: an engine that retries a failing write for minutes is a finding.
 func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (*RunResult, error) {
+	return c.RunUntil(ctx, jobID, timeout, nil)
+}
+
+// RunUntil runs the job like Run, and terminates the run as soon as stop answers true —
+// the way a run stopped by hand, or whose worker is lost for good, ends. stop is asked
+// often, so that the run is caught in the state the condition describes.
+func (c *Client) RunUntil(
+	ctx context.Context,
+	jobID string,
+	timeout time.Duration,
+	stop func(context.Context) (bool, error),
+) (*RunResult, error) {
 	// The runs a job already has: the perf mode runs the same job several times, and the
 	// one being waited for is the one that was not there before.
 	previous, err := c.runIDs(ctx, jobID)
@@ -256,7 +275,11 @@ func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (
 	}
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
-	ticker := time.NewTicker(pollInterval)
+	interval := pollInterval
+	if stop != nil {
+		interval = stopPollInterval
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	var lastSeen *mgmtv1alpha1.JobRun
 	for {
@@ -264,7 +287,12 @@ func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (
 		case <-ctx.Done():
 			return nil, fmt.Errorf("orchestrate: run of %s: %w", jobID, ctx.Err())
 		case <-deadline.C:
-			return c.terminate(ctx, jobID, lastSeen, timeout)
+			result, err := c.terminate(ctx, jobID, lastSeen, timeout)
+			if err != nil {
+				return nil, err
+			}
+			result.TimedOut = true
+			return result, nil
 		case <-ticker.C:
 		}
 		run, err := c.newRun(ctx, jobID, previous)
@@ -273,6 +301,20 @@ func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (
 		}
 		if run != nil {
 			lastSeen = run
+		}
+		if run != nil && !isFinal(run.GetStatus()) && stop != nil {
+			stopped, err := stop(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if stopped {
+				result, err := c.terminate(ctx, jobID, run, timeout)
+				if err != nil {
+					return nil, err
+				}
+				result.Interrupted = true
+				return result, nil
+			}
 		}
 		if run == nil || !isFinal(run.GetStatus()) {
 			continue
@@ -291,8 +333,7 @@ func (c *Client) Run(ctx context.Context, jobID string, timeout time.Duration) (
 	}
 }
 
-// terminate stops a run that outlived the time the bench gives it, and keeps the errors
-// it was retrying on.
+// terminate stops a run, and keeps the errors it was retrying on.
 func (c *Client) terminate(
 	ctx context.Context,
 	jobID string,
@@ -311,7 +352,7 @@ func (c *Client) terminate(
 	if err != nil {
 		return nil, err
 	}
-	return &RunResult{RunID: run.GetId(), Status: run.GetStatus(), Duration: timeout, Errors: errs, TimedOut: true}, nil
+	return &RunResult{RunID: run.GetId(), Status: run.GetStatus(), Duration: timeout, Errors: errs}, nil
 }
 
 // newRun returns the run of a job that is not among the ones it already had, or nil while

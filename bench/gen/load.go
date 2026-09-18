@@ -57,13 +57,23 @@ func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.C
 
 // PrepareDestination creates the empty schema of a case on a destination server, then
 // applies what the case adds to a destination (triggers…).
+//
+// The setup statements run in order on one session, thrown away afterwards: a setting one
+// of them makes — the sql_mode a trigger is created under — holds for the next ones and
+// reaches no other statement of the bench.
 func PrepareDestination(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
 	if err := CreateSchema(ctx, db, r, c); err != nil {
 		return err
 	}
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("gen: %s: %w", c.ID, err)
+	}
+	defer conn.Close()
+	defer func() { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }()
 	for _, stmt := range append(slices.Clone(c.DestinationSetup), c.DestinationSetupFor[r.Dialect()]...) {
 		stmt = renderStatement(r, c.Schema(), stmt)
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: destination setup: %w\n%s", c.ID, err, stmt)
 		}
 	}

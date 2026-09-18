@@ -61,7 +61,7 @@ func Register(
 	redisCleanUpActivity := syncrediscleanup_activity.New(redisclient)
 	referentialIntegrityActivity := referentialintegrity_activity.New(jobclient, connclient, sqlmanager)
 	runPrivilegesActivity := runprivileges_activity.New(jobclient, connclient, sqlmanager, sqlconnmanager, athanor)
-	destinationTriggersActivity := destinationtriggers_activity.New(jobclient, connclient, sqlmanager)
+	destinationTriggersActivity := destinationtriggers_activity.New(jobclient, connclient, sqlmanager, sqlconnmanager)
 
 	wf := datasync_workflow.New(eelicense)
 

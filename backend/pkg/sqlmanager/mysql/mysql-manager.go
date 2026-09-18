@@ -1243,6 +1243,16 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 					row.Orientation,
 					row.Statement,
 				),
+				Mysql: &sqlmanager_shared.MysqlTrigger{
+					Timing:              row.Timing,
+					Event:               row.EventType,
+					Orientation:         row.Orientation,
+					Statement:           row.Statement,
+					ActionOrder:         row.ActionOrder,
+					Definer:             row.Definer,
+					SqlMode:             row.SqlMode,
+					CollationConnection: row.CollationConnection,
+				},
 			}
 			trigger.Fingerprint = sqlmanager_shared.BuildTriggerFingerprint(trigger)
 			output = append(output, trigger)
@@ -1582,7 +1592,8 @@ CREATE TRIGGER IF NOT EXISTS %s.%s
 %s %s ON %s.%s
 FOR EACH %s
 %s;
-`, triggerSchema, triggerName, timing, event_type, EscapeMysqlColumn(schema), EscapeMysqlColumn(tableName), orientation, actionStmt)
+`, EscapeMysqlColumn(triggerSchema), EscapeMysqlColumn(triggerName), timing, event_type,
+		EscapeMysqlColumn(schema), EscapeMysqlColumn(tableName), orientation, actionStmt)
 	return strings.TrimSpace(stmt)
 }
 
@@ -1671,8 +1682,9 @@ func EscapeMysqlColumns(cols []string) []string {
 	return outcols
 }
 
+// EscapeMysqlColumn quotes an identifier: a backtick inside it is doubled, as MySQL reads it.
 func EscapeMysqlColumn(col string) string {
-	return fmt.Sprintf("`%s`", col)
+	return "`" + strings.ReplaceAll(col, "`", "``") + "`"
 }
 
 func EscapeMysqlDefaultColumn(

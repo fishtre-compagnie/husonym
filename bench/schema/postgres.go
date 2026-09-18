@@ -91,6 +91,16 @@ func (r PostgresRenderer) Account(user string) string { return r.QuoteIdent(user
 // Every case is a schema of the same database, which is the one every account connects to.
 func (PostgresRenderer) ConnectionDatabase(benchDatabase, _ string) string { return benchDatabase }
 
+// A PostgreSQL trigger is its definition and the sessions it fires in (tgenabled). The
+// triggers enforcing foreign keys are internal and left out.
+func (PostgresRenderer) TriggerStateQuery() string {
+	return "SELECT c.relname || ' | ' || t.tgname || ' | ' || t.tgenabled::text || ' | ' || pg_get_triggerdef(t.oid) " +
+		"FROM pg_catalog.pg_trigger t " +
+		"JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid " +
+		"JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace " +
+		"WHERE n.nspname = $1 AND NOT t.tgisinternal ORDER BY 1"
+}
+
 func (r PostgresRenderer) AccountStatements(user, password string) []string {
 	return []string{
 		// What a role still holds refuses its drop, and DROP OWNED BY refuses a role that

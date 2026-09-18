@@ -179,6 +179,11 @@ type Case struct {
 	// databases refuse the same thing in their own words; a database the map does not name
 	// expects the run to complete.
 	ExpectRunError map[schema.Dialect]string
+	// InterruptedRunFirst runs the job a first time and terminates that run as soon as the
+	// destination triggers are out of its way: a run stopped by hand, or whose worker is
+	// lost for good, puts nothing back. The run verified is the next one, which starts from
+	// what the first left.
+	InterruptedRunFirst bool
 	// FailingEngines, when set, are the only engines expected to hit ExpectRunError; the
 	// others must complete and are verified like any case. It is for what one engine needs
 	// and the other does not: a check that stops Athanor must not stop Benthos with it.

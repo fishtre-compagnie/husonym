@@ -35,8 +35,12 @@ import (
 
 var errRegressions = errors.New("cases did worse than the baseline")
 
-// idleConnections is the default of database/sql, restored after the idle pool is emptied.
-const idleConnections = 2
+const (
+	// idleConnections is the default of database/sql, restored after the idle pool is emptied.
+	idleConnections = 2
+	// interruptedActivityGrace is what the activity of a terminated run is left to end in.
+	interruptedActivityGrace = 3 * time.Second
+)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -354,6 +358,13 @@ func (b *bench) runCase(ctx context.Context, c *cases.Case, execute bool) (*repo
 				outcome.Verdict = report.VerdictGap
 			}
 		}
+		// A run failing as expected must leave the triggers as they were all the same.
+		if len(outcome.TriggerChanges) > 0 {
+			outcome.Gaps += len(outcome.TriggerChanges)
+			if outcome.Verdict == report.VerdictOK {
+				outcome.Verdict = report.VerdictGap
+			}
+		}
 		caseReport.Outcomes = append(caseReport.Outcomes, outcome)
 		b.progress(c, outcome)
 	}
@@ -366,9 +377,12 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	if err := gen.PrepareDestination(ctx, b.dests[engine], b.renderer, c); err != nil {
 		return err
 	}
+	triggersBefore, err := verify.Triggers(ctx, b.dests[engine], b.renderer, c.Schema())
+	if err != nil {
+		return err
+	}
 	destConn := b.destConns[engine]
 	if len(c.DestinationGrants[b.env.Dialect]) > 0 {
-		var err error
 		if destConn, err = b.restrictedDestination(ctx, c, engine); err != nil {
 			return err
 		}
@@ -376,6 +390,23 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	jobID, err := b.client.CreateJob(ctx, b.env.Dialect, c, engine, b.sourceConn, destConn, b.runTag)
 	if err != nil {
 		return err
+	}
+	if c.InterruptedRunFirst {
+		first, err := b.client.RunUntil(ctx, jobID, b.runTimeout, func(ctx context.Context) (bool, error) {
+			now, err := verify.Triggers(ctx, b.dests[engine], b.renderer, c.Schema())
+			return len(verify.TriggerChanges(triggersBefore, now)) > 0, err
+		})
+		if err != nil {
+			return err
+		}
+		if !first.Interrupted {
+			outcome.Verdict = report.VerdictNotExercised
+			outcome.RunStatus = "le premier run a fini sans être surpris triggers retirés"
+			return nil
+		}
+		// Terminating a run does not stop the activity it was running: it goes on until
+		// it ends, on its own. Its page is small and written in well under this.
+		time.Sleep(interruptedActivityGrace)
 	}
 	result, err := b.client.Run(ctx, jobID, b.runTimeout)
 	if err != nil {
@@ -392,6 +423,11 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 				"start it with `make bench/up`, or set BENCH_PAGE_LIMIT", pageLimit, b.env.Params.PageLimit)
 		}
 	}
+	triggersAfter, err := verify.Triggers(ctx, b.dests[engine], b.renderer, c.Schema())
+	if err != nil {
+		return err
+	}
+	outcome.TriggerChanges = verify.TriggerChanges(triggersBefore, triggersAfter)
 	outcome.RunStatus = strings.TrimPrefix(result.Status.String(), "JOB_RUN_STATUS_")
 	outcome.DurationMs = result.Duration.Milliseconds()
 	outcome.Errors = result.Errors

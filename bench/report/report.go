@@ -55,6 +55,9 @@ type Outcome struct {
 	DurationMs   int64          `json:"durationMs"`
 	Errors       []string       `json:"errors,omitempty"`
 	Verification *verify.Result `json:"verification,omitempty"`
+	// TriggerChanges are what the run left different among the destination triggers, which
+	// it must leave as it found them whether it succeeds or fails.
+	TriggerChanges []string `json:"triggerChanges,omitempty"`
 }
 
 // CaseReport gathers the outcomes of one case.
@@ -162,6 +165,9 @@ func (r *Report) Markdown() string {
 			}
 			if o.Verification != nil {
 				writeVerification(&b, o.Verification)
+			}
+			for _, change := range o.TriggerChanges {
+				fmt.Fprintf(&b, "- %s\n", strings.ReplaceAll(change, "`", "'"))
 			}
 			b.WriteString("\n")
 		}

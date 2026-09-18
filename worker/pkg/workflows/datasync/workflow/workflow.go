@@ -209,8 +209,23 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		return nil, err
 	}
 
-	err = suspendDestinationTriggers(ctx, logger, req.JobId, info.WorkflowExecution.ID,
-		actOptResp.AccountId, bcResp.BenthosConfigs)
+	// Version 2 puts the triggers back on every way out of the run, not only on success.
+	triggersVersion := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 2)
+	triggersRestored := false
+	if triggersVersion >= 2 {
+		defer func() {
+			if triggersRestored {
+				return
+			}
+			// The run is failing or canceled: its context may be done already.
+			detachedCtx, _ := workflow.NewDisconnectedContext(ctx)
+			if err := restoreDestinationTriggers(detachedCtx, logger, triggersVersion, req.JobId, actOptResp.AccountId); err != nil {
+				logger.Error("destination triggers could not be restored on the way out of the run: "+
+					"the next run of the job will put them back", "error", err)
+			}
+		}()
+	}
+	err = suspendDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId, bcResp.BenthosConfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +521,8 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		return nil, err
 	}
 
-	err = restoreDestinationTriggers(ctx, logger, req.JobId, info.WorkflowExecution.ID, actOptResp.AccountId)
+	triggersRestored = true
+	err = restoreDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId)
 	if err != nil {
 		return nil, err
 	}
@@ -697,10 +713,10 @@ func runPrivilegeCheck(ctx workflow.Context, logger log.Logger, jobId string) er
 func suspendDestinationTriggers(
 	ctx workflow.Context,
 	logger log.Logger,
-	jobId, jobRunId, accountId string,
+	version workflow.Version,
+	jobId, accountId string,
 	configs []*benthosbuilder.BenthosConfigResponse,
 ) error {
-	version := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 1)
 	if version == workflow.DefaultVersion {
 		return nil
 	}
@@ -725,9 +741,7 @@ func suspendDestinationTriggers(
 			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2},
 		}),
 		triggersActivity.SuspendTriggers,
-		&destinationtriggers_activity.SuspendTriggersRequest{
-			JobId: jobId, JobRunId: jobRunId, AccountId: accountId, Tables: tables,
-		},
+		&destinationtriggers_activity.SuspendTriggersRequest{JobId: jobId, AccountId: accountId, Tables: tables},
 	).Get(ctx, &resp)
 	if err != nil {
 		return err
@@ -738,15 +752,14 @@ func suspendDestinationTriggers(
 	return nil
 }
 
-// restoreDestinationTriggers puts back what the run took out of its way. A run that fails
-// or is terminated before this leaves them dropped: the statements that create them again
-// are in the history of the run, and in its run context.
+// restoreDestinationTriggers puts back what the job has out of its way: what this run took,
+// and what an earlier run of the job stopped before putting back.
 func restoreDestinationTriggers(
 	ctx workflow.Context,
 	logger log.Logger,
-	jobId, jobRunId, accountId string,
+	version workflow.Version,
+	jobId, accountId string,
 ) error {
-	version := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 1)
 	if version == workflow.DefaultVersion {
 		return nil
 	}
@@ -758,9 +771,7 @@ func restoreDestinationTriggers(
 			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
 		}),
 		triggersActivity.RestoreTriggers,
-		&destinationtriggers_activity.RestoreTriggersRequest{
-			JobId: jobId, JobRunId: jobRunId, AccountId: accountId,
-		},
+		&destinationtriggers_activity.RestoreTriggersRequest{JobId: jobId, AccountId: accountId},
 	).Get(ctx, &resp)
 	if err != nil {
 		return err

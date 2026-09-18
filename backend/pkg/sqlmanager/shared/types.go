@@ -125,6 +125,26 @@ type TableTrigger struct {
 	// sessions (the default), R in replica sessions only, A always, D never. Empty on the
 	// other databases, whose triggers are either there or not.
 	EnabledState string
+	// Mysql is, on MySQL, the parts of the trigger and what it was created with. Definition
+	// does not carry the latter: a trigger created again without them runs with the rights
+	// of another account, under another sql_mode, or in another place among the triggers
+	// of its event. Nil on the other databases.
+	Mysql *MysqlTrigger
+}
+
+// MysqlTrigger is a MySQL trigger as information_schema.TRIGGERS describes it.
+type MysqlTrigger struct {
+	Timing      string // BEFORE, AFTER
+	Event       string // INSERT, UPDATE, DELETE
+	Orientation string // ROW
+	Statement   string
+	// ActionOrder is the place of the trigger among those of the same table, event and
+	// timing, from 1.
+	ActionOrder int64
+	// Definer is the account the trigger runs as, user@host.
+	Definer             string
+	SqlMode             string
+	CollationConnection string
 }
 
 func (t *TableTrigger) GetFingerprint() string {

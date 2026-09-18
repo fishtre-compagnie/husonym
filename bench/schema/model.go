@@ -211,4 +211,9 @@ type Renderer interface {
 	// ConnectionDatabase is the database a restricted account opens the destination with:
 	// the case itself where a case is a database, the bench database where it is a schema.
 	ConnectionDatabase(benchDatabase, caseSchema string) string
+	// TriggerStateQuery takes the container of a case as its only parameter and returns one
+	// text row per trigger, in a stable order, holding everything that makes the trigger
+	// what it is: its definition, whether it fires, and what it was created with. Two reads
+	// are equal only when the triggers are.
+	TriggerStateQuery() string
 }
