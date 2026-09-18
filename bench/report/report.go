@@ -13,6 +13,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/bench/cases"
 	"github.com/fishtre-compagnie/husonym/bench/env"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 	"github.com/fishtre-compagnie/husonym/bench/verify"
 )
 
@@ -65,12 +66,13 @@ type CaseReport struct {
 	Outcomes   []*Outcome     `json:"outcomes"`
 }
 
-// Report is one bench run.
+// Report is one bench run, on one database.
 type Report struct {
-	Date   time.Time     `json:"date"`
-	Commit string        `json:"commit"`
-	Params cases.Params  `json:"params"`
-	Cases  []*CaseReport `json:"cases"`
+	Date    time.Time      `json:"date"`
+	Commit  string         `json:"commit"`
+	Dialect schema.Dialect `json:"dialect"`
+	Params  cases.Params   `json:"params"`
+	Cases   []*CaseReport  `json:"cases"`
 }
 
 // Write stores report.json and report.md in dir.
@@ -96,8 +98,8 @@ func (r *Report) Write(dir string) error {
 func (r *Report) Markdown() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Banc d'essai des moteurs\n\n")
-	fmt.Fprintf(&b, "- Date : %s\n- Commit : `%s`\n- Taille de page : %d · échelle : %d\n\n",
-		r.Date.Format("2006-01-02 15:04:05"), r.Commit, r.Params.PageLimit, r.Params.Scale)
+	fmt.Fprintf(&b, "- Date : %s\n- Commit : `%s`\n- SGBD : %s\n- Taille de page : %d · échelle : %d\n\n",
+		r.Date.Format("2006-01-02 15:04:05"), r.Commit, r.Dialect, r.Params.PageLimit, r.Params.Scale)
 
 	b.WriteString("## Synthèse\n\n| Priorité | Moteur | OK | Écart | Échec du run | Run sans fin | Échec attendu absent | Non exercé |\n" +
 		"|---|---|---|---|---|---|---|---|\n")

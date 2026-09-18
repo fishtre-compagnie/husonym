@@ -149,7 +149,9 @@ func run(args []string, execute bool) error {
 	}
 
 	commit := gitCommit(ctx)
-	r := &report.Report{Date: started, Commit: commit, Params: b.env.Params, Cases: reports}
+	r := &report.Report{
+		Date: started, Commit: commit, Dialect: b.env.Dialect, Params: b.env.Params, Cases: reports,
+	}
 	dir := filepath.Join(*outDir, started.Format("20060102-150405")+"-"+commit)
 	if err := r.Write(dir); err != nil {
 		return err
@@ -199,9 +201,13 @@ func newBench(ctx context.Context, execute bool) (*bench, error) {
 	if err != nil {
 		return nil, err
 	}
+	renderer, err := schema.RendererFor(environment.Dialect)
+	if err != nil {
+		return nil, err
+	}
 	b := &bench{
 		env:       environment,
-		renderer:  schema.MySQLRenderer{},
+		renderer:  renderer,
 		dests:     map[env.Engine]*sql.DB{},
 		destConns: map[env.Engine]string{},
 		runTag:    time.Now().Format("20060102-150405"),

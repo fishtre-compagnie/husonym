@@ -9,12 +9,16 @@ import (
 	"sort"
 
 	"github.com/fishtre-compagnie/husonym/bench/env"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
 // Baseline lists the known gaps: the verdict of every case on every engine the last
 // time the baseline was recorded. Fixing an engine empties it; the bench fails when a
 // case does worse than its baseline, and a case missing from it must be OK.
-type Baseline map[string]map[env.Engine]Verdict
+//
+// Verdicts are recorded per database first: the same case says different things on
+// MySQL and on PostgreSQL, and one must never be compared with, or overwrite, the other.
+type Baseline map[schema.Dialect]map[string]map[env.Engine]Verdict
 
 // ReadBaseline loads the baseline, empty when the file does not exist yet.
 func ReadBaseline(path string) (Baseline, error) {
@@ -32,15 +36,20 @@ func ReadBaseline(path string) (Baseline, error) {
 	return baseline, nil
 }
 
-// Merge records the verdicts of a report, keeping the cases the report did not run.
+// Merge records the verdicts of a report, keeping the cases the report did not run and
+// the databases it does not concern.
 func (b Baseline) Merge(r *Report) {
+	if b[r.Dialect] == nil {
+		b[r.Dialect] = map[string]map[env.Engine]Verdict{}
+	}
+	known := b[r.Dialect]
 	for _, c := range r.Cases {
-		if b[c.ID] == nil {
-			b[c.ID] = map[env.Engine]Verdict{}
+		if known[c.ID] == nil {
+			known[c.ID] = map[env.Engine]Verdict{}
 		}
 		for _, o := range c.Outcomes {
 			if o.Verdict != VerdictNotExercised {
-				b[c.ID][o.Engine] = o.Verdict
+				known[c.ID][o.Engine] = o.Verdict
 			}
 		}
 	}
@@ -63,13 +72,14 @@ func (b Baseline) Write(path string) error {
 // regression of the baseline, but it shows in the report.
 func (b Baseline) Regressions(r *Report) []string {
 	var regressions []string
+	known := b[r.Dialect]
 	for _, c := range r.Cases {
 		for _, o := range c.Outcomes {
 			if o.Verdict == VerdictOK || o.Verdict == VerdictNotExercised {
 				continue
 			}
-			known, recorded := b[c.ID][o.Engine]
-			if !recorded || known == VerdictOK {
+			recordedVerdict, recorded := known[c.ID][o.Engine]
+			if !recorded || recordedVerdict == VerdictOK {
 				regressions = append(regressions, fmt.Sprintf("%s sur %s : %s", c.ID, o.Engine, verdictLabels[o.Verdict]))
 			}
 		}

@@ -7,13 +7,6 @@
 // which are exactly the ones the bench needs to exercise.
 package schema
 
-// Dialect names a database the bench can create tables in.
-type Dialect string
-
-const (
-	MySQL Dialect = "mysql"
-)
-
 // Kind is a database-neutral column type.
 type Kind int
 
