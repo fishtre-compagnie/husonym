@@ -14,13 +14,43 @@ func (MySQLRenderer) QuoteIdent(name string) string {
 	return "`" + strings.ReplaceAll(name, "`", "``") + "`"
 }
 
-func (r MySQLRenderer) CreateTable(database string, t *Table) (string, error) {
+func (MySQLRenderer) Placeholder(int) string { return "?" }
+
+func (MySQLRenderer) ExactCollation() string { return "utf8mb4_bin" }
+
+// MySQL prints every value as text over the wire, so a column is read as it is. HEX
+// answers in upper case, which the canonical form writes in lower case.
+func (r MySQLRenderer) ReadExpr(column string, binary bool) string {
+	quoted := r.QuoteIdent(column)
+	if binary {
+		return "CONCAT('x''', LOWER(HEX(" + quoted + ")), '''')"
+	}
+	return quoted
+}
+
+// MySQL: a case lives in a database of its own.
+func (r MySQLRenderer) CreateContainerStatements(container string) []string {
+	return []string{
+		"DROP DATABASE IF EXISTS " + r.QuoteIdent(container),
+		"CREATE DATABASE " + r.QuoteIdent(container),
+	}
+}
+
+func (r MySQLRenderer) EnsureContainerStatement(container string) string {
+	return "CREATE DATABASE IF NOT EXISTS " + r.QuoteIdent(container)
+}
+
+func (MySQLRenderer) LoadSessionStatements() []string {
+	return []string{"SET FOREIGN_KEY_CHECKS=0"}
+}
+
+func (r MySQLRenderer) CreateTable(database string, t *Table) ([]string, error) {
 	lines := make([]string, 0, len(t.Columns)+len(t.Indexes)+1)
 	for i := range t.Columns {
 		col := &t.Columns[i]
 		typ, err := r.columnType(col.Type)
 		if err != nil {
-			return "", fmt.Errorf("schema: %s.%s: %w", t.Name, col.Name, err)
+			return nil, fmt.Errorf("schema: %s.%s: %w", t.Name, col.Name, err)
 		}
 		line := r.QuoteIdent(col.Name) + " " + typ
 		if col.Collation != "" {
@@ -66,7 +96,7 @@ func (r MySQLRenderer) CreateTable(database string, t *Table) (string, error) {
 	if t.Options != "" {
 		create += " " + t.Options
 	}
-	return create, nil
+	return []string{create}, nil
 }
 
 func (r MySQLRenderer) AddForeignKeys(database string, t *Table) []string {

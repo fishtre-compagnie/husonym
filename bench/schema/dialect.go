@@ -6,11 +6,12 @@ import "fmt"
 type Dialect string
 
 const (
-	MySQL Dialect = "mysql"
+	MySQL    Dialect = "mysql"
+	Postgres Dialect = "postgres"
 )
 
 // Dialects lists the databases the bench can create tables in, in report order.
-var Dialects = []Dialect{MySQL}
+var Dialects = []Dialect{MySQL, Postgres}
 
 // ParseDialect returns the dialect named s.
 func ParseDialect(s string) (Dialect, error) {
@@ -27,6 +28,8 @@ func RendererFor(d Dialect) (Renderer, error) {
 	switch d {
 	case MySQL:
 		return MySQLRenderer{}, nil
+	case Postgres:
+		return PostgresRenderer{}, nil
 	default:
 		return nil, fmt.Errorf("schema: no renderer for dialect %q", d)
 	}

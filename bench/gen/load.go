@@ -19,27 +19,25 @@ import (
 
 const (
 	insertBatchRows = 1000
-	mysqlMaxParams  = 65535
-	disableFkChecks = "SET FOREIGN_KEY_CHECKS=0"
+	// maxParams is the number of bound parameters MySQL and PostgreSQL take in one
+	// statement.
+	maxParams = 65535
 )
 
-// CreateSchema drops and recreates the database of a case, with its tables and declared
+// CreateSchema drops and recreates the schema of a case, with its tables and declared
 // foreign keys, empty. It prepares a destination, and the source before it is loaded.
 func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
-	database := c.Database()
-	stmts := []string{
-		"DROP DATABASE IF EXISTS " + r.QuoteIdent(database),
-		"CREATE DATABASE " + r.QuoteIdent(database),
-	}
+	container := c.Schema()
+	stmts := r.CreateContainerStatements(container)
 	for _, t := range c.Tables {
-		create, err := r.CreateTable(database, t)
+		create, err := r.CreateTable(container, t)
 		if err != nil {
 			return err
 		}
-		stmts = append(stmts, create)
+		stmts = append(stmts, create...)
 	}
 	for _, t := range c.Tables {
-		stmts = append(stmts, r.AddForeignKeys(database, t)...)
+		stmts = append(stmts, r.AddForeignKeys(container, t)...)
 	}
 	for _, stmt := range stmts {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
@@ -49,14 +47,14 @@ func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.C
 	return nil
 }
 
-// PrepareDestination creates the empty database of a case on a destination server, then
+// PrepareDestination creates the empty schema of a case on a destination server, then
 // applies what the case adds to a destination (triggers…).
 func PrepareDestination(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
 	if err := CreateSchema(ctx, db, r, c); err != nil {
 		return err
 	}
 	for _, stmt := range c.DestinationSetup {
-		stmt = strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(c.Database()))
+		stmt = strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(c.Schema()))
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: destination setup: %w\n%s", c.ID, err, stmt)
 		}
@@ -89,10 +87,13 @@ func LoadSource(
 	defer conn.Close()
 	// The connection is closed for good once loaded, so its session settings die with it.
 	defer func() { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }()
-	if _, err := conn.ExecContext(ctx, disableFkChecks); err != nil {
-		return nil, fmt.Errorf("gen: %s: %w", c.ID, err)
+	for _, stmt := range r.LoadSessionStatements() {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			return nil, fmt.Errorf("gen: %s: %w\n%s", c.ID, err, stmt)
+		}
 	}
-	if c.SourceSQLMode != "" {
+	// sql_mode is what MySQL once let legacy values in with; no other database has it.
+	if c.SourceSQLMode != "" && r.Dialect() == schema.MySQL {
 		if _, err := conn.ExecContext(ctx, "SET SESSION sql_mode = ?", c.SourceSQLMode); err != nil {
 			return nil, fmt.Errorf("gen: %s: %w", c.ID, err)
 		}
@@ -111,7 +112,7 @@ func LoadSource(
 	if l.err != nil {
 		return nil, fmt.Errorf("gen: %s: %w", c.ID, l.err)
 	}
-	if err := l.expect.Store(ctx, db, c.ColumnRules()); err != nil {
+	if err := l.expect.Store(ctx, db, r, c.ColumnRules()); err != nil {
 		return nil, err
 	}
 	return l.counts, nil
@@ -176,17 +177,20 @@ func (l *loader) flush(table string) {
 	for i, idx := range writable {
 		quoted[i] = l.renderer.QuoteIdent(t.Columns[idx].Name)
 	}
-	tuple := "(" + strings.TrimSuffix(strings.Repeat("?,", len(writable)), ",") + ")"
-	//nolint:gosec // identifiers come from the case definitions and are quoted
-	query := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s",
-		l.renderer.QuoteIdent(l.c.Database()), l.renderer.QuoteIdent(table), strings.Join(quoted, ", "),
-		strings.TrimSuffix(strings.Repeat(tuple+",", len(rows)), ","))
+	tuples := make([]string, len(rows))
 	args := make([]any, 0, len(rows)*len(writable))
-	for _, row := range rows {
-		for _, idx := range writable {
+	for r, row := range rows {
+		marks := make([]string, len(writable))
+		for i, idx := range writable {
+			marks[i] = l.renderer.Placeholder(len(args) + 1)
 			args = append(args, row[idx])
 		}
+		tuples[r] = "(" + strings.Join(marks, ",") + ")"
 	}
+	//nolint:gosec // identifiers come from the case definitions and are quoted
+	query := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s",
+		l.renderer.QuoteIdent(l.c.Schema()), l.renderer.QuoteIdent(table), strings.Join(quoted, ", "),
+		strings.Join(tuples, ","))
 	if _, err := l.conn.ExecContext(l.ctx, query, args...); err != nil {
 		l.err = fmt.Errorf("insert into %s: %w", table, err)
 	}
@@ -194,7 +198,7 @@ func (l *loader) flush(table string) {
 }
 
 func maxRowsPerInsert(columns int) int {
-	return min(insertBatchRows, mysqlMaxParams/columns)
+	return min(insertBatchRows, maxParams/columns)
 }
 
 // RowKey returns the oracle key of a row given in column order, from the identity

@@ -134,7 +134,7 @@ func (r *Runner) measure(
 	if measure.Rows, err = r.tableCounts(ctx, r.Dests[engine], dataset); err != nil {
 		return nil, err
 	}
-	if pageLimit, err := r.Client.PlanPageLimit(ctx, result.RunID, dataset.Database(), CommandeTable); err == nil {
+	if pageLimit, err := r.Client.PlanPageLimit(ctx, result.RunID, dataset.Schema(), CommandeTable); err == nil {
 		measure.PageLimit = pageLimit
 	}
 	return measure, nil
@@ -146,7 +146,7 @@ func (r *Runner) tableCounts(ctx context.Context, db *sql.DB, dataset *cases.Cas
 	for _, t := range dataset.Tables {
 		//nolint:gosec // identifiers come from the dataset and are quoted
 		query := fmt.Sprintf("SELECT COUNT(*) FROM %s.%s",
-			r.Renderer.QuoteIdent(dataset.Database()), r.Renderer.QuoteIdent(t.Name))
+			r.Renderer.QuoteIdent(dataset.Schema()), r.Renderer.QuoteIdent(t.Name))
 		var n int
 		if err := db.QueryRowContext(ctx, query).Scan(&n); err != nil {
 			return nil, fmt.Errorf("perf: count of %s: %w", t.Name, err)

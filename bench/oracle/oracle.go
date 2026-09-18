@@ -16,24 +16,34 @@ import (
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/bench/cases"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
-// Database is the name of the oracle database on the source server.
-const Database = "bench_oracle"
+// Schema is the name of the oracle schema on the source server.
+const Schema = "bench_oracle"
 
 const maxReadableKey = 190
 
-var ddl = []string{
-	"CREATE DATABASE IF NOT EXISTS `" + Database + "`",
-	"CREATE TABLE IF NOT EXISTS `" + Database + "`.`expected_rows` (" +
-		"case_id VARCHAR(80) NOT NULL, table_name VARCHAR(64) NOT NULL, " +
-		"row_key VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, occurrences INT NOT NULL, " +
-		"verdict ENUM('kept','dropped') NOT NULL, null_columns JSON NOT NULL, " +
-		"PRIMARY KEY (case_id, table_name, row_key)) ENGINE=InnoDB",
-	"CREATE TABLE IF NOT EXISTS `" + Database + "`.`expected_columns` (" +
-		"case_id VARCHAR(80) NOT NULL, table_name VARCHAR(64) NOT NULL, " +
-		"column_name VARCHAR(64) NOT NULL, rule VARCHAR(40) NOT NULL, " +
-		"PRIMARY KEY (case_id, table_name, column_name, rule)) ENGINE=InnoDB",
+// ddl creates the two oracle tables. Types are the ones every database spells the same
+// way: the expectation is read back as text and decoded in Go, so nothing is gained by
+// asking a database for a JSON or an enumerated column here.
+func ddl(r schema.Renderer) []string {
+	return []string{
+		r.EnsureContainerStatement(Schema),
+		"CREATE TABLE IF NOT EXISTS " + table(r, "expected_rows") + " (" +
+			"case_id varchar(80) NOT NULL, table_name varchar(64) NOT NULL, " +
+			"row_key varchar(255) COLLATE " + r.ExactCollation() + " NOT NULL, occurrences int NOT NULL, " +
+			"verdict varchar(10) NOT NULL, null_columns text NOT NULL, " +
+			"PRIMARY KEY (case_id, table_name, row_key))",
+		"CREATE TABLE IF NOT EXISTS " + table(r, "expected_columns") + " (" +
+			"case_id varchar(80) NOT NULL, table_name varchar(64) NOT NULL, " +
+			"column_name varchar(64) NOT NULL, rule varchar(40) NOT NULL, " +
+			"PRIMARY KEY (case_id, table_name, column_name, rule))",
+	}
+}
+
+func table(r schema.Renderer, name string) string {
+	return r.QuoteIdent(Schema) + "." + r.QuoteIdent(name)
 }
 
 // RowKey identifies a row from the canonical text of its identity values (see
@@ -113,10 +123,15 @@ func (w *Writer) Add(table, key string, expect cases.RowExpect) error {
 }
 
 // Store replaces the stored expectation of the case.
-func (w *Writer) Store(ctx context.Context, db *sql.DB, columnRules map[string]map[string][]cases.Rule) error {
-	for _, stmt := range ddl {
+func (w *Writer) Store(
+	ctx context.Context,
+	db *sql.DB,
+	r schema.Renderer,
+	columnRules map[string]map[string][]cases.Rule,
+) error {
+	for _, stmt := range ddl(r) {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("oracle: %w", err)
+			return fmt.Errorf("oracle: %w\n%s", err, stmt)
 		}
 	}
 	tx, err := db.BeginTx(ctx, nil)
@@ -125,25 +140,25 @@ func (w *Writer) Store(ctx context.Context, db *sql.DB, columnRules map[string]m
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	for _, stmt := range []string{
-		"DELETE FROM `" + Database + "`.`expected_rows` WHERE case_id = ?",
-		"DELETE FROM `" + Database + "`.`expected_columns` WHERE case_id = ?",
-	} {
+	for _, name := range []string{"expected_rows", "expected_columns"} {
+		//nolint:gosec // constant table name, quoted by the renderer; the case id is bound
+		stmt := "DELETE FROM " + table(r, name) + " WHERE case_id = " + r.Placeholder(1)
 		if _, err := tx.ExecContext(ctx, stmt, w.caseID); err != nil {
 			return fmt.Errorf("oracle: %w", err)
 		}
 	}
 	const batch = 500
-	for table, byKey := range w.rows {
-		args := make([]any, 0, batch*6)
+	const rowColumns = 6
+	for tableName, byKey := range w.rows {
+		args := make([]any, 0, batch*rowColumns)
 		flush := func() error {
 			if len(args) == 0 {
 				return nil
 			}
 			//nolint:gosec // constant statement, only the number of placeholders varies
-			query := "INSERT INTO `" + Database + "`.`expected_rows` " +
-				"(case_id, table_name, row_key, occurrences, verdict, null_columns) VALUES " +
-				strings.TrimSuffix(strings.Repeat("(?,?,?,?,?,?),", len(args)/6), ",")
+			query := "INSERT INTO " + table(r, "expected_rows") +
+				" (case_id, table_name, row_key, occurrences, verdict, null_columns) VALUES " +
+				tupleList(r, len(args)/rowColumns, rowColumns)
 			_, err := tx.ExecContext(ctx, query, args...)
 			args = args[:0]
 			return err
@@ -157,8 +172,8 @@ func (w *Writer) Store(ctx context.Context, db *sql.DB, columnRules map[string]m
 			if err != nil {
 				return fmt.Errorf("oracle: %w", err)
 			}
-			args = append(args, w.caseID, table, row.Key, row.Occurrences, string(row.Verdict), string(encoded))
-			if len(args) == batch*6 {
+			args = append(args, w.caseID, tableName, row.Key, row.Occurrences, string(row.Verdict), string(encoded))
+			if len(args) == batch*rowColumns {
 				if err := flush(); err != nil {
 					return fmt.Errorf("oracle: %w", err)
 				}
@@ -168,12 +183,13 @@ func (w *Writer) Store(ctx context.Context, db *sql.DB, columnRules map[string]m
 			return fmt.Errorf("oracle: %w", err)
 		}
 	}
-	for table, columns := range columnRules {
+	//nolint:gosec // constant table name, quoted by the renderer; every value is bound
+	insertRule := "INSERT INTO " + table(r, "expected_columns") +
+		" (case_id, table_name, column_name, rule) VALUES " + tupleList(r, 1, 4)
+	for tableName, columns := range columnRules {
 		for column, rules := range columns {
 			for _, rule := range rules {
-				if _, err := tx.ExecContext(ctx,
-					"INSERT INTO `"+Database+"`.`expected_columns` (case_id, table_name, column_name, rule) VALUES (?,?,?,?)",
-					w.caseID, table, column, string(rule)); err != nil {
+				if _, err := tx.ExecContext(ctx, insertRule, w.caseID, tableName, column, string(rule)); err != nil {
 					return fmt.Errorf("oracle: %w", err)
 				}
 			}
@@ -182,11 +198,32 @@ func (w *Writer) Store(ctx context.Context, db *sql.DB, columnRules map[string]m
 	return tx.Commit()
 }
 
+// tupleList renders the VALUES tuples of an insert of rows rows of columns columns.
+func tupleList(r schema.Renderer, rows, columns int) string {
+	tuples := make([]string, rows)
+	n := 0
+	for i := range tuples {
+		marks := make([]string, columns)
+		for j := range marks {
+			n++
+			marks[j] = r.Placeholder(n)
+		}
+		tuples[i] = "(" + strings.Join(marks, ",") + ")"
+	}
+	return strings.Join(tuples, ",")
+}
+
 // ReadRows loads the expected rows of one table of a case, by key.
-func ReadRows(ctx context.Context, db *sql.DB, caseID, table string) (map[string]*ExpectedRow, error) {
-	rows, err := db.QueryContext(ctx,
-		"SELECT row_key, occurrences, verdict, null_columns FROM `"+Database+"`.`expected_rows` WHERE case_id = ? AND table_name = ?",
-		caseID, table)
+func ReadRows(
+	ctx context.Context,
+	db *sql.DB,
+	r schema.Renderer,
+	caseID, tableName string,
+) (map[string]*ExpectedRow, error) {
+	//nolint:gosec // constant table name, quoted by the renderer; every value is bound
+	query := "SELECT row_key, occurrences, verdict, null_columns FROM " + table(r, "expected_rows") +
+		" WHERE case_id = " + r.Placeholder(1) + " AND table_name = " + r.Placeholder(2)
+	rows, err := db.QueryContext(ctx, query, caseID, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("oracle: %w", err)
 	}
@@ -201,7 +238,7 @@ func ReadRows(ctx context.Context, db *sql.DB, caseID, table string) (map[string
 		}
 		row.Verdict = cases.Verdict(verdict)
 		if err := json.Unmarshal([]byte(nullColumns), &row.NullColumns); err != nil {
-			return nil, fmt.Errorf("oracle: null columns of %s %q: %w", table, row.Key, err)
+			return nil, fmt.Errorf("oracle: null columns of %s %q: %w", tableName, row.Key, err)
 		}
 		expected[row.Key] = &row
 	}
@@ -209,10 +246,17 @@ func ReadRows(ctx context.Context, db *sql.DB, caseID, table string) (map[string
 }
 
 // ReadColumnRules loads the column rules of one table of a case, by column.
-func ReadColumnRules(ctx context.Context, db *sql.DB, caseID, table string) (map[string][]cases.Rule, error) {
-	rows, err := db.QueryContext(ctx,
-		"SELECT column_name, rule FROM `"+Database+"`.`expected_columns` WHERE case_id = ? AND table_name = ? ORDER BY column_name, rule",
-		caseID, table)
+func ReadColumnRules(
+	ctx context.Context,
+	db *sql.DB,
+	r schema.Renderer,
+	caseID, tableName string,
+) (map[string][]cases.Rule, error) {
+	//nolint:gosec // constant table name, quoted by the renderer; every value is bound
+	query := "SELECT column_name, rule FROM " + table(r, "expected_columns") +
+		" WHERE case_id = " + r.Placeholder(1) + " AND table_name = " + r.Placeholder(2) +
+		" ORDER BY column_name, rule"
+	rows, err := db.QueryContext(ctx, query, caseID, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("oracle: %w", err)
 	}

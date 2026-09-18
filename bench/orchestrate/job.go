@@ -36,7 +36,7 @@ func (c *Client) CreateJob(
 	if !ok {
 		return "", fmt.Errorf("orchestrate: unknown engine %q", engine)
 	}
-	database := cs.Database()
+	database := cs.Schema()
 
 	var mappings []*mgmtv1alpha1.JobMapping
 	tables := make([]*mgmtv1alpha1.MysqlSourceTableOption, 0, len(cs.Tables))

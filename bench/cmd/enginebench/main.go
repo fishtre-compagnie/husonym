@@ -259,7 +259,7 @@ func (b *bench) restrictedDestination(ctx context.Context, c *cases.Case, engine
 	digest := sha256.Sum256([]byte(c.ID))
 	user, password := "bench_r_"+hex.EncodeToString(digest[:4]), "bench-restricted"
 	db := b.dests[engine]
-	quotedDB := b.renderer.QuoteIdent(c.Database())
+	quotedDB := b.renderer.QuoteIdent(c.Schema())
 	stmts := []string{
 		"DROP USER IF EXISTS '" + user + "'@'%'",
 		"CREATE USER '" + user + "'@'%' IDENTIFIED BY '" + password + "'",
@@ -274,7 +274,7 @@ func (b *bench) restrictedDestination(ctx context.Context, c *cases.Case, engine
 		}
 	}
 	server := b.env.Destinations[engine]
-	server.User, server.Password, server.Database = user, password, c.Database()
+	server.User, server.Password, server.Database = user, password, c.Schema()
 	// The connection name carries a digest of the account, which tells the cases apart.
 	return b.client.EnsureConnection(ctx, "dest-"+string(engine)+"-restricted", &server)
 }
@@ -351,7 +351,7 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	}
 	if result.Succeeded() && !result.TimedOut {
 		planned := slices.IndexFunc(c.Tables, func(t *schema.Table) bool { return !c.IsExcluded(t.Name) })
-		pageLimit, err := b.client.PlanPageLimit(ctx, result.RunID, c.Database(), c.Tables[planned].Name)
+		pageLimit, err := b.client.PlanPageLimit(ctx, result.RunID, c.Schema(), c.Tables[planned].Name)
 		if err != nil {
 			return err
 		}

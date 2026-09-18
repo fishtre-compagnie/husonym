@@ -158,9 +158,10 @@ type Case struct {
 	ExpectRunError string
 }
 
-// Database returns the name of the database holding the tables of the case, on the
-// source and on every destination.
-func (c *Case) Database() string {
+// Schema returns the name of what holds the tables of the case, on the source and on
+// every destination: a database on MySQL, a schema on PostgreSQL — what a job mapping
+// calls a schema in both.
+func (c *Case) Schema() string {
 	return "bench_" + strings.ReplaceAll(c.ID, "-", "_")
 }
 

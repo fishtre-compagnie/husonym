@@ -54,7 +54,7 @@ func Load(ctx context.Context, db *sql.DB, r schema.Renderer, dataset *cases.Cas
 		if rows == 0 {
 			continue
 		}
-		if err := loadTable(ctx, conn, r, dataset.Database(), t, rows, scale); err != nil {
+		if err := loadTable(ctx, conn, r, dataset.Schema(), t, rows, scale); err != nil {
 			return nil, err
 		}
 		counts[t.Name] = rows

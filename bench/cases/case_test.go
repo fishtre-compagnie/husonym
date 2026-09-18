@@ -31,7 +31,7 @@ func Test_All(t *testing.T) {
 		require.NoError(t, c.Validate())
 		require.False(t, ids[c.ID], "duplicate case id %s", c.ID)
 		ids[c.ID] = true
-		require.LessOrEqual(t, len(c.Database()), 64, "%s: database name too long for MySQL", c.ID)
+		require.LessOrEqual(t, len(c.Schema()), 64, "%s: database name too long for MySQL", c.ID)
 
 		rec := &recorder{t: t, c: c, counts: map[string]int{}}
 		c.Seed(Params{PageLimit: 100, Scale: 1}, rec)

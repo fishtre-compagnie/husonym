@@ -26,14 +26,14 @@ func Test_MySQLRenderer(t *testing.T) {
 
 	create, err := r.CreateTable("bench_x", table)
 	require.NoError(t, err)
-	require.Equal(t, "CREATE TABLE `bench_x`.`COMMANDE` (\n"+
-		"  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n"+
-		"  `order` VARCHAR(20) COLLATE utf8mb4_bin,\n"+
-		"  `parent_id` BIGINT NOT NULL DEFAULT 0,\n"+
-		"  `etat` ENUM('a','') NOT NULL,\n"+
-		"  PRIMARY KEY (`id`),\n"+
-		"  UNIQUE KEY `uq_order` (`order`)\n"+
-		") ENGINE=InnoDB", create)
+	require.Equal(t, []string{"CREATE TABLE `bench_x`.`COMMANDE` (\n" +
+		"  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" +
+		"  `order` VARCHAR(20) COLLATE utf8mb4_bin,\n" +
+		"  `parent_id` BIGINT NOT NULL DEFAULT 0,\n" +
+		"  `etat` ENUM('a','') NOT NULL,\n" +
+		"  PRIMARY KEY (`id`),\n" +
+		"  UNIQUE KEY `uq_order` (`order`)\n" +
+		") ENGINE=InnoDB"}, create, "MySQL declares its indexes inside the CREATE TABLE")
 
 	require.Equal(t, []string{
 		"ALTER TABLE `bench_x`.`COMMANDE` ADD CONSTRAINT `fk_parent` FOREIGN KEY (`parent_id`) " +

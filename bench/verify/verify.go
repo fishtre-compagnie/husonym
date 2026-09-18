@@ -125,7 +125,7 @@ func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c
 
 		for i := range t.ForeignKeys {
 			fk := &t.ForeignKeys[i]
-			orphans, err := countOrphans(ctx, destination, r, c.Database(), t, fk)
+			orphans, err := countOrphans(ctx, destination, r, c.Schema(), t, fk)
 			if err != nil {
 				return nil, fmt.Errorf("verify: %s.%s: %s: %w", c.ID, t.Name, fk.Name, err)
 			}
@@ -157,17 +157,17 @@ func readTable(
 ) (*tableRows, error) {
 	var rows tableRows
 	var err error
-	if rows.expected, err = oracle.ReadRows(ctx, source, c.ID, t.Name); err != nil {
+	if rows.expected, err = oracle.ReadRows(ctx, source, r, c.ID, t.Name); err != nil {
 		return nil, err
 	}
-	if rows.rules, err = oracle.ReadColumnRules(ctx, source, c.ID, t.Name); err != nil {
+	if rows.rules, err = oracle.ReadColumnRules(ctx, source, r, c.ID, t.Name); err != nil {
 		return nil, err
 	}
 	identity := columnIndexes(t, c.IdentityColumns(t.Name))
-	if rows.source, err = readRows(ctx, source, r, c.Database(), t, identity); err != nil {
+	if rows.source, err = readRows(ctx, source, r, c.Schema(), t, identity); err != nil {
 		return nil, fmt.Errorf("source: %w", err)
 	}
-	if rows.dest, err = readRows(ctx, destination, r, c.Database(), t, identity); err != nil {
+	if rows.dest, err = readRows(ctx, destination, r, c.Schema(), t, identity); err != nil {
 		return nil, fmt.Errorf("destination: %w", err)
 	}
 	return &rows, nil
@@ -362,12 +362,13 @@ func readRows(
 	t *schema.Table,
 	identity []int,
 ) (map[string][]row, error) {
-	quoted := make([]string, len(t.Columns))
+	// The database, not the driver, turns each value into the text it is compared in.
+	exprs := make([]string, len(t.Columns))
 	for i := range t.Columns {
-		quoted[i] = r.QuoteIdent(t.Columns[i].Name)
+		exprs[i] = r.ReadExpr(t.Columns[i].Name, t.Columns[i].IsBinary())
 	}
 	rows, err := db.QueryContext(ctx, fmt.Sprintf("SELECT %s FROM %s.%s",
-		strings.Join(quoted, ", "), r.QuoteIdent(database), r.QuoteIdent(t.Name)))
+		strings.Join(exprs, ", "), r.QuoteIdent(database), r.QuoteIdent(t.Name)))
 	if err != nil {
 		return nil, err
 	}
@@ -385,14 +386,11 @@ func readRows(
 		}
 		values := make(row, len(t.Columns))
 		for i := range raw {
-			var v any
-			if raw[i] != nil {
-				v = []byte(raw[i])
+			if raw[i] == nil {
+				values[i] = nullText
+				continue
 			}
-			values[i], err = oracle.CanonicalValue(v, t.Columns[i].IsBinary())
-			if err != nil {
-				return nil, err
-			}
+			values[i] = string(raw[i])
 		}
 		parts := make([]string, len(identity))
 		for i, idx := range identity {

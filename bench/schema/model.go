@@ -160,13 +160,34 @@ func (t *Table) ColumnNames() []string {
 	return names
 }
 
-// Renderer writes the DDL of one database.
+// Renderer writes the SQL of one database: the DDL of the tables, and the few statements
+// the bench needs written differently from one database to the next.
+//
+// A case lives in a container of its own: a database on MySQL, a schema on PostgreSQL.
+// Both are what a job calls a schema, so the two are the same thing here.
 type Renderer interface {
 	Dialect() Dialect
 	QuoteIdent(name string) string
-	// CreateTable returns the statement creating the table, without its declared foreign
-	// keys: they are added once every table of the case exists.
-	CreateTable(database string, t *Table) (string, error)
+	// Placeholder is the n-th bound parameter marker (1-indexed).
+	Placeholder(n int) string
+	// ExactCollation compares text byte for byte. Row keys are stored with it, so that two
+	// keys differing only by case stay two keys whatever the database default is.
+	ExactCollation() string
+	// ReadExpr selects a column as the canonical text rows are compared in: what the
+	// database prints for the value, x'<hex>' for raw bytes, NULL left as NULL. It is the
+	// database, not a Go type, that turns a value into text — nothing is rounded on the
+	// way, and the source and the destination are read the same way.
+	ReadExpr(column string, binary bool) string
+	// CreateContainerStatements drop and recreate the container of a case, empty.
+	CreateContainerStatements(container string) []string
+	// EnsureContainerStatement creates the container if it does not exist yet.
+	EnsureContainerStatement(container string) string
+	// CreateTable returns the statements creating the table and its indexes, without its
+	// declared foreign keys: they are added once every table of the case exists.
+	CreateTable(container string, t *Table) ([]string, error)
 	// AddForeignKeys returns the statements declaring the non-virtual foreign keys.
-	AddForeignKeys(database string, t *Table) []string
+	AddForeignKeys(container string, t *Table) []string
+	// LoadSessionStatements set the session a seed is loaded through: foreign key checks
+	// off above all, since a seed holds the orphans a legacy database holds.
+	LoadSessionStatements() []string
 }
