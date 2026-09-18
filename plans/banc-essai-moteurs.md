@@ -872,6 +872,36 @@ destinations. La seule table qui diffère, `CHECK_LIST_COMMANDE_MONTEUR`, a 8 li
 créées dans la source (14:12:07 et 14:12:40) après la fin du run Athanor et pendant celui de Benthos : écart de
 la source vivante, pas des moteurs.
 
+## Règles personnalisées (2026-09-18)
+
+Proposition, décisions et réalisation : [athanor-regles-personnalisees.md](athanor-regles-personnalisees.md),
+issue #63.
+
+**Le jeu de mesure porte désormais une colonne JavaScript** (`COMMANDE.reference`,
+`value.toUpperCase()`, 500 000 lignes écrites) : les durées mesurées depuis ne se comparent pas aux
+précédentes. Mesure appariée avant cet ajout, même heure, 5 tours : Athanor 24,6 s → 30,2 s sur MySQL
+(+23 %), 32,3 s → 38,4 s sur PostgreSQL (+19 %), soit 11,2 µs par ligne ; Benthos +4 à 5 %, dans son
+bruit. **Toutes les durées du banc viennent du binaire de débogage** du worker de dev
+(`-gcflags="all=-N -l"`, `worker/dev/build/.air.toml`) : les rapports entre moteurs tiennent, les
+durées absolues ne sont pas celles de la production (4,6 µs par ligne en binaire optimisé).
+
+Cinq cas, famille `bench/cases/rules.go`, OK sur les deux moteurs et les deux SGBD :
+
+| Cas | Ce qu'il établit |
+|---|---|
+| `js-endless-script` | un script sans fin fait échouer le run au bout de la limite (10 s) |
+| `js-reads-host-file` | `require()` d'un fichier du worker est refusé, rien n'est lu |
+| `js-no-state-across-rows` | aucune valeur d'une ligne ne passe dans la suivante, par aucun des quatre moyens (`neosync.x`, global implicite, `globalThis.x`, `Object.prototype`) : avant correction, 250 lignes sur 250 chez Athanor, 231 chez Benthos (parfois d'une ligne éloignée, à cause du pool) |
+| `js-pseudo-consistent` | même valeur source, même sortie, page 1 comme page 3 et d'une table à l'autre (nouvelle règle `consistent`) |
+| `js-pseudo-matches-native` | `pseudo.<genre>(valeur)` rend exactement la sortie du transformer natif ; Benthos s'arrête au démarrage du run |
+
+Deux leçons pour le banc. Le mode correction fait tourner ses cas côte à côte : `js-endless-script`
+occupe tous les cœurs pendant 10 s (Benthos le lance sur un fil par cœur), et les durées des cas
+voisins mesurent cette contention. Et **Benthos vide le lot d'une page à l'arrivée de sa dernière
+ligne**, alors que ses fils traitent les lignes sans ordre garanti : une ligne retardée (ici par la
+construction d'une VM) attend la période du lot, 5 s. La réserve de VM remplie d'avance l'évite ; la
+fragilité demeure pour tout autre retard.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

@@ -55,8 +55,10 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    **Décidé le 2026-09-18 : l'état ne vit que le temps d'une ligne.** Partagé entre les colonnes d'une ligne,
    jamais transmis à la suivante : la VM est recréée à chaque page (chez Benthos, tirée d'un pool), donc un
    état entre lignes n'est fiable dans aucun moteur, et il fait passer la donnée d'une personne dans la ligne
-   d'une autre. La cohérence (même entrée, même sortie) passera par des fonctions déterministes offertes aux
-   scripts. Mise en œuvre : `~/.config/husonym-athanor-test/PROMPT-personnalisation-athanor.md`.
+   d'une autre. La cohérence (même entrée, même sortie) passe par des fonctions déterministes offertes aux
+   scripts (`pseudo.*`, Athanor seul). **Réalisé le 2026-09-18** : chaque exécution reçoit un objet global
+   neuf hérité d'une VM scellée, dans le code partagé des deux moteurs et de l'API ; détail et mesures dans
+   [athanor-regles-personnalisees.md](athanor-regles-personnalisees.md).
 
 ## Étapes
 

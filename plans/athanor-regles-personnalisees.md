@@ -1,7 +1,8 @@
 # Règles de transformation personnalisées
 
-Statut : **validée le 2026-09-18**, implémentation en cours sur `feat/athanor-moteur-m1-m3` (décisions en
-fin de document). Prolonge la décision 7 de [athanor-plan-neutre.md](athanor-plan-neutre.md) ; les cas
+Statut : **validée et réalisée le 2026-09-18** sur `feat/athanor-moteur-m1-m3`, issue
+[#63](https://github.com/fishtre-compagnie/husonym/issues/63) (décisions et réalisation en fin de
+document). Prolonge la décision 7 de [athanor-plan-neutre.md](athanor-plan-neutre.md) ; les cas
 et les mesures vont dans [banc-essai-moteurs.md](banc-essai-moteurs.md).
 
 ## Le besoin
@@ -12,7 +13,7 @@ une règle personnalisée doit donner au moins ce que donne un transformer tout 
 (même valeur d'entrée, même sortie, dans la portée du job), sans jamais faire passer la donnée d'une
 personne dans la ligne d'une autre.
 
-## Ce que fait le code aujourd'hui (vérifié le 2026-09-18, par test)
+## Constat de départ (vérifié le 2026-09-18, par test, corrigé depuis)
 
 - **L'état d'une ligne passe à la suivante.** Un script qui écrit `neosync.last = value` sur une ligne
   et le relit sur la suivante rend, pour Bob, le nom réel d'Alice. Athanor garde une VM par page
@@ -87,17 +88,25 @@ restent comparables, les durées absolues ne sont pas celles de la production.
 Une fonction par ligne, qui reçoit la valeur de la colonne et la ligne source. L'état est partagé
 entre les colonnes d'une ligne, **jamais transmis à la ligne suivante**.
 
-**Mise en œuvre proposée** : dans le code partagé (`internal/javascript/vm`), donc pour les deux
-moteurs et pour l'API, sans VM neuve par ligne :
+**Mise en œuvre** (`internal/javascript/vm/isolation.go`), dans le code partagé, donc pour les deux
+moteurs et pour l'API :
 
-- à la création de la VM, les objets intégrés (`Object.prototype`, `Array.prototype`, `Math`,
-  `JSON`…) et l'objet des fonctions offertes sont gelés, et la liste des globaux est relevée ;
-- avant chaque ligne, `husonym` et `neosync` redeviennent un objet vide qui hérite des fonctions :
-  `neosync.x = …` reste possible d'une colonne à l'autre, et repart à vide à la ligne suivante ;
-- après chaque ligne, tout global créé par la ligne est supprimé (`x = …` sans déclaration,
-  `globalThis.x = …`).
+- à sa création, la VM est **scellée** : objets intégrés, fonctions offertes et objet global sont
+  gelés ;
+- chaque exécution reçoit **un objet global neuf**, qui hérite de l'objet scellé, avec son propre
+  `globalThis` et, pour chaque espace de noms (`husonym` et son alias `neosync`, `benthos`,
+  `pseudo`), un objet vide qui hérite des fonctions. Tout ce qu'une exécution écrit (`x = …`,
+  `globalThis.x = …`, `neosync.x = …`, une propriété définie, un prototype) y atterrit et disparaît
+  avec lui.
 
-Le coût de cette remise à zéro sera mesuré par le micro-banc avant d'être retenu.
+Supprimer après chaque ligne les globaux qu'elle a créés coûtait 3 µs par ligne (parcours des
+propriétés du global) : le global neuf coûte un nombre fixe d'objets, et le coût par ligne est
+inchangé (4,6 µs). Sceller coûte en revanche **4 ms** par VM (goja construit à la demande les objets
+intégrés, que le gel parcourt tous) : les VM scellées vivent dans des **réserves partagées par le
+processus** (`javascript_vm.Pool`), et ce qui change d'une exécution à l'autre passe avec elle — le
+contexte, le journal, l'API PII du compte, la portée de cohérence. Une VM construite en plein flux
+Benthos retardait des lignes au-delà du vidage de leur page, de 5 s par page : la réserve de
+Benthos est remplie d'avance, une VM par fil du pipeline.
 
 ### 2. Fonctions déterministes offertes aux scripts (`pseudo.*`)
 
@@ -180,13 +189,32 @@ séquence ne sort pas d'une fonction déterministe par ligne, ce serait un trans
 4. **Essai d'une règle** avec une clé jetable, dans ce chantier.
 5. La faille de lecture de fichiers (worker et API) est corrigée **dans ce chantier**, en premier.
 
-## Étapes
+## Réalisation (2026-09-18)
 
-1. Garde-fous de la VM partagée : chargeur `require` qui refuse tout fichier, limite de temps par
-   exécution et arrêt à l'annulation du contexte.
-2. Cas du banc des garde-fous et du contrat (1, 4, 5), puis remise à zéro de l'état entre deux lignes
-   (coût mesuré) et erreur qui nomme la colonne.
-3. Fonctions `pseudo.*` sous Athanor, arrêt d'un job Benthos qui les utilise ; cas 2, 3 et 6.
-4. Avertissement « variable globale » et validation compilée comme l'exécution.
-5. Essai d'une règle : RPC et UI.
-6. Mise à jour de la décision 7 de `athanor-plan-neutre.md` et de `banc-essai-moteurs.md`.
+| Étape | Commit |
+|---|---|
+| Mesure du coût d'une colonne JavaScript, proposition | `f5ee61a2` |
+| Garde-fous : `require` sans fichier, limite de temps, contexte | `15106866` |
+| Aucun état d'une ligne à la suivante, réserve de VM, colonne nommée dans l'erreur | `c55c7607` |
+| Fonctions `pseudo.*`, arrêt d'un job Benthos qui les utilise, entiers exacts | `3f52c2a5` |
+| Avertissement « variable globale », essai d'une règle (RPC `TryJavascriptRules`, UI) | `2b71e87b` |
+
+Trouvé en route, et corrigé :
+
+- **Un entier au-delà de 2^53 était arrondi** en entrant dans un script (goja le convertit en
+  flottant) : `return value + 1` sur une clé de type « snowflake » écrivait une autre clé sans rien
+  dire. Il entre désormais comme un `BigInt` exact, sur les deux moteurs ; le mêler à un nombre
+  échoue explicitement.
+- La validation de l'UI compilait en mode strict, l'exécution non : elle compile désormais comme
+  l'exécution.
+
+Limites connues :
+
+- L'UI (avertissement, essai) est vérifiée par le typage et le linter, pas encore dans un
+  navigateur. L'essai n'offre pas `transformPiiText` (aucune API PII n'est passée à l'essai).
+- L'analyse statique considère comme locale toute variable déclarée quelque part dans la règle :
+  elle peut manquer une écriture globale masquée par un homonyme, jamais en signaler une à tort.
+- `input` donne à un script la ligne après les transformers natifs de la table, dans les deux
+  moteurs (Athanor applique ses transformers de valeur avant ceux de ligne, Benthos ses mutations
+  avant son processeur JavaScript) : une règle qui lit `input.email` voit l'email déjà
+  pseudonymisé si la colonne a un transformer natif. Comportement antérieur, non modifié ici.
