@@ -5,6 +5,7 @@ on:
       - backend/**.go
       - worker/**.go
       - internal/**.go
+      - bench/**.go
       - go.mod
       - go.sum
       - tools/go.mod
@@ -17,6 +18,7 @@ on:
       - backend/**.go
       - worker/**.go
       - internal/**.go
+      - bench/**.go
       - go.mod
       - go.sum
 

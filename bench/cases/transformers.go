@@ -164,12 +164,12 @@ func transformerOnOrderColumn() *Case {
 			Name: "DOSSIER",
 			Columns: []schema.Column{
 				{Name: idColumn, Type: schema.Int64()},
-				{Name: "reference", Type: schema.Varchar(20)},
+				{Name: referenceColumn, Type: schema.Varchar(20)},
 			},
 			PrimaryKey: []string{idColumn},
-			Indexes:    []schema.Index{{Name: "uq_dossier_reference", Columns: []string{"reference"}, Unique: true}},
+			Indexes:    []schema.Index{{Name: "uq_dossier_reference", Columns: []string{referenceColumn}, Unique: true}},
 		}},
-		Identity: map[string][]string{"DOSSIER": {"reference"}},
+		Identity: map[string][]string{"DOSSIER": {referenceColumn}},
 		Job: Job{Columns: map[string]map[string]ColumnSpec{"DOSSIER": {
 			idColumn: {
 				Transformer: transformJavascript(fmt.Sprintf("return value + %d;", shift)),
@@ -198,10 +198,10 @@ func transformerOnPrimaryKey() *Case {
 				Name: clientTableName,
 				Columns: []schema.Column{
 					{Name: idColumn, Type: schema.Int64()},
-					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: referenceColumn, Type: schema.Varchar(20)},
 				},
 				PrimaryKey: []string{idColumn},
-				Indexes:    []schema.Index{{Name: "uq_client_reference", Columns: []string{"reference"}, Unique: true}},
+				Indexes:    []schema.Index{{Name: "uq_client_reference", Columns: []string{referenceColumn}, Unique: true}},
 			},
 			{
 				Name: commandeTable,
@@ -217,7 +217,7 @@ func transformerOnPrimaryKey() *Case {
 				},
 			},
 		},
-		Identity: map[string][]string{clientTableName: {"reference"}},
+		Identity: map[string][]string{clientTableName: {referenceColumn}},
 		Job: Job{Columns: map[string]map[string]ColumnSpec{
 			clientTableName: {idColumn: {
 				Transformer: transformJavascript("return value + 1000000;"),
@@ -266,12 +266,12 @@ func transformedKeyOfDiscardedRow() *Case {
 				Name: "FACTURE",
 				Columns: []schema.Column{
 					{Name: idColumn, Type: schema.Int64()},
-					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: referenceColumn, Type: schema.Varchar(20)},
 					{Name: stationIDColumn, Type: schema.Int64()},
 					{Name: "commande_id", Type: schema.Int64()},
 				},
 				PrimaryKey: []string{idColumn},
-				Indexes:    []schema.Index{{Name: "uq_facture_reference", Columns: []string{"reference"}, Unique: true}},
+				Indexes:    []schema.Index{{Name: "uq_facture_reference", Columns: []string{referenceColumn}, Unique: true}},
 				ForeignKeys: []schema.ForeignKey{
 					foreignKeyToID("fk_facture_station", stationIDColumn, "STATION"),
 					foreignKeyToID("fk_facture_commande", "commande_id", commandeTable),
@@ -289,7 +289,7 @@ func transformedKeyOfDiscardedRow() *Case {
 			},
 		},
 		// FACTURE is identified by its reference: its key is transformed.
-		Identity: map[string][]string{"FACTURE": {"reference"}},
+		Identity: map[string][]string{"FACTURE": {referenceColumn}},
 		Job: Job{
 			Where:                    map[string]string{"STATION": fmt.Sprintf("id = %d", stationKept)},
 			SubsetByForeignKeys:      true,
@@ -342,14 +342,14 @@ func transformedKeySelfReference() *Case {
 			Name: table,
 			Columns: []schema.Column{
 				{Name: idColumn, Type: schema.Int64()},
-				{Name: "reference", Type: schema.Varchar(20)},
+				{Name: referenceColumn, Type: schema.Varchar(20)},
 				{Name: "parent_id", Type: schema.Int64(), Nullable: true},
 			},
 			PrimaryKey:  []string{idColumn},
-			Indexes:     []schema.Index{{Name: "uq_categorie_reference", Columns: []string{"reference"}, Unique: true}},
+			Indexes:     []schema.Index{{Name: "uq_categorie_reference", Columns: []string{referenceColumn}, Unique: true}},
 			ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_categorie_parent", "parent_id", table)},
 		}},
-		Identity: map[string][]string{table: {"reference"}},
+		Identity: map[string][]string{table: {referenceColumn}},
 		Job: Job{Columns: map[string]map[string]ColumnSpec{table: {
 			idColumn: {
 				Transformer: transformJavascript("return value + 1000000;"),
@@ -388,26 +388,26 @@ func transformedKeysInCycle() *Case {
 				Name: clientTableName,
 				Columns: []schema.Column{
 					{Name: idColumn, Type: schema.Int64()},
-					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: referenceColumn, Type: schema.Varchar(20)},
 					{Name: "commande_preferee_id", Type: schema.Int64(), Nullable: true},
 				},
 				PrimaryKey:  []string{idColumn},
-				Indexes:     []schema.Index{{Name: "uq_client_reference", Columns: []string{"reference"}, Unique: true}},
+				Indexes:     []schema.Index{{Name: "uq_client_reference", Columns: []string{referenceColumn}, Unique: true}},
 				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_client_commande", "commande_preferee_id", commandeTable)},
 			},
 			{
 				Name: commandeTable,
 				Columns: []schema.Column{
 					{Name: idColumn, Type: schema.Int64()},
-					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: referenceColumn, Type: schema.Varchar(20)},
 					{Name: "client_id", Type: schema.Int64(), Nullable: true},
 				},
 				PrimaryKey:  []string{idColumn},
-				Indexes:     []schema.Index{{Name: "uq_commande_reference", Columns: []string{"reference"}, Unique: true}},
+				Indexes:     []schema.Index{{Name: "uq_commande_reference", Columns: []string{referenceColumn}, Unique: true}},
 				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_commande_client", "client_id", clientTableName)},
 			},
 		},
-		Identity: map[string][]string{clientTableName: {"reference"}, commandeTable: {"reference"}},
+		Identity: map[string][]string{clientTableName: {referenceColumn}, commandeTable: {referenceColumn}},
 		Job: Job{Columns: map[string]map[string]ColumnSpec{
 			clientTableName: {idColumn: transformed, "commande_preferee_id": follows},
 			commandeTable:   {idColumn: transformed, "client_id": follows},

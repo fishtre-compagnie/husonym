@@ -31,7 +31,9 @@ frontend/out
 /package.json
 /package-lock.json
 
+# Python virtual environments; bench/env is a Go package
 env/
+!/bench/env/
 
 tmp
 venv/

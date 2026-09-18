@@ -27,6 +27,7 @@ const (
 	commandeTable   = "COMMANDE"
 	clientTableName = "CLIENT"
 	stationIDColumn = "station_id"
+	referenceColumn = "reference"
 
 	stationKept    = int64(1)
 	stationDropped = int64(2)

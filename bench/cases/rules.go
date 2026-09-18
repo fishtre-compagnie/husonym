@@ -7,11 +7,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
-// Columns the rule cases share.
-const (
-	nomColumn       = "nom"
-	referenceColumn = "reference"
-)
+// nomColumn is the column the rule cases share.
+const nomColumn = "nom"
 
 // ruleCases are the rules users write themselves, in JavaScript: what a script may reach,
 // how long it may run, and what it may keep from one row to the next.
