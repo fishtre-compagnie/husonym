@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"fmt"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -53,6 +54,39 @@ func (p AthanorPolicy) UsesAthanor(job *mgmtv1alpha1.Job) bool {
 	default:
 		return p.EnabledFor(job.GetId())
 	}
+}
+
+// AthanorRuns tells whether Athanor can run a job, and why not: it copies one source to
+// one destination of the same database, MySQL or PostgreSQL. The run is stopped at its
+// start on it, before the destination is emptied or anything is written; the table syncs
+// used to find out after both.
+func AthanorRuns(job *mgmtv1alpha1.Job) error {
+	source := ""
+	switch {
+	case job.GetSource().GetOptions().GetMysql() != nil:
+		source = "mysql"
+	case job.GetSource().GetOptions().GetPostgres() != nil:
+		source = "postgres"
+	default:
+		return fmt.Errorf("athanor copies a MySQL or PostgreSQL source, not this one: run the job with benthos")
+	}
+	destinations := job.GetDestinations()
+	if len(destinations) != 1 {
+		return fmt.Errorf("athanor copies a source to one destination, and the job has %d: "+
+			"make one job per destination", len(destinations))
+	}
+	destination := ""
+	switch {
+	case destinations[0].GetOptions().GetMysqlOptions() != nil:
+		destination = "mysql"
+	case destinations[0].GetOptions().GetPostgresOptions() != nil:
+		destination = "postgres"
+	}
+	if destination != source {
+		return fmt.Errorf("athanor copies a %s source to a destination of the same database: run the job with benthos",
+			source)
+	}
+	return nil
 }
 
 func splitIDs(s string) []string {

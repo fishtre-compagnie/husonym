@@ -108,12 +108,17 @@ func (a *Activity) CheckRunPrivileges(
 		return nil, fmt.Errorf("unable to retrieve job: %w", err)
 	}
 	job := jobResp.Msg.GetJob()
+	usesAthanor := a.athanor.UsesAthanor(job)
+	if usesAthanor {
+		if err := shared.AthanorRuns(job); err != nil {
+			return nil, err
+		}
+	}
 
 	session := connectionmanager.NewUniqueSession(
 		connectionmanager.WithSessionGroup(activityInfo.WorkflowExecution.ID),
 	)
 	defer a.sqlconnmanager.ReleaseSession(session, slogger)
-	usesAthanor := a.athanor.UsesAthanor(job)
 	var findings []string
 
 	sourceOptions := job.GetSource().GetOptions()

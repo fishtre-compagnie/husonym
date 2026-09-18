@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAthanorPolicy(t *testing.T) {
@@ -74,4 +75,29 @@ func TestAthanorPolicy_UsesAthanor(t *testing.T) {
 			t.Errorf("%s: UsesAthanor = %v, voulu %v", name, got, tc.want)
 		}
 	}
+}
+
+// Athanor copies one source to one destination of the same database; anything else is
+// stopped at the start of the run, before the destination is emptied.
+func TestAthanorRuns(t *testing.T) {
+	mysqlSource := &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
+		Config: &mgmtv1alpha1.JobSourceOptions_Mysql{Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{}},
+	}}
+	mysqlDestination := &mgmtv1alpha1.JobDestination{Options: &mgmtv1alpha1.JobDestinationOptions{
+		Config: &mgmtv1alpha1.JobDestinationOptions_MysqlOptions{MysqlOptions: &mgmtv1alpha1.MysqlDestinationConnectionOptions{}},
+	}}
+	postgresDestination := &mgmtv1alpha1.JobDestination{Options: &mgmtv1alpha1.JobDestinationOptions{
+		Config: &mgmtv1alpha1.JobDestinationOptions_PostgresOptions{PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{}},
+	}}
+
+	require.NoError(t, AthanorRuns(&mgmtv1alpha1.Job{Source: mysqlSource, Destinations: []*mgmtv1alpha1.JobDestination{mysqlDestination}}))
+
+	err := AthanorRuns(&mgmtv1alpha1.Job{Source: mysqlSource, Destinations: []*mgmtv1alpha1.JobDestination{mysqlDestination, mysqlDestination}})
+	require.ErrorContains(t, err, "one destination, and the job has 2")
+
+	err = AthanorRuns(&mgmtv1alpha1.Job{Source: mysqlSource, Destinations: []*mgmtv1alpha1.JobDestination{postgresDestination}})
+	require.ErrorContains(t, err, "same database")
+
+	err = AthanorRuns(&mgmtv1alpha1.Job{Destinations: []*mgmtv1alpha1.JobDestination{mysqlDestination}})
+	require.ErrorContains(t, err, "MySQL or PostgreSQL source")
 }
