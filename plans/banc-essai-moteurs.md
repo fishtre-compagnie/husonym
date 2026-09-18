@@ -665,6 +665,52 @@ sans droit » ne s'applique pas — Husonym lit les FK dans `pg_catalog`. Et un 
   déterministe), ordre des colonnes de destination, colonne `NOT NULL` en plus.
 - Comparaison mesurée `bench/perf` sur PostgreSQL (le jeu de données n'a qu'un rendu MySQL).
 
+## Reprise du 2026-09-18 : triggers de destination fiables
+
+La relecture du travail de la veille a montré que la suspension des triggers abîmait les
+destinations bien au-delà du « run arrêté entre le retrait et la remise » :
+
+- **La remise n'avait lieu qu'en cas de succès.** Tout run en échec (une table, le contrôle
+  d'intégrité, une annulation) sortait du workflow avant elle : triggers MySQL **supprimés** pour
+  de bon (le run suivant ne les voyait plus), triggers PostgreSQL laissés désactivés.
+- **L'enregistrement était écrit après la suspension**, contrairement à ce que disait son
+  commentaire : un échec au deuxième trigger ou sur la deuxième destination ne laissait aucune
+  trace des premiers.
+- **MySQL recréait sans guillemets** (`wrapIdempotentTrigger`) : un trigger au nom à tiret était
+  supprimé puis perdu, et le run échouait après avoir tout écrit. `EscapeMysqlColumn` ne doublait
+  pas non plus les accents graves d'un nom.
+- **MySQL recréait un autre trigger** : sans son `DEFINER` (il s'exécutait ensuite avec les droits
+  du compte Husonym), sous le `sql_mode` et la collation de la session du worker, dans un ordre
+  d'exécution quelconque (`ACTION_ORDER` lu sans tri). Même le cas existant revenait avec
+  `utf8mb4_general_ci` au lieu de `utf8mb4_0900_ai_ci`.
+
+Le banc compare désormais, **pour chaque cas**, les triggers de la destination avant et après le
+run (définition, état, definer, `sql_mode`, collation, ordre) ; un écart compte comme tel, run
+réussi ou en échec attendu. Quatre cas neutres et un propre à MySQL, tous hors attendu avant la
+correction : run en échec après la suspension, run **arrêté de force** triggers retirés (le banc
+sait maintenant arrêter un run sur une condition), nom à guillemets, definer / `sql_mode` /
+collation / ordre.
+
+Corrections :
+
+- L'enregistrement est **rattaché au job** et écrit **avant** toute suspension, fusionné avec ce
+  qu'une tentative ou un run précédent a laissé (ce qui y est déjà gagne : relu après la
+  suspension, un trigger n'existe plus ou est désactivé). La remise ne garde dans
+  l'enregistrement que ce qu'elle n'a pas pu remettre.
+- Le workflow remet les triggers sur **toute sortie** qui suit la suspension, dans un contexte
+  détaché (version 2 de `destination-triggers`). Un run arrêté de force, où aucun code ne
+  s'exécute, laisse l'enregistrement au run suivant du job, qui remet tout à sa fin.
+- MySQL recrée chaque trigger comme `information_schema.TRIGGERS` le décrit : `DEFINER`,
+  `sql_mode` et collation de création, dans l'ordre où ils se déclenchent, sur une seule session
+  dont les réglages sont rendus ensuite (la session est tuée si elle ne peut pas l'être).
+
+Limites connues : deux runs du même job en même temps partagent l'enregistrement (le premier qui
+finit remet les triggers pendant que l'autre écrit) ; le `character_set_client` d'un trigger
+MySQL devient celui de la connexion du worker (les octets du corps sont envoyés dans ce jeu,
+la collation qui décide des comparaisons est rétablie). Recréer un trigger dont le definer n'est
+pas le compte du job demande `SET_USER_ID` (ou `SUPER`) : c'est au contrôle des droits de le dire
+au démarrage (étape suivante).
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
