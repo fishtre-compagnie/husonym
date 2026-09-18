@@ -219,8 +219,7 @@
     "benthos": "ok"
   },
   "types-zero-dates": {
-    "athanor": "gap",
-    "benthos": "gap"
+    "benthos": "run_failed"
   },
   "where-or-paginated": {
     "athanor": "ok",
