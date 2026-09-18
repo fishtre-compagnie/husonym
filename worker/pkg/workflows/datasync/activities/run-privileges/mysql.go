@@ -20,13 +20,21 @@ import (
 // MySQL error numbers of a refused or impossible statement.
 const (
 	mysqlDatabaseAccessDenied = 1044
+	mysqlNoSuchDatabase       = 1049
+	mysqlNoSuchColumn         = 1054
 	mysqlTableAccessDenied    = 1142
 	mysqlColumnAccessDenied   = 1143
 	mysqlNoSuchTable          = 1146
 )
 
-// errMysqlNoSuchTable says that a probed table does not exist.
-var errMysqlNoSuchTable = errors.New("no such table")
+var (
+	// errMysqlNoSuchTable says that a probed table does not exist, nor maybe its database,
+	// which a run creating its tables creates too.
+	errMysqlNoSuchTable = errors.New("no such table")
+	// errMysqlNoSuchColumn says that a probed table lacks a column the run writes, which
+	// a run reconciling the schema adds.
+	errMysqlNoSuchColumn = errors.New("no such column")
+)
 
 // checkMysqlSource: a source only needs to be read. A read-only server is fine.
 func checkMysqlSource(ctx context.Context, db sqlDb, name string, tables []*jobTable) ([]string, error) {
@@ -55,9 +63,8 @@ func checkMysqlDestination(
 	tables []*jobTable,
 	createsTables, truncates bool,
 ) ([]string, error) {
-	// read_only refuses the writes of regular accounts, super_read_only everyone's.
-	var readOnly bool
-	if err := db.QueryRowContext(ctx, "SELECT @@GLOBAL.read_only OR @@GLOBAL.super_read_only").Scan(&readOnly); err != nil {
+	readOnly, err := mysqlReadOnly(ctx, db)
+	if err != nil {
 		return nil, fmt.Errorf("unable to tell whether destination %q accepts writes: %w", name, err)
 	}
 	if readOnly {
@@ -69,6 +76,18 @@ func checkMysqlDestination(
 	var existing []*jobTable
 	for _, t := range tables {
 		missing, err := mysqlMissingRowPrivileges(ctx, db, t)
+		if errors.Is(err, errMysqlNoSuchColumn) {
+			// The probes ask about the columns the table has; the others are added by the
+			// run when it reconciles the schema, and are missing otherwise.
+			var absent []string
+			if t, absent, err = mysqlPresentColumns(ctx, db, t); err == nil {
+				if !createsTables {
+					findings = append(findings, fmt.Sprintf("destination %q has no column %s in %s that the account can see",
+						name, strings.Join(absent, ", "), t))
+				}
+				missing, err = mysqlMissingRowPrivileges(ctx, db, t)
+			}
+		}
 		switch {
 		case errors.Is(err, errMysqlNoSuchTable):
 			if !createsTables {
@@ -182,18 +201,83 @@ func mysqlMissingRowPrivileges(ctx context.Context, db sqlDb, t *jobTable) ([]st
 func mysqlProbe(ctx context.Context, db sqlDb, statement string) (bool, error) {
 	rows, err := db.QueryContext(ctx, "EXPLAIN "+statement)
 	if err == nil {
-		return true, rows.Close()
+		// MariaDB answers an EXPLAIN SELECT it refuses with the header of its result, and
+		// the error after it: the result is read to its end before the answer is known.
+		for rows.Next() {
+		}
+		err = errors.Join(rows.Err(), rows.Close())
+	}
+	if err == nil {
+		return true, nil
 	}
 	var mysqlErr *mysql.MySQLError
 	if errors.As(err, &mysqlErr) {
 		switch mysqlErr.Number {
 		case mysqlDatabaseAccessDenied, mysqlTableAccessDenied, mysqlColumnAccessDenied:
 			return false, nil
-		case mysqlNoSuchTable:
+		case mysqlNoSuchTable, mysqlNoSuchDatabase:
 			return false, errMysqlNoSuchTable
+		case mysqlNoSuchColumn:
+			return false, errMysqlNoSuchColumn
 		}
 	}
 	return false, err
+}
+
+// mysqlPresentColumns splits the columns a table is written with between those the
+// destination has, which the table returned keeps, and those it lacks. information_schema
+// lists only the columns the account holds a privilege on.
+func mysqlPresentColumns(ctx context.Context, db sqlDb, t *jobTable) (*jobTable, []string, error) {
+	rows, err := db.QueryContext(ctx,
+		"SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+		t.Schema, t.Table)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var has []string
+	for rows.Next() {
+		var column string
+		if err := rows.Scan(&column); err != nil {
+			return nil, nil, err
+		}
+		has = append(has, column)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	present := &jobTable{Schema: t.Schema, Table: t.Table}
+	var absent []string
+	for _, column := range t.Columns {
+		// MySQL compares column names regardless of case
+		if slices.ContainsFunc(has, func(c string) bool { return strings.EqualFold(c, column) }) {
+			present.Columns = append(present.Columns, column)
+		} else {
+			absent = append(absent, column)
+		}
+	}
+	return present, absent, nil
+}
+
+// mysqlReadOnly tells whether the server refuses writes: read_only refuses those of regular
+// accounts, super_read_only everyone's. MariaDB has no super_read_only, which SHOW then
+// leaves out where selecting it fails.
+func mysqlReadOnly(ctx context.Context, db sqlDb) (bool, error) {
+	rows, err := db.QueryContext(ctx,
+		"SHOW GLOBAL VARIABLES WHERE Variable_name IN ('read_only', 'super_read_only')")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	readOnly := false
+	for rows.Next() {
+		var variable, value string
+		if err := rows.Scan(&variable, &value); err != nil {
+			return false, err
+		}
+		readOnly = readOnly || !strings.EqualFold(value, "OFF")
+	}
+	return readOnly, rows.Err()
 }
 
 // readMysqlGrants reads SHOW GRANTS for the session's own account, and whether the server
@@ -220,10 +304,9 @@ func readMysqlGrants(ctx context.Context, db sqlDb) (mysqlGrants, error) {
 }
 
 // The probes name the columns the run writes, so that a privilege held on some columns only
-// answers for those. The statements are never run, but MySQL still evaluates the values of
-// an INSERT into a partitioned table to prune its partitions: NULL goes through there for
-// any column, where DEFAULT is refused on a column without a default. An UPDATE takes
-// DEFAULT, which no partitioning refuses.
+// answers for those. The statements are never run, but the values they set are still
+// evaluated: MySQL prunes the partitions of an INSERT with them, and MariaDB refuses
+// DEFAULT on a column without a default. NULL goes through both, on any column.
 
 func (t *jobTable) mysqlName() string {
 	return quoteMysql(t.Schema) + "." + quoteMysql(t.Table)
@@ -249,7 +332,7 @@ func (t *jobTable) mysqlInsert() string {
 func (t *jobTable) mysqlUpdate() string {
 	sets := make([]string, len(t.Columns))
 	for i, column := range t.Columns {
-		sets[i] = quoteMysql(column) + " = DEFAULT"
+		sets[i] = quoteMysql(column) + " = NULL"
 	}
 	return "UPDATE " + t.mysqlName() + " SET " + strings.Join(sets, ", ") + " WHERE FALSE"
 }
