@@ -13,6 +13,16 @@ import (
 // so a family that fails its run does not hide the others. All P1: a value altered on the
 // way is silent corruption.
 func typeCases() []*Case {
+	all := mysqlTypeCases()
+	for _, c := range all {
+		// The whole family is a tour of the MySQL types; every other database gets its
+		// own, over the types it has instead.
+		c.Dialects = mysqlOnly
+	}
+	return all
+}
+
+func mysqlTypeCases() []*Case {
 	return []*Case{
 		valuesCase("types-integers", "Entiers aux bornes : BIGINT UNSIGNED, TINYINT(1) hors booléen, YEAR", []valueTable{
 			{name: "V_BIGINT", typ: schema.Int64(), values: []any{"-9223372036854775808", "9223372036854775807", int64(0)}},

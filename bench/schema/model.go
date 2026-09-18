@@ -76,8 +76,10 @@ type Column struct {
 	// AutoIncrement marks an identity column (AUTO_INCREMENT, IDENTITY, GENERATED … AS
 	// IDENTITY).
 	AutoIncrement bool
-	// Collation is written as is; empty keeps the table default.
-	Collation string
+	// Collation is the collation of the column, per database, written as is. A database
+	// the map does not name keeps its default: collation names have nothing in common
+	// from one database to the next, and a wrong one changes what equality means.
+	Collation map[Dialect]string
 	// GeneratedAs is the expression of a generated column, stored or virtual. Such a
 	// column is never written: the source loader skips it and seeds give it nil.
 	GeneratedAs     string
@@ -190,4 +192,15 @@ type Renderer interface {
 	// LoadSessionStatements set the session a seed is loaded through: foreign key checks
 	// off above all, since a seed holds the orphans a legacy database holds.
 	LoadSessionStatements() []string
+	// ReadOnlyStatement makes the server refuse the writes of the runs, or accept them
+	// again: the bench reads its source the way a job reads a replica.
+	ReadOnlyStatement(database string, readOnly bool) string
+	// AccountStatements drop and recreate a login account, the one a case with restricted
+	// privileges writes its destination with.
+	AccountStatements(user, password string) []string
+	// Account names an account the way a GRANT statement does.
+	Account(user string) string
+	// ConnectionDatabase is the database a restricted account opens the destination with:
+	// the case itself where a case is a database, the bench database where it is a schema.
+	ConnectionDatabase(benchDatabase, caseSchema string) string
 }

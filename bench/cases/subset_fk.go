@@ -411,7 +411,8 @@ func fkVirtual() *Case {
 // sends the keys of the batch as parameters of a derived table: the comparison must stay
 // the one of the column, not the one the connection happens to use.
 func fkParentKeyCollation() *Case {
-	const binary = "utf8mb4_bin"
+	// Byte for byte on both databases: "REF-A-01" and "ref-a-01" are two codes.
+	binary := map[schema.Dialect]string{schema.MySQL: "utf8mb4_bin", schema.Postgres: `"C"`}
 	return &Case{
 		ID:       "fk-parent-key-collation",
 		Priority: P1,

@@ -222,7 +222,7 @@ func fkParentOutsideJob() *Case {
 			},
 		},
 		Job:              Job{ExcludedTables: []string{"PAYS"}},
-		DestinationSetup: []string{"INSERT INTO {db}.`PAYS` (`id`, `nom`) VALUES (1, 'France'), (2, 'Belgique')"},
+		DestinationSetup: []string{"INSERT INTO {db}.{q:PAYS} ({q:id}, {q:nom}) VALUES (1, 'France'), (2, 'Belgique')"},
 		Seed: func(p Params, emit Emitter) {
 			emit.Row("PAYS", []any{int64(1), "France"}, Kept())
 			emit.Row("PAYS", []any{int64(2), "Belgique"}, Kept())

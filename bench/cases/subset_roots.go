@@ -19,7 +19,7 @@ func twoRootsJob() Job {
 	return Job{
 		Where: map[string]string{
 			"STATION":       fmt.Sprintf("id = %d", stationKept),
-			clientTableName: "actif = 1",
+			clientTableName: "actif = true",
 		},
 		SubsetByForeignKeys:      true,
 		SkipForeignKeyViolations: true,

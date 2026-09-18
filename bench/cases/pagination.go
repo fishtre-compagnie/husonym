@@ -188,6 +188,8 @@ func pageBinaryKey() *Case {
 // pageCaseInsensitiveKey: under the default MySQL collation "k0002" and "K0002" are the
 // same key and the order ignores case; an engine comparing keys itself would disagree.
 func pageCaseInsensitiveKey() *Case {
+	// MySQL compares text without regard to case by default; PostgreSQL does not, and
+	// saying so there needs a collation of its own — a case of its own too.
 	return exoticKeyCase("page-case-insensitive-key", "Clé texte sous collation insensible à la casse",
 		"LIBELLE", schema.Varchar(20),
 		func(i int) any {

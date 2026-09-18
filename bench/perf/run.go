@@ -66,7 +66,7 @@ func (r *Runner) Run(ctx context.Context) (*Report, error) {
 	jobs := map[env.Engine]string{}
 	tag := time.Now().Format("20060102-150405")
 	for _, engine := range env.Engines {
-		id, err := r.Client.CreateJob(ctx, dataset, engine, r.SourceConn, r.DestConns[engine], tag)
+		id, err := r.Client.CreateJob(ctx, r.Renderer.Dialect(), dataset, engine, r.SourceConn, r.DestConns[engine], tag)
 		if err != nil {
 			return nil, err
 		}

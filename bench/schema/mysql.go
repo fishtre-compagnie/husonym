@@ -44,6 +44,28 @@ func (MySQLRenderer) LoadSessionStatements() []string {
 	return []string{"SET FOREIGN_KEY_CHECKS=0"}
 }
 
+// MySQL refuses the writes of the whole server, root included with super_read_only.
+// Turning read_only off turns super_read_only off with it.
+func (MySQLRenderer) ReadOnlyStatement(_ string, readOnly bool) string {
+	if readOnly {
+		return "SET GLOBAL super_read_only = ON"
+	}
+	return "SET GLOBAL read_only = OFF"
+}
+
+func (MySQLRenderer) Account(user string) string { return "'" + user + "'@'%'" }
+
+// A case is a database of its own: a restricted account has no right on any other, so it
+// is the one its connection opens.
+func (MySQLRenderer) ConnectionDatabase(_, caseSchema string) string { return caseSchema }
+
+func (r MySQLRenderer) AccountStatements(user, password string) []string {
+	return []string{
+		"DROP USER IF EXISTS " + r.Account(user),
+		"CREATE USER " + r.Account(user) + " IDENTIFIED BY '" + password + "'",
+	}
+}
+
 func (r MySQLRenderer) CreateTable(database string, t *Table) ([]string, error) {
 	lines := make([]string, 0, len(t.Columns)+len(t.Indexes)+1)
 	for i := range t.Columns {
@@ -53,8 +75,8 @@ func (r MySQLRenderer) CreateTable(database string, t *Table) ([]string, error) 
 			return nil, fmt.Errorf("schema: %s.%s: %w", t.Name, col.Name, err)
 		}
 		line := r.QuoteIdent(col.Name) + " " + typ
-		if col.Collation != "" {
-			line += " COLLATE " + col.Collation
+		if collation := col.Collation[MySQL]; collation != "" {
+			line += " COLLATE " + collation
 		}
 		if col.GeneratedAs != "" {
 			line += " GENERATED ALWAYS AS (" + col.GeneratedAs + ")"

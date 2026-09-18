@@ -65,6 +65,7 @@ func generatedColumns(id, title string, transformer *mgmtv1alpha1.TransformerCon
 func columnsOnUpdateTimestamp() *Case {
 	return &Case{
 		ID:       "columns-on-update-timestamp",
+		Dialects: mysqlOnly,
 		Priority: P2,
 		Title:    "ON UPDATE CURRENT_TIMESTAMP : date de modification réécrite par une écriture en deux passes",
 		Tables: []*schema.Table{
@@ -105,6 +106,7 @@ func columnsOnUpdateTimestamp() *Case {
 func columnsInvisible() *Case {
 	return &Case{
 		ID:       "columns-invisible",
+		Dialects: mysqlOnly,
 		Priority: P2,
 		Title:    "Colonne INVISIBLE (absente de SELECT *)",
 		Tables: []*schema.Table{{
@@ -128,6 +130,7 @@ func columnsInvisible() *Case {
 func tablePartitioned() *Case {
 	return &Case{
 		ID:       "table-partitioned",
+		Dialects: mysqlOnly,
 		Priority: P2,
 		Title:    "Table partitionnée (PARTITION BY HASH), paginée",
 		Tables: []*schema.Table{{

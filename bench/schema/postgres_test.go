@@ -11,7 +11,7 @@ func Test_PostgresRenderer(t *testing.T) {
 		Name: "COMMANDE",
 		Columns: []Column{
 			{Name: "id", Type: Uint64(), AutoIncrement: true},
-			{Name: "order", Type: Varchar(20), Nullable: true, Collation: `"C"`},
+			{Name: "order", Type: Varchar(20), Nullable: true, Collation: map[Dialect]string{Postgres: `"C"`}},
 			{Name: "parent_id", Type: Int64(), Default: "0"},
 			{Name: "etat", Type: Native(map[Dialect]string{Postgres: "etat_enum"})},
 			{Name: "total", Type: Int64(), Nullable: true, GeneratedAs: "parent_id * 2"},

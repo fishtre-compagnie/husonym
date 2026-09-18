@@ -57,6 +57,42 @@ func (PostgresRenderer) LoadSessionStatements() []string {
 	return []string{"SET session_replication_role = replica"}
 }
 
+// PostgreSQL has no server-wide read-only switch a bench can flip: standing up a real
+// standby for every pass would cost far more than it proves. Every session opened on the
+// database from then on starts read-only, which is what a run opens — and what the
+// sessions already loading the seed do not, since the setting is read at connection time.
+func (r PostgresRenderer) ReadOnlyStatement(database string, readOnly bool) string {
+	value := "off"
+	if readOnly {
+		value = "on"
+	}
+	return "ALTER DATABASE " + r.QuoteIdent(database) + " SET default_transaction_read_only = " + value
+}
+
+func (r PostgresRenderer) Account(user string) string { return r.QuoteIdent(user) }
+
+// Every case is a schema of the same database, which is the one every account connects to.
+func (PostgresRenderer) ConnectionDatabase(benchDatabase, _ string) string { return benchDatabase }
+
+func (r PostgresRenderer) AccountStatements(user, password string) []string {
+	return []string{
+		// What a role still holds refuses its drop, and DROP OWNED BY refuses a role that
+		// is not there: both are settled in one statement.
+		"DO $husonym$ BEGIN\n" +
+			"  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = " + literal(user) + ") THEN\n" +
+			"    EXECUTE 'DROP OWNED BY ' || quote_ident(" + literal(user) + ") || ' CASCADE';\n" +
+			"    EXECUTE 'DROP ROLE ' || quote_ident(" + literal(user) + ");\n" +
+			"  END IF;\n" +
+			"END $husonym$",
+		"CREATE ROLE " + r.Account(user) + " LOGIN PASSWORD " + literal(password),
+	}
+}
+
+// literal quotes a value as a SQL string.
+func literal(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
 func (r PostgresRenderer) CreateTable(container string, t *Table) ([]string, error) {
 	lines := make([]string, 0, len(t.Columns)+1)
 	for i := range t.Columns {
@@ -103,8 +139,8 @@ func (r PostgresRenderer) columnLine(col *Column) (string, error) {
 		return "", err
 	}
 	line := r.QuoteIdent(col.Name) + " " + typ
-	if col.Collation != "" {
-		line += " COLLATE " + col.Collation
+	if collation := col.Collation[Postgres]; collation != "" {
+		line += " COLLATE " + collation
 	}
 	switch {
 	case col.GeneratedAs != "":

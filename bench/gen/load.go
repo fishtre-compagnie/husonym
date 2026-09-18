@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/bench/cases"
@@ -54,7 +55,7 @@ func PrepareDestination(ctx context.Context, db *sql.DB, r schema.Renderer, c *c
 		return err
 	}
 	for _, stmt := range c.DestinationSetup {
-		stmt = strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(c.Schema()))
+		stmt = RenderIdentifiers(r, strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(c.Schema())))
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: destination setup: %w\n%s", c.ID, err, stmt)
 		}
@@ -199,6 +200,17 @@ func (l *loader) flush(table string) {
 
 func maxRowsPerInsert(columns int) int {
 	return min(insertBatchRows, maxParams/columns)
+}
+
+// identifierPlaceholder matches {q:name}, an identifier a case leaves to the renderer to
+// quote so that one statement serves every database.
+var identifierPlaceholder = regexp.MustCompile(`\{q:([^}]*)\}`)
+
+// RenderIdentifiers replaces every {q:name} of a statement by the quoted identifier.
+func RenderIdentifiers(r schema.Renderer, stmt string) string {
+	return identifierPlaceholder.ReplaceAllStringFunc(stmt, func(match string) string {
+		return r.QuoteIdent(identifierPlaceholder.FindStringSubmatch(match)[1])
+	})
 }
 
 // RowKey returns the oracle key of a row given in column order, from the identity

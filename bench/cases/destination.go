@@ -10,6 +10,7 @@ import (
 func destinationCases() []*Case {
 	return []*Case{
 		destinationTriggerWritesSyncedTable(),
+		// Both tell a MySQL message apart, and reorder columns, which PostgreSQL cannot.
 		destinationDiffers("destination-column-order",
 			"Destination dont les colonnes sont dans un autre ordre, avec une colonne nullable en plus",
 			"", "ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(40) NOT NULL FIRST, ADD `ajoutee` INT NULL AFTER `libelle`"),
@@ -26,7 +27,10 @@ func destinationCases() []*Case {
 // from the source or pile up next to them.
 func destinationTriggerWritesSyncedTable() *Case {
 	return &Case{
-		ID:       "destination-trigger-writes-synced-table",
+		ID: "destination-trigger-writes-synced-table",
+		// MySQL writes a trigger body inline, where PostgreSQL calls a function; and the
+		// two do not suspend a trigger the same way, which is what the case is about.
+		Dialects: mysqlOnly,
 		Priority: P1,
 		Title:    "Trigger en destination qui écrit dans une table elle aussi synchronisée",
 		Tables: []*schema.Table{
@@ -86,6 +90,7 @@ func destinationDiffers(id, title, runError, alter string) *Case {
 		Priority:         P2,
 		Title:            title,
 		Tables:           []*schema.Table{articleTable()},
+		Dialects:         mysqlOnly,
 		DestinationSetup: []string{alter},
 		ExpectRunError:   runError,
 		Seed:             func(p Params, emit Emitter) { seedArticles(emit) },
@@ -103,7 +108,7 @@ func onConflictUpdateOnUniqueKey() *Case {
 		Title:  "onConflict update : conflit sur la clé primaire et sur une clé unique autre que la clé primaire",
 		Tables: []*schema.Table{articleTable()},
 		DestinationSetup: []string{
-			"INSERT INTO {db}.`ARTICLE` (`id`, `code`, `libelle`) VALUES " +
+			"INSERT INTO {db}.{q:ARTICLE} ({q:id}, {q:code}, {q:libelle}) VALUES " +
 				"(1, 'C0001', 'ancien libellé'), (2, 'C0002', 'ancien libellé'), (900, 'C0003', 'même code, autre id')",
 		},
 		Job:  Job{OnConflictUpdate: true},

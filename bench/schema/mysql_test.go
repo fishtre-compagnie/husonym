@@ -11,7 +11,7 @@ func Test_MySQLRenderer(t *testing.T) {
 		Name: "COMMANDE",
 		Columns: []Column{
 			{Name: "id", Type: Uint64(), AutoIncrement: true},
-			{Name: "order", Type: Varchar(20), Nullable: true, Collation: "utf8mb4_bin"},
+			{Name: "order", Type: Varchar(20), Nullable: true, Collation: map[Dialect]string{MySQL: "utf8mb4_bin"}},
 			{Name: "parent_id", Type: Int64(), Default: "0"},
 			{Name: "etat", Type: Native(map[Dialect]string{MySQL: "ENUM('a','')"})},
 		},

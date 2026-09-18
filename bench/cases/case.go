@@ -128,9 +128,14 @@ type Emitter interface {
 
 // Case is one tricky case.
 type Case struct {
-	// ID names the case and its database (bench_<id>, dashes turned into underscores).
+	// ID names the case and its schema (bench_<id>, dashes turned into underscores).
 	ID       string
 	Priority Priority
+	// Dialects are the databases the case makes sense on; empty means every one of them.
+	// A case belongs to one database when it is about what only that database has — a
+	// type, a setting, a syntax — not merely because it was written there first: the
+	// tables, the seed and the expectation are all database-neutral.
+	Dialects []schema.Dialect
 	// Title says, in one line of the report, what the case checks.
 	Title  string
 	Tables []*schema.Table
@@ -144,7 +149,9 @@ type Case struct {
 	SourceSQLMode string
 	// DestinationSetup statements run on each destination once its empty tables exist:
 	// what a real destination holds beyond the tables (triggers, extra columns). {db} is
-	// replaced by the database of the case.
+	// replaced by the schema of the case and {q:name} by an identifier, both quoted the
+	// way the database quotes — a statement every database understands is then written
+	// once.
 	DestinationSetup []string
 	// DestinationGrants, when set, makes the job write with a restricted account holding
 	// only these privileges instead of root. {db} is replaced by the database of the case
@@ -163,6 +170,15 @@ type Case struct {
 // calls a schema in both.
 func (c *Case) Schema() string {
 	return "bench_" + strings.ReplaceAll(c.ID, "-", "_")
+}
+
+// mysqlOnly marks a case about something only MySQL has — a type, a setting, a syntax.
+// Every other database gets a case of its own for what it has instead.
+var mysqlOnly = []schema.Dialect{schema.MySQL}
+
+// RunsOn reports whether the case is exercised on a database.
+func (c *Case) RunsOn(d schema.Dialect) bool {
+	return len(c.Dialects) == 0 || slices.Contains(c.Dialects, d)
 }
 
 // Table returns the named table of the case, or nil.
@@ -233,6 +249,11 @@ func (c *Case) Validate() error {
 	}
 	if c.Priority < P1 || c.Priority > P3 {
 		return fmt.Errorf("cases: %s: priority out of range", c.ID)
+	}
+	for _, d := range c.Dialects {
+		if !slices.Contains(schema.Dialects, d) {
+			return fmt.Errorf("cases: %s: unknown dialect %q", c.ID, d)
+		}
 	}
 	for _, t := range c.Tables {
 		for _, name := range t.PrimaryKey {

@@ -86,3 +86,22 @@ func Test_Case_IdentityColumns(t *testing.T) {
 	c.Identity = map[string][]string{"KEYED": {"v"}}
 	require.Equal(t, []string{"v"}, c.IdentityColumns("KEYED"))
 }
+
+// Test_Cases_renderOnTheirDialects: a case that does not name its databases claims to run
+// on all of them, and the bench would find out only once the servers are up. The renderer
+// of each one is asked here instead.
+func Test_Cases_renderOnTheirDialects(t *testing.T) {
+	for _, c := range All() {
+		for _, dialect := range schema.Dialects {
+			if !c.RunsOn(dialect) {
+				continue
+			}
+			r, err := schema.RendererFor(dialect)
+			require.NoError(t, err)
+			for _, table := range c.Tables {
+				_, err := r.CreateTable(c.Schema(), table)
+				require.NoErrorf(t, err, "%s does not render on %s: name the databases it belongs to", c.ID, dialect)
+			}
+		}
+	}
+}

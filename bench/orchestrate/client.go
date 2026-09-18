@@ -15,6 +15,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/bench/env"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
 // Client talks to the Husonym API on behalf of the bench account.
@@ -47,9 +48,13 @@ func NewClient(ctx context.Context, apiURL string) (*Client, error) {
 // connections of the previous one; the name carries a digest of the server settings, so
 // changed settings never reuse a stale connection.
 func (c *Client) EnsureConnection(ctx context.Context, role string, server *env.Server) (string, error) {
-	digest := sha256.Sum256(fmt.Appendf(nil, "%s:%d/%s/%s/%s",
-		server.WorkerHost, server.WorkerPort, server.User, server.Password, server.Database))
+	digest := sha256.Sum256(fmt.Appendf(nil, "%s/%s:%d/%s/%s/%s",
+		server.Dialect, server.WorkerHost, server.WorkerPort, server.User, server.Password, server.Database))
 	name := "bench-" + role + "-" + hex.EncodeToString(digest[:4])
+	config, err := connectionConfig(server)
+	if err != nil {
+		return "", err
+	}
 	existing, err := c.conns.GetConnections(ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionsRequest{
 		AccountId: c.accountID,
 	}))
@@ -62,9 +67,21 @@ func (c *Client) EnsureConnection(ctx context.Context, role string, server *env.
 		}
 	}
 	created, err := c.conns.CreateConnection(ctx, connect.NewRequest(&mgmtv1alpha1.CreateConnectionRequest{
-		AccountId: c.accountID,
-		Name:      name,
-		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+		AccountId:        c.accountID,
+		Name:             name,
+		ConnectionConfig: config,
+	}))
+	if err != nil {
+		return "", fmt.Errorf("orchestrate: create connection %s: %w", name, err)
+	}
+	return created.Msg.GetConnection().GetId(), nil
+}
+
+// connectionConfig describes a bench server to the API, as its dialect expects.
+func connectionConfig(server *env.Server) (*mgmtv1alpha1.ConnectionConfig, error) {
+	switch server.Dialect {
+	case schema.MySQL:
+		return &mgmtv1alpha1.ConnectionConfig{
 			Config: &mgmtv1alpha1.ConnectionConfig_MysqlConfig{MysqlConfig: &mgmtv1alpha1.MysqlConnectionConfig{
 				ConnectionConfig: &mgmtv1alpha1.MysqlConnectionConfig_Connection{Connection: &mgmtv1alpha1.MysqlConnection{
 					User:     server.User,
@@ -75,10 +92,24 @@ func (c *Client) EnsureConnection(ctx context.Context, role string, server *env.
 					Name:     server.Database,
 				}},
 			}},
-		},
-	}))
-	if err != nil {
-		return "", fmt.Errorf("orchestrate: create connection %s: %w", name, err)
+		}, nil
+	case schema.Postgres:
+		disable := "disable"
+		return &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
+				ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Connection{
+					Connection: &mgmtv1alpha1.PostgresConnection{
+						User:    server.User,
+						Pass:    server.Password,
+						Host:    server.WorkerHost,
+						Port:    server.WorkerPort,
+						Name:    server.Database,
+						SslMode: &disable,
+					},
+				},
+			}},
+		}, nil
+	default:
+		return nil, fmt.Errorf("orchestrate: no connection config for dialect %q", server.Dialect)
 	}
-	return created.Msg.GetConnection().GetId(), nil
 }

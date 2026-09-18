@@ -64,7 +64,15 @@ func list() error {
 		if err := c.Validate(); err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "%s  %-32s %s\n", c.Priority, c.ID, c.Title)
+		databases := "tous"
+		if len(c.Dialects) > 0 {
+			names := make([]string, len(c.Dialects))
+			for i, d := range c.Dialects {
+				names[i] = string(d)
+			}
+			databases = strings.Join(names, ",")
+		}
+		fmt.Fprintf(os.Stdout, "%s  %-10s %-32s %s\n", c.Priority, databases, c.ID, c.Title)
 	}
 	return nil
 }
@@ -95,17 +103,19 @@ func run(args []string, execute bool) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	selected, err := selectCases(*only)
-	if err != nil {
-		return err
-	}
-
 	ctx := context.Background()
 	b, err := newBench(ctx, execute)
 	if err != nil {
 		return err
 	}
 	b.runTimeout = *runTimeout
+	selected, err := selectCases(*only, b.env.Dialect)
+	if err != nil {
+		return err
+	}
+	if left := len(cases.All()) - len(selected); left > 0 && *only == "" {
+		fmt.Fprintf(os.Stdout, "%d cas hors de %s\n\n", left, b.env.Dialect)
+	}
 
 	started := time.Now()
 	// Sources are loaded one after the other: cases share the oracle tables, and
@@ -176,10 +186,19 @@ func run(args []string, execute bool) error {
 	return nil
 }
 
-func selectCases(only string) ([]*cases.Case, error) {
+// selectCases returns the cases to run on a database: the named ones, or every case the
+// database is concerned by. A case named on the command line that belongs to another
+// database is an error, not a silent skip.
+func selectCases(only string, dialect schema.Dialect) ([]*cases.Case, error) {
 	all := cases.All()
 	if only == "" {
-		return all, nil
+		var selected []*cases.Case
+		for _, c := range all {
+			if c.RunsOn(dialect) {
+				selected = append(selected, c)
+			}
+		}
+		return selected, nil
 	}
 	byID := map[string]*cases.Case{}
 	for _, c := range all {
@@ -190,6 +209,9 @@ func selectCases(only string) ([]*cases.Case, error) {
 		c, ok := byID[strings.TrimSpace(id)]
 		if !ok {
 			return nil, fmt.Errorf("unknown case %q", id)
+		}
+		if !c.RunsOn(dialect) {
+			return nil, fmt.Errorf("case %q is not exercised on %s", c.ID, dialect)
 		}
 		selected = append(selected, c)
 	}
@@ -239,15 +261,12 @@ func newBench(ctx context.Context, execute bool) (*bench, error) {
 	return b, nil
 }
 
-// setSourceReadOnly turns the source into a server refusing every write, root included,
-// or back. Turning read_only off also turns super_read_only off.
+// setSourceReadOnly turns the source into a server refusing the writes of the runs, or
+// back: every run then reads a source it cannot write to, like a replica.
 func (b *bench) setSourceReadOnly(ctx context.Context, readOnly bool) error {
-	stmt := "SET GLOBAL read_only = OFF"
-	if readOnly {
-		stmt = "SET GLOBAL super_read_only = ON"
-	}
+	stmt := b.renderer.ReadOnlyStatement(b.env.Source.Database, readOnly)
 	if _, err := b.source.ExecContext(ctx, stmt); err != nil {
-		return fmt.Errorf("source read-only switch: %w", err)
+		return fmt.Errorf("source read-only switch: %w\n%s", err, stmt)
 	}
 	return nil
 }
@@ -260,13 +279,10 @@ func (b *bench) restrictedDestination(ctx context.Context, c *cases.Case, engine
 	user, password := "bench_r_"+hex.EncodeToString(digest[:4]), "bench-restricted"
 	db := b.dests[engine]
 	quotedDB := b.renderer.QuoteIdent(c.Schema())
-	stmts := []string{
-		"DROP USER IF EXISTS '" + user + "'@'%'",
-		"CREATE USER '" + user + "'@'%' IDENTIFIED BY '" + password + "'",
-	}
+	stmts := b.renderer.AccountStatements(user, password)
 	for _, grant := range c.DestinationGrants {
 		grant = strings.ReplaceAll(grant, "{db}", quotedDB)
-		stmts = append(stmts, strings.ReplaceAll(grant, "{user}", "'"+user+"'@'%'"))
+		stmts = append(stmts, strings.ReplaceAll(grant, "{user}", b.renderer.Account(user)))
 	}
 	for _, stmt := range stmts {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
@@ -274,7 +290,8 @@ func (b *bench) restrictedDestination(ctx context.Context, c *cases.Case, engine
 		}
 	}
 	server := b.env.Destinations[engine]
-	server.User, server.Password, server.Database = user, password, c.Schema()
+	server.User, server.Password = user, password
+	server.Database = b.renderer.ConnectionDatabase(server.Database, c.Schema())
 	// The connection name carries a digest of the account, which tells the cases apart.
 	return b.client.EnsureConnection(ctx, "dest-"+string(engine)+"-restricted", &server)
 }
@@ -341,7 +358,7 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 			return err
 		}
 	}
-	jobID, err := b.client.CreateJob(ctx, c, engine, b.sourceConn, destConn, b.runTag)
+	jobID, err := b.client.CreateJob(ctx, b.env.Dialect, c, engine, b.sourceConn, destConn, b.runTag)
 	if err != nil {
 		return err
 	}

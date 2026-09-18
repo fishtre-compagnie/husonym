@@ -86,7 +86,7 @@ func commandeOfStationAndClient() *schema.Table {
 }
 
 // whereOrTwoRoots: two subset roots, one of them with a top-level OR. Their clauses are
-// ANDed without parentheses, so "s.id = 1 OR s.id = 3 AND c.actif = 1" lets through the
+// ANDed without parentheses, so "s.id = 1 OR s.id = 3 AND c.actif = true" lets through the
 // orders of a kept station placed by a client left out — whichever clause comes first.
 func whereOrTwoRoots() *Case {
 	return &Case{
@@ -97,7 +97,7 @@ func whereOrTwoRoots() *Case {
 		Job: Job{
 			Where: map[string]string{
 				"STATION":       fmt.Sprintf("id = %d OR id = %d", stationKept, stationTwin),
-				clientTableName: "actif = 1",
+				clientTableName: "actif = true",
 			},
 			SubsetByForeignKeys:      true,
 			SkipForeignKeyViolations: true,

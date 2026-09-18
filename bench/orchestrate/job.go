@@ -10,6 +10,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/cases"
 	"github.com/fishtre-compagnie/husonym/bench/env"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
@@ -28,6 +29,7 @@ var jobEngines = map[env.Engine]mgmtv1alpha1.JobEngine{
 // Table syncs get the attempts the case asks for, one by default (see cases.Job).
 func (c *Client) CreateJob(
 	ctx context.Context,
+	dialect schema.Dialect,
 	cs *cases.Case,
 	engine env.Engine,
 	sourceConnID, destConnID, runTag string,
@@ -39,7 +41,7 @@ func (c *Client) CreateJob(
 	database := cs.Schema()
 
 	var mappings []*mgmtv1alpha1.JobMapping
-	tables := make([]*mgmtv1alpha1.MysqlSourceTableOption, 0, len(cs.Tables))
+	tableWheres := make([]tableWhere, 0, len(cs.Tables))
 	var virtualFks []*mgmtv1alpha1.VirtualForeignConstraint
 	for _, t := range cs.Tables {
 		if cs.IsExcluded(t.Name) {
@@ -56,11 +58,11 @@ func (c *Client) CreateJob(
 				Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: transformer},
 			})
 		}
-		option := &mgmtv1alpha1.MysqlSourceTableOption{Table: t.Name}
+		tw := tableWhere{table: t.Name}
 		if where, ok := cs.Job.Where[t.Name]; ok {
-			option.WhereClause = &where
+			tw.where = &where
 		}
-		tables = append(tables, option)
+		tableWheres = append(tableWheres, tw)
 		for _, fk := range t.ForeignKeys {
 			if !fk.Virtual {
 				continue
@@ -77,35 +79,22 @@ func (c *Client) CreateJob(
 	if count := cs.Job.BatchCount; count > 0 {
 		batch = &mgmtv1alpha1.BatchConfig{Count: &count}
 	}
-	var onConflict *mgmtv1alpha1.MysqlOnConflictConfig
-	if cs.Job.OnConflictUpdate {
-		onConflict = &mgmtv1alpha1.MysqlOnConflictConfig{
-			Strategy: &mgmtv1alpha1.MysqlOnConflictConfig_Update{Update: &mgmtv1alpha1.MysqlOnConflictConfig_MysqlOnConflictUpdate{}},
-		}
+	source, err := sourceOptions(dialect, sourceConnID, database, tableWheres, cs.Job.SubsetByForeignKeys)
+	if err != nil {
+		return "", err
+	}
+	destination, err := destinationOptions(dialect, cs, batch)
+	if err != nil {
+		return "", err
 	}
 	resp, err := c.jobs.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
 		AccountId: c.accountID,
 		JobName:   jobName(cs.ID, engine, runTag),
 		Mappings:  mappings,
-		Source: &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
-			Config: &mgmtv1alpha1.JobSourceOptions_Mysql{Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{
-				ConnectionId:                  sourceConnID,
-				Schemas:                       []*mgmtv1alpha1.MysqlSourceSchemaOption{{Schema: database, Tables: tables}},
-				SubsetByForeignKeyConstraints: cs.Job.SubsetByForeignKeys,
-			}},
-		}},
+		Source:    &mgmtv1alpha1.JobSource{Options: source},
 		Destinations: []*mgmtv1alpha1.CreateJobDestination{{
 			ConnectionId: destConnID,
-			Options: &mgmtv1alpha1.JobDestinationOptions{
-				Config: &mgmtv1alpha1.JobDestinationOptions_MysqlOptions{MysqlOptions: &mgmtv1alpha1.MysqlDestinationConnectionOptions{
-					SkipForeignKeyViolations: cs.Job.SkipForeignKeyViolations,
-					TruncateTable: &mgmtv1alpha1.MysqlTruncateTableConfig{
-						TruncateBeforeInsert: cs.Job.TruncateBeforeInsert,
-					},
-					OnConflict: onConflict,
-					Batch:      batch,
-				}},
-			},
+			Options:      destination,
 		}},
 		VirtualForeignKeys: virtualFks,
 		WorkflowOptions:    &mgmtv1alpha1.WorkflowOptions{Engine: jobEngine},
@@ -117,6 +106,106 @@ func (c *Client) CreateJob(
 		return "", fmt.Errorf("orchestrate: create job for %s on %s: %w", cs.ID, engine, err)
 	}
 	return resp.Msg.GetJob().GetId(), nil
+}
+
+// tableWhere is one table of the job and the subset clause it carries, before the dialect
+// decides which message it goes in.
+type tableWhere struct {
+	table string
+	where *string
+}
+
+func sourceOptions(
+	dialect schema.Dialect,
+	connectionID, database string,
+	tables []tableWhere,
+	subsetByForeignKeys bool,
+) (*mgmtv1alpha1.JobSourceOptions, error) {
+	switch dialect {
+	case schema.MySQL:
+		options := make([]*mgmtv1alpha1.MysqlSourceTableOption, len(tables))
+		for i, t := range tables {
+			options[i] = &mgmtv1alpha1.MysqlSourceTableOption{Table: t.table, WhereClause: t.where}
+		}
+		return &mgmtv1alpha1.JobSourceOptions{
+			Config: &mgmtv1alpha1.JobSourceOptions_Mysql{Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{
+				ConnectionId:                  connectionID,
+				Schemas:                       []*mgmtv1alpha1.MysqlSourceSchemaOption{{Schema: database, Tables: options}},
+				SubsetByForeignKeyConstraints: subsetByForeignKeys,
+			}},
+		}, nil
+	case schema.Postgres:
+		options := make([]*mgmtv1alpha1.PostgresSourceTableOption, len(tables))
+		for i, t := range tables {
+			options[i] = &mgmtv1alpha1.PostgresSourceTableOption{Table: t.table, WhereClause: t.where}
+		}
+		return &mgmtv1alpha1.JobSourceOptions{
+			Config: &mgmtv1alpha1.JobSourceOptions_Postgres{Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{
+				ConnectionId:                  connectionID,
+				Schemas:                       []*mgmtv1alpha1.PostgresSourceSchemaOption{{Schema: database, Tables: options}},
+				SubsetByForeignKeyConstraints: subsetByForeignKeys,
+			}},
+		}, nil
+	default:
+		return nil, fmt.Errorf("orchestrate: no source options for dialect %q", dialect)
+	}
+}
+
+func destinationOptions(
+	dialect schema.Dialect,
+	cs *cases.Case,
+	batch *mgmtv1alpha1.BatchConfig,
+) (*mgmtv1alpha1.JobDestinationOptions, error) {
+	switch dialect {
+	case schema.MySQL:
+		var onConflict *mgmtv1alpha1.MysqlOnConflictConfig
+		if cs.Job.OnConflictUpdate {
+			onConflict = &mgmtv1alpha1.MysqlOnConflictConfig{
+				Strategy: &mgmtv1alpha1.MysqlOnConflictConfig_Update{
+					Update: &mgmtv1alpha1.MysqlOnConflictConfig_MysqlOnConflictUpdate{},
+				},
+			}
+		}
+		return &mgmtv1alpha1.JobDestinationOptions{
+			Config: &mgmtv1alpha1.JobDestinationOptions_MysqlOptions{
+				MysqlOptions: &mgmtv1alpha1.MysqlDestinationConnectionOptions{
+					SkipForeignKeyViolations: cs.Job.SkipForeignKeyViolations,
+					TruncateTable: &mgmtv1alpha1.MysqlTruncateTableConfig{
+						TruncateBeforeInsert: cs.Job.TruncateBeforeInsert,
+					},
+					OnConflict: onConflict,
+					Batch:      batch,
+				},
+			},
+		}, nil
+	case schema.Postgres:
+		var onConflict *mgmtv1alpha1.PostgresOnConflictConfig
+		if cs.Job.OnConflictUpdate {
+			onConflict = &mgmtv1alpha1.PostgresOnConflictConfig{
+				Strategy: &mgmtv1alpha1.PostgresOnConflictConfig_Update{
+					Update: &mgmtv1alpha1.PostgresOnConflictConfig_PostgresOnConflictUpdate{},
+				},
+			}
+		}
+		return &mgmtv1alpha1.JobDestinationOptions{
+			Config: &mgmtv1alpha1.JobDestinationOptions_PostgresOptions{
+				PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{
+					SkipForeignKeyViolations: cs.Job.SkipForeignKeyViolations,
+					TruncateTable: &mgmtv1alpha1.PostgresTruncateTableConfig{
+						TruncateBeforeInsert: cs.Job.TruncateBeforeInsert,
+						// A truncated table of a case is referenced by another one of the
+						// same case, which the run empties too: cascading empties them in
+						// one statement instead of refusing.
+						Cascade: cs.Job.TruncateBeforeInsert,
+					},
+					OnConflict: onConflict,
+					Batch:      batch,
+				},
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("orchestrate: no destination options for dialect %q", dialect)
+	}
 }
 
 func passthrough() *mgmtv1alpha1.TransformerConfig {

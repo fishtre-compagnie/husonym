@@ -23,6 +23,24 @@ x-bench-mysql: &bench-mysql
     timeout: 5s
     retries: 20
 
+x-bench-postgres: &bench-postgres
+  image: postgres:16
+  # One database holds every case, as a schema each, so a pass opens far fewer connections
+  # than on MySQL — but the worker still keeps those of a run open after it ends.
+  command: -c max_connections=1000
+  environment:
+    POSTGRES_PASSWORD: bench
+    POSTGRES_DB: bench
+  tmpfs:
+    - /var/lib/postgresql/data
+  networks:
+    - husonym-network
+  healthcheck:
+    test: ['CMD-SHELL', 'pg_isready -U postgres -d bench']
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
 services:
   worker:
     environment:
@@ -45,3 +63,21 @@ services:
     container_name: husonym-bench-dest-athanor
     ports:
       - 127.0.0.1:3311:3306
+
+  bench-pg-source:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-source
+    ports:
+      - 127.0.0.1:3312:5432
+
+  bench-pg-dest-benthos:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-dest-benthos
+    ports:
+      - 127.0.0.1:3313:5432
+
+  bench-pg-dest-athanor:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-dest-athanor
+    ports:
+      - 127.0.0.1:3314:5432

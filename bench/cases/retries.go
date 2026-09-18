@@ -23,6 +23,7 @@ func retryCases() []*Case {
 func retryInsertIgnoreMasksTruncation() *Case {
 	return &Case{
 		ID:       "retry-insert-ignore-masks-truncation",
+		Dialects: mysqlOnly,
 		Priority: P1,
 		Title:    "Nouvelle tentative en INSERT IGNORE : la troncature refusée à la première tentative passe en silence",
 		Tables: []*schema.Table{{
@@ -53,6 +54,7 @@ func retryKeylessTableDuplicates() *Case {
 	const marked = int64(999)
 	return &Case{
 		ID:       "retry-keyless-table-duplicates",
+		Dialects: mysqlOnly,
 		Priority: P1,
 		//nolint:misspell // titre du rapport, rédigé en français
 		Title:        "Table sans clé : une page réécrite après un échec partiel est en double",

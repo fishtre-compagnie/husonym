@@ -17,6 +17,7 @@ func identifiersQuoting() *Case {
 	longName := strings.Repeat("colonne_tres_longue_", 3) + "64ch"
 	return &Case{
 		ID:       "identifiers-quoting",
+		Dialects: mysqlOnly,
 		Priority: P2,
 		Title:    "Identifiants : mots réservés, espaces, tirets, accents, casse mixte, 64 caractères, sous subset par FK",
 		Tables: []*schema.Table{

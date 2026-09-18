@@ -16,6 +16,7 @@ func rightsCases() []*Case {
 func rightsDestinationReadOnlyAccount() *Case {
 	return &Case{
 		ID:       "rights-destination-read-only-account",
+		Dialects: mysqlOnly,
 		Priority: P2,
 		//nolint:misspell // titre du rapport, rédigé en français
 		Title: "Destination sans droit d'écriture : arrêt au démarrage du run sur le contrôle des droits",
