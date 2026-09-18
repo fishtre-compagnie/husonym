@@ -31,6 +31,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/bench/report"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 	"github.com/fishtre-compagnie/husonym/bench/verify"
+	"github.com/fishtre-compagnie/husonym/bench/workerctl"
 )
 
 var errRegressions = errors.New("cases did worse than the baseline")
@@ -148,19 +149,31 @@ func run(args []string, execute bool) error {
 	errs := make([]error, len(selected))
 	slots := make(chan struct{}, max(1, *parallel))
 	var wg sync.WaitGroup
+	runOne := func(i int, c *cases.Case) {
+		reports[i], errs[i] = b.runCase(ctx, c, execute)
+		if reports[i] != nil {
+			reports[i].SourceRows = sourceRows[i]
+		}
+	}
 	for i, c := range selected {
+		if c.KillWorker != nil {
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			reports[i], errs[i] = b.runCase(ctx, c, execute)
-			if reports[i] != nil {
-				reports[i].SourceRows = sourceRows[i]
-			}
+			runOne(i, c)
 		}()
 	}
 	wg.Wait()
+	// A case killing the worker runs alone: the runs of the others would go down with it.
+	for i, c := range selected {
+		if c.KillWorker != nil {
+			runOne(i, c)
+		}
+	}
 	if err := errors.Join(errs...); err != nil {
 		return err
 	}
@@ -408,9 +421,40 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		// it ends, on its own. Its page is small and written in well under this.
 		time.Sleep(interruptedActivityGrace)
 	}
-	result, err := b.client.Run(ctx, jobID, b.runTimeout)
+	var watch func(context.Context) (bool, error)
+	killed := false
+	if c.KillWorker != nil {
+		blocker, err := b.blockRow(ctx, c, engine)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = blocker.Rollback() }()
+		watch = func(ctx context.Context) (bool, error) {
+			if killed {
+				return false, nil
+			}
+			var waiting int
+			if err := b.dests[engine].QueryRowContext(ctx, b.renderer.LockWaitQuery()).Scan(&waiting); err != nil {
+				return false, err
+			}
+			if waiting == 0 {
+				return false, nil
+			}
+			killed = true
+			if err := workerctl.Kill(ctx); err != nil {
+				return false, err
+			}
+			return false, blocker.Rollback()
+		}
+	}
+	result, err := b.client.RunUntil(ctx, jobID, b.runTimeout, watch)
 	if err != nil {
 		return err
+	}
+	if c.KillWorker != nil && !killed {
+		outcome.Verdict = report.VerdictNotExercised
+		outcome.RunStatus = "le run n'a jamais attendu la ligne de blocage"
+		return nil
 	}
 	if result.Succeeded() && !result.TimedOut {
 		planned := slices.IndexFunc(c.Tables, func(t *schema.Table) bool { return !c.IsExcluded(t.Name) })
@@ -444,6 +488,33 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		outcome.Verdict = report.VerdictRunFailed
 	}
 	return nil
+}
+
+// blockRow inserts the blocking row of a case into the destination of an engine, in a
+// transaction left open for the caller to roll back.
+func (b *bench) blockRow(ctx context.Context, c *cases.Case, engine env.Engine) (*sql.Tx, error) {
+	t := c.Table(c.KillWorker.Table)
+	if t == nil {
+		return nil, fmt.Errorf("%s: blocking row for unknown table %q", c.ID, c.KillWorker.Table)
+	}
+	columns, marks := make([]string, len(t.Columns)), make([]string, len(t.Columns))
+	for i := range t.Columns {
+		columns[i] = b.renderer.QuoteIdent(t.Columns[i].Name)
+		marks[i] = b.renderer.Placeholder(i + 1)
+	}
+	tx, err := b.dests[engine].BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: blocking row: %w", c.ID, err)
+	}
+	//nolint:gosec // identifiers come from the case definitions and are quoted
+	query := fmt.Sprintf("INSERT INTO %s.%s (%s)%s VALUES (%s)",
+		b.renderer.QuoteIdent(c.Schema()), b.renderer.QuoteIdent(t.Name), strings.Join(columns, ", "),
+		b.renderer.InsertOverride(), strings.Join(marks, ", "))
+	if _, err := tx.ExecContext(ctx, query, c.KillWorker.BlockingRow...); err != nil {
+		_ = tx.Rollback()
+		return nil, fmt.Errorf("%s: blocking row: %w", c.ID, err)
+	}
+	return tx, nil
 }
 
 func (b *bench) progress(c *cases.Case, o *report.Outcome) {

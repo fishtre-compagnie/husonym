@@ -135,10 +135,6 @@
       "athanor": "ok",
       "benthos": "ok"
     },
-    "retry-keyless-table-duplicates": {
-      "athanor": "ok",
-      "benthos": "ok"
-    },
     "rights-destination-read-only-account": {
       "athanor": "ok",
       "benthos": "ok"
@@ -354,6 +350,10 @@
     "page-unsigned-bigint-key": {
       "athanor": "ok",
       "benthos": "ok"
+    },
+    "retry-keyless-table-duplicates": {
+      "athanor": "ok",
+      "benthos": "gap"
     },
     "rights-destination-cannot-suspend-foreign-keys": {
       "athanor": "ok",

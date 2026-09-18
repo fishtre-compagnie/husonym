@@ -763,12 +763,27 @@ refusée à la première tentative et qui doit le rester à la reprise (`ALTER C
 texte sous collation insensible à la casse (collation ICU non déterministe déclarée dans le schéma
 du cas, `SchemaSetupFor`). Tous passent sur les deux moteurs, pagination par curseur comprise.
 
-**`retry-keyless-table-duplicates` n'exerce plus rien.** Il provoquait son échec par un trigger
-posé sur `JOURNAL`, table du job : depuis que le run retire les triggers de ses tables, ce trigger
-est retiré avant l'écriture et aucune panne n'a lieu. Il sera refait avec un worker réellement tué
-en cours de page, sur les deux SGBD.
+**`retry-keyless-table-duplicates` n'exerçait plus rien.** Il provoquait son échec par un
+trigger posé sur `JOURNAL`, table du job : depuis que le run retire les triggers de ses tables,
+ce trigger était retiré avant l'écriture et aucune panne n'avait lieu — le cas passait à vide.
+Refait sur PostgreSQL avec une contrainte `CHECK` dont la fonction échoue une seule fois (une
+séquence s'en souvient : `nextval` n'est pas annulé avec l'instruction), et des lots de 10 lignes
+pour que des lots soient validés avant l'échec. MySQL n'a aucun autre point d'accroche par ligne
+(ni `CHECK`, ni colonne générée, ni défaut ne peuvent appeler une fonction utilisateur) ; ce que
+le cas exerce, la reprise des moteurs, est le même sur les deux SGBD. **Benthos écrit 90 lignes
+en double et termine le run « réussi »** (perte d'exactitude silencieuse, P1, propre à Benthos) ;
+Athanor passe grâce à sa transaction par page. Le cas passe désormais dans le passage standard.
 
-Le banc compte 81 cas : 53 neutres, 17 propres à MySQL, 11 propres à PostgreSQL.
+**Worker réellement tué en cours de page** (`worker-killed-mid-page`, neutre). Le banc insère en
+destination, avant le run, une ligne de la deuxième page dans une transaction qu'il garde ouverte :
+l'écriture de cette clé par le run attend, une partie de la page déjà écrite (lots de 10). Le banc
+voit l'attente (`performance_schema.data_lock_waits`, `pg_locks`), tue le worker (`docker kill`),
+puis annule sa ligne ; Temporal redonne la page au worker relancé une fois le battement de cœur
+manqué (une minute). OK sur les deux moteurs et les deux SGBD : ni ligne perdue, ni ligne en
+double. Un tel cas tourne seul, après les autres (tuer le worker ferait tomber leurs runs), et
+dure environ 62 s par moteur.
+
+Le banc compte 82 cas : 54 neutres, 16 propres à MySQL, 12 propres à PostgreSQL.
 
 ## Ordre
 

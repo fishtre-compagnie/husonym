@@ -216,4 +216,6 @@ type Renderer interface {
 	// what it is: its definition, whether it fires, and what it was created with. Two reads
 	// are equal only when the triggers are.
 	TriggerStateQuery() string
+	// LockWaitQuery counts the sessions of the server waiting on a lock another one holds.
+	LockWaitQuery() string
 }

@@ -101,6 +101,10 @@ func (PostgresRenderer) TriggerStateQuery() string {
 		"WHERE n.nspname = $1 AND NOT t.tgisinternal ORDER BY 1"
 }
 
+func (PostgresRenderer) LockWaitQuery() string {
+	return "SELECT COUNT(*) FROM pg_catalog.pg_locks WHERE NOT granted"
+}
+
 func (r PostgresRenderer) AccountStatements(user, password string) []string {
 	return []string{
 		// What a role still holds refuses its drop, and DROP OWNED BY refuses a role that

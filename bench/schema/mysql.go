@@ -78,6 +78,10 @@ func (MySQLRenderer) TriggerStateQuery() string {
 		"ORDER BY EVENT_OBJECT_TABLE, EVENT_MANIPULATION, ACTION_TIMING, ACTION_ORDER"
 }
 
+func (MySQLRenderer) LockWaitQuery() string {
+	return "SELECT COUNT(*) FROM performance_schema.data_lock_waits"
+}
+
 func (r MySQLRenderer) AccountStatements(user, password string) []string {
 	return []string{
 		"DROP USER IF EXISTS " + r.Account(user),

@@ -187,10 +187,25 @@ type Case struct {
 	// lost for good, puts nothing back. The run verified is the next one, which starts from
 	// what the first left.
 	InterruptedRunFirst bool
+	// KillWorker, when set, kills the worker in the middle of a page. Such a case runs alone,
+	// after the others: killing the worker would take their runs down with it.
+	KillWorker *WorkerKill
 	// FailingEngines, when set, are the only engines expected to hit ExpectRunError; the
 	// others must complete and are verified like any case. It is for what one engine needs
 	// and the other does not: a check that stops Athanor must not stop Benthos with it.
 	FailingEngines []string
+}
+
+// WorkerKill stops a run in the middle of a page, deterministically: before the run, the
+// bench inserts a row into a destination table and keeps its transaction open. The run's
+// write of the same key waits on it, part of its page written; the bench sees the wait,
+// kills the worker, then rolls its row back. Temporal retries the page on the restarted
+// worker once the heartbeat of the killed activity is missed.
+type WorkerKill struct {
+	Table string
+	// BlockingRow holds the values of the row, in column order: its key is one the page
+	// writes, the rest anything the table accepts.
+	BlockingRow []any
 }
 
 // ExpectedRunError returns the message a run of the case must fail with on a database and

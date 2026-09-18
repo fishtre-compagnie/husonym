@@ -11,6 +11,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/bench/gen"
 	"github.com/fishtre-compagnie/husonym/bench/orchestrate"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
+	"github.com/fishtre-compagnie/husonym/bench/workerctl"
 )
 
 // Runner measures the two engines on the dataset.
@@ -103,7 +104,9 @@ func (r *Runner) measure(
 	if err := gen.PrepareDestination(ctx, r.Dests[engine], r.Renderer, dataset); err != nil {
 		return nil, err
 	}
-	if err := RestartWorker(ctx); err != nil {
+	// A run starts on a worker that has just been restarted: a pool of connections already
+	// open, or a heap already grown, would measure the run before rather than this one.
+	if err := workerctl.Restart(ctx); err != nil {
 		return nil, err
 	}
 
