@@ -32,6 +32,8 @@ func expectProbe(mock sqlmock.Sqlmock, statement string, err error) {
 }
 
 func expectGrants(mock sqlmock.Sqlmock, lines ...string) {
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT @@lower_case_table_names")).
+		WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(0))
 	rows := sqlmock.NewRows([]string{"Grants"})
 	for _, line := range lines {
 		rows.AddRow(line)

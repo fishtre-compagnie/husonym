@@ -785,6 +785,32 @@ dure environ 62 s par moteur.
 
 Le banc compte 82 cas : 54 neutres, 16 propres à MySQL, 12 propres à PostgreSQL.
 
+## Destination MySQL qui replie les noms en minuscules (2026-09-18)
+
+`make bench/up-lower-case` recrée les deux destinations MySQL en `lower_case_table_names=1` (le
+cas d'Azure Database for MySQL ou d'un serveur Windows), la source restant à 0 ; `make bench/up`
+les rend. Le passage MySQL complet sert de balayage : les cas nomment leurs tables en majuscules.
+
+Vérifié sur un serveur : sous `lower_case_table_names=1`, `information_schema` trouve une table
+demandée dans n'importe quelle casse et **répond avec les noms repliés**, `SHOW GRANTS` aussi ; sous
+0, il compare à la casse près. Premier passage : **les triggers de destination n'étaient ni trouvés
+ni suspendus (10 lignes sans origine, run réussi)** et **le vidage avant écriture ne vidait rien**
+(le run suivant retrouvait les lignes du précédent). Deux comparaisons en Go en étaient la cause :
+`GetSchemaTableTriggers` refiltrait les réponses du serveur contre les noms demandés, et la
+comparaison de schémas (par laquelle MySQL passe toujours : `shouldUseSchemaDrift`) cherchait les
+tables de la destination sous l'orthographe de la source — aucune n'était « des deux côtés », d'où
+zéro table vidée, et, avec `initTableSchema`, des différences fantômes qui auraient alimenté des
+`ALTER`/`DROP`.
+
+Corrigé à la racine : le `sqlmanager` MySQL **répond dans l'orthographe des noms qu'on lui a
+demandés** (colonnes, contraintes, triggers, fonctions) ; sur un serveur qui compare exactement, la
+réponse l'avait déjà. Le refiltrage des triggers, redondant, est retiré. Le contrôle des droits lit
+`@@lower_case_table_names` et compare les noms de `SHOW GRANTS` comme le serveur. Le passage complet
+sur destinations repliées sort en code 0.
+
+Limite connue : le parent d'une clé étrangère situé dans un autre schéma que la table interrogée
+garde l'orthographe du serveur (la lecture des contraintes ne connaît que les tables de son schéma).
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

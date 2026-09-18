@@ -19,18 +19,18 @@ var showGrants = []string{
 }
 
 func TestParseMysqlGrants(t *testing.T) {
-	grants := parseMysqlGrants(showGrants)
-	require.Equal(t, mysqlGrants{
+	grants := parseMysqlGrants(showGrants, false)
+	require.Equal(t, []mysqlGrant{
 		{privileges: []string{"RELOAD", "PROCESS"}, database: "*", table: "*"},
 		{privileges: []string{"SET_USER_ID"}, database: "*", table: "*"},
 		{privileges: []string{"DROP", "TRIGGER"}, database: `probe\_cl%`, table: "*"},
 		{privileges: []string{"SELECT", "INSERT"}, database: "probe_claude", table: "*"},
 		{privileges: []string{"DELETE"}, database: "probe_claude", table: "t"},
-	}, grants)
+	}, grants.grants)
 }
 
 func TestMysqlGrants_hasTablePrivilege(t *testing.T) {
-	grants := parseMysqlGrants(showGrants)
+	grants := parseMysqlGrants(showGrants, false)
 	require.True(t, grants.hasTablePrivilege("TRIGGER", "probe_claude", "t"), "granted on a matching pattern")
 	require.False(t, grants.hasTablePrivilege("TRIGGER", "probeXclaude", "t"), `\_ is a literal underscore`)
 	require.True(t, grants.hasTablePrivilege("INSERT", "probe_claude", "autre"), "granted on the database")
@@ -46,7 +46,7 @@ func TestMysqlGrants_partialRevoke(t *testing.T) {
 	grants := parseMysqlGrants([]string{
 		"GRANT ALL PRIVILEGES ON *.* TO `app`@`10.0.0.%` WITH GRANT OPTION",
 		"REVOKE DROP ON `prod`.* FROM `app`@`10.0.0.%`",
-	})
+	}, false)
 	require.True(t, grants.hasTablePrivilege("DROP", "staging", "t"))
 	require.False(t, grants.hasTablePrivilege("DROP", "prod", "t"))
 	require.True(t, grants.hasTablePrivilege("TRIGGER", "prod", "t"))
@@ -69,4 +69,18 @@ func TestMatchMysqlPattern(t *testing.T) {
 	} {
 		require.Equal(t, c.match, matchMysqlPattern(c.pattern, c.name), "%s ~ %s", c.pattern, c.name)
 	}
+}
+
+// A server folding table names grants on the lower case names; the job spells them as the
+// source does.
+func TestMysqlGrants_foldCase(t *testing.T) {
+	lines := []string{
+		"GRANT SELECT, TRIGGER ON `bench_x`.* TO `u`@`%`",
+		"GRANT DELETE ON `bench_x`.`article` TO `u`@`%`",
+	}
+	folding := parseMysqlGrants(lines, true)
+	require.True(t, folding.hasTablePrivilege("TRIGGER", "Bench_X", "ARTICLE"))
+	require.True(t, folding.hasTablePrivilege("DELETE", "Bench_X", "ARTICLE"))
+	exact := parseMysqlGrants(lines, false)
+	require.False(t, exact.hasTablePrivilege("DELETE", "bench_x", "ARTICLE"), "another table on a case-sensitive server")
 }

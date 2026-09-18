@@ -52,14 +52,20 @@ services:
     ports:
       - 127.0.0.1:3309:3306
 
+  # The destinations may fold table names to lower case (`make bench/up-lower-case`), as
+  # some servers do (Azure Database for MySQL, Windows): the source keeps the case of its
+  # names, the destination answers with others. It is set when a server is initialized,
+  # which tmpfs does again at every recreation.
   bench-dest-benthos:
     <<: *bench-mysql
+    command: --max-connections=1000 --lower-case-table-names=${BENCH_DEST_LOWER_CASE_TABLE_NAMES:-0}
     container_name: husonym-bench-dest-benthos
     ports:
       - 127.0.0.1:3310:3306
 
   bench-dest-athanor:
     <<: *bench-mysql
+    command: --max-connections=1000 --lower-case-table-names=${BENCH_DEST_LOWER_CASE_TABLE_NAMES:-0}
     container_name: husonym-bench-dest-athanor
     ports:
       - 127.0.0.1:3311:3306

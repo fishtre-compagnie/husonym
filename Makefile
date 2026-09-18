@@ -11,7 +11,7 @@
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
 				generate/backend \
-				bench bench/up bench/down bench/correctness bench/large-pages bench/perf bench/perf-up
+				bench bench/up bench/up-lower-case bench/down bench/correctness bench/perf bench/perf-up bench/pg-perf-up
 default: help
 
 help:
@@ -147,6 +147,9 @@ bench/up: ## Starts the bench MySQL servers and restarts the dev worker with a s
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
 
+bench/up-lower-case: ## Recreates the bench MySQL destinations folding table names to lower case (lower_case_table_names=1), the source as is; bench/up gives them back
+	BENCH_DEST_LOWER_CASE_TABLE_NAMES=1 docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait --force-recreate bench-dest-benthos bench-dest-athanor
+
 bench/down: ## Removes the bench MySQL servers and gives the dev worker its page size back
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) rm -sfv $(BENCH_SERVICES)
 	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
@@ -169,11 +172,12 @@ bench/perf-up: ## Starts the bench MySQL servers with the worker at its normal p
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
 	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
 
+bench/pg-perf-up: ## Starts the bench PostgreSQL servers with the worker at its normal page size, for measuring (then: BENCH_DIALECT=postgres go run ./bench/cmd/enginebench perf)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_PG_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
 bench/perf: bench/perf-up ## Measures both engines on the dataset at scale (durations, rows/s, memory)
 	go run ./bench/cmd/enginebench perf
-
-bench/large-pages: ## Restarts the dev worker with 2500-row pages, for the cases a page must fail half written (then: BENCH_PAGE_LIMIT=2500 go run ./bench/cmd/enginebench run -cases <ids>)
-	BENCH_PAGE_LIMIT=2500 docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
 
 helm/docs: ## Generates documentation for the repository's helm charts.
 	./scripts/gen-helmdocs.sh

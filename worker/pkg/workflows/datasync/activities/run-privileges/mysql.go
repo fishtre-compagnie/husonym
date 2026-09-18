@@ -196,22 +196,27 @@ func mysqlProbe(ctx context.Context, db sqlDb, statement string) (bool, error) {
 	return false, err
 }
 
-// readMysqlGrants reads SHOW GRANTS for the session's own account.
+// readMysqlGrants reads SHOW GRANTS for the session's own account, and whether the server
+// folds table names to lower case, which its grants are then written in.
 func readMysqlGrants(ctx context.Context, db sqlDb) (mysqlGrants, error) {
+	var lowerCaseTableNames int
+	if err := db.QueryRowContext(ctx, "SELECT @@lower_case_table_names").Scan(&lowerCaseTableNames); err != nil {
+		return mysqlGrants{}, err
+	}
 	rows, err := db.QueryContext(ctx, "SHOW GRANTS")
 	if err != nil {
-		return nil, err
+		return mysqlGrants{}, err
 	}
 	defer rows.Close()
 	var lines []string
 	for rows.Next() {
 		var line string
 		if err := rows.Scan(&line); err != nil {
-			return nil, err
+			return mysqlGrants{}, err
 		}
 		lines = append(lines, line)
 	}
-	return parseMysqlGrants(lines), rows.Err()
+	return parseMysqlGrants(lines, lowerCaseTableNames != 0), rows.Err()
 }
 
 // The probes name the columns the run writes, so that a privilege held on some columns only

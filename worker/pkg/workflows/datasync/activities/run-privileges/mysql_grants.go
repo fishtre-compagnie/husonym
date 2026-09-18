@@ -27,16 +27,22 @@ type mysqlGrant struct {
 }
 
 // mysqlGrants is what SHOW GRANTS said about the account.
-type mysqlGrants []mysqlGrant
+type mysqlGrants struct {
+	grants []mysqlGrant
+	// foldCase compares database and table names without regard to case, as a server with
+	// lower_case_table_names 1 or 2 does: it grants on the names folded to lower case, and a
+	// job names its tables the way the source spells them.
+	foldCase bool
+}
 
 // parseMysqlGrants reads the lines of SHOW GRANTS. Lines granting roles or proxies, or
 // privileges on routines, say nothing about tables and are left out.
-func parseMysqlGrants(lines []string) mysqlGrants {
-	var grants mysqlGrants
+func parseMysqlGrants(lines []string, foldCase bool) mysqlGrants {
+	grants := mysqlGrants{foldCase: foldCase}
 	for _, line := range lines {
 		grant, ok := parseMysqlGrant(line)
 		if ok {
-			grants = append(grants, grant)
+			grants.grants = append(grants.grants, grant)
 		}
 	}
 	return grants
@@ -142,7 +148,8 @@ func readMysqlName(s string) (name, rest string, ok bool) {
 // hasTablePrivilege tells whether the account holds a privilege on a table: on every
 // database and not taken back on this one, on the database, or on the table.
 func (g mysqlGrants) hasTablePrivilege(privilege, database, table string) bool {
-	for _, grant := range g {
+	database, table = g.fold(database), g.fold(table)
+	for _, grant := range g.grants {
 		if grant.revoke || !grant.grants(privilege) {
 			continue
 		}
@@ -152,20 +159,27 @@ func (g mysqlGrants) hasTablePrivilege(privilege, database, table string) bool {
 				return true
 			}
 		case grant.table == "*":
-			if matchMysqlPattern(grant.database, database) {
+			if matchMysqlPattern(g.fold(grant.database), database) {
 				return true
 			}
-		case grant.database == database && grant.table == table:
+		case g.fold(grant.database) == database && g.fold(grant.table) == table:
 			return true
 		}
 	}
 	return false
 }
 
+func (g mysqlGrants) fold(name string) string {
+	if g.foldCase {
+		return strings.ToLower(name)
+	}
+	return name
+}
+
 // hasGlobalPrivilege tells whether the account holds one of the privileges on every
 // database — where the dynamic privileges are granted.
 func (g mysqlGrants) hasGlobalPrivilege(privileges ...string) bool {
-	for _, grant := range g {
+	for _, grant := range g.grants {
 		if grant.revoke || grant.database != "*" {
 			continue
 		}
@@ -179,8 +193,8 @@ func (g mysqlGrants) hasGlobalPrivilege(privileges ...string) bool {
 }
 
 func (g mysqlGrants) revoked(privilege, database string) bool {
-	for _, grant := range g {
-		if grant.revoke && grant.database == database && grant.grants(privilege) {
+	for _, grant := range g.grants {
+		if grant.revoke && g.fold(grant.database) == database && grant.grants(privilege) {
 			return true
 		}
 	}
