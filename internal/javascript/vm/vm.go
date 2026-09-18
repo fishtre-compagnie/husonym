@@ -231,7 +231,32 @@ func (r *Runner) Run(ctx context.Context, program *goja.Program, opts ...RunOpti
 		// program ended, would otherwise stop the next run at its start.
 		r.vm.ClearInterrupt()
 	}()
-	return r.vm.RunProgram(program)
+	value, err := r.vm.RunProgram(program)
+	return value, detachException(err)
+}
+
+// Exception is an exception a program raised, detached from the runner it ran on.
+//
+// goja's own holds the thrown value and formats it, on Error(), by running the runtime:
+// once the runner is back in its pool that runtime may be running another program on
+// another goroutine, and the two corrupt each other. Its message and stack are read
+// while the run still holds the runner.
+type Exception struct {
+	message string
+	stack   []goja.StackFrame
+}
+
+func (e *Exception) Error() string { return e.message }
+
+// Stack returns the frames the exception went through.
+func (e *Exception) Stack() []goja.StackFrame { return e.stack }
+
+func detachException(err error) error {
+	var exception *goja.Exception
+	if !errors.As(err, &exception) {
+		return err
+	}
+	return &Exception{message: exception.Error(), stack: exception.Stack()}
 }
 
 // Registers a custom function with the vm

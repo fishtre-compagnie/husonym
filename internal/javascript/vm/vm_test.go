@@ -154,6 +154,32 @@ func TestRunner_TimeLimit(t *testing.T) {
 	require.Equal(t, int64(2), result.ToInteger())
 }
 
+// An exception outlives its run while the runner goes on to the next one: the processors
+// return the runner to its pool before their caller formats the error. Reading it must not
+// run the runtime again.
+func TestRunner_ExceptionOutlivesItsRun(t *testing.T) {
+	runner, err := NewRunner()
+	require.NoError(t, err)
+	_, runErr := runner.Run(context.Background(),
+		goja.MustCompile("throw.js", `function rule() { throw new Error("refusé") } rule()`, false))
+	require.Error(t, runErr)
+
+	next := make(chan error)
+	go func() {
+		_, err := runner.Run(context.Background(), goja.MustCompile("next.js",
+			`let s = ""; for (let i = 0; i < 100000; i++) { s += String(i) }`, false))
+		next <- err
+	}()
+	for range 100 {
+		require.Contains(t, runErr.Error(), "refusé")
+	}
+	require.NoError(t, <-next)
+
+	var stacked interface{ Stack() []goja.StackFrame }
+	require.ErrorAs(t, runErr, &stacked)
+	require.Equal(t, "rule", stacked.Stack()[0].FuncName())
+}
+
 func TestRunner_StopsWhenTheContextEnds(t *testing.T) {
 	runner, err := NewRunner()
 	require.NoError(t, err)

@@ -10,6 +10,7 @@ import (
 	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
@@ -125,7 +126,7 @@ func scriptMessage(err error) string {
 	if errors.As(err, &interrupted) {
 		return interrupted.Error()
 	}
-	var exception *goja.Exception
+	var exception *javascript_vm.Exception
 	if errors.As(err, &exception) {
 		return exception.Error()
 	}
