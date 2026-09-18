@@ -133,16 +133,21 @@ func (a *Activity) runAthanor(
 
 	// 4) Passes de mise à jour. Quand la destination permet de couper la
 	// vérification des clés étrangères, la passe d'insertion écrit déjà toutes les
-	// colonnes : les passes de mise à jour n'ont plus rien à faire.
+	// colonnes, sauf les clés étrangères qui suivent une clé transformée écrite plus
+	// tard (cycle, auto-référence) : seule une passe qui en porte est exécutée.
 	_, _, fkChecksOff := dialect.ForeignKeyChecksStatements()
+	runPage := runner.RunTablePage
 	if plan.RunType == runconfigs.RunTypeUpdate {
-		if fkChecksOff {
+		if !fkChecksOff {
+			return nil, fmt.Errorf("athanor: passe de mise à jour de %s.%s non supportée sur %s",
+				plan.Schema, plan.Table, dialect.Driver())
+		}
+		if !runner.UpdateFollowsTransformedKey(plan) {
 			logger.Info("moteur=athanor : passe de mise à jour déjà couverte par la passe d'insertion",
 				"schema", plan.Schema, "table", plan.Table, "colonnes", plan.Columns)
 			return &SyncTableResponse{}, nil
 		}
-		return nil, fmt.Errorf("athanor: passe de mise à jour de %s.%s non supportée sur %s",
-			plan.Schema, plan.Table, dialect.Driver())
+		runPage = runner.RunUpdatePage
 	}
 
 	// 5) Handles SQL (le SqlDbtx satisfait Querier, Execer et BeginTx).
@@ -206,7 +211,7 @@ func (a *Activity) runAthanor(
 		},
 	}
 
-	res, err := runner.RunTablePage(ctx, srcDB, dstDB, dialect, &runner.TablePage{
+	res, err := runPage(ctx, srcDB, dstDB, dialect, &runner.TablePage{
 		Plan:             plan,
 		Mappings:         job.GetMappings(),
 		BatchSize:        athanorBatchSize,

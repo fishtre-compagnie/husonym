@@ -40,6 +40,8 @@ type BenthosConfigResponse struct {
 	GeneratedColumns []string
 	// PublishedKeys are the transformed columns other tables reference.
 	PublishedKeys []*tableplan.PublishedKey
+	// PrimaryKeys identify a row of the table, which an update pass writes by.
+	PrimaryKeys []string
 }
 
 // Combines a connection type and job type to uniquely identify a builder configuration

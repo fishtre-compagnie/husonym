@@ -39,6 +39,10 @@ type TablePlan struct {
 	// the deferred columns for an update.
 	Columns []string `json:"columns"`
 
+	// PrimaryKey identifies a row of the table: an update pass writes its columns into the
+	// destination row holding the same key — the new one, when a transformer changes it.
+	PrimaryKey []string `json:"primaryKey,omitempty"`
+
 	// GeneratedColumns are the columns the destination computes itself (GENERATED ALWAYS
 	// AS …): they are read, since transformers may need them, and never written.
 	GeneratedColumns []string `json:"generatedColumns,omitempty"`

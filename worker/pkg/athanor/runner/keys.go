@@ -13,8 +13,10 @@ package runner
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/internal/typedvalue"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
@@ -153,12 +155,25 @@ type keyTranslator struct {
 	store       KeyStore
 	table       string
 	foreignKeys []*tableplan.ForeignKey
-	skip        bool
-	onDiscard   func(dropped []int)
-	inner       sqlio.RowWriter
+	// deferred are written NULL: an update pass fills them in (see followingForeignKeys).
+	deferred  []*tableplan.ForeignKey
+	skip      bool
+	onDiscard func(dropped []int)
+	inner     sqlio.RowWriter
 }
 
 func (t *keyTranslator) WriteBatch(columns []string, rows [][]any) error {
+	for _, fk := range t.deferred {
+		for _, column := range fk.Columns {
+			idx := columnIndex(columns, column)
+			if idx < 0 {
+				return fmt.Errorf("runner: colonne de clé étrangère %q absente des lignes écrites dans %s", column, t.table)
+			}
+			for _, row := range rows {
+				row[idx] = nil
+			}
+		}
+	}
 	for _, fk := range t.foreignKeys {
 		var err error
 		if rows, err = t.translate(fk, columns, rows); err != nil {
@@ -243,26 +258,78 @@ func (t *keyTranslator) isNoParent(fk *tableplan.ForeignKey, value any) bool {
 	return fk.NoParentValue != nil && len(fk.Columns) == 1 && sourceText(value) == *fk.NoParentValue
 }
 
-// translatedForeignKeys returns the foreign keys of the plan that follow a transformed
-// parent key. A self-reference among them cannot be written in one pass: the new key of a
-// parent row read later is not known yet.
-func translatedForeignKeys(plan *tableplan.TablePlan) ([]*tableplan.ForeignKey, error) {
-	var translated []*tableplan.ForeignKey
+// followingForeignKeys returns the foreign keys of the plan that follow a transformed parent
+// key, split by the pass that writes them.
+//
+// translated are written by this pass, through the new keys already published. deferred
+// are the ones an insert pass leaves to an update pass: in a circular dependency or a
+// self-reference, the parent row may be written later, and its new key is not known yet.
+// The insert pass writes them NULL; the update pass, which runs once the parent table is
+// written, fills them in.
+func followingForeignKeys(plan *tableplan.TablePlan) (translated, deferred []*tableplan.ForeignKey, err error) {
 	for _, fk := range plan.ForeignKeys {
-		follows := false
-		for _, store := range fk.ParentKeyStores {
-			follows = follows || store != ""
-		}
-		if !follows {
+		if !followsTransformedKey(fk) {
 			continue
 		}
-		if fk.ParentSchema == plan.Schema && fk.ParentTable == plan.Table {
-			return nil, fmt.Errorf("runner: %s.%s : clé auto-référencée (%s) vers une clé transformée, non prise en charge par Athanor",
-				plan.Schema, plan.Table, strings.Join(fk.Columns, ", "))
+		written := true
+		for _, column := range fk.Columns {
+			written = written && slices.Contains(plan.Columns, column)
 		}
-		translated = append(translated, fk)
+		switch {
+		case written && plan.RunType == runconfigs.RunTypeInsert && fk.ParentSchema == plan.Schema && fk.ParentTable == plan.Table:
+			// Only a key refusing NULL is written by the insert pass of its own table.
+			return nil, nil, fmt.Errorf("runner: %s.%s : clé auto-référencée NOT NULL (%s) vers une clé transformée : "+
+				"aucune passe ne peut connaître la nouvelle clé d'un parent écrit plus tard",
+				plan.Schema, plan.Table, strings.Join(fk.Columns, ", "))
+		case written:
+			translated = append(translated, fk)
+		case plan.RunType == runconfigs.RunTypeInsert:
+			if fk.IsMandatory() || slices.Contains(fk.NotNull, true) {
+				return nil, nil, fmt.Errorf("runner: %s.%s : clé étrangère (%s) vers une clé transformée, en partie NOT NULL, "+
+					"dans un cycle : aucune passe ne peut connaître la nouvelle clé d'un parent écrit plus tard",
+					plan.Schema, plan.Table, strings.Join(fk.Columns, ", "))
+			}
+			deferred = append(deferred, fk)
+		}
 	}
-	return translated, nil
+	return translated, deferred, nil
+}
+
+// UpdateFollowsTransformedKey reports whether an update pass writes a foreign key following
+// a transformed key: the only update pass Athanor has to run, since it writes every other
+// column in the insert pass, foreign keys suspended.
+func UpdateFollowsTransformedKey(plan *tableplan.TablePlan) bool {
+	translated, _, err := followingForeignKeys(plan)
+	return err == nil && plan.RunType == runconfigs.RunTypeUpdate && len(translated) > 0
+}
+
+func followsTransformedKey(fk *tableplan.ForeignKey) bool {
+	for _, store := range fk.ParentKeyStores {
+		if store != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// ownKey describes the key of the table as a foreign key to itself, whose stores are the
+// ones the table publishes its own new keys in: translating it gives the key a row holds in
+// the destination. A row whose key was never published was not written.
+func ownKey(plan *tableplan.TablePlan) *tableplan.ForeignKey {
+	key := &tableplan.ForeignKey{
+		Columns: plan.PrimaryKey, ParentSchema: plan.Schema, ParentTable: plan.Table, ParentColumns: plan.PrimaryKey,
+	}
+	for _, column := range plan.PrimaryKey {
+		store := ""
+		for _, published := range plan.PublishedKeys {
+			if published.Column == column {
+				store = published.Store
+			}
+		}
+		key.NotNull = append(key.NotNull, true)
+		key.ParentKeyStores = append(key.ParentKeyStores, store)
+	}
+	return key
 }
 
 var (

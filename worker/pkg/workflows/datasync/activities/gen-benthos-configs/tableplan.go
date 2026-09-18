@@ -24,6 +24,7 @@ func toTablePlan(config *benthosbuilder.BenthosConfigResponse) *tableplan.TableP
 		PageQuery:        input.PagedQuery,
 		OrderByColumns:   input.OrderByColumns,
 		Columns:          config.Columns,
+		PrimaryKey:       config.PrimaryKeys,
 		ForeignKeys:      config.ForeignKeys,
 		GeneratedColumns: config.GeneratedColumns,
 		PublishedKeys:    config.PublishedKeys,

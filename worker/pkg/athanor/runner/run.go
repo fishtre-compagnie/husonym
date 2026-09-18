@@ -9,6 +9,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/engine"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 )
@@ -95,51 +96,20 @@ func RunTablePage(
 		}
 	}
 
-	translated, err := translatedForeignKeys(plan)
+	translated, deferred, err := followingForeignKeys(plan)
 	if err != nil {
 		return nil, err
 	}
-	if (len(translated) > 0 || len(plan.PublishedKeys) > 0) && page.Keys == nil {
+	if (len(translated) > 0 || len(deferred) > 0 || len(plan.PublishedKeys) > 0) && page.Keys == nil {
 		return nil, fmt.Errorf("runner: %s.%s suit ou publie des clés transformées, ce qui demande Redis", plan.Schema, plan.Table)
 	}
 
-	query, args, err := pageQuery(plan, dialect, page.AfterOrderValues)
+	publisher := &keyPublisher{ctx: ctx, store: page.Keys, keys: plan.PublishedKeys, sources: map[string][]any{}}
+	reader, err := openPage(ctx, src, dialect, page, publisher.observe)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := src.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("runner: lecture de %s.%s: %w", plan.Schema, plan.Table, err)
-	}
-	// rows (*sql.Rows) satisfait sqlio.RowReader ; Pipeline le referme.
-
-	colTypes, err := rows.ColumnTypes()
-	if err != nil {
-		_ = rows.Close()
-		return nil, fmt.Errorf("runner: types des colonnes de %s.%s: %w", plan.Schema, plan.Table, err)
-	}
-	typeNames := make([]string, len(colTypes))
-	for i, ct := range colTypes {
-		typeNames[i] = ct.DatabaseTypeName()
-	}
-
-	result := &PageResult{}
-	publisher := &keyPublisher{ctx: ctx, store: page.Keys, keys: plan.PublishedKeys, sources: map[string][]any{}}
-	var orderIdx []int
-	observe := func(columns []string, row []any) {
-		publisher.observe(columns, row)
-		if orderIdx == nil {
-			orderIdx = columnIndexes(columns, plan.OrderByColumns)
-		}
-		result.RowsRead++
-		if len(orderIdx) == len(plan.OrderByColumns) {
-			last := make([]any, len(orderIdx))
-			for i, idx := range orderIdx {
-				last[i] = row[idx]
-			}
-			result.LastOrderValues = last
-		}
-	}
+	result := reader.result
 
 	// The page is written in one transaction: whole or not at all.
 	err = sqlio.InTransaction(ctx, dst, dialect, wc.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
@@ -154,37 +124,148 @@ func RunTablePage(
 		}
 		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan),
 			wc.SkipForeignKeyViolations, discard)
-		if len(translated) > 0 {
+		if len(translated) > 0 || len(deferred) > 0 {
 			w = &keyTranslator{
 				ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table, foreignKeys: translated,
-				skip: wc.SkipForeignKeyViolations, onDiscard: discard, inner: w,
+				deferred: deferred, skip: wc.SkipForeignKeyViolations, onDiscard: discard, inner: w,
 			}
 		}
 		if len(plan.PublishedKeys) > 0 {
 			publisher.inner = w
 			w = publisher
 		}
-		return sqlio.Pipeline(transform.Ctx{Context: ctx}, rows, page.BatchSize, spec, w,
-			sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(columnsOf(colTypes), typeNames)),
-			sqlio.WithRowObserver(observe),
-			sqlio.WithWrittenColumns(writtenColumns(mapped, plan.GeneratedColumns)),
-		)
+		return reader.pipeline(ctx, page.BatchSize, spec, w, writtenColumns(mapped, plan.GeneratedColumns))
 	})
+	return reader.finish(err)
+}
+
+// RunUpdatePage runs one page of an update pass: it fills in, on the rows the insert pass
+// wrote, the foreign keys following a transformed key that the insert pass had to leave
+// NULL (see followingForeignKeys). It runs once the parent tables are written, so their new
+// keys are published; each destination row is found by its own key, the new one when a
+// transformer changes it. Nothing is transformed: the pass only carries keys.
+func RunUpdatePage(ctx context.Context, src Querier, dst Destination, dialect sqlio.Dialect, page *TablePage) (*PageResult, error) {
+	plan := page.Plan
+	translated, _, err := followingForeignKeys(plan)
+	if err != nil {
+		return nil, err
+	}
+	if len(translated) == 0 {
+		return &PageResult{}, nil
+	}
+	if page.Keys == nil {
+		return nil, fmt.Errorf("runner: %s.%s suit des clés transformées, ce qui demande Redis", plan.Schema, plan.Table)
+	}
+	if len(plan.PrimaryKey) == 0 {
+		return nil, fmt.Errorf("runner: %s.%s : sans clé primaire, la passe de mise à jour ne peut pas retrouver ses lignes",
+			plan.Schema, plan.Table)
+	}
+
+	reader, err := openPage(ctx, src, dialect, page, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = sqlio.InTransaction(ctx, dst, dialect, page.Write.DisableForeignKeyChecks, func(tx sqlio.Tx) error {
+		// The key of the row last: translated to the destination one, it drops the rows
+		// the insert pass did not write, whose key was never published.
+		w := &keyTranslator{
+			ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table,
+			foreignKeys: append(slices.Clone(translated), ownKey(plan)), skip: true,
+			onDiscard: func([]int) {},
+			inner:     sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey),
+		}
+		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, w, slices.Concat(plan.PrimaryKey, plan.Columns))
+	})
+	return reader.finish(err)
+}
+
+// pageReader reads one page of a plan, and keeps what the next page resumes after.
+type pageReader struct {
+	plan      *tableplan.TablePlan
+	rows      *sql.Rows
+	columns   []string
+	typeNames []string
+	observe   func(columns []string, row []any)
+	orderIdx  []int
+	result    *PageResult
+}
+
+// openPage runs the query of the page. observe, when set, sees every source row too.
+func openPage(
+	ctx context.Context,
+	src Querier,
+	dialect sqlio.Dialect,
+	page *TablePage,
+	observe func(columns []string, row []any),
+) (*pageReader, error) {
+	plan := page.Plan
+	query, args, err := pageQuery(plan, dialect, page.AfterOrderValues)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := src.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("runner: lecture de %s.%s: %w", plan.Schema, plan.Table, err)
+	}
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		_ = rows.Close()
+		return nil, fmt.Errorf("runner: types des colonnes de %s.%s: %w", plan.Schema, plan.Table, err)
+	}
+	typeNames := make([]string, len(colTypes))
+	for i, ct := range colTypes {
+		typeNames[i] = ct.DatabaseTypeName()
+	}
+	return &pageReader{
+		plan: plan, rows: rows, columns: columnsOf(colTypes), typeNames: typeNames,
+		observe: observe, result: &PageResult{},
+	}, nil
+}
+
+// pipeline reads the page through the transformers of spec into w, which receives the
+// written columns.
+func (r *pageReader) pipeline(ctx context.Context, batchSize int, spec engine.Spec, w sqlio.RowWriter, written []string) error {
+	return sqlio.Pipeline(transform.Ctx{Context: ctx}, r.rows, batchSize, spec, w,
+		sqlio.WithNormalizer(sqlio.NormalizerForColumnTypes(r.columns, r.typeNames)),
+		sqlio.WithRowObserver(r.observeRow),
+		sqlio.WithWrittenColumns(written),
+	)
+}
+
+func (r *pageReader) observeRow(columns []string, row []any) {
+	if r.observe != nil {
+		r.observe(columns, row)
+	}
+	if r.orderIdx == nil {
+		r.orderIdx = columnIndexes(columns, r.plan.OrderByColumns)
+	}
+	r.result.RowsRead++
+	if len(r.orderIdx) == len(r.plan.OrderByColumns) {
+		last := make([]any, len(r.orderIdx))
+		for i, idx := range r.orderIdx {
+			last[i] = row[idx]
+		}
+		r.result.LastOrderValues = last
+	}
+}
+
+// finish closes the page after the transaction that wrote it, and tells whether another
+// page follows.
+func (r *pageReader) finish(err error) (*PageResult, error) {
 	if err != nil {
 		// Pipeline closes the rows it was given; they are still open when the
 		// transaction could not even start.
-		_ = rows.Close()
+		_ = r.rows.Close()
 		return nil, err
 	}
-
-	if plan.IsPaged() {
-		if len(orderIdx) != len(plan.OrderByColumns) && result.RowsRead > 0 {
+	if r.plan.IsPaged() {
+		if len(r.orderIdx) != len(r.plan.OrderByColumns) && r.result.RowsRead > 0 {
 			return nil, fmt.Errorf("runner: colonnes de tri %v absentes de la lecture de %s.%s",
-				plan.OrderByColumns, plan.Schema, plan.Table)
+				r.plan.OrderByColumns, r.plan.Schema, r.plan.Table)
 		}
-		result.HasMore = result.RowsRead >= plan.PageLimit
+		r.result.HasMore = r.result.RowsRead >= r.plan.PageLimit
 	}
-	return result, nil
+	return r.result, nil
 }
 
 // writtenColumns are the mapped columns the destination accepts a value for. Columns

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/stretchr/testify/require"
 )
@@ -94,19 +95,50 @@ func Test_keyTranslator_UnpublishedParent(t *testing.T) {
 	require.ErrorContains(t, err, "parent non copié", "without skip a mandatory key fails the page")
 }
 
-func Test_translatedForeignKeys_SelfReference(t *testing.T) {
-	plan := &tableplan.TablePlan{Schema: "shop", Table: "CLIENT", ForeignKeys: []*tableplan.ForeignKey{{
+// A self-reference following a transformed key is deferred by the insert pass, which writes
+// it NULL, and translated by the update pass, which runs once every new key is published.
+// Only a NOT NULL one, which the insert pass itself must write, cannot be done.
+func Test_followingForeignKeys_SelfReference(t *testing.T) {
+	parrain := &tableplan.ForeignKey{
 		Columns: []string{"parrain_id"}, NotNull: []bool{false},
 		ParentSchema: "shop", ParentTable: "CLIENT", ParentColumns: []string{"id"},
 		ParentKeyStores: []string{"store-client-id"},
-	}}}
-	_, err := translatedForeignKeys(plan)
-	require.ErrorContains(t, err, "auto-référencée")
-
-	plan.ForeignKeys[0].ParentKeyStores = []string{""}
-	translated, err := translatedForeignKeys(plan)
+	}
+	insert := &tableplan.TablePlan{Schema: "shop", Table: "CLIENT", RunType: runconfigs.RunTypeInsert,
+		Columns: []string{"id", "nom"}, ForeignKeys: []*tableplan.ForeignKey{parrain}}
+	translated, deferred, err := followingForeignKeys(insert)
 	require.NoError(t, err)
 	require.Empty(t, translated)
+	require.Equal(t, []*tableplan.ForeignKey{parrain}, deferred)
+
+	update := &tableplan.TablePlan{Schema: "shop", Table: "CLIENT", RunType: runconfigs.RunTypeUpdate,
+		Columns: []string{"parrain_id"}, PrimaryKey: []string{"id"}, ForeignKeys: []*tableplan.ForeignKey{parrain}}
+	translated, deferred, err = followingForeignKeys(update)
+	require.NoError(t, err)
+	require.Equal(t, []*tableplan.ForeignKey{parrain}, translated)
+	require.Empty(t, deferred)
+	require.True(t, UpdateFollowsTransformedKey(update))
+
+	notNull := *parrain
+	notNull.NotNull = []bool{true}
+	insert.Columns = []string{"id", "nom", "parrain_id"}
+	insert.ForeignKeys = []*tableplan.ForeignKey{&notNull}
+	_, _, err = followingForeignKeys(insert)
+	require.ErrorContains(t, err, "auto-référencée NOT NULL")
+
+	parrain.ParentKeyStores = []string{""}
+	require.False(t, UpdateFollowsTransformedKey(update), "an update pass following no transformed key is not run")
+}
+
+// A deferred key is written NULL by the insert pass.
+func Test_keyTranslator_deferred(t *testing.T) {
+	inner := &capturingWriter{}
+	deferred := &tableplan.ForeignKey{Columns: []string{"parrain_id"}, NotNull: []bool{false}}
+	require.NoError(t, (&keyTranslator{
+		ctx: context.Background(), store: memoryKeyStore{}, table: "shop.CLIENT", inner: inner,
+		deferred: []*tableplan.ForeignKey{deferred},
+	}).WriteBatch([]string{"id", "parrain_id"}, [][]any{{int64(1), int64(7)}, {int64(2), nil}}))
+	require.Equal(t, [][]any{{int64(1), nil}, {int64(2), nil}}, inner.rows)
 }
 
 // droppingWriter leaves out the rows at the given indexes of the batch it receives, the

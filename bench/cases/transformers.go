@@ -36,6 +36,8 @@ func transformerCases() []*Case {
 		transformerOnOrderColumn(),
 		transformerOnPrimaryKey(),
 		transformedKeyOfDiscardedRow(),
+		transformedKeySelfReference(),
+		transformedKeysInCycle(),
 	}
 }
 
@@ -321,6 +323,110 @@ func transformedKeyOfDiscardedRow() *Case {
 				emit.Row("LIGNE", []any{100 + i, 100 + i, "ligne d'une facture écartée"}, Kept("facture_id"))
 				emit.Row("LIGNE", []any{1000 + i, 1000 + i, "ligne hors subset"}, Dropped())
 				emit.Row("LIGNE", []any{2000 + i, nil, "ligne sans facture"}, Kept())
+			}
+		},
+	}
+}
+
+// transformedKeySelfReference: CATEGORIE transforms its primary key, and its parent_id,
+// nullable, references another category — read before it or after it, on another page. A
+// single pass cannot know the new key of a parent read later: the reference is written
+// empty, then filled in once every category has published its new key.
+func transformedKeySelfReference() *Case {
+	const table = "CATEGORIE"
+	return &Case{
+		ID:       "tr-key-self-reference",
+		Priority: P1,
+		Title:    "Clé transformée et auto-référence nullable : la FK suit la nouvelle clé d'un parent lu avant ou après",
+		Tables: []*schema.Table{{
+			Name: table,
+			Columns: []schema.Column{
+				{Name: idColumn, Type: schema.Int64()},
+				{Name: "reference", Type: schema.Varchar(20)},
+				{Name: "parent_id", Type: schema.Int64(), Nullable: true},
+			},
+			PrimaryKey:  []string{idColumn},
+			Indexes:     []schema.Index{{Name: "uq_categorie_reference", Columns: []string{"reference"}, Unique: true}},
+			ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_categorie_parent", "parent_id", table)},
+		}},
+		Identity: map[string][]string{table: {"reference"}},
+		Job: Job{Columns: map[string]map[string]ColumnSpec{table: {
+			idColumn: {
+				Transformer: transformJavascript("return value + 1000000;"),
+				Rules:       []Rule{RuleNotInSourceSet, RuleUnique},
+			},
+			"parent_id": {Rules: []Rule{RuleFollowsParent}},
+		}}},
+		Seed: func(p Params, emit Emitter) {
+			rows := int64(2*p.PageLimit + p.PageLimit/2)
+			for i := int64(1); i <= rows; i++ {
+				var parent any
+				if i%5 != 0 {
+					parent = (i*7)%rows + 1 // before or after, on this page or another
+				}
+				emit.Row(table, []any{i, fmt.Sprintf("CAT-%05d", i), parent}, Kept())
+			}
+		},
+	}
+}
+
+// transformedKeysInCycle: CLIENT and COMMANDE reference each other through nullable keys,
+// and both transform their primary key. Neither table can wait for the other: each
+// reference is written empty, then filled in once both tables have published their keys.
+func transformedKeysInCycle() *Case {
+	transformed := ColumnSpec{
+		Transformer: transformJavascript("return value + 1000000;"),
+		Rules:       []Rule{RuleNotInSourceSet, RuleUnique},
+	}
+	follows := ColumnSpec{Rules: []Rule{RuleFollowsParent}}
+	return &Case{
+		ID:       "tr-keys-in-cycle",
+		Priority: P1,
+		Title:    "Clés transformées dans un cycle de FK nullables : chaque FK suit la nouvelle clé de l'autre table",
+		Tables: []*schema.Table{
+			{
+				Name: clientTableName,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: "commande_preferee_id", Type: schema.Int64(), Nullable: true},
+				},
+				PrimaryKey:  []string{idColumn},
+				Indexes:     []schema.Index{{Name: "uq_client_reference", Columns: []string{"reference"}, Unique: true}},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_client_commande", "commande_preferee_id", commandeTable)},
+			},
+			{
+				Name: commandeTable,
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "reference", Type: schema.Varchar(20)},
+					{Name: "client_id", Type: schema.Int64(), Nullable: true},
+				},
+				PrimaryKey:  []string{idColumn},
+				Indexes:     []schema.Index{{Name: "uq_commande_reference", Columns: []string{"reference"}, Unique: true}},
+				ForeignKeys: []schema.ForeignKey{foreignKeyToID("fk_commande_client", "client_id", clientTableName)},
+			},
+		},
+		Identity: map[string][]string{clientTableName: {"reference"}, commandeTable: {"reference"}},
+		Job: Job{Columns: map[string]map[string]ColumnSpec{
+			clientTableName: {idColumn: transformed, "commande_preferee_id": follows},
+			commandeTable:   {idColumn: transformed, "client_id": follows},
+		}},
+		Seed: func(p Params, emit Emitter) {
+			clients, orders := int64(p.PageLimit+30), int64(2*p.PageLimit+40)
+			for i := int64(1); i <= clients; i++ {
+				var preferee any
+				if i%4 != 0 {
+					preferee = (i*3)%orders + 1
+				}
+				emit.Row(clientTableName, []any{i, fmt.Sprintf("CL-%05d", i), preferee}, Kept())
+			}
+			for j := int64(1); j <= orders; j++ {
+				var client any
+				if j%6 != 0 {
+					client = (j*5)%clients + 1
+				}
+				emit.Row(commandeTable, []any{j, fmt.Sprintf("CMD-%05d", j), client}, Kept())
 			}
 		},
 	}
