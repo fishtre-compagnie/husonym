@@ -24,6 +24,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
@@ -32,14 +34,24 @@ type Activity struct {
 	jobclient        mgmtv1alpha1connect.JobServiceClient
 	connclient       mgmtv1alpha1connect.ConnectionServiceClient
 	sqlmanagerclient sqlmanager.SqlManagerClient
+	// sqlconnmanager hands out the plain SQL connection PostgreSQL is asked about.
+	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx]
+	// athanor tells which engine runs the job, the one the table syncs will use: what only
+	// Athanor needs must not be required of Benthos.
+	athanor shared.AthanorPolicy
 }
 
 func New(
 	jobclient mgmtv1alpha1connect.JobServiceClient,
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	sqlmanagerclient sqlmanager.SqlManagerClient,
+	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
+	athanor shared.AthanorPolicy,
 ) *Activity {
-	return &Activity{jobclient: jobclient, connclient: connclient, sqlmanagerclient: sqlmanagerclient}
+	return &Activity{
+		jobclient: jobclient, connclient: connclient, sqlmanagerclient: sqlmanagerclient,
+		sqlconnmanager: sqlconnmanager, athanor: athanor,
+	}
 }
 
 type CheckRunPrivilegesRequest struct {
@@ -54,8 +66,8 @@ var (
 	destinationPrivileges = []string{"SELECT", "INSERT", "UPDATE", "DELETE"}
 )
 
-// CheckRunPrivileges verifies the MySQL connections of a job against their role. Other
-// databases are not checked yet and run as before.
+// CheckRunPrivileges verifies the MySQL and PostgreSQL connections of a job against their
+// role. SQL Server is not checked yet and runs as before.
 func (a *Activity) CheckRunPrivileges(
 	ctx context.Context,
 	req *CheckRunPrivilegesRequest,
@@ -92,6 +104,9 @@ func (a *Activity) CheckRunPrivileges(
 	session := connectionmanager.NewUniqueSession(
 		connectionmanager.WithSessionGroup(activityInfo.WorkflowExecution.ID),
 	)
+	defer a.sqlconnmanager.ReleaseSession(session, slogger)
+	schemaTables := jobSchemaTables(job.GetMappings())
+	usesAthanor := a.athanor.UsesAthanor(job)
 	var findings []string
 	if sourceID := job.GetSource().GetOptions().GetMysql().GetConnectionId(); sourceID != "" {
 		found, err := a.checkConnection(ctx, session, sourceID, slogger,
@@ -103,15 +118,40 @@ func (a *Activity) CheckRunPrivileges(
 		}
 		findings = append(findings, found...)
 	}
+	if sourceID := job.GetSource().GetOptions().GetPostgres().GetConnectionId(); sourceID != "" {
+		found, err := a.checkPostgresConnection(ctx, session, sourceID, slogger,
+			func(name string, db postgresDb) ([]string, error) {
+				return checkPostgresSource(ctx, db, name, schemaTables)
+			})
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, found...)
+	}
 	for _, destination := range job.GetDestinations() {
-		options := destination.GetOptions().GetMysqlOptions()
-		if options == nil {
+		var check func(ctx context.Context) ([]string, error)
+		switch {
+		case destination.GetOptions().GetMysqlOptions() != nil:
+			options := destination.GetOptions().GetMysqlOptions()
+			check = func(ctx context.Context) ([]string, error) {
+				return a.checkConnection(ctx, session, destination.GetConnectionId(), slogger,
+					func(name string, db privilegesDb) ([]string, error) {
+						return checkDestination(ctx, db, name, tables, options.GetInitTableSchema())
+					})
+			}
+		case destination.GetOptions().GetPostgresOptions() != nil:
+			options := destination.GetOptions().GetPostgresOptions()
+			check = func(ctx context.Context) ([]string, error) {
+				return a.checkPostgresConnection(ctx, session, destination.GetConnectionId(), slogger,
+					func(name string, db postgresDb) ([]string, error) {
+						return checkPostgresDestination(ctx, db, name, schemaTables,
+							options.GetInitTableSchema(), usesAthanor)
+					})
+			}
+		default:
 			continue
 		}
-		found, err := a.checkConnection(ctx, session, destination.GetConnectionId(), slogger,
-			func(name string, db privilegesDb) ([]string, error) {
-				return checkDestination(ctx, db, name, tables, options.GetInitTableSchema())
-			})
+		found, err := check(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -149,6 +189,32 @@ func (a *Activity) checkConnection(
 	return check(connection.GetName(), sqlconnection.Db())
 }
 
+// checkPostgresConnection asks a PostgreSQL connection of the job. A connection that is
+// not PostgreSQL is not checked here.
+func (a *Activity) checkPostgresConnection(
+	ctx context.Context,
+	session connectionmanager.SessionInterface,
+	connectionID string,
+	slogger *slog.Logger,
+	check func(name string, db postgresDb) ([]string, error),
+) ([]string, error) {
+	connResp, err := a.connclient.GetConnection(ctx,
+		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionID}))
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve connection %s: %w", connectionID, err)
+	}
+	connection := connResp.Msg.GetConnection()
+	if connection.GetConnectionConfig().GetPgConfig() == nil {
+		return nil, nil
+	}
+	db, err := a.sqlconnmanager.GetConnection(session, connection,
+		slogger.With("connectionId", connection.GetId(), "accountId", connection.GetAccountId()))
+	if err != nil {
+		return nil, fmt.Errorf("unable to open connection %q: %w", connection.GetName(), err)
+	}
+	return check(connection.GetName(), db)
+}
+
 // A run is stopped on evidence only. The privileges are read for the account 'user'@'%':
 // an account declared for a specific host, or holding its rights through a role, shows no
 // privilege at all. An empty answer therefore means "unknown", not "nothing granted", and
@@ -158,6 +224,21 @@ func (a *Activity) checkConnection(
 type privilegesDb interface {
 	GetRolePermissionsMap(ctx context.Context) (map[string][]string, error)
 	GetTableRowCount(ctx context.Context, schema, table string, whereClause *string) (int64, error)
+}
+
+// jobSchemaTables returns the tables of the job, each once, in a stable order.
+func jobSchemaTables(mappings []*mgmtv1alpha1.JobMapping) []*sqlmanager_shared.SchemaTable {
+	seen := map[string]bool{}
+	var tables []*sqlmanager_shared.SchemaTable
+	for _, mapping := range mappings {
+		table := &sqlmanager_shared.SchemaTable{Schema: mapping.GetSchema(), Table: mapping.GetTable()}
+		if !seen[table.String()] {
+			seen[table.String()] = true
+			tables = append(tables, table)
+		}
+	}
+	sort.Slice(tables, func(i, j int) bool { return tables[i].String() < tables[j].String() })
+	return tables
 }
 
 func jobTables(mappings []*mgmtv1alpha1.JobMapping) []string {

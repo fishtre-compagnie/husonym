@@ -343,6 +343,14 @@
       "athanor": "ok",
       "benthos": "ok"
     },
+    "rights-destination-cannot-suspend-foreign-keys": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "rights-destination-read-only-account": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "subset-parent-filtered-twice": {
       "athanor": "ok",
       "benthos": "ok"

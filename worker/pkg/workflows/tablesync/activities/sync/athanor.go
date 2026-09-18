@@ -59,14 +59,7 @@ func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string, logger
 		logger.Warn("athanor: lecture du moteur du job impossible, repli sur le défaut", "error", err)
 		return deploymentDefault
 	}
-	switch resp.Msg.GetJob().GetWorkflowOptions().GetEngine() {
-	case mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR:
-		return true
-	case mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS:
-		return false
-	default: // JOB_ENGINE_UNSPECIFIED : suit le défaut de déploiement
-		return deploymentDefault
-	}
+	return a.athanor.Policy.UsesAthanor(resp.Msg.GetJob())
 }
 
 // getTablePlan loads the engine-neutral plan of this table sync. It returns nil, and no

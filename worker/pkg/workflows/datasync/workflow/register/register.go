@@ -3,7 +3,9 @@ package datasync_workflow_register
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
 	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
@@ -11,6 +13,7 @@ import (
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
 	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
 	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
@@ -29,6 +32,8 @@ func Register(
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	sqlmanager *sql_manager.SqlManager,
+	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
+	athanor shared.AthanorPolicy,
 	eelicense license.EEInterface,
 	redisclient redis.UniversalClient,
 	isOtelEnabled bool,
@@ -55,7 +60,7 @@ func Register(
 	)
 	redisCleanUpActivity := syncrediscleanup_activity.New(redisclient)
 	referentialIntegrityActivity := referentialintegrity_activity.New(jobclient, connclient, sqlmanager)
-	runPrivilegesActivity := runprivileges_activity.New(jobclient, connclient, sqlmanager)
+	runPrivilegesActivity := runprivileges_activity.New(jobclient, connclient, sqlmanager, sqlconnmanager, athanor)
 	destinationTriggersActivity := destinationtriggers_activity.New(jobclient, connclient, sqlmanager)
 
 	wf := datasync_workflow.New(eelicense)

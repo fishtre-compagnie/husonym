@@ -17,6 +17,7 @@ import (
 	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	datasync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
@@ -131,6 +132,9 @@ func NewTestDataSyncWorkflowEnv(
 		connclient,
 		transformerclient,
 		dbManagers.SqlManager,
+		dbManagers.SqlConnManager,
+		// chemin Benthos par défaut dans les tests d'intégration
+		datasync_shared.NewAthanorPolicy(false, "", ""),
 		workflowEnv.fakeEELicense,
 		workflowEnv.Redisclient,
 		false,
@@ -160,7 +164,7 @@ func NewTestDataSyncWorkflowEnv(
 		transformerclient,
 		workflowEnv.Redisclient,
 		// chemin Benthos par défaut dans les tests d'intégration
-		sync_activity.AthanorConfig{Policy: sync_activity.NewAthanorPolicy(false, "", "")},
+		sync_activity.AthanorConfig{Policy: datasync_shared.NewAthanorPolicy(false, "", "")},
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {

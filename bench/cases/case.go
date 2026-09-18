@@ -162,10 +162,11 @@ type Case struct {
 	// way the database quotes — a statement every database understands is then written
 	// once.
 	DestinationSetup []string
-	// DestinationGrants, when set, makes the job write with a restricted account holding
-	// only these privileges instead of root. {db} is replaced by the database of the case
-	// and {user} by the account.
-	DestinationGrants []string
+	// DestinationGrants, when set for the database of the pass, makes the job write with a
+	// restricted account holding only these privileges instead of the administrator. {db}
+	// is replaced by the schema of the case and {user} by the account. Each database
+	// grants in its own syntax, hence one list per database.
+	DestinationGrants map[schema.Dialect][]string
 	// MinPageLimit is the smallest worker page size the case makes sense with; below it
 	// the case is reported as not exercised. Retry cases need pages larger than a write
 	// batch, so that a page can fail half written.
@@ -175,6 +176,19 @@ type Case struct {
 	// databases refuse the same thing in their own words; a database the map does not name
 	// expects the run to complete.
 	ExpectRunError map[schema.Dialect]string
+	// FailingEngines, when set, are the only engines expected to hit ExpectRunError; the
+	// others must complete and are verified like any case. It is for what one engine needs
+	// and the other does not: a check that stops Athanor must not stop Benthos with it.
+	FailingEngines []string
+}
+
+// ExpectedRunError returns the message a run of the case must fail with on a database and
+// an engine, or "" when the run must complete.
+func (c *Case) ExpectedRunError(dialect schema.Dialect, engine string) string {
+	if len(c.FailingEngines) > 0 && !slices.Contains(c.FailingEngines, engine) {
+		return ""
+	}
+	return c.ExpectRunError[dialect]
 }
 
 // Schema returns the name of what holds the tables of the case, on the source and on

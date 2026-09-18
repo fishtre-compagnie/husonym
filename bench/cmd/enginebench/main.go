@@ -295,7 +295,7 @@ func (b *bench) restrictedDestination(ctx context.Context, c *cases.Case, engine
 	db := b.dests[engine]
 	quotedDB := b.renderer.QuoteIdent(c.Schema())
 	stmts := b.renderer.AccountStatements(user, password)
-	for _, grant := range c.DestinationGrants {
+	for _, grant := range c.DestinationGrants[b.env.Dialect] {
 		grant = strings.ReplaceAll(grant, "{db}", quotedDB)
 		stmts = append(stmts, strings.ReplaceAll(grant, "{user}", b.renderer.Account(user)))
 	}
@@ -367,7 +367,7 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		return err
 	}
 	destConn := b.destConns[engine]
-	if len(c.DestinationGrants) > 0 {
+	if len(c.DestinationGrants[b.env.Dialect]) > 0 {
 		var err error
 		if destConn, err = b.restrictedDestination(ctx, c, engine); err != nil {
 			return err
@@ -399,9 +399,9 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	switch {
 	case result.TimedOut:
 		outcome.Verdict = report.VerdictRunTimeout
-	case c.ExpectRunError[b.env.Dialect] != "":
+	case c.ExpectedRunError(b.env.Dialect, string(engine)) != "":
 		outcome.Verdict = report.VerdictFailureExpected
-		if !result.Succeeded() && strings.Contains(strings.Join(result.Errors, "\n"), c.ExpectRunError[b.env.Dialect]) {
+		if !result.Succeeded() && strings.Contains(strings.Join(result.Errors, "\n"), c.ExpectedRunError(b.env.Dialect, string(engine))) {
 			outcome.Verdict = report.VerdictOK
 		}
 	case !result.Succeeded():

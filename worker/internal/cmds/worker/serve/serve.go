@@ -390,7 +390,7 @@ func serve(ctx context.Context) error {
 	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
 	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
 	athanorConfig := sync_activity.AthanorConfig{
-		Policy: sync_activity.NewAthanorPolicy(
+		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
 			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
 			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
@@ -431,7 +431,7 @@ func serve(ctx context.Context) error {
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
-		sqlmanager, cascadelicense, redisclient,
+		sqlmanager, sqlconnmanager, athanorConfig.Policy, cascadelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
 		postgresSchemaDrift,
