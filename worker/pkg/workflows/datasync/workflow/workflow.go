@@ -13,6 +13,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
@@ -204,6 +205,12 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		actOptResp.Destinations,
 		actOptResp.PostgresSchemaDrift,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = suspendDestinationTriggers(ctx, logger, req.JobId, info.WorkflowExecution.ID,
+		actOptResp.AccountId, bcResp.BenthosConfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -499,6 +506,11 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		return nil, err
 	}
 
+	err = restoreDestinationTriggers(ctx, logger, req.JobId, info.WorkflowExecution.ID, actOptResp.AccountId)
+	if err != nil {
+		return nil, err
+	}
+
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
@@ -676,6 +688,87 @@ func runPrivilegeCheck(ctx workflow.Context, logger log.Logger, jobId string) er
 		privilegesActivity.CheckRunPrivileges,
 		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId},
 	).Get(ctx, &resp)
+}
+
+// suspendDestinationTriggers takes the triggers of the destinations out of the way of the
+// run. A trigger firing on what the run writes adds rows nothing read in the source, and
+// MySQL has no way to suspend one for a session. Runs started before this existed replay
+// without it.
+func suspendDestinationTriggers(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId, jobRunId, accountId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	version := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var tables []destinationtriggers_activity.TableRef
+	seen := map[string]bool{}
+	for _, cfg := range configs {
+		key := cfg.TableSchema + "." + cfg.TableName
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		tables = append(tables, destinationtriggers_activity.TableRef{Schema: cfg.TableSchema, Table: cfg.TableName})
+	}
+	if len(tables) == 0 {
+		return nil
+	}
+	var resp *destinationtriggers_activity.SuspendTriggersResponse
+	var triggersActivity *destinationtriggers_activity.Activity
+	err := workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 5 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2},
+		}),
+		triggersActivity.SuspendTriggers,
+		&destinationtriggers_activity.SuspendTriggersRequest{
+			JobId: jobId, JobRunId: jobRunId, AccountId: accountId, Tables: tables,
+		},
+	).Get(ctx, &resp)
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.Suspended > 0 {
+		logger.Info("destination triggers suspended for the time of the run", "triggers", resp.Suspended)
+	}
+	return nil
+}
+
+// restoreDestinationTriggers puts back what the run took out of its way. A run that fails
+// or is terminated before this leaves them dropped: the statements that create them again
+// are in the history of the run, and in its run context.
+func restoreDestinationTriggers(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId, jobRunId, accountId string,
+) error {
+	version := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var resp *destinationtriggers_activity.RestoreTriggersResponse
+	var triggersActivity *destinationtriggers_activity.Activity
+	err := workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 5 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
+		}),
+		triggersActivity.RestoreTriggers,
+		&destinationtriggers_activity.RestoreTriggersRequest{
+			JobId: jobId, JobRunId: jobRunId, AccountId: accountId,
+		},
+	).Get(ctx, &resp)
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.Restored > 0 {
+		logger.Info("destination triggers restored", "triggers", resp.Restored)
+	}
+	return nil
 }
 
 // runReferentialIntegrityCheck verifies, once every table is written, that no destination

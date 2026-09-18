@@ -23,10 +23,6 @@
     "athanor": "ok",
     "benthos": "ok"
   },
-  "destination-trigger-writes-synced-table": {
-    "athanor": "gap",
-    "benthos": "gap"
-  },
   "fk-composite-partially-null": {
     "athanor": "ok",
     "benthos": "ok"

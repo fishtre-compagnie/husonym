@@ -14,6 +14,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
@@ -55,6 +56,12 @@ func Test_Workflow_BenthosConfigsFails(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 
@@ -95,6 +102,12 @@ func Test_Workflow_Succeeds_Zero_BenthosConfigs(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -136,6 +149,12 @@ func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -188,6 +207,12 @@ func Test_Workflow_Follows_Synchronous_DependentFlow(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -288,6 +313,12 @@ func Test_Workflow_Follows_Multiple_Dependents(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -414,6 +445,12 @@ func Test_Workflow_Follows_Multiple_Dependent_Redis_Cleanup(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -635,6 +672,12 @@ func Test_Workflow_Halts_Activities_OnError(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -744,6 +787,12 @@ func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true, ShouldPoll: true}, nil).
 		Once()
@@ -861,6 +910,12 @@ func Test_Workflow_Cleans_Up_Redis_OnError(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 
@@ -924,6 +979,12 @@ func Test_Workflow_Max_InFlight(t *testing.T) {
 	var privilegesActivity *runprivileges_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
 		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
 	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
 

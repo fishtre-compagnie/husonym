@@ -5,6 +5,7 @@ import (
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
@@ -55,6 +56,7 @@ func Register(
 	redisCleanUpActivity := syncrediscleanup_activity.New(redisclient)
 	referentialIntegrityActivity := referentialintegrity_activity.New(jobclient, connclient, sqlmanager)
 	runPrivilegesActivity := runprivileges_activity.New(jobclient, connclient, sqlmanager)
+	destinationTriggersActivity := destinationtriggers_activity.New(jobclient, connclient, sqlmanager)
 
 	wf := datasync_workflow.New(eelicense)
 
@@ -67,4 +69,6 @@ func Register(
 	w.RegisterActivity(jobhookByTimingActivity.RunJobHooksByTiming)
 	w.RegisterActivity(referentialIntegrityActivity.CheckReferentialIntegrity)
 	w.RegisterActivity(runPrivilegesActivity.CheckRunPrivileges)
+	w.RegisterActivity(destinationTriggersActivity.SuspendTriggers)
+	w.RegisterActivity(destinationTriggersActivity.RestoreTriggers)
 }
