@@ -18,6 +18,7 @@ func columnCases() []*Case {
 		columnsOnUpdateTimestamp(),
 		columnsInvisible(),
 		tablePartitioned(),
+		tableGeneratedInvisiblePrimaryKey(),
 	}
 }
 
@@ -145,6 +146,35 @@ func tablePartitioned() *Case {
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= int64(2*p.PageLimit+7); i++ {
 				emit.Row("MESURE", []any{i, i % 100}, Kept())
+			}
+		},
+	}
+}
+
+// tableGeneratedInvisiblePrimaryKey: a table declared without a primary key, to which the
+// server adds one of its own (sql_generate_invisible_primary_key, MySQL 8.0.30): an
+// invisible my_row_id numbered by the server, on the source and on the destination. The
+// job knows the columns the table was declared with; the key it pages on, if it takes it,
+// is none of them.
+func tableGeneratedInvisiblePrimaryKey() *Case {
+	return &Case{
+		ID:       "table-generated-invisible-primary-key",
+		Dialects: mysqlOnly,
+		Priority: P1,
+		Title:    "Table sans clé à laquelle MySQL ajoute une clé primaire invisible (sql_generate_invisible_primary_key)",
+		SchemaSetupFor: map[schema.Dialect][]string{
+			schema.MySQL: {"SET SESSION sql_generate_invisible_primary_key = ON"},
+		},
+		Tables: []*schema.Table{{
+			Name: "JOURNAL",
+			Columns: []schema.Column{
+				{Name: "niveau", Type: schema.Int32()},
+				{Name: "message", Type: schema.Varchar(60)},
+			},
+		}},
+		Seed: func(p Params, emit Emitter) {
+			for i := 1; i <= 2*p.PageLimit+p.PageLimit/2; i++ {
+				emit.Row("JOURNAL", []any{int64(i % 7), fmt.Sprintf("événement %05d", i)}, Kept())
 			}
 		},
 	}

@@ -529,18 +529,27 @@ func (b *runConfigBuilder) getDependsOn() []*DependsOn {
 // A table with none of them has no order columns and is read in a single pass. Paging
 // it on every column, as was done before, cannot work: rows equal on all columns cannot
 // be told apart, so the ones past a page boundary are lost.
+//
+// Only a key whose columns are all read can page a table: the next page resumes after the
+// values the last row read holds. A key the job does not map — the invisible primary key
+// MySQL generates for a table declared without one, a column left out of the mappings —
+// is not read, and paging on it lost the whole table.
 func (b *runConfigBuilder) getOrderByColumns() []string {
-	if len(b.primaryKeys) > 0 {
-		return b.primaryKeys
+	candidates := append([][]string{b.primaryKeys}, b.uniqueConstraints...)
+	candidates = append(candidates, b.uniqueIndexes...)
+	for _, key := range candidates {
+		if len(key) > 0 && b.readsAll(key) {
+			return key
+		}
 	}
-
-	if len(b.uniqueConstraints) > 0 {
-		return b.uniqueConstraints[0]
-	}
-
-	if len(b.uniqueIndexes) > 0 {
-		return b.uniqueIndexes[0]
-	}
-
 	return nil
+}
+
+func (b *runConfigBuilder) readsAll(columns []string) bool {
+	for _, column := range columns {
+		if !slices.Contains(b.columns, column) {
+			return false
+		}
+	}
+	return true
 }

@@ -28,7 +28,17 @@ const (
 
 // CreateSchema drops and recreates the schema of a case, with its tables and declared
 // foreign keys, empty. It prepares a destination, and the source before it is loaded.
+//
+// The statements run in order on one session, thrown away afterwards: a setting the schema
+// setup makes — the server generating a primary key for a table without one — holds for
+// the tables created after it, and reaches no other statement of the bench.
 func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("gen: %s: %w", c.ID, err)
+	}
+	defer conn.Close()
+	defer func() { _ = conn.Raw(func(any) error { return driver.ErrBadConn }) }()
 	container := c.Schema()
 	stmts := r.CreateContainerStatements(container)
 	for _, stmt := range append(slices.Clone(c.SchemaSetup), c.SchemaSetupFor[r.Dialect()]...) {
@@ -48,7 +58,7 @@ func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.C
 		// Every statement the bench sends goes through the same filling-in, so that a
 		// column of a type the case declares can name the schema holding it.
 		stmt = renderStatement(r, container, stmt)
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: %w\n%s", c.ID, err, stmt)
 		}
 	}

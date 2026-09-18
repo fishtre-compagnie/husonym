@@ -811,6 +811,22 @@ sur destinations repliées sort en code 0.
 Limite connue : le parent d'une clé étrangère situé dans un autre schéma que la table interrogée
 garde l'orthographe du serveur (la lecture des contraintes ne connaît que les tables de son schéma).
 
+## Clé primaire que le job ne lit pas (2026-09-18)
+
+`table-generated-invisible-primary-key` (MySQL) : une table déclarée sans clé, créée sous
+`sql_generate_invisible_primary_key=ON` ; le serveur lui ajoute une clé primaire invisible
+`my_row_id` que les mappings du job ne nomment pas. **Benthos terminait le run « réussi » avec 0
+ligne écrite sur 250** ; Athanor échouait franchement (« colonnes de tri absentes de la lecture »).
+La cause, commune et sans rapport avec GIPK : le calcul partagé paginait sur la clé primaire même
+quand le job ne la lit pas, la page suivante reprenant après des valeurs qu'aucune ligne lue ne
+porte. Corrigé dans `getOrderByColumns` : seule une clé entièrement lue pagine (clé primaire,
+contrainte ou index unique) ; sans elle, la table est lue en un seul flux, comme une table sans
+clé. Lire la clé sans l'écrire, pour garder la pagination sur une grande table, reste possible ;
+il faudrait d'abord vérifier que Benthos n'écrit que les colonnes mappées.
+
+La création du schéma d'un cas passe désormais par une seule session jetable, pour qu'un réglage de
+session posé par `SchemaSetupFor` s'applique aux tables créées ensuite.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

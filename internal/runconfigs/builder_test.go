@@ -82,6 +82,7 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 func TestGetOrderByColumns_WithPrimaryKeys(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:     []string{"id", "name"},
 		primaryKeys: []string{"id"},
 	}
 
@@ -92,6 +93,7 @@ func TestGetOrderByColumns_WithPrimaryKeys(t *testing.T) {
 
 func TestGetOrderByColumns_WithUniqueConstraints(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"email", "name"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{{"email"}, {"name"}},
 	}
@@ -103,6 +105,7 @@ func TestGetOrderByColumns_WithUniqueConstraints(t *testing.T) {
 
 func TestGetOrderByColumns_WithUniqueIndexes(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"email", "name"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{},
 		uniqueIndexes:     [][]string{{"name"}, {"email"}},
@@ -123,6 +126,22 @@ func TestGetOrderByColumns_NoneWithoutKey(t *testing.T) {
 		uniqueIndexes:     [][]string{},
 	}
 
+	assert.Empty(t, builder.getOrderByColumns())
+}
+
+// A key the job does not read cannot page the table: the next page resumes after values
+// no row read holds. The first key read in full pages it, and without one the table is read
+// in a single pass.
+func TestGetOrderByColumns_OnlyKeysRead(t *testing.T) {
+	builder := &runConfigBuilder{
+		columns:           []string{"code", "libelle"},
+		primaryKeys:       []string{"my_row_id"},
+		uniqueConstraints: [][]string{{"code", "depot"}},
+		uniqueIndexes:     [][]string{{"code"}},
+	}
+	assert.Equal(t, []string{"code"}, builder.getOrderByColumns())
+
+	builder.uniqueIndexes = nil
 	assert.Empty(t, builder.getOrderByColumns())
 }
 
