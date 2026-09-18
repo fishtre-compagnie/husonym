@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 )
 
@@ -19,20 +19,15 @@ import (
 // role would show nothing there, and a run it could perfectly do would be stopped.
 // has_table_privilege answers the question the run will ask, the way it will ask it.
 
-// postgresDb is what the PostgreSQL checks need from a connection.
-type postgresDb interface {
+// sqlDb is what the checks need from a connection.
+type sqlDb interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 // checkPostgresSource: a source only needs to be read. A read-only server is fine.
-func checkPostgresSource(
-	ctx context.Context,
-	db postgresDb,
-	name string,
-	tables []*sqlmanager_shared.SchemaTable,
-) ([]string, error) {
+func checkPostgresSource(ctx context.Context, db sqlDb, name string, tables []*jobTable) ([]string, error) {
 	missing, err := postgresMissingPrivileges(ctx, db, tables, sourcePrivileges, false)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the privileges of source %q: %w", name, err)
@@ -41,14 +36,15 @@ func checkPostgresSource(
 }
 
 // checkPostgresDestination: a destination must accept writes, on the server and on every
-// table; and when Athanor writes it, the account must be allowed to suspend foreign keys.
+// table; emptying a table before writing it takes TRUNCATE; the run disables the triggers
+// of the tables, which takes their owner; and when Athanor writes, the account must be
+// allowed to suspend foreign keys.
 func checkPostgresDestination(
 	ctx context.Context,
-	db postgresDb,
+	db sqlDb,
 	name string,
-	tables []*sqlmanager_shared.SchemaTable,
-	createsTables bool,
-	suspendsForeignKeys bool,
+	tables []*jobTable,
+	createsTables, truncates, suspendsForeignKeys bool,
 ) ([]string, error) {
 	// transaction_read_only is on for a standby and for a database set to
 	// default_transaction_read_only: one question covers both.
@@ -68,6 +64,25 @@ func checkPostgresDestination(
 	}
 	findings := describeMissing("destination", name, "write", missing)
 
+	if truncates {
+		missing, err := postgresMissingPrivileges(ctx, db, tables, []string{"TRUNCATE"}, createsTables)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read the privileges of destination %q: %w", name, err)
+		}
+		for table := range missing {
+			if slices.Contains(missing[table], "TRUNCATE") {
+				findings = append(findings, fmt.Sprintf("destination %q cannot empty %s before writing it "+
+					"(missing TRUNCATE)", name, table))
+			}
+		}
+	}
+
+	triggers, err := postgresTriggersNotOwned(ctx, db, name, tables)
+	if err != nil {
+		return nil, err
+	}
+	findings = append(findings, triggers...)
+
 	if suspendsForeignKeys {
 		finding, err := probeForeignKeySuspension(ctx, db, name)
 		if err != nil {
@@ -77,21 +92,13 @@ func checkPostgresDestination(
 			findings = append(findings, finding)
 		}
 	}
+	slices.Sort(findings)
 	return findings, nil
 }
 
-// postgresMissingPrivileges returns, per table ("schema.table"), the privileges the account
-// lacks on it, USAGE on its schema included. A table that does not exist yet is left out
-// when the run creates it, and reported as missing otherwise.
-func postgresMissingPrivileges(
-	ctx context.Context,
-	db postgresDb,
-	tables []*sqlmanager_shared.SchemaTable,
-	privileges []string,
-	createsTables bool,
-) (map[string][]string, error) {
-	// The lists travel as JSON, which PostgreSQL unfolds itself: an array parameter is
-	// something only some drivers bind.
+// tablesJSON lists tables as JSON, which PostgreSQL unfolds itself: an array parameter is
+// something only some drivers bind.
+func tablesJSON(tables []*jobTable) (string, error) {
 	type tableRef struct {
 		Schema string `json:"schema_name"`
 		Table  string `json:"table_name"`
@@ -100,7 +107,21 @@ func postgresMissingPrivileges(
 	for i, t := range tables {
 		refs[i] = tableRef{Schema: t.Schema, Table: t.Table}
 	}
-	tablesJSON, err := json.Marshal(refs)
+	bits, err := json.Marshal(refs)
+	return string(bits), err
+}
+
+// postgresMissingPrivileges returns, per table ("schema.table"), the privileges the account
+// lacks on it, USAGE on its schema included. A table that does not exist yet is left out
+// when the run creates it, and reported as missing otherwise.
+func postgresMissingPrivileges(
+	ctx context.Context,
+	db sqlDb,
+	tables []*jobTable,
+	privileges []string,
+	createsTables bool,
+) (map[string][]string, error) {
+	tablesList, err := tablesJSON(tables)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +142,7 @@ WHERE CASE
   WHEN r.rel IS NULL THEN NOT $3::bool
   ELSE NOT has_table_privilege(r.rel, p.privilege)
 END
-ORDER BY 1, 2`, string(tablesJSON), string(privilegesJSON), createsTables)
+ORDER BY 1, 2`, tablesList, string(privilegesJSON), createsTables)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +161,40 @@ ORDER BY 1, 2`, string(tablesJSON), string(privilegesJSON), createsTables)
 	return missing, rows.Err()
 }
 
+// postgresTriggersNotOwned reports the tables holding a trigger that can fire and that the
+// account cannot disable: ALTER TABLE … DISABLE TRIGGER takes the owner of the table, a
+// member of its role, or a superuser — no privilege grants it. The triggers enforcing
+// foreign keys are internal, and never touched.
+func postgresTriggersNotOwned(ctx context.Context, db sqlDb, name string, tables []*jobTable) ([]string, error) {
+	tablesList, err := tablesJSON(tables)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.QueryContext(ctx, `
+SELECT DISTINCT n.nspname || '.' || c.relname, pg_get_userbyid(c.relowner)
+FROM jsonb_to_recordset($1::jsonb) AS j(schema_name text, table_name text)
+JOIN pg_catalog.pg_namespace n ON n.nspname = j.schema_name
+JOIN pg_catalog.pg_class c ON c.relnamespace = n.oid AND c.relname = j.table_name
+JOIN pg_catalog.pg_trigger t ON t.tgrelid = c.oid
+WHERE NOT t.tgisinternal AND t.tgenabled <> 'D' AND NOT pg_has_role(c.relowner, 'USAGE')
+ORDER BY 1`, tablesList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
+	}
+	defer rows.Close()
+	var findings []string
+	for rows.Next() {
+		var table, owner string
+		if err := rows.Scan(&table, &owner); err != nil {
+			return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
+		}
+		findings = append(findings, fmt.Sprintf("destination %q cannot take the triggers of %s out of the way of "+
+			"the run: disabling a trigger takes the owner of the table (%s), a member of its role, or a superuser",
+			name, table, owner))
+	}
+	return findings, rows.Err()
+}
+
 func describeMissing(role, name, verb string, missing map[string][]string) []string {
 	findings := make([]string, 0, len(missing))
 	for table, privileges := range missing {
@@ -155,7 +210,7 @@ func describeMissing(role, name, verb string, missing map[string][]string) []str
 // depends on SUPERUSER, or from PostgreSQL 15 on on GRANT SET ON PARAMETER; a managed
 // service has no real superuser, and reading rolsuper would say no where the grant says
 // yes. Trying it is the one answer that holds everywhere.
-func probeForeignKeySuspension(ctx context.Context, db postgresDb, name string) (string, error) {
+func probeForeignKeySuspension(ctx context.Context, db sqlDb, name string) (string, error) {
 	disable, _, _ := sqlio.PostgresDialect{}.ForeignKeyChecksStatements()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -174,9 +229,6 @@ func probeForeignKeySuspension(ctx context.Context, db postgresDb, name string) 
 	}
 	return fmt.Sprintf("destination %q cannot suspend foreign keys, which Athanor writes each table in one "+
 		"pass with (%v): make the account a superuser, or from PostgreSQL 15 on run "+
-		"GRANT SET ON PARAMETER session_replication_role TO %s", name, probeErr, quoteRole(account)), nil
-}
-
-func quoteRole(role string) string {
-	return `"` + strings.ReplaceAll(role, `"`, `""`) + `"`
+		"GRANT SET ON PARAMETER session_replication_role TO %s", name, probeErr,
+		sqlmanager_postgres.EscapePgColumn(account)), nil
 }

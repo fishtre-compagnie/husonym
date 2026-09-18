@@ -711,6 +711,49 @@ la collation qui décide des comparaisons est rétablie). Recréer un trigger do
 pas le compte du job demande `SET_USER_ID` (ou `SUPER`) : c'est au contrôle des droits de le dire
 au démarrage (étape suivante).
 
+## Contrôle des droits complet (2026-09-18)
+
+Vérifié sur un serveur avant d'écrire quoi que ce soit :
+
+- **MySQL, compte par rôle ou sur un hôte précis** : la lecture de `information_schema` (compte
+  supposé `'user'@'%'`) ne voyait rien, le run n'était jamais arrêté. `SHOW GRANTS` (sans `FOR`)
+  donne les droits du compte de la session, rôles actifs fusionnés ; `EXPLAIN` d'une instruction
+  est refusé exactement comme elle le serait, sans l'exécuter.
+- **MySQL cache les triggers d'une table à un compte sans `TRIGGER`** : 0 trigger vu, et le trigger
+  se déclenche bien. Un tel compte ne suspendait rien et la copie recevait les lignes du trigger,
+  run réussi : perte d'exactitude silencieuse, P1. Sans ce droit on ne peut pas savoir s'il y a des
+  triggers : il est exigé sur toutes les tables de destination.
+- Ni le vidage de la destination (`TRUNCATE` sur PostgreSQL, `DROP` sur MySQL), ni la suspension
+  des triggers (propriétaire de la table sur PostgreSQL, qu'aucun droit ne remplace), ni la
+  recréation d'un trigger MySQL dont le definer est un autre compte (`SET_USER_ID` ou `SUPER`)
+  n'étaient contrôlés.
+
+Ce qui change :
+
+- MySQL : lecture, insertion, mise à jour et suppression sont demandées au serveur par `EXPLAIN`
+  sur les colonnes que le run écrit, colonnes générées exclues. L'instruction n'est jamais
+  exécutée, mais MySQL évalue les valeurs d'un `INSERT` dans une table partitionnée pour élaguer
+  ses partitions : `DEFAULT` y est refusé sur une colonne sans défaut (trouvé par
+  `table-partitioned`), `NULL` passe partout, partition par liste comprise ; l'`UPDATE` garde
+  `DEFAULT`. `TRIGGER`, `DROP` et les droits dynamiques sont lus dans
+  `SHOW GRANTS` (motifs de base `_`/`%`, révocations partielles, droits de colonne écartés).
+  Serveur en lecture seule : `@@GLOBAL.read_only OR @@GLOBAL.super_read_only`, lisible par tout
+  compte (l'ancienne lecture passait par `performance_schema`).
+- PostgreSQL : `TRUNCATE` quand le job vide la destination ; `pg_has_role(propriétaire, 'USAGE')`
+  pour chaque table qui porte un trigger actif.
+- **Le contrôle a lieu après `GenerateBenthosConfigs`** (version 2 de `run-privilege-check`) et
+  reçoit les tables et colonnes des configs. Par défaut, la génération retire en silence les
+  mappings que la source n'a plus et peut en ajouter (passthrough des nouvelles colonnes) : des
+  sondes construites sur les mappings auraient arrêté des runs légitimes. La génération ne lit que
+  des métadonnées ; hooks, init de schéma et vidage viennent après le contrôle.
+- Les échappements partagés `EscapeMysqlColumn` et `EscapePgColumn` sont corrigés (le second
+  passait par le `%q` de Go : `"a\"b"`, illisible pour PostgreSQL) et remplacent les copies
+  locales.
+
+Cinq cas (quatre neutres, un propre à MySQL) : compte suffisant par rôle (garde le contrôle de
+bloquer à tort), compte par rôle en lecture seule, destination à vider, triggers impossibles à
+suspendre, definer étranger.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

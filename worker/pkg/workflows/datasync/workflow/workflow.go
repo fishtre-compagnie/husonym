@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -158,9 +159,13 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		)
 	}
 
-	err = runPrivilegeCheck(ctx, logger, req.JobId)
-	if err != nil {
-		return nil, err
+	// Version 2 checks the privileges once the configs are generated, on the very tables
+	// and columns the run writes; version 1 checked them before, from the job mappings.
+	privilegesVersion := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 2)
+	if privilegesVersion == 1 {
+		if err := runPrivilegeCheck(ctx, logger, req.JobId, nil); err != nil {
+			return nil, err
+		}
 	}
 
 	info := workflow.GetInfo(ctx)
@@ -182,6 +187,15 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 	if len(bcResp.BenthosConfigs) == 0 {
 		logger.Info("found 0 benthos configs, ending workflow.")
 		return &WorkflowResponse{}, nil
+	}
+
+	// Generating the configs reads metadata only: nothing is read from the tables nor
+	// written yet, and the hooks, the schema init and the emptying of the destination come
+	// after the check.
+	if privilegesVersion >= 2 {
+		if err := runPrivilegeCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs); err != nil {
+			return nil, err
+		}
 	}
 
 	err = execRunJobHooksByTiming(
@@ -685,12 +699,30 @@ func runPostTableSyncActivity(
 }
 
 // runPrivilegeCheck stops the run before anything is read or written when a connection
-// lacks what its role in the job needs. Runs started before the check existed replay
-// without it.
-func runPrivilegeCheck(ctx workflow.Context, logger log.Logger, jobId string) error {
-	version := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 1)
-	if version == workflow.DefaultVersion {
-		return nil
+// lacks what its role in the job needs, on the tables and columns of the configs. Runs of
+// version 1 pass no configs.
+func runPrivilegeCheck(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	var tables []*runprivileges_activity.TableColumns
+	byName := map[string]*runprivileges_activity.TableColumns{}
+	for _, cfg := range configs {
+		key := cfg.TableSchema + "." + cfg.TableName
+		table, ok := byName[key]
+		if !ok {
+			table = &runprivileges_activity.TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
+			byName[key] = table
+			tables = append(tables, table)
+		}
+		for _, column := range cfg.Columns {
+			// A generated column is computed by the destination, never written by the run.
+			if !slices.Contains(table.Columns, column) && !slices.Contains(cfg.GeneratedColumns, column) {
+				table.Columns = append(table.Columns, column)
+			}
+		}
 	}
 	logger.Info("scheduling privilege check")
 	var resp *runprivileges_activity.CheckRunPrivilegesResponse
@@ -702,7 +734,7 @@ func runPrivilegeCheck(ctx workflow.Context, logger log.Logger, jobId string) er
 			HeartbeatTimeout:    1 * time.Minute,
 		}),
 		privilegesActivity.CheckRunPrivileges,
-		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId},
+		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId, Tables: tables},
 	).Get(ctx, &resp)
 }
 

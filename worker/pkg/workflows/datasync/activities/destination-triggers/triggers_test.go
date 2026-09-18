@@ -117,6 +117,7 @@ func TestMerge(t *testing.T) {
 	require.Len(t, recorded, 2)
 }
 
-func TestQuoteMysql(t *testing.T) {
+func TestQuote(t *testing.T) {
 	require.Equal(t, "`tri``cky`", quoteMysql("tri`cky"))
+	require.Equal(t, `"tri""cky\"`, quotePostgres(`tri"cky\`))
 }

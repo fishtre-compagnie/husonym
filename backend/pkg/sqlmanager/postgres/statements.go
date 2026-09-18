@@ -660,8 +660,10 @@ func EscapePgColumns(cols []string) []string {
 	return outcols
 }
 
+// EscapePgColumn quotes an identifier: a double quote inside it is doubled, as PostgreSQL
+// reads it. Go's %q would escape it with a backslash, and a backslash with another one.
 func EscapePgColumn(col string) string {
-	return fmt.Sprintf("%q", col)
+	return `"` + strings.ReplaceAll(col, `"`, `""`) + `"`
 }
 
 func BuildPgIdentityColumnResetCurrentSql(

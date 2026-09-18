@@ -34,6 +34,8 @@ import (
 	"slices"
 	"strings"
 
+	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
+	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 )
 
@@ -190,19 +192,17 @@ func postgresTriggers(found []*sqlmanager_shared.TableTrigger) []*Trigger {
 	return triggers
 }
 
-func quoteMysql(identifier string) string {
-	return "`" + strings.ReplaceAll(identifier, "`", "``") + "`"
-}
+// Identifiers are quoted the way the sql managers quote them.
+var (
+	quoteMysql    = sqlmanager_mysql.EscapeMysqlColumn
+	quotePostgres = sqlmanager_postgres.EscapePgColumn
+)
 
 // quoteMysqlString writes a MySQL string literal for a setting value — mode names, a
 // collation — which holds neither a quote nor a backslash; a doubled quote reads the same
 // under every sql_mode, a backslash would not.
 func quoteMysqlString(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
-}
-
-func quotePostgres(identifier string) string {
-	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
 }
 
 // tablesOf turns the tables of the job into what the sql manager reads triggers for.

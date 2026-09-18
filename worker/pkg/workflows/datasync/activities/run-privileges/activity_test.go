@@ -2,80 +2,122 @@ package runprivileges_activity
 
 import (
 	"context"
+	"regexp"
 	"testing"
 
-	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
 
-type fakeDb struct {
-	granted      map[string][]string
-	readOnlyVars int64
+var article = &jobTable{Schema: "shop", Table: "ARTICLE", Columns: []string{"id", "libellé"}}
+
+// The probes name the written columns and never run.
+func Test_mysqlProbes(t *testing.T) {
+	require.Equal(t, "SELECT `id`, `libellé` FROM `shop`.`ARTICLE` WHERE FALSE", article.mysqlSelect())
+	require.Equal(t, "INSERT INTO `shop`.`ARTICLE` (`id`, `libellé`) VALUES (NULL, NULL)", article.mysqlInsert())
+	require.Equal(t, "UPDATE `shop`.`ARTICLE` SET `id` = DEFAULT, `libellé` = DEFAULT WHERE FALSE", article.mysqlUpdate())
+	require.Equal(t, "DELETE FROM `shop`.`ARTICLE` WHERE FALSE", article.mysqlDelete())
 }
 
-func (f *fakeDb) GetRolePermissionsMap(context.Context) (map[string][]string, error) {
-	return f.granted, nil
+func denied(number uint16) error { return &mysql.MySQLError{Number: number, Message: "denied"} }
+
+func expectProbe(mock sqlmock.Sqlmock, statement string, err error) {
+	query := mock.ExpectQuery(regexp.QuoteMeta("EXPLAIN " + statement))
+	if err != nil {
+		query.WillReturnError(err)
+		return
+	}
+	query.WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 }
 
-func (f *fakeDb) GetTableRowCount(context.Context, string, string, *string) (int64, error) {
-	return f.readOnlyVars, nil
+func expectGrants(mock sqlmock.Sqlmock, lines ...string) {
+	rows := sqlmock.NewRows([]string{"Grants"})
+	for _, line := range lines {
+		rows.AddRow(line)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta("SHOW GRANTS")).WillReturnRows(rows)
 }
 
-var tables = []string{"shop.ARTICLE", "shop.CLIENT"}
-
-func Test_checkSource(t *testing.T) {
-	// A read-only replica is a fine source: only SELECT matters.
-	db := &fakeDb{readOnlyVars: 2, granted: map[string][]string{"shop.ARTICLE": {"SELECT"}, "shop.CLIENT": {"select"}}}
-	findings, err := checkSource(context.Background(), db, "prod", tables)
+func Test_checkMysqlSource(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	require.Empty(t, findings)
+	defer db.Close()
+	expectProbe(mock, article.mysqlSelect(), denied(mysqlColumnAccessDenied))
 
-	db.granted["shop.CLIENT"] = []string{"INSERT"}
-	findings, err = checkSource(context.Background(), db, "prod", tables)
+	findings, err := checkMysqlSource(context.Background(), db, "prod", []*jobTable{article})
 	require.NoError(t, err)
-	require.Equal(t, []string{`source "prod" cannot read shop.CLIENT (missing SELECT)`}, findings)
+	require.Equal(t, []string{`source "prod" cannot read shop.ARTICLE (missing SELECT)`}, findings)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func Test_checkDestination(t *testing.T) {
-	all := []string{"SELECT", "INSERT", "UPDATE", "DELETE"}
+func Test_checkMysqlDestination_readOnlyServer(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery("read_only").WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(true))
 
-	readOnly := &fakeDb{readOnlyVars: 1, granted: map[string][]string{"shop.ARTICLE": all, "shop.CLIENT": all}}
-	findings, err := checkDestination(context.Background(), readOnly, "staging", tables, false)
+	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*jobTable{article}, false, false)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	require.Contains(t, findings[0], "read-only server")
+	require.NoError(t, mock.ExpectationsWereMet(), "a read-only server says enough: nothing more is asked")
+}
 
-	selectOnly := &fakeDb{granted: map[string][]string{"shop.ARTICLE": {"SELECT"}, "shop.CLIENT": all}}
-	findings, err = checkDestination(context.Background(), selectOnly, "staging", tables, false)
+// What the server refuses is reported per table; TRIGGER missing means the triggers are
+// out of sight, and DROP is asked only when the job empties the destination.
+func Test_checkMysqlDestination_missingPrivileges(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	require.Equal(t, []string{`destination "staging" cannot write shop.ARTICLE (missing INSERT, UPDATE, DELETE)`}, findings)
+	defer db.Close()
+	mock.ExpectQuery("read_only").WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(false))
+	expectProbe(mock, article.mysqlSelect(), nil)
+	expectProbe(mock, article.mysqlInsert(), denied(mysqlTableAccessDenied))
+	expectProbe(mock, article.mysqlUpdate(), denied(mysqlColumnAccessDenied))
+	expectProbe(mock, article.mysqlDelete(), nil)
+	expectGrants(mock, "GRANT SELECT, DELETE ON `shop`.* TO `app`@`%`")
 
-	// A table the job creates itself has no privilege of its own yet.
-	missingTable := &fakeDb{granted: map[string][]string{"shop.CLIENT": all}}
-	findings, err = checkDestination(context.Background(), missingTable, "staging", tables, true)
+	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*jobTable{article}, false, true)
 	require.NoError(t, err)
-	require.Empty(t, findings)
-	findings, err = checkDestination(context.Background(), missingTable, "staging", tables, false)
+	require.Len(t, findings, 3)
+	require.Equal(t, `destination "staging" cannot write shop.ARTICLE (missing INSERT, UPDATE)`, findings[0])
+	require.Contains(t, findings[1], "cannot empty shop.ARTICLE before writing it (missing DROP")
+	require.Contains(t, findings[2], "cannot see the triggers of shop.ARTICLE")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A trigger comes back as its definer, which only SET_USER_ID lets an account name.
+func Test_checkMysqlDestination_triggerDefiner(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery("read_only").WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(false))
+	for _, statement := range []string{article.mysqlSelect(), article.mysqlInsert(), article.mysqlUpdate(), article.mysqlDelete()} {
+		expectProbe(mock, statement, nil)
+	}
+	expectGrants(mock, "GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER ON `shop`.* TO `app`@`%`")
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("app@%"))
+	mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop", "ARTICLE").
+		WillReturnRows(sqlmock.NewRows([]string{"n", "d"}).AddRow("trg_mine", "app@%").AddRow("trg_dba", "dba@localhost"))
+
+	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*jobTable{article}, false, false)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
+	require.Contains(t, findings[0], "cannot put back the trigger trg_dba of shop.ARTICLE, whose definer is dba@localhost")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func Test_jobTables(t *testing.T) {
-	require.Equal(t, []string{"shop.ARTICLE", "shop.CLIENT"}, jobTables([]*mgmtv1alpha1.JobMapping{
-		{Schema: "shop", Table: "CLIENT", Column: "id"},
-		{Schema: "shop", Table: "ARTICLE", Column: "id"},
-		{Schema: "shop", Table: "CLIENT", Column: "nom"},
-	}))
-}
+// A table the run creates is not there yet: it will be the account's own.
+func Test_checkMysqlDestination_tableCreatedByTheRun(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery("read_only").WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(false))
+	expectProbe(mock, article.mysqlSelect(), denied(mysqlNoSuchTable))
+	expectGrants(mock)
 
-// No privilege at all reported means the account could not be looked up (declared for a
-// specific host, rights held through a role): the run is not stopped on that.
-func Test_unknownPrivilegesDoNotBlock(t *testing.T) {
-	db := &fakeDb{granted: map[string][]string{}}
-	findings, err := checkSource(context.Background(), db, "prod", tables)
+	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*jobTable{article}, true, true)
 	require.NoError(t, err)
 	require.Empty(t, findings)
-	findings, err = checkDestination(context.Background(), db, "staging", tables, false)
-	require.NoError(t, err)
-	require.Empty(t, findings)
+	require.NoError(t, mock.ExpectationsWereMet())
 }
