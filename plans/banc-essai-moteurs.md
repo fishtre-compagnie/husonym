@@ -550,6 +550,80 @@ Les trois écarts MySQL restants ont été fermés.
 `retry-keyless-table-duplicates`, que le passage standard n'exerce pas (il demande des pages
 de 2 500 lignes), passe aussi sur les deux moteurs : **Athanor est à 59 cas sur 59**.
 
+## Portage PostgreSQL (2026-09-18)
+
+### Le banc adresse un second SGBD
+
+- Les verdicts sont enregistrés **par SGBD** (`baseline.json` a un premier niveau `mysql` /
+  `postgres`) : sans ça un résultat PostgreSQL écraserait un écart connu MySQL, ou lui serait comparé.
+- Le rendu répond de tout ce que le banc écrit en SQL : DDL, tables de l'oracle, session de chargement,
+  paramètres liés, lecture des lignes, bascule en lecture seule, comptes restreints. Un cas vit dans un
+  **conteneur** : une base sur MySQL, un schéma sur PostgreSQL — ce qu'un mapping de job appelle un schéma
+  dans les deux (`Case.Schema()`).
+- Les lignes sont lues par une expression que le rendu donne, pour que le serveur imprime lui-même chaque
+  valeur : PostgreSQL convertit (`CAST … AS text`), MySQL imprime par défaut, et les deux écrivent les
+  octets bruts `x'<hex>'`. Aucun type Go n'arrondit une valeur en chemin.
+- Un cas ne nomme ses SGBD que lorsqu'il porte sur ce qu'une seule base a — un type, un réglage, une
+  syntaxe — jamais parce qu'il y a été écrit d'abord. **20 cas appartiennent à MySQL, 40 sont neutres**, et
+  un test demande à chaque rendu de les rendre : un cas qui ment sur son appartenance échoue avant tout
+  serveur.
+- Trois PostgreSQL 16 jetables (`make bench/pg-up`, ports 3312/3313/3314), `BENCH_DIALECT=postgres`.
+- Source figée : PostgreSQL n'a pas d'interrupteur global, `default_transaction_read_only` sur la base sert
+  d'équivalent. **Piège** : lever le réglage est une écriture, qu'une session qui en a hérité ne peut plus
+  faire ; elle en sort d'abord pour elle-même. Et les connexions déjà oisives dans le pool gardent l'ancien
+  réglage : le pool oisif est vidé après chaque bascule.
+
+### Corrections du produit que PostgreSQL a rendues visibles
+
+- **Contrôle des parents** : paramètres nus dans le `UNION ALL`, `operator does not exist: bigint = text`.
+  La première branche de la table dérivée ne lit rien et sert à donner à chaque colonne **le type et la
+  collation de la clé parente** — aucun nom de type à transporter, aucun schéma de destination à deviner,
+  et le planificateur supprime la branche (vérifié par `EXPLAIN`). `fk-parent-key-collation` passe sur les
+  deux SGBD.
+- **Borne de paramètres par dialecte** : 500 clés fixes dépassaient les 2 100 paramètres de SQL Server dès
+  qu'une clé avait trois colonnes. Défaut latent, corrigé avant d'atteindre SQL Server.
+- **Suspension des FK** : `SET LOCAL session_replication_role = replica`, porté par la transaction de la
+  page. Rien ne reste sur la connexion, rien à rétablir. Exige un superutilisateur ou
+  `GRANT SET ON PARAMETER` (PG 15+) — les deux voies vérifiées.
+- **Qualification du `WHERE` PostgreSQL** (calcul partagé, les deux moteurs) : le qualificateur énumérait
+  les formes d'expression et laissait nues les colonnes sous `IS NULL`, `BETWEEN`, `IN`, un appel de
+  fonction, un `CASE`. Ambiguës dès que la table est jointe à une fille qui porte les mêmes. La clause est
+  parcourue entièrement, comme côté MySQL.
+- **Jeton de reprise** : pgx rend `*pgtype.Timestamp`, que le jeton typé refusait — run arrêté net à la fin
+  de sa première page. Un enveloppeur qui sait dire la valeur qu'il porte voyage désormais comme elle.
+
+### Passage PostgreSQL (40 cas)
+
+| Priorité | Moteur | OK | Écart | Échec du run | Échec attendu absent |
+|---|---|---|---|---|---|
+| P1 | **Athanor** | **34** | 0 | 0 | 0 |
+| P1 | Benthos | 31 | 2 | 0 | 1 |
+| P2 | **Athanor** | **4** | 0 | 1 | 0 |
+| P2 | Benthos | 3 | 0 | 2 | 0 |
+
+Le seul échec d'Athanor est `on-conflict-update-unique-key`, **partagé avec Benthos** : `ON CONFLICT` ne
+résout que la cible qu'il nomme, là où MySQL se déclenche sur n'importe quelle clé unique. Les écarts de
+Benthos sont ses limites propres, les mêmes que sur MySQL.
+
+### Reste à faire sur PostgreSQL
+
+- `on-conflict-update-unique-key` : décider entre nommer chaque clé unique comme cible, une passe de
+  rattrapage, ou l'énoncer comme une limite du SGBD.
+- Identités et séquences : le plan neutre ne dit pas qu'une colonne est une identité ; une colonne
+  `GENERATED ALWAYS AS IDENTITY` fera échouer chaque insertion d'Athanor (`OVERRIDING SYSTEM VALUE` existe
+  côté Benthos). Non exercé par les cas actuels, qui utilisent `BY DEFAULT`.
+- Conversions de types : ce que pgx rend pour `numeric`, les tableaux, `uuid`, `money`, `interval`,
+  `tsvector` n'est vérifié nulle part ; `binaryDatabaseTypes` ne connaît que `BYTEA`. Famille de cas de
+  types PostgreSQL à écrire (l'équivalent des `types-*` de MySQL).
+- Contrôle des droits PostgreSQL : serveur accessible en écriture (`pg_is_in_recovery`,
+  `default_transaction_read_only`), lecture des **métadonnées de FK** (PostgreSQL masque dans
+  `information_schema` les contraintes des tables sans droit : subset faux sans erreur), et sonde de
+  `session_replication_role` **seulement si le job tourne en Athanor**.
+- Triggers de destination sur PostgreSQL (`DISABLE TRIGGER USER`), pour les deux moteurs : s'appuyer sur
+  l'effet de bord du rôle `replica` rendrait les deux moteurs non comparables.
+- Cas MySQL sans équivalent PostgreSQL écrit : collation insensible à la casse (demande une collation ICU
+  non déterministe), ordre des colonnes, trigger de destination, droits restreints.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée

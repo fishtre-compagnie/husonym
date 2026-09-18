@@ -58,11 +58,14 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
 1. ✅ Portée de cohérence par job (proto, stockage, UI création + réglages) et clé obligatoire (`39a854f6`).
 2. ✅ Plan neutre : type sérialisable, production dans `GenerateBenthosConfigs`, stockage en run context
    (`5175df77`).
-3. ✅ MySQL / à faire PostgreSQL et SQL Server : Athanor lit le plan, pagination par clé + jeton de continuation,
+3. ✅ MySQL et PostgreSQL / à faire SQL Server : Athanor lit le plan, pagination par clé + jeton de continuation,
    `DO NOTHING` en reprise, une passe FK suspendues (`e01e091c`) ; JavaScript dans une VM par table (`5f166f4e`).
-4. ✅ MySQL : intégrité référentielle en trois étapes et banc d'essai (`bench/`, 58 cas) : voir
-   [banc-essai-moteurs.md](banc-essai-moteurs.md). Le plan porte les FK de la table, les colonnes générées et
-   les clés publiées.
+   PostgreSQL suspend ses FK par `SET LOCAL session_replication_role = replica`, porté par la transaction de
+   la page (`a528492f`).
+4. ✅ MySQL et PostgreSQL : intégrité référentielle en trois étapes et banc d'essai (`bench/`, 60 cas dont 40
+   neutres) : voir [banc-essai-moteurs.md](banc-essai-moteurs.md). Le plan porte les FK de la table, les
+   colonnes générées et les clés publiées. Le contrôle des parents laisse la base comparer les clés avec le
+   type et la collation de la colonne parente, sur les trois SGBD.
 5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL) ; à faire : destinations multiples
    et hétérogènes, identités PostgreSQL et SQL Server, conversions de types par SGBD.
 6. ✅ Propagation des FK via Redis (clés primaires transformées), mêmes hachages que Benthos ; clé
