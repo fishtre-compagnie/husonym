@@ -180,6 +180,9 @@ type Renderer interface {
 	// database, not a Go type, that turns a value into text — nothing is rounded on the
 	// way, and the source and the destination are read the same way.
 	ReadExpr(column string, binary bool) string
+	// InsertOverride is what an INSERT says, between its columns and its values, to write
+	// the value given into a column the database would rather number itself.
+	InsertOverride() string
 	// BoolText is what the database prints for a boolean, the one value two databases
 	// spell differently while meaning the same: a seed says true, MySQL prints 1 and
 	// PostgreSQL prints true, and a row key must read the same as the column does.

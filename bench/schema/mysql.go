@@ -18,6 +18,8 @@ func (MySQLRenderer) Placeholder(int) string { return "?" }
 
 func (MySQLRenderer) ExactCollation() string { return "utf8mb4_bin" }
 
+func (MySQLRenderer) InsertOverride() string { return "" }
+
 // MySQL has no boolean: TINYINT(1) prints the number.
 func (MySQLRenderer) BoolText(v bool) string {
 	if v {

@@ -29,6 +29,10 @@ func (PostgresRenderer) Placeholder(n int) string { return "$" + strconv.Itoa(n)
 // PostgreSQL: "C" compares byte for byte, whatever the collation of the database.
 func (PostgresRenderer) ExactCollation() string { return `"C"` }
 
+// A seed writes the values the case declares, into a GENERATED ALWAYS AS IDENTITY column
+// as into any other. The clause is accepted on a table that has no such column.
+func (PostgresRenderer) InsertOverride() string { return " OVERRIDING SYSTEM VALUE" }
+
 func (PostgresRenderer) BoolText(v bool) string {
 	if v {
 		return "true"

@@ -38,7 +38,9 @@ func TestSQLWriter_Postgres(t *testing.T) {
 		t.Fatalf("WriteBatch: %v", err)
 	}
 
-	want := `INSERT INTO "public"."clients" ("id", "prenom") VALUES ($1, $2), ($3, $4)`
+	// OVERRIDING SYSTEM VALUE is said on every PostgreSQL insert: a copy writes the value
+	// the source holds, including into a column declared GENERATED ALWAYS AS IDENTITY.
+	want := `INSERT INTO "public"."clients" ("id", "prenom") OVERRIDING SYSTEM VALUE VALUES ($1, $2), ($3, $4)`
 	if e.query != want {
 		t.Fatalf("SQL:\n  obtenu %q\n  voulu  %q", e.query, want)
 	}

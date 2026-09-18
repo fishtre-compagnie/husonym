@@ -60,6 +60,9 @@ type Dialect interface {
 	// session whose settings could not be restored is thrown away with, instead of going
 	// back to the pool with foreign key checks off.
 	DiscardSessionStatement() (string, bool)
+	// InsertOverride is what an INSERT says, between its columns and its values, to write
+	// the value the source holds into a column the destination would rather number itself.
+	InsertOverride() string
 }
 
 // PostgresDialect : placeholders $1, $2… et identifiants entre guillemets doubles.
@@ -88,6 +91,12 @@ func (PostgresDialect) FaithfulWriteStatements() (begin, end []string) { return 
 
 // PostgreSQL: nothing is set on the session, so nothing is left behind.
 func (PostgresDialect) DiscardSessionStatement() (string, bool) { return "", false }
+
+// PostgreSQL refuses a value of its own for a GENERATED ALWAYS AS IDENTITY column, and a
+// copy writes exactly the value the source holds. The clause is accepted on any table,
+// whether or not it has such a column, so it is said every time rather than made to depend
+// on a description of the destination that would have to be carried and kept right.
+func (PostgresDialect) InsertOverride() string { return " OVERRIDING SYSTEM VALUE" }
 
 // MySQLDialect : placeholders ? et identifiants entre accents graves.
 type MySQLDialect struct{}
@@ -120,6 +129,8 @@ func (MySQLDialect) FaithfulWriteStatements() (begin, end []string) {
 			"SET SESSION sql_mode = @husonym_sql_mode",
 		}
 }
+
+func (MySQLDialect) InsertOverride() string { return "" }
 
 // MySQL keeps FOREIGN_KEY_CHECKS and sql_mode on the session, which a rollback does not
 // undo: a connection whose settings could not be restored is killed rather than returned
@@ -158,6 +169,10 @@ func (MSSQLDialect) FaithfulWriteStatements() (begin, end []string) { return nil
 
 // SQL Server: nothing is set on the session, so nothing is left behind.
 func (MSSQLDialect) DiscardSessionStatement() (string, bool) { return "", false }
+
+// SQL Server needs SET IDENTITY_INSERT around the statement, not a clause inside it: it
+// is dealt with when the engine reaches SQL Server.
+func (MSSQLDialect) InsertOverride() string { return "" }
 
 // maxRowsForParams renvoie le nombre de lignes tenant sous une limite de
 // paramètres, au moins 1 (une ligne large peut à elle seule dépasser la limite —
@@ -299,7 +314,7 @@ func (w *SQLWriter) writeBatchPlain(db Execer, columns []string, rows [][]any) e
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "INSERT INTO %s (%s) VALUES ", w.ref, strings.Join(quoted, ", "))
+	fmt.Fprintf(&b, "INSERT INTO %s (%s)%s VALUES ", w.ref, strings.Join(quoted, ", "), w.dialect.InsertOverride())
 
 	args := make([]any, 0, len(rows)*len(columns))
 	ph := 1

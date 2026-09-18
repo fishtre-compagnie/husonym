@@ -195,9 +195,9 @@ func (l *loader) flush(table string) {
 		tuples[r] = "(" + strings.Join(marks, ",") + ")"
 	}
 	//nolint:gosec // identifiers come from the case definitions and are quoted
-	query := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s",
+	query := fmt.Sprintf("INSERT INTO %s.%s (%s)%s VALUES %s",
 		l.renderer.QuoteIdent(l.c.Schema()), l.renderer.QuoteIdent(table), strings.Join(quoted, ", "),
-		strings.Join(tuples, ","))
+		l.renderer.InsertOverride(), strings.Join(tuples, ","))
 	if _, err := l.conn.ExecContext(l.ctx, query, args...); err != nil {
 		l.err = fmt.Errorf("insert into %s: %w", table, err)
 	}

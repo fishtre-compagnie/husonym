@@ -387,6 +387,10 @@
       "athanor": "ok",
       "benthos": "ok"
     },
+    "types-pg-identity": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "types-pg-json": {
       "athanor": "ok",
       "benthos": "gap"
