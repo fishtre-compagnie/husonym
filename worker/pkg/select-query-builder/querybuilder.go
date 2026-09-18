@@ -170,7 +170,7 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 		}
 	} else if !qb.subsetByForeignKeyConstraints && rootTable.WhereClause() != nil && *rootTable.WhereClause() != "" {
 		// No subset-by-foreign-key constraints, but a where clause was provided
-		qualifiedCondition, err := qb.qualifyWhereCondition(nil, rootAlias, *rootTable.WhereClause())
+		qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, *rootTable.WhereClause())
 		if err != nil {
 			return nil, nil, false, err
 		}
@@ -254,7 +254,7 @@ func (qb *QueryBuilder) addSubsetJoins(
 		// If there are no join steps, and there is a subset condition, apply it
 		// This handles case where the root table has a where clause
 		if len(subset.JoinSteps) == 0 && subset.Subset != "" {
-			qualifiedCondition, err := qb.qualifyWhereCondition(nil, rootAlias, subset.Subset)
+			qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, subset.Subset)
 			if err != nil {
 				return nil, false, err
 			}
@@ -307,7 +307,7 @@ func (qb *QueryBuilder) addSubsetJoins(
 			// If this is the last step in chain and there's a subset condition, apply it
 			if idx == len(subset.JoinSteps)-1 && subset.Subset != "" {
 				isSubset = true
-				qualifiedCondition, err := qb.qualifyWhereCondition(nil, childAlias, subset.Subset)
+				qualifiedCondition, err := qb.qualifyWhereCondition(childAlias, subset.Subset)
 				if err != nil {
 					return nil, false, err
 				}
@@ -394,7 +394,7 @@ func (qb *QueryBuilder) parentRowIsSelected(
 			return nil, err
 		}
 	default:
-		condition, err := qb.qualifyWhereCondition(nil, alias, *parent.WhereClause())
+		condition, err := qb.qualifyWhereCondition(alias, *parent.WhereClause())
 		if err != nil {
 			return nil, err
 		}
@@ -429,10 +429,7 @@ func getClippedHash(input string) string {
 	return hex.EncodeToString(hash[:][:8])
 }
 
-func (qb *QueryBuilder) qualifyWhereCondition(
-	schema *string,
-	table, condition string,
-) (string, error) {
+func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, error) {
 	query := qb.getDialect().From(goqu.T(table)).Select(goqu.Star()).Where(goqu.L(condition))
 	sql, _, err := query.ToSQL()
 	if err != nil {
@@ -442,13 +439,13 @@ func (qb *QueryBuilder) qualifyWhereCondition(
 	var updatedSql string
 	switch qb.driver {
 	case sqlmanager_shared.MysqlDriver:
-		sql, err := qualifyMysqlWhereColumnNames(sql, schema, table)
+		sql, err := qualifyMysqlWhereColumnNames(sql, table)
 		if err != nil {
 			return "", err
 		}
 		updatedSql = sql
 	case sqlmanager_shared.PostgresDriver:
-		sql, err := qualifyPostgresWhereColumnNames(sql, schema, table)
+		sql, err := qualifyPostgresWhereColumnNames(sql, table)
 		if err != nil {
 			return "", err
 		}
@@ -474,7 +471,7 @@ func (qb *QueryBuilder) qualifyWhereCondition(
 	return "(" + strings.TrimSpace(updatedSql[startIndex:]) + ")", nil
 }
 
-func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (string, error) {
+func qualifyPostgresWhereColumnNames(sql, table string) (string, error) {
 	tree, err := pg_query.Parse(sql)
 	if err != nil {
 		return "", err
@@ -484,7 +481,7 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 		selectStmt := stmt.GetStmt().GetSelectStmt()
 
 		if selectStmt.WhereClause != nil {
-			qualifyPostgresColumns(schema, table, selectStmt.WhereClause)
+			qualifyPostgresColumns(table, selectStmt.WhereClause)
 		}
 	}
 	updatedSql, err := pg_query.Deparse(tree)
@@ -504,29 +501,28 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 //
 // Subqueries name their own tables and are left alone: only the expression tested against
 // one belongs to the filtered table.
-func qualifyPostgresColumns(schema *string, table string, node *pg_query.Node) {
+func qualifyPostgresColumns(table string, node *pg_query.Node) {
 	if node == nil {
 		return
 	}
 	switch expr := node.Node.(type) {
 	case *pg_query.Node_ColumnRef:
-		qualifyPostgresColumnRef(schema, table, expr.ColumnRef)
+		qualifyPostgresColumnRef(table, expr.ColumnRef)
 	case *pg_query.Node_SubLink:
-		qualifyPostgresColumns(schema, table, expr.SubLink.GetTestexpr())
+		qualifyPostgresColumns(table, expr.SubLink.GetTestexpr())
 	default:
 		eachPostgresChildNode(node.ProtoReflect(), func(child *pg_query.Node) {
-			qualifyPostgresColumns(schema, table, child)
+			qualifyPostgresColumns(table, child)
 		})
 	}
 }
 
-func qualifyPostgresColumnRef(schema *string, table string, col *pg_query.ColumnRef) {
+// qualifyPostgresColumnRef names a column by the table it is filtered on, the alias the
+// query gives it.
+func qualifyPostgresColumnRef(table string, col *pg_query.ColumnRef) {
 	var colName string
 	for _, f := range col.GetFields() {
 		val := f.GetString_().GetSval()
-		if schema != nil && val == *schema {
-			continue
-		}
 		if val == table {
 			return // already qualified
 		}
@@ -535,11 +531,7 @@ func qualifyPostgresColumnRef(schema *string, table string, col *pg_query.Column
 	if colName == "" {
 		return // A_Star and the like carry no name to qualify
 	}
-	col.Fields = make([]*pg_query.Node, 0, 3)
-	if schema != nil && *schema != "" {
-		col.Fields = append(col.Fields, pg_query.MakeStrNode(*schema))
-	}
-	col.Fields = append(col.Fields, pg_query.MakeStrNode(table), pg_query.MakeStrNode(colName))
+	col.Fields = []*pg_query.Node{pg_query.MakeStrNode(table), pg_query.MakeStrNode(colName)}
 }
 
 // eachPostgresChildNode hands visit every Node the message holds, descending through the
@@ -573,7 +565,7 @@ func visitPostgresMessage(m protoreflect.Message, visit func(*pg_query.Node)) {
 	eachPostgresChildNode(m, visit)
 }
 
-func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (string, error) {
+func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", err
@@ -590,12 +582,7 @@ func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (str
 			case *sqlparser.Subquery:
 				return false, nil
 			case *sqlparser.ColName:
-				s := ""
-				if schema != nil && *schema != "" {
-					s = *schema
-				}
-				node.Qualifier.Qualifier = sqlparser.NewTableIdent(s)
-				node.Qualifier.Name = sqlparser.NewTableIdent(table)
+				node.Qualifier = sqlparser.TableName{Name: sqlparser.NewTableIdent(table)}
 			}
 			return true, nil
 		}, stmt.Where)

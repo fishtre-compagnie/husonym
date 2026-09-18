@@ -398,8 +398,8 @@ func serve(ctx context.Context) error {
 		ConsistencyKey: viper.GetString("ATHANOR_CONSISTENCY_KEY"),
 	}
 	if athanorConfig.ConsistencyKey == "" {
-		// Un job peut choisir Athanor dans l'UI quel que soit le défaut de
-		// déploiement : on prévient dès le démarrage plutôt qu'au premier run.
+		// A job may pick Athanor in the UI whatever the default of the deployment: warn
+		// at startup rather than on its first run.
 		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine will fail")
 	}
 	streamManager := benthosstream.NewBenthosStreamManager()
