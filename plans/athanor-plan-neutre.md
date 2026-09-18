@@ -66,23 +66,25 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    neutres) : voir [banc-essai-moteurs.md](banc-essai-moteurs.md). Le plan porte les FK de la table, les
    colonnes générées et les clés publiées. Le contrôle des parents laisse la base comparer les clés avec le
    type et la collation de la colonne parente, sur les trois SGBD.
-5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL) ; à faire : destinations multiples
-   et hétérogènes, identités PostgreSQL et SQL Server, conversions de types par SGBD.
+5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL), identités PostgreSQL
+   (`OVERRIDING SYSTEM VALUE`) ; à faire : destinations multiples et hétérogènes
+   ([proposition](athanor-destinations-multiples-heterogenes.md)), identités SQL Server.
 6. ✅ Propagation des FK via Redis (clés primaires transformées), mêmes hachages que Benthos ; clé
    auto-référencée vers une clé transformée refusée (une passe).
-7. ✅ MySQL, au démarrage du run : contrôle des droits selon le rôle de la connexion. À faire : test de connexion
-   et configuration du job (proto `CheckConnectionConfig`), PostgreSQL, SQL Server.
-8. ✅ Comparaison mesurée sur le banc (`bench/perf`, 3,1 M lignes, 5 tours par moteur) : Athanor 24,8 s de
-   médiane contre 159,5 s, 69 500 lignes/s contre 10 800, 50 Mio contre 143 Mio, et dix fois moins de
-   variation, pour des lignes écrites identiques table par table. À parité de taille de lot, Benthos ne gagne
-   rien. Détail et limites dans [banc-essai-moteurs.md](banc-essai-moteurs.md). Prérequis levé le 2026-09-17 au soir : l'écart de durée observé
-   jusque-là était la période de lot de Benthos (5 s par sync de table), pas une différence de moteur ; voir
-   [banc-essai-moteurs.md](banc-essai-moteurs.md). À l'échelle du banc de correction, les deux moteurs sont
-   indiscernables une fois cette période neutralisée.
-9. Défaut ouvert : une FK nullable qui suit une clé transformée, sur une table à subset, est écrite avant la
-   table qui publie la clé (la passe d'insertion n'en dépend pas, la dépendance est portée par la passe de mise
-   à jour qu'Athanor ignore). Athanor la met à `NULL`, Benthos échoue sur Redis. Choix à arbitrer : dépendance
-   rendue au calcul partagé, ou passes de mise à jour exécutées par Athanor.
+7. ✅ MySQL et PostgreSQL, au démarrage du run (après la génération des configs, sur les tables et colonnes
+   qu'elles écrivent) : contrôle des droits selon le rôle de la connexion, rôles et comptes par hôte compris,
+   vidage, suspension et remise des triggers. À faire : test de connexion et configuration du job
+   ([proposition](controle-connexion-et-prevol.md)), SQL Server.
+8. ✅ Comparaison mesurée (`bench/perf`, 3,1 M lignes, 5 tours par moteur), sur les deux SGBD le
+   2026-09-18 : Athanor 25,1 s contre 162,5 s sur MySQL (6,5 fois), 32,8 s contre 166,8 s sur PostgreSQL
+   (5,1 fois), moins de mémoire, lignes écrites identiques table par table. Le portage PostgreSQL n'a rien
+   coûté sur MySQL (mesure appariée). Détail et limites dans [banc-essai-moteurs.md](banc-essai-moteurs.md).
+9. Défaut ouvert, commun aux deux moteurs : une FK qui suit une clé transformée ne peut pas être écrite en une
+   passe quand la clé vient d'une ligne écrite plus tard. Hors cycle, c'est corrigé : la table attend celle qui
+   publie la clé (`c4ebbbc7`). Restent la FK nullable **dans un cycle** (sa passe de mise à jour est ignorée par
+   Athanor) et l'**auto-référence** vers une clé transformée (refusée par Athanor). Proposition en attente de
+   validation : Athanor exécute la passe de mise à jour que le plan porte déjà, seulement quand elle écrit une
+   FK qui suit une clé transformée — ce que fait Benthos.
 
 Hors périmètre Athanor tant que non demandé : MongoDB, DynamoDB, S3/GCS, jobs de génération (Benthos reste le
 moteur, choix explicite et journalisé).

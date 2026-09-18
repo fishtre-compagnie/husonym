@@ -783,7 +783,7 @@ manqué (une minute). OK sur les deux moteurs et les deux SGBD : ni ligne perdue
 double. Un tel cas tourne seul, après les autres (tuer le worker ferait tomber leurs runs), et
 dure environ 62 s par moteur.
 
-Le banc compte 82 cas : 54 neutres, 16 propres à MySQL, 12 propres à PostgreSQL.
+Le banc compte 82 cas : 54 neutres, 16 propres à MySQL, 12 propres à PostgreSQL (83 avec le cas GIPK ajouté ensuite).
 
 ## Destination MySQL qui replie les noms en minuscules (2026-09-18)
 
@@ -826,6 +826,31 @@ il faudrait d'abord vérifier que Benthos n'écrit que les colonnes mappées.
 
 La création du schéma d'un cas passe désormais par une seule session jetable, pour qu'un réglage de
 session posé par `SchemaSetupFor` s'applique aux tables créées ensuite.
+
+## Comparaison mesurée sur les deux SGBD (2026-09-18, commit `38d82082`)
+
+Échelle 100 : 3 100 000 lignes en source, 1 725 000 écrites, 5 tours par moteur en alternance,
+worker redémarré avant chaque run. Les deux moteurs écrivent **exactement les mêmes lignes, table par
+table, à chaque tour**.
+
+| SGBD | Moteur | Durée médiane | min | max | Lignes/s | Mémoire du run |
+|---|---|---|---|---|---|---|
+| MySQL | Benthos | 162,5 s | 147,3 s | 169,3 s | 10 618 | 137 Mio |
+| MySQL | **Athanor** | **25,1 s** | 22,8 s | 27,7 s | **68 657** | **54 Mio** |
+| PostgreSQL | Benthos | 166,8 s | 164,2 s | 177,5 s | 10 339 | 140 Mio |
+| PostgreSQL | **Athanor** | **32,8 s** | 32,6 s | 34,7 s | **52 590** | **89 Mio** |
+
+Athanor est **6,5 fois** plus rapide que Benthos sur MySQL et **5,1 fois** sur PostgreSQL, avec 2,5
+et 1,6 fois moins de mémoire. Sur PostgreSQL, Athanor écrit par `INSERT` groupés de 1 000 lignes :
+`COPY` est la piste évidente pour réduire l'écart avec MySQL (non mesurée).
+
+**Le portage PostgreSQL n'a rien coûté sur MySQL.** Une première série, à midi, donnait +20 % pour
+Benthos et +15 % pour Athanor, tout dans les synchros de table. Mesure appariée, même après-midi,
+3 tours chacun, source déjà chargée : `f648a7c6` (mesure du 17) 152,3 s / 23,6 s ; `3694fc8c`
+(dates lues en texte, seul changement commun aux deux moteurs entre-temps) 146,3 s / 23,1 s ;
+`38d82082` 146,6 s / 23,0 s. L'écart venait de la machine, qui porte aussi les clusters k3d
+d'autres projets : **d'une heure à l'autre, la même mesure varie de 25 %**. Seule une comparaison
+appariée, dans la même période, attribue un écart au code.
 
 ## Ordre
 
