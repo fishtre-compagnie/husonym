@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -217,8 +217,8 @@ func Test_ClampInts(t *testing.T) {
 	testcases := []testcase{
 		{},
 		{[]int{1, 2, 3}, nil, nil, []int{1, 2, 3}},
-		{[]int{1, 2, 3}, shared.Ptr(2), shared.Ptr(2), []int{2}},
-		{[]int{1, 2, 3, 4, 5}, shared.Ptr(2), shared.Ptr(4), []int{2, 3, 4}},
+		{[]int{1, 2, 3}, gotypeutil.ToPtr(2), gotypeutil.ToPtr(2), []int{2}},
+		{[]int{1, 2, 3, 4, 5}, gotypeutil.ToPtr(2), gotypeutil.ToPtr(4), []int{2, 3, 4}},
 	}
 
 	for _, tc := range testcases {

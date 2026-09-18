@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/require"
 )
@@ -89,25 +89,25 @@ func Test_calculateMaxNumber(t *testing.T) {
 		}, // Precision 5, scale nil (defaults to 0)
 		{
 			precision: 5,
-			scale:     shared.Ptr(0),
+			scale:     gotypeutil.ToPtr(0),
 			expected:  99999,
 			expectErr: false,
 		}, // Precision 5, scale 0
 		{
 			precision: 5,
-			scale:     shared.Ptr(2),
+			scale:     gotypeutil.ToPtr(2),
 			expected:  999.99,
 			expectErr: false,
 		}, // Precision 5, scale 2
 		{
 			precision: 10,
-			scale:     shared.Ptr(3),
+			scale:     gotypeutil.ToPtr(3),
 			expected:  9999999.999,
 			expectErr: false,
 		}, // Precision 10, scale 3
 		{
 			precision: 5,
-			scale:     shared.Ptr(-1),
+			scale:     gotypeutil.ToPtr(-1),
 			expected:  99999,
 			expectErr: false,
 		}, // Precision 5, scale 0
@@ -116,7 +116,7 @@ func Test_calculateMaxNumber(t *testing.T) {
 		{precision: 0, scale: nil, expected: 0, expectErr: true}, // Invalid precision
 		{
 			precision: 3,
-			scale:     shared.Ptr(5),
+			scale:     gotypeutil.ToPtr(5),
 			expected:  0,
 			expectErr: true,
 		}, // Scale greater than precision
