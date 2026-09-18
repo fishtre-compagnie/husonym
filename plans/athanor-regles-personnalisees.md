@@ -101,8 +101,13 @@ moteurs et pour l'API :
 
 Supprimer après chaque ligne les globaux qu'elle a créés coûtait 3 µs par ligne (parcours des
 propriétés du global) : le global neuf coûte un nombre fixe d'objets, et le coût par ligne est
-inchangé (4,6 µs). Sceller coûte en revanche **4 ms** par VM (goja construit à la demande les objets
-intégrés, que le gel parcourt tous) : les VM scellées vivent dans des **réserves partagées par le
+inchangé (4,6 µs). Geler rendait impossible de masquer une propriété héritée (`e.name = …`,
+`o.toString = …`, et surtout l'écriture de la colonne `constructor` dans le code assemblé, perdue sans
+erreur : la valeur source partait en clair). Les propriétés couramment redéfinies des objets intégrés
+deviennent donc, avant le gel, des accesseurs : lire rend l'original, écrire sur un autre objet y
+définit la propriété, écrire sur l'objet intégré échoue (méthode de SES) ; et le code assemblé écrit
+dans un objet sans prototype. Sceller coûte en revanche **environ 8 ms** par VM (goja construit à la
+demande les objets intégrés, que le gel parcourt tous) : les VM scellées vivent dans des **réserves partagées par le
 processus** (`javascript_vm.Pool`), et ce qui change d'une exécution à l'autre passe avec elle — le
 contexte, le journal, l'API PII du compte, la portée de cohérence. Une VM construite en plein flux
 Benthos retardait des lignes au-delà du vidage de leur page, de 5 s par page : la réserve de
@@ -207,13 +212,27 @@ Trouvé en route, et corrigé :
   échoue explicitement.
 - La validation de l'UI compilait en mode strict, l'exécution non : elle compile désormais comme
   l'exécution.
+- Revue de code du chantier : colonne nommée comme une propriété héritée (`constructor`,
+  `__proto__`…) dont la valeur source partait en clair ; idiomes de redéfinition cassés par le gel ;
+  `JSON.stringify(input)` qui échouait sur un `BigInt` (il écrit désormais le texte exact) ;
+  `v0_msg_set_structured` qui ne reconvertissait pas les `BigInt` ; lecture statique aveugle à
+  `{nom}`, `{pseudo}` et `globalThis.pseudo` ; essai sans borne de mémoire dans l'API (il tourne
+  désormais seul, arrêté si le tas grossit de plus de 256 Mio, et demande le droit d'éditer) ;
+  `NaN` qui faisait échouer l'essai (affiché désormais).
 
 Limites connues :
 
 - L'UI (avertissement, essai) est vérifiée par le typage et le linter, pas encore dans un
   navigateur. L'essai n'offre pas `transformPiiText` (aucune API PII n'est passée à l'essai).
 - L'analyse statique considère comme locale toute variable déclarée quelque part dans la règle :
-  elle peut manquer une écriture globale masquée par un homonyme, jamais en signaler une à tort.
+  elle peut manquer une écriture globale masquée par un homonyme, jamais en signaler une à tort. Un
+  accès calculé (`globalThis["pse" + "udo"]`) échappe à l'arrêt d'un job Benthos au démarrage : l'appel
+  échoue alors à l'exécution, explicitement.
+- Un script qui mêle une clé au-delà de 2^53, désormais `BigInt`, à un nombre échoue : il écrivait
+  auparavant une clé arrondie.
+- La borne mémoire de l'essai mesure le tas du processus : elle arrête un script qui s'emballe, elle
+  ne mesure pas finement une règle. `AnonymizeSingle` exécute aussi du JavaScript dans l'API, sans
+  cette borne (antérieur au chantier).
 - `input` donne à un script la ligne après les transformers natifs de la table, dans les deux
   moteurs (Athanor applique ses transformers de valeur avant ceux de ligne, Benthos ses mutations
   avant son processeur JavaScript) : une règle qui lit `input.email` voit l'email déjà

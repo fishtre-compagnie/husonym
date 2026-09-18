@@ -2,10 +2,12 @@ package v1alpha1_transformersservice
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,4 +42,35 @@ func TestParseRow(t *testing.T) {
 		_, err := parseRow(raw)
 		require.Error(t, err, raw)
 	}
+}
+
+func trialRule(code string) []runner.JavascriptRule {
+	return []runner.JavascriptRule{{Column: "nom", Config: &mgmtv1alpha1.TransformerConfig{
+		Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+			TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{Code: code},
+		},
+	}}}
+}
+
+// A rule allocating without end is stopped, instead of taking the API down.
+func TestRunTrial_MemoryLimit(t *testing.T) {
+	_, failure, err := runTrial(context.Background(),
+		trialRule(`const a = []; while (true) { a.push("x".repeat(100000) + a.length); }`),
+		[]map[string]any{{"nom": "Durand"}}, 32<<20)
+	require.NoError(t, err)
+	require.NotNil(t, failure)
+	require.Equal(t, "nom", failure.Column)
+	require.Contains(t, failure.Message, "MiB during the trial")
+}
+
+func TestDisplayable(t *testing.T) {
+	row := displayable(map[string]any{
+		"nan": math.NaN(), "inf": math.Inf(1), "moins": math.Inf(-1), "n": 1.5,
+		"liste": []any{math.NaN()},
+	}).(map[string]any)
+	require.Equal(t, "NaN", row["nan"])
+	require.Equal(t, "Infinity", row["inf"])
+	require.Equal(t, "-Infinity", row["moins"])
+	require.InDelta(t, 1.5, row["n"], 0)
+	require.Equal(t, []any{"NaN"}, row["liste"])
 }

@@ -141,3 +141,47 @@ func TestSpecForTable_JavascriptBigIntegers(t *testing.T) {
 		})
 	}
 }
+
+// A column named like a property every object inherits is written like any other: the
+// assignment used to be lost, and the source value written in clear.
+func TestSpecForTable_JavascriptColumnsNamedLikeBuiltIns(t *testing.T) {
+	var mappings []*mgmtv1alpha1.JobMapping
+	columns := []string{"constructor", "toString", "__proto__", "valueOf", "hasOwnProperty"}
+	for _, column := range columns {
+		mappings = append(mappings, &mgmtv1alpha1.JobMapping{Schema: "s", Table: "t", Column: column,
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: transformJS(`return "anonyme";`)}})
+	}
+	cols, spec, err := SpecForTable(context.Background(), mappings, "s", "t", nil, &TransformEnv{})
+	require.NoError(t, err)
+	plan, err := engine.Compile(cols, spec)
+	require.NoError(t, err)
+	b := engine.NewBatch(cols, 1)
+	for _, column := range columns {
+		b.Cols[column][0] = "valeur réelle"
+	}
+	require.NoError(t, plan.Execute(transform.Background(), b))
+	for _, column := range columns {
+		require.Equal(t, "anonyme", b.Cols[column][0], column)
+	}
+}
+
+// A row holding a key beyond 2^53 still serializes, the key written exactly, and a script
+// setting the whole message back leaves the key an integer.
+func TestSpecForTable_JavascriptBigIntegersInTheRow(t *testing.T) {
+	const key = int64(1)<<60 + 1
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "s", Table: "t", Column: "id", Transformer: passthrough()},
+		{Schema: "s", Table: "t", Column: "empreinte", Transformer: &mgmtv1alpha1.JobMappingTransformer{
+			Config: transformJS(`benthos.v0_msg_set_structured(benthos.v0_msg_as_structured()); return JSON.stringify(input);`),
+		}},
+	}
+	cols, spec, err := SpecForTable(context.Background(), mappings, "s", "t", nil, &TransformEnv{})
+	require.NoError(t, err)
+	plan, err := engine.Compile(cols, spec)
+	require.NoError(t, err)
+	b := engine.NewBatch(cols, 1)
+	b.Cols["id"][0], b.Cols["empreinte"][0] = key, "x"
+	require.NoError(t, plan.Execute(transform.Background(), b))
+	require.JSONEq(t, `{"empreinte":"x","id":"1152921504606846977"}`, b.Cols["empreinte"][0].(string))
+	require.Equal(t, key, b.Cols["id"][0])
+}

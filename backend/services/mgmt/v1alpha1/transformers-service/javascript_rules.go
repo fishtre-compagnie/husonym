@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"runtime/metrics"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,8 +20,21 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 )
 
-// tryTimeLimit is what a trial of rules may take, all rows together: it runs in the API.
-const tryTimeLimit = 10 * time.Second
+// A trial runs a user's code in the API process: it is bounded in time, in memory, and
+// runs alone.
+const (
+	// tryTimeLimit is what a trial may take, all rows together.
+	tryTimeLimit = 10 * time.Second
+	// tryMemoryLimit is how much the heap may grow while a trial runs. goja bounds no
+	// allocation: a rule filling an array in a loop would take the process down.
+	tryMemoryLimit = 256 << 20
+)
+
+// trialSlot lets one trial run at a time, so that their allocations never add up.
+var trialSlot = make(chan struct{}, 1)
+
+// errTrialMemory stops a trial whose heap grew past tryMemoryLimit.
+var errTrialMemory = fmt.Errorf("the rules took more than %d MiB during the trial", tryMemoryLimit>>20)
 
 // ValidateUserJavascriptCode compiles the code the way a run does, and reports where it
 // writes state outside its own variables: that state lives for one row.
@@ -51,7 +66,8 @@ func (s *Service) TryJavascriptRules(
 	if err != nil {
 		return nil, err
 	}
-	if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(req.Msg.GetAccountId()), rbac.JobAction_View); err != nil {
+	// Trying a rule is part of writing one: the right to create transformers.
+	if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(req.Msg.GetAccountId()), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
 
@@ -68,9 +84,7 @@ func (s *Service) TryJavascriptRules(
 		rows = append(rows, row)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, tryTimeLimit)
-	defer cancel()
-	out, failure, err := runner.TryJavascriptRules(ctx, rules, rows)
+	out, failure, err := runTrial(ctx, rules, rows, tryMemoryLimit)
 	if errors.Is(err, runner.ErrNotARule) {
 		return nil, husonymerrors.NewBadRequest(err.Error())
 	}
@@ -88,13 +102,89 @@ func (s *Service) TryJavascriptRules(
 	}
 	resp := &mgmtv1alpha1.TryJavascriptRulesResponse{Rows: make([]string, 0, len(out))}
 	for i, row := range out {
-		bits, err := json.Marshal(row)
+		bits, err := json.Marshal(displayable(row))
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i, err)
 		}
 		resp.Rows = append(resp.Rows, string(bits))
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// runTrial runs the rules alone, within tryTimeLimit, and stops them when the heap grows
+// by more than memoryLimit.
+func runTrial(
+	ctx context.Context,
+	rules []runner.JavascriptRule,
+	rows []map[string]any,
+	memoryLimit uint64,
+) ([]map[string]any, *runner.RuleFailure, error) {
+	select {
+	case trialSlot <- struct{}{}:
+		defer func() { <-trialSlot }()
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
+	}
+	ctx, cancelTime := context.WithTimeout(ctx, tryTimeLimit)
+	defer cancelTime()
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	go watchHeap(ctx, cancel, memoryLimit)
+	return runner.TryJavascriptRules(ctx, rules, rows)
+}
+
+// watchHeap cancels ctx with errTrialMemory once the heap has grown by more than limit.
+// The heap is the process's: the limit is loose, and meant to stop a runaway rule, not to
+// measure one.
+func watchHeap(ctx context.Context, cancel context.CancelCauseFunc, limit uint64) {
+	sample := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+	metrics.Read(sample)
+	start := sample[0].Value.Uint64()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			metrics.Read(sample)
+			if heap := sample[0].Value.Uint64(); heap > start && heap-start > limit {
+				cancel(errTrialMemory)
+				return
+			}
+		}
+	}
+}
+
+// displayable replaces what JSON cannot hold — NaN, infinities — by its JavaScript
+// spelling: the trial shows what the rule returned.
+func displayable(value any) any {
+	switch v := value.(type) {
+	case float64:
+		switch {
+		case math.IsNaN(v):
+			return "NaN"
+		case math.IsInf(v, 1):
+			return "Infinity"
+		case math.IsInf(v, -1):
+			return "-Infinity"
+		}
+		return v
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, e := range v {
+			out[k] = displayable(e)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, e := range v {
+			out[i] = displayable(e)
+		}
+		return out
+	default:
+		return v
+	}
 }
 
 // parseRow reads a row typed as a JSON object. An integer stays an integer, exact

@@ -32,19 +32,49 @@ type namespace struct {
 
 // hardenScript freezes every object reachable from the global object, the global object
 // included, prototypes and the functions of the namespaces too.
+//
+// A frozen property cannot be shadowed by assignment: `obj.toString = f` on an object
+// inheriting a read-only toString is ignored outside strict mode, and throws inside it.
+// Scripts and the code around them rely on shadowing — a class setting this.name on an
+// error, an object with its own toString. The properties such code overrides are turned,
+// before freezing, into accessors: reading returns the original, assigning on any other
+// object defines the property there, and assigning on the built-in itself fails. It is
+// how SES tames the "override mistake".
 const hardenScript = `(function () {
+	const overridable = new Set(["constructor", "toString", "toLocaleString", "valueOf", "hasOwnProperty",
+		"isPrototypeOf", "propertyIsEnumerable", "toJSON", "name", "message", "stack"]);
+	const defineProperty = Object.defineProperty;
+	const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+	// tame turns an overridable data property of a built-in into an accessor.
+	const tame = (obj, key, original, enumerable) => {
+		defineProperty(obj, key, {
+			get() { return original; },
+			set(value) {
+				if (this === obj) {
+					throw new TypeError("Cannot assign to read only property '" + key + "' of a built-in object");
+				}
+				defineProperty(this, key, { value, writable: true, enumerable: true, configurable: true });
+			},
+			enumerable,
+			configurable: false,
+		});
+	};
 	const seen = new Set();
 	const freeze = (value) => {
 		if ((typeof value !== "object" && typeof value !== "function") || value === null || seen.has(value)) {
 			return;
 		}
 		seen.add(value);
-		Object.freeze(value);
-		freeze(Object.getPrototypeOf(value));
+		const reachable = [Object.getPrototypeOf(value)];
 		for (const key of Reflect.ownKeys(value)) {
-			const d = Object.getOwnPropertyDescriptor(value, key);
-			freeze(d.value); freeze(d.get); freeze(d.set);
+			const d = getOwnPropertyDescriptor(value, key);
+			reachable.push(d.value, d.get, d.set);
+			if (value !== globalThis && overridable.has(key) && "value" in d && d.writable && d.configurable) {
+				tame(value, key, d.value, d.enumerable);
+			}
 		}
+		Object.freeze(value);
+		reachable.forEach(freeze);
 	};
 	freeze(globalThis);
 })`
@@ -67,6 +97,11 @@ func (r *Runner) seal() error {
 		}
 	}
 
+	for _, prelude := range r.options.preludes {
+		if _, err := r.vm.RunString(prelude); err != nil {
+			return fmt.Errorf("javascript: running a prelude of the runner: %w", err)
+		}
+	}
 	harden, err := r.vm.RunString(hardenScript)
 	if err != nil {
 		return fmt.Errorf("javascript: sealing the runner: %w", err)

@@ -24,6 +24,7 @@ func NewDefaultValueRunner(valueApi javascript_functions.ValueApi) (*javascript_
 		javascript_vm.WithValueApi(valueApi),
 		javascript_vm.WithConsole(),
 		javascript_vm.WithFunctions(functions...),
+		javascript_vm.WithPrelude(javascript_functions.BigIntPrelude),
 		// Code written for Neosync, before the rename, reaches these functions (and keeps
 		// shared state) through the `neosync` global. It must keep working unchanged.
 		javascript_vm.WithGlobalAlias(husonym_functions.LegacyNamespace, husonym_functions.Namespace),

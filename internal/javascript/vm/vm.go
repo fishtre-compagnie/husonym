@@ -56,6 +56,7 @@ type Options struct {
 	valueApi       javascript_functions.ValueApi
 	globalAliases  map[string]string // alias -> target global
 	timeLimit      time.Duration
+	preludes       []string
 }
 
 type Option func(*Options)
@@ -100,6 +101,14 @@ func WithGlobalAlias(alias, target string) Option {
 func WithConsole() Option {
 	return func(opts *Options) {
 		opts.consoleEnabled = true
+	}
+}
+
+// WithPrelude runs code once, before the runner is sealed: what it defines on the built-in
+// objects is there for every run, and frozen with them.
+func WithPrelude(code string) Option {
+	return func(opts *Options) {
+		opts.preludes = append(opts.preludes, code)
 	}
 }
 

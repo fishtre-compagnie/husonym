@@ -24,7 +24,6 @@ func generateFirstName() *mgmtv1alpha1.JobMappingTransformer {
 	}
 }
 
-
 func transformInt64() *mgmtv1alpha1.JobMappingTransformer {
 	min, max := int64(1), int64(100)
 	return &mgmtv1alpha1.JobMappingTransformer{

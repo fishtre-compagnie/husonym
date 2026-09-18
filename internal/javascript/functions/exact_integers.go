@@ -4,6 +4,15 @@ import (
 	"math/big"
 )
 
+// BigIntPrelude lets JSON.stringify write a BigInt, as the text of its exact value: a
+// script serializing its whole row (to hash it, say) must keep working when one of the
+// columns ToScript turned into a BigInt.
+const BigIntPrelude = `Object.defineProperty(BigInt.prototype, "toJSON", {
+	value: function () { return this.toString(); },
+	writable: true,
+	configurable: true,
+});`
+
 // maxExactInteger is the largest integer a JavaScript number holds exactly: 2^53.
 const maxExactInteger = 1 << 53
 

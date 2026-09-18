@@ -28,11 +28,15 @@ func TestAnalyze(t *testing.T) {
 		"loop variable":       {code: `for (k in input) {} return value;`, globalWrites: []string{"k"}},
 		"namespaces": {code: `neosync.nom = value; husonym["x"] = 1; globalThis.y = 2; this.z = 3; return value;`,
 			globalWrites: []string{"neosync.nom", "husonym[…]", "globalThis.y", "this.z"}},
-		"shadowed namespace": {code: `var neosync = {}; neosync.nom = value; return value;`},
-		"pseudo":             {code: `return pseudo.lastName(value);`, usesPseudo: true},
-		"pseudo aliased":     {code: `const p = pseudo; return p.lastName(value);`, usesPseudo: true},
-		"pseudo as property": {code: `return input.pseudo + {pseudo: 1}.pseudo;`},
-		"pseudo declared":    {code: `var pseudo = {lastName: v => v}; return pseudo.lastName(value);`},
+		"shadowed namespace":         {code: `var neosync = {}; neosync.nom = value; return value;`},
+		"pseudo":                     {code: `return pseudo.lastName(value);`, usesPseudo: true},
+		"pseudo aliased":             {code: `const p = pseudo; return p.lastName(value);`, usesPseudo: true},
+		"pseudo as property":         {code: `return input.pseudo + {pseudo: 1}.pseudo;`},
+		"pseudo declared":            {code: `var pseudo = {lastName: v => v}; return pseudo.lastName(value);`},
+		"pseudo shorthand":           {code: `const o = {pseudo}; return o.pseudo.lastName(value);`, usesPseudo: true},
+		"pseudo on global":           {code: `return globalThis.pseudo.lastName(value);`, usesPseudo: true},
+		"pseudo by name":             {code: `return globalThis["pseudo"].lastName(value);`, usesPseudo: true},
+		"destructured then assigned": {code: `let {nom, ville: v} = input; nom = nom.trim(); v = v + "!"; return nom + v;`},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

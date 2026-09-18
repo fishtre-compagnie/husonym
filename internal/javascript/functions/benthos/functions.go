@@ -180,7 +180,8 @@ func getV0MsgSetStructured(namespace string) *javascript_functions.FunctionDefin
 					return nil, err
 				}
 
-				r.ValueApi().SetStructured(value)
+				// The round trip of v0_msg_as_structured: an exact BigInt becomes an integer again.
+				r.ValueApi().SetStructured(javascript_functions.FromScript(value))
 				return nil, nil
 			}
 		},

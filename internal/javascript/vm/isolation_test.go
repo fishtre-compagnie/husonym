@@ -77,3 +77,23 @@ func TestRunner_StateWithinRun(t *testing.T) {
 		[current.picked, chosen, city, globalThis.zip].join(" ");`)
 	require.Equal(t, "Durand Marie Lyon 69001", result.String())
 }
+
+// Freezing the built-ins must not break shadowing, which scripts rely on: a class naming
+// its errors, an object with its own toString. The built-in itself stays read-only.
+func TestRunner_ShadowingBuiltInProperties(t *testing.T) {
+	runner := isolationRunner(t)
+	result := run(t, runner, `
+		class RuleError extends Error { constructor(m) { super(m); this.name = "RuleError"; } }
+		const e = new RuleError("refusée");
+		const plain = new Error("x"); plain.name = "Renamed";
+		const o = {}; o.toString = () => "mine"; o.constructor = "c"; o.valueOf = () => 7;
+		const out = Object.create(null); out["constructor"] = "col"; out["__proto__"] = "proto";
+		[e.name, plain.name, String(o), o.constructor, o + 1, out["constructor"], out["__proto__"], String(e)].join("|");`)
+	require.Equal(t, "RuleError|Renamed|mine|c|8|col|proto|RuleError: refusée", result.String())
+
+	_, err := runner.Run(context.Background(), goja.MustCompile("test.js", `
+		"use strict"; Object.prototype.toString = () => "leak";`, false))
+	require.ErrorContains(t, err, "read only property 'toString' of a built-in object")
+	require.Equal(t, "[object Object]", run(t, runner, `String({})`).String(), "the built-in is untouched")
+	require.Equal(t, "hello", run(t, runner, `legacy.hello()`).String())
+}

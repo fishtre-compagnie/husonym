@@ -104,8 +104,21 @@ func (w *walker) visit(node any) bool {
 	case *ast.Identifier:
 		w.reference(n.Name.String())
 	case *ast.DotExpression:
-		// The property is a name, not a variable: only the object is read.
+		// The property is a name, not a variable: only the object is read — unless the
+		// object is the global one, whose properties are the globals.
+		if globalObject(n.Left) != "" {
+			w.reference(n.Identifier.Name.String())
+		}
 		w.walk(reflect.ValueOf(n.Left))
+		return true
+	case *ast.BracketExpression:
+		if name, ok := n.Member.(*ast.StringLiteral); ok && globalObject(n.Left) != "" {
+			w.reference(name.Value.String())
+		}
+	case *ast.PropertyShort:
+		// {pseudo} reads the variable pseudo.
+		w.reference(n.Name.Name.String())
+		w.walk(reflect.ValueOf(n.Initializer))
 		return true
 	case *ast.PropertyKeyed:
 		if n.Computed {
@@ -205,6 +218,11 @@ func (w *walker) collectNames(v reflect.Value) {
 		}
 		w.collectNames(v.Elem())
 	case reflect.Struct:
+		// A shorthand property of a pattern, {nom}, holds its name by value.
+		if id, ok := v.Interface().(ast.Identifier); ok {
+			w.declared[id.Name.String()] = true
+			return
+		}
 		for i := range v.NumField() {
 			if v.Type().Field(i).IsExported() {
 				w.collectNames(v.Field(i))
