@@ -605,24 +605,65 @@ Le seul échec d'Athanor est `on-conflict-update-unique-key`, **partagé avec Be
 résout que la cible qu'il nomme, là où MySQL se déclenche sur n'importe quelle clé unique. Les écarts de
 Benthos sont ses limites propres, les mêmes que sur MySQL.
 
+### Suite du portage (2026-09-18, après midi)
+
+**Famille de cas de types PostgreSQL** (8 cas, l'équivalent des `types-*` de MySQL) : `numeric` sans borne et
+`NaN`, `real`, `money`, horodatages à la microseconde, dates avant notre ère, `infinity`, `interval`, texte
+(sans octet NUL, que PostgreSQL refuse), `bytea`, `json` contre `jsonb`, tableaux, `uuid`, `inet`, `cidr`,
+`macaddr`, type énuméré et domaine déclarés dans le schéma du cas (`SchemaSetup`, joué avant les tables).
+Chaque valeur est écrite comme le serveur l'imprime — demandé au serveur, pas supposé. pgx lie une chaîne à
+tous ces types sans conversion.
+
+- **Corruption silencieuse P1 dans Benthos** : une colonne `json` (que PostgreSQL garde mot pour mot) revient
+  réordonnée et sa clé en double supprimée ; un nombre `jsonb` au-delà d'un float64 revient arrondi
+  (`12345678901234567890` → `12345678901234567000`). Le même défaut que sur MySQL. Athanor passe les huit.
+
+**Identités** : PostgreSQL refuse une valeur fournie dans une colonne `GENERATED ALWAYS AS IDENTITY` sans
+`OVERRIDING SYSTEM VALUE`. La clause est acceptée sur n'importe quelle table, avec ou sans identité : Athanor
+la dit à chaque insertion PostgreSQL, **sans rien ajouter au plan neutre** (ce que j'avais d'abord proposé).
+`types-pg-identity` sème des identifiants qu'une numérotation par la destination ne pourrait pas atteindre.
+
+**FK composite lue dans le mauvais ordre — perte silencieuse P1, commune aux deux moteurs, propre à
+PostgreSQL.** La requête des FK ordonnait les colonnes par leur position dans la table (`attnum`) et agrégeait
+les colonnes référencées sans ordre : `FOREIGN KEY (b, a) REFERENCES p (x, y)` revenait appariée `a↔x, b↔y`.
+Jointure du subset, contrôle des parents et contrôle d'intégrité de fin de run (qui, destination vidée et
+violations ignorées, **supprime** les lignes qu'il croit orphelines) lisaient tous la clé de travers. Corrigé en
+suivant la position dans `conkey`/`confkey`. `fk-composite-column-order` : 9 et 11 lignes fausses avant, OK
+après ; MySQL lisait déjà ses clés dans l'ordre de la contrainte.
+
+**`on-conflict-update-unique-key` : tranché pour l'échec explicite.** `ON CONFLICT DO UPDATE` ne résout que
+la cible qu'il nomme ; un conflit sur une autre clé unique n'a pas de réponse qu'une copie puisse donner sans
+deviner quelle ligne garder. Le cas exige désormais l'échec, dans les mots de PostgreSQL.
+
+**Contrôle des droits PostgreSQL au démarrage du run.** La lecture MySQL des privilèges accordés ne se
+transpose pas : `information_schema.table_privileges` ne liste que ce qui est accordé nommément au compte, et
+ignorerait un superutilisateur, le propriétaire ou un compte qui tient ses droits d'un rôle — des runs
+légitimes auraient été bloqués. Le contrôle interroge `has_table_privilege` / `has_schema_privilege`.
+Serveur en écriture : `transaction_read_only`, vrai sur un réplica comme sous
+`default_transaction_read_only`. Suspension des FK : sondée avec l'instruction même qu'Athanor écrit, dans
+une transaction aussitôt annulée, **seulement si le job tourne en Athanor** — la décision du moteur vit
+désormais sur la politique, partagée par la synchro et le contrôle. Le banc sait dire qu'un seul moteur doit
+échouer (`FailingEngines`) : sans le droit de suspendre les FK, Athanor s'arrête au démarrage avec le `GRANT`
+à exécuter, et Benthos passe.
+
+**Triggers de destination sur PostgreSQL.** Les deux moteurs ne copiaient pas les mêmes lignes : le rôle
+`replica` d'Athanor fait taire les triggers ordinaires (Benthos écrivait 10 lignes en trop) mais réveille ceux
+réglés `ENABLE REPLICA` (Athanor écrivait alors 10 lignes en trop, Benthos non). L'activité partagée les
+désactive pour les deux moteurs et remet chacun dans **son état exact** (`O`, `R`, `A`), sans toucher un
+trigger déjà désactivé. Le trigger n'est jamais supprimé ; l'enregistrement de restauration garde le nom de
+champ d'avant, pour qu'un run suspendu par un ancien worker soit restauré.
+
+**Corrections du plan, vérifiées sur un serveur** : le risque « `information_schema` masque les FK à un compte
+sans droit » ne s'applique pas — Husonym lit les FK dans `pg_catalog`. Et un compte avec le seul droit
+`SELECT` voit bien les colonnes des clés primaires et uniques dans `key_column_usage`.
+
 ### Reste à faire sur PostgreSQL
 
-- `on-conflict-update-unique-key` : décider entre nommer chaque clé unique comme cible, une passe de
-  rattrapage, ou l'énoncer comme une limite du SGBD.
-- Identités et séquences : le plan neutre ne dit pas qu'une colonne est une identité ; une colonne
-  `GENERATED ALWAYS AS IDENTITY` fera échouer chaque insertion d'Athanor (`OVERRIDING SYSTEM VALUE` existe
-  côté Benthos). Non exercé par les cas actuels, qui utilisent `BY DEFAULT`.
-- Conversions de types : ce que pgx rend pour `numeric`, les tableaux, `uuid`, `money`, `interval`,
-  `tsvector` n'est vérifié nulle part ; `binaryDatabaseTypes` ne connaît que `BYTEA`. Famille de cas de
-  types PostgreSQL à écrire (l'équivalent des `types-*` de MySQL).
-- Contrôle des droits PostgreSQL : serveur accessible en écriture (`pg_is_in_recovery`,
-  `default_transaction_read_only`), lecture des **métadonnées de FK** (PostgreSQL masque dans
-  `information_schema` les contraintes des tables sans droit : subset faux sans erreur), et sonde de
-  `session_replication_role` **seulement si le job tourne en Athanor**.
-- Triggers de destination sur PostgreSQL (`DISABLE TRIGGER USER`), pour les deux moteurs : s'appuyer sur
-  l'effet de bord du rôle `replica` rendrait les deux moteurs non comparables.
-- Cas MySQL sans équivalent PostgreSQL écrit : collation insensible à la casse (demande une collation ICU
-  non déterministe), ordre des colonnes, trigger de destination, droits restreints.
+- `ALTER TABLE … DISABLE TRIGGER` demande d'être propriétaire de la table : un compte non propriétaire, sur
+  une destination qui a des triggers, échouera à l'étape des triggers. À ajouter au contrôle des droits.
+- Cas MySQL sans équivalent PostgreSQL écrit : collation insensible à la casse (collation ICU non
+  déterministe), ordre des colonnes de destination, colonne `NOT NULL` en plus.
+- Comparaison mesurée `bench/perf` sur PostgreSQL (le jeu de données n'a qu'un rendu MySQL).
 
 ## Ordre
 
