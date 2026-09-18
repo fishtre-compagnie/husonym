@@ -60,6 +60,11 @@ class TransformersServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeResponse.FromString,
                 _registered_method=True)
+        self.TryJavascriptRules = channel.unary_unary(
+                '/mgmt.v1alpha1.TransformersService/TryJavascriptRules',
+                request_serializer=mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesResponse.FromString,
+                _registered_method=True)
         self.ValidateUserRegexCode = channel.unary_unary(
                 '/mgmt.v1alpha1.TransformersService/ValidateUserRegexCode',
                 request_serializer=mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserRegexCodeRequest.SerializeToString,
@@ -139,6 +144,15 @@ class TransformersServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def TryJavascriptRules(self, request, context):
+        """Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
+        deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+        have the shape of a run's, never its values.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ValidateUserRegexCode(self, request, context):
         """Validate user provided regex code before saving it to a user defined transformer
         """
@@ -200,6 +214,11 @@ def add_TransformersServiceServicer_to_server(servicer, server):
                     servicer.ValidateUserJavascriptCode,
                     request_deserializer=mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeResponse.SerializeToString,
+            ),
+            'TryJavascriptRules': grpc.unary_unary_rpc_method_handler(
+                    servicer.TryJavascriptRules,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesResponse.SerializeToString,
             ),
             'ValidateUserRegexCode': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateUserRegexCode,
@@ -456,6 +475,33 @@ class TransformersService:
             '/mgmt.v1alpha1.TransformersService/ValidateUserJavascriptCode',
             mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_transformer__pb2.ValidateUserJavascriptCodeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def TryJavascriptRules(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.TransformersService/TryJavascriptRules',
+            mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_transformer__pb2.TryJavascriptRulesResponse.FromString,
             options,
             channel_credentials,
             insecure,

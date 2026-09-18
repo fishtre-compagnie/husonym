@@ -6,7 +6,6 @@ import (
 	"regexp"
 
 	"connectrpc.com/connect"
-	"github.com/dop251/goja"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -314,35 +313,6 @@ func (s *Service) IsTransformerNameAvailable(
 }
 
 // use the goja library to validate that the javascript can compile and theoretically run
-func (s *Service) ValidateUserJavascriptCode(
-	ctx context.Context,
-	req *connect.Request[mgmtv1alpha1.ValidateUserJavascriptCodeRequest],
-) (*connect.Response[mgmtv1alpha1.ValidateUserJavascriptCodeResponse], error) {
-	js := constructJavascriptCode(req.Msg.GetCode())
-
-	_, err := goja.Compile("test", js, true)
-	if err != nil {
-		return connect.NewResponse(&mgmtv1alpha1.ValidateUserJavascriptCodeResponse{
-			Valid: false,
-		}), nil
-	}
-
-	return connect.NewResponse(&mgmtv1alpha1.ValidateUserJavascriptCodeResponse{
-		Valid: true,
-	}), nil
-}
-
-func constructJavascriptCode(jsCode string) string {
-	if jsCode != "" {
-		return fmt.Sprintf(`(()=>{
-			function fn1(value){
-				%s
-				}})();`, jsCode)
-	} else {
-		return ""
-	}
-}
-
 func (s *Service) ValidateUserRegexCode(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.ValidateUserRegexCodeRequest],

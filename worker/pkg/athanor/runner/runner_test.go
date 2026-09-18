@@ -24,15 +24,6 @@ func generateFirstName() *mgmtv1alpha1.JobMappingTransformer {
 	}
 }
 
-func passthrough() *mgmtv1alpha1.JobMappingTransformer {
-	return &mgmtv1alpha1.JobMappingTransformer{
-		Config: &mgmtv1alpha1.TransformerConfig{
-			Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
-				PassthroughConfig: &mgmtv1alpha1.Passthrough{},
-			},
-		},
-	}
-}
 
 func transformInt64() *mgmtv1alpha1.JobMappingTransformer {
 	min, max := int64(1), int64(100)

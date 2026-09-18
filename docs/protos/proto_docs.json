@@ -2792,6 +2792,90 @@
           ]
         },
         {
+          "name": "JavascriptRule",
+          "longName": "JavascriptRule",
+          "fullName": "mgmt.v1alpha1.JavascriptRule",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "column",
+              "description": "The column the rule writes. A transform rule receives its value.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transformer",
+              "description": "A TransformJavascript or GenerateJavascript transformer.",
+              "label": "",
+              "type": "TransformerConfig",
+              "longType": "TransformerConfig",
+              "fullType": "mgmt.v1alpha1.TransformerConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "JavascriptRuleFailure",
+          "longName": "JavascriptRuleFailure",
+          "fullName": "mgmt.v1alpha1.JavascriptRuleFailure",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "row",
+              "description": "The row, by its index in the request.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose rule failed, when the failure comes from one.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "message",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "Null",
           "longName": "Null",
           "fullName": "mgmt.v1alpha1.Null",
@@ -4254,6 +4338,90 @@
           ]
         },
         {
+          "name": "TryJavascriptRulesRequest",
+          "longName": "TryJavascriptRulesRequest",
+          "fullName": "mgmt.v1alpha1.TryJavascriptRulesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The account the rules are tried for.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rules",
+              "description": "The JavaScript rules of one table, in the order the job maps them: they run together\non each row, and share their state for the row, the way a job runs them.",
+              "label": "repeated",
+              "type": "JavascriptRule",
+              "longType": "JavascriptRule",
+              "fullType": "mgmt.v1alpha1.JavascriptRule",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows",
+              "description": "The rows to try the rules on, each a JSON object from column name to value. They are\nthe rows the user types, never rows read from a source.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TryJavascriptRulesResponse",
+          "longName": "TryJavascriptRulesResponse",
+          "fullName": "mgmt.v1alpha1.TryJavascriptRulesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "rows",
+              "description": "The rows once every rule ran, JSON objects in the order of the request. Empty when a\nrule failed.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "failure",
+              "description": "The first failure, when a rule failed.",
+              "label": "",
+              "type": "JavascriptRuleFailure",
+              "longType": "JavascriptRuleFailure",
+              "fullType": "mgmt.v1alpha1.JavascriptRuleFailure",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "UpdateUserDefinedTransformerRequest",
           "longName": "UpdateUserDefinedTransformerRequest",
           "fullName": "mgmt.v1alpha1.UpdateUserDefinedTransformerRequest",
@@ -4541,6 +4709,18 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
+            },
+            {
+              "name": "global_writes",
+              "description": "Where the code writes outside its own variables: a variable assigned without a\ndeclaration, or a property of neosync, husonym, globalThis or this. That state lives\nfor one row: it is shared with the other columns of the row, and gone at the next one.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
@@ -4718,6 +4898,18 @@
               "responseType": "ValidateUserJavascriptCodeResponse",
               "responseLongType": "ValidateUserJavascriptCodeResponse",
               "responseFullType": "mgmt.v1alpha1.ValidateUserJavascriptCodeResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "TryJavascriptRules",
+              "description": "Try JavaScript rules on a few rows, the way Athanor runs them in a job. The\ndeterministic functions (pseudo.*) derive from a key drawn for the call: their outputs\nhave the shape of a run's, never its values.",
+              "requestType": "TryJavascriptRulesRequest",
+              "requestLongType": "TryJavascriptRulesRequest",
+              "requestFullType": "mgmt.v1alpha1.TryJavascriptRulesRequest",
+              "requestStreaming": false,
+              "responseType": "TryJavascriptRulesResponse",
+              "responseLongType": "TryJavascriptRulesResponse",
+              "responseFullType": "mgmt.v1alpha1.TryJavascriptRulesResponse",
               "responseStreaming": false
             },
             {

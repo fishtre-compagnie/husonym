@@ -570,6 +570,50 @@ message ValidateUserJavascriptCodeRequest {
 
 message ValidateUserJavascriptCodeResponse {
   bool valid = 1;
+  // Where the code writes outside its own variables: a variable assigned without a
+  // declaration, or a property of neosync, husonym, globalThis or this. That state lives
+  // for one row: it is shared with the other columns of the row, and gone at the next one.
+  repeated string global_writes = 2;
+}
+
+message TryJavascriptRulesRequest {
+  // The account the rules are tried for.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The JavaScript rules of one table, in the order the job maps them: they run together
+  // on each row, and share their state for the row, the way a job runs them.
+  repeated JavascriptRule rules = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+  }];
+  // The rows to try the rules on, each a JSON object from column name to value. They are
+  // the rows the user types, never rows read from a source.
+  repeated string rows = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 20
+  }];
+}
+
+message JavascriptRule {
+  // The column the rule writes. A transform rule receives its value.
+  string column = 1 [(buf.validate.field).string.min_len = 1];
+  // A TransformJavascript or GenerateJavascript transformer.
+  TransformerConfig transformer = 2 [(buf.validate.field).required = true];
+}
+
+message TryJavascriptRulesResponse {
+  // The rows once every rule ran, JSON objects in the order of the request. Empty when a
+  // rule failed.
+  repeated string rows = 1;
+  // The first failure, when a rule failed.
+  JavascriptRuleFailure failure = 2;
+}
+
+message JavascriptRuleFailure {
+  // The row, by its index in the request.
+  uint32 row = 1;
+  // The column whose rule failed, when the failure comes from one.
+  string column = 2;
+  string message = 3;
 }
 
 message GenerateCategorical {
@@ -670,6 +714,10 @@ service TransformersService {
   rpc IsTransformerNameAvailable(IsTransformerNameAvailableRequest) returns (IsTransformerNameAvailableResponse) {}
   // Validate user provided javascript code before saving it to a user defined transformer or within a job mapping
   rpc ValidateUserJavascriptCode(ValidateUserJavascriptCodeRequest) returns (ValidateUserJavascriptCodeResponse) {}
+  // Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
+  // deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+  // have the shape of a run's, never its values.
+  rpc TryJavascriptRules(TryJavascriptRulesRequest) returns (TryJavascriptRulesResponse) {}
   // Validate user provided regex code before saving it to a user defined transformer
   rpc ValidateUserRegexCode(ValidateUserRegexCodeRequest) returns (ValidateUserRegexCodeResponse) {}
 

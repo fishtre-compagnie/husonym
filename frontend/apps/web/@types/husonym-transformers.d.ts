@@ -575,3 +575,81 @@ declare namespace husonym {
 
 	
 }
+
+/**
+ * Deterministic functions: the same value always gives the same output, on every row,
+ * table and run of the consistency scope of the job. Only Athanor runs them.
+ */
+declare namespace pseudo {
+	
+  /**
+   * What the native firstName transformer gives this value. NULL stays NULL.
+   */
+	declare function firstName(value: any): any;
+	
+  /**
+   * What the native lastName transformer gives this value. NULL stays NULL.
+   */
+	declare function lastName(value: any): any;
+	
+  /**
+   * What the native fullName transformer gives this value. NULL stays NULL.
+   */
+	declare function fullName(value: any): any;
+	
+  /**
+   * What the native email transformer gives this value. NULL stays NULL.
+   */
+	declare function email(value: any): any;
+	
+  /**
+   * What the native phone transformer gives this value. NULL stays NULL.
+   */
+	declare function phone(value: any): any;
+	
+  /**
+   * What the native city transformer gives this value. NULL stays NULL.
+   */
+	declare function city(value: any): any;
+	
+  /**
+   * What the native state transformer gives this value. NULL stays NULL.
+   */
+	declare function state(value: any): any;
+	
+  /**
+   * What the native zipcode transformer gives this value. NULL stays NULL.
+   */
+	declare function zipcode(value: any): any;
+	
+  /**
+   * What the native streetAddress transformer gives this value. NULL stays NULL.
+   */
+	declare function streetAddress(value: any): any;
+	
+  /**
+   * What the native country transformer gives this value. NULL stays NULL.
+   */
+	declare function country(value: any): any;
+	
+  /**
+   * What the native businessName transformer gives this value. NULL stays NULL.
+   */
+	declare function businessName(value: any): any;
+	
+
+  /**
+   * The hexadecimal digest of the value in a domain of the rule's own.
+   */
+	declare function hash(value: any, domain: string): string;
+
+  /**
+   * An integer of [min, max] derived from the value in a domain of the rule's own.
+   */
+	declare function int(value: any, domain: string, min: number, max: number): number;
+
+  /**
+   * An element of the list, chosen from the value in a domain of the rule's own.
+   */
+	declare function pick<T>(list: T[], value: any, domain: string): T;
+}

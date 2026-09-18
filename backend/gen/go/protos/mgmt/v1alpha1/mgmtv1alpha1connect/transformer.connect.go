@@ -60,6 +60,9 @@ const (
 	// TransformersServiceValidateUserJavascriptCodeProcedure is the fully-qualified name of the
 	// TransformersService's ValidateUserJavascriptCode RPC.
 	TransformersServiceValidateUserJavascriptCodeProcedure = "/mgmt.v1alpha1.TransformersService/ValidateUserJavascriptCode"
+	// TransformersServiceTryJavascriptRulesProcedure is the fully-qualified name of the
+	// TransformersService's TryJavascriptRules RPC.
+	TransformersServiceTryJavascriptRulesProcedure = "/mgmt.v1alpha1.TransformersService/TryJavascriptRules"
 	// TransformersServiceValidateUserRegexCodeProcedure is the fully-qualified name of the
 	// TransformersService's ValidateUserRegexCode RPC.
 	TransformersServiceValidateUserRegexCodeProcedure = "/mgmt.v1alpha1.TransformersService/ValidateUserRegexCode"
@@ -88,6 +91,10 @@ type TransformersServiceClient interface {
 	IsTransformerNameAvailable(context.Context, *connect.Request[v1alpha1.IsTransformerNameAvailableRequest]) (*connect.Response[v1alpha1.IsTransformerNameAvailableResponse], error)
 	// Validate user provided javascript code before saving it to a user defined transformer or within a job mapping
 	ValidateUserJavascriptCode(context.Context, *connect.Request[v1alpha1.ValidateUserJavascriptCodeRequest]) (*connect.Response[v1alpha1.ValidateUserJavascriptCodeResponse], error)
+	// Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
+	// deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+	// have the shape of a run's, never its values.
+	TryJavascriptRules(context.Context, *connect.Request[v1alpha1.TryJavascriptRulesRequest]) (*connect.Response[v1alpha1.TryJavascriptRulesResponse], error)
 	// Validate user provided regex code before saving it to a user defined transformer
 	ValidateUserRegexCode(context.Context, *connect.Request[v1alpha1.ValidateUserRegexCodeRequest]) (*connect.Response[v1alpha1.ValidateUserRegexCodeResponse], error)
 	// Retrieve a list of available Pii entities for use with the TransformPiiText transformer
@@ -163,6 +170,12 @@ func NewTransformersServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(transformersServiceMethods.ByName("ValidateUserJavascriptCode")),
 			connect.WithClientOptions(opts...),
 		),
+		tryJavascriptRules: connect.NewClient[v1alpha1.TryJavascriptRulesRequest, v1alpha1.TryJavascriptRulesResponse](
+			httpClient,
+			baseURL+TransformersServiceTryJavascriptRulesProcedure,
+			connect.WithSchema(transformersServiceMethods.ByName("TryJavascriptRules")),
+			connect.WithClientOptions(opts...),
+		),
 		validateUserRegexCode: connect.NewClient[v1alpha1.ValidateUserRegexCodeRequest, v1alpha1.ValidateUserRegexCodeResponse](
 			httpClient,
 			baseURL+TransformersServiceValidateUserRegexCodeProcedure,
@@ -190,6 +203,7 @@ type transformersServiceClient struct {
 	updateUserDefinedTransformer  *connect.Client[v1alpha1.UpdateUserDefinedTransformerRequest, v1alpha1.UpdateUserDefinedTransformerResponse]
 	isTransformerNameAvailable    *connect.Client[v1alpha1.IsTransformerNameAvailableRequest, v1alpha1.IsTransformerNameAvailableResponse]
 	validateUserJavascriptCode    *connect.Client[v1alpha1.ValidateUserJavascriptCodeRequest, v1alpha1.ValidateUserJavascriptCodeResponse]
+	tryJavascriptRules            *connect.Client[v1alpha1.TryJavascriptRulesRequest, v1alpha1.TryJavascriptRulesResponse]
 	validateUserRegexCode         *connect.Client[v1alpha1.ValidateUserRegexCodeRequest, v1alpha1.ValidateUserRegexCodeResponse]
 	getTransformPiiEntities       *connect.Client[v1alpha1.GetTransformPiiEntitiesRequest, v1alpha1.GetTransformPiiEntitiesResponse]
 }
@@ -244,6 +258,11 @@ func (c *transformersServiceClient) ValidateUserJavascriptCode(ctx context.Conte
 	return c.validateUserJavascriptCode.CallUnary(ctx, req)
 }
 
+// TryJavascriptRules calls mgmt.v1alpha1.TransformersService.TryJavascriptRules.
+func (c *transformersServiceClient) TryJavascriptRules(ctx context.Context, req *connect.Request[v1alpha1.TryJavascriptRulesRequest]) (*connect.Response[v1alpha1.TryJavascriptRulesResponse], error) {
+	return c.tryJavascriptRules.CallUnary(ctx, req)
+}
+
 // ValidateUserRegexCode calls mgmt.v1alpha1.TransformersService.ValidateUserRegexCode.
 func (c *transformersServiceClient) ValidateUserRegexCode(ctx context.Context, req *connect.Request[v1alpha1.ValidateUserRegexCodeRequest]) (*connect.Response[v1alpha1.ValidateUserRegexCodeResponse], error) {
 	return c.validateUserRegexCode.CallUnary(ctx, req)
@@ -274,6 +293,10 @@ type TransformersServiceHandler interface {
 	IsTransformerNameAvailable(context.Context, *connect.Request[v1alpha1.IsTransformerNameAvailableRequest]) (*connect.Response[v1alpha1.IsTransformerNameAvailableResponse], error)
 	// Validate user provided javascript code before saving it to a user defined transformer or within a job mapping
 	ValidateUserJavascriptCode(context.Context, *connect.Request[v1alpha1.ValidateUserJavascriptCodeRequest]) (*connect.Response[v1alpha1.ValidateUserJavascriptCodeResponse], error)
+	// Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
+	// deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+	// have the shape of a run's, never its values.
+	TryJavascriptRules(context.Context, *connect.Request[v1alpha1.TryJavascriptRulesRequest]) (*connect.Response[v1alpha1.TryJavascriptRulesResponse], error)
 	// Validate user provided regex code before saving it to a user defined transformer
 	ValidateUserRegexCode(context.Context, *connect.Request[v1alpha1.ValidateUserRegexCodeRequest]) (*connect.Response[v1alpha1.ValidateUserRegexCodeResponse], error)
 	// Retrieve a list of available Pii entities for use with the TransformPiiText transformer
@@ -345,6 +368,12 @@ func NewTransformersServiceHandler(svc TransformersServiceHandler, opts ...conne
 		connect.WithSchema(transformersServiceMethods.ByName("ValidateUserJavascriptCode")),
 		connect.WithHandlerOptions(opts...),
 	)
+	transformersServiceTryJavascriptRulesHandler := connect.NewUnaryHandler(
+		TransformersServiceTryJavascriptRulesProcedure,
+		svc.TryJavascriptRules,
+		connect.WithSchema(transformersServiceMethods.ByName("TryJavascriptRules")),
+		connect.WithHandlerOptions(opts...),
+	)
 	transformersServiceValidateUserRegexCodeHandler := connect.NewUnaryHandler(
 		TransformersServiceValidateUserRegexCodeProcedure,
 		svc.ValidateUserRegexCode,
@@ -378,6 +407,8 @@ func NewTransformersServiceHandler(svc TransformersServiceHandler, opts ...conne
 			transformersServiceIsTransformerNameAvailableHandler.ServeHTTP(w, r)
 		case TransformersServiceValidateUserJavascriptCodeProcedure:
 			transformersServiceValidateUserJavascriptCodeHandler.ServeHTTP(w, r)
+		case TransformersServiceTryJavascriptRulesProcedure:
+			transformersServiceTryJavascriptRulesHandler.ServeHTTP(w, r)
 		case TransformersServiceValidateUserRegexCodeProcedure:
 			transformersServiceValidateUserRegexCodeHandler.ServeHTTP(w, r)
 		case TransformersServiceGetTransformPiiEntitiesProcedure:
@@ -425,6 +456,10 @@ func (UnimplementedTransformersServiceHandler) IsTransformerNameAvailable(contex
 
 func (UnimplementedTransformersServiceHandler) ValidateUserJavascriptCode(context.Context, *connect.Request[v1alpha1.ValidateUserJavascriptCodeRequest]) (*connect.Response[v1alpha1.ValidateUserJavascriptCodeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.TransformersService.ValidateUserJavascriptCode is not implemented"))
+}
+
+func (UnimplementedTransformersServiceHandler) TryJavascriptRules(context.Context, *connect.Request[v1alpha1.TryJavascriptRulesRequest]) (*connect.Response[v1alpha1.TryJavascriptRulesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.TransformersService.TryJavascriptRules is not implemented"))
 }
 
 func (UnimplementedTransformersServiceHandler) ValidateUserRegexCode(context.Context, *connect.Request[v1alpha1.ValidateUserRegexCodeRequest]) (*connect.Response[v1alpha1.ValidateUserRegexCodeResponse], error) {
