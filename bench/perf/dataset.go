@@ -109,13 +109,17 @@ func Dataset() *cases.Case {
 }
 
 // transformers anonymize what a real job anonymizes: the personal columns of the clients
-// and of the patients, whose key the visits must follow.
+// and of the patients, whose key the visits must follow, and a rule of the user's own on
+// the largest table, which measures what a JavaScript transformer costs a run.
 func transformers() map[string]map[string]cases.ColumnSpec {
 	return map[string]map[string]cases.ColumnSpec{
 		ClientTable: {
 			"nom":       {Transformer: generateLastName()},
 			"email":     {Transformer: generateEmail()},
 			"telephone": {Transformer: generatePhone()},
+		},
+		CommandeTable: {
+			"reference": {Transformer: transformJavascript("return value.toUpperCase();")},
 		},
 		PatientTable: {
 			// The key the visits follow, published through redis.
