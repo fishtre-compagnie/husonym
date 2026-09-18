@@ -375,12 +375,18 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		}
 
 		// For NOT NULL constraints, we can safely insert them now (but they depend on the referenced table).
+		// A table referencing itself is the exception: it cannot wait for itself, and the rows
+		// referencing each other are written in the same pass anyway. What happens then belongs
+		// to the engine — writing with foreign keys suspended, or failing on the row whose parent
+		// comes later — not to the order of the passes, which has nothing left to arrange.
 		if len(insertCols) > 0 {
 			insertConfig.insertColumns = append(insertConfig.insertColumns, insertCols...)
-			insertConfig.dependsOn = append(insertConfig.dependsOn, &DependsOn{
-				Table:   fc.ForeignKey.Table,
-				Columns: insertFkCols,
-			})
+			if fc.ForeignKey.Table != b.table.String() {
+				insertConfig.dependsOn = append(insertConfig.dependsOn, &DependsOn{
+					Table:   fc.ForeignKey.Table,
+					Columns: insertFkCols,
+				})
+			}
 		}
 
 		// For columns that can be null, we do them after the main insert (Update).
@@ -503,6 +509,10 @@ func (b *runConfigBuilder) getForeignKeys() []*ForeignKey {
 func (b *runConfigBuilder) getDependsOn() []*DependsOn {
 	dependsOn := []*DependsOn{}
 	for _, fk := range b.foreignKeys {
+		// A table never waits for itself: see buildConstraintHandlingConfigs.
+		if fk.ForeignKey.Table == b.table.String() {
+			continue
+		}
 		dependsOn = append(dependsOn, &DependsOn{
 			Table:   fk.ForeignKey.Table,
 			Columns: fk.ForeignKey.Columns,

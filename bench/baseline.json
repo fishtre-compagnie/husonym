@@ -48,7 +48,6 @@
     "benthos": "ok"
   },
   "fk-self-reference-not-null": {
-    "athanor": "run_failed",
     "benthos": "run_failed"
   },
   "fk-self-reference-nullable": {
