@@ -30,6 +30,9 @@ const (
 func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.Case) error {
 	container := c.Schema()
 	stmts := r.CreateContainerStatements(container)
+	for _, stmt := range c.SchemaSetup {
+		stmts = append(stmts, renderStatement(r, container, stmt))
+	}
 	for _, t := range c.Tables {
 		create, err := r.CreateTable(container, t)
 		if err != nil {
@@ -41,6 +44,9 @@ func CreateSchema(ctx context.Context, db *sql.DB, r schema.Renderer, c *cases.C
 		stmts = append(stmts, r.AddForeignKeys(container, t)...)
 	}
 	for _, stmt := range stmts {
+		// Every statement the bench sends goes through the same filling-in, so that a
+		// column of a type the case declares can name the schema holding it.
+		stmt = renderStatement(r, container, stmt)
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: %w\n%s", c.ID, err, stmt)
 		}
@@ -55,7 +61,7 @@ func PrepareDestination(ctx context.Context, db *sql.DB, r schema.Renderer, c *c
 		return err
 	}
 	for _, stmt := range c.DestinationSetup {
-		stmt = RenderIdentifiers(r, strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(c.Schema())))
+		stmt = renderStatement(r, c.Schema(), stmt)
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("gen: %s: destination setup: %w\n%s", c.ID, err, stmt)
 		}
@@ -205,6 +211,12 @@ func maxRowsPerInsert(columns int) int {
 // identifierPlaceholder matches {q:name}, an identifier a case leaves to the renderer to
 // quote so that one statement serves every database.
 var identifierPlaceholder = regexp.MustCompile(`\{q:([^}]*)\}`)
+
+// renderStatement fills in the schema of the case and the identifiers a statement leaves
+// to the renderer to quote.
+func renderStatement(r schema.Renderer, container, stmt string) string {
+	return RenderIdentifiers(r, strings.ReplaceAll(stmt, "{db}", r.QuoteIdent(container)))
+}
 
 // RenderIdentifiers replaces every {q:name} of a statement by the quoted identifier.
 func RenderIdentifiers(r schema.Renderer, stmt string) string {

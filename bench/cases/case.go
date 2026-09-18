@@ -151,6 +151,11 @@ type Case struct {
 	// SourceSQLMode, when set, is the sql_mode the source rows are loaded with: legacy
 	// values (id 0 in an AUTO_INCREMENT column, zero dates) need the mode that let them in.
 	SourceSQLMode string
+	// SchemaSetup statements run on the source and on every destination once the schema of
+	// the case exists and before its tables: the types a table declares — an enumeration,
+	// a domain — have to be there first. {db} and {q:name} are replaced as in
+	// DestinationSetup.
+	SchemaSetup []string
 	// DestinationSetup statements run on each destination once its empty tables exist:
 	// what a real destination holds beyond the tables (triggers, extra columns). {db} is
 	// replaced by the schema of the case and {q:name} by an identifier, both quoted the
@@ -329,6 +334,7 @@ func All() []*Case {
 	all = append(all, transformerCases()...)
 	all = append(all, retryCases()...)
 	all = append(all, rightsCases()...)
+	all = append(all, postgresTypeCases()...)
 	sort.SliceStable(all, func(i, j int) bool {
 		if all[i].Priority != all[j].Priority {
 			return all[i].Priority < all[j].Priority

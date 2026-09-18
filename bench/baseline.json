@@ -375,6 +375,38 @@
       "athanor": "ok",
       "benthos": "ok"
     },
+    "types-pg-arrays": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-binary": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-enum-domain": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-json": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "types-pg-network": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-numeric": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-temporal": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-text": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
     "where-or-paginated": {
       "athanor": "ok",
       "benthos": "ok"
