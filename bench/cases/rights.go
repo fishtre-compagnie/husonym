@@ -29,7 +29,7 @@ func rightsDestinationReadOnlyAccount() *Case {
 			PrimaryKey: []string{idColumn},
 		}},
 		DestinationGrants: []string{"GRANT SELECT ON {db}.* TO {user}"},
-		ExpectRunError:    "privilege check",
+		ExpectRunError:    map[schema.Dialect]string{schema.MySQL: "privilege check"},
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= 10; i++ {
 				emit.Row("ARTICLE", []any{i, "article"}, Kept())

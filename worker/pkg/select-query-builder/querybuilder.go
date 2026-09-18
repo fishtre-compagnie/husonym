@@ -16,6 +16,7 @@ import (
 	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
 	pg_query "github.com/pganalyze/pg_query_go/v5"
 	"github.com/xwb1989/sqlparser"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // QueryBuilder holds global state for building the queries.
@@ -483,7 +484,7 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 		selectStmt := stmt.GetStmt().GetSelectStmt()
 
 		if selectStmt.WhereClause != nil {
-			updatePostgresExpr(schema, table, selectStmt.WhereClause)
+			qualifyPostgresColumns(schema, table, selectStmt.WhereClause)
 		}
 	}
 	updatedSql, err := pg_query.Deparse(tree)
@@ -493,46 +494,83 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 	return updatedSql, nil
 }
 
-func updatePostgresExpr(schema *string, table string, node *pg_query.Node) {
-	switch expr := node.Node.(type) {
-	case *pg_query.Node_SubLink:
-		updatePostgresExpr(schema, table, node.GetSubLink().GetTestexpr())
-	case *pg_query.Node_BoolExpr:
-		for _, arg := range expr.BoolExpr.GetArgs() {
-			updatePostgresExpr(schema, table, arg)
-		}
-	case *pg_query.Node_AExpr:
-		updatePostgresExpr(schema, table, expr.AExpr.GetLexpr())
-		updatePostgresExpr(schema, table, expr.AExpr.Rexpr)
-	case *pg_query.Node_ColumnDef:
-	case *pg_query.Node_ColumnRef:
-		col := node.GetColumnRef()
-		isQualified := false
-		var colName *string
-		// find col name and check if already has schema + table name
-		for _, f := range col.Fields {
-			val := f.GetString_().GetSval()
-			if schema != nil && val == *schema {
-				continue
-			}
-			if val == table {
-				isQualified = true
-				break
-			}
-			colName = &val
-		}
-		if !isQualified && colName != nil && *colName != "" {
-			fields := []*pg_query.Node{}
-			if schema != nil && *schema != "" {
-				fields = append(fields, pg_query.MakeStrNode(*schema))
-			}
-			fields = append(fields, []*pg_query.Node{
-				pg_query.MakeStrNode(table),
-				pg_query.MakeStrNode(*colName),
-			}...)
-			col.Fields = fields
-		}
+// qualifyPostgresColumns qualifies every column of a where clause, wherever it stands.
+//
+// Naming the shapes of expression to look inside — a comparison, an AND, an OR — leaves
+// out every other one: IS NULL, BETWEEN, IN, a function call, a CASE. A column left bare
+// is ambiguous as soon as the table is joined to a child that has the same one, and the
+// run fails on a clause it accepted before the subset. The whole clause is walked instead,
+// which is what the MySQL side does.
+//
+// Subqueries name their own tables and are left alone: only the expression tested against
+// one belongs to the filtered table.
+func qualifyPostgresColumns(schema *string, table string, node *pg_query.Node) {
+	if node == nil {
+		return
 	}
+	switch expr := node.Node.(type) {
+	case *pg_query.Node_ColumnRef:
+		qualifyPostgresColumnRef(schema, table, expr.ColumnRef)
+	case *pg_query.Node_SubLink:
+		qualifyPostgresColumns(schema, table, expr.SubLink.GetTestexpr())
+	default:
+		eachPostgresChildNode(node.ProtoReflect(), func(child *pg_query.Node) {
+			qualifyPostgresColumns(schema, table, child)
+		})
+	}
+}
+
+func qualifyPostgresColumnRef(schema *string, table string, col *pg_query.ColumnRef) {
+	var colName string
+	for _, f := range col.GetFields() {
+		val := f.GetString_().GetSval()
+		if schema != nil && val == *schema {
+			continue
+		}
+		if val == table {
+			return // already qualified
+		}
+		colName = val
+	}
+	if colName == "" {
+		return // A_Star and the like carry no name to qualify
+	}
+	col.Fields = make([]*pg_query.Node, 0, 3)
+	if schema != nil && *schema != "" {
+		col.Fields = append(col.Fields, pg_query.MakeStrNode(*schema))
+	}
+	col.Fields = append(col.Fields, pg_query.MakeStrNode(table), pg_query.MakeStrNode(colName))
+}
+
+// eachPostgresChildNode hands visit every Node the message holds, descending through the
+// messages that are not Nodes themselves. The parse tree has one Go type per kind of
+// expression and no walker of its own; reflection spares us enumerating them.
+func eachPostgresChildNode(m protoreflect.Message, visit func(*pg_query.Node)) {
+	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Kind() != protoreflect.MessageKind && fd.Kind() != protoreflect.GroupKind {
+			return true
+		}
+		if fd.IsList() {
+			list := v.List()
+			for i := range list.Len() {
+				visitPostgresMessage(list.Get(i).Message(), visit)
+			}
+			return true
+		}
+		if fd.IsMap() {
+			return true
+		}
+		visitPostgresMessage(v.Message(), visit)
+		return true
+	})
+}
+
+func visitPostgresMessage(m protoreflect.Message, visit func(*pg_query.Node)) {
+	if node, ok := m.Interface().(*pg_query.Node); ok {
+		visit(node)
+		return
+	}
+	eachPostgresChildNode(m, visit)
 }
 
 func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (string, error) {

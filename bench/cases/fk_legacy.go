@@ -67,7 +67,10 @@ func fkSourceOrphans() *Case {
 func fkSourceOrphansDestinationKept() *Case {
 	c := sourceOrphansCase("fk-source-orphans-destination-kept",
 		"Orphelins de la source et destination non vidée : échec listant les orphelins, aucune réparation")
-	c.ExpectRunError = "referential integrity check failed"
+	c.ExpectRunError = map[schema.Dialect]string{
+		schema.MySQL:    "referential integrity check failed",
+		schema.Postgres: "referential integrity check failed",
+	}
 	return c
 }
 

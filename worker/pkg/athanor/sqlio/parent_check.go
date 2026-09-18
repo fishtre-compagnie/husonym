@@ -33,8 +33,12 @@ type ParentCheck struct {
 	NoParentValue *string
 }
 
-// maxKeysPerLookup bounds one lookup query, well under every database's parameter limit.
-const maxKeysPerLookup = 500
+// maxKeysPerLookup bounds one lookup query. A key of n columns costs n+1 parameters, and
+// what a database takes in one statement differs by two orders of magnitude between them:
+// a fixed bound would go past SQL Server's on a composite key.
+func maxKeysPerLookup(dialect Dialect, columns int) int {
+	return min(500, dialect.MaxRowsPerInsert(columns+1))
+}
 
 type parentCheckWriter struct {
 	ctx       context.Context
@@ -137,8 +141,9 @@ func (w *parentCheckWriter) rowsWithParent(
 	}
 
 	found := make([]bool, len(keys))
-	for start := 0; start < len(keys); start += maxKeysPerLookup {
-		end := min(start+maxKeysPerLookup, len(keys))
+	perLookup := maxKeysPerLookup(w.dialect, len(check.Columns))
+	for start := 0; start < len(keys); start += perLookup {
+		end := min(start+perLookup, len(keys))
 		if err := w.lookup(check, keys[start:end], start, found); err != nil {
 			return nil, nil, err
 		}
@@ -157,30 +162,42 @@ func (w *parentCheckWriter) rowsWithParent(
 
 // lookup marks the keys that have a parent row:
 //
-//	SELECT v.n FROM (SELECT ? AS n, ? AS k0 UNION ALL SELECT ? AS n, ? AS k0 …) v
+//	SELECT v.n FROM (SELECT 0 AS n, p.ref0 AS k0 FROM parent p WHERE 1 = 0
+//	                 UNION ALL SELECT ?, ? UNION ALL SELECT ?, ? …) v
 //	WHERE EXISTS (SELECT 1 FROM parent p WHERE p.ref0 = v.k0 …)
+//
+// The first branch reads nothing: it is there to give each column of the derived table
+// the type and the collation of the parent key it is compared with. Without it PostgreSQL
+// resolves a bare parameter to text and refuses the comparison ("operator does not exist:
+// bigint = text"), and naming the type instead would mean carrying the schema of the
+// destination around and getting it right for every type a key can have. The planner drops
+// the branch, so it costs nothing.
 func (w *parentCheckWriter) lookup(check *ParentCheck, keys [][]any, offset int, found []bool) error {
-	var b strings.Builder
-	args := make([]any, 0, len(keys)*(len(check.Columns)+1))
-	placeholder := 1
-	b.WriteString("SELECT v.n FROM (")
-	for k, key := range keys {
-		if k > 0 {
-			b.WriteString(" UNION ALL ")
-		}
-		fmt.Fprintf(&b, "SELECT %s AS n", w.dialect.Placeholder(placeholder))
-		placeholder++
-		args = append(args, offset+k)
-		for i, value := range key {
-			fmt.Fprintf(&b, ", %s AS k%d", w.dialect.Placeholder(placeholder), i)
-			placeholder++
-			args = append(args, value)
-		}
-	}
 	parent := w.dialect.QuoteIdent(check.ParentTable)
 	if check.ParentSchema != "" {
 		parent = w.dialect.QuoteIdent(check.ParentSchema) + "." + parent
 	}
+
+	var b strings.Builder
+	b.WriteString("SELECT v.n FROM (SELECT 0 AS n")
+	for i, column := range check.ParentColumns {
+		fmt.Fprintf(&b, ", p.%s AS k%d", w.dialect.QuoteIdent(column), i)
+	}
+	fmt.Fprintf(&b, " FROM %s p WHERE 1 = 0", parent)
+
+	args := make([]any, 0, len(keys)*(len(check.Columns)+1))
+	placeholder := 1
+	for k, key := range keys {
+		fmt.Fprintf(&b, " UNION ALL SELECT %s", w.dialect.Placeholder(placeholder))
+		placeholder++
+		args = append(args, offset+k)
+		for _, value := range key {
+			fmt.Fprintf(&b, ", %s", w.dialect.Placeholder(placeholder))
+			placeholder++
+			args = append(args, value)
+		}
+	}
+
 	fmt.Fprintf(&b, ") v WHERE EXISTS (SELECT 1 FROM %s p WHERE ", parent)
 	for i, column := range check.ParentColumns {
 		if i > 0 {

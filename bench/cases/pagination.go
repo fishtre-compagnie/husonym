@@ -3,6 +3,7 @@ package cases
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
@@ -146,7 +147,7 @@ func keyedTable(name string, keyType schema.Type) *schema.Table {
 
 // exoticKeyCase pages a table whose key values do not survive a naive trip through the
 // JSON continuation token. keyAt returns the key of the i-th row, in key order or not.
-func exoticKeyCase(id, title, table string, keyType schema.Type, keyAt func(i int) any) *Case {
+func exoticKeyCase(id, title, table string, keyType schema.Type, keyAt func(p Params, i int) any) *Case {
 	return &Case{
 		ID:       id,
 		Priority: P1,
@@ -154,7 +155,7 @@ func exoticKeyCase(id, title, table string, keyType schema.Type, keyAt func(i in
 		Tables:   []*schema.Table{keyedTable(table, keyType)},
 		Seed: func(p Params, emit Emitter) {
 			for i := 0; i < 2*p.PageLimit+p.PageLimit/2; i++ {
-				emit.Row(table, []any{keyAt(i), int64(i)}, Kept())
+				emit.Row(table, []any{keyAt(p, i), int64(i)}, Kept())
 			}
 		},
 	}
@@ -164,21 +165,38 @@ func exoticKeyCase(id, title, table string, keyType schema.Type, keyAt func(i in
 func pageDecimalKey() *Case {
 	return exoticKeyCase("page-decimal-key", "Clé DECIMAL à 17 chiffres significatifs dans le jeton de reprise",
 		"TARIF", schema.Decimal(20, 4),
-		func(i int) any { return fmt.Sprintf("1234567890123.%04d", i) })
+		func(_ Params, i int) any { return fmt.Sprintf("1234567890123.%04d", i) })
 }
 
 // pageDatetimeKey: neighbors one microsecond apart.
 func pageDatetimeKey() *Case {
 	return exoticKeyCase("page-datetime6-key", "Clé DATETIME(6) à la microseconde dans le jeton de reprise",
 		"RELEVE", schema.DateTime(6),
-		func(i int) any { return fmt.Sprintf("2024-02-29 23:59:59.%06d", 999000+i) })
+		func(p Params, i int) any {
+			return timestampText(p.Dialect, "2024-02-29 23:59:59", 999000+i)
+		})
+}
+
+// timestampText writes an instant the way its database prints it: MySQL pads the fraction
+// to the precision of the column, PostgreSQL drops its trailing zeros. The same instants
+// are read back either way; only the spelling of the fraction differs, and a row key must
+// read the way the column does.
+func timestampText(dialect schema.Dialect, second string, micros int) string {
+	fraction := fmt.Sprintf("%06d", micros)
+	if dialect == schema.Postgres {
+		fraction = strings.TrimRight(fraction, "0")
+		if fraction == "" {
+			return second
+		}
+	}
+	return second + "." + fraction
 }
 
 // pageBinaryKey: raw bytes that are not valid UTF-8 and hold NUL bytes.
 func pageBinaryKey() *Case {
 	return exoticKeyCase("page-binary16-key", "Clé BINARY(16) non UTF-8 dans le jeton de reprise",
 		"JETON", schema.Binary(16),
-		func(i int) any {
+		func(_ Params, i int) any {
 			key := []byte{0xff, 0xfe, 0x00, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 			binary.BigEndian.PutUint16(key[14:], uint16(i)) //nolint:gosec // a few hundred rows at most
 			return key
@@ -190,14 +208,16 @@ func pageBinaryKey() *Case {
 func pageCaseInsensitiveKey() *Case {
 	// MySQL compares text without regard to case by default; PostgreSQL does not, and
 	// saying so there needs a collation of its own — a case of its own too.
-	return exoticKeyCase("page-case-insensitive-key", "Clé texte sous collation insensible à la casse",
+	c := exoticKeyCase("page-case-insensitive-key", "Clé texte sous collation insensible à la casse",
 		"LIBELLE", schema.Varchar(20),
-		func(i int) any {
+		func(_ Params, i int) any {
 			if i%2 == 0 {
 				return fmt.Sprintf("K%04d", i)
 			}
 			return fmt.Sprintf("k%04d", i)
 		})
+	c.Dialects = mysqlOnly
+	return c
 }
 
 // pageCompositeKey: page boundaries fall inside groups sharing the first key column.

@@ -30,7 +30,12 @@ func InTransaction(
 		if !ok {
 			return fmt.Errorf("sqlio: %s ne permet pas de désactiver les clés étrangères", dialect.Driver())
 		}
-		begin, end = append([]string{disable}, begin...), append(end, enable)
+		begin = append([]string{disable}, begin...)
+		// A setting bound to the transaction goes away with it: there is nothing to undo,
+		// and the dialect says so with an empty statement.
+		if enable != "" {
+			end = append(end, enable)
+		}
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {

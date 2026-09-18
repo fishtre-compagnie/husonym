@@ -92,7 +92,7 @@ func destinationDiffers(id, title, runError, alter string) *Case {
 		Tables:           []*schema.Table{articleTable()},
 		Dialects:         mysqlOnly,
 		DestinationSetup: []string{alter},
-		ExpectRunError:   runError,
+		ExpectRunError:   map[schema.Dialect]string{schema.MySQL: runError},
 		Seed:             func(p Params, emit Emitter) { seedArticles(emit) },
 	}
 }

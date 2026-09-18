@@ -74,10 +74,14 @@ func (PostgresDialect) Driver() string { return sqlmanager_shared.PostgresDriver
 // PostgreSQL : limite de 65535 paramètres liés par requête.
 func (PostgresDialect) MaxRowsPerInsert(numCols int) int { return maxRowsForParams(65535, numCols) }
 
-// PostgreSQL : session_replication_role exige un superutilisateur, et les
-// contraintes DEFERRABLE dépendent du schéma. Aucune voie générale n'est disponible.
+// PostgreSQL: the replication role suspends the system triggers enforcing foreign keys,
+// which is how a table goes in one pass. SET LOCAL binds it to the transaction the page is
+// written in, so nothing is left on the connection for the next table, and there is
+// nothing to restore. It needs a superuser, or GRANT SET ON PARAMETER from PostgreSQL 15
+// on; the run privilege check probes it at the start of the run rather than reading
+// rolsuper, since a managed service has no real superuser.
 func (PostgresDialect) ForeignKeyChecksStatements() (disable, enable string, ok bool) {
-	return "", "", false
+	return "SET LOCAL session_replication_role = replica", "", true
 }
 
 func (PostgresDialect) FaithfulWriteStatements() (begin, end []string) { return nil, nil }

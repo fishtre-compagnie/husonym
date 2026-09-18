@@ -29,6 +29,13 @@ func (PostgresRenderer) Placeholder(n int) string { return "$" + strconv.Itoa(n)
 // PostgreSQL: "C" compares byte for byte, whatever the collation of the database.
 func (PostgresRenderer) ExactCollation() string { return `"C"` }
 
+func (PostgresRenderer) BoolText(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
+}
+
 // The driver hands back typed Go values, which would make a Go type decide how a number
 // or a date reads: the cast has the server print the value instead, as MySQL always does.
 func (r PostgresRenderer) ReadExpr(column string, binary bool) string {
@@ -61,12 +68,18 @@ func (PostgresRenderer) LoadSessionStatements() []string {
 // standby for every pass would cost far more than it proves. Every session opened on the
 // database from then on starts read-only, which is what a run opens — and what the
 // sessions already loading the seed do not, since the setting is read at connection time.
-func (r PostgresRenderer) ReadOnlyStatement(database string, readOnly bool) string {
+// Lifting the setting is itself a write, which the session that inherited it can no longer
+// make: it first steps out of read-only for itself, which SET is allowed to do and which
+// takes effect on the next statement.
+func (r PostgresRenderer) ReadOnlyStatements(database string, readOnly bool) []string {
 	value := "off"
 	if readOnly {
 		value = "on"
 	}
-	return "ALTER DATABASE " + r.QuoteIdent(database) + " SET default_transaction_read_only = " + value
+	return []string{
+		"SET SESSION default_transaction_read_only = off",
+		"ALTER DATABASE " + r.QuoteIdent(database) + " SET default_transaction_read_only = " + value,
+	}
 }
 
 func (r PostgresRenderer) Account(user string) string { return r.QuoteIdent(user) }

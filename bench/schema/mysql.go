@@ -18,6 +18,14 @@ func (MySQLRenderer) Placeholder(int) string { return "?" }
 
 func (MySQLRenderer) ExactCollation() string { return "utf8mb4_bin" }
 
+// MySQL has no boolean: TINYINT(1) prints the number.
+func (MySQLRenderer) BoolText(v bool) string {
+	if v {
+		return "1"
+	}
+	return "0"
+}
+
 // MySQL prints every value as text over the wire, so a column is read as it is. HEX
 // answers in upper case, which the canonical form writes in lower case.
 func (r MySQLRenderer) ReadExpr(column string, binary bool) string {
@@ -46,11 +54,11 @@ func (MySQLRenderer) LoadSessionStatements() []string {
 
 // MySQL refuses the writes of the whole server, root included with super_read_only.
 // Turning read_only off turns super_read_only off with it.
-func (MySQLRenderer) ReadOnlyStatement(_ string, readOnly bool) string {
+func (MySQLRenderer) ReadOnlyStatements(_ string, readOnly bool) []string {
 	if readOnly {
-		return "SET GLOBAL super_read_only = ON"
+		return []string{"SET GLOBAL super_read_only = ON"}
 	}
-	return "SET GLOBAL read_only = OFF"
+	return []string{"SET GLOBAL read_only = OFF"}
 }
 
 func (MySQLRenderer) Account(user string) string { return "'" + user + "'@'%'" }

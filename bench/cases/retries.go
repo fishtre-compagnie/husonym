@@ -36,7 +36,7 @@ func retryInsertIgnoreMasksTruncation() *Case {
 		}},
 		DestinationSetup: []string{"ALTER TABLE {db}.`ARTICLE` MODIFY `libelle` VARCHAR(5) NOT NULL"},
 		Job:              Job{SyncAttempts: 3},
-		ExpectRunError:   "Data too long",
+		ExpectRunError:   map[schema.Dialect]string{schema.MySQL: "Data too long"},
 		Seed: func(p Params, emit Emitter) {
 			for i := int64(1); i <= 20; i++ {
 				emit.Row("ARTICLE", []any{i, fmt.Sprintf("libellé bien trop long %d", i)}, Kept())

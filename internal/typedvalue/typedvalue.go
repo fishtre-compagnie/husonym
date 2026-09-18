@@ -9,6 +9,7 @@ package typedvalue
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -98,9 +99,25 @@ func Encode(value any) (Value, error) {
 		return Value{Type: typeBytes, Value: base64.StdEncoding.EncodeToString(v)}, nil
 	case time.Time:
 		return Value{Type: typeTime, Value: v.Format(time.RFC3339Nano)}, nil
+	case driver.Valuer:
+		// A driver may hand back a wrapper of its own rather than a plain Go value — pgx
+		// answers *pgtype.Timestamp for a PostgreSQL timestamp. The wrapper knows the
+		// value it stands for, and that is what travels.
+		return encodeDriverValue(v)
 	default:
 		return Value{}, fmt.Errorf("type %T cannot be carried exactly through text", value)
 	}
+}
+
+func encodeDriverValue(valuer driver.Valuer) (Value, error) {
+	value, err := valuer.Value()
+	if err != nil {
+		return Value{}, fmt.Errorf("type %T cannot say the value it carries: %w", valuer, err)
+	}
+	if _, again := value.(driver.Valuer); again {
+		return Value{}, fmt.Errorf("type %T carries another %T", valuer, value)
+	}
+	return Encode(value)
 }
 
 // Decode returns the value with the Go type it was encoded from, integers as int64 or

@@ -180,6 +180,10 @@ type Renderer interface {
 	// database, not a Go type, that turns a value into text — nothing is rounded on the
 	// way, and the source and the destination are read the same way.
 	ReadExpr(column string, binary bool) string
+	// BoolText is what the database prints for a boolean, the one value two databases
+	// spell differently while meaning the same: a seed says true, MySQL prints 1 and
+	// PostgreSQL prints true, and a row key must read the same as the column does.
+	BoolText(v bool) string
 	// CreateContainerStatements drop and recreate the container of a case, empty.
 	CreateContainerStatements(container string) []string
 	// EnsureContainerStatement creates the container if it does not exist yet.
@@ -192,9 +196,10 @@ type Renderer interface {
 	// LoadSessionStatements set the session a seed is loaded through: foreign key checks
 	// off above all, since a seed holds the orphans a legacy database holds.
 	LoadSessionStatements() []string
-	// ReadOnlyStatement makes the server refuse the writes of the runs, or accept them
-	// again: the bench reads its source the way a job reads a replica.
-	ReadOnlyStatement(database string, readOnly bool) string
+	// ReadOnlyStatements make the server refuse the writes of the runs, or accept them
+	// again: the bench reads its source the way a job reads a replica. They run in order,
+	// on one connection of their own, since one of them may be what lets the next through.
+	ReadOnlyStatements(database string, readOnly bool) []string
 	// AccountStatements drop and recreate a login account, the one a case with restricted
 	// privileges writes its destination with.
 	AccountStatements(user, password string) []string

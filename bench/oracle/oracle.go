@@ -60,10 +60,12 @@ func RowKey(values []string) string {
 // CanonicalValue is the text form rows are compared in: what the database prints for the
 // value, hexadecimal for raw bytes, \N for NULL. A seed value and the same value read
 // back from a database yield the same text.
-func CanonicalValue(v any, binary bool) (string, error) {
+func CanonicalValue(r schema.Renderer, v any, binary bool) (string, error) {
 	switch x := v.(type) {
 	case nil:
 		return `\N`, nil
+	case bool:
+		return r.BoolText(x), nil
 	case []byte:
 		if binary {
 			return "x'" + hex.EncodeToString(x) + "'", nil

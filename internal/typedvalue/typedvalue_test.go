@@ -1,6 +1,7 @@
 package typedvalue
 
 import (
+	"github.com/jackc/pgx/v5/pgtype"
 	"math"
 	"testing"
 	"time"
@@ -30,4 +31,21 @@ func Test_Unmarshal_bareJSON(t *testing.T) {
 	decoded, err := Unmarshal([]byte(`42`))
 	require.NoError(t, err)
 	require.Equal(t, float64(42), decoded)
+}
+
+// A driver that answers with a wrapper of its own — pgx gives *pgtype.Timestamp for a
+// PostgreSQL timestamp — used to stop a run dead at the end of its first page: the key of
+// the last row read could not enter the continuation token.
+func Test_Marshal_driverWrapper(t *testing.T) {
+	instant := time.Date(2024, 2, 29, 23, 59, 59, 999000000, time.UTC)
+	raw, err := Marshal(&pgtype.Timestamp{Time: instant, Valid: true})
+	require.NoError(t, err)
+
+	got, err := Unmarshal(raw)
+	require.NoError(t, err)
+	require.IsType(t, time.Time{}, got)
+	require.True(t, instant.Equal(got.(time.Time)), "the instant must come back as it went in")
+
+	_, err = Marshal(&pgtype.Timestamp{Valid: false})
+	require.NoError(t, err, "a wrapper holding nothing carries a NULL")
 }

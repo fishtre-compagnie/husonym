@@ -25,7 +25,8 @@ func factureCheck(noParent *string) []ParentCheck {
 	}}
 }
 
-const factureLookup = "SELECT v.n FROM (SELECT ? AS n, ? AS k0 UNION ALL SELECT ? AS n, ? AS k0) v " +
+const factureLookup = "SELECT v.n FROM (SELECT 0 AS n, p.`id` AS k0 FROM `shop`.`COMMANDE` p WHERE 1 = 0" +
+	" UNION ALL SELECT ?, ? UNION ALL SELECT ?, ?) v " +
 	"WHERE EXISTS (SELECT 1 FROM `shop`.`COMMANDE` p WHERE p.`id` = v.k0)"
 
 func TestParentCheckWriter_DiscardsRowsWithoutParent(t *testing.T) {
@@ -91,4 +92,16 @@ func TestParentCheckWriter_KeepsNoParentValue(t *testing.T) {
 func TestNewParentCheckWriter_NothingToCheck(t *testing.T) {
 	inner := &recordingWriter{}
 	require.Same(t, RowWriter(inner), NewParentCheckWriter(context.Background(), nil, MySQLDialect{}, inner, "t", nil, true, nil))
+}
+
+// A composite key costs one parameter per column plus the ordinal: a fixed bound of 500
+// keys goes past the 2100 parameters of SQL Server as soon as a key has three columns.
+func TestMaxKeysPerLookup_StaysUnderTheLimitOfTheDatabase(t *testing.T) {
+	for _, columns := range []int{1, 2, 4, 8} {
+		require.LessOrEqual(t, maxKeysPerLookup(MSSQLDialect{}, columns)*(columns+1), 2000,
+			"SQL Server refuses a statement of more than 2100 parameters")
+		require.Positive(t, maxKeysPerLookup(MSSQLDialect{}, columns))
+	}
+	require.Equal(t, 500, maxKeysPerLookup(MySQLDialect{}, 1), "the batch bound leads where the database is roomy")
+	require.Equal(t, 500, maxKeysPerLookup(PostgresDialect{}, 4))
 }

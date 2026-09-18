@@ -1,6 +1,7 @@
 package selectquerybuilder
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -170,4 +171,41 @@ func Test_BuildQuery_NullableSelfReferenceOutOfSubset(t *testing.T) {
 
 	// The station table is not reduced through a foreign key of its own: nothing to project.
 	require.NotContains(t, queries["shop.station.insert"].Query, "EXISTS")
+}
+
+// Test_qualifyPostgresWhereColumnNames: every column of the clause must carry its table,
+// whatever the expression around it. Naming only comparisons and boolean operators left
+// IS NULL, BETWEEN, IN, a function call and a CASE with bare columns, which are ambiguous
+// once the table is joined to a child holding the same ones — the run then fails on a
+// clause it accepted before the subset.
+func Test_qualifyPostgresWhereColumnNames(t *testing.T) {
+	schema := "public"
+	for name, tc := range map[string]struct{ where, want string }{
+		"comparison":    {"ferme_le = '2024-01-01'", `public."STATION".ferme_le = '2024-01-01'`},
+		"is null":       {"ferme_le IS NULL", `public."STATION".ferme_le IS NULL`},
+		"between":       {"id BETWEEN 1 AND 9", `public."STATION".id BETWEEN 1 AND 9`},
+		"in list":       {"id IN (1, 2)", `public."STATION".id IN (1, 2)`},
+		"function call": {"date(ferme_le) = '2024-01-01'", `date(public."STATION".ferme_le) = '2024-01-01'`},
+		"not":           {"NOT actif", `NOT public."STATION".actif`},
+		"case":          {"CASE WHEN actif THEN id ELSE 0 END > 1", `CASE WHEN public."STATION".actif THEN public."STATION".id ELSE 0 END > 1`},
+		// Already named by its table, which is what tells it apart: left as it is.
+		"already qualified": {`"STATION".ferme_le IS NULL`, `"STATION".ferme_le IS NULL`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := qualifyPostgresWhereColumnNames(
+				fmt.Sprintf("SELECT 1 FROM t WHERE %s", tc.where), &schema, "STATION")
+			require.NoError(t, err)
+			require.Contains(t, got, tc.want)
+		})
+	}
+}
+
+// A subquery names its own tables: only the expression tested against it belongs to the
+// filtered table.
+func Test_qualifyPostgresWhereColumnNames_leavesSubqueriesAlone(t *testing.T) {
+	schema := "public"
+	got, err := qualifyPostgresWhereColumnNames(
+		"SELECT 1 FROM t WHERE id IN (SELECT station_id FROM autre WHERE actif)", &schema, "STATION")
+	require.NoError(t, err)
+	require.Contains(t, got, `public."STATION".id IN (SELECT station_id FROM autre WHERE actif)`)
 }

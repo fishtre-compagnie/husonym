@@ -114,14 +114,18 @@ type Params struct {
 	PageLimit int
 	// Scale multiplies the filler rows of the cases that have some.
 	Scale int
+	// Dialect is the database of the pass. A seed needs it only to write a value the way
+	// that database prints it — the same instant, the same number, its own spelling.
+	Dialect schema.Dialect
 }
 
 // Emitter receives the source rows of a case.
 //
-// Values follow the column order of the table and are limited to nil, int64, uint64,
-// string and []byte. Decimals, floats, dates and times are strings written the way the
-// database prints them ("1.10", "2024-01-31 10:00:00.123456"): the bench compares rows as
-// the text the database returns, so nothing is rounded by a Go type on the way.
+// Values follow the column order of the table and are limited to nil, bool, int64,
+// uint64, string and []byte. Decimals, floats, dates and times are strings written the way
+// the database prints them ("1.10", "2024-01-31 10:00:00.123456"): the bench compares rows
+// as the text the database returns, so nothing is rounded by a Go type on the way. A
+// boolean column takes a bool, the one value two databases print differently.
 type Emitter interface {
 	Row(table string, values []any, expect RowExpect)
 }
@@ -161,8 +165,11 @@ type Case struct {
 	// the case is reported as not exercised. Retry cases need pages larger than a write
 	// batch, so that a page can fail half written.
 	MinPageLimit int
-	// ExpectRunError, when set, expects the run to fail with a message containing it.
-	ExpectRunError string
+	// ExpectRunError, when set for the database of the pass, expects the run to fail with
+	// a message containing it. The text is the one the database itself prints, and two
+	// databases refuse the same thing in their own words; a database the map does not name
+	// expects the run to complete.
+	ExpectRunError map[schema.Dialect]string
 }
 
 // Schema returns the name of what holds the tables of the case, on the source and on

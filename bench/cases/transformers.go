@@ -16,13 +16,23 @@ func transformerCases() []*Case {
 		transformerNull(),
 		transformerFailure("tr-constant-on-unique-column",
 			"Transformer constant sur une colonne unique : échec explicite, jamais de ligne écartée en silence",
-			"code", generateJavascript(`return "constante";`), "Duplicate entry"),
+			"code", generateJavascript(`return "constante";`), map[schema.Dialect]string{
+				schema.MySQL:    "Duplicate entry",
+				schema.Postgres: "duplicate key value violates unique constraint",
+			}),
 		transformerFailure("tr-output-longer-than-column",
 			"Sortie plus longue que la colonne : échec explicite, jamais de troncature silencieuse",
-			"code", generateJavascript(`return "sortie nettement plus longue que dix caractères";`), "Data too long"),
+			"code", generateJavascript(`return "sortie nettement plus longue que dix caractères";`),
+			map[schema.Dialect]string{
+				schema.MySQL:    "Data too long",
+				schema.Postgres: "value too long for type character varying",
+			}),
 		transformerFailure("tr-null-on-not-null-column",
 			"Transformer Null sur une colonne NOT NULL : échec explicite, jamais de valeur par défaut implicite",
-			"libelle", nullTransformer(), "cannot be null"),
+			"libelle", nullTransformer(), map[schema.Dialect]string{
+				schema.MySQL:    "cannot be null",
+				schema.Postgres: "violates not-null constraint",
+			}),
 		transformerOnOrderColumn(),
 		transformerOnPrimaryKey(),
 		transformedKeyOfDiscardedRow(),
@@ -114,7 +124,7 @@ func transformerNull() *Case {
 // transformerFailure: a transformer whose output the destination must refuse. The only
 // correct outcome is a failed run naming the error: a completed run means rows were
 // dropped, truncated or defaulted without a word.
-func transformerFailure(id, title, column string, transformer *mgmtv1alpha1.TransformerConfig, runError string) *Case {
+func transformerFailure(id, title, column string, transformer *mgmtv1alpha1.TransformerConfig, runError map[schema.Dialect]string) *Case {
 	return &Case{
 		ID:       id,
 		Priority: P1,

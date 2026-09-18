@@ -1,6 +1,7 @@
 package oracle
 
 import (
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 	"strings"
 	"testing"
 
@@ -22,12 +23,13 @@ func Test_CanonicalValue(t *testing.T) {
 		{"text read from the database", []byte("1.10"), false, "1.10"},
 		{"seed bytes", []byte{0x00, 0xff}, true, "x'00ff'"},
 		{"bytes read from the database", []byte{0x00, 0xff}, true, "x'00ff'"},
+		{"seed boolean, as MySQL prints it", true, false, "1"},
 	} {
-		got, err := CanonicalValue(tc.value, tc.binary)
+		got, err := CanonicalValue(schema.MySQLRenderer{}, tc.value, tc.binary)
 		require.NoError(t, err, tc.name)
 		require.Equal(t, tc.want, got, tc.name)
 	}
-	_, err := CanonicalValue(1.5, false)
+	_, err := CanonicalValue(schema.MySQLRenderer{}, 1.5, false)
 	require.Error(t, err, "floats are seeded as text")
 }
 
@@ -46,4 +48,15 @@ func Test_Writer_Add(t *testing.T) {
 	require.NoError(t, w.Add("T", "k", cases.Kept()))
 	require.Equal(t, 2, w.rows["T"]["k"].Occurrences)
 	require.Error(t, w.Add("T", "k", cases.Dropped()), "identical rows cannot expect different outcomes")
+}
+
+// The same boolean does not read the same on two databases; the row key must read the way
+// the column does, or every row of a table with a flag would look missing.
+func Test_CanonicalValue_boolFollowsTheDatabase(t *testing.T) {
+	mysql, err := CanonicalValue(schema.MySQLRenderer{}, true, false)
+	require.NoError(t, err)
+	require.Equal(t, "1", mysql)
+	postgres, err := CanonicalValue(schema.PostgresRenderer{}, true, false)
+	require.NoError(t, err)
+	require.Equal(t, "true", postgres)
 }

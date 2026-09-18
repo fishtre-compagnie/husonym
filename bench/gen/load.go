@@ -151,7 +151,7 @@ func (l *loader) Row(table string, values []any, expect cases.RowExpect) {
 			return
 		}
 	}
-	key, err := RowKey(l.c, t, values)
+	key, err := RowKey(l.renderer, l.c, t, values)
 	if err != nil {
 		l.err = err
 		return
@@ -215,7 +215,7 @@ func RenderIdentifiers(r schema.Renderer, stmt string) string {
 
 // RowKey returns the oracle key of a row given in column order, from the identity
 // columns of its table.
-func RowKey(c *cases.Case, t *schema.Table, values []any) (string, error) {
+func RowKey(r schema.Renderer, c *cases.Case, t *schema.Table, values []any) (string, error) {
 	identity := c.IdentityColumns(t.Name)
 	parts := make([]string, 0, len(identity))
 	for _, name := range identity {
@@ -223,7 +223,7 @@ func RowKey(c *cases.Case, t *schema.Table, values []any) (string, error) {
 			if t.Columns[i].Name != name {
 				continue
 			}
-			text, err := oracle.CanonicalValue(values[i], t.Columns[i].IsBinary())
+			text, err := oracle.CanonicalValue(r, values[i], t.Columns[i].IsBinary())
 			if err != nil {
 				return "", fmt.Errorf("%s.%s: %w", t.Name, name, err)
 			}

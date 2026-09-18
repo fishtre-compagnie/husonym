@@ -35,6 +35,9 @@ import (
 
 var errRegressions = errors.New("cases did worse than the baseline")
 
+// idleConnections is the default of database/sql, restored after the idle pool is emptied.
+const idleConnections = 2
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: enginebench list | run | verify | perf")
@@ -264,10 +267,22 @@ func newBench(ctx context.Context, execute bool) (*bench, error) {
 // setSourceReadOnly turns the source into a server refusing the writes of the runs, or
 // back: every run then reads a source it cannot write to, like a replica.
 func (b *bench) setSourceReadOnly(ctx context.Context, readOnly bool) error {
-	stmt := b.renderer.ReadOnlyStatement(b.env.Source.Database, readOnly)
-	if _, err := b.source.ExecContext(ctx, stmt); err != nil {
-		return fmt.Errorf("source read-only switch: %w\n%s", err, stmt)
+	// One connection for the whole switch: a statement of it may be what lets the next
+	// one through, and the pool would hand them to different sessions.
+	conn, err := b.source.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("source read-only switch: %w", err)
 	}
+	defer conn.Close()
+	for _, stmt := range b.renderer.ReadOnlyStatements(b.env.Source.Database, readOnly) {
+		if _, err := conn.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("source read-only switch: %w\n%s", err, stmt)
+		}
+	}
+	// A session reads the setting when it opens, so the ones idle in the pool still hold
+	// the old one. Emptying the idle pool leaves only sessions opened after the switch.
+	b.source.SetMaxIdleConns(0)
+	b.source.SetMaxIdleConns(idleConnections)
 	return nil
 }
 
@@ -384,9 +399,9 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	switch {
 	case result.TimedOut:
 		outcome.Verdict = report.VerdictRunTimeout
-	case c.ExpectRunError != "":
+	case c.ExpectRunError[b.env.Dialect] != "":
 		outcome.Verdict = report.VerdictFailureExpected
-		if !result.Succeeded() && strings.Contains(strings.Join(result.Errors, "\n"), c.ExpectRunError) {
+		if !result.Succeeded() && strings.Contains(strings.Join(result.Errors, "\n"), c.ExpectRunError[b.env.Dialect]) {
 			outcome.Verdict = report.VerdictOK
 		}
 	case !result.Succeeded():

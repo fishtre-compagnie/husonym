@@ -65,8 +65,8 @@ func clientTable() *schema.Table {
 }
 
 func seedClients(emit Emitter) {
-	emit.Row(clientTableName, []any{clientKept, int64(1)}, Kept())
-	emit.Row(clientTableName, []any{clientOut, int64(0)}, Dropped())
+	emit.Row(clientTableName, []any{clientKept, true}, Kept())
+	emit.Row(clientTableName, []any{clientOut, false}, Dropped())
 }
 
 func commandeOfStationAndClient() *schema.Table {
