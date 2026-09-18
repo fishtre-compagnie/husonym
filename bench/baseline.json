@@ -128,7 +128,7 @@
   },
   "retry-keyless-table-duplicates": {
     "athanor": "ok",
-    "benthos": "gap"
+    "benthos": "ok"
   },
   "rights-destination-read-only-account": {
     "athanor": "ok",

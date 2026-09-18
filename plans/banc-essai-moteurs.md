@@ -519,6 +519,37 @@ les écrit.
 Limites à énoncer avec ces chiffres : tout tourne sur une seule machine (source, deux destinations, worker,
 Temporal, API se disputent le processeur), MySQL seul, source et destination homogènes, une seule destination.
 
+## État au 2026-09-18 : Athanor passe les 59 cas
+
+Les trois écarts MySQL restants ont été fermés.
+
+- **Dates zéro** : les connexions lisent désormais les dates MySQL comme le serveur les
+  imprime (`parseTime` coupé). Une date que MySQL accepte et que Go ne sait pas porter
+  revenait déplacée en silence : `2024-00-00` lu comme le dernier jour de novembre 2023.
+  Athanor passe le cas ; Benthos échoue franchement le run, faute de relâcher le `sql_mode`
+  de sa destination — une erreur franche valant mieux qu'une valeur changée.
+- **Clé auto-référencée `NOT NULL`** : une table ne s'attend plus elle-même. La dépendance
+  était vide de sens (les lignes qui se référencent sont dans la même passe) et faisait
+  refuser **le job entier**, avant toute lecture, dès qu'une table héritée en portait une.
+  Athanor écrit la table en une passe et garde tout ; Benthos atteint l'écriture et échoue
+  sur la contrainte, ce qui est la limite d'une écriture ligne à ligne clés actives.
+- **Trigger de destination** : les triggers portés par les tables du job sont retirés avant
+  les syncs et recréés après le contrôle d'intégrité, depuis la définition que la
+  destination donne elle-même. Ce qui les recrée est enregistré dans le run context avant
+  le retrait et journalisé en avertissement : un run terminé entre les deux laisse dans son
+  historique de quoi les rétablir. PostgreSQL et SQL Server ne sont pas concernés : tous
+  deux savent désactiver un trigger sans le supprimer.
+
+| Priorité | Moteur | OK | Écart | Échec du run |
+|---|---|---|---|---|
+| P1 | **Athanor** | **47** | 0 | 0 |
+| P1 | Benthos | 40 | 3 | 3 |
+| P2 | **Athanor** | **12** | 0 | 0 |
+| P2 | Benthos | 9 | 1 | 2 |
+
+`retry-keyless-table-duplicates`, que le passage standard n'exerce pas (il demande des pages
+de 2 500 lignes), passe aussi sur les deux moteurs : **Athanor est à 59 cas sur 59**.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
