@@ -24,6 +24,7 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
@@ -37,6 +38,8 @@ type Activity struct {
 	// athanor tells which engine runs the job, the one the table syncs will use: what only
 	// Athanor needs must not be required of Benthos.
 	athanor shared.AthanorPolicy
+	// transformers resolves the user-defined transformers, whose rules may need Athanor.
+	transformers te.UserDefinedTransformerResolver
 }
 
 func New(
@@ -44,8 +47,12 @@ func New(
 	connclient mgmtv1alpha1connect.ConnectionServiceClient,
 	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 	athanor shared.AthanorPolicy,
+	transformers te.UserDefinedTransformerResolver,
 ) *Activity {
-	return &Activity{jobclient: jobclient, connclient: connclient, sqlconnmanager: sqlconnmanager, athanor: athanor}
+	return &Activity{
+		jobclient: jobclient, connclient: connclient, sqlconnmanager: sqlconnmanager,
+		athanor: athanor, transformers: transformers,
+	}
 }
 
 type CheckRunPrivilegesRequest struct {
@@ -113,6 +120,8 @@ func (a *Activity) CheckRunPrivileges(
 		if err := shared.AthanorRuns(job); err != nil {
 			return nil, err
 		}
+	} else if err := shared.BenthosRuns(ctx, job, a.transformers); err != nil {
+		return nil, err
 	}
 
 	session := connectionmanager.NewUniqueSession(

@@ -34,3 +34,18 @@ func TestPool(t *testing.T) {
 	}
 	require.Equal(t, 2, built)
 }
+
+// Reserve builds up to n items once; the items in use count.
+func TestPool_Reserve(t *testing.T) {
+	built := 0
+	pool := NewPool(func() (int, error) {
+		built++
+		return built, nil
+	})
+	_, err := pool.Get()
+	require.NoError(t, err)
+	require.NoError(t, pool.Reserve(3))
+	require.Equal(t, 3, built)
+	require.NoError(t, pool.Reserve(3))
+	require.Equal(t, 3, built, "already reserved")
+}

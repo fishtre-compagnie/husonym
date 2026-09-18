@@ -149,6 +149,13 @@ func PreserveCase(v string) string {
 	return strings.TrimSpace(v)
 }
 
+// Exact leaves the value as it is: two values derive the same seed only when they are
+// equal. It is the choice for the domains of a user's rule, which says itself what
+// counts as the same value.
+func Exact(v string) string {
+	return v
+}
+
 // --- primitives HMAC ---
 
 func sha256hmac(key []byte, msg string) [32]byte {

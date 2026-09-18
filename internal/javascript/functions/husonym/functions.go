@@ -81,7 +81,7 @@ func getPatchStructuredMessage(namespace string) *javascript_functions.FunctionD
 				}
 
 				for key, value := range updates {
-					setNestedProperty(originalMap, key, value)
+					setNestedProperty(originalMap, key, javascript_functions.FromScript(value))
 				}
 
 				r.ValueApi().SetStructured(originalMap)

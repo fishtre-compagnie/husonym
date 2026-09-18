@@ -105,3 +105,39 @@ func TestSpecForTable_JavascriptErrorNamesTheColumn(t *testing.T) {
 		})
 	}
 }
+
+// A key beyond 2^53 reaches a script as an exact BigInt: returned as is it comes back
+// unchanged, computed on with BigInts it stays exact, and mixed with a number it fails
+// instead of being rounded.
+func TestSpecForTable_JavascriptBigIntegers(t *testing.T) {
+	const key = int64(1)<<60 + 1
+	cases := map[string]struct {
+		code string
+		want any
+		err  string
+	}{
+		"returned as is":    {code: `return value;`, want: key},
+		"computed exactly":  {code: `return value + 1n;`, want: key + 1},
+		"mixed with number": {code: `return value + 1;`, err: "Cannot mix BigInt"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{Schema: "s", Table: "t", Column: "id", Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: transformJS(c.code)}},
+			}
+			cols, spec, err := SpecForTable(context.Background(), mappings, "s", "t", nil, &TransformEnv{})
+			require.NoError(t, err)
+			plan, err := engine.Compile(cols, spec)
+			require.NoError(t, err)
+			b := engine.NewBatch(cols, 1)
+			b.Cols["id"][0] = key
+			err = plan.Execute(transform.Background(), b)
+			if c.err != "" {
+				require.ErrorContains(t, err, c.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.want, b.Cols["id"][0])
+		})
+	}
+}

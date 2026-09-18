@@ -13,7 +13,10 @@ package runner
 // leur contenu change la cohérence historique).
 
 import (
+	"fmt"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/native"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
@@ -67,4 +70,78 @@ func deterministicValueTransformer(
 	default:
 		return nil, false
 	}
+}
+
+// pseudoConfigs holds, for each function pseudo.<kind> offered to scripts, the transformer
+// whose output it returns.
+var pseudoConfigs = map[string]*mgmtv1alpha1.TransformerConfig{
+	"firstName": {Config: &mgmtv1alpha1.TransformerConfig_GenerateFirstNameConfig{
+		GenerateFirstNameConfig: &mgmtv1alpha1.GenerateFirstName{},
+	}},
+	"lastName": {Config: &mgmtv1alpha1.TransformerConfig_GenerateLastNameConfig{
+		GenerateLastNameConfig: &mgmtv1alpha1.GenerateLastName{},
+	}},
+	"fullName": {Config: &mgmtv1alpha1.TransformerConfig_GenerateFullNameConfig{
+		GenerateFullNameConfig: &mgmtv1alpha1.GenerateFullName{},
+	}},
+	"email": {Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
+		GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
+	}},
+	"phone": {Config: &mgmtv1alpha1.TransformerConfig_GenerateE164PhoneNumberConfig{
+		GenerateE164PhoneNumberConfig: &mgmtv1alpha1.GenerateE164PhoneNumber{},
+	}},
+	"city": {Config: &mgmtv1alpha1.TransformerConfig_GenerateCityConfig{
+		GenerateCityConfig: &mgmtv1alpha1.GenerateCity{},
+	}},
+	"state": {Config: &mgmtv1alpha1.TransformerConfig_GenerateStateConfig{
+		GenerateStateConfig: &mgmtv1alpha1.GenerateState{},
+	}},
+	"zipcode": {Config: &mgmtv1alpha1.TransformerConfig_GenerateZipcodeConfig{
+		GenerateZipcodeConfig: &mgmtv1alpha1.GenerateZipcode{},
+	}},
+	"streetAddress": {Config: &mgmtv1alpha1.TransformerConfig_GenerateStreetAddressConfig{
+		GenerateStreetAddressConfig: &mgmtv1alpha1.GenerateStreetAddress{},
+	}},
+	"country": {Config: &mgmtv1alpha1.TransformerConfig_GenerateCountryConfig{
+		GenerateCountryConfig: &mgmtv1alpha1.GenerateCountry{},
+	}},
+	"businessName": {Config: &mgmtv1alpha1.TransformerConfig_GenerateBusinessNameConfig{
+		GenerateBusinessNameConfig: &mgmtv1alpha1.GenerateBusinessName{},
+	}},
+}
+
+// pseudoSource is the consistency scope of a run, as the scripts reach it through the
+// pseudo functions: the same fakes as the native transformers, and seeds in the domains a
+// rule names, apart from theirs.
+type pseudoSource struct {
+	deriver *consistency.Deriver
+	fakes   map[string]transform.ValueTransformer
+}
+
+var _ pseudo_functions.Source = (*pseudoSource)(nil)
+
+// newPseudoSource returns nil without a deriver: the pseudo functions then fail.
+func newPseudoSource(d *consistency.Deriver) *pseudoSource {
+	if d == nil {
+		return nil
+	}
+	fakes := make(map[string]transform.ValueTransformer, len(pseudoConfigs))
+	for kind, cfg := range pseudoConfigs {
+		if vt, ok := deterministicValueTransformer(d, cfg); ok {
+			fakes[kind] = vt
+		}
+	}
+	return &pseudoSource{deriver: d, fakes: fakes}
+}
+
+func (s *pseudoSource) Fake(kind string, value any) (any, error) {
+	fake, ok := s.fakes[kind]
+	if !ok {
+		return nil, fmt.Errorf("no deterministic transformer for %q", kind)
+	}
+	return fake.TransformValue(transform.Background(), value)
+}
+
+func (s *pseudoSource) Seed(domain string, value any) consistency.Seed {
+	return s.deriver.Domain("user:" + domain).WithCanonicalizer(consistency.Exact).Seed(fmt.Sprint(value))
 }

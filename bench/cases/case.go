@@ -71,6 +71,10 @@ const (
 	// transformed; its destination value must reference the same parent row as in the
 	// source, whatever the new key of that parent is.
 	RuleFollowsParent Rule = "follows_parent"
+	// RuleConsistent: equal source values give equal destination values, in the column
+	// and in the columns of the same name of the other tables of the case holding the
+	// rule, over every page.
+	RuleConsistent Rule = "consistent"
 )
 
 // ColumnSpec configures one column of the job: its transformer and the rules its

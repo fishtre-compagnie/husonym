@@ -206,7 +206,11 @@ func getV0MsgAsStructured(namespace string) *javascript_functions.FunctionDefini
 						)
 					}
 				}()
-				return r.ValueApi().AsStructured()
+				structured, err := r.ValueApi().AsStructured()
+				if err != nil {
+					return nil, err
+				}
+				return javascript_functions.ToScript(structured), nil
 			}
 		},
 	)

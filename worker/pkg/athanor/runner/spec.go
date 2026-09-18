@@ -89,7 +89,7 @@ func SpecForTable(
 		return nil, engine.Spec{}, fmt.Errorf("runner: aucun mapping pour %s.%s", schema, table)
 	}
 	if len(jsColumns) > 0 {
-		rows, jerr := newJavascriptRows(cols, jsColumns, env)
+		rows, jerr := newJavascriptRows(cols, jsColumns, env, deriver)
 		if jerr != nil {
 			return nil, engine.Spec{}, jerr
 		}

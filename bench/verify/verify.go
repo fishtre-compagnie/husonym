@@ -105,6 +105,7 @@ func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c
 	}
 
 	result := &Result{}
+	byTable := map[string]*TableResult{}
 	for _, t := range c.Tables {
 		if c.IsExcluded(t.Name) {
 			continue
@@ -122,6 +123,7 @@ func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c
 			}
 		}
 		result.Tables = append(result.Tables, tableResult)
+		byTable[t.Name] = tableResult
 
 		for i := range t.ForeignKeys {
 			fk := &t.ForeignKeys[i]
@@ -134,7 +136,52 @@ func Case(ctx context.Context, source, destination *sql.DB, r schema.Renderer, c
 			}
 		}
 	}
+	checkConsistent(c, data, byTable)
 	return result, nil
+}
+
+// checkConsistent verifies RuleConsistent: the columns of the same name holding it, over
+// every table, map each source value to a single destination value.
+func checkConsistent(c *cases.Case, data map[string]*tableRows, results map[string]*TableResult) {
+	type seen struct{ dest, where string }
+	outputs := map[string]map[string]seen{} // column -> source value -> first output
+	for _, t := range c.Tables {
+		rows := data[t.Name]
+		if rows == nil {
+			continue
+		}
+		for i := range t.Columns {
+			column := t.Columns[i].Name
+			if !slices.Contains(rows.rules[column], cases.RuleConsistent) {
+				continue
+			}
+			if outputs[column] == nil {
+				outputs[column] = map[string]seen{}
+			}
+			for _, key := range sortedKeys(rows.dest) {
+				if len(rows.source[key]) == 0 {
+					continue // already counted as unexpected
+				}
+				sourceValue := rows.source[key][0][i]
+				if sourceValue == nullText {
+					continue
+				}
+				where := t.Name + " " + readable(key)
+				for _, dest := range rows.dest[key] {
+					first, ok := outputs[column][sourceValue]
+					if !ok {
+						outputs[column][sourceValue] = seen{dest: dest[i], where: where}
+						continue
+					}
+					if dest[i] != first.dest {
+						results[t.Name].violationf(column, cases.RuleConsistent,
+							"%s de %s : %s pour la valeur source %q, mais %s pour %s",
+							column, where, display(dest[i]), sourceValue, display(first.dest), first.where)
+					}
+				}
+			}
+		}
+	}
 }
 
 // row is a table row in canonical text, in column order.
@@ -343,6 +390,8 @@ func checkRules(
 				}
 			case cases.RuleFollowsParent:
 				// Needs the rows of the parent table: see checkFollowsParent.
+			case cases.RuleConsistent:
+				// Spans the tables of the case: see checkConsistent.
 			default:
 				return fmt.Errorf("column %s: rule %q is not verified by the bench", column, rule)
 			}

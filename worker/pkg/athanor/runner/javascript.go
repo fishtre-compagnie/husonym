@@ -18,7 +18,9 @@ import (
 
 	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
@@ -65,9 +67,17 @@ type javascriptRows struct {
 	program    *goja.Program
 	piiTextApi transformers.TransformPiiTextApi
 	logger     *slog.Logger
+	// pseudo is the consistency scope the pseudo functions derive from: that of the
+	// native transformers of the run.
+	pseudo pseudo_functions.Source
 }
 
-func newJavascriptRows(tableColumns []string, columns []javascriptColumn, env *TransformEnv) (*javascriptRows, error) {
+func newJavascriptRows(
+	tableColumns []string,
+	columns []javascriptColumn,
+	env *TransformEnv,
+	deriver *consistency.Deriver,
+) (*javascriptRows, error) {
 	var functions, setters []string
 	writes := make([]string, 0, len(columns))
 	for _, c := range columns {
@@ -89,7 +99,12 @@ func newJavascriptRows(tableColumns []string, columns []javascriptColumn, env *T
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &javascriptRows{reads: tableColumns, writes: writes, program: program, piiTextApi: env.PiiTextApi, logger: logger}, nil
+	rows := &javascriptRows{reads: tableColumns, writes: writes, program: program, piiTextApi: env.PiiTextApi, logger: logger}
+	// A nil *pseudoSource must not become a non-nil interface.
+	if source := newPseudoSource(deriver); source != nil {
+		rows.pseudo = source
+	}
+	return rows, nil
 }
 
 func (j *javascriptRows) Reads() []string  { return j.reads }
@@ -113,7 +128,7 @@ func (j *javascriptRows) TransformRow(ctx transform.Ctx, row transform.Row) erro
 	}
 	// A runner of the process-wide pool: each run starts from a clean state, so the row
 	// shares its state between its columns and never with the next one.
-	out, err := te.RunJavascript(runCtx, j.program, msg, j.piiTextApi, j.logger)
+	out, err := te.RunJavascript(pseudo_functions.ContextWithSource(runCtx, j.pseudo), j.program, msg, j.piiTextApi, j.logger)
 	if err != nil {
 		// The columns share one program: the error names the one it came from. It never
 		// quotes a value of the row, since it ends up in the run history and the logs.

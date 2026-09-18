@@ -80,3 +80,28 @@ func Test_compareTable(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// RuleConsistent spans the columns of the same name of every table of the case.
+func Test_checkConsistent(t *testing.T) {
+	table := func(name string) *schema.Table {
+		return &schema.Table{Name: name, Columns: []schema.Column{
+			{Name: "id", Type: schema.Int64()},
+			{Name: "nom", Type: schema.Varchar(40)},
+		}, PrimaryKey: []string{"id"}}
+	}
+	c := &cases.Case{ID: "consistent", Tables: []*schema.Table{table("NATIF"), table("SCRIPT")}}
+	rules := map[string][]cases.Rule{"nom": {cases.RuleConsistent}}
+	data := map[string]*tableRows{
+		"NATIF": {rules: rules,
+			source: map[string][]row{"1": {{"1", "Durand"}}, "2": {{"2", "Durand"}}, "3": {{"3", `\N`}}},
+			dest:   map[string][]row{"1": {{"1", "Bagnall"}}, "2": {{"2", "Bagnall"}}, "3": {{"3", `\N`}}}},
+		"SCRIPT": {rules: rules,
+			source: map[string][]row{"1": {{"1", "Durand"}}, "2": {{"2", "Martin"}}},
+			dest:   map[string][]row{"1": {{"1", "Oriain"}}, "2": {{"2", "Oriain"}}}},
+	}
+	results := map[string]*TableResult{"NATIF": {Table: "NATIF"}, "SCRIPT": {Table: "SCRIPT"}}
+	checkConsistent(c, data, results)
+	require.Zero(t, results["NATIF"].Gaps())
+	require.Equal(t, map[string]int{"nom: consistent": 1}, results["SCRIPT"].RuleViolations,
+		"Durand gives Oriain in SCRIPT but Bagnall in NATIF; Martin giving Oriain too is no gap")
+}

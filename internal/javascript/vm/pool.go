@@ -14,6 +14,7 @@ import "sync"
 type Pool[T any] struct {
 	mu    sync.Mutex
 	free  []T
+	built int
 	build func() (T, error)
 }
 
@@ -32,7 +33,35 @@ func (p *Pool[T]) Get() (T, error) {
 		return item, nil
 	}
 	p.mu.Unlock()
-	return p.build()
+	return p.newItem()
+}
+
+func (p *Pool[T]) newItem() (T, error) {
+	item, err := p.build()
+	if err == nil {
+		p.mu.Lock()
+		p.built++
+		p.mu.Unlock()
+	}
+	return item, err
+}
+
+// Reserve builds items until the pool has built n of them, for runs that must not wait
+// for one.
+func (p *Pool[T]) Reserve(n int) error {
+	for {
+		p.mu.Lock()
+		enough := p.built >= n
+		p.mu.Unlock()
+		if enough {
+			return nil
+		}
+		item, err := p.newItem()
+		if err != nil {
+			return err
+		}
+		p.Put(item)
+	}
 }
 
 // Put gives an item back once its run is over.

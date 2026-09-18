@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 
 	"github.com/dop251/goja"
 	"github.com/fishtre-compagnie/husonym/internal/benthos_slogger"
@@ -59,6 +60,13 @@ func newJavascriptProcessorFromConfig(
 	program, err := goja.Compile(filename, code, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile javascript code: %v", err)
+	}
+
+	// Benthos runs a pipeline on one thread per CPU (threads: -1): each needs a runner as
+	// its first batch comes, and one built then delays its rows past the flush of their
+	// page. The pool keeps them for the life of the process.
+	if err := vmPool.Reserve(runtime.GOMAXPROCS(0)); err != nil {
+		return nil, fmt.Errorf("failed to build the javascript runners: %w", err)
 	}
 
 	logger := mgr.Logger()

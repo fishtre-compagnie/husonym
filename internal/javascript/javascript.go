@@ -6,13 +6,15 @@ import (
 	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	benthos_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/benthos"
 	husonym_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/husonym"
+	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 )
 
 // NewDefaultValueRunner comes full featured, but expects a value api that the
 // benthos/husonym functions can manipulate. The runner is sealed and may serve any job:
-// each run is handed its logger (javascript_vm.WithRunLogger) and, for transformPiiText,
-// the PII text API of its account (transformers.ContextWithPiiTextApi).
+// each run is handed its logger (javascript_vm.WithRunLogger) and, through its context, the
+// PII text API of its account (transformers.ContextWithPiiTextApi) and, under Athanor, the
+// consistency scope the pseudo functions derive from (pseudo_functions.ContextWithSource).
 func NewDefaultValueRunner(valueApi javascript_functions.ValueApi) (*javascript_vm.Runner, error) {
 	functions, err := getDefaultFunctions()
 	if err != nil {
@@ -44,8 +46,10 @@ func getDefaultFunctions() ([]*javascript_functions.FunctionDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
-	output := make([]*javascript_functions.FunctionDefinition, 0, len(benthosFns)+len(husonymFns))
+	pseudoFns := pseudo_functions.Get()
+	output := make([]*javascript_functions.FunctionDefinition, 0, len(benthosFns)+len(husonymFns)+len(pseudoFns))
 	output = append(output, benthosFns...)
 	output = append(output, husonymFns...)
+	output = append(output, pseudoFns...)
 	return output, nil
 }
