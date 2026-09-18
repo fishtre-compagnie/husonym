@@ -2,6 +2,7 @@ package selectquerybuilder
 
 import (
 	"fmt"
+	"math"
 	"slices"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -17,6 +18,10 @@ import (
 var (
 	pageLimit = 100
 )
+
+// sqlNull stands for NULL among the expected values of a column: a nullable foreign key
+// whose parent is left out of the subset is read as NULL.
+const sqlNull int64 = math.MinInt64
 
 func (s *IntegrationTestSuite) Test_BuildQueryMap_DoubleReference() {
 	subsets := map[string]string{
@@ -58,8 +63,9 @@ func (s *IntegrationTestSuite) Test_BuildQueryMap_DoubleReference() {
 		"genbenthosconfigs_querybuilder.department.insert": {
 			"company_id": {1},
 		},
+		// Department 3 belongs to company 2, left out of the subset
 		"genbenthosconfigs_querybuilder.expense_report.insert": {
-			"department_source_id":      {1, 2, 3},
+			"department_source_id":      {sqlNull, 1, 2},
 			"department_destination_id": {1, 2},
 		},
 		"genbenthosconfigs_querybuilder.expense_report.update.1": {
@@ -67,7 +73,7 @@ func (s *IntegrationTestSuite) Test_BuildQueryMap_DoubleReference() {
 			"department_destination_id": {1, 2},
 		},
 		"genbenthosconfigs_querybuilder.expense_report.update.2": {
-			"department_source_id":      {1, 2, 3},
+			"department_source_id":      {sqlNull, 1, 2},
 			"department_destination_id": {1, 2},
 		},
 		"genbenthosconfigs_querybuilder.transaction.insert": {
@@ -438,8 +444,9 @@ func (s *IntegrationTestSuite) Test_BuildQueryMap_CircularDependency() {
 		"genbenthosconfigs_querybuilder.orders.insert": {
 			"customer_id": {1, 2, 3, 4, 5},
 		},
+		// The subset keeps orders 2 and 5: address 1 would point to order 1
 		"genbenthosconfigs_querybuilder.addresses.insert": {
-			"order_id": {1, 5},
+			"order_id": {sqlNull, 5},
 		},
 		"genbenthosconfigs_querybuilder.customers.insert": {
 			"address_id": {1, 5},
@@ -451,7 +458,7 @@ func (s *IntegrationTestSuite) Test_BuildQueryMap_CircularDependency() {
 			"customer_id": {1, 2, 3, 4, 5},
 		},
 		"genbenthosconfigs_querybuilder.addresses.update.1": {
-			"order_id": {1, 5},
+			"order_id": {sqlNull, 5},
 		},
 		"genbenthosconfigs_querybuilder.customers.update.1": {
 			"address_id": {1, 5},
@@ -1099,6 +1106,8 @@ func (s *IntegrationTestSuite) assertQueryMap(
 						value = int64(v)
 					case int64:
 						value = v
+					case nil:
+						value = sqlNull
 					default:
 						assert.Failf(s.T(), "unexpected type for column %s", "expected int32 or int64, got %T for column %s", col, colName)
 					}
