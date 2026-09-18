@@ -1,6 +1,8 @@
 # Contrôle des connexions et pré-vol du job (proposition)
 
-Statut : **proposition, à valider** (point 8 de la reprise du 2026-09-18). Rien n'est codé. Prolonge
+Statut : **validée le 2026-09-18, pour une PR à part** : issue
+[#62](https://github.com/fishtre-compagnie/husonym/issues/62). Décidé : un constat bloquant empêche
+d'enregistrer le job ; les champs optionnels de `CheckConnectionConfig` sont retenus. Prolonge
 les décisions « Contrôle des droits selon le rôle de la connexion » et « Analyse du schéma avant
 run » de [banc-essai-moteurs.md](banc-essai-moteurs.md).
 

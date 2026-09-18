@@ -1,6 +1,8 @@
 # Athanor : destinations multiples et SGBD différents (proposition)
 
-Statut : **proposition, à valider** (point 7 de la reprise du 2026-09-18). Rien n'est codé.
+Statut : **écartée le 2026-09-18** : un job copie une source vers une destination. Athanor le vérifie au
+démarrage du run (`shared.AthanorRuns`) et arrête un job à plusieurs destinations, ou vers un autre SGBD que
+la source, avant de vider ou d'écrire quoi que ce soit ; Benthos garde ces cas. Le document reste pour mémoire.
 
 ## Ce que fait le code aujourd'hui (vérifié)
 

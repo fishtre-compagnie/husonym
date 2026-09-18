@@ -69,8 +69,8 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
 5. Écriture : ✅ colonnes générées et par défaut, `id = 0`, dates zéro (MySQL), identités PostgreSQL
    (`OVERRIDING SYSTEM VALUE`) ; à faire : destinations multiples et hétérogènes
    ([proposition](athanor-destinations-multiples-heterogenes.md)), identités SQL Server.
-6. ✅ Propagation des FK via Redis (clés primaires transformées), mêmes hachages que Benthos ; clé
-   auto-référencée vers une clé transformée refusée (une passe).
+6. ✅ Propagation des FK via Redis (clés primaires transformées), mêmes hachages que Benthos ; auto-référence
+   et cycle vers une clé transformée par la passe de mise à jour (étape 9).
 7. ✅ MySQL et PostgreSQL, au démarrage du run (après la génération des configs, sur les tables et colonnes
    qu'elles écrivent) : contrôle des droits selon le rôle de la connexion, rôles et comptes par hôte compris,
    vidage, suspension et remise des triggers. À faire : test de connexion et configuration du job
@@ -79,12 +79,11 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    2026-09-18 : Athanor 25,1 s contre 162,5 s sur MySQL (6,5 fois), 32,8 s contre 166,8 s sur PostgreSQL
    (5,1 fois), moins de mémoire, lignes écrites identiques table par table. Le portage PostgreSQL n'a rien
    coûté sur MySQL (mesure appariée). Détail et limites dans [banc-essai-moteurs.md](banc-essai-moteurs.md).
-9. Défaut ouvert, commun aux deux moteurs : une FK qui suit une clé transformée ne peut pas être écrite en une
-   passe quand la clé vient d'une ligne écrite plus tard. Hors cycle, c'est corrigé : la table attend celle qui
-   publie la clé (`c4ebbbc7`). Restent la FK nullable **dans un cycle** (sa passe de mise à jour est ignorée par
-   Athanor) et l'**auto-référence** vers une clé transformée (refusée par Athanor). Proposition en attente de
-   validation : Athanor exécute la passe de mise à jour que le plan porte déjà, seulement quand elle écrit une
-   FK qui suit une clé transformée — ce que fait Benthos.
+9. ✅ FK qui suit une clé transformée écrite plus tard (2026-09-18). Hors cycle, la table attend celle qui
+   publie la clé (`c4ebbbc7`). Dans un cycle ou en auto-référence nullable, la passe d'insertion l'écrit `NULL`
+   et Athanor exécute la passe de mise à jour que le plan porte déjà — **seulement** quand elle écrit une telle
+   FK : elle traduit la FK et retrouve la ligne par sa nouvelle clé, comme Benthos. Reste refusée, avec un
+   message explicite, l'auto-référence `NOT NULL` vers une clé transformée (Benthos échoue aussi).
 
 Hors périmètre Athanor tant que non demandé : MongoDB, DynamoDB, S3/GCS, jobs de génération (Benthos reste le
 moteur, choix explicite et journalisé).

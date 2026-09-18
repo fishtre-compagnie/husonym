@@ -852,6 +852,26 @@ Benthos et +15 % pour Athanor, tout dans les synchros de table. Mesure appariée
 d'autres projets : **d'une heure à l'autre, la même mesure varie de 25 %**. Seule une comparaison
 appariée, dans la même période, attribue un écart au code.
 
+## Passes de mise à jour d'Athanor et test de recette (2026-09-18, soir)
+
+**Décidé** : Athanor exécute une passe de mise à jour du plan **seulement** quand elle écrit une FK qui suit
+une clé transformée ; les autres restent sans objet (FK suspendues, tout est écrit à l'insertion). Deux cas,
+hors attendu sur Athanor avant la correction et OK sur Benthos : `tr-key-self-reference` (Athanor refusait la
+table) et `tr-keys-in-cycle` (**136 références laissées à `NULL` en silence**). La passe d'insertion écrit ces
+FK `NULL` ; la passe de mise à jour, qui attend la table parente, relit la page (clé primaire et FK, subset
+compris), traduit la FK par Redis, retrouve la ligne de destination par sa propre nouvelle clé (une ligne dont
+la clé n'a pas été publiée n'a pas été écrite), et écrit par `UPDATE` dans la transaction de la page. Le plan
+neutre porte désormais la clé primaire de la table.
+
+Un job copie une source vers une destination (décidé) : Athanor arrête au démarrage du run un job à plusieurs
+destinations ou vers un autre SGBD que la source, au lieu d'échouer à la première table après le vidage.
+
+**Test de recette rejoué** (job `demo-outil-franchise`, 66 tables, MySQL, worker à sa taille de page normale) :
+Athanor **32,3 s**, Benthos **354,6 s** ; **65 tables identiques sur 66**, **zéro orphelin** dans les deux
+destinations. La seule table qui diffère, `CHECK_LIST_COMMANDE_MONTEUR`, a 8 lignes de plus chez Benthos,
+créées dans la source (14:12:07 et 14:12:40) après la fin du run Athanor et pendant celui de Benthos : écart de
+la source vivante, pas des moteurs.
+
 ## Ordre
 
 1. Banc MySQL (P1 puis P2, scénarios de droits compris), passage de Benthos et d'Athanor actuel : liste chiffrée
