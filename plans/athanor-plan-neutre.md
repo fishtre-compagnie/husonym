@@ -52,6 +52,11 @@ Athanor recalcule seul, depuis le job, une version appauvrie de ce que `Generate
    aux deux ; « Benthos amélioré » est la référence à battre.
 7. **Transformers JavaScript d'une table dans une seule VM**, ligne par ligne, dans l'ordre des mappings, avec
    `input` : des transformers réels gardent un état partagé entre colonnes via le global `neosync` (fait).
+   **Décidé le 2026-09-18 : l'état ne vit que le temps d'une ligne.** Partagé entre les colonnes d'une ligne,
+   jamais transmis à la suivante : la VM est recréée à chaque page (chez Benthos, tirée d'un pool), donc un
+   état entre lignes n'est fiable dans aucun moteur, et il fait passer la donnée d'une personne dans la ligne
+   d'une autre. La cohérence (même entrée, même sortie) passera par des fonctions déterministes offertes aux
+   scripts. Mise en œuvre : `~/.config/husonym-athanor-test/PROMPT-personnalisation-athanor.md`.
 
 ## Étapes
 
