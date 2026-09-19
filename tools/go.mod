@@ -1,6 +1,6 @@
 module github.com/fishtre-compagnie/husonym/tools
 
-go 1.26.4
+go 1.26.8
 
 replace github.com/fishtre-compagnie/husonym => ../
 

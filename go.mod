@@ -1,6 +1,6 @@
 module github.com/fishtre-compagnie/husonym
 
-go 1.26.4
+go 1.26.8
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250425153114-8976f5be98c1.1
