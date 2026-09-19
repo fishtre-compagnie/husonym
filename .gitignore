@@ -65,3 +65,7 @@ ee_license
 
 # Reports of the engine test bench
 bench/out/
+
+# Claude Code: git worktrees of agents, local settings
+.claude/worktrees/
+.claude/settings.local.json
