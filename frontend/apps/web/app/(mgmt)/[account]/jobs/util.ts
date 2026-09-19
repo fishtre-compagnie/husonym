@@ -94,8 +94,6 @@ import {
   MysqlOnConflictConfig_MysqlOnConflictDoNothingSchema,
   MysqlOnConflictConfig_MysqlOnConflictUpdateSchema,
   MysqlOnConflictConfigSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
   MysqlSourceConnectionOptionsSchema,
   MysqlSourceSchemaOption,
   MysqlSourceSchemaOptionSchema,
@@ -1306,23 +1304,6 @@ function setDefaultConnectFormValues(
         };
         storage.setItem(sessionKeys.piidetect.connect, JSON.stringify(values));
         return;
-      }
-      if (
-        job.source.options.config.value.haltOnNewColumnAddition &&
-        !job.source.options.config.value.newColumnAdditionStrategy
-      ) {
-        job.source.options.config.value.newColumnAdditionStrategy = create(
-          MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-          {
-            strategy: {
-              case: 'haltJob',
-              value: create(
-                MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-                {}
-              ),
-            },
-          }
-        );
       }
       const values: ConnectFormValues = {
         sourceId: job.source.options.config.value.connectionId,

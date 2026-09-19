@@ -87,8 +87,6 @@ import {
   MssqlSourceConnectionOptionsSchema,
   MysqlSourceConnectionOptions,
   MysqlSourceConnectionOptionsSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
   PostgresSourceConnectionOptions,
   PostgresSourceConnectionOptionsSchema,
   ValidateJobMappingsResponse,
@@ -1236,22 +1234,6 @@ function getJobSource(
         },
       };
     case 'mysql':
-      if (
-        job.source.options.config.value.haltOnNewColumnAddition &&
-        !job.source.options.config.value.newColumnAdditionStrategy?.strategy
-      ) {
-        job.source.options.config.value.newColumnAdditionStrategy = create(
-          MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-          {
-            strategy: {
-              case: 'haltJob',
-              value: create(
-                MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema
-              ),
-            },
-          }
-        );
-      }
       return {
         ...yupValidationValues,
         sourceId: getConnectionIdFromSource(job.source) || '',
