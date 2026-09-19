@@ -160,6 +160,8 @@ services:
       temporal:
         condition: service_healthy
         restart: true
+      temporal-create-namespace:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/workspace/backend:rw
       - ./worker:/workspace/worker:rw

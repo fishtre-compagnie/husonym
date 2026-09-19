@@ -16,6 +16,12 @@ services:
       - 9200
     volumes:
       - temporal_elasticsearch_data:/var/lib/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
   postgresql:
     container_name: temporal-postgresql
     environment:
@@ -28,11 +34,44 @@ services:
       - 5432
     volumes:
       - temporal_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+  # Creates or upgrades the schemas, then exits: temporalio/auto-setup, which
+  # did it on server start, stopped at 1.29.7.
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
+    restart: on-failure:6
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - SQL_PASSWORD=temporal
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - ES_SCHEME=http
+      - ES_VISIBILITY_INDEX=temporal_visibility_v1_dev
+    networks:
+      - temporal-network
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh"]
+    command: /scripts/setup-postgres-es.sh
   temporal:
     container_name: temporal
     depends_on:
-      - postgresql
-      - elasticsearch
+      temporal-admin-tools:
+        condition: service_completed_successfully
     environment:
       - DB=postgres12
       - DB_PORT=5432
@@ -43,7 +82,8 @@ services:
       - ENABLE_ES=true
       - ES_SEEDS=elasticsearch
       - ES_VERSION=v7
-    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+      - BIND_ON_IP=0.0.0.0
+    image: temporalio/server:${TEMPORAL_VERSION}
     networks:
       - temporal-network
     ports:
@@ -51,37 +91,34 @@ services:
     volumes:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     healthcheck:
-      test:
-        [
-          "CMD",
-          "tctl",
-          "--address",
-          "temporal:7233",
-          "workflow",
-          "list",
-          "||",
-          "exit 1",
-        ]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-      start_period: 5s
-  # temporal-admin-tools:
-  #   container_name: temporal-admin-tools
-  #   depends_on:
-  #     - temporal
-  #   environment:
-  #     - TEMPORAL_ADDRESS=temporal:7233
-  #     - TEMPORAL_CLI_ADDRESS=temporal:7233
-  #   image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
-  #   networks:
-  #     - temporal-network
-  #   stdin_open: true
-  #   tty: true
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
+  # Creates the default namespace, then exits. Services that run workflows wait
+  # for it rather than for the server alone.
+  temporal-create-namespace:
+    container_name: temporal-create-namespace
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION}
+    restart: on-failure:5
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - DEFAULT_NAMESPACE=default
+    networks:
+      - temporal-network
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh"]
+    command: /scripts/create-namespace.sh
   temporal-ui:
     container_name: temporal-ui
     depends_on:
-      - temporal
+      temporal:
+        condition: service_healthy
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
