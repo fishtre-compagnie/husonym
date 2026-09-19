@@ -7,8 +7,8 @@ import (
 
 	"github.com/testcontainers/testcontainers-go"
 	testmongodb "github.com/testcontainers/testcontainers-go/modules/mongodb"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -94,7 +94,7 @@ func (m *MongoDBTestContainer) Setup(
 		return nil, err
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
 	}

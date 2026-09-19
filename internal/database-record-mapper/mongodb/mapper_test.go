@@ -6,7 +6,7 @@ import (
 
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func Test_UnmarshalPrimitives(t *testing.T) {
@@ -31,19 +31,19 @@ func Test_UnmarshalPrimitives(t *testing.T) {
 		require.Equal(t, expectedKTM, ktm)
 	})
 
-	dec128 := primitive.NewDecimal128(3, 14159)
-	objectId := primitive.NewObjectID()
+	dec128 := bson.NewDecimal128(3, 14159)
+	objectId := bson.NewObjectID()
 	input = map[string]any{
 		"decimal":   dec128,
-		"binary":    primitive.Binary{Data: []byte("test")},
+		"binary":    bson.Binary{Data: []byte("test")},
 		"objectID":  objectId,
-		"timestamp": primitive.Timestamp{T: 1, I: 1},
+		"timestamp": bson.Timestamp{T: 1, I: 1},
 	}
 	expectedOutput = map[string]any{
 		"decimal":   getBigFloat(dec128.String()),
-		"binary":    primitive.Binary{Data: []byte("test")},
+		"binary":    bson.Binary{Data: []byte("test")},
 		"objectID":  objectId,
-		"timestamp": primitive.Timestamp{T: 1, I: 1},
+		"timestamp": bson.Timestamp{T: 1, I: 1},
 	}
 	expectedKTM = map[string]husonym_types.KeyType{
 		"decimal":   husonym_types.Decimal128,
@@ -66,8 +66,8 @@ func getBigFloat(v string) *big.Float {
 }
 
 func Test_ParsePrimitives(t *testing.T) {
-	objectId := primitive.NewObjectID()
-	dec128 := primitive.NewDecimal128(3, 14159)
+	objectId := bson.NewObjectID()
+	dec128 := bson.NewDecimal128(3, 14159)
 	testCases := []struct {
 		name        string
 		key         string
@@ -85,9 +85,9 @@ func Test_ParsePrimitives(t *testing.T) {
 		{
 			name:        "Binary",
 			key:         "binary",
-			value:       primitive.Binary{Data: []byte("test")},
+			value:       bson.Binary{Data: []byte("test")},
 			expectedKTM: map[string]husonym_types.KeyType{"binary": husonym_types.Binary},
-			expected:    primitive.Binary{Data: []byte("test")},
+			expected:    bson.Binary{Data: []byte("test")},
 		},
 		{
 			name:        "ObjectID",
@@ -99,9 +99,9 @@ func Test_ParsePrimitives(t *testing.T) {
 		{
 			name:        "Timestamp",
 			key:         "timestamp",
-			value:       primitive.Timestamp{T: 1, I: 1},
+			value:       bson.Timestamp{T: 1, I: 1},
 			expectedKTM: map[string]husonym_types.KeyType{"timestamp": husonym_types.Timestamp},
-			expected:    primitive.Timestamp{T: 1, I: 1},
+			expected:    bson.Timestamp{T: 1, I: 1},
 		},
 	}
 

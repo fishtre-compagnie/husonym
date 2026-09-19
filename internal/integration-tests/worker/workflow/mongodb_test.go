@@ -10,8 +10,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"golang.org/x/sync/errgroup"
 
 	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
@@ -286,27 +285,27 @@ func cleanupMongodb(
 
 func getMongodbAllTypesTestData() []any {
 	doc := bson.D{
-		{Key: "_id", Value: primitive.NewObjectID()},
+		{Key: "_id", Value: bson.NewObjectID()},
 		{Key: "string", Value: "Hello, MongoDB!"},
 		{Key: "bool", Value: true},
 		{Key: "int32", Value: int32(42)},
 		{Key: "int64", Value: int64(92233720)},
 		{Key: "double", Value: 3.14159},
-		{Key: "decimal128", Value: primitive.NewDecimal128(3, 14159)},
-		{Key: "date", Value: primitive.NewDateTimeFromTime(time.Now())},
-		{Key: "timestamp", Value: primitive.Timestamp{T: 1645553494, I: 1}},
-		{Key: "null", Value: primitive.Null{}},
-		{Key: "regex", Value: primitive.Regex{Pattern: "^test", Options: "i"}},
+		{Key: "decimal128", Value: bson.NewDecimal128(3, 14159)},
+		{Key: "date", Value: bson.NewDateTimeFromTime(time.Now())},
+		{Key: "timestamp", Value: bson.Timestamp{T: 1645553494, I: 1}},
+		{Key: "null", Value: bson.Null{}},
+		{Key: "regex", Value: bson.Regex{Pattern: "^test", Options: "i"}},
 		{Key: "array", Value: bson.A{"apple", "banana", "cherry"}},
 		{Key: "embedded_document", Value: bson.D{
 			{Key: "name", Value: "John Doe"},
 			{Key: "age", Value: 30},
 		}},
-		{Key: "binary", Value: primitive.Binary{Subtype: 0x80, Data: []byte("binary data")}},
-		{Key: "undefined", Value: primitive.Undefined{}},
-		{Key: "object_id", Value: primitive.NewObjectID()},
-		{Key: "min_key", Value: primitive.MinKey{}},
-		{Key: "max_key", Value: primitive.MaxKey{}},
+		{Key: "binary", Value: bson.Binary{Subtype: 0x80, Data: []byte("binary data")}},
+		{Key: "undefined", Value: bson.Undefined{}},
+		{Key: "object_id", Value: bson.NewObjectID()},
+		{Key: "min_key", Value: bson.MinKey{}},
+		{Key: "max_key", Value: bson.MaxKey{}},
 	}
 	return []any{doc}
 }

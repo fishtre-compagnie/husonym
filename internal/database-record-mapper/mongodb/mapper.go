@@ -7,8 +7,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type MongoDBMapper struct{}
@@ -44,20 +43,20 @@ func parsePrimitives(
 	keyTypeMap map[string]husonym_types.KeyType,
 ) (any, error) {
 	switch v := value.(type) {
-	case primitive.Decimal128:
+	case bson.Decimal128:
 		keyTypeMap[key] = husonym_types.Decimal128
 		floatVal, _, err := big.ParseFloat(v.String(), 10, 128, big.ToNearestEven)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse decimal128 value for key %q: %w", key, err)
 		}
 		return floatVal, nil
-	case primitive.Binary:
+	case bson.Binary:
 		keyTypeMap[key] = husonym_types.Binary
 		return v, nil
-	case primitive.ObjectID:
+	case bson.ObjectID:
 		keyTypeMap[key] = husonym_types.ObjectID
 		return v, nil
-	case primitive.Timestamp:
+	case bson.Timestamp:
 		keyTypeMap[key] = husonym_types.Timestamp
 		return v, nil
 	case bson.D:

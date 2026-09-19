@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
 	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
 	mongodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/mongodb"
@@ -74,7 +74,7 @@ type MongoPoolProvider interface {
 }
 
 type MongoClient interface {
-	Database(name string, options ...*options.DatabaseOptions) *mongo.Database
+	Database(name string, opts ...options.Lister[options.DatabaseOptions]) *mongo.Database
 	Ping(ctx context.Context, rp *readpref.ReadPref) error
 	Disconnect(ctx context.Context) error
 }
@@ -196,14 +196,14 @@ func (m *mongoInput) Connect(ctx context.Context) error {
 	collection := m.database.Collection(m.collection)
 	switch m.operation {
 	case "find":
-		var findOptions *options.FindOptions
+		var findOptions *options.FindOptionsBuilder
 		findOptions, err = m.getFindOptions()
 		if err != nil {
 			return fmt.Errorf("error parsing 'find' options: %v", err)
 		}
 		m.cursor, err = collection.Find(ctx, m.query, findOptions)
 	case "aggregate":
-		var aggregateOptions *options.AggregateOptions
+		var aggregateOptions *options.AggregateOptionsBuilder
 		aggregateOptions, err = m.getAggregateOptions()
 		if err != nil {
 			return fmt.Errorf("error parsing 'aggregate' options: %v", err)
@@ -273,7 +273,7 @@ func (m *mongoInput) Close(ctx context.Context) error {
 	return nil
 }
 
-func (m *mongoInput) getFindOptions() (*options.FindOptions, error) { //nolint: unparam
+func (m *mongoInput) getFindOptions() (*options.FindOptionsBuilder, error) { //nolint: unparam
 	findOptions := options.Find()
 	if m.batchSize > 0 {
 		findOptions.SetBatchSize(m.batchSize)
@@ -287,7 +287,7 @@ func (m *mongoInput) getFindOptions() (*options.FindOptions, error) { //nolint: 
 	return findOptions, nil
 }
 
-func (m *mongoInput) getAggregateOptions() (*options.AggregateOptions, error) { //nolint: unparam
+func (m *mongoInput) getAggregateOptions() (*options.AggregateOptionsBuilder, error) { //nolint: unparam
 	aggregateOptions := options.Aggregate()
 	if m.batchSize > 0 {
 		aggregateOptions.SetBatchSize(m.batchSize)

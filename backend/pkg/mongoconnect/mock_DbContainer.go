@@ -8,7 +8,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // NewMockDbContainer creates a new instance of MockDbContainer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

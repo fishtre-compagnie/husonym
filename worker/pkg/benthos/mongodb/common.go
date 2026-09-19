@@ -14,10 +14,9 @@ import (
 	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/redpanda-data/benthos/v4/public/service"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 )
 
 // JSONMarshalMode represents the way in which BSON should be marshaled to JSON.
@@ -194,9 +193,17 @@ func writeConcernDocs() *service.ConfigField {
 	).Description("The write concern settings for the mongo connection.")
 }
 
-func writeConcernCollectionOptionFromParsed(
+// writeConcernSpec is the write concern of the output. Driver v2 dropped the
+// wtimeout of the write concern, so w_timeout bounds each write through its
+// context instead.
+type writeConcernSpec struct {
+	options  *options.CollectionOptionsBuilder
+	wTimeout time.Duration
+}
+
+func writeConcernSpecFromParsed(
 	pConf *service.ParsedConfig,
-) (opt *options.CollectionOptions, err error) {
+) (spec *writeConcernSpec, err error) {
 	pConf = pConf.Namespace(commonFieldWriteConcern)
 
 	var w string
@@ -217,8 +224,7 @@ func writeConcernCollectionOptionFromParsed(
 	}
 
 	writeConcern := &writeconcern.WriteConcern{
-		Journal:  &j,
-		WTimeout: wTimeout,
+		Journal: &j,
 	}
 	if wInt, err := strconv.Atoi(w); err != nil {
 		writeConcern.W = w
@@ -226,7 +232,10 @@ func writeConcernCollectionOptionFromParsed(
 		writeConcern.W = wInt
 	}
 
-	return options.Collection().SetWriteConcern(writeConcern), nil
+	return &writeConcernSpec{
+		options:  options.Collection().SetWriteConcern(writeConcern),
+		wTimeout: wTimeout,
+	}, nil
 }
 
 func outputOperationDocs(defaultOperation Operation) *service.ConfigField {
@@ -416,25 +425,25 @@ func marshalToBSONValue(
 	if typeStr, ok := keyTypeMap[key]; ok {
 		switch typeStr {
 		case husonym_types.Decimal128:
-			if d, ok := root.(primitive.Decimal128); ok {
+			if d, ok := root.(bson.Decimal128); ok {
 				return d, nil
 			}
 			if vStr, ok := root.(string); ok {
-				d, err := primitive.ParseDecimal128(vStr)
+				d, err := bson.ParseDecimal128(vStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid Decimal128 string: %w", err)
 				}
 				return d, nil
 			}
 			if vFloat, ok := root.(float64); ok {
-				d, err := primitive.ParseDecimal128(strconv.FormatFloat(vFloat, 'f', 4, 64))
+				d, err := bson.ParseDecimal128(strconv.FormatFloat(vFloat, 'f', 4, 64))
 				if err != nil {
 					return nil, fmt.Errorf("invalid Decimal128 string: %w", err)
 				}
 				return d, nil
 			}
 			if vBigFloat, ok := root.(big.Float); ok {
-				d, err := primitive.ParseDecimal128(vBigFloat.String())
+				d, err := bson.ParseDecimal128(vBigFloat.String())
 				if err != nil {
 					return nil, fmt.Errorf("invalid Decimal128 string: %w", err)
 				}
@@ -443,21 +452,21 @@ func marshalToBSONValue(
 			return nil, fmt.Errorf("could not convert %v to Decimal128", root)
 
 		case husonym_types.Timestamp:
-			if ts, ok := root.(primitive.Timestamp); ok {
+			if ts, ok := root.(bson.Timestamp); ok {
 				return ts, nil
 			}
 			t, err := toUint32(root)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert %v to Timestamp: %w", root, err)
 			}
-			return primitive.Timestamp{T: t, I: 1}, nil
+			return bson.Timestamp{T: t, I: 1}, nil
 
 		case husonym_types.ObjectID:
-			if oid, ok := root.(primitive.ObjectID); ok {
+			if oid, ok := root.(bson.ObjectID); ok {
 				return oid, nil
 			}
 			if vStr, ok := root.(string); ok {
-				objectID, err := primitive.ObjectIDFromHex(vStr)
+				objectID, err := bson.ObjectIDFromHex(vStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid ObjectID hex string: %w", err)
 				}
@@ -488,7 +497,7 @@ func marshalToBSONValue(
 		return doc, nil
 
 	case []byte:
-		return primitive.Binary{Data: v}, nil
+		return bson.Binary{Data: v}, nil
 
 	case []any:
 		a := bson.A{}
@@ -513,10 +522,10 @@ func marshalToBSONValue(
 		return v.String(), nil
 
 	case time.Time:
-		return primitive.NewDateTimeFromTime(v), nil
+		return bson.NewDateTimeFromTime(v), nil
 
 	case nil:
-		return primitive.Null{}, nil
+		return bson.Null{}, nil
 
 	default:
 		return v, nil

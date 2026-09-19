@@ -6,13 +6,12 @@ import (
 
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func Test_MarshalToBSONValue(t *testing.T) {
-	objId, _ := primitive.ObjectIDFromHex("5f63e6f0d51b0d0001c1b0a1")
-	dec128, _ := primitive.ParseDecimal128("123.45")
+	objId, _ := bson.ObjectIDFromHex("5f63e6f0d51b0d0001c1b0a1")
+	dec128, _ := bson.ParseDecimal128("123.45")
 	testCases := []struct {
 		name        string
 		key         string
@@ -42,7 +41,7 @@ func Test_MarshalToBSONValue(t *testing.T) {
 			key:         "timestamp",
 			value:       int(1630000000),
 			keyTypeMap:  map[string]husonym_types.KeyType{"timestamp": husonym_types.Timestamp},
-			expected:    primitive.Timestamp{T: uint32(1630000000), I: 1},
+			expected:    bson.Timestamp{T: uint32(1630000000), I: 1},
 			expectError: false,
 		},
 	}
@@ -57,8 +56,8 @@ func Test_MarshalToBSONValue(t *testing.T) {
 }
 
 func Test_MarshalJSONToBSONDocument(t *testing.T) {
-	objId, _ := primitive.ObjectIDFromHex("5f63e6f0d51b0d0001c1b0a1")
-	dec128, _ := primitive.ParseDecimal128("123.45")
+	objId, _ := bson.ObjectIDFromHex("5f63e6f0d51b0d0001c1b0a1")
+	dec128, _ := bson.ParseDecimal128("123.45")
 	testCases := []struct {
 		name        string
 		input       any
@@ -98,7 +97,7 @@ func Test_MarshalJSONToBSONDocument(t *testing.T) {
 				"amount": bson.E{Key: "amount", Value: dec128},
 				"timestamp": bson.E{
 					Key:   "timestamp",
-					Value: primitive.Timestamp{T: 1630000000, I: 1},
+					Value: bson.Timestamp{T: 1630000000, I: 1},
 				},
 			},
 			expectError: false,
