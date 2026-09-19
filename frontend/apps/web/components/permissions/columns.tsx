@@ -7,11 +7,7 @@ import { CheckCircledIcon, CircleBackslashIcon } from '@radix-ui/react-icons';
 import { DataTableColumnHeader } from './data-table-column-header';
 
 export type PermissionConnectionType =
-  | 'mongodb'
-  | 'mysql'
-  | 'postgres'
-  | 'dynamodb'
-  | 'mssql';
+  'mongodb' | 'mysql' | 'postgres' | 'dynamodb' | 'mssql';
 
 export function getPermissionColumns(
   connectionType: PermissionConnectionType

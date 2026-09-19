@@ -115,10 +115,7 @@ export type VirtualForeignConstraintFormValues = Yup.InferType<
 >;
 
 export type NewColumnAdditionStrategy =
-  | 'continue'
-  | 'halt'
-  | 'automap'
-  | 'passthrough';
+  'continue' | 'halt' | 'automap' | 'passthrough';
 
 type MssqlNewColumnAdditionStrategy = 'continue' | 'halt' | 'passthrough';
 

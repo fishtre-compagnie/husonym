@@ -661,8 +661,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   }
 
   const source = connectionsRecord[sourceConnectionId ?? ''] as
-    | Connection
-    | undefined;
+    Connection | undefined;
 
   const dynamoDBDestinations = getDynamoDbDestinations(
     data?.job?.destinations ?? []

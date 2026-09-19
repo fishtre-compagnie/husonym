@@ -18,10 +18,7 @@ import * as Yup from 'yup';
 import { isValidConnectionPair } from '../../connections/util';
 
 export type NewJobType =
-  | 'data-sync'
-  | 'generate-table'
-  | 'ai-generate-table'
-  | 'pii-detection';
+  'data-sync' | 'generate-table' | 'ai-generate-table' | 'pii-detection';
 
 // Schema for a job's workflow settings
 export const WorkflowSettingsSchema = Yup.object({

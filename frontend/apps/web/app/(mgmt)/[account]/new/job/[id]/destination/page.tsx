@@ -179,8 +179,7 @@ export default function Page(props: PageProps): ReactElement {
                 const connId = f.connectionId;
                 const destOpts = f.destinationOptions;
                 const destConnection = connRecord[connId] as
-                  | Connection
-                  | undefined;
+                  Connection | undefined;
                 const destinationsErrors =
                   form.formState.errors.destinations ?? [];
                 return (

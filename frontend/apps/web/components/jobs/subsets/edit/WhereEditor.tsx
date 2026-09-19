@@ -86,14 +86,12 @@ function useAutocomplete(columns: string[]): void {
 
         const suggestions: languages.CompletionItem[] = Array.from(
           columnSet
-        ).map(
-          (name): languages.CompletionItem => ({
-            label: name, // would be nice if we could add the type here as well?
-            kind: monaco.languages.CompletionItemKind.Field,
-            insertText: name,
-            range: range,
-          })
-        );
+        ).map((name): languages.CompletionItem => ({
+          label: name, // would be nice if we could add the type here as well?
+          kind: monaco.languages.CompletionItemKind.Field,
+          insertText: name,
+          range: range,
+        }));
 
         return { suggestions: suggestions };
       },
