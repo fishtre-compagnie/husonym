@@ -26,6 +26,11 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "npm@11.19.1",
-  "name": "frontend"
+  "packageManager": "npm@12.0.2",
+  "name": "frontend",
+  "allowScripts": {
+    "esbuild": true,
+    "unrs-resolver": true,
+    "@parcel/watcher": true
+  }
 }
