@@ -84,3 +84,20 @@ func TestMysqlGrants_foldCase(t *testing.T) {
 	exact := parseMysqlGrants(lines, false)
 	require.False(t, exact.hasTablePrivilege("DELETE", "bench_x", "ARTICLE"), "another table on a case-sensitive server")
 }
+
+// GRANT ALL PRIVILEGES ON *.* holds the dynamic privileges too. Reading it as the single
+// word it is parsed into reported the account as lacking SUPER and SET_USER_ID, and the
+// run was refused before it started.
+func TestMysqlGrants_hasGlobalPrivilegeThroughAll(t *testing.T) {
+	grants := parseMysqlGrants([]string{
+		"GRANT ALL PRIVILEGES ON *.* TO `app`@`%` WITH GRANT OPTION",
+	}, false)
+	require.True(t, grants.hasGlobalPrivilege("SUPER", "SET_USER_ID"))
+	require.True(t, grants.hasGlobalPrivilege("SET_USER_ID"))
+
+	onOneDatabase := parseMysqlGrants([]string{
+		"GRANT ALL PRIVILEGES ON `prod`.* TO `app`@`%`",
+	}, false)
+	require.False(t, onOneDatabase.hasGlobalPrivilege("SUPER", "SET_USER_ID"),
+		"ALL on one database is not ALL on every database")
+}

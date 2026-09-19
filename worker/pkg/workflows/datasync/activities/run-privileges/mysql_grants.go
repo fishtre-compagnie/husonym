@@ -184,7 +184,9 @@ func (g mysqlGrants) hasGlobalPrivilege(privileges ...string) bool {
 			continue
 		}
 		for _, privilege := range privileges {
-			if slices.Contains(grant.privileges, privilege) {
+			// grants, and not a plain lookup: GRANT ALL PRIVILEGES ON *.* holds every
+			// dynamic privilege too, and parseMysqlGrant records it as the single "ALL".
+			if grant.grants(privilege) {
 				return true
 			}
 		}

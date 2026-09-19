@@ -79,12 +79,21 @@ func checkMysqlDestination(
 		if errors.Is(err, errMysqlNoSuchColumn) {
 			// The probes ask about the columns the table has; the others are added by the
 			// run when it reconciles the schema, and are missing otherwise.
-			var absent []string
-			if t, absent, err = mysqlPresentColumns(ctx, db, t); err == nil {
+			// present, and not t: on an error mysqlPresentColumns returns no table, and
+			// the error below reports the table it was asked about.
+			present, absent, perr := mysqlPresentColumns(ctx, db, t)
+			err = perr
+			if perr == nil {
 				if !createsTables {
 					findings = append(findings, fmt.Sprintf("destination %q has no column %s in %s that the account can see",
-						name, strings.Join(absent, ", "), t))
+						name, strings.Join(absent, ", "), present))
 				}
+				if len(present.Columns) == 0 {
+					// Not one column of the mapping is there: there is nothing to probe,
+					// and the probes would be built on an empty column list.
+					continue
+				}
+				t = present
 				missing, err = mysqlMissingRowPrivileges(ctx, db, t)
 			}
 		}
