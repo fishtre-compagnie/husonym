@@ -132,7 +132,7 @@ func (d *DynamoDBTestContainer) Setup(
 	port := "8000/tcp"
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "amazon/dynamodb-local:2.5.2",
+			Image:        "amazon/dynamodb-local:3.3.1",
 			ExposedPorts: []string{port},
 			WaitingFor:   wait.ForListeningPort(port),
 		},

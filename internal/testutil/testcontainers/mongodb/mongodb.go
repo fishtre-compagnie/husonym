@@ -84,7 +84,7 @@ func (m *MongoDBTestContainer) Setup(
 	ctx context.Context,
 	t *testing.T,
 ) (*MongoDBTestContainer, error) {
-	container, err := testmongodb.Run(ctx, "mongo:6")
+	container, err := testmongodb.Run(ctx, "mongo:8.0.32")
 	if err != nil {
 		return nil, err
 	}
