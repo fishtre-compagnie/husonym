@@ -1,13 +1,14 @@
 import { cn } from '@/libs/utils';
-import { Cell, Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 import { VirtualItem } from '@tanstack/react-virtual';
 import { memo, ReactNode } from 'react';
+import { AppTableFeatures } from '../table/features';
 import { TableRow } from '../ui/table';
 import { columnFlexStyle } from './columnFlexStyle';
 import MemoizedCell from './MemoizedCell';
 
-interface Props<TData> {
-  row: Row<TData>;
+interface Props<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
   virtualRow: VirtualItem;
   selected: boolean;
   tableRowClassName?: string;
@@ -25,7 +26,7 @@ interface Props<TData> {
   noGrowColumnIds?: string[];
 }
 
-function InnerRow<TData>(props: Props<TData>): ReactNode {
+function InnerRow<TData extends RowData>(props: Props<TData>): ReactNode {
   const {
     row,
     virtualRow,
@@ -73,16 +74,14 @@ function InnerRow<TData>(props: Props<TData>): ReactNode {
                 }
           }
         >
-          {/* For some reason TS can't figure out how to type the incoming cell dynamically as Cell<TData, unknown>
-              so we have to cast it here */}
-          <MemoizedCell cell={cell as Cell<unknown, unknown>} />
+          <MemoizedCell cell={cell} />
         </td>
       ))}
     </TableRow>
   );
 }
 
-function shouldReRender<TData>(
+function shouldReRender<TData extends RowData>(
   prev: Props<TData>,
   next: Props<TData>
 ): boolean {
@@ -145,4 +144,6 @@ function shouldReRender<TData>(
 
 const MemoizedRow = memo(InnerRow, shouldReRender);
 MemoizedRow.displayName = 'MemoizedRow';
-export default MemoizedRow;
+// memo() drops the TData parameter of InnerRow, and table types are invariant
+// in TData: restore the generic signature for callers.
+export default MemoizedRow as typeof InnerRow;

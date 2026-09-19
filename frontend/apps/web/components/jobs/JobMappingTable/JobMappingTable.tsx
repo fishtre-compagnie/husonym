@@ -1,16 +1,18 @@
 import FastTable from '@/components/FastTable/FastTable';
+import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
 import { CardDescription, CardTitle } from '@/components/ui/card';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { JobMapping } from '@husonym/sdk';
 import {
   ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
   Row,
   RowData,
-  useReactTable,
+  TableFeatures,
+  useTable,
 } from '@tanstack/react-table';
 import { ReactElement } from 'react';
 import { GoWorkflow } from 'react-icons/go';
@@ -18,9 +20,9 @@ import { ImportMappingsConfig } from '../SchemaTable/ImportJobMappingsButton';
 import { SchemaTableToolbar } from '../SchemaTable/SchemaTableToolBar';
 import { TransformerResult } from '../SchemaTable/transformer-handler';
 
-interface Props<TData, TValue> {
+interface Props<TData extends RowData> {
   data: TData[];
-  columns: ColumnDef<TData, TValue>[];
+  columns: ColumnDef<AppTableFeatures, TData>[];
   onTransformerUpdate(index: number, config: JobMappingTransformerForm): void;
   getAvailableTransformers(index: number): TransformerResult;
   getTransformerFromField(index: number): Transformer;
@@ -29,14 +31,19 @@ interface Props<TData, TValue> {
     indices: number[],
     config: JobMappingTransformerForm
   ): void;
-  getAvalableTransformersForBulk(rows: Row<TData>[]): TransformerResult;
+  getAvalableTransformersForBulk(
+    rows: Row<AppTableFeatures, TData>[]
+  ): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
 
   isApplyDefaultTransformerButtonDisabled: boolean;
   displayApplyDefaultTransformersButton: boolean;
   onApplyDefaultClick(override: boolean): void;
 
-  onExportMappingsClick(selected: Row<TData>[], shouldFormat: boolean): void;
+  onExportMappingsClick(
+    selected: Row<AppTableFeatures, TData>[],
+    shouldFormat: boolean
+  ): void;
   onImportMappingsClick(
     jobmappings: JobMapping[],
     config: ImportMappingsConfig
@@ -60,7 +67,8 @@ interface Props<TData, TValue> {
 }
 
 declare module '@tanstack/react-table' {
-  interface TableMeta<TData extends RowData> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TFeatures extends TableFeatures, TData extends RowData> {
     jmTable?: {
       onTransformerUpdate(
         rowIndex: number,
@@ -82,8 +90,8 @@ declare module '@tanstack/react-table' {
   }
 }
 
-export default function JobMappingTable<TData, TValue>(
-  props: Props<TData, TValue>
+export default function JobMappingTable<TData extends RowData>(
+  props: Props<TData>
 ): ReactElement {
   const {
     data,
@@ -112,12 +120,10 @@ export default function JobMappingTable<TData, TValue>(
     isScanningPii,
   } = props;
 
-  const table = useReactTable({
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     meta: {
       jmTable: {
         onTransformerUpdate,

@@ -1,7 +1,8 @@
 import { cn } from '@/libs/utils';
-import { flexRender, Table } from '@tanstack/react-table';
+import { FlexRender, RowData, Table } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ReactElement, useRef } from 'react';
+import { AppTableFeatures } from '../table/features';
 import {
   StickyHeaderTable,
   TableBody,
@@ -12,11 +13,11 @@ import {
 import { columnFlexStyle } from './columnFlexStyle';
 import MemoizedRow from './MemoizedRow';
 
-interface Props<TData> {
+interface Props<TData extends RowData> {
   /**
    * The table instance to render.
    */
-  table: Table<TData>;
+  table: Table<AppTableFeatures, TData>;
   /**
    * This function is used to estimate the height of each row.
    * It should be the height of your row including padding and any other styling.
@@ -64,7 +65,9 @@ interface Props<TData> {
  * It's also very important to set your estimateRowSize function to be the correct height of your row. Otherwise it is a guess and will have to be re-calculated, which hurts performance.
  * Configuring the overscan helps smooth out scrolling, but will increase CPU. For fast systems this is very noticeable and helps with reducing white flashing during quick scrolls.
  */
-export default function FastTable<TData>(props: Props<TData>): ReactElement {
+export default function FastTable<TData extends RowData>(
+  props: Props<TData>
+): ReactElement {
   const {
     table,
     estimateRowSize = () => 53,
@@ -131,12 +134,9 @@ export default function FastTable<TData>(props: Props<TData>): ReactElement {
                     colSpan={header.colSpan}
                     className="flex items-center"
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {header.isPlaceholder ? null : (
+                      <FlexRender header={header} />
+                    )}
                   </TableHead>
                 );
               })}

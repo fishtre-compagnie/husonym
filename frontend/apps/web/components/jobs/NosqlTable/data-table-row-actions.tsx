@@ -1,8 +1,9 @@
 'use client';
 
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
-import { Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,13 +12,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
-  onDelete(data: Row<TData>): void;
-  onDuplicate(data: Row<TData>): void;
+interface DataTableRowActionsProps<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
+  onDelete(data: Row<AppTableFeatures, TData>): void;
+  onDuplicate(data: Row<AppTableFeatures, TData>): void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends RowData>({
   row,
   onDelete,
   onDuplicate,

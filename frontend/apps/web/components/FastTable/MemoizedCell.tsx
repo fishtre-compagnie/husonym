@@ -1,16 +1,17 @@
-import { Cell, flexRender } from '@tanstack/react-table';
+import { Cell, FlexRender, RowData } from '@tanstack/react-table';
 import { memo, ReactNode } from 'react';
+import { AppTableFeatures } from '../table/features';
 
-interface Props<TData> {
-  cell: Cell<TData, unknown>;
+interface Props<TData extends RowData> {
+  cell: Cell<AppTableFeatures, TData>;
 }
 
-function InnerCell<TData>(props: Props<TData>): ReactNode {
+function InnerCell<TData extends RowData>(props: Props<TData>): ReactNode {
   const { cell } = props;
-  return flexRender(cell.column.columnDef.cell, cell.getContext());
+  return <FlexRender cell={cell} />;
 }
 
-function shouldReRender<TData>(
+function shouldReRender<TData extends RowData>(
   prev: Props<TData>,
   next: Props<TData>
 ): boolean {
@@ -32,4 +33,6 @@ function shouldReRender<TData>(
 
 const MemoizedCell = memo(InnerCell, shouldReRender);
 MemoizedCell.displayName = 'MemoizedCell';
-export default MemoizedCell;
+// memo() drops the TData parameter of InnerCell, and table types are invariant
+// in TData: restore the generic signature for callers.
+export default MemoizedCell as typeof InnerCell;

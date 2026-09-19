@@ -1,9 +1,10 @@
 'use client';
 
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
-import { Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 
 import { useAccount } from '@/components/providers/account-provider';
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,12 +17,12 @@ import { AccountApiKey } from '@husonym/sdk';
 import { useRouter } from 'next/navigation';
 import RemoveAccountApiKeyButton from '../../[id]/components/RemoveAccountApiKeyButton';
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
+interface DataTableRowActionsProps<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
   onDeleted(): void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends RowData>({
   row,
   onDeleted,
 }: DataTableRowActionsProps<TData>) {

@@ -8,11 +8,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Job, JobService } from '@husonym/sdk';
-import { Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { useAccount } from '@/components/providers/account-provider';
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
@@ -22,12 +23,12 @@ import { toast } from 'sonner';
 import { getJobCloneUrlFromJob } from '../../[id]/components/JobCloneButton';
 import { setDefaultNewJobFormValues } from '../../util';
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
+interface DataTableRowActionsProps<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
   onDeleted(): void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends RowData>({
   row,
   onDeleted,
 }: DataTableRowActionsProps<TData>) {

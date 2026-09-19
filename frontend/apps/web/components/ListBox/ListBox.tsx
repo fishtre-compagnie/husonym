@@ -7,19 +7,22 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/libs/utils';
-import { Table, flexRender } from '@tanstack/react-table';
+import { FlexRender, RowData, Table } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ReactElement, useRef } from 'react';
+import { AppTableFeatures } from '../table/features';
 import { Skeleton } from '../ui/skeleton';
 
-interface Props<TData> {
-  table: Table<TData>;
+interface Props<TData extends RowData> {
+  table: Table<AppTableFeatures, TData>;
   tableContainerClassName?: string;
   isDataLoading?: boolean;
   noDataMessage?: string;
 }
 
-export default function ListBox<TData>(props: Props<TData>): ReactElement {
+export default function ListBox<TData extends RowData>(
+  props: Props<TData>
+): ReactElement {
   const { table, tableContainerClassName, isDataLoading, noDataMessage } =
     props;
   const { rows } = table.getRowModel();
@@ -58,12 +61,9 @@ export default function ListBox<TData>(props: Props<TData>): ReactElement {
                     style={{ minWidth: `${header.column.getSize()}px` }}
                     colSpan={header.colSpan}
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {header.isPlaceholder ? null : (
+                      <FlexRender header={header} />
+                    )}
                   </TableHead>
                 );
               })}
@@ -106,10 +106,7 @@ export default function ListBox<TData>(props: Props<TData>): ReactElement {
                       }}
                     >
                       <div className="truncate">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        <FlexRender cell={cell} />
                       </div>
                     </TableCell>
                   );

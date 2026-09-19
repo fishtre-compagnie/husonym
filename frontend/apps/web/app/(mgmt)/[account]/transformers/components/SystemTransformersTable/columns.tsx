@@ -1,5 +1,6 @@
 'use client';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Badge } from '@/components/ui/badge';
 import {
   getTransformerDataTypesString,
@@ -18,7 +19,7 @@ interface GetSystemTransformercolumnsProps {
 
 export function getSystemTransformerColumns(
   props: GetSystemTransformercolumnsProps
-): ColumnDef<SystemTransformer>[] {
+): ColumnDef<AppTableFeatures, SystemTransformer>[] {
   const { accountName } = props;
   return [
     {

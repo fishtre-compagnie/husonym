@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 import { ConnectionRolePrivilege } from '@husonym/sdk';
 import { CheckCircledIcon, CircleBackslashIcon } from '@radix-ui/react-icons';
+import { AppTableFeatures } from '../table/features';
 import { DataTableColumnHeader } from './data-table-column-header';
 
 export type PermissionConnectionType =
@@ -11,7 +12,7 @@ export type PermissionConnectionType =
 
 export function getPermissionColumns(
   connectionType: PermissionConnectionType
-): ColumnDef<ConnectionRolePrivilege>[] {
+): ColumnDef<AppTableFeatures, ConnectionRolePrivilege>[] {
   switch (connectionType) {
     case 'mongodb':
     case 'dynamodb':

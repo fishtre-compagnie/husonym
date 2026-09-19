@@ -1,3 +1,4 @@
+import { AppTableFeatures } from '@/components/table/features';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -20,7 +21,9 @@ interface Row {
   column: string;
 }
 
-export function getSchemaColumns(props: Props): ColumnDef<Row>[] {
+export function getSchemaColumns(
+  props: Props
+): ColumnDef<AppTableFeatures, Row>[] {
   const { constraintHandler } = props;
 
   return [

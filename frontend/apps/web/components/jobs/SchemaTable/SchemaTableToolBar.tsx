@@ -1,10 +1,11 @@
 'use client';
 
-import { Row, Table } from '@tanstack/react-table';
+import { ReactTable, Row, RowData } from '@tanstack/react-table';
 
 import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
 import ButtonText from '@/components/ButtonText';
 import FormErrorMessage from '@/components/FormErrorMessage';
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/libs/utils';
 import { isSystemTransformer, Transformer } from '@/shared/transformers';
@@ -39,9 +40,11 @@ import { SchemaTableViewOptions } from './SchemaTableViewOptions';
 import TransformerSelect from './TransformerSelect';
 import { TransformerResult } from './transformer-handler';
 
-interface DataTableToolbarProps<TData> {
-  table: Table<TData>;
-  getAllowedTransformers(rows: Row<TData>[]): TransformerResult;
+interface DataTableToolbarProps<TData extends RowData> {
+  table: ReactTable<AppTableFeatures, TData>;
+  getAllowedTransformers(
+    rows: Row<AppTableFeatures, TData>[]
+  ): TransformerResult;
   getTransformerFromField(selected: JobMappingTransformerForm): Transformer;
   onBulkUpdate(indices: number[], value: JobMappingTransformerForm): void;
   onExportMappingsClick(shouldFormat: boolean): void;
@@ -64,7 +67,7 @@ interface DataTableToolbarProps<TData> {
 
 const DEFAULT_TRANSFORMER_BUTTON_TEXT = 'Bulk set transformers';
 
-export function SchemaTableToolbar<TData>({
+export function SchemaTableToolbar<TData extends RowData>({
   table,
   onExportMappingsClick,
   onImportMappingsClick,
@@ -80,9 +83,8 @@ export function SchemaTableToolbar<TData>({
   onScanContent,
   isScanningPii,
 }: DataTableToolbarProps<TData>) {
-  const tableState = table.getState();
-  const isFiltered = tableState.columnFilters.length > 0;
-  const hasSelectedRows = Object.values(tableState.rowSelection).some(
+  const isFiltered = table.state.columnFilters.length > 0;
+  const hasSelectedRows = Object.values(table.state.rowSelection).some(
     (value) => value
   );
 

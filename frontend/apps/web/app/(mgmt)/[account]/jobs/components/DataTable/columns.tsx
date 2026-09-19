@@ -2,6 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/util/util';
@@ -43,7 +44,9 @@ interface GetJobsProps {
   onDeleted(id: string): void;
 }
 
-export function getColumns(props: GetJobsProps): ColumnDef<JobColumn>[] {
+export function getColumns(
+  props: GetJobsProps
+): ColumnDef<AppTableFeatures, JobColumn>[] {
   const { onDeleted, accountName } = props;
   return [
     {

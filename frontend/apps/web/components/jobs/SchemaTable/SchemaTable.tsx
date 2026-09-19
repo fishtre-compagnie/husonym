@@ -38,6 +38,7 @@ import { Row } from '@tanstack/react-table';
 import { ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FieldErrors } from 'react-hook-form';
+import { AppTableFeatures } from '../../table/features';
 import {
   getGeneratedStatement,
   getIdentityStatement,
@@ -82,7 +83,7 @@ interface Props {
     config: JobMappingTransformerForm
   ): void;
   getAvailableTransformersForBulk(
-    rows: Row<JobMappingRow>[]
+    rows: Row<AppTableFeatures, JobMappingRow>[]
   ): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
   onApplyDefaultClick(override: boolean): void;

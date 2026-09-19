@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 import NextLink from 'next/link';
 
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Badge, BadgeProps } from '@/components/ui/badge';
 import { formatDateTime } from '@/util/util';
@@ -17,7 +18,9 @@ interface GetColumnsProps {
   accountName: string;
 }
 
-export function getColumns(props: GetColumnsProps): ColumnDef<AccountApiKey>[] {
+export function getColumns(
+  props: GetColumnsProps
+): ColumnDef<AppTableFeatures, AccountApiKey>[] {
   const { onDeleted, accountName } = props;
   return [
     {

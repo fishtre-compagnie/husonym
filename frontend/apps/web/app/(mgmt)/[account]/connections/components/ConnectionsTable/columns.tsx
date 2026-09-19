@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 import NextLink from 'next/link';
 
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { formatDateTime } from '@/util/util';
 import { Timestamp, timestampDate } from '@bufbuild/protobuf/wkt';
@@ -17,7 +18,9 @@ interface GetColumnsProps {
   accountName: string;
 }
 
-export function getColumns(props: GetColumnsProps): ColumnDef<Connection>[] {
+export function getColumns(
+  props: GetColumnsProps
+): ColumnDef<AppTableFeatures, Connection>[] {
   const { accountName, onConnectionDeleted } = props;
   return [
     {

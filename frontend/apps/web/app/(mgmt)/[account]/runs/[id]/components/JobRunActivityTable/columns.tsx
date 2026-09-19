@@ -3,6 +3,7 @@
 import { ColumnDef, Row } from '@tanstack/react-table';
 
 import { SchemaColumnHeader } from '@/components/jobs/SchemaTable/SchemaColumnHeader';
+import { AppTableFeatures } from '@/components/table/features';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTimeMilliseconds } from '@/util/util';
@@ -15,7 +16,9 @@ interface GetColumnsProps {
   onViewSelectClicked(schema: string, table: string): void;
 }
 
-export function getColumns(props: GetColumnsProps): ColumnDef<JobRunEvent>[] {
+export function getColumns(
+  props: GetColumnsProps
+): ColumnDef<AppTableFeatures, JobRunEvent>[] {
   const { onViewSelectClicked } = props;
 
   return [
@@ -210,7 +213,7 @@ export function getColumns(props: GetColumnsProps): ColumnDef<JobRunEvent>[] {
 }
 
 function schemaColumnFilterFn(
-  row: Row<JobRunEvent>,
+  row: Row<AppTableFeatures, JobRunEvent>,
   columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {
@@ -223,7 +226,7 @@ function schemaColumnFilterFn(
 }
 
 function tableColumnFilterFn(
-  row: Row<JobRunEvent>,
+  row: Row<AppTableFeatures, JobRunEvent>,
   columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {

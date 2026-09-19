@@ -1,4 +1,5 @@
 import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,7 +14,7 @@ import {
   SystemTransformerSchema,
   TransformerSource,
 } from '@husonym/sdk';
-import { ColumnDef, createColumnHelper, Row } from '@tanstack/react-table';
+import { createColumnHelper, Row } from '@tanstack/react-table';
 import ColumnPreviewButton from './ColumnPreviewButton';
 import RgpdCell from './RgpdCell';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
@@ -73,9 +74,8 @@ function isAnonymizingTransformer(t: JobMappingTransformerForm): boolean {
   return !!c && c !== 'passthroughConfig';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
-  const columnHelper = createColumnHelper<JobMappingRow>();
+function getJobMappingColumns() {
+  const columnHelper = createColumnHelper<AppTableFeatures, JobMappingRow>();
 
   const checkboxColumn = columnHelper.display({
     id: 'isSelected',
@@ -84,7 +84,8 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
           }}
         />
@@ -247,7 +248,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
         );
       },
       filterFn: transformerFilterFn,
-      sortingFn: transformerSortingFn,
+      sortFn: transformerSortingFn,
     }
   );
 
@@ -344,7 +345,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     },
   });
 
-  return [
+  return columnHelper.columns([
     checkboxColumn,
     schemaColumn,
     tableColumn,
@@ -355,12 +356,12 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     rgpdColumn,
     previewColumn,
     transformerColumn,
-  ];
+  ]);
 }
 
 function transformerSortingFn(
-  rowA: Row<JobMappingRow>,
-  rowB: Row<JobMappingRow>,
+  rowA: Row<AppTableFeatures, JobMappingRow>,
+  rowB: Row<AppTableFeatures, JobMappingRow>,
   _columnId: string
 ): number {
   return rowA.original.transformer.config.case.localeCompare(
@@ -369,17 +370,19 @@ function transformerSortingFn(
 }
 
 function transformerFilterFn(
-  row: Row<JobMappingRow>,
+  row: Row<AppTableFeatures, JobMappingRow>,
   columnId: string,
   fitlerValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean;
 function transformerFilterFn(
-  row: Row<NosqlJobMappingRow>,
+  row: Row<AppTableFeatures, NosqlJobMappingRow>,
   columnId: string,
   fitlerValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean;
 function transformerFilterFn(
-  row: Row<JobMappingRow | NosqlJobMappingRow>,
+  row:
+    | Row<AppTableFeatures, JobMappingRow>
+    | Row<AppTableFeatures, NosqlJobMappingRow>,
   columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {
@@ -394,9 +397,11 @@ function transformerFilterFn(
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
-  const columnHelper = createColumnHelper<NosqlJobMappingRow>();
+function getNosqlJobMappingColumns() {
+  const columnHelper = createColumnHelper<
+    AppTableFeatures,
+    NosqlJobMappingRow
+  >();
 
   const checkboxColumn = columnHelper.display({
     id: 'isSelected',
@@ -405,7 +410,8 @@ function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
           }}
         />
@@ -563,13 +569,13 @@ function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
     },
   });
 
-  return [
+  return columnHelper.columns([
     checkboxColumn,
     collectionColumn,
     columnColumn,
     transformerColumn,
     actionsColumn,
-  ];
+  ]);
 }
 
 export const SQL_COLUMNS = getJobMappingColumns();

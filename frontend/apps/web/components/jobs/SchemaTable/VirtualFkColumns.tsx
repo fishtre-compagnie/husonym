@@ -1,5 +1,6 @@
 'use client';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { TrashIcon } from '@radix-ui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
@@ -12,7 +13,7 @@ interface Props {
 
 export function getVirtualForeignKeysColumns(
   props: Props
-): ColumnDef<RowData>[] {
+): ColumnDef<AppTableFeatures, RowData>[] {
   const { removeVirtualForeignKey } = props;
   return [
     {

@@ -1,4 +1,5 @@
 import { Row } from '@tanstack/react-table';
+import { AppTableFeatures } from '../../table/features';
 import { JobMappingRow, NosqlJobMappingRow } from '../JobMappingTable/Columns';
 import {
   ColumnKey,
@@ -7,7 +8,9 @@ import {
 } from './schema-constraint-handler';
 import { toSupportedJobtype, TransformerFilters } from './transformer-handler';
 
-export function fromRowDataToColKey(row: Row<JobMappingRow>): ColumnKey {
+export function fromRowDataToColKey(
+  row: Row<AppTableFeatures, JobMappingRow>
+): ColumnKey {
   return {
     schema: row.getValue('schema'),
     table: row.getValue('table'),
@@ -15,7 +18,7 @@ export function fromRowDataToColKey(row: Row<JobMappingRow>): ColumnKey {
   };
 }
 export function fromNosqlRowDataToColKey(
-  row: Row<NosqlJobMappingRow>
+  row: Row<AppTableFeatures, NosqlJobMappingRow>
 ): ColumnKey {
   const [schema, table] = splitCollection(row.getValue('collection'));
   return {

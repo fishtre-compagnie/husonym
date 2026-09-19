@@ -3,8 +3,9 @@ import {
   ArrowUpIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,14 +17,14 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/libs/utils';
 
 interface DataTableColumnHeaderProps<
-  TData,
+  TData extends RowData,
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>;
+  column: Column<AppTableFeatures, TData, TValue>;
   title: string;
 }
 
-export function VirtualForeignKeysColumnHeader<TData, TValue>({
+export function VirtualForeignKeysColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,

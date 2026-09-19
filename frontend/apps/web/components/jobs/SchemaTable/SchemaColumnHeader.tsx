@@ -1,5 +1,6 @@
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,14 +20,14 @@ import { FaSearch } from 'react-icons/fa';
 import { useDebounceCallback } from 'usehooks-ts';
 
 interface DataTableColumnHeaderProps<
-  TData,
+  TData extends RowData,
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>;
+  column: Column<AppTableFeatures, TData, TValue>;
   title: string;
 }
 
-export function SchemaColumnHeader<TData, TValue>({
+export function SchemaColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,
@@ -83,12 +84,12 @@ function getColumnTooltip(title: string, canMultiSort: boolean): string {
   return `Sort by ${title}`;
 }
 
-interface SortButtonWithTooltipProps<TData, TValue> {
-  column: Column<TData, TValue>;
+interface SortButtonWithTooltipProps<TData extends RowData, TValue> {
+  column: Column<AppTableFeatures, TData, TValue>;
   tooltip: string;
 }
 
-function SortButtonWithTooltip<TData, TValue>({
+function SortButtonWithTooltip<TData extends RowData, TValue>({
   column,
   tooltip,
 }: SortButtonWithTooltipProps<TData, TValue>): ReactElement {

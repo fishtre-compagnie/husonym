@@ -1,5 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import IndeterminateCheckbox from '../jobs/JobMappingTable/IndeterminateCheckbox';
+import { AppTableFeatures } from '../table/features';
 import ColumnHeader from './ColumnHeader';
 
 export type Mode = 'single' | 'many';
@@ -13,7 +14,9 @@ interface ListBoxColumnProps {
   mode?: Mode;
 }
 
-export function getListBoxColumns(props: ListBoxColumnProps): ColumnDef<Row>[] {
+export function getListBoxColumns(
+  props: ListBoxColumnProps
+): ColumnDef<AppTableFeatures, Row>[] {
   const { title, mode = 'many' } = props;
   return [
     {
@@ -22,7 +25,8 @@ export function getListBoxColumns(props: ListBoxColumnProps): ColumnDef<Row>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
             className: mode === 'single' ? 'flex hidden' : 'flex w-4 h-4',
           }}

@@ -1,8 +1,9 @@
 'use client';
 
 import { Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
-import { Table } from '@tanstack/react-table';
+import { ReactTable, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -18,8 +19,11 @@ import {
 } from '@/components/ui/select';
 import { DataTableViewOptions } from './data-table-view-options';
 
-interface DataTableToolbarProps<TData, TAutoRefreshInterval extends string> {
-  table: Table<TData>;
+interface DataTableToolbarProps<
+  TData extends RowData,
+  TAutoRefreshInterval extends string,
+> {
+  table: ReactTable<AppTableFeatures, TData>;
   onRefreshClick(): void;
   refreshInterval: TAutoRefreshInterval;
   autoRefreshIntervalOptions: TAutoRefreshInterval[];
@@ -27,7 +31,10 @@ interface DataTableToolbarProps<TData, TAutoRefreshInterval extends string> {
   isRefreshing: boolean;
 }
 
-export function DataTableToolbar<TData, TAutoRefreshInterval extends string>({
+export function DataTableToolbar<
+  TData extends RowData,
+  TAutoRefreshInterval extends string,
+>({
   table,
   onRefreshClick,
   refreshInterval,
@@ -35,7 +42,7 @@ export function DataTableToolbar<TData, TAutoRefreshInterval extends string>({
   onAutoRefreshIntervalChange,
   isRefreshing,
 }: DataTableToolbarProps<TData, TAutoRefreshInterval>) {
-  const isFiltered = table.getState().columnFilters.length > 0;
+  const isFiltered = table.state.columnFilters.length > 0;
   return (
     <div className="flex items-center justify-between space-x-4">
       <div className="flex flex-1 items-center space-x-2">

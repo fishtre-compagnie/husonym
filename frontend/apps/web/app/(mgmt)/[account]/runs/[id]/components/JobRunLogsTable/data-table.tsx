@@ -1,15 +1,12 @@
 'use client';
 
-import {
-  ColumnDef,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { ColumnDef, RowData, useTable } from '@tanstack/react-table';
 
 import FastTable from '@/components/FastTable/FastTable';
+import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
 import {
   Select,
   SelectContent,
@@ -19,8 +16,8 @@ import {
 } from '@/components/ui/select';
 import { LogLevel } from '@husonym/sdk';
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<AppTableFeatures, TData>[];
   data: TData[];
 
   selectedLogLevel: LogLevel;
@@ -28,20 +25,17 @@ interface DataTableProps<TData, TValue> {
   isLoading: boolean;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData>({
   columns,
   data,
   selectedLogLevel,
   setSelectedLogLevel,
-}: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
+}: DataTableProps<TData>) {
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
     enableRowSelection: false,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
   });
 
   return (
