@@ -17,7 +17,7 @@ import (
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/otelconnect"
 	"connectrpc.com/validate"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/auth0/go-jwt-middleware/v3/validator"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"

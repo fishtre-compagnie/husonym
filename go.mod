@@ -14,7 +14,7 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/auth0/go-auth0 v1.50.0
-	github.com/auth0/go-jwt-middleware/v2 v2.3.1
+	github.com/auth0/go-jwt-middleware/v3 v3.3.0
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.5
@@ -40,6 +40,7 @@ require (
 	github.com/grafana/pyroscope-go v1.4.2
 	github.com/itchyny/gojq v0.12.19
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/lestrrat-go/jwx/v3 v3.0.13
 	github.com/lib/pq v1.12.3
 	github.com/microsoft/go-mssqldb v1.10.0
 	github.com/neilotoole/slogt/v2 v2.0.0
@@ -307,11 +308,15 @@ require (
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
+	github.com/lestrrat-go/dsig v1.0.0 // indirect
+	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
+	github.com/lestrrat-go/httprc/v3 v3.0.3 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.1.6 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
+	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/linkedin/goavro/v2 v2.15.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
@@ -404,6 +409,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1 // indirect
 	github.com/twmb/franz-go/pkg/sr v1.7.0 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
+	github.com/valyala/fastjson v1.6.7 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/wI2L/jsondiff v0.6.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -446,7 +452,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
-	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
