@@ -121,13 +121,13 @@ func (MySQLDialect) ForeignKeyChecksStatements() (disable, enable string, ok boo
 // Like mysqldump, the write keeps 0 as a value; it also accepts zero dates. Strict mode
 // stays: a value too long still fails instead of being truncated.
 func (MySQLDialect) FaithfulWriteStatements() (begin, end []string) {
-	return []string{
-			"SET @husonym_sql_mode = @@SESSION.sql_mode",
-			"SET SESSION sql_mode = CONCAT(REPLACE(REPLACE(@@SESSION.sql_mode, 'NO_ZERO_IN_DATE', ''), " +
-				"'NO_ZERO_DATE', ''), ',NO_AUTO_VALUE_ON_ZERO')",
-		}, []string{
-			"SET SESSION sql_mode = @husonym_sql_mode",
-		}
+	begin = []string{
+		"SET @husonym_sql_mode = @@SESSION.sql_mode",
+		"SET SESSION sql_mode = CONCAT(REPLACE(REPLACE(@@SESSION.sql_mode, 'NO_ZERO_IN_DATE', ''), " +
+			"'NO_ZERO_DATE', ''), ',NO_AUTO_VALUE_ON_ZERO')",
+	}
+	end = []string{"SET SESSION sql_mode = @husonym_sql_mode"}
+	return begin, end
 }
 
 func (MySQLDialect) InsertOverride() string { return "" }

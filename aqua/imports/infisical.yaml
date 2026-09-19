@@ -2,5 +2,5 @@
 # l'écrire sur disque, voir internal/ee/license/README.md. Absent du registre standard
 # aqua, d'où l'entrée dans registry.yaml.
 packages:
-  - name: Infisical/cli@v0.43.110
+  - name: Infisical/cli@v0.43.132
     registry: local

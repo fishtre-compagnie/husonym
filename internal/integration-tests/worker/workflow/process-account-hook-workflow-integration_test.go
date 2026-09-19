@@ -23,7 +23,7 @@ import (
 // goroutine could wait more than a second for a CPU, which the test environment of
 // Temporal reports as a deadlock (TMPRL1101).
 func Test_ProcessAccountHookWorkflow(t *testing.T) {
-	ok :=testutil.ShouldRunWorkerIntegrationTest()
+	ok := testutil.ShouldRunWorkerIntegrationTest()
 	if !ok {
 		return
 	}
