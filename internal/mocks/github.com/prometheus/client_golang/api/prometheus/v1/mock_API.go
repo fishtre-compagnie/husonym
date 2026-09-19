@@ -403,8 +403,65 @@ func (_c *MockAPI_Flags_Call) RunAndReturn(run func(context.Context) (v1.FlagsRe
 	return _c
 }
 
+// FormatQuery provides a mock function with given fields: ctx, query
+func (_m *MockAPI) FormatQuery(ctx context.Context, query string) (string, error) {
+	ret := _m.Called(ctx, query)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FormatQuery")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, query)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, query)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, query)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_FormatQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FormatQuery'
+type MockAPI_FormatQuery_Call struct {
+	*mock.Call
+}
+
+// FormatQuery is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query string
+func (_e *MockAPI_Expecter) FormatQuery(ctx interface{}, query interface{}) *MockAPI_FormatQuery_Call {
+	return &MockAPI_FormatQuery_Call{Call: _e.mock.On("FormatQuery", ctx, query)}
+}
+
+func (_c *MockAPI_FormatQuery_Call) Run(run func(ctx context.Context, query string)) *MockAPI_FormatQuery_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAPI_FormatQuery_Call) Return(_a0 string, _a1 error) *MockAPI_FormatQuery_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_FormatQuery_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockAPI_FormatQuery_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LabelNames provides a mock function with given fields: ctx, matches, startTime, endTime, opts
-func (_m *MockAPI) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...v1.Option) ([]string, v1.Warnings, error) {
+func (_m *MockAPI) LabelNames(ctx context.Context, matches []string, startTime time.Time, endTime time.Time, opts ...v1.Option) (model.LabelNames, v1.Warnings, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -418,17 +475,17 @@ func (_m *MockAPI) LabelNames(ctx context.Context, matches []string, startTime t
 		panic("no return value specified for LabelNames")
 	}
 
-	var r0 []string
+	var r0 model.LabelNames
 	var r1 v1.Warnings
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string, time.Time, time.Time, ...v1.Option) ([]string, v1.Warnings, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []string, time.Time, time.Time, ...v1.Option) (model.LabelNames, v1.Warnings, error)); ok {
 		return rf(ctx, matches, startTime, endTime, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []string, time.Time, time.Time, ...v1.Option) []string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []string, time.Time, time.Time, ...v1.Option) model.LabelNames); ok {
 		r0 = rf(ctx, matches, startTime, endTime, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
+			r0 = ret.Get(0).(model.LabelNames)
 		}
 	}
 
@@ -478,12 +535,12 @@ func (_c *MockAPI_LabelNames_Call) Run(run func(ctx context.Context, matches []s
 	return _c
 }
 
-func (_c *MockAPI_LabelNames_Call) Return(_a0 []string, _a1 v1.Warnings, _a2 error) *MockAPI_LabelNames_Call {
+func (_c *MockAPI_LabelNames_Call) Return(_a0 model.LabelNames, _a1 v1.Warnings, _a2 error) *MockAPI_LabelNames_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockAPI_LabelNames_Call) RunAndReturn(run func(context.Context, []string, time.Time, time.Time, ...v1.Option) ([]string, v1.Warnings, error)) *MockAPI_LabelNames_Call {
+func (_c *MockAPI_LabelNames_Call) RunAndReturn(run func(context.Context, []string, time.Time, time.Time, ...v1.Option) (model.LabelNames, v1.Warnings, error)) *MockAPI_LabelNames_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -863,9 +920,9 @@ func (_c *MockAPI_QueryRange_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-// Rules provides a mock function with given fields: ctx
-func (_m *MockAPI) Rules(ctx context.Context) (v1.RulesResult, error) {
-	ret := _m.Called(ctx)
+// Rules provides a mock function with given fields: ctx, matches
+func (_m *MockAPI) Rules(ctx context.Context, matches []string) (v1.RulesResult, error) {
+	ret := _m.Called(ctx, matches)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Rules")
@@ -873,17 +930,17 @@ func (_m *MockAPI) Rules(ctx context.Context) (v1.RulesResult, error) {
 
 	var r0 v1.RulesResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (v1.RulesResult, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (v1.RulesResult, error)); ok {
+		return rf(ctx, matches)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) v1.RulesResult); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, []string) v1.RulesResult); ok {
+		r0 = rf(ctx, matches)
 	} else {
 		r0 = ret.Get(0).(v1.RulesResult)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, matches)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -898,13 +955,14 @@ type MockAPI_Rules_Call struct {
 
 // Rules is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockAPI_Expecter) Rules(ctx interface{}) *MockAPI_Rules_Call {
-	return &MockAPI_Rules_Call{Call: _e.mock.On("Rules", ctx)}
+//   - matches []string
+func (_e *MockAPI_Expecter) Rules(ctx interface{}, matches interface{}) *MockAPI_Rules_Call {
+	return &MockAPI_Rules_Call{Call: _e.mock.On("Rules", ctx, matches)}
 }
 
-func (_c *MockAPI_Rules_Call) Run(run func(ctx context.Context)) *MockAPI_Rules_Call {
+func (_c *MockAPI_Rules_Call) Run(run func(ctx context.Context, matches []string)) *MockAPI_Rules_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].([]string))
 	})
 	return _c
 }
@@ -914,7 +972,7 @@ func (_c *MockAPI_Rules_Call) Return(_a0 v1.RulesResult, _a1 error) *MockAPI_Rul
 	return _c
 }
 
-func (_c *MockAPI_Rules_Call) RunAndReturn(run func(context.Context) (v1.RulesResult, error)) *MockAPI_Rules_Call {
+func (_c *MockAPI_Rules_Call) RunAndReturn(run func(context.Context, []string) (v1.RulesResult, error)) *MockAPI_Rules_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1184,6 +1242,62 @@ func (_c *MockAPI_TSDB_Call) Return(_a0 v1.TSDBResult, _a1 error) *MockAPI_TSDB_
 }
 
 func (_c *MockAPI_TSDB_Call) RunAndReturn(run func(context.Context, ...v1.Option) (v1.TSDBResult, error)) *MockAPI_TSDB_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TSDBBlocks provides a mock function with given fields: ctx
+func (_m *MockAPI) TSDBBlocks(ctx context.Context) (v1.TSDBBlocksResult, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TSDBBlocks")
+	}
+
+	var r0 v1.TSDBBlocksResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (v1.TSDBBlocksResult, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) v1.TSDBBlocksResult); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(v1.TSDBBlocksResult)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAPI_TSDBBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TSDBBlocks'
+type MockAPI_TSDBBlocks_Call struct {
+	*mock.Call
+}
+
+// TSDBBlocks is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockAPI_Expecter) TSDBBlocks(ctx interface{}) *MockAPI_TSDBBlocks_Call {
+	return &MockAPI_TSDBBlocks_Call{Call: _e.mock.On("TSDBBlocks", ctx)}
+}
+
+func (_c *MockAPI_TSDBBlocks_Call) Run(run func(ctx context.Context)) *MockAPI_TSDBBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockAPI_TSDBBlocks_Call) Return(_a0 v1.TSDBBlocksResult, _a1 error) *MockAPI_TSDBBlocks_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAPI_TSDBBlocks_Call) RunAndReturn(run func(context.Context) (v1.TSDBBlocksResult, error)) *MockAPI_TSDBBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }
