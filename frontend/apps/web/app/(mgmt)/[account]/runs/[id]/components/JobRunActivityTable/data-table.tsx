@@ -35,11 +35,7 @@ interface DataTableProps {
 }
 
 export function DataTable({ columns, data, isError }: DataTableProps) {
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<ColumnVisibilityState>({ error: isError, id: false });
-  React.useEffect(() => {
-    setColumnVisibility({ error: isError });
-  }, [isError]);
+  const columnVisibility: ColumnVisibilityState = { error: isError };
 
   const [pagination, setPagination] = React.useState<number>(0);
   const [pageSize, setPageSize] = useLocalStorage<number>(
@@ -55,7 +51,6 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
       columnVisibility,
       pagination: { pageIndex: pagination, pageSize: pageSize },
     },
-    onColumnVisibilityChange: setColumnVisibility,
   });
 
   return (
