@@ -92,6 +92,11 @@ interface Props {
   // Id de la connexion SOURCE. S'il est fourni (jobs sync), active le scan de
   // contenu PII (Presidio). Absent pour les jobs generate (rien à échantillonner).
   sourceConnectionId?: string;
+  // Applique d'office, au chargement, les transformers suggérés aux colonnes
+  // détectées comme personnelles et encore en Passthrough. Réservé à la CRÉATION
+  // d'un job : sur un job existant, Passthrough est un choix de l'utilisateur, et
+  // l'écraser en ouvrant l'écran changerait son anonymisation sans le dire.
+  applyPiiOnLoad?: boolean;
 }
 
 // Détection remontée par le scan de contenu, telle que le backend l'a qualifiée.
@@ -138,6 +143,7 @@ export function SchemaTable(props: Props): ReactElement {
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
     sourceConnectionId,
+    applyPiiOnLoad = false,
   } = props;
 
   // --- Scan de contenu PII (Presidio) ---------------------------------------
@@ -298,19 +304,46 @@ export function SchemaTable(props: Props): ReactElement {
         : TransformerSource.UNSPECIFIED;
     });
 
-  const onScanContent = async (): Promise<void> => {
+  // Tables déjà analysées, et connexion à laquelle ces détections se rapportent.
+  // Sans ce suivi, le scan automatique ne couvrait que les tables présentes au
+  // premier rendu : dans le flux de création, où les tables sont cochées une à
+  // une, les suivantes gardaient le badge « — », qui se lit « aucune donnée
+  // personnelle trouvée » et non « pas encore analysé ».
+  const scanned = useRef<{ connectionId?: string; tables: Set<string> }>({
+    connectionId: sourceConnectionId,
+    tables: new Set<string>(),
+  });
+
+  // scope 'new' : les tables pas encore analysées, pour le scan de fond.
+  // scope 'all' : toutes, pour un clic explicite sur « Analyser le contenu ».
+  const onScanContent = async (scope: 'new' | 'all' = 'all'): Promise<void> => {
     if (!sourceConnectionId) {
       return;
     }
+    // Les détections appartiennent à la connexion sur laquelle elles ont été
+    // lues : après un changement de source, elles ne décrivent plus rien.
+    if (scanned.current.connectionId !== sourceConnectionId) {
+      scanned.current = {
+        connectionId: sourceConnectionId,
+        tables: new Set<string>(),
+      };
+      setContentPii({});
+    }
+
+    const tables = new Map<string, { schema: string; table: string }>();
+    data.forEach((d) => {
+      const key = `${d.schema}.${d.table}`;
+      if (scope === 'new' && scanned.current.tables.has(key)) {
+        return;
+      }
+      tables.set(key, { schema: d.schema, table: d.table });
+    });
+    if (tables.size === 0) {
+      return;
+    }
+
     setIsScanningPii(true);
     try {
-      const tables = new Map<string, { schema: string; table: string }>();
-      data.forEach((d) =>
-        tables.set(`${d.schema}.${d.table}`, {
-          schema: d.schema,
-          table: d.table,
-        })
-      );
       const next: Record<string, ContentPii> = {};
       // Une table en échec (volumineuse, verrouillée, droits manquants) ne doit pas
       // emporter le scan des autres : sur une base réelle, une seule table lente
@@ -338,8 +371,24 @@ export function SchemaTable(props: Props): ReactElement {
           failed.push(`${sch}.${tbl}`);
           console.warn(`scan PII impossible sur ${sch}.${tbl}`, e);
         }
+        // Analysée, y compris en échec : le scan de fond reprend à chaque table
+        // ajoutée, et une table qui échoue à chaque essai le relancerait sans
+        // fin. Son échec est annoncé, et le bouton la réessaie.
+        scanned.current.tables.add(`${sch}.${tbl}`);
       }
-      setContentPii(next);
+      // Les détections des tables qui viennent d'être analysées remplacent les
+      // leurs ; celles des autres tables, analysées plus tôt, sont conservées.
+      const rescanned = new Set(tables.keys());
+      setContentPii((prev) => {
+        const merged: Record<string, ContentPii> = {};
+        Object.entries(prev).forEach(([key, value]) => {
+          const table = key.slice(0, key.lastIndexOf('.'));
+          if (!rescanned.has(table)) {
+            merged[key] = value;
+          }
+        });
+        return { ...merged, ...next };
+      });
 
       // Les tables non analysées sont annoncées : sans ce message, leurs colonnes
       // resteraient sans badge et l'absence de détection passerait pour une absence
@@ -355,7 +404,7 @@ export function SchemaTable(props: Props): ReactElement {
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
       // sur un modèle statistique ou un format ambigu ne le sont jamais : elles
       // s'affichent en badge orange pour que l'utilisateur lève le doute.
-      const applied = applyContentPiiSuggestions(next);
+      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(next) : 0;
 
       const confirmed = Object.values(next).filter(
         (c) => c.confidence === PiiConfidence.CONFIRMED
@@ -364,6 +413,11 @@ export function SchemaTable(props: Props): ReactElement {
         (c) => c.confidence === PiiConfidence.NEEDS_REVIEW
       ).length;
 
+      // Le scan de fond avance table par table : il n'annonce que ce qu'il
+      // trouve, sinon la création d'un job enchaînerait un toast par table.
+      if (scope === 'new' && confirmed === 0 && toReview === 0) {
+        return;
+      }
       if (confirmed === 0 && toReview === 0) {
         toast.success(
           'Aucune donnée personnelle détectée dans le contenu échantillonné.'
@@ -390,43 +444,47 @@ export function SchemaTable(props: Props): ReactElement {
     }
   };
 
-  // Auto-application des suggestions par NOM au chargement (jobs sync). Le garde
+  // Auto-application des suggestions par NOM au chargement. Le garde
   // « passthrough uniquement » rend l'opération idempotente (pas de boucle).
   //
-  // data.length est une dépendance indispensable : à la CRÉATION d'un job, les
-  // tables sont ajoutées après le montage, sans que constraintHandler change. Sans
-  // elle, l'effet ne se rejouait jamais sur les colonnes ajoutées — les colonnes
+  // Réservée à la CRÉATION d'un job (applyPiiOnLoad) : sur un job existant, une
+  // colonne laissée en Passthrough est un choix de l'utilisateur, et le simple
+  // fait d'ouvrir l'écran Source pour changer autre chose la remplaçait par un
+  // générateur, formulaire marqué modifié, sans rien annoncer.
+  //
+  // data.length est une dépendance indispensable : à la création, les tables sont
+  // ajoutées après le montage, sans que constraintHandler change. Sans elle,
+  // l'effet ne se rejouait jamais sur les colonnes ajoutées — les colonnes
   // reconnues par leur nom (LIB_NOM_CLIENT, LIB_VILLE_CLIENT…) restaient en
   // Passthrough avec un badge rouge, alors que celles prouvées par clé de contrôle
   // étaient bien traitées, puisque leur application suit le scan de contenu.
   useEffect(() => {
-    if (!sourceConnectionId || data.length === 0) {
+    if (!applyPiiOnLoad || !sourceConnectionId || data.length === 0) {
       return;
     }
     applyNamePiiSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [constraintHandler, sourceConnectionId, data.length]);
+  }, [applyPiiOnLoad, constraintHandler, sourceConnectionId, data.length]);
 
-  // Scan de contenu lancé une fois à l'ouverture, en tâche de fond : sans lui,
-  // l'écran affiche un état partiel (seules les colonnes reconnues par leur nom
-  // sont qualifiées) jusqu'à ce que l'utilisateur pense à cliquer sur le bouton.
-  // Il ne remplace jamais un transformer déjà choisi — cf. la garde
-  // « passthrough uniquement » dans applyContentPiiSuggestions.
-  const autoScanDone = useRef(false);
+  // Scan de contenu en tâche de fond : sans lui, l'écran affiche un état partiel
+  // (seules les colonnes reconnues par leur nom sont qualifiées) jusqu'à ce que
+  // l'utilisateur pense à cliquer sur le bouton. Il ne remplace jamais un
+  // transformer déjà choisi — cf. la garde « passthrough uniquement » dans
+  // applyContentPiiSuggestions — et n'en applique aucun sur un job existant.
+  //
+  // Il reprend à chaque table ajoutée : onScanContent('new') n'analyse que celles
+  // qu'il n'a pas encore vues, et ne fait rien quand il n'en reste aucune.
   useEffect(() => {
-    if (!sourceConnectionId || autoScanDone.current || data.length === 0) {
+    if (!sourceConnectionId || data.length === 0 || isScanningPii) {
       return;
     }
-    // Un seul déclenchement par montage : la ref, et non un state, pour que le
-    // re-render provoqué par l'application des transformers ne le relance pas.
-    autoScanDone.current = true;
-    void onScanContent();
+    void onScanContent('new');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceConnectionId, data.length]);
+  }, [sourceConnectionId, data.length, isScanningPii]);
 
   const piiScanProps = {
     showPiiScan: !!sourceConnectionId,
-    onScanContent,
+    onScanContent: () => onScanContent('all'),
     isScanningPii,
     // Propagé jusqu'aux cellules (via meta) pour l'aperçu des valeurs.
     sourceConnectionId,

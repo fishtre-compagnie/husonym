@@ -721,6 +721,9 @@ export default function Page(props: PageProps): ReactElement {
               data={formMappings}
               jobType="sync"
               sourceConnectionId={connectFormValues.sourceId}
+              // Création : le job n'a encore aucun choix à préserver, les
+              // colonnes détectées comme personnelles partent anonymisées.
+              applyPiiOnLoad
               constraintHandler={schemaConstraintHandler}
               schema={connectionSchemaDataMap?.schemaMap ?? {}}
               isSchemaDataReloading={isSchemaMapValidating}
