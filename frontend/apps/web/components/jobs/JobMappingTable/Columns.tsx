@@ -1,4 +1,5 @@
 import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -7,14 +8,20 @@ import {
 } from '@/util/util';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
-import { SystemTransformerSchema } from '@husonym/sdk';
-import { ColumnDef, createColumnHelper, Row } from '@tanstack/react-table';
+import {
+  PiiConfidence,
+  PiiDetectionMethod,
+  SystemTransformerSchema,
+  TransformerSource,
+} from '@husonym/sdk';
+import { createColumnHelper, Row } from '@tanstack/react-table';
+import ColumnPreviewButton from './ColumnPreviewButton';
+import RgpdCell from './RgpdCell';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
 import EditDocumentKey from '../NosqlTable/EditDocumentKey';
 import { SchemaColumnHeader } from '../SchemaTable/SchemaColumnHeader';
 import TransformerSelect from '../SchemaTable/TransformerSelect';
-import AttributesCell from './AttributesCell';
 import ConstraintsCell from './ConstraintsCell';
 import DataTypeCell from './DataTypeCell';
 import IndeterminateCheckbox from './IndeterminateCheckbox';
@@ -28,6 +35,15 @@ export interface JobMappingRow {
   isNullable: boolean;
   attributes: RowAttribute;
   transformer: JobMappingTransformerForm;
+  // Détection RGPD (heuristique backend, cf. pkg/piidetect)
+  isSensitive: boolean;
+  dataCategory?: string;
+  suggestedTransformerSource: TransformerSource;
+  // Niveau de confiance de la détection : décide de la couleur du badge (vert
+  // confirmé / orange à vérifier) et si le transformer a pu être appliqué seul.
+  piiConfidence?: PiiConfidence;
+  piiDetectionMethod?: PiiDetectionMethod;
+  piiEvidence?: string;
 }
 
 interface RowAttribute {
@@ -50,9 +66,16 @@ export interface NosqlJobMappingRow {
   transformer: JobMappingTransformerForm;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
-  const columnHelper = createColumnHelper<JobMappingRow>();
+// Un transformer anonymise-t-il réellement la valeur ? « Passthrough » (ou aucun
+// choix) recopie la donnée d'origine vers la destination : une colonne
+// personnelle laissée ainsi part en clair.
+function isAnonymizingTransformer(t: JobMappingTransformerForm): boolean {
+  const c = t?.config?.case;
+  return !!c && c !== 'passthroughConfig';
+}
+
+function getJobMappingColumns() {
+  const columnHelper = createColumnHelper<AppTableFeatures, JobMappingRow>();
 
   const checkboxColumn = columnHelper.display({
     id: 'isSelected',
@@ -61,7 +84,8 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
           }}
         />
@@ -84,6 +108,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
   });
 
   const schemaColumn = columnHelper.accessor('schema', {
+    size: 105,
     header({ column }) {
       return <SchemaColumnHeader column={column} title="Schema" />;
     },
@@ -94,6 +119,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
 
   const tableColumn = columnHelper.accessor((row) => row.table, {
     id: 'table',
+    size: 120,
     header({ column }) {
       return <SchemaColumnHeader column={column} title="Table" />;
     },
@@ -103,6 +129,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
   });
 
   const columnColumn = columnHelper.accessor('column', {
+    size: 180,
     header({ column }) {
       return <SchemaColumnHeader column={column} title="Column" />;
     },
@@ -112,6 +139,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
   });
 
   const dataTypeColumn = columnHelper.accessor('dataType', {
+    size: 122,
     header({ column }) {
       return <SchemaColumnHeader column={column} title="Data Type" />;
     },
@@ -124,6 +152,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     (row) => (row.isNullable ? 'Yes' : 'No') as string,
     {
       id: 'isNullable',
+      size: 115,
       header({ column }) {
         return <SchemaColumnHeader column={column} title="Nullable" />;
       },
@@ -141,6 +170,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     (row) => row.constraints.value,
     {
       id: 'constraints',
+      size: 128,
       header({ column }) {
         return <SchemaColumnHeader column={column} title="Constraints" />;
       },
@@ -158,23 +188,6 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     }
   );
 
-  const attributeColumn = columnHelper.accessor((row) => row.attributes.value, {
-    id: 'attributeValues',
-    header({ column }) {
-      return <SchemaColumnHeader column={column} title="Attributes" />;
-    },
-    cell({ row }) {
-      const val = row.original.attributes;
-      return (
-        <AttributesCell
-          generatedType={val.generatedType}
-          identityType={val.identityType}
-          value={val.value}
-        />
-      );
-    },
-  });
-
   const transformerColumn = columnHelper.accessor(
     (row) => {
       if (row.transformer.config.case) {
@@ -185,6 +198,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     },
     {
       id: 'transformer',
+      size: 244,
       header({ column }) {
         return <SchemaColumnHeader column={column} title="Transformer" />;
       },
@@ -206,7 +220,7 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
                   }
                 }
                 buttonText={getTransformerSelectButtonText(transformer)}
-                buttonClassName="w-[140px]"
+                buttonClassName="w-[195px]"
                 value={transformerForm}
                 onSelect={(updatedValue) =>
                   table.options.meta?.jmTable?.onTransformerUpdate(
@@ -234,11 +248,104 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
         );
       },
       filterFn: transformerFilterFn,
-      sortingFn: transformerSortingFn,
+      sortFn: transformerSortingFn,
     }
   );
 
-  return [
+  // accessor et NON display : une colonne `display` n'a pas de valeur dérivée des
+  // données, donc TanStack réutilise sa cellule mémoïsée. Résultat observé : après
+  // un scan de contenu, le transformer se mettait bien à jour (colonne accessor)
+  // alors que le badge RGPD restait figé. La chaîne renvoyée ici change dès que la
+  // détection change, ce qui force le rendu — même raison que le commentaire de la
+  // colonne Transformer ci-dessous.
+  // La valeur commence par un rang pour que le tri soit utile : trier en
+  // décroissant remonte les colonnes « à vérifier », celles qui demandent une
+  // décision. Le reste de la chaîne garantit le rafraîchissement de la cellule.
+  const rgpdColumn = columnHelper.accessor(
+    (row) => {
+      const anonymise = isAnonymizingTransformer(row.transformer);
+      // Rang décroissant = gravité décroissante au tri inverse :
+      //   3 non traité (part en clair) > 2 à vérifier > 1 conforme > 0 rien.
+      const rank =
+        row.isSensitive &&
+        row.piiConfidence !== PiiConfidence.NEEDS_REVIEW &&
+        !anonymise
+          ? 3
+          : row.piiConfidence === PiiConfidence.NEEDS_REVIEW
+            ? 2
+            : row.isSensitive
+              ? 1
+              : 0;
+      // `anonymise` fait partie de la clé : sans lui, changer le transformer ne
+      // rafraîchirait pas le badge (cellule mémoïsée par TanStack).
+      return `${rank}|${anonymise}|${row.piiConfidence ?? 0}|${row.piiDetectionMethod ?? 0}|${row.dataCategory ?? ''}`;
+    },
+    {
+      id: 'rgpd',
+      size: 112,
+      header({ column }) {
+        return <SchemaColumnHeader column={column} title="RGPD" />;
+      },
+      cell({ row, table }) {
+        return (
+          // justify-start : centré, le badge ne tombait pas sous le libellé
+          // « RGPD » de l'en-tête, aligné à gauche comme toutes les colonnes.
+          <div className="flex justify-start">
+            <RgpdCell
+              isSensitive={row.original.isSensitive}
+              dataCategory={row.original.dataCategory}
+              confidence={row.original.piiConfidence}
+              method={row.original.piiDetectionMethod}
+              isAnonymized={isAnonymizingTransformer(row.original.transformer)}
+              hasSuggestion={
+                // Un transformer suggéré ne suffit pas : il doit aussi être
+                // COMPATIBLE avec le type de la colonne. Generate Card Number
+                // n'accepte qu'INT64, donc une carte stockée en texte — le cas
+                // normal, sinon les zéros de tête sautent — n'a rien de
+                // proposable. Dire « non anonymisée » invitait alors à agir sans
+                // qu'aucune action soit possible.
+                row.original.suggestedTransformerSource !==
+                  TransformerSource.UNSPECIFIED &&
+                (
+                  table.options.meta?.jmTable?.getAvailableTransformers(
+                    row.index
+                  ) ?? { system: [], userDefined: [] }
+                ).system.some(
+                  (t) => t.source === row.original.suggestedTransformerSource
+                )
+              }
+            />
+          </div>
+        );
+      },
+    }
+  );
+
+  const previewColumn = columnHelper.display({
+    id: 'preview',
+    size: 44,
+    header() {
+      return <span className="sr-only">Aperçu des données</span>;
+    },
+    cell({ row, table }) {
+      const connectionId = table.options.meta?.jmTable?.sourceConnectionId;
+      // Job generate : aucune donnée source à lire, le bouton n'aurait rien à montrer.
+      if (!connectionId) {
+        return null;
+      }
+      return (
+        <ColumnPreviewButton
+          connectionId={connectionId}
+          schema={row.original.schema}
+          table={row.original.table}
+          column={row.original.column}
+          dataType={row.original.dataType}
+        />
+      );
+    },
+  });
+
+  return columnHelper.columns([
     checkboxColumn,
     schemaColumn,
     tableColumn,
@@ -246,14 +353,15 @@ function getJobMappingColumns(): ColumnDef<JobMappingRow, any>[] {
     dataTypeColumn,
     isNullableColumn,
     constraintColumn,
-    attributeColumn,
+    rgpdColumn,
+    previewColumn,
     transformerColumn,
-  ];
+  ]);
 }
 
 function transformerSortingFn(
-  rowA: Row<JobMappingRow>,
-  rowB: Row<JobMappingRow>,
+  rowA: Row<AppTableFeatures, JobMappingRow>,
+  rowB: Row<AppTableFeatures, JobMappingRow>,
   _columnId: string
 ): number {
   return rowA.original.transformer.config.case.localeCompare(
@@ -262,17 +370,19 @@ function transformerSortingFn(
 }
 
 function transformerFilterFn(
-  row: Row<JobMappingRow>,
+  row: Row<AppTableFeatures, JobMappingRow>,
   columnId: string,
   fitlerValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean;
 function transformerFilterFn(
-  row: Row<NosqlJobMappingRow>,
+  row: Row<AppTableFeatures, NosqlJobMappingRow>,
   columnId: string,
   fitlerValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean;
 function transformerFilterFn(
-  row: Row<JobMappingRow | NosqlJobMappingRow>,
+  row:
+    | Row<AppTableFeatures, JobMappingRow>
+    | Row<AppTableFeatures, NosqlJobMappingRow>,
   columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {
@@ -287,9 +397,11 @@ function transformerFilterFn(
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
-  const columnHelper = createColumnHelper<NosqlJobMappingRow>();
+function getNosqlJobMappingColumns() {
+  const columnHelper = createColumnHelper<
+    AppTableFeatures,
+    NosqlJobMappingRow
+  >();
 
   const checkboxColumn = columnHelper.display({
     id: 'isSelected',
@@ -298,7 +410,8 @@ function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
           }}
         />
@@ -456,13 +569,13 @@ function getNosqlJobMappingColumns(): ColumnDef<NosqlJobMappingRow, any>[] {
     },
   });
 
-  return [
+  return columnHelper.columns([
     checkboxColumn,
     collectionColumn,
     columnColumn,
     transformerColumn,
     actionsColumn,
-  ];
+  ]);
 }
 
 export const SQL_COLUMNS = getJobMappingColumns();

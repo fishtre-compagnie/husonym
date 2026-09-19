@@ -1,7 +1,8 @@
 import { cn } from '@/libs/utils';
-import { flexRender, Table } from '@tanstack/react-table';
+import { FlexRender, RowData, Table } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ReactElement, useRef } from 'react';
+import { AppTableFeatures } from '../table/features';
 import {
   StickyHeaderTable,
   TableBody,
@@ -9,13 +10,14 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
+import { columnFlexStyle } from './columnFlexStyle';
 import MemoizedRow from './MemoizedRow';
 
-interface Props<TData> {
+interface Props<TData extends RowData> {
   /**
    * The table instance to render.
    */
-  table: Table<TData>;
+  table: Table<AppTableFeatures, TData>;
   /**
    * This function is used to estimate the height of each row.
    * It should be the height of your row including padding and any other styling.
@@ -38,6 +40,20 @@ interface Props<TData> {
     className?: string;
     disableThWidth?: boolean;
   };
+  /**
+   * Donne à chaque colonne la largeur déclarée par sa `size`, au lieu des 187px
+   * uniformes appliqués par défaut. Utile quand la somme des largeurs doit tenir
+   * dans l'écran sans défilement horizontal. S'applique à l'en-tête ET au corps,
+   * pour qu'ils restent alignés.
+   */
+  useColumnSizes?: boolean;
+  /**
+   * Ids des colonnes qui NE doivent pas s'étirer (icônes, cases à cocher). Toutes
+   * les autres se partagent la largeur disponible proportionnellement à leur
+   * `size`, de sorte que le tableau remplisse son conteneur sans laisser de vide
+   * à droite. N'a d'effet qu'avec `useColumnSizes`.
+   */
+  noGrowColumnIds?: string[];
 }
 
 /**
@@ -49,13 +65,17 @@ interface Props<TData> {
  * It's also very important to set your estimateRowSize function to be the correct height of your row. Otherwise it is a guess and will have to be re-calculated, which hurts performance.
  * Configuring the overscan helps smooth out scrolling, but will increase CPU. For fast systems this is very noticeable and helps with reducing white flashing during quick scrolls.
  */
-export default function FastTable<TData>(props: Props<TData>): ReactElement {
+export default function FastTable<TData extends RowData>(
+  props: Props<TData>
+): ReactElement {
   const {
     table,
     estimateRowSize = () => 53,
     rowOverscan = 50,
     bodyRow,
     headerRow,
+    useColumnSizes,
+    noGrowColumnIds,
   } = props;
 
   const { rows } = table.getRowModel();
@@ -84,7 +104,10 @@ export default function FastTable<TData>(props: Props<TData>): ReactElement {
             <TableRow
               key={headerGroup.id}
               className={cn(
-                'flex flex-row items-center justify-between',
+                'flex flex-row items-center',
+                // Même règle que dans MemoizedRow : sans espace réparti entre les
+                // cellules, l'en-tête tombe exactement au-dessus des valeurs.
+                useColumnSizes ? 'justify-start' : 'justify-between',
                 headerRow?.className
               )}
             >
@@ -92,23 +115,28 @@ export default function FastTable<TData>(props: Props<TData>): ReactElement {
                 return (
                   <TableHead
                     key={header.id}
-                    style={{
-                      minWidth: header.column.getSize(),
-                      width: headerRow?.disableThWidth
-                        ? undefined
-                        : header.column.columnDef.id === 'isSelected'
-                          ? '20px'
-                          : '187px',
-                    }}
+                    style={
+                      useColumnSizes
+                        ? columnFlexStyle(
+                            header.column.getSize(),
+                            header.column.id,
+                            noGrowColumnIds
+                          )
+                        : {
+                            minWidth: header.column.getSize(),
+                            width: headerRow?.disableThWidth
+                              ? undefined
+                              : header.column.columnDef.id === 'isSelected'
+                                ? '20px'
+                                : '187px',
+                          }
+                    }
                     colSpan={header.colSpan}
                     className="flex items-center"
                   >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {header.isPlaceholder ? null : (
+                      <FlexRender header={header} />
+                    )}
                   </TableHead>
                 );
               })}
@@ -129,6 +157,8 @@ export default function FastTable<TData>(props: Props<TData>): ReactElement {
                 selected={row.getIsSelected()} // must be memoized here since row.getIsSelected() changes in place
                 tableRowClassName={bodyRow?.className}
                 disableTdWidth={bodyRow?.disableTdWidth}
+                useColumnSizes={useColumnSizes}
+                noGrowColumnIds={noGrowColumnIds}
               />
             );
           })}

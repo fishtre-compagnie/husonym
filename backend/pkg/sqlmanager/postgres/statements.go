@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/doug-martin/goqu/v9"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
-	"github.com/doug-martin/goqu/v9"
 )
 
 // Finds any schemas referenced in datatypes that don't exist in tables and returns the statements to create them
@@ -660,8 +660,10 @@ func EscapePgColumns(cols []string) []string {
 	return outcols
 }
 
+// EscapePgColumn quotes an identifier: a double quote inside it is doubled, as PostgreSQL
+// reads it. Go's %q would escape it with a backslash, and a backslash with another one.
 func EscapePgColumn(col string) string {
-	return fmt.Sprintf("%q", col)
+	return `"` + strings.ReplaceAll(col, `"`, `""`) + `"`
 }
 
 func BuildPgIdentityColumnResetCurrentSql(

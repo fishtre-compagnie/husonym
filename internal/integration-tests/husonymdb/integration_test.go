@@ -9,8 +9,8 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
-	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -525,7 +525,7 @@ func (s *IntegrationTestSuite) Test_CreateJob() {
 		AccountID: account.ID,
 		Status:    1,
 		ConnectionOptions: &pg_models.JobSourceOptions{
-			PostgresOptions: &pg_models.PostgresSourceOptions{HaltOnNewColumnAddition: true},
+			PostgresOptions: &pg_models.PostgresSourceOptions{NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}}},
 		},
 		Mappings:           []*pg_models.JobMapping{{Schema: "foo", Table: "bar", Column: "baz"}},
 		CronSchedule:       pgtype.Text{String: "blah", Valid: true},
@@ -556,7 +556,7 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 		AccountID: account.ID,
 		Status:    1,
 		ConnectionOptions: &pg_models.JobSourceOptions{
-			PostgresOptions: &pg_models.PostgresSourceOptions{HaltOnNewColumnAddition: true},
+			PostgresOptions: &pg_models.PostgresSourceOptions{NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}}},
 		},
 		Mappings:           []*pg_models.JobMapping{{Schema: "foo", Table: "bar", Column: "baz"}},
 		CronSchedule:       pgtype.Text{String: "blah", Valid: true},

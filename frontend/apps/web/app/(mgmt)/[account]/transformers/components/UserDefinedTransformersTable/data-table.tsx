@@ -1,19 +1,13 @@
 'use client';
 
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { ColumnDef, RowData, useTable } from '@tanstack/react-table';
 import * as React from 'react';
 
 import { DataTablePagination } from '@/components/table/data-table-pagination';
+import {
+  AppTableFeatures,
+  paginatedTableFeatures,
+} from '@/components/table/features';
 import {
   Table,
   TableBody,
@@ -25,34 +19,29 @@ import {
 import { useLocalStorage } from 'usehooks-ts';
 import { DataTableToolbar } from './data-table-toolbar';
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<AppTableFeatures, TData>[];
   data: TData[];
 }
 
-export function UserDefinedTransformersDataTable<TData, TValue>({
+export function UserDefinedTransformersDataTable<TData extends RowData>({
   columns,
   data,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData>) {
   const [pagination, setPagination] = React.useState<number>(0);
   const [pageSize, setPageSize] = useLocalStorage<number>(
     'user-defined-transformers-table-page-size',
     10
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: paginatedTableFeatures,
     data,
     columns,
     state: {
       pagination: { pageIndex: pagination, pageSize: pageSize },
     },
     enableRowSelection: false,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
   });
   return (
     <div className="space-y-4">
@@ -65,12 +54,9 @@ export function UserDefinedTransformersDataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id} className="pl-2">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -86,10 +72,7 @@ export function UserDefinedTransformersDataTable<TData, TValue>({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}
                 </TableRow>

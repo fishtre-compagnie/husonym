@@ -7,7 +7,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	functions, err := Get(nil)
+	functions, err := Get()
 	require.NoError(t, err)
 	require.NotEmpty(t, functions)
 }

@@ -566,7 +566,6 @@ func Test_convertUserDefinedFunctionConfig(t *testing.T) {
 			Id:          "123",
 			Name:        "stage",
 			Description: "description",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			Source:      mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_EMAIL,
 			Config: &mgmtv1alpha1.TransformerConfig{
 				Config: &mgmtv1alpha1.TransformerConfig_TransformEmailConfig{

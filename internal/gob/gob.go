@@ -4,8 +4,8 @@ import (
 	"encoding/gob"
 	"time"
 
-	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 )
 
 // need to register all the types that are used in the connection data service

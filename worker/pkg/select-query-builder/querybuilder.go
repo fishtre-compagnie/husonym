@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"strings"
 
-	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
-	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
-	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
 	"github.com/doug-martin/goqu/v9/exp"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
 	pg_query "github.com/pganalyze/pg_query_go/v5"
 	"github.com/xwb1989/sqlparser"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // QueryBuilder holds global state for building the queries.
@@ -25,6 +26,22 @@ type QueryBuilder struct {
 	subsetByForeignKeyConstraints bool
 	aliasCounter                  int
 	pageLimit                     uint
+	// configsByTable gives the run config of every table of the job, to read how a
+	// referenced table is itself selected.
+	configsByTable map[string]*runconfigs.RunConfig
+}
+
+// WithRunConfigs tells the builder about every table of the job. Without it, foreign
+// keys to rows left out of the subset are read as they are.
+func (qb *QueryBuilder) WithRunConfigs(configs []*runconfigs.RunConfig) *QueryBuilder {
+	qb.configsByTable = make(map[string]*runconfigs.RunConfig, len(configs))
+	for _, config := range configs {
+		// Every run config of a table shares its where clause and subset paths.
+		if _, ok := qb.configsByTable[config.Table()]; !ok {
+			qb.configsByTable[config.Table()] = config
+		}
+	}
+	return qb
 }
 
 func NewSelectQueryBuilder(
@@ -71,6 +88,20 @@ func (qb *QueryBuilder) BuildQuery(
 		return "", nil, "", false, err
 	}
 
+	// Without order columns the table cannot be paged: it is read in a single pass, so
+	// the query must not stop at the first page.
+	if len(runconfig.OrderByColumns()) == 0 {
+		sql, args, err := query.ToSQL()
+		if err != nil {
+			return "", nil, "", false, fmt.Errorf(
+				"unable to convert structured query to string for %s: %w",
+				runconfig.Id(),
+				err,
+			)
+		}
+		return sql, args, "", notFkSafe, nil
+	}
+
 	sql, args, err := query.Limit(qb.pageLimit).ToSQL()
 	if err != nil {
 		return "", nil, "", false, fmt.Errorf(
@@ -107,9 +138,17 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 	query := dialect.From(rootAliasExpression)
 
 	// Select columns for the root table
+	projections, err := qb.nullableForeignKeyProjections(rootTable, rootAlias)
+	if err != nil {
+		return nil, nil, false, err
+	}
 	cols := make([]exp.Expression, len(rootTable.SelectColumns()))
 	for i, col := range rootTable.SelectColumns() {
-		cols[i] = rootAliasExpression.Col(col)
+		if projection, ok := projections[col]; ok {
+			cols[i] = projection
+		} else {
+			cols[i] = rootAliasExpression.Col(col)
+		}
 	}
 	query = query.Select(toAnySlice(cols)...)
 
@@ -131,7 +170,7 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 		}
 	} else if !qb.subsetByForeignKeyConstraints && rootTable.WhereClause() != nil && *rootTable.WhereClause() != "" {
 		// No subset-by-foreign-key constraints, but a where clause was provided
-		qualifiedCondition, err := qb.qualifyWhereCondition(nil, rootAlias, *rootTable.WhereClause())
+		qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, *rootTable.WhereClause())
 		if err != nil {
 			return nil, nil, false, err
 		}
@@ -190,13 +229,32 @@ func (qb *QueryBuilder) addSubsetJoins(
 		rootTable.Table(): rootAlias,
 	}
 
+	// A nullable foreign key on a subset path must not remove the rows holding NULL:
+	// they reference nothing out of the subset. Its join, and every join after it in the
+	// chain, is a LEFT JOIN, and the clause of the root becomes "the key is NULL, or the
+	// root matches". An edge shared by several chains is a LEFT JOIN as soon as one of them
+	// needs it: a chain without nullable key keeps its bare clause, which rejects the
+	// NULL-extended rows just like an INNER JOIN.
+	leftJoins := make(map[string]bool)
+	for _, subset := range subsets {
+		nullableSeen := false
+		for _, step := range subset.JoinSteps {
+			if isNullableForeignKey(step.ForeignKey) {
+				nullableSeen = true
+			}
+			if nullableSeen {
+				leftJoins[step.FromKey+"->"+step.ToKey] = true
+			}
+		}
+	}
+
 	// To avoid adding duplicate joins, track them using a key "fromKey->toKey"
 	addedJoins := make(map[string]bool)
 	for _, subset := range subsets {
 		// If there are no join steps, and there is a subset condition, apply it
 		// This handles case where the root table has a where clause
 		if len(subset.JoinSteps) == 0 && subset.Subset != "" {
-			qualifiedCondition, err := qb.qualifyWhereCondition(nil, rootAlias, subset.Subset)
+			qualifiedCondition, err := qb.qualifyWhereCondition(rootAlias, subset.Subset)
 			if err != nil {
 				return nil, false, err
 			}
@@ -205,11 +263,10 @@ func (qb *QueryBuilder) addSubsetJoins(
 			continue
 		}
 
+		// keyIsNull gathers, along the chain, "this nullable foreign key holds a NULL".
+		var keyIsNull []exp.Expression
 		for idx, step := range subset.JoinSteps {
 			edgeKey := step.FromKey + "->" + step.ToKey
-			if addedJoins[edgeKey] {
-				continue
-			}
 			// Ensure the parent (fromKey) already has an alias.
 			parentAlias, ok := tableAliasMap[step.FromKey]
 			if !ok {
@@ -225,31 +282,139 @@ func (qb *QueryBuilder) addSubsetJoins(
 				childAlias = qb.generateUniqueAlias(prefix, childTable)
 				tableAliasMap[step.ToKey] = childAlias
 			}
-			// Build join conditions based on the foreign key.
-			joinConditions := make([]exp.Expression, len(step.ForeignKey.Columns))
 			for i, col := range step.ForeignKey.Columns {
-				joinConditions[i] = goqu.T(childAlias).
-					Col(step.ForeignKey.ReferenceColumns[i]).
-					Eq(goqu.T(parentAlias).Col(col))
+				if i < len(step.ForeignKey.NotNullable) && !step.ForeignKey.NotNullable[i] {
+					keyIsNull = append(keyIsNull, goqu.T(parentAlias).Col(col).IsNull())
+				}
 			}
-			query = query.InnerJoin(
-				goqu.I(childTable).As(childAlias),
-				goqu.On(joinConditions...),
-			)
-			addedJoins[edgeKey] = true
+
+			if !addedJoins[edgeKey] {
+				// Build join conditions based on the foreign key.
+				joinConditions := make([]exp.Expression, len(step.ForeignKey.Columns))
+				for i, col := range step.ForeignKey.Columns {
+					joinConditions[i] = goqu.T(childAlias).
+						Col(step.ForeignKey.ReferenceColumns[i]).
+						Eq(goqu.T(parentAlias).Col(col))
+				}
+				if leftJoins[edgeKey] {
+					query = query.LeftJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+				} else {
+					query = query.InnerJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+				}
+				addedJoins[edgeKey] = true
+			}
 
 			// If this is the last step in chain and there's a subset condition, apply it
 			if idx == len(subset.JoinSteps)-1 && subset.Subset != "" {
 				isSubset = true
-				qualifiedCondition, err := qb.qualifyWhereCondition(nil, childAlias, subset.Subset)
+				qualifiedCondition, err := qb.qualifyWhereCondition(childAlias, subset.Subset)
 				if err != nil {
 					return nil, false, err
 				}
-				query = query.Where(goqu.L(qualifiedCondition))
+				if len(keyIsNull) == 0 {
+					query = query.Where(goqu.L(qualifiedCondition))
+				} else {
+					query = query.Where(goqu.Or(append(keyIsNull, goqu.L(qualifiedCondition))...))
+				}
 			}
 		}
 	}
 	return query, isSubset, nil
+}
+
+// nullableForeignKeyProjections returns, for the nullable columns of the foreign keys
+// whose parent table is reduced by the subset, an expression reading NULL when the
+// referenced row is not selected:
+//
+//	CASE WHEN col IS NULL OR EXISTS (selection of the parent row) THEN col END
+//
+// A kept row then never references a row left out. Only the value read changes, never
+// the rows kept, so tables stay independent of each other and cycles or self-references
+// need no special care. Mandatory foreign keys cannot be set to NULL: the engine checks
+// them when it writes.
+func (qb *QueryBuilder) nullableForeignKeyProjections(
+	table *runconfigs.RunConfig,
+	rootAlias string,
+) (map[string]exp.Expression, error) {
+	projections := map[string]exp.Expression{}
+	for _, fk := range table.ForeignKeys() {
+		if !isNullableForeignKey(fk) {
+			continue
+		}
+		parent, ok := qb.configsByTable[fk.ReferenceSchema+"."+fk.ReferenceTable]
+		if !ok || !qb.isReduced(parent) {
+			continue
+		}
+		parentSelected, err := qb.parentRowIsSelected(parent, fk, rootAlias)
+		if err != nil {
+			return nil, err
+		}
+		// Under MATCH SIMPLE a key with one NULL column references nothing: its other
+		// columns are left as they are.
+		referencesNothing := []exp.Expression{}
+		for i, col := range fk.Columns {
+			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
+				referencesNothing = append(referencesNothing, goqu.T(rootAlias).Col(col).IsNull())
+			}
+		}
+		keep := goqu.Or(append(referencesNothing, parentSelected)...)
+		for i, col := range fk.Columns {
+			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
+				projections[col] = goqu.Case().When(keep, goqu.T(rootAlias).Col(col)).As(col)
+			}
+		}
+	}
+	return projections, nil
+}
+
+// isReduced reports whether the job copies only part of the table.
+func (qb *QueryBuilder) isReduced(table *runconfigs.RunConfig) bool {
+	if qb.subsetByForeignKeyConstraints {
+		return len(table.SubsetPaths()) > 0
+	}
+	return table.WhereClause() != nil && *table.WhereClause() != ""
+}
+
+// parentRowIsSelected returns EXISTS (the row the foreign key references, selected the
+// way the sync of the parent table selects it). The subquery has aliases of its own: the
+// parent may be the table itself, or one already joined by the outer query.
+func (qb *QueryBuilder) parentRowIsSelected(
+	parent *runconfigs.RunConfig,
+	fk *runconfigs.ForeignKey,
+	rootAlias string,
+) (exp.Expression, error) {
+	alias := qb.generateUniqueAlias("fk_", parent.Table())
+	parentTable := goqu.S(parent.SchemaTable().Schema).Table(parent.SchemaTable().Table).As(alias)
+	selection := qb.getDialect().From(parentTable).Select(goqu.L("1"))
+
+	switch {
+	case qb.subsetByForeignKeyConstraints:
+		var err error
+		if selection, _, err = qb.addSubsetJoins(selection, parent, alias); err != nil {
+			return nil, err
+		}
+	default:
+		condition, err := qb.qualifyWhereCondition(alias, *parent.WhereClause())
+		if err != nil {
+			return nil, err
+		}
+		selection = selection.Where(goqu.L(condition))
+	}
+	for i, col := range fk.Columns {
+		selection = selection.Where(goqu.T(alias).Col(fk.ReferenceColumns[i]).Eq(goqu.T(rootAlias).Col(col)))
+	}
+	return goqu.L("EXISTS ?", selection), nil
+}
+
+// isNullableForeignKey reports whether one column of the key accepts NULL: under MATCH
+// SIMPLE a single NULL is enough for the key to reference nothing.
+func isNullableForeignKey(fk *runconfigs.ForeignKey) bool {
+	for _, notNull := range fk.NotNullable {
+		if !notNull {
+			return true
+		}
+	}
+	return false
 }
 
 // generateUniqueAlias produces a short alias from a prefix and table name.
@@ -264,10 +429,7 @@ func getClippedHash(input string) string {
 	return hex.EncodeToString(hash[:][:8])
 }
 
-func (qb *QueryBuilder) qualifyWhereCondition(
-	schema *string,
-	table, condition string,
-) (string, error) {
+func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, error) {
 	query := qb.getDialect().From(goqu.T(table)).Select(goqu.Star()).Where(goqu.L(condition))
 	sql, _, err := query.ToSQL()
 	if err != nil {
@@ -277,13 +439,13 @@ func (qb *QueryBuilder) qualifyWhereCondition(
 	var updatedSql string
 	switch qb.driver {
 	case sqlmanager_shared.MysqlDriver:
-		sql, err := qualifyMysqlWhereColumnNames(sql, schema, table)
+		sql, err := qualifyMysqlWhereColumnNames(sql, table)
 		if err != nil {
 			return "", err
 		}
 		updatedSql = sql
 	case sqlmanager_shared.PostgresDriver:
-		sql, err := qualifyPostgresWhereColumnNames(sql, schema, table)
+		sql, err := qualifyPostgresWhereColumnNames(sql, table)
 		if err != nil {
 			return "", err
 		}
@@ -303,10 +465,13 @@ func (qb *QueryBuilder) qualifyWhereCondition(
 		return "", fmt.Errorf("unable to qualify where column names")
 	}
 	startIndex := index + len("where")
-	return strings.TrimSpace(updatedSql[startIndex:]), nil
+	// The condition is ANDed with the ones the builder adds (other subset roots, page
+	// cursor). Without parentheses a top-level OR would swallow them: "a OR b AND cursor"
+	// reads the 'a' rows again on every page and lets rows out of the subset through.
+	return "(" + strings.TrimSpace(updatedSql[startIndex:]) + ")", nil
 }
 
-func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (string, error) {
+func qualifyPostgresWhereColumnNames(sql, table string) (string, error) {
 	tree, err := pg_query.Parse(sql)
 	if err != nil {
 		return "", err
@@ -316,7 +481,7 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 		selectStmt := stmt.GetStmt().GetSelectStmt()
 
 		if selectStmt.WhereClause != nil {
-			updatePostgresExpr(schema, table, selectStmt.WhereClause)
+			qualifyPostgresColumns(table, selectStmt.WhereClause)
 		}
 	}
 	updatedSql, err := pg_query.Deparse(tree)
@@ -326,49 +491,81 @@ func qualifyPostgresWhereColumnNames(sql string, schema *string, table string) (
 	return updatedSql, nil
 }
 
-func updatePostgresExpr(schema *string, table string, node *pg_query.Node) {
+// qualifyPostgresColumns qualifies every column of a where clause, wherever it stands.
+//
+// Naming the shapes of expression to look inside — a comparison, an AND, an OR — leaves
+// out every other one: IS NULL, BETWEEN, IN, a function call, a CASE. A column left bare
+// is ambiguous as soon as the table is joined to a child that has the same one, and the
+// run fails on a clause it accepted before the subset. The whole clause is walked instead,
+// which is what the MySQL side does.
+//
+// Subqueries name their own tables and are left alone: only the expression tested against
+// one belongs to the filtered table.
+func qualifyPostgresColumns(table string, node *pg_query.Node) {
+	if node == nil {
+		return
+	}
 	switch expr := node.Node.(type) {
-	case *pg_query.Node_SubLink:
-		updatePostgresExpr(schema, table, node.GetSubLink().GetTestexpr())
-	case *pg_query.Node_BoolExpr:
-		for _, arg := range expr.BoolExpr.GetArgs() {
-			updatePostgresExpr(schema, table, arg)
-		}
-	case *pg_query.Node_AExpr:
-		updatePostgresExpr(schema, table, expr.AExpr.GetLexpr())
-		updatePostgresExpr(schema, table, expr.AExpr.Rexpr)
-	case *pg_query.Node_ColumnDef:
 	case *pg_query.Node_ColumnRef:
-		col := node.GetColumnRef()
-		isQualified := false
-		var colName *string
-		// find col name and check if already has schema + table name
-		for _, f := range col.Fields {
-			val := f.GetString_().GetSval()
-			if schema != nil && val == *schema {
-				continue
-			}
-			if val == table {
-				isQualified = true
-				break
-			}
-			colName = &val
-		}
-		if !isQualified && colName != nil && *colName != "" {
-			fields := []*pg_query.Node{}
-			if schema != nil && *schema != "" {
-				fields = append(fields, pg_query.MakeStrNode(*schema))
-			}
-			fields = append(fields, []*pg_query.Node{
-				pg_query.MakeStrNode(table),
-				pg_query.MakeStrNode(*colName),
-			}...)
-			col.Fields = fields
-		}
+		qualifyPostgresColumnRef(table, expr.ColumnRef)
+	case *pg_query.Node_SubLink:
+		qualifyPostgresColumns(table, expr.SubLink.GetTestexpr())
+	default:
+		eachPostgresChildNode(node.ProtoReflect(), func(child *pg_query.Node) {
+			qualifyPostgresColumns(table, child)
+		})
 	}
 }
 
-func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (string, error) {
+// qualifyPostgresColumnRef names a column by the table it is filtered on, the alias the
+// query gives it.
+func qualifyPostgresColumnRef(table string, col *pg_query.ColumnRef) {
+	var colName string
+	for _, f := range col.GetFields() {
+		val := f.GetString_().GetSval()
+		if val == table {
+			return // already qualified
+		}
+		colName = val
+	}
+	if colName == "" {
+		return // A_Star and the like carry no name to qualify
+	}
+	col.Fields = []*pg_query.Node{pg_query.MakeStrNode(table), pg_query.MakeStrNode(colName)}
+}
+
+// eachPostgresChildNode hands visit every Node the message holds, descending through the
+// messages that are not Nodes themselves. The parse tree has one Go type per kind of
+// expression and no walker of its own; reflection spares us enumerating them.
+func eachPostgresChildNode(m protoreflect.Message, visit func(*pg_query.Node)) {
+	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Kind() != protoreflect.MessageKind && fd.Kind() != protoreflect.GroupKind {
+			return true
+		}
+		if fd.IsList() {
+			list := v.List()
+			for i := range list.Len() {
+				visitPostgresMessage(list.Get(i).Message(), visit)
+			}
+			return true
+		}
+		if fd.IsMap() {
+			return true
+		}
+		visitPostgresMessage(v.Message(), visit)
+		return true
+	})
+}
+
+func visitPostgresMessage(m protoreflect.Message, visit func(*pg_query.Node)) {
+	if node, ok := m.Interface().(*pg_query.Node); ok {
+		visit(node)
+		return
+	}
+	eachPostgresChildNode(m, visit)
+}
+
+func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
 		return "", err
@@ -376,21 +573,19 @@ func qualifyMysqlWhereColumnNames(sql string, schema *string, table string) (str
 
 	switch stmt := stmt.(type) { //nolint:gocritic
 	case *sqlparser.Select:
+		// Every column of the clause belongs to the filtered table, wherever it stands:
+		// left or right of a comparison, under IS NULL, BETWEEN, IN or a function. Once the
+		// table is joined to its children, a bare column that both tables have is
+		// ambiguous. Subqueries name their own tables and are left alone.
 		err = sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-			switch node := node.(type) { //nolint:gocritic
-			case *sqlparser.ComparisonExpr:
-				if col, ok := node.Left.(*sqlparser.ColName); ok {
-					s := ""
-					if schema != nil && *schema != "" {
-						s = *schema
-					}
-					col.Qualifier.Qualifier = sqlparser.NewTableIdent(s)
-					col.Qualifier.Name = sqlparser.NewTableIdent(table)
-				}
+			switch node := node.(type) {
+			case *sqlparser.Subquery:
 				return false, nil
+			case *sqlparser.ColName:
+				node.Qualifier = sqlparser.TableName{Name: sqlparser.NewTableIdent(table)}
 			}
 			return true, nil
-		}, stmt)
+		}, stmt.Where)
 		if err != nil {
 			return "", err
 		}

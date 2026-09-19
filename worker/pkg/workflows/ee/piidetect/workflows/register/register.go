@@ -8,7 +8,7 @@ import (
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
 	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
-	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/v3"
 	tmprl "go.temporal.io/sdk/client"
 )
 

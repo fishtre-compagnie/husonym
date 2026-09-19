@@ -1,9 +1,10 @@
+import { AppTableFeatures } from '@/components/table/features';
 import { ColumnDef } from '@tanstack/react-table';
 import { SampleRecord } from '../types';
 
 export function getAiSampleTableColumns(
   keys: string[]
-): ColumnDef<SampleRecord>[] {
+): ColumnDef<AppTableFeatures, SampleRecord>[] {
   return keys.map((key) => {
     return {
       accessorKey: key,

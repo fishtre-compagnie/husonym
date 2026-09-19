@@ -23,7 +23,4 @@ interface CloneProps {
 }
 
 export type ConnectionFormProps =
-  | CreateProps
-  | EditProps
-  | ViewProps
-  | CloneProps;
+  CreateProps | EditProps | ViewProps | CloneProps;

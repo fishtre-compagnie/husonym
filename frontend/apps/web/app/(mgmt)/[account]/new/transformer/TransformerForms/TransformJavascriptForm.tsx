@@ -19,6 +19,8 @@ import {
 import { CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 import { useTheme } from 'next-themes';
 import { ReactElement, useEffect, useState } from 'react';
+import JavascriptGlobalWrites from './JavascriptGlobalWrites';
+import JavascriptRuleTrial from './JavascriptRuleTrial';
 import { TransformerConfigProps } from './util';
 
 interface Props extends TransformerConfigProps<TransformJavascript> {}
@@ -47,6 +49,7 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
 
   const [isValidatingCode, setIsValidatingCode] = useState<boolean>(false);
   const [isCodeValid, setIsCodeValid] = useState<ValidCode>('null');
+  const [globalWrites, setGlobalWrites] = useState<string[]>([]);
 
   const { account } = useAccount();
   const { mutateAsync: validateUserJsCodeAsync } = useMutation(
@@ -64,6 +67,7 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
         code: value.code,
       });
       setIsValidatingCode(false);
+      setGlobalWrites(res.globalWrites);
       if (res.valid === true) {
         setIsCodeValid('valid');
       } else {
@@ -143,6 +147,8 @@ export default function TransformJavascriptForm(props: Props): ReactElement {
         />
       </div>
       <FormErrorMessage message={errors?.code?.message} />
+      <JavascriptGlobalWrites globalWrites={globalWrites} />
+      <JavascriptRuleTrial code={value.code} kind="transform" />
     </div>
   );
 }

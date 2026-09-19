@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/doug-martin/goqu/v9"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
-	"github.com/doug-martin/goqu/v9"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 

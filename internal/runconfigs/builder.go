@@ -20,6 +20,8 @@ type tableConfigsBuilder struct {
 	foreignKeys          map[string][]*sqlmanager_shared.ForeignConstraint
 	circularDependencies map[string]bool
 	subsetPaths          map[string][]*SubsetPath
+	// transformedParentKeys names, per table, the referenced columns a transformer changes.
+	transformedParentKeys map[string][]string
 }
 
 func newTableConfigsBuilder(
@@ -29,14 +31,16 @@ func newTableConfigsBuilder(
 	uniqueIndexes map[string][][]string,
 	uniqueConstraints map[string][][]string,
 	foreignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
+	transformedParentKeys map[string][]string,
 ) *tableConfigsBuilder {
 	b := &tableConfigsBuilder{
-		columns:           columns,
-		primaryKeys:       primaryKeys,
-		whereClauses:      whereClauses,
-		uniqueIndexes:     uniqueIndexes,
-		uniqueConstraints: uniqueConstraints,
-		foreignKeys:       foreignKeys,
+		columns:               columns,
+		primaryKeys:           primaryKeys,
+		whereClauses:          whereClauses,
+		uniqueIndexes:         uniqueIndexes,
+		uniqueConstraints:     uniqueConstraints,
+		foreignKeys:           foreignKeys,
+		transformedParentKeys: transformedParentKeys,
 	}
 
 	b.sortForeignConstraints()
@@ -64,6 +68,7 @@ func (b *tableConfigsBuilder) Build(table sqlmanager_shared.SchemaTable) []*RunC
 		b.foreignKeys[tableKey],
 		b.circularDependencies[tableKey],
 		b.subsetPaths[tableKey],
+		b.transformedParentKeys,
 	).Build()
 }
 
@@ -254,6 +259,7 @@ type runConfigBuilder struct {
 	foreignKeys                []*sqlmanager_shared.ForeignConstraint
 	isPartOfCircularDependency bool
 	subsetPaths                []*SubsetPath
+	transformedParentKeys      map[string][]string
 }
 
 func newRunConfigBuilder(
@@ -266,6 +272,7 @@ func newRunConfigBuilder(
 	foreignKeys []*sqlmanager_shared.ForeignConstraint,
 	isPartOfCircularDependency bool,
 	subsetPaths []*SubsetPath,
+	transformedParentKeys map[string][]string,
 ) *runConfigBuilder {
 	return &runConfigBuilder{
 		table:                      table,
@@ -277,6 +284,7 @@ func newRunConfigBuilder(
 		foreignKeys:                foreignKeys,
 		isPartOfCircularDependency: isPartOfCircularDependency,
 		subsetPaths:                subsetPaths,
+		transformedParentKeys:      transformedParentKeys,
 	}
 }
 
@@ -300,9 +308,10 @@ func (b *runConfigBuilder) buildInsertConfig() *RunConfig {
 		insertColumns:  b.columns,
 		primaryKeys:    b.primaryKeys,
 		whereClause:    b.whereClause,
-		orderByColumns: b.getOrderByColumns(b.columns),
+		orderByColumns: b.getOrderByColumns(),
 		dependsOn:      b.getDependsOn(),
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
 	return config
 }
@@ -317,7 +326,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		where = b.whereClause
 	}
 
-	orderByColumns := b.getOrderByColumns(b.columns)
+	orderByColumns := b.getOrderByColumns()
 	insertConfig := &RunConfig{
 		id:             fmt.Sprintf("%s.%s", b.table, RunTypeInsert),
 		table:          b.table,
@@ -329,6 +338,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		orderByColumns: orderByColumns,
 		dependsOn:      []*DependsOn{},
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
 
 	// Track which columns still need to be inserted (that aren’t handled by constraints).
@@ -355,7 +365,7 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 			// Mark this column as handled in constraints (so we don’t insert it again later).
 			remainingColumns[col] = false
 
-			if fc.NotNullable[i] {
+			if fc.NotNullable[i] || b.mustFollowParent(fc, i) {
 				insertCols = append(insertCols, col)
 				insertFkCols = append(insertFkCols, fc.ForeignKey.Columns[i])
 			} else {
@@ -365,12 +375,18 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 		}
 
 		// For NOT NULL constraints, we can safely insert them now (but they depend on the referenced table).
+		// A table referencing itself is the exception: it cannot wait for itself, and the rows
+		// referencing each other are written in the same pass anyway. What happens then belongs
+		// to the engine — writing with foreign keys suspended, or failing on the row whose parent
+		// comes later — not to the order of the passes, which has nothing left to arrange.
 		if len(insertCols) > 0 {
 			insertConfig.insertColumns = append(insertConfig.insertColumns, insertCols...)
-			insertConfig.dependsOn = append(insertConfig.dependsOn, &DependsOn{
-				Table:   fc.ForeignKey.Table,
-				Columns: insertFkCols,
-			})
+			if fc.ForeignKey.Table != b.table.String() {
+				insertConfig.dependsOn = append(insertConfig.dependsOn, &DependsOn{
+					Table:   fc.ForeignKey.Table,
+					Columns: insertFkCols,
+				})
+			}
 		}
 
 		// For columns that can be null, we do them after the main insert (Update).
@@ -403,6 +419,23 @@ func (b *runConfigBuilder) buildConstraintHandlingConfigs() []*RunConfig {
 	// Insert config should be at the front, then any update configs follow.
 	configs := append([]*RunConfig{insertConfig}, updateConfigs...)
 	return configs
+}
+
+// mustFollowParent reports whether a nullable foreign key column must be written by the
+// insert pass all the same, and therefore wait for the table it references.
+//
+// A column referencing a key a transformer changes cannot be filled from the source value:
+// it must hold the new value of the parent row, which only exists once that table has been
+// written. Leaving it to an update pass writes it too early for whoever writes everything
+// in one pass, and too early for the redis lookup of the insert pass.
+//
+// A table inside a circular dependency keeps its update pass: it cannot wait for a parent
+// that waits for it.
+func (b *runConfigBuilder) mustFollowParent(fc *sqlmanager_shared.ForeignConstraint, i int) bool {
+	if b.isPartOfCircularDependency || fc.ForeignKey == nil {
+		return false
+	}
+	return slices.Contains(b.transformedParentKeys[fc.ForeignKey.Table], fc.ForeignKey.Columns[i])
 }
 
 func (b *runConfigBuilder) buildUpdateConfig(
@@ -451,12 +484,35 @@ func (b *runConfigBuilder) buildUpdateConfig(
 		orderByColumns: orderByColumns,
 		dependsOn:      dependsOn,
 		subsetPaths:    b.subsetPaths,
+		foreignKeys:    b.getForeignKeys(),
 	}
+}
+
+func (b *runConfigBuilder) getForeignKeys() []*ForeignKey {
+	foreignKeys := make([]*ForeignKey, 0, len(b.foreignKeys))
+	for _, fc := range b.foreignKeys {
+		if fc == nil || fc.ForeignKey == nil {
+			continue
+		}
+		referenceSchema, referenceTable := sqlmanager_shared.SplitTableKey(fc.ForeignKey.Table)
+		foreignKeys = append(foreignKeys, &ForeignKey{
+			Columns:          fc.Columns,
+			NotNullable:      fc.NotNullable,
+			ReferenceSchema:  referenceSchema,
+			ReferenceTable:   referenceTable,
+			ReferenceColumns: fc.ForeignKey.Columns,
+		})
+	}
+	return foreignKeys
 }
 
 func (b *runConfigBuilder) getDependsOn() []*DependsOn {
 	dependsOn := []*DependsOn{}
 	for _, fk := range b.foreignKeys {
+		// A table never waits for itself: see buildConstraintHandlingConfigs.
+		if fk.ForeignKey.Table == b.table.String() {
+			continue
+		}
 		dependsOn = append(dependsOn, &DependsOn{
 			Table:   fk.ForeignKey.Table,
 			Columns: fk.ForeignKey.Columns,
@@ -465,22 +521,35 @@ func (b *runConfigBuilder) getDependsOn() []*DependsOn {
 	return dependsOn
 }
 
-// getOrderByColumns returns order by columns for a table, prioritizing primary keys,
-// then unique constraints, then unique indexes, and finally falling back to sorted select columns.
-func (b *runConfigBuilder) getOrderByColumns(selectColumns []string) []string {
-	if len(b.primaryKeys) > 0 {
-		return b.primaryKeys
+// getOrderByColumns returns the columns a table is paged on: its primary key, else a
+// unique constraint, else a unique index. Callers must only pass unique constraints and
+// indexes whose columns are all NOT NULL: "col > last value" skips NULLs, and a page
+// ending on a NULL loses the rest of the table.
+//
+// A table with none of them has no order columns and is read in a single pass. Paging
+// it on every column, as was done before, cannot work: rows equal on all columns cannot
+// be told apart, so the ones past a page boundary are lost.
+//
+// Only a key whose columns are all read can page a table: the next page resumes after the
+// values the last row read holds. A key the job does not map — the invisible primary key
+// MySQL generates for a table declared without one, a column left out of the mappings —
+// is not read, and paging on it lost the whole table.
+func (b *runConfigBuilder) getOrderByColumns() []string {
+	candidates := append([][]string{b.primaryKeys}, b.uniqueConstraints...)
+	candidates = append(candidates, b.uniqueIndexes...)
+	for _, key := range candidates {
+		if len(key) > 0 && b.readsAll(key) {
+			return key
+		}
 	}
+	return nil
+}
 
-	if len(b.uniqueConstraints) > 0 {
-		return b.uniqueConstraints[0]
+func (b *runConfigBuilder) readsAll(columns []string) bool {
+	for _, column := range columns {
+		if !slices.Contains(b.columns, column) {
+			return false
+		}
 	}
-
-	if len(b.uniqueIndexes) > 0 {
-		return b.uniqueIndexes[0]
-	}
-
-	sc := slices.Clone(selectColumns)
-	slices.Sort(sc)
-	return sc
+	return true
 }

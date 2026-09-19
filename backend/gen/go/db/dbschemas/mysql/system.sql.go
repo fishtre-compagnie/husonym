@@ -175,11 +175,16 @@ SELECT
     ACTION_STATEMENT AS statement,
     EVENT_MANIPULATION AS event_type,
     ACTION_ORIENTATION AS orientation,
-    ACTION_TIMING AS timing
+    ACTION_TIMING AS timing,
+    ACTION_ORDER AS action_order,
+    DEFINER AS definer,
+    SQL_MODE AS sql_mode,
+    COLLATION_CONNECTION AS collation_connection
 FROM
     information_schema.TRIGGERS
 WHERE
     EVENT_OBJECT_SCHEMA = ? AND EVENT_OBJECT_TABLE IN (/*SLICE:tables*/?)
+ORDER BY EVENT_OBJECT_TABLE, EVENT_MANIPULATION, ACTION_TIMING, ACTION_ORDER
 `
 
 type GetCustomTriggersBySchemaAndTablesParams struct {
@@ -188,14 +193,18 @@ type GetCustomTriggersBySchemaAndTablesParams struct {
 }
 
 type GetCustomTriggersBySchemaAndTablesRow struct {
-	TriggerName   string
-	TriggerSchema string
-	SchemaName    string
-	TableName     string
-	Statement     string
-	EventType     string
-	Orientation   string
-	Timing        string
+	TriggerName         string
+	TriggerSchema       string
+	SchemaName          string
+	TableName           string
+	Statement           string
+	EventType           string
+	Orientation         string
+	Timing              string
+	ActionOrder         int64
+	Definer             string
+	SqlMode             string
+	CollationConnection string
 }
 
 // sqlc is broken for mysql so can't do CONCAT(EVENT_OBJECT_SCHEMA, '.', EVENT_OBJECT_TABLE) IN (sqlc.slice('schematables'))
@@ -228,6 +237,10 @@ func (q *Queries) GetCustomTriggersBySchemaAndTables(ctx context.Context, db DBT
 			&i.EventType,
 			&i.Orientation,
 			&i.Timing,
+			&i.ActionOrder,
+			&i.Definer,
+			&i.SqlMode,
+			&i.CollationConnection,
 		); err != nil {
 			return nil, err
 		}

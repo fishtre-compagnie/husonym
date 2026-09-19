@@ -12,8 +12,8 @@ description = "Husonym Python SDK"
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = [
-  "grpcio==1.81.*",
-  "protobuf==7.*",
+  "grpcio==1.84.*",
+  "protobuf>=7.36.2,<8",
 ]
 classifiers = [
   "Programming Language :: Python :: 3",

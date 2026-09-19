@@ -1,0 +1,1 @@
+-- Nothing to undo: the strategies the up migration wrote are what every version reads.

@@ -1,0 +1,3 @@
+# Linter Go (make lint/go, configuration dans .golangci.yaml).
+packages:
+  - name: golangci/golangci-lint@v2.13.2

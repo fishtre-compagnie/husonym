@@ -1,0 +1,455 @@
+{
+  "mysql": {
+    "columns-generated-default": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "columns-generated-passthrough": {
+      "athanor": "ok",
+      "benthos": "run_failed"
+    },
+    "columns-invisible": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "columns-on-update-timestamp": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "destination-column-order": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "destination-extra-not-null-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "destination-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-composite-column-order": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-composite-partially-null": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-cycle-two-tables": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-diamond": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-nullable-on-subset-path": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-parent-outside-job": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-self-reference-not-null": {
+      "benthos": "run_failed"
+    },
+    "fk-self-reference-nullable": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-sentinel-zero-virtual": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-several-to-same-parent": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-source-orphans": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "fk-source-orphans-destination-kept": {
+      "athanor": "ok",
+      "benthos": "failure_expected"
+    },
+    "fk-virtual": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-virtual-only-path": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "identifiers-quoting": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "on-conflict-update-unique-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-binary16-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-case-insensitive-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-composite-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-datetime6-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-decimal-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-duplicate-rows": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-empty-and-single-row": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-exact-multiple": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-null-order-values": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-unsigned-bigint-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "retry-insert-ignore-masks-truncation": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "rights-destination-read-only-account": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "subset-parent-filtered-twice": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "subset-two-roots": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "table-partitioned": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-constant-on-unique-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-generate-personal-data": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-key-of-discarded-row": {
+      "benthos": "gap"
+    },
+    "tr-null-on-not-null-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-null-on-nullable-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-order-column-transformed": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-output-longer-than-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-primary-key-transformed": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-auto-increment-zero": {
+      "athanor": "ok",
+      "benthos": "run_failed"
+    },
+    "types-binary": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-decimal-float": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-enum-set-bit": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-geometry": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-integers": {
+      "athanor": "ok",
+      "benthos": "run_failed"
+    },
+    "types-json": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "types-temporal": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-text": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-zero-dates": {
+      "benthos": "run_failed"
+    },
+    "where-or-paginated": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "where-or-two-roots": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "where-unqualified-under-join": {
+      "athanor": "ok",
+      "benthos": "ok"
+    }
+  },
+  "postgres": {
+    "columns-generated-default": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "columns-generated-passthrough": {
+      "athanor": "ok",
+      "benthos": "run_failed"
+    },
+    "destination-replica-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "destination-trigger-writes-synced-table": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-composite-column-order": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-composite-partially-null": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-cycle-two-tables": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-diamond": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-nullable-on-subset-path": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-parent-key-collation": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-parent-outside-job": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-self-reference-not-null": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-self-reference-nullable": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-sentinel-zero-virtual": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-several-to-same-parent": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-source-orphans": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "fk-source-orphans-destination-kept": {
+      "athanor": "ok",
+      "benthos": "failure_expected"
+    },
+    "fk-virtual": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "fk-virtual-only-path": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "on-conflict-update-unique-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-binary16-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-composite-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-datetime6-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-decimal-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-duplicate-rows": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-empty-and-single-row": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-exact-multiple": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-null-order-values": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "page-unsigned-bigint-key": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "retry-keyless-table-duplicates": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "rights-destination-cannot-suspend-foreign-keys": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "rights-destination-read-only-account": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "subset-parent-filtered-twice": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "subset-two-roots": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-constant-on-unique-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-generate-personal-data": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-key-of-discarded-row": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "tr-null-on-not-null-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-null-on-nullable-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-order-column-transformed": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-output-longer-than-column": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "tr-primary-key-transformed": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-arrays": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-binary": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-enum-domain": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-identity": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-json": {
+      "athanor": "ok",
+      "benthos": "gap"
+    },
+    "types-pg-network": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-numeric": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-temporal": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "types-pg-text": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "where-or-paginated": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "where-or-two-roots": {
+      "athanor": "ok",
+      "benthos": "ok"
+    },
+    "where-unqualified-under-join": {
+      "athanor": "ok",
+      "benthos": "ok"
+    }
+  }
+}

@@ -105,6 +105,8 @@ output:
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -195,13 +197,16 @@ output:
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 	env.RegisterActivity(activity.SyncTable)
 
 	t.Run("valid continuation token", func(t *testing.T) {
-		validToken := continuation_token.
+		validToken, err := continuation_token.
 			NewFromContents(continuation_token.NewContents([]any{"dummy"})).
-			String()
+			Encode()
+		require.NoError(t, err)
 
 		val, err := env.ExecuteActivity(activity.SyncTable, &SyncTableRequest{
 			Id:                "test",
@@ -238,7 +243,7 @@ func Test_Sync_Run_No_BenthosConfig(t *testing.T) {
 
 	benthosStreamManager := benthosstream.NewBenthosStreamManager()
 	temporalclient := tmprl_mocks.NewClient(t)
-	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil)
+	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil, nil, AthanorConfig{})
 
 	env.RegisterActivity(activity.SyncTable)
 
@@ -327,6 +332,8 @@ metrics:
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -420,6 +427,8 @@ func Test_Sync_Run_Processor_Error(t *testing.T) {
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -507,6 +516,8 @@ output:
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -616,6 +627,8 @@ output:
 		temporalclient,
 		nil,
 		nil,
+		nil,
+		AthanorConfig{},
 	)
 
 	env.RegisterActivity(activity.SyncTable)

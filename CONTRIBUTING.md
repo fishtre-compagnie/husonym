@@ -14,7 +14,13 @@ Docusaurus documentation site.
 - Go (see the version in [`go.mod`](./go.mod))
 - Node.js LTS and npm
 - Optional: [aqua](https://aquaproj.github.io/) to install the pinned dev tools
-  listed in [`aqua.yaml`](./aqua.yaml)
+  declared in [`aqua/`](./aqua), one file per tool in `aqua/imports/`. The Infisical CLI
+  comes from a local registry that aqua refuses until you allow it, once per machine:
+
+  ```sh
+  aqua policy allow aqua/aqua-policy.yaml
+  aqua i
+  ```
 
 A [devcontainer](./.devcontainer/devcontainer.json) is available if you prefer a
 preconfigured environment.

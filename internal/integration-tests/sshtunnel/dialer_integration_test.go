@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v7"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mssqltunconnector"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mysqltunconnector"
@@ -17,7 +18,6 @@ import (
 	tcmysql "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/mysql"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	testcontainers_sqlserver "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/sqlserver"
-	"github.com/cenkalti/backoff/v5"
 	gssh "github.com/gliderlabs/ssh"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"

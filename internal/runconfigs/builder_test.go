@@ -32,6 +32,7 @@ func TestNewTableConfigsBuilder(t *testing.T) {
 		uniqueIndexes,
 		uniqueConstraints,
 		foreignKeys,
+		nil,
 	)
 
 	assert.NotNil(t, builder)
@@ -81,47 +82,67 @@ func TestBuildDependencyGraph(t *testing.T) {
 
 func TestGetOrderByColumns_WithPrimaryKeys(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:     []string{"id", "name"},
 		primaryKeys: []string{"id"},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"id"}, orderByColumns)
 }
 
 func TestGetOrderByColumns_WithUniqueConstraints(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"email", "name"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{{"email"}, {"name"}},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"email"}, orderByColumns)
 }
 
 func TestGetOrderByColumns_WithUniqueIndexes(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"email", "name"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{},
 		uniqueIndexes:     [][]string{{"name"}, {"email"}},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	orderByColumns := builder.getOrderByColumns()
 
 	assert.Equal(t, []string{"name"}, orderByColumns)
 }
 
-func TestGetOrderByColumns_FallbackToSortedColumns(t *testing.T) {
+// A table without any key is not paged: ordering it on every column loses the rows that
+// are equal on all of them once they sit across a page boundary.
+func TestGetOrderByColumns_NoneWithoutKey(t *testing.T) {
 	builder := &runConfigBuilder{
+		columns:           []string{"id", "name", "email"},
 		primaryKeys:       []string{},
 		uniqueConstraints: [][]string{},
 		uniqueIndexes:     [][]string{},
 	}
 
-	orderByColumns := builder.getOrderByColumns([]string{"id", "name", "email"})
+	assert.Empty(t, builder.getOrderByColumns())
+}
 
-	assert.Equal(t, []string{"email", "id", "name"}, orderByColumns)
+// A key the job does not read cannot page the table: the next page resumes after values
+// no row read holds. The first key read in full pages it, and without one the table is read
+// in a single pass.
+func TestGetOrderByColumns_OnlyKeysRead(t *testing.T) {
+	builder := &runConfigBuilder{
+		columns:           []string{"code", "libelle"},
+		primaryKeys:       []string{"my_row_id"},
+		uniqueConstraints: [][]string{{"code", "depot"}},
+		uniqueIndexes:     [][]string{{"code"}},
+	}
+	assert.Equal(t, []string{"code"}, builder.getOrderByColumns())
+
+	builder.uniqueIndexes = nil
+	assert.Empty(t, builder.getOrderByColumns())
 }
 
 func TestBuildInsertConfig(t *testing.T) {
@@ -173,6 +194,7 @@ func TestBuild_TableConfigsBuilder(t *testing.T) {
 		uniqueIndexes,
 		uniqueConstraints,
 		foreignKeys,
+		nil,
 	)
 
 	configs := builder.Build(sqlmanager_shared.SchemaTable{Schema: "public", Table: "users"})

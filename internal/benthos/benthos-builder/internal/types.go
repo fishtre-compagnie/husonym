@@ -10,6 +10,7 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 )
@@ -110,6 +111,12 @@ type BenthosSourceConfig struct {
 	PrimaryKeys             []string
 	Metriclabels            metrics.MetricLabels
 	ColumnIdentityCursors   map[string]*tablesync_shared.IdentityCursor
+	// ForeignKeys are the foreign keys of the table, for the engine-neutral plan.
+	ForeignKeys []*tableplan.ForeignKey
+	// GeneratedColumns are the columns the destination computes itself.
+	GeneratedColumns []string
+	// PublishedKeys are the transformed columns other tables reference.
+	PublishedKeys []*tableplan.PublishedKey
 }
 
 // BenthosDestinationConfig represents a Benthos destination configuration

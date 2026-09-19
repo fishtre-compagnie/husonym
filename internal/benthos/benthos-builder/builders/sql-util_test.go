@@ -543,3 +543,21 @@ func Test_extractMysqlTypeParams(t *testing.T) {
 		})
 	})
 }
+
+func Test_withoutNullableColumns(t *testing.T) {
+	columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+		"public.badge": {
+			"code":   {IsNullable: true},
+			"serial": {IsNullable: false},
+			"site":   {IsNullable: false},
+		},
+	}
+	uniqueKeys := map[string][][]string{
+		"public.badge":   {{"code"}, {"site", "code"}, {"site", "serial"}, {"unknown"}},
+		"public.missing": {{"id"}},
+	}
+
+	require.Equal(t, map[string][][]string{
+		"public.badge": {{"site", "serial"}},
+	}, withoutNullableColumns(uniqueKeys, columnInfo))
+}

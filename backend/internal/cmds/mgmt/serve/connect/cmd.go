@@ -16,15 +16,15 @@ import (
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/otelconnect"
+	"connectrpc.com/validate"
+	"github.com/auth0/go-jwt-middleware/v3/validator"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/connectrpc/validate"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -52,6 +52,7 @@ import (
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
@@ -77,8 +78,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
-	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
@@ -89,7 +90,7 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promconfig "github.com/prometheus/common/config"
 
-	stripeapiclient "github.com/stripe/stripe-go/v81/client"
+	"github.com/stripe/stripe-go/v86"
 )
 
 func NewCmd() *cobra.Command {
@@ -355,10 +356,7 @@ func serve(ctx context.Context) error {
 		}()
 	}
 
-	validateInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return err
-	}
+	validateInterceptor := validate.NewInterceptor()
 	loggerInterceptor := logger_interceptor.NewInterceptor(slogger)
 	loggerAccountIdInterceptor := accountid_interceptor.NewInterceptor()
 	handlerBookendInterceptor := bookend_logging_interceptor.NewInterceptor(
@@ -756,10 +754,24 @@ func serve(ctx context.Context) error {
 		),
 	)
 
+	// The PII content scan (ConnectionDataService) uses an IN-HOUSE Presidio client
+	// (backend/pkg/presidio), independent from the EE-licensed code: the feature
+	// stays free to run in production. It only needs PRESIDIO_ANALYZER_URL to be set.
+	var connectionPiiAnalyzer presidio.Analyzer
+	if endpoint := getPresidioAnalyzeEndpoint(); endpoint != "" {
+		connectionPiiAnalyzer = presidio.NewClient(
+			endpoint,
+			presidio.WithHeaders(getPresidioHttpHeaders()),
+		)
+	}
 	connectionDataService := v1alpha1_connectiondataservice.New(
-		&v1alpha1_connectiondataservice.Config{},
+		&v1alpha1_connectiondataservice.Config{
+			IsPresidioEnabled:       connectionPiiAnalyzer != nil,
+			PresidioDefaultLanguage: getPresidioDefaultLanguage(),
+		},
 		connectionService,
 		connectiondatabuilder,
+		connectionPiiAnalyzer,
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewConnectionDataServiceHandler(
@@ -1250,10 +1262,10 @@ func getDefaultMaxAllowedRecords() *int64 {
 	return &val
 }
 
-func getStripeApiClient() *stripeapiclient.API {
+func getStripeApiClient() *stripe.Client {
 	apiKey := getStripeApiKey()
 	if apiKey != nil {
-		return stripeapiclient.New(*apiKey, nil)
+		return stripe.NewClient(*apiKey)
 	}
 	return nil
 }

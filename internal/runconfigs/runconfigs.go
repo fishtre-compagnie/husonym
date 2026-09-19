@@ -57,6 +57,7 @@ type RunConfig struct {
 	orderByColumns   []string                      // columns to order by
 	splitColumnPaths bool                          // whether to split column paths
 	subsetPaths      []*SubsetPath                 // holds one (or more) shortest paths from this table to any table that has a where clause.
+	foreignKeys      []*ForeignKey                 // every foreign key of the table to a table of the job, virtual ones included
 }
 
 func NewRunConfig(
@@ -135,6 +136,12 @@ func (rc *RunConfig) SubsetPaths() []*SubsetPath {
 	return rc.subsetPaths
 }
 
+// ForeignKeys returns every foreign key of the table to a table of the job, virtual
+// ones included, whether or not the subset follows it.
+func (rc *RunConfig) ForeignKeys() []*ForeignKey {
+	return rc.foreignKeys
+}
+
 func (rc *RunConfig) OrderByColumns() []string {
 	result := make([]string, len(rc.orderByColumns))
 	copy(result, rc.orderByColumns)
@@ -203,6 +210,20 @@ func (rc *RunConfig) String() string {
 	return sb.String()
 }
 
+// RunConfigOption configures how the run configs are built.
+type RunConfigOption func(*runConfigOptions)
+
+type runConfigOptions struct {
+	transformedParentKeys map[string][]string
+}
+
+// WithTransformedParentKeys names, per table, the referenced columns a transformer
+// changes. A foreign key to one of them holds a value only known once that table is
+// written, so it is written with the rest of its row rather than by a later update pass.
+func WithTransformedParentKeys(byTable map[string][]string) RunConfigOption {
+	return func(o *runConfigOptions) { o.transformedParentKeys = byTable }
+}
+
 func BuildRunConfigs(
 	dependencyMap map[string][]*sqlmanager_shared.ForeignConstraint,
 	subsets map[string]string,
@@ -210,7 +231,12 @@ func BuildRunConfigs(
 	tableColumnsMap map[string][]string,
 	uniqueIndexesMap map[string][][]string,
 	uniqueConstraintsMap map[string][][]string,
+	opts ...RunConfigOption,
 ) ([]*RunConfig, error) {
+	options := runConfigOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
 	configs := []*RunConfig{}
 
 	// dedupe table columns
@@ -228,6 +254,7 @@ func BuildRunConfigs(
 		uniqueIndexesMap,
 		uniqueConstraintsMap,
 		filteredFks,
+		options.transformedParentKeys,
 	)
 
 	// build configs for each table

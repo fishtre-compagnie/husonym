@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/auth0/go-jwt-middleware/v3/jwks"
+	"github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
 )
 
 type ClientConfig struct {
@@ -44,7 +44,13 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	provider := jwks.NewCachingProvider(issuerUrl, 5*time.Minute)
+	provider, err := jwks.NewCachingProvider(
+		jwks.WithIssuerURL(issuerUrl),
+		jwks.WithCacheTTL(5*time.Minute),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	expectedIss := cfg.BackendIssuerUrl
 	if cfg.FrontendIssuerUrl != nil {
@@ -52,15 +58,13 @@ func New(
 	}
 
 	jwtValidator, err := validator.New(
-		provider.KeyFunc,
-		cfg.SignatureAlgorithm,
-		expectedIss,
-		cfg.ApiAudiences,
-		validator.WithCustomClaims(
-			func() validator.CustomClaims {
-				return &CustomClaims{}
-			},
-		),
+		validator.WithKeyFunc(provider.KeyFunc),
+		validator.WithAlgorithm(cfg.SignatureAlgorithm),
+		validator.WithIssuer(expectedIss),
+		validator.WithAudiences(cfg.ApiAudiences),
+		validator.WithCustomClaims(func() *CustomClaims {
+			return &CustomClaims{}
+		}),
 		validator.WithAllowedClockSkew(time.Minute),
 	)
 	if err != nil {

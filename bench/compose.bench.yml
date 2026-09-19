@@ -1,0 +1,89 @@
+# Engine test bench: a frozen source and one destination per engine, next to the
+# development stack. Use it on top of compose.dev.yml (see `make bench/up`): the worker
+# then pages every 100 rows, so small tables cross page boundaries.
+#
+# The data is generated and the password guards nothing: tmpfs keeps the servers
+# disposable and fast.
+
+x-bench-mysql: &bench-mysql
+  image: mysql:8.0
+  # The worker keeps the connections of a run open for a minute or more after it ends:
+  # a full pass of the bench, one job per case, goes beyond the 151 connections MySQL
+  # allows by default.
+  command: --max-connections=1000
+  environment:
+    MYSQL_ROOT_PASSWORD: bench
+  tmpfs:
+    - /var/lib/mysql
+  networks:
+    - husonym-network
+  healthcheck:
+    test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-pbench']
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
+x-bench-postgres: &bench-postgres
+  image: postgres:16
+  # One database holds every case, as a schema each, so a pass opens far fewer connections
+  # than on MySQL — but the worker still keeps those of a run open after it ends.
+  command: -c max_connections=1000
+  environment:
+    POSTGRES_PASSWORD: bench
+    POSTGRES_DB: bench
+  tmpfs:
+    - /var/lib/postgresql/data
+  networks:
+    - husonym-network
+  healthcheck:
+    test: ['CMD-SHELL', 'pg_isready -U postgres -d bench']
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
+services:
+  worker:
+    environment:
+      - MAX_TABLE_SYNC_PAGE_LIMIT=${BENCH_PAGE_LIMIT:-100}
+
+  bench-source:
+    <<: *bench-mysql
+    container_name: husonym-bench-source
+    ports:
+      - 127.0.0.1:3309:3306
+
+  # The destinations may fold table names to lower case (`make bench/up-lower-case`), as
+  # some servers do (Azure Database for MySQL, Windows): the source keeps the case of its
+  # names, the destination answers with others. It is set when a server is initialized,
+  # which tmpfs does again at every recreation.
+  bench-dest-benthos:
+    <<: *bench-mysql
+    command: --max-connections=1000 --lower-case-table-names=${BENCH_DEST_LOWER_CASE_TABLE_NAMES:-0}
+    container_name: husonym-bench-dest-benthos
+    ports:
+      - 127.0.0.1:3310:3306
+
+  bench-dest-athanor:
+    <<: *bench-mysql
+    command: --max-connections=1000 --lower-case-table-names=${BENCH_DEST_LOWER_CASE_TABLE_NAMES:-0}
+    container_name: husonym-bench-dest-athanor
+    ports:
+      - 127.0.0.1:3311:3306
+
+  bench-pg-source:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-source
+    ports:
+      - 127.0.0.1:3312:5432
+
+  bench-pg-dest-benthos:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-dest-benthos
+    ports:
+      - 127.0.0.1:3313:5432
+
+  bench-pg-dest-athanor:
+    <<: *bench-postgres
+    container_name: husonym-bench-pg-dest-athanor
+    ports:
+      - 127.0.0.1:3314:5432

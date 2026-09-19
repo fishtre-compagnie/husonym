@@ -213,8 +213,8 @@ components:
          {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
          seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
          are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-         is required. A proto3 JSON serializer should always use UTC (as indicated by
-         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         is required. A ProtoJSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a ProtoJSON parser should be
          able to accept both UTC and other timezones (as indicated by an offset).
 
          For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
@@ -868,6 +868,39 @@ components:
           description: Whether or not the transformer name is available.
       title: IsTransformerNameAvailableResponse
       additionalProperties: false
+    mgmt.v1alpha1.JavascriptRule:
+      type: object
+      properties:
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column the rule writes. A transform rule receives its value.
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerConfig'
+          title: transformer
+          description: A TransformJavascript or GenerateJavascript transformer.
+      title: JavascriptRule
+      required:
+        - transformer
+      additionalProperties: false
+    mgmt.v1alpha1.JavascriptRuleFailure:
+      type: object
+      properties:
+        row:
+          type: integer
+          title: row
+          description: The row, by its index in the request.
+        column:
+          type: string
+          title: column
+          description: The column whose rule failed, when the failure comes from one.
+        message:
+          type: string
+          title: message
+      title: JavascriptRuleFailure
+      additionalProperties: false
     mgmt.v1alpha1.Null:
       type: object
       title: "Null"
@@ -1084,11 +1117,6 @@ components:
           type: string
           title: description
           description: The description of the transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: '@deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.'
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
@@ -2124,6 +2152,56 @@ components:
       title: TransformerConfig
       additionalProperties: false
       description: The configuration for a transformer. This determines what type of transformation or generation is performed.
+    mgmt.v1alpha1.TryJavascriptRulesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account the rules are tried for.
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptRule'
+          title: rules
+          maxItems: 50
+          minItems: 1
+          description: |-
+            The JavaScript rules of one table, in the order the job maps them: they run together
+             on each row, and share their state for the row, the way a job runs them.
+        rows:
+          type: array
+          items:
+            type: string
+            maxItems: 20
+            minItems: 1
+          title: rows
+          maxItems: 20
+          minItems: 1
+          description: |-
+            The rows to try the rules on, each a JSON object from column name to value. They are
+             the rows the user types, never rows read from a source.
+      title: TryJavascriptRulesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.TryJavascriptRulesResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: string
+          title: rows
+          description: |-
+            The rows once every rule ran, JSON objects in the order of the request. Empty when a
+             rule failed.
+        failure:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptRuleFailure'
+          title: failure
+          description: The first failure, when a rule failed.
+      title: TryJavascriptRulesResponse
+      additionalProperties: false
     mgmt.v1alpha1.UpdateUserDefinedTransformerRequest:
       type: object
       properties:
@@ -2173,11 +2251,6 @@ components:
           type: string
           title: description
           description: The description of the user defined transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: '@deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.'
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
@@ -2236,6 +2309,15 @@ components:
         valid:
           type: boolean
           title: valid
+        globalWrites:
+          type: array
+          items:
+            type: string
+          title: global_writes
+          description: |-
+            Where the code writes outside its own variables: a variable assigned without a
+             declaration, or a property of neosync, husonym, globalThis or this. That state lives
+             for one row: it is shared with the other columns of the row, and gone at the next one.
       title: ValidateUserJavascriptCodeResponse
       additionalProperties: false
     mgmt.v1alpha1.ValidateUserRegexCodeRequest:
@@ -2639,6 +2721,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.ValidateUserJavascriptCodeResponse'
+  /mgmt.v1alpha1.TransformersService/TryJavascriptRules:
+    post:
+      tags:
+        - mgmt.v1alpha1.TransformersService
+      summary: TryJavascriptRules
+      description: |-
+        Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
+         deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+         have the shape of a run's, never its values.
+      operationId: mgmt.v1alpha1.TransformersService.TryJavascriptRules
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.TryJavascriptRulesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.TryJavascriptRulesResponse'
   /mgmt.v1alpha1.TransformersService/ValidateUserRegexCode:
     post:
       tags:

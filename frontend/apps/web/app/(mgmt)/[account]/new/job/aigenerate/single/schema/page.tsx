@@ -18,6 +18,7 @@ import {
 } from '@/components/jobs/SchemaTable/AiSchemaTable';
 import { getSchemaConstraintHandler } from '@/components/jobs/SchemaTable/schema-constraint-handler';
 import { useAccount } from '@/components/providers/account-provider';
+import { AppTableFeatures } from '@/components/table/features';
 import { PageProps } from '@/components/types';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -252,7 +253,7 @@ export default function Page(props: PageProps): ReactElement {
 
   const [tableData, columns] = useMemo(() => {
     const tdata: AiSchemaTableRecord[] = [];
-    const cols: ColumnDef<SampleRecord>[] = [];
+    const cols: ColumnDef<AppTableFeatures, SampleRecord>[] = [];
     if (formSchema && formTable && connectionSchemaDataMap?.schemaMap) {
       const tableSchema =
         connectionSchemaDataMap.schemaMap[`${formSchema}.${formTable}`];

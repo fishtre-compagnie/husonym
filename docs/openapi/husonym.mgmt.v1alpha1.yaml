@@ -1763,6 +1763,90 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: DetectPiiInConnectionData
+      description: |-
+        Scans sampled column content through Presidio to detect PII (deep scan).
+         Complements the name-based heuristic returned by GetConnectionSchema.
+      operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetColumnSampleValues
+      description: >-
+        Retourne un échantillon des valeurs d'une colonne, pour lever un doute
+        sur
+         une détection RGPD en consultant les données réelles.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/GetJobs:
     post:
       tags:
@@ -3718,6 +3802,48 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.TransformersService/TryJavascriptRules:
+    post:
+      tags:
+        - mgmt.v1alpha1.TransformersService
+      summary: TryJavascriptRules
+      description: >-
+        Try JavaScript rules on a few rows, the way Athanor runs them in a job.
+        The
+         deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
+         have the shape of a run's, never its values.
+      operationId: mgmt.v1alpha1.TransformersService.TryJavascriptRules
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.TryJavascriptRulesRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.TryJavascriptRulesResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.TransformersService/ValidateUserRegexCode:
     post:
       tags:
@@ -4948,8 +5074,8 @@ components:
          {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
          seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
          are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-         is required. A proto3 JSON serializer should always use UTC (as indicated by
-         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         is required. A ProtoJSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a ProtoJSON parser should be
          able to accept both UTC and other timezones (as indicated by an offset).
 
          For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
@@ -9227,12 +9353,94 @@ components:
       title: NullValue
       enum:
         - NULL_VALUE
-      description: >-
-        `NullValue` is a singleton enumeration to represent the null value for
-        the
-         `Value` type union.
+      description: |-
+        Represents a JSON `null`.
 
-         The JSON representation for `NullValue` is JSON `null`.
+         `NullValue` is a sentinel, using an enum with only one value to represent
+         the null value for the `Value` type union.
+
+         A field of type `NullValue` with any value other than `0` is considered
+         invalid. Most ProtoJSON serializers will emit a Value with a `null_value` set
+         as a JSON `null` regardless of the integer value, and so will round trip to
+         a `0` value.
+    mgmt.v1alpha1.PiiConfidence:
+      type: string
+      title: PiiConfidence
+      enum:
+        - PII_CONFIDENCE_UNSPECIFIED
+        - PII_CONFIDENCE_CONFIRMED
+        - PII_CONFIDENCE_NEEDS_REVIEW
+      description: >-
+        Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score
+        : il
+         dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
+    mgmt.v1alpha1.PiiDetectionMethod:
+      type: string
+      title: PiiDetectionMethod
+      enum:
+        - PII_DETECTION_METHOD_UNSPECIFIED
+        - PII_DETECTION_METHOD_COLUMN_NAME
+        - PII_DETECTION_METHOD_CHECKSUM
+        - PII_DETECTION_METHOD_CONTENT
+        - PII_DETECTION_METHOD_FORMAT
+      description: >-
+        Origine d'une détection RGPD. Sert à expliquer la décision à
+        l'utilisateur.
+    mgmt.v1alpha1.TransformerSource:
+      type: string
+      title: TransformerSource
+      enum:
+        - TRANSFORMER_SOURCE_UNSPECIFIED
+        - TRANSFORMER_SOURCE_PASSTHROUGH
+        - TRANSFORMER_SOURCE_GENERATE_DEFAULT
+        - TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_EMAIL
+        - TRANSFORMER_SOURCE_TRANSFORM_EMAIL
+        - TRANSFORMER_SOURCE_GENERATE_BOOL
+        - TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_CITY
+        - TRANSFORMER_SOURCE_GENERATE_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_FIRST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_FLOAT64
+        - TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_FULL_NAME
+        - TRANSFORMER_SOURCE_GENERATE_GENDER
+        - TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_INT64
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_INT64
+        - TRANSFORMER_SOURCE_GENERATE_LAST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_SHA256HASH
+        - TRANSFORMER_SOURCE_GENERATE_SSN
+        - TRANSFORMER_SOURCE_GENERATE_STATE
+        - TRANSFORMER_SOURCE_GENERATE_STREET_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_STRING
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_UNIXTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_USERNAME
+        - TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_UUID
+        - TRANSFORMER_SOURCE_GENERATE_ZIPCODE
+        - TRANSFORMER_SOURCE_TRANSFORM_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_FIRST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_FLOAT64
+        - TRANSFORMER_SOURCE_TRANSFORM_FULL_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64
+        - TRANSFORMER_SOURCE_TRANSFORM_LAST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_NULL
+        - TRANSFORMER_SOURCE_GENERATE_CATEGORICAL
+        - TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE
+        - TRANSFORMER_SOURCE_USER_DEFINED
+        - TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_COUNTRY
+        - TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
+        - TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME
+        - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
+        - TRANSFORMER_SOURCE_TRANSFORM_UUID
+        - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
     google.protobuf.ListValue:
       type: object
       properties:
@@ -9244,10 +9452,7 @@ components:
           description: Repeated field of dynamically typed values.
       title: ListValue
       additionalProperties: false
-      description: |-
-        `ListValue` is a wrapper around a repeated field of values.
-
-         The JSON representation for `ListValue` is JSON array.
+      description: Represents a JSON array.
     google.protobuf.Struct:
       type: object
       properties:
@@ -9262,14 +9467,19 @@ components:
       title: Struct
       additionalProperties: false
       description: |-
-        `Struct` represents a structured data value, consisting of fields
-         which map to dynamically typed values. In some languages, `Struct`
-         might be supported by a native representation. For example, in
-         scripting languages like JS a struct is represented as an
-         object. The details of that representation are described together
-         with the proto support for the language.
+        Represents a JSON object.
 
-         The JSON representation for `Struct` is JSON object.
+         An unordered key-value map, intending to perfectly capture the semantics of a
+         JSON object. This enables parsing any arbitrary JSON payload as a message
+         field in ProtoJSON format.
+
+         This follows RFC 8259 guidelines for interoperable JSON: notably this type
+         cannot represent large Int64 values or `NaN`/`Infinity` numbers,
+         since the JSON format generally does not support those values in its number
+         type.
+
+         If you do not intend to parse arbitrary JSON into your message, a custom
+         typed message should be preferred instead of using this type.
     google.protobuf.Struct.FieldsEntry:
       type: object
       properties:
@@ -9292,12 +9502,12 @@ components:
         - type: object
           additionalProperties: true
       description: |-
-        `Value` represents a dynamically typed value which can be either
+        Represents a JSON value.
+
+         `Value` represents a dynamically typed value which can be either
          null, a number, a string, a boolean, a recursive struct value, or a
          list of values. A producer of value is expected to set one of these
-         variants. Absence of any variant indicates an error.
-
-         The JSON representation for `Value` is JSON value.
+         variants. Absence of any variant is an invalid state.
     mgmt.v1alpha1.AwsDynamoDBStreamConfig:
       type: object
       title: AwsDynamoDBStreamConfig
@@ -9377,6 +9587,88 @@ components:
           minLength: 1
           description: The unique identifier of the job run to get the data stream for.
       title: AwsS3StreamConfig
+      additionalProperties: false
+    mgmt.v1alpha1.ColumnPiiDetection:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+        table:
+          type: string
+          title: table
+        column:
+          type: string
+          title: column
+        entityType:
+          type: string
+          title: entity_type
+          description: >-
+            Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if
+            none.
+        score:
+          type: number
+          title: score
+          format: float
+          description: Average score of the detected entity in [0,1].
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: Recommended transformer for this entity.
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: True if the column is considered personal data (GDPR).
+        matchCount:
+          type: integer
+          title: match_count
+          description: Number of sampled values in which the entity was found.
+        sampledCount:
+          type: integer
+          title: sampled_count
+          description: Total number of non-empty sampled values analyzed.
+        dataCategory:
+          type: string
+          title: data_category
+          description: >-
+            Catégorie sémantique déduite de l'entité (ex: "email", "nir").
+            Alimente le libellé du badge.
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: >-
+            Niveau de confiance. Une détection issue d'une clé de contrôle est
+            CONFIRMED,
+             une détection Presidio est NEEDS_REVIEW.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: Détail lisible de la preuve, pour l'infobulle.
+      title: ColumnPiiDetection
+      additionalProperties: false
+      description: PII detected in a column by analyzing sampled content (Presidio).
+    mgmt.v1alpha1.ColumnSampleValue:
+      type: object
+      properties:
+        value:
+          type: string
+          title: value
+          description: Représentation textuelle de la valeur. Vide si is_null.
+        isNull:
+          type: boolean
+          title: is_null
+          description: >-
+            Distingue un NULL d'une chaîne vide — la différence compte pour
+            juger d'une
+             colonne (« vide » et « absent » ne se traitent pas pareil).
+      title: ColumnSampleValue
       additionalProperties: false
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
@@ -9609,6 +9901,46 @@ components:
             Populated if the column is an identity. The value is the type of the
             identity column it is. For example, postgres is 'd' for generated by
             default, or 'a' for generated always.
+        dataCategory:
+          type: string
+          title: data_category
+          description: >-
+            Nature sémantique détectée pour cette colonne (heuristique nom+type
+            SQL). Ex: "email", "phone_number", "person_full_name". Vide si rien
+            de détecté.
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: >-
+            True si la colonne est considérée comme une donnée à caractère
+            personnel (RGPD).
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: >-
+            Transformer recommandé pour anonymiser cette colonne.
+            TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: >-
+            Niveau de confiance de la détection. Seul CONFIRMED autorise
+            l'application
+             automatique du transformer suggéré.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: Comment la détection a été obtenue.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: >-
+            Détail lisible de la preuve, pour l'infobulle. Ex: "clé NIR valide
+            sur 18/18 valeurs",
+             "format jj/mm/aaaa prouvé (14 valeurs avec jour > 12)", "format ambigu : jj/mm ou mm/jj".
       title: DatabaseColumn
       additionalProperties: false
     mgmt.v1alpha1.DatabaseTable:
@@ -9625,6 +9957,55 @@ components:
           minLength: 1
           description: The table name
       title: DatabaseTable
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to scan.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table to scan.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to scan.
+        columns:
+          type: array
+          items:
+            type: string
+          title: columns
+          description: Columns to analyze. Empty means every column of the table.
+        sampleSize:
+          type: integer
+          title: sample_size
+          description: Number of sampled values per column (default 20).
+        scoreThreshold:
+          type: number
+          title: score_threshold
+          format: float
+          description: Presidio score threshold in [0,1] (default 0.5).
+        language:
+          type: string
+          title: language
+          description: 'Content language (ISO 639-1). Default: server default or "en".'
+      title: DetectPiiInConnectionDataRequest
+      additionalProperties: false
+    mgmt.v1alpha1.DetectPiiInConnectionDataResponse:
+      type: object
+      properties:
+        detections:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiDetection'
+          title: detections
+      title: DetectPiiInConnectionDataResponse
       additionalProperties: false
     mgmt.v1alpha1.DynamoDBSchemaConfig:
       type: object
@@ -9887,6 +10268,49 @@ components:
       title: Table
       additionalProperties: false
       description: A table in a schema
+    mgmt.v1alpha1.GetColumnSampleValuesRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The unique identifier of the connection to read from.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to read.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column whose values are returned.
+        limit:
+          type: integer
+          title: limit
+          description: Number of rows to return (default 20, max 200).
+      title: GetColumnSampleValuesRequest
+      additionalProperties: false
+      description: >-
+        Échantillon des valeurs d'une colonne, pour lever un doute sur une
+        détection
+         RGPD en regardant les données réelles.
+    mgmt.v1alpha1.GetColumnSampleValuesResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+          title: values
+      title: GetColumnSampleValuesResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetConnectionDataStreamRequest:
       type: object
       properties:
@@ -9943,13 +10367,6 @@ components:
     mgmt.v1alpha1.GetConnectionInitStatementsResponse:
       type: object
       properties:
-        tableInitStatements:
-          type: object
-          title: table_init_statements
-          additionalProperties:
-            type: string
-            title: value
-          description: '@deprecated - Use schema_init_statements instead'
         tableTruncateStatements:
           type: object
           title: table_truncate_statements
@@ -9968,17 +10385,6 @@ components:
       title: GetConnectionInitStatementsResponse
       additionalProperties: false
       description: Init statement for a specific table
-    mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          type: string
-          title: value
-      title: TableInitStatementsEntry
-      additionalProperties: false
     mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry:
       type: object
       properties:
@@ -10396,6 +10802,18 @@ components:
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
       description: An enumeration of column warning codes
+    mgmt.v1alpha1.ConsistencyScope:
+      type: string
+      title: ConsistencyScope
+      enum:
+        - CONSISTENCY_SCOPE_UNSPECIFIED
+        - CONSISTENCY_SCOPE_RUN
+        - CONSISTENCY_SCOPE_JOB
+        - CONSISTENCY_SCOPE_ACCOUNT
+      description: >-
+        Reach of deterministic consistency: the same input value produces the
+        same output
+         value everywhere inside the scope, and unrelated outputs outside of it.
     mgmt.v1alpha1.DatabaseError.DatabaseErrorCode:
       type: string
       title: DatabaseErrorCode
@@ -10412,6 +10830,18 @@ components:
         - TIMING_UNSPECIFIED
         - TIMING_PRESYNC
         - TIMING_POSTSYNC
+    mgmt.v1alpha1.JobEngine:
+      type: string
+      title: JobEngine
+      enum:
+        - JOB_ENGINE_UNSPECIFIED
+        - JOB_ENGINE_ATHANOR
+        - JOB_ENGINE_BENTHOS
+      description: >-
+        Config that contains various timeouts that are configured in the
+        underlying temporal workflow
+         More options will come in the future as needed
+         Which transformation engine runs a job.
     mgmt.v1alpha1.JobRunStatus:
       type: string
       title: JobRunStatus
@@ -10750,12 +11180,6 @@ components:
           type: string
           title: column
           description: The column of the error
-        errors:
-          type: array
-          items:
-            type: string
-          title: errors
-          description: '@deprecated - Use error_reports instead'
         errorReports:
           type: array
           items:
@@ -10794,12 +11218,6 @@ components:
           type: string
           title: column
           description: The column of the warning
-        warnings:
-          type: array
-          items:
-            type: string
-          title: warnings
-          description: '@deprecated - Use warning_reports instead'
         warningReports:
           type: array
           items:
@@ -11026,12 +11444,6 @@ components:
     mgmt.v1alpha1.DatabaseError:
       type: object
       properties:
-        errors:
-          type: array
-          items:
-            type: string
-          title: errors
-          description: '@deprecated - Use error_reports instead'
         errorReports:
           type: array
           items:
@@ -13033,12 +13445,6 @@ components:
     mgmt.v1alpha1.MssqlSourceConnectionOptions:
       type: object
       properties:
-        haltOnNewColumnAddition:
-          type: boolean
-          title: halt_on_new_column_addition
-          description: |-
-            Whether to halt the job if a new column is added
-             Deprecated: Use new_column_addition_strategy instead
         schemas:
           type: array
           items:
@@ -13325,10 +13731,6 @@ components:
               - required:
                   - update
       properties:
-        doNothing:
-          type: boolean
-          title: do_nothing
-          description: '@deprecated - Use strategy nothing instead'
         nothing:
           allOf:
             - $ref: >-
@@ -13358,12 +13760,6 @@ components:
     mgmt.v1alpha1.MysqlSourceConnectionOptions:
       type: object
       properties:
-        haltOnNewColumnAddition:
-          type: boolean
-          title: halt_on_new_column_addition
-          description: |-
-            Whether to halt the job if a new column is added
-             Deprecated: Use new_column_addition_strategy instead
         schemas:
           type: array
           items:
@@ -13879,10 +14275,6 @@ components:
               - required:
                   - update
       properties:
-        doNothing:
-          type: boolean
-          title: do_nothing
-          description: '@deprecated - Use strategy nothing instead'
         nothing:
           allOf:
             - $ref: >-
@@ -14761,12 +15153,22 @@ components:
           description: |-
             The timeout for a single workflow run.
              Measured in seconds
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobEngine'
+          title: engine
+          description: >-
+            Which transformation engine runs this job. Unspecified = deployment
+            default.
+        consistencyScope:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConsistencyScope'
+          title: consistency_scope
+          description: >-
+            How far deterministic consistency reaches (Athanor only).
+            Unspecified = run.
       title: WorkflowOptions
       additionalProperties: false
-      description: >-
-        Config that contains various timeouts that are configured in the
-        underlying temporal workflow
-         More options will come in the future as needed
     mgmt.v1alpha1.RangedMetricName:
       type: string
       title: RangedMetricName
@@ -15010,61 +15412,6 @@ components:
         - TRANSFORMER_DATA_TYPE_ANY
         - TRANSFORMER_DATA_TYPE_TIME
         - TRANSFORMER_DATA_TYPE_UUID
-    mgmt.v1alpha1.TransformerSource:
-      type: string
-      title: TransformerSource
-      enum:
-        - TRANSFORMER_SOURCE_UNSPECIFIED
-        - TRANSFORMER_SOURCE_PASSTHROUGH
-        - TRANSFORMER_SOURCE_GENERATE_DEFAULT
-        - TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT
-        - TRANSFORMER_SOURCE_GENERATE_EMAIL
-        - TRANSFORMER_SOURCE_TRANSFORM_EMAIL
-        - TRANSFORMER_SOURCE_GENERATE_BOOL
-        - TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_CITY
-        - TRANSFORMER_SOURCE_GENERATE_E164_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_FIRST_NAME
-        - TRANSFORMER_SOURCE_GENERATE_FLOAT64
-        - TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
-        - TRANSFORMER_SOURCE_GENERATE_FULL_NAME
-        - TRANSFORMER_SOURCE_GENERATE_GENDER
-        - TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_INT64
-        - TRANSFORMER_SOURCE_GENERATE_RANDOM_INT64
-        - TRANSFORMER_SOURCE_GENERATE_LAST_NAME
-        - TRANSFORMER_SOURCE_GENERATE_SHA256HASH
-        - TRANSFORMER_SOURCE_GENERATE_SSN
-        - TRANSFORMER_SOURCE_GENERATE_STATE
-        - TRANSFORMER_SOURCE_GENERATE_STREET_ADDRESS
-        - TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_STRING
-        - TRANSFORMER_SOURCE_GENERATE_RANDOM_STRING
-        - TRANSFORMER_SOURCE_GENERATE_UNIXTIMESTAMP
-        - TRANSFORMER_SOURCE_GENERATE_USERNAME
-        - TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP
-        - TRANSFORMER_SOURCE_GENERATE_UUID
-        - TRANSFORMER_SOURCE_GENERATE_ZIPCODE
-        - TRANSFORMER_SOURCE_TRANSFORM_E164_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_FIRST_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_FLOAT64
-        - TRANSFORMER_SOURCE_TRANSFORM_FULL_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_INT64_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_INT64
-        - TRANSFORMER_SOURCE_TRANSFORM_LAST_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_STRING
-        - TRANSFORMER_SOURCE_GENERATE_NULL
-        - TRANSFORMER_SOURCE_GENERATE_CATEGORICAL
-        - TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE
-        - TRANSFORMER_SOURCE_USER_DEFINED
-        - TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT
-        - TRANSFORMER_SOURCE_GENERATE_COUNTRY
-        - TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
-        - TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME
-        - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
-        - TRANSFORMER_SOURCE_TRANSFORM_UUID
-        - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
     mgmt.v1alpha1.CreateUserDefinedTransformerRequest:
       type: object
       properties:
@@ -15242,6 +15589,39 @@ components:
           description: Whether or not the transformer name is available.
       title: IsTransformerNameAvailableResponse
       additionalProperties: false
+    mgmt.v1alpha1.JavascriptRule:
+      type: object
+      properties:
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column the rule writes. A transform rule receives its value.
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerConfig'
+          title: transformer
+          description: A TransformJavascript or GenerateJavascript transformer.
+      title: JavascriptRule
+      required:
+        - transformer
+      additionalProperties: false
+    mgmt.v1alpha1.JavascriptRuleFailure:
+      type: object
+      properties:
+        row:
+          type: integer
+          title: row
+          description: The row, by its index in the request.
+        column:
+          type: string
+          title: column
+          description: The column whose rule failed, when the failure comes from one.
+        message:
+          type: string
+          title: message
+      title: JavascriptRuleFailure
+      additionalProperties: false
     mgmt.v1alpha1.SystemTransformer:
       type: object
       properties:
@@ -15253,13 +15633,6 @@ components:
           type: string
           title: description
           description: The description of the transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: >-
-            @deprecated: data_types is deprecated and will be removed in a
-            future release. Use data_types instead.
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
@@ -15287,6 +15660,59 @@ components:
         A system transformer is a transformer that is built into the Husonym
         platform.
          It can be used directly in job mappings or used in user-defined transformers to snapshot a specific configuration.
+    mgmt.v1alpha1.TryJavascriptRulesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account the rules are tried for.
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptRule'
+          title: rules
+          maxItems: 50
+          minItems: 1
+          description: >-
+            The JavaScript rules of one table, in the order the job maps them:
+            they run together
+             on each row, and share their state for the row, the way a job runs them.
+        rows:
+          type: array
+          items:
+            type: string
+            maxItems: 20
+            minItems: 1
+          title: rows
+          maxItems: 20
+          minItems: 1
+          description: >-
+            The rows to try the rules on, each a JSON object from column name to
+            value. They are
+             the rows the user types, never rows read from a source.
+      title: TryJavascriptRulesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.TryJavascriptRulesResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: string
+          title: rows
+          description: >-
+            The rows once every rule ran, JSON objects in the order of the
+            request. Empty when a
+             rule failed.
+        failure:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptRuleFailure'
+          title: failure
+          description: The first failure, when a rule failed.
+      title: TryJavascriptRulesResponse
+      additionalProperties: false
     mgmt.v1alpha1.UpdateUserDefinedTransformerRequest:
       type: object
       properties:
@@ -15336,13 +15762,6 @@ components:
           type: string
           title: description
           description: The description of the user defined transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: >-
-            @deprecated: data_type is deprecated and will be removed in a future
-            release. Use data_types instead.
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
@@ -15395,6 +15814,16 @@ components:
         valid:
           type: boolean
           title: valid
+        globalWrites:
+          type: array
+          items:
+            type: string
+          title: global_writes
+          description: >-
+            Where the code writes outside its own variables: a variable assigned
+            without a
+             declaration, or a property of neosync, husonym, globalThis or this. That state lives
+             for one row: it is shared with the other columns of the row, and gone at the next one.
       title: ValidateUserJavascriptCodeResponse
       additionalProperties: false
     mgmt.v1alpha1.ValidateUserRegexCodeRequest:

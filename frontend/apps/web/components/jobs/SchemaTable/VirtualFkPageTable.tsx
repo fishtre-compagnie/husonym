@@ -1,20 +1,14 @@
 'use client';
 import React, { ReactElement } from 'react';
 
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFacetedMinMaxValues,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { ColumnDef, RowData, useTable } from '@tanstack/react-table';
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 
+import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
 import {
   StickyHeaderTable,
   TableBody,
@@ -27,25 +21,20 @@ import { VirtualForeignConstraintFormValues } from '@/yup-validations/jobs';
 
 export type Row = VirtualForeignConstraintFormValues;
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<AppTableFeatures, TData>[];
   data: TData[];
 }
 
-export default function VirtualFkPageTable<TData, TValue>({
+export default function VirtualFkPageTable<TData extends RowData>({
   columns,
   data,
-}: DataTableProps<TData, TValue>): ReactElement {
-  const table = useReactTable({
+}: DataTableProps<TData>): ReactElement {
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
     initialState: {},
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues(),
   });
 
   const { rows } = table.getRowModel();
@@ -83,12 +72,9 @@ export default function VirtualFkPageTable<TData, TValue>({
                       colSpan={header.colSpan}
                       className="flex items-center"
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -129,10 +115,7 @@ export default function VirtualFkPageTable<TData, TValue>({
                           minWidth: cell.column.getSize(),
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        <table.FlexRender cell={cell} />
                       </td>
                     );
                   })}

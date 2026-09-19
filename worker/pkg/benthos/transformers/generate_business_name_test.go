@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func Test_GenerateRandomBusinessName_Random_Seed(t *testing.T) {
 
 func Test_GenerateRandomBusinessName_Clamped(t *testing.T) {
 	randomizer := rng.New(1)
-	res, err := generateRandomBusinessName(randomizer, shared.Ptr(int64(10)), maxCharacterLimit)
+	res, err := generateRandomBusinessName(randomizer, gotypeutil.ToPtr(int64(10)), maxCharacterLimit)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, res)

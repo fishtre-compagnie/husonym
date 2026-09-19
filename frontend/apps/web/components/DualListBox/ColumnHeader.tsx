@@ -5,19 +5,20 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
 } from '@radix-ui/react-icons';
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 import { FaSearch } from 'react-icons/fa';
+import { AppTableFeatures } from '../table/features';
 import { Button } from '../ui/button';
 interface DataTableColumnHeaderProps<
-  TData,
+  TData extends RowData,
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>;
+  column: Column<AppTableFeatures, TData, TValue>;
   title: string;
   placeholder?: string;
 }
 
-export default function ColumnHeader<TData, TValue>({
+export default function ColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,

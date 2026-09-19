@@ -33,7 +33,6 @@ func ToUserDefinedTransformerDto(
 		Name:        input.Name,
 		Description: input.Description,
 		Source:      source,
-		DataType:    transformer.DataType, //nolint:staticcheck
 		DataTypes:   transformer.DataTypes,
 		Config:      dto,
 		CreatedAt:   timestamppb.New(input.CreatedAt.Time),

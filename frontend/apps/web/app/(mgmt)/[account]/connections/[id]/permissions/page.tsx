@@ -12,6 +12,7 @@ import {
 } from '@/components/permissions/columns';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonForm from '@/components/skeleton/SkeletonForm';
+import { AppTableFeatures } from '@/components/table/features';
 import { PageProps } from '@/components/types';
 import { Button } from '@/components/ui/button';
 import { getErrorMessage } from '@/util/util';
@@ -154,7 +155,7 @@ interface PermissionsPageContainerProps {
   connectionName: string;
   data: ConnectionRolePrivilege[];
   isDbConnected: boolean;
-  columns: ColumnDef<ConnectionRolePrivilege>[];
+  columns: ColumnDef<AppTableFeatures, ConnectionRolePrivilege>[];
   recheck(): Promise<void>;
   isRechecking: boolean;
 }

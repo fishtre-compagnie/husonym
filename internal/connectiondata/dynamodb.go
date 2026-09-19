@@ -9,10 +9,10 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dynamotypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	aws_manager "github.com/fishtre-compagnie/husonym/internal/aws"
 )
 
 type AwsDynamodbConnectionDataService struct {

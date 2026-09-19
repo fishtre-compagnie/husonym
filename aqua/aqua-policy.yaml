@@ -1,0 +1,13 @@
+# Politique aqua du dépôt. Elle est requise parce qu'aqua refuse par défaut tout registre
+# non standard : un registre local pourrait sinon substituer n'importe quel binaire.
+# À autoriser une fois par machine : `aqua policy allow aqua/aqua-policy.yaml` (aqua redemande
+# si ce fichier change, c'est voulu).
+registries:
+  - type: standard
+    ref: semver(">= 3.0.0")
+  - name: local
+    type: local
+    path: registry.yaml
+packages:
+  - registry: standard
+  - registry: local

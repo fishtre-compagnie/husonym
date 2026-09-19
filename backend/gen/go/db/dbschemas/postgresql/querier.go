@@ -13,6 +13,9 @@ type Querier interface {
 	GetAllTables(ctx context.Context, db DBTX) ([]*GetAllTablesRow, error)
 	GetCompositeTypesByTables(ctx context.Context, db DBTX, schematables []string) ([]*GetCompositeTypesByTablesRow, error)
 	GetCustomFunctionsBySchemaAndTables(ctx context.Context, db DBTX, arg *GetCustomFunctionsBySchemaAndTablesParams) ([]*GetCustomFunctionsBySchemaAndTablesRow, error)
+	// pg_catalog.pg_sequence rather than the pg_sequences view: the view computes
+	// last_value with pg_sequence_last_value() for every sequence of the database,
+	// which fails when another session drops one of them meanwhile.
 	GetCustomSequencesBySchemaAndTables(ctx context.Context, db DBTX, arg *GetCustomSequencesBySchemaAndTablesParams) ([]*GetCustomSequencesBySchemaAndTablesRow, error)
 	GetCustomTriggersBySchemaAndTables(ctx context.Context, db DBTX, schematables []string) ([]*GetCustomTriggersBySchemaAndTablesRow, error)
 	GetDataTypesBySchemaAndTables(ctx context.Context, db DBTX, arg *GetDataTypesBySchemaAndTablesParams) ([]*GetDataTypesBySchemaAndTablesRow, error)

@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+# Outillage hôte du dépôt, un fichier par outil dans imports/.
+checksum:
+  enabled: true
+  require_checksum: true
+registries:
+  - type: standard
+    ref: v4.564.0 # renovate: depName=aquaproj/aqua-registry
+  # Registre local du dépôt : paquets absents du registre standard (Infisical/cli).
+  - name: local
+    type: local
+    path: registry.yaml
+import_dir: imports

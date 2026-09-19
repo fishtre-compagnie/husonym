@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/doug-martin/goqu/v9"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -595,9 +595,10 @@ func (p *PostgresManager) GetSchemaTableTriggers(
 	output := make([]*sqlmanager_shared.TableTrigger, 0, len(rows))
 	for _, row := range rows {
 		trigger := &sqlmanager_shared.TableTrigger{
-			Schema:      row.SchemaName,
-			Table:       row.TableName,
-			TriggerName: row.TriggerName,
+			Schema:       row.SchemaName,
+			Table:        row.TableName,
+			TriggerName:  row.TriggerName,
+			EnabledState: row.EnabledState,
 			Definition: wrapPgIdempotentTrigger(
 				row.SchemaName,
 				row.TableName,

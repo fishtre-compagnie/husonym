@@ -28,11 +28,7 @@ import WelcomeOverview from './WelcomeOverview';
 import WelcomeRouter from './WelcomeRouter';
 
 export type FormStepName =
-  | 'welcome'
-  | 'connect'
-  | 'configure'
-  | 'execute'
-  | 'router';
+  'welcome' | 'connect' | 'configure' | 'execute' | 'router';
 
 export interface FormStep {
   name: FormStepName;

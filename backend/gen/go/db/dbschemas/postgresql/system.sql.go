@@ -294,6 +294,7 @@ WITH relevant_schemas_tables AS (
 columns_with_custom_sequences AS (
   SELECT
 		at.attrelid AS table_oid,
+		s.oid AS sequence_oid,
 		sn.nspname AS sequence_schema_name,
 		s.relname AS sequence_name,
 		st.nspname AS schema_name,
@@ -321,19 +322,19 @@ SELECT
     cws.sequence_name,
    (
         'CREATE SEQUENCE ' || quote_ident(cws.sequence_schema_name) || '.' || quote_ident(cws.sequence_name) ||
-        ' START WITH ' || seqs.start_value ||
-        ' INCREMENT BY ' || seqs.increment_by ||
-        ' MINVALUE ' || seqs.min_value ||
-        ' MAXVALUE ' || seqs.max_value ||
-        ' CACHE ' || seqs.cache_size ||
-        CASE WHEN seqs.cycle THEN ' CYCLE' ELSE ' NO CYCLE' END || ';'
+        ' START WITH ' || seqs.seqstart ||
+        ' INCREMENT BY ' || seqs.seqincrement ||
+        ' MINVALUE ' || seqs.seqmin ||
+        ' MAXVALUE ' || seqs.seqmax ||
+        ' CACHE ' || seqs.seqcache ||
+        CASE WHEN seqs.seqcycle THEN ' CYCLE' ELSE ' NO CYCLE' END || ';'
     )::text AS "definition"
 FROM
     relevant_schemas_tables rst
 JOIN
     columns_with_custom_sequences cws ON rst.table_oid = cws.table_oid
 JOIN
-    pg_catalog.pg_sequences seqs ON seqs.schemaname = cws.sequence_schema_name AND seqs.sequencename = cws.sequence_name
+    pg_catalog.pg_sequence seqs ON seqs.seqrelid = cws.sequence_oid
 ORDER BY
     rst.schema_name,
     rst.table_name,
@@ -354,6 +355,9 @@ type GetCustomSequencesBySchemaAndTablesRow struct {
 	Definition         string
 }
 
+// pg_catalog.pg_sequence rather than the pg_sequences view: the view computes
+// last_value with pg_sequence_last_value() for every sequence of the database,
+// which fails when another session drops one of them meanwhile.
 func (q *Queries) GetCustomSequencesBySchemaAndTables(ctx context.Context, db DBTX, arg *GetCustomSequencesBySchemaAndTablesParams) ([]*GetCustomSequencesBySchemaAndTablesRow, error) {
 	rows, err := db.QueryContext(ctx, getCustomSequencesBySchemaAndTables, arg.Schema, pq.Array(arg.Tables))
 	if err != nil {
@@ -389,7 +393,10 @@ SELECT
     n.nspname AS schema_name,
     c.relname AS table_name,
     t.tgname AS trigger_name,
-    pg_catalog.pg_get_triggerdef(t.oid, true) AS definition
+    pg_catalog.pg_get_triggerdef(t.oid, true) AS definition,
+    -- When the trigger fires: O origin and local sessions, R replica sessions only,
+    -- A always, D disabled.
+    t.tgenabled::TEXT AS enabled_state
 FROM pg_catalog.pg_trigger t
 JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -402,10 +409,11 @@ ORDER BY
 `
 
 type GetCustomTriggersBySchemaAndTablesRow struct {
-	SchemaName  string
-	TableName   string
-	TriggerName string
-	Definition  string
+	SchemaName   string
+	TableName    string
+	TriggerName  string
+	Definition   string
+	EnabledState string
 }
 
 func (q *Queries) GetCustomTriggersBySchemaAndTables(ctx context.Context, db DBTX, schematables []string) ([]*GetCustomTriggersBySchemaAndTablesRow, error) {
@@ -422,6 +430,7 @@ func (q *Queries) GetCustomTriggersBySchemaAndTables(ctx context.Context, db DBT
 			&i.TableName,
 			&i.TriggerName,
 			&i.Definition,
+			&i.EnabledState,
 		); err != nil {
 			return nil, err
 		}
@@ -1261,13 +1270,15 @@ SELECT
     -- Name of the table that holds the foreign key constraint
     referencing_tbl.relname AS referencing_table,
 
-    -- Array of column names in the referencing table involved in the constraint,
-    -- ordered by the column's ordinal position (attnum) to maintain the defined column order.
-    array_agg(referencing_attr.attname ORDER BY referencing_attr.attnum)::TEXT[] AS referencing_columns,
+    -- Array of column names in the referencing table involved in the constraint, in the
+    -- order the constraint declares them (conkey), which pairs each one with the column of
+    -- confkey at the same position. The order of the columns in the table (attnum) is not
+    -- that order: FOREIGN KEY (b, a) REFERENCES p (x, y) pairs b with x.
+    array_agg(referencing_attr.attname ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::TEXT[] AS referencing_columns,
 
     -- Array of boolean values indicating whether each referencing column is NOT NULL,
     -- ordered to correspond with the column names.
-    array_agg(referencing_attr.attnotnull ORDER BY referencing_attr.attnum)::BOOL[] AS not_nullable,
+    array_agg(referencing_attr.attnotnull ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::BOOL[] AS not_nullable,
 
     -- Schema of the referenced table (the table that the foreign key points to)
     referenced_schema.nspname::TEXT AS referenced_schema,
@@ -1299,7 +1310,7 @@ FROM
     -- Lateral join to aggregate the names of the columns in the referenced table
     LEFT JOIN LATERAL (
         SELECT
-            array_agg(referenced_attr.attname) AS foreign_column_names
+            array_agg(referenced_attr.attname ORDER BY array_position(constraint_def.confkey, referenced_attr.attnum)) AS foreign_column_names
         FROM
             pg_catalog.pg_attribute AS referenced_attr
         WHERE
@@ -1378,13 +1389,15 @@ SELECT
     -- Name of the table that holds the foreign key constraint
     referencing_tbl.relname AS referencing_table,
 
-    -- Array of column names in the referencing table involved in the constraint,
-    -- ordered by the column's ordinal position (attnum) to maintain the defined column order.
-    array_agg(referencing_attr.attname ORDER BY referencing_attr.attnum)::TEXT[] AS referencing_columns,
+    -- Array of column names in the referencing table involved in the constraint, in the
+    -- order the constraint declares them (conkey), which pairs each one with the column of
+    -- confkey at the same position. The order of the columns in the table (attnum) is not
+    -- that order: FOREIGN KEY (b, a) REFERENCES p (x, y) pairs b with x.
+    array_agg(referencing_attr.attname ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::TEXT[] AS referencing_columns,
 
     -- Array of boolean values indicating whether each referencing column is NOT NULL,
     -- ordered to correspond with the column names.
-    array_agg(referencing_attr.attnotnull ORDER BY referencing_attr.attnum)::BOOL[] AS not_nullable,
+    array_agg(referencing_attr.attnotnull ORDER BY array_position(constraint_def.conkey, referencing_attr.attnum))::BOOL[] AS not_nullable,
 
     -- Schema of the referenced table (the table that the foreign key points to)
     referenced_schema.nspname::TEXT AS referenced_schema,
@@ -1416,7 +1429,7 @@ FROM
     -- Lateral join to aggregate the names of the columns in the referenced table
     LEFT JOIN LATERAL (
         SELECT
-            array_agg(referenced_attr.attname) AS foreign_column_names
+            array_agg(referenced_attr.attname ORDER BY array_position(constraint_def.confkey, referenced_attr.attnum)) AS foreign_column_names
         FROM
             pg_catalog.pg_attribute AS referenced_attr
         WHERE

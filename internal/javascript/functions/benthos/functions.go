@@ -9,8 +9,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	"github.com/dop251/goja"
+	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 )
 
 const (
@@ -180,7 +180,8 @@ func getV0MsgSetStructured(namespace string) *javascript_functions.FunctionDefin
 					return nil, err
 				}
 
-				r.ValueApi().SetStructured(value)
+				// The round trip of v0_msg_as_structured: an exact BigInt becomes an integer again.
+				r.ValueApi().SetStructured(javascript_functions.FromScript(value))
 				return nil, nil
 			}
 		},
@@ -206,7 +207,11 @@ func getV0MsgAsStructured(namespace string) *javascript_functions.FunctionDefini
 						)
 					}
 				}()
-				return r.ValueApi().AsStructured()
+				structured, err := r.ValueApi().AsStructured()
+				if err != nil {
+					return nil, err
+				}
+				return javascript_functions.ToScript(structured), nil
 			}
 		},
 	)

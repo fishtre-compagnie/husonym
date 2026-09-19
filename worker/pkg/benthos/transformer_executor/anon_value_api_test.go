@@ -9,7 +9,7 @@ import (
 func Test_AnonValueApi_getPropertyPathValue(t *testing.T) {
 	message, err := NewMessage(map[string]any{"a": "b"})
 	require.NoError(t, err)
-	api := newAnonValueApi()
+	api := NewAnonValueApi()
 	api.SetMessage(message)
 	value, err := api.GetPropertyPathValue("a")
 	require.NoError(t, err)

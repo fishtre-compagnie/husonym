@@ -27,15 +27,15 @@ export function MainNav({
         className={cn('flex items-center space-x-4 lg:space-x-6', className)}
         {...props}
       >
-        {/* <Link
-          href="/"
+        <Link
+          href={`/${accountName}`}
           className={cn(
-            'text-sm font-medium transition-colors hover:text-primary',
-            getPathNameHighlight('/')
+            'text-sm font-medium text-muted-foreground transition-colors hover:text-black dark:hover:text-white',
+            pathname === `/${accountName}` && 'text-black dark:text-white'
           )}
         >
-          Overview
-        </Link> */}
+          Home
+        </Link>
         <Link
           href={`/${accountName}/jobs`}
           className={cn(

@@ -2,15 +2,24 @@ package auth_jwt
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
-	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/auth0/go-jwt-middleware/v3/validator"
 )
 
 func Test_hasScope(t *testing.T) {
@@ -118,6 +127,103 @@ func Test_Client_InjectTokenCtx(t *testing.T) {
 			Scopes:      []string{"foo", "bar"},
 		},
 	)
+}
+
+// Runs the real validator against a local issuer: OIDC discovery, JWKS
+// fetch, RS256 signature, issuer, audience, expiry and custom claims.
+func Test_Client_InjectTokenCtx_SignedToken(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	signingKey, err := jwk.Import(privateKey)
+	require.NoError(t, err)
+	require.NoError(t, signingKey.Set(jwk.KeyIDKey, "test-key"))
+	require.NoError(t, signingKey.Set(jwk.AlgorithmKey, jwa.RS256()))
+	publicKey, err := jwk.PublicKeyOf(signingKey)
+	require.NoError(t, err)
+	keySet := jwk.NewSet()
+	require.NoError(t, keySet.AddKey(publicKey))
+
+	mux := http.NewServeMux()
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"issuer":   srv.URL,
+			"jwks_uri": srv.URL + "/jwks",
+		})
+	})
+	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(keySet)
+	})
+
+	client, err := New(&ClientConfig{
+		BackendIssuerUrl:   srv.URL,
+		SignatureAlgorithm: validator.RS256,
+		ApiAudiences:       []string{"husonym-api"},
+	})
+	require.NoError(t, err)
+
+	sign := func(t *testing.T, audience string, expiry time.Time) string {
+		t.Helper()
+		token, err := jwt.NewBuilder().
+			Issuer(srv.URL).
+			Audience([]string{audience}).
+			Subject("user-1").
+			IssuedAt(time.Now()).
+			Expiration(expiry).
+			Claim("scope", "read write").
+			Claim("permissions", []string{"admin"}).
+			Build()
+		require.NoError(t, err)
+		signed, err := jwt.Sign(token, jwt.WithKey(jwa.RS256(), signingKey))
+		require.NoError(t, err)
+		return string(signed)
+	}
+	inject := func(token string) (context.Context, error) {
+		return client.InjectTokenCtx(
+			t.Context(),
+			http.Header{"Authorization": []string{"Bearer " + token}},
+			connect.Spec{},
+		)
+	}
+
+	t.Run("valid token", func(t *testing.T) {
+		ctx, err := inject(sign(t, "husonym-api", time.Now().Add(time.Hour)))
+		require.NoError(t, err)
+		data, err := GetTokenDataFromCtx(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "user-1", data.AuthUserId)
+		require.Equal(t, []string{"read", "write", "admin"}, data.Scopes)
+	})
+
+	t.Run("other audience", func(t *testing.T) {
+		_, err := inject(sign(t, "other-api", time.Now().Add(time.Hour)))
+		require.Error(t, err)
+	})
+
+	t.Run("expired beyond the clock skew", func(t *testing.T) {
+		_, err := inject(sign(t, "husonym-api", time.Now().Add(-2*time.Minute)))
+		require.Error(t, err)
+	})
+
+	t.Run("signed by another key", func(t *testing.T) {
+		otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err)
+		token, err := jwt.NewBuilder().
+			Issuer(srv.URL).
+			Audience([]string{"husonym-api"}).
+			Subject("user-1").
+			Expiration(time.Now().Add(time.Hour)).
+			Build()
+		require.NoError(t, err)
+		otherJwk, err := jwk.Import(otherKey)
+		require.NoError(t, err)
+		require.NoError(t, otherJwk.Set(jwk.KeyIDKey, "test-key"))
+		signed, err := jwt.Sign(token, jwt.WithKey(jwa.RS256(), otherJwk))
+		require.NoError(t, err)
+		_, err = inject(string(signed))
+		require.Error(t, err)
+	})
 }
 
 func Test_Client_InjectTokenCtx_InvalidHeader(t *testing.T) {

@@ -381,3 +381,31 @@ func runTestProgram(t testing.TB, code string, propertyPath string, expectedOutp
 	require.True(t, ok)
 	require.Equal(t, expectedOutput, outputMap[propertyPath])
 }
+
+// The column of a failed run is found on the stack of its error, a thrown error as an
+// interrupted run, even when the script calls functions of its own.
+func Test_FailedColumn(t *testing.T) {
+	columns := []string{"nom", "adresse-1", "ville"}
+	functions := []string{
+		GetTransformJavascriptFunction(`return value;`, "nom", true),
+		GetTransformJavascriptFunction(`function inner() { return missing.field; } return inner();`, "adresse-1", true),
+		GetTransformJavascriptFunction(`return value;`, "ville", true),
+	}
+	setters := []string{
+		BuildOutputSetter("nom", true, true),
+		BuildOutputSetter("adresse-1", true, true),
+		BuildOutputSetter("ville", true, true),
+	}
+	vm := goja.New()
+	require.NoError(t, vm.Set("benthos", map[string]any{"v0_msg_as_structured": func() map[string]any { return map[string]any{} }}))
+	require.NoError(t, vm.Set("husonym", map[string]any{"patchStructuredMessage": func(map[string]any) {}}))
+	_, err := vm.RunString(GetFunction(functions, setters))
+	require.Error(t, err)
+	require.Equal(t, "adresse-1", FailedColumn(err, columns))
+
+	vm.Interrupt("stop")
+	_, err = vm.RunString(GetFunction(functions[:1], setters[:1]))
+	require.Error(t, err)
+	require.Empty(t, FailedColumn(err, columns), "interrupted before any column ran")
+	require.Empty(t, FailedColumn(fmt.Errorf("no stack"), columns))
+}

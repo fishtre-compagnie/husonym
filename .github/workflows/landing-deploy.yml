@@ -28,7 +28,7 @@ jobs:
       HUSONYM_TURNSTILE_SITE_KEY: ${{ vars.HUSONYM_TURNSTILE_SITE_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Fail early with a readable message rather than deep inside wrangler
       - name: Check Cloudflare credentials are set
@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -62,12 +62,11 @@ jobs:
       # Serves public/ from Workers Static Assets on www.husonym.com, with the Worker
       # handling POST /api/contact. See landing/wrangler.jsonc.
       #
-      # wranglerVersion must stay pinned, same reason as the docs deploy: the action
-      # defaults to wrangler 3.90, which predates both assets-only Workers and
-      # run_worker_first. It matches the devDependency in landing/package.json so local
-      # and CI deploys behave the same.
+      # wranglerVersion stays pinned, same reason as the docs deploy: the major follows
+      # the devDependency in landing/package.json, so that local and CI deploys behave
+      # the same. Wrangler 3 predates both assets-only Workers and run_worker_first.
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

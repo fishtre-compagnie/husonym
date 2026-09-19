@@ -12,10 +12,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/doug-martin/goqu/v9"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
-	"github.com/doug-martin/goqu/v9"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -203,9 +203,11 @@ func (m *MysqlManager) GetDatabaseTableSchemasBySchemasAndTables(
 		return nil, err
 	}
 
+	names := newRequestedNames(tables)
 	result := []*sqlmanager_shared.DatabaseSchemaRow{}
 	for _, rows := range dbSchemas {
 		for _, row := range rows {
+			schemaName, tableName := names.table(row.SchemaName, row.TableName)
 			var generatedType *string
 			if row.IdentityGeneration.Valid &&
 				strings.Contains(row.IdentityGeneration.String, "GENERATED") &&
@@ -242,8 +244,8 @@ func (m *MysqlManager) GetDatabaseTableSchemasBySchemasAndTables(
 				identityGeneration = &val
 			}
 			result = append(result, &sqlmanager_shared.DatabaseSchemaRow{
-				TableSchema:            row.SchemaName,
-				TableName:              row.TableName,
+				TableSchema:            schemaName,
+				TableName:              tableName,
 				ColumnName:             row.ColumnName,
 				DataType:               row.DataType,
 				MysqlColumnType:        row.ColumnType,
@@ -793,8 +795,12 @@ func (m *MysqlManager) GetTableConstraintsByTables(
 		return nil, fmt.Errorf("failed to get table constraints by schemas: %w", err)
 	}
 
+	names := newRequestedTables(schema, tables)
 	allConstraints := map[string]*sqlmanager_shared.AllTableConstraints{} // key is schema.table
 	for _, constraint := range constraints {
+		constraint.SchemaName, constraint.TableName = names.table(constraint.SchemaName, constraint.TableName)
+		constraint.ReferencedSchemaName, constraint.ReferencedTableName = names.table(
+			constraint.ReferencedSchemaName, constraint.ReferencedTableName)
 		constraintCols, err := jsonRawToSlice[string](constraint.ConstraintColumns)
 		if err != nil {
 			return nil, err
@@ -1177,11 +1183,9 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 		return []*sqlmanager_shared.TableTrigger{}, nil
 	}
 
-	fullTableNames := make(map[string]struct{}, len(tables))
 	schemaTableMap := map[string][]string{}
 	for _, t := range tables {
 		schemaTableMap[t.Schema] = append(schemaTableMap[t.Schema], t.Table)
-		fullTableNames[t.String()] = struct{}{}
 	}
 
 	querier, err := m.getQuerier(ctx)
@@ -1222,12 +1226,15 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 		return nil, err
 	}
 
+	// The query compares the names the way the server does. A server folding table names
+	// to lower case (lower_case_table_names) finds the tables asked for in any case and
+	// answers with its own: the rows are not compared again here, which would drop them.
+	names := newRequestedNames(tables)
 	output := []*sqlmanager_shared.TableTrigger{}
 	for _, rows := range resMap {
 		for _, row := range rows {
-			if _, ok := fullTableNames[sqlmanager_shared.BuildTable(row.SchemaName, row.TableName)]; !ok {
-				continue
-			}
+			row.SchemaName, row.TableName = names.table(row.SchemaName, row.TableName)
+			row.TriggerSchema = names.schema(row.TriggerSchema)
 			trigger := &sqlmanager_shared.TableTrigger{
 				Schema:        row.SchemaName,
 				Table:         row.TableName,
@@ -1243,6 +1250,16 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 					row.Orientation,
 					row.Statement,
 				),
+				Mysql: &sqlmanager_shared.MysqlTrigger{
+					Timing:              row.Timing,
+					Event:               row.EventType,
+					Orientation:         row.Orientation,
+					Statement:           row.Statement,
+					ActionOrder:         row.ActionOrder,
+					Definer:             row.Definer,
+					SqlMode:             row.SqlMode,
+					CollationConnection: row.CollationConnection,
+				},
 			}
 			trigger.Fingerprint = sqlmanager_shared.BuildTriggerFingerprint(trigger)
 			output = append(output, trigger)
@@ -1348,8 +1365,10 @@ func (m *MysqlManager) getFunctionsBySchemas(
 		return []*sqlmanager_shared.DataType{}, nil
 	}
 
+	names := newRequestedSchemas(schemas)
 	output := make([]*sqlmanager_shared.DataType, 0, len(rows))
 	for _, row := range rows {
+		row.SchemaName = names.schema(row.SchemaName)
 		functionSignatureStr, err := convertUInt8ToString(row.FunctionSignature)
 		if err != nil {
 			return nil, err
@@ -1582,7 +1601,8 @@ CREATE TRIGGER IF NOT EXISTS %s.%s
 %s %s ON %s.%s
 FOR EACH %s
 %s;
-`, triggerSchema, triggerName, timing, event_type, EscapeMysqlColumn(schema), EscapeMysqlColumn(tableName), orientation, actionStmt)
+`, EscapeMysqlColumn(triggerSchema), EscapeMysqlColumn(triggerName), timing, event_type,
+		EscapeMysqlColumn(schema), EscapeMysqlColumn(tableName), orientation, actionStmt)
 	return strings.TrimSpace(stmt)
 }
 
@@ -1671,8 +1691,9 @@ func EscapeMysqlColumns(cols []string) []string {
 	return outcols
 }
 
+// EscapeMysqlColumn quotes an identifier: a backtick inside it is doubled, as MySQL reads it.
 func EscapeMysqlColumn(col string) string {
-	return fmt.Sprintf("`%s`", col)
+	return "`" + strings.ReplaceAll(col, "`", "``") + "`"
 }
 
 func EscapeMysqlDefaultColumn(

@@ -4,20 +4,18 @@ managed:
   disable:
     - file_option: go_package
       module: buf.build/bufbuild/protovalidate
-    - file_option: go_package
-      module: buf.build/googleapis/googleapis
   override:
     - file_option: go_package_prefix
       value: github.com/fishtre-compagnie/husonym/backend/gen/go/protos
 plugins:
-  - remote: buf.build/protocolbuffers/go:v1.36.11
+  - remote: buf.build/protocolbuffers/go:v1.36.12
     out: backend/gen/go/protos
     opt: paths=source_relative
-  - remote: buf.build/connectrpc/go:v1.20.0
+  - remote: buf.build/connectrpc/go:v1.21.0
     out: backend/gen/go/protos
     opt: paths=source_relative
 
-  - remote: buf.build/bufbuild/es:v2.12.0
+  - remote: buf.build/bufbuild/es:v2.15.0
     out: frontend/packages/sdk/src/client
     opt:
       - target=ts
@@ -37,10 +35,10 @@ plugins:
     out: backend/gen/go/protos
     opt: paths=source_relative
 
-  - remote: buf.build/protocolbuffers/python:v35.1 # generates messages and enums
+  - remote: buf.build/protocolbuffers/python:v36.2 # generates messages and enums
     out: python/src/husonym
     include_imports: true
-  - remote: buf.build/protocolbuffers/pyi:v35.1 # generates type hints
+  - remote: buf.build/protocolbuffers/pyi:v36.2 # generates type hints
     out: python/src/husonym
-  - remote: buf.build/grpc/python:v1.81.1 # generates grpc client
+  - remote: buf.build/grpc/python:v1.84.0 # generates grpc client
     out: python/src/husonym

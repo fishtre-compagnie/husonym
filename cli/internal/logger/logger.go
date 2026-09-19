@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	charmlog "github.com/charmbracelet/log"
+	charmlog "charm.land/log/v2"
 )
 
 func NewCharmLogger(level charmlog.Level) *charmlog.Logger {

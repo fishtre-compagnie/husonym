@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v7"
+	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
 )
 
 type Interceptor struct {
@@ -65,17 +66,11 @@ func WithRetryOptions(getRetryOptions func() []backoff.RetryOption) Option {
 func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
 		operation := func() (connect.AnyResponse, error) {
-			response, err := next(ctx, request)
-			if err != nil {
-				return nil, handleErrorForRetry(err)
-			}
-			return response, nil
+			return next(ctx, request)
 		}
-
-		opts := i.config.getRetryOptions()
-		res, err := backoff.Retry(ctx, operation, opts...)
+		res, err := backoffutil.Retry(ctx, operation, i.config.getRetryOptions, isRetryableError)
 		if err != nil {
-			return nil, unwrapPermanentError(err)
+			return nil, err
 		}
 		return res, nil
 	}
@@ -119,31 +114,19 @@ func (r *retryStreamingClientConn) CloseResponse() error         { return r.conn
 // Send implements retry logic for the Send method
 func (r *retryStreamingClientConn) Send(msg any) error {
 	operation := func() (any, error) {
-		err := r.conn.Send(msg)
-		if err != nil {
-			return nil, handleErrorForRetry(err)
-		}
-		return nil, nil
+		return nil, r.conn.Send(msg)
 	}
-
-	opts := r.config.getRetryOptions()
-	_, err := backoff.Retry(r.ctx, operation, opts...)
-	return unwrapPermanentError(err)
+	_, err := backoffutil.Retry(r.ctx, operation, r.config.getRetryOptions, isRetryableError)
+	return err
 }
 
 // Receive implements retry logic for the Receive method
 func (r *retryStreamingClientConn) Receive(msg any) error {
 	operation := func() (any, error) {
-		err := r.conn.Receive(msg)
-		if err != nil {
-			return nil, handleErrorForRetry(err)
-		}
-		return nil, nil
+		return nil, r.conn.Receive(msg)
 	}
-
-	opts := r.config.getRetryOptions()
-	_, err := backoff.Retry(r.ctx, operation, opts...)
-	return unwrapPermanentError(err)
+	_, err := backoffutil.Retry(r.ctx, operation, r.config.getRetryOptions, isRetryableError)
+	return err
 }
 
 func (i *Interceptor) WrapStreamingHandler(
@@ -151,24 +134,11 @@ func (i *Interceptor) WrapStreamingHandler(
 ) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
 		operation := func() (any, error) {
-			err := next(ctx, conn)
-			if err != nil {
-				return nil, handleErrorForRetry(err)
-			}
-			return nil, nil
+			return nil, next(ctx, conn)
 		}
-
-		opts := i.config.getRetryOptions()
-		_, err := backoff.Retry(ctx, operation, opts...)
-		return unwrapPermanentError(err)
-	}
-}
-
-func handleErrorForRetry(err error) error {
-	if isRetryableError(err) {
+		_, err := backoffutil.Retry(ctx, operation, i.config.getRetryOptions, isRetryableError)
 		return err
 	}
-	return backoff.Permanent(err)
 }
 
 func isRetryableError(err error) bool {
@@ -177,18 +147,4 @@ func isRetryableError(err error) bool {
 		return true
 	}
 	return false
-}
-
-// unwrapPermanentError unwraps a PermanentError and returns the underlying error
-// using errors.As would properly find the ConnectError but clients expect the output
-// of a Connect RPC to be a ConnectError, not PermanentError, thus we unwrap it.
-func unwrapPermanentError(err error) error {
-	if err == nil {
-		return nil
-	}
-	permanentErr, ok := err.(*backoff.PermanentError)
-	if !ok {
-		return err
-	}
-	return permanentErr.Unwrap()
 }

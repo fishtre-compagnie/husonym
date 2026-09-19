@@ -1,5 +1,6 @@
 'use client';
 
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,7 +22,7 @@ interface getUserDefinedTransformerColumnsProps {
 
 export function getUserDefinedTransformerColumns(
   props: getUserDefinedTransformerColumnsProps
-): ColumnDef<UserDefinedTransformer>[] {
+): ColumnDef<AppTableFeatures, UserDefinedTransformer>[] {
   const { onTransformerDeleted, accountName } = props;
 
   return [

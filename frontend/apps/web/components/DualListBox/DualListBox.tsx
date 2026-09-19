@@ -9,16 +9,10 @@ import {
   DoubleArrowRightIcon,
   DoubleArrowUpIcon,
 } from '@radix-ui/react-icons';
-import {
-  RowSelectionState,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { RowSelectionState, useTable } from '@tanstack/react-table';
 import { ReactElement, useMemo, useState } from 'react';
 import ListBox from '../ListBox/ListBox';
+import { unpaginatedTableFeatures } from '../table/features';
 import { Mode, Row, getListBoxColumns } from './columns';
 
 export interface Option {
@@ -78,7 +72,8 @@ export default function DualListBox(props: Props): ReactElement {
     [options, selected]
   );
 
-  const leftTable = useReactTable({
+  const leftTable = useTable({
+    features: unpaginatedTableFeatures,
     data: leftData,
     columns: leftCols,
     state: {
@@ -87,13 +82,10 @@ export default function DualListBox(props: Props): ReactElement {
     enableRowSelection: true,
     enableMultiRowSelection: mode === 'many',
     onRowSelectionChange: setLeftSelected,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
   });
 
-  const rightTable = useReactTable({
+  const rightTable = useTable({
+    features: unpaginatedTableFeatures,
     data: rightData,
     columns: rightCols,
     state: {
@@ -102,10 +94,6 @@ export default function DualListBox(props: Props): ReactElement {
     enableRowSelection: true,
     enableMultiRowSelection: mode === 'many',
     onRowSelectionChange: setRightSelected,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
   });
 
   return (

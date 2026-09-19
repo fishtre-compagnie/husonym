@@ -7,6 +7,7 @@ import (
 	"os"
 	"text/template"
 
+	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
 	transformers "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
@@ -179,11 +180,40 @@ declare namespace husonym {
 	declare function {{$spec.Name}}(options: {{$spec.InterfaceName}}): {{$spec.TsReturnTypeStr}};
 
 	{{ end }}
+}
+
+/**
+ * Deterministic functions: the same value always gives the same output, on every row,
+ * table and run of the consistency scope of the job. Only Athanor runs them.
+ */
+declare namespace pseudo {
+	{{ range $i, $kind := .PseudoKinds }}
+  /**
+   * What the native {{$kind}} transformer gives this value. NULL stays NULL.
+   */
+	declare function {{$kind}}(value: any): any;
+	{{ end }}
+
+  /**
+   * The hexadecimal digest of the value in a domain of the rule's own.
+   */
+	declare function hash(value: any, domain: string): string;
+
+  /**
+   * An integer of [min, max] derived from the value in a domain of the rule's own.
+   */
+	declare function int(value: any, domain: string, min: number, max: number): number;
+
+  /**
+   * An element of the list, chosen from the value in a domain of the rule's own.
+   */
+	declare function pick<T>(list: T[], value: any, domain: string): T;
 }`
 
 type TemplateData struct {
 	TransformerSpecs []*tsDeclarationSpec
 	GeneratorSpecs   []*tsDeclarationSpec
+	PseudoKinds      []string
 }
 
 func generateTypescriptDeclaration(specs []*tsDeclarationSpec) (string, error) {
@@ -200,6 +230,7 @@ func generateTypescriptDeclaration(specs []*tsDeclarationSpec) (string, error) {
 	data := TemplateData{
 		TransformerSpecs: transformerSpecs,
 		GeneratorSpecs:   generatorSpecs,
+		PseudoKinds:      pseudo_functions.Kinds,
 	}
 	t := template.Must(template.New("husonymTransformerDocs").Parse(docTemplate))
 	var out bytes.Buffer

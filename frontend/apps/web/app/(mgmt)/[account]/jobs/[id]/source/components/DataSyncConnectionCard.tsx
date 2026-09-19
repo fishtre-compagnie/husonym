@@ -87,8 +87,6 @@ import {
   MssqlSourceConnectionOptionsSchema,
   MysqlSourceConnectionOptions,
   MysqlSourceConnectionOptionsSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
   PostgresSourceConnectionOptions,
   PostgresSourceConnectionOptionsSchema,
   ValidateJobMappingsResponse,
@@ -663,8 +661,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   }
 
   const source = connectionsRecord[sourceConnectionId ?? ''] as
-    | Connection
-    | undefined;
+    Connection | undefined;
 
   const dynamoDBDestinations = getDynamoDbDestinations(
     data?.job?.destinations ?? []
@@ -927,6 +924,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               data={formMappings}
               virtualForeignKeys={formVirtualForeignKeys}
               jobType="sync"
+              sourceConnectionId={sourceConnectionId}
               constraintHandler={schemaConstraintHandler}
               schema={connectionSchemaDataMap?.schemaMap ?? {}}
               isSchemaDataReloading={isSchemaMapValidating}
@@ -1235,22 +1233,6 @@ function getJobSource(
         },
       };
     case 'mysql':
-      if (
-        job.source.options.config.value.haltOnNewColumnAddition &&
-        !job.source.options.config.value.newColumnAdditionStrategy?.strategy
-      ) {
-        job.source.options.config.value.newColumnAdditionStrategy = create(
-          MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-          {
-            strategy: {
-              case: 'haltJob',
-              value: create(
-                MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema
-              ),
-            },
-          }
-        );
-      }
       return {
         ...yupValidationValues,
         sourceId: getConnectionIdFromSource(job.source) || '',

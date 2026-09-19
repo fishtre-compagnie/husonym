@@ -2,19 +2,16 @@
 
 import {
   ColumnDef,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  ColumnVisibilityState,
+  useTable,
 } from '@tanstack/react-table';
 import * as React from 'react';
 
 import { DataTablePagination } from '@/components/table/data-table-pagination';
+import {
+  AppTableFeatures,
+  paginatedTableFeatures,
+} from '@/components/table/features';
 import {
   Table,
   TableBody,
@@ -31,18 +28,14 @@ import {
 import { useLocalStorage } from 'usehooks-ts';
 
 interface DataTableProps {
-  columns: ColumnDef<JobRunEvent>[];
+  columns: ColumnDef<AppTableFeatures, JobRunEvent>[];
   data: JobRunEvent[];
   isError: boolean;
   onViewSelectClicked(schema: string, table: string): void;
 }
 
 export function DataTable({ columns, data, isError }: DataTableProps) {
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({ error: isError, id: false });
-  React.useEffect(() => {
-    setColumnVisibility({ error: isError });
-  }, [isError]);
+  const columnVisibility: ColumnVisibilityState = { error: isError };
 
   const [pagination, setPagination] = React.useState<number>(0);
   const [pageSize, setPageSize] = useLocalStorage<number>(
@@ -50,21 +43,14 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
     10
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: paginatedTableFeatures,
     data,
     columns,
     state: {
       columnVisibility,
       pagination: { pageIndex: pagination, pageSize: pageSize },
     },
-    getRowCanExpand: () => true,
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFilteredRowModel: getFilteredRowModel(),
   });
 
   return (
@@ -81,12 +67,9 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id} className="pl-2">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -101,10 +84,7 @@ export function DataTable({ columns, data, isError }: DataTableProps) {
                     <TableRow data-state={row.getIsSelected() && 'selected'}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                          <table.FlexRender cell={cell} />
                         </TableCell>
                       ))}
                     </TableRow>

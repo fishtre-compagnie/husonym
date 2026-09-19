@@ -8,44 +8,30 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/libs/utils';
 import { Cross2Icon } from '@radix-ui/react-icons';
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFacetedMinMaxValues,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { ColumnDef, RowData, useTable } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import React, { ReactElement } from 'react';
 import ButtonText from '../ButtonText';
+import { AppTableFeatures, unpaginatedTableFeatures } from '../table/features';
 import { Button } from '../ui/button';
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends RowData> {
+  columns: ColumnDef<AppTableFeatures, TData>[];
   data: TData[];
   ConnectionAlert: ReactElement;
   TestConnectionButton?: ReactElement;
 }
 
-export default function PermissionsDataTable<TData, TValue>({
+export default function PermissionsDataTable<TData extends RowData>({
   columns,
   data,
   ConnectionAlert,
   TestConnectionButton,
-}: DataTableProps<TData, TValue>): ReactElement {
-  const table = useReactTable({
+}: DataTableProps<TData>): ReactElement {
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues(),
     initialState: {
       sorting: [{ id: 'schemaTable', desc: true }],
       columnVisibility: {
@@ -73,7 +59,7 @@ export default function PermissionsDataTable<TData, TValue>({
         <div className="flex flex-col lg:flex-row items-center gap-2">
           {TestConnectionButton && TestConnectionButton}
           <Button
-            disabled={table.getState().columnFilters.length === 0}
+            disabled={table.state.columnFilters.length === 0}
             type="button"
             variant="outline"
             className="px-2 lg:px-3"
@@ -108,12 +94,9 @@ export default function PermissionsDataTable<TData, TValue>({
                       colSpan={header.colSpan}
                       className="flex w-full"
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -154,10 +137,7 @@ export default function PermissionsDataTable<TData, TValue>({
                           width: cell.column.getSize(),
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        <table.FlexRender cell={cell} />
                       </td>
                     );
                   })}

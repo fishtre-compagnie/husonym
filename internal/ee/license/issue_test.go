@@ -20,7 +20,7 @@ func Test_Issue(t *testing.T) {
 	// cannot drift.
 	t.Run("round-trips through verification", func(t *testing.T) {
 		expires := time.Now().UTC().Add(365 * 24 * time.Hour)
-		issued, err := Issue(IssueRequest{
+		issued, err := Issue(&IssueRequest{
 			IssuedTo:   "Acme Co.",
 			CustomerId: "cust-001",
 			ExpiresAt:  expires,
@@ -46,15 +46,15 @@ func Test_Issue(t *testing.T) {
 
 	t.Run("generates a distinct id when none is given", func(t *testing.T) {
 		req := IssueRequest{IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour)}
-		first, err := Issue(req, priv)
+		first, err := Issue(&req, priv)
 		require.NoError(t, err)
-		second, err := Issue(req, priv)
+		second, err := Issue(&req, priv)
 		require.NoError(t, err)
 		require.NotEqual(t, first.Id, second.Id)
 	})
 
 	t.Run("honours an explicit id", func(t *testing.T) {
-		issued, err := Issue(IssueRequest{
+		issued, err := Issue(&IssueRequest{
 			Id: "contract-42", IssuedTo: "A", CustomerId: "c",
 			ExpiresAt: time.Now().UTC().Add(time.Hour),
 		}, priv)
@@ -74,7 +74,7 @@ func Test_Issue(t *testing.T) {
 		}
 		for name, req := range cases {
 			t.Run(name, func(t *testing.T) {
-				issued, err := Issue(req, priv)
+				issued, err := Issue(&req, priv)
 				require.Error(t, err)
 				require.Nil(t, issued)
 			})
@@ -82,7 +82,7 @@ func Test_Issue(t *testing.T) {
 	})
 
 	t.Run("rejects a missing key", func(t *testing.T) {
-		issued, err := Issue(IssueRequest{
+		issued, err := Issue(&IssueRequest{
 			IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour),
 		}, nil)
 		require.Error(t, err)
@@ -94,7 +94,7 @@ func Test_Issue(t *testing.T) {
 	t.Run("a license from another key does not verify", func(t *testing.T) {
 		_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(t, err)
-		issued, err := Issue(IssueRequest{
+		issued, err := Issue(&IssueRequest{
 			IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour),
 		}, otherPriv)
 		require.NoError(t, err)
@@ -106,8 +106,8 @@ func Test_Issue(t *testing.T) {
 }
 
 func Test_Registry(t *testing.T) {
-	newEntry := func(id string, expiresIn time.Duration, grace *int) RegistryEntry {
-		return RegistryEntry{
+	newEntry := func(id string, expiresIn time.Duration, grace *int) *RegistryEntry {
+		return &RegistryEntry{
 			Id:         id,
 			IssuedTo:   "Customer " + id,
 			CustomerId: "cust-" + id,

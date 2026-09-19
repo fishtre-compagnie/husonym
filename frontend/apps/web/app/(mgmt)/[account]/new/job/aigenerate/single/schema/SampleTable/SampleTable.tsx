@@ -1,4 +1,8 @@
 import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
+import {
   Table,
   TableBody,
   TableCell,
@@ -6,27 +10,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { ColumnDef, useTable } from '@tanstack/react-table';
 import { ReactElement } from 'react';
 import { SampleRecord } from '../types';
 
 interface Props {
-  columns: ColumnDef<SampleRecord>[];
+  columns: ColumnDef<AppTableFeatures, SampleRecord>[];
   records: SampleRecord[];
 }
 export default function SampleTable(props: Props): ReactElement {
   const { records, columns } = props;
 
-  const table = useReactTable({
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data: records,
     columns: columns,
     enableRowSelection: false,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return (
@@ -52,12 +51,9 @@ export default function SampleTable(props: Props): ReactElement {
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id} className="pl-2">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -73,10 +69,7 @@ export default function SampleTable(props: Props): ReactElement {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}
                 </TableRow>

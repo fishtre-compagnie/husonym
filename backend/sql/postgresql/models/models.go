@@ -945,8 +945,6 @@ type JobSourceOptions struct {
 }
 
 type MssqlSourceOptions struct {
-	// @deprecated
-	HaltOnNewColumnAddition       bool                            `json:"haltOnNewColumnAddition"`
 	SubsetByForeignKeyConstraints bool                            `json:"subsetByForeignKeyConstraints"`
 	Schemas                       []*MssqlSourceSchemaOption      `json:"schemas"`
 	ConnectionId                  string                          `json:"connectionId"`
@@ -1020,12 +1018,6 @@ func (m *MssqlSourceOptions) ToDto() *mgmtv1alpha1.MssqlSourceConnectionOptions 
 
 	if m.NewColumnAdditionStrategy != nil {
 		dto.NewColumnAdditionStrategy = m.NewColumnAdditionStrategy.ToDto()
-	} else if m.HaltOnNewColumnAddition {
-		dto.NewColumnAdditionStrategy = &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_{
-				HaltJob: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob{},
-			},
-		}
 	}
 
 	return dto
@@ -1047,10 +1039,6 @@ func (m *MssqlSourceOptions) FromDto(dto *mgmtv1alpha1.MssqlSourceConnectionOpti
 	if dto.GetNewColumnAdditionStrategy().GetStrategy() != nil {
 		m.NewColumnAdditionStrategy = &MssqlNewColumnAdditionStrategy{}
 		m.NewColumnAdditionStrategy.FromDto(dto.GetNewColumnAdditionStrategy())
-	} else if m.HaltOnNewColumnAddition {
-		m.NewColumnAdditionStrategy = &MssqlNewColumnAdditionStrategy{
-			HaltJob: &MssqlHaltJobNewColumnAdditionStrategy{},
-		}
 	}
 }
 
@@ -1309,8 +1297,6 @@ func (s *MongoDbSourceOptions) FromDto(dto *mgmtv1alpha1.MongoDBSourceConnection
 }
 
 type MysqlSourceOptions struct {
-	// @deprecated
-	HaltOnNewColumnAddition       bool                            `json:"haltOnNewColumnAddition"`
 	SubsetByForeignKeyConstraints bool                            `json:"subsetByForeignKeyConstraints"`
 	Schemas                       []*MysqlSourceSchemaOption      `json:"schemas"`
 	ConnectionId                  string                          `json:"connectionId"`
@@ -1367,8 +1353,6 @@ type MysqlHaltJobColumnRemovalStrategy struct{}
 type MysqlContinueJobColumnRemovalStrategy struct{}
 
 type PostgresSourceOptions struct {
-	// @deprecated
-	HaltOnNewColumnAddition       bool                               `json:"haltOnNewColumnAddition,omitempty"`
 	SubsetByForeignKeyConstraints bool                               `json:"subsetByForeignKeyConstraints"`
 	Schemas                       []*PostgresSourceSchemaOption      `json:"schemas"`
 	ConnectionId                  string                             `json:"connectionId"`
@@ -1520,14 +1504,6 @@ func (s *PostgresSourceOptions) ToDto() *mgmtv1alpha1.PostgresSourceConnectionOp
 	if s.NewColumnAdditionStrategy != nil {
 		dto.NewColumnAdditionStrategy = s.NewColumnAdditionStrategy.ToDto()
 	}
-	if dto.NewColumnAdditionStrategy == nil && s.HaltOnNewColumnAddition {
-		// HaltOnNewColumnAddition is deprecated, so we are also populating the new strategy automatically to move the api forward
-		dto.NewColumnAdditionStrategy = &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_{
-				HaltJob: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob{},
-			},
-		}
-	}
 
 	if s.ColumnRemovalStrategy != nil {
 		dto.ColumnRemovalStrategy = s.ColumnRemovalStrategy.ToDto()
@@ -1599,12 +1575,6 @@ func (s *MysqlSourceOptions) ToDto() *mgmtv1alpha1.MysqlSourceConnectionOptions 
 	}
 	if s.NewColumnAdditionStrategy != nil {
 		dto.NewColumnAdditionStrategy = s.NewColumnAdditionStrategy.ToDto()
-	} else if s.HaltOnNewColumnAddition {
-		dto.NewColumnAdditionStrategy = &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_{
-				HaltJob: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob{},
-			},
-		}
 	}
 
 	return dto
@@ -1654,10 +1624,6 @@ func (s *MysqlSourceOptions) FromDto(dto *mgmtv1alpha1.MysqlSourceConnectionOpti
 	if dto.GetNewColumnAdditionStrategy().GetStrategy() != nil {
 		s.NewColumnAdditionStrategy = &MysqlNewColumnAdditionStrategy{}
 		s.NewColumnAdditionStrategy.FromDto(dto.GetNewColumnAdditionStrategy())
-	} else if dto.HaltOnNewColumnAddition { //nolint:staticcheck
-		s.NewColumnAdditionStrategy = &MysqlNewColumnAdditionStrategy{
-			HaltJob: &MysqlHaltJobNewColumnAdditionStrategy{},
-		}
 	}
 	s.SubsetByForeignKeyConstraints = dto.SubsetByForeignKeyConstraints
 	s.Schemas = FromDtoMysqlSourceSchemaOptions(dto.Schemas)
@@ -2051,9 +2017,6 @@ func (m *PostgresDestinationOptions) FromDto(
 }
 
 type PostgresOnConflictConfig struct {
-	// @deprecated
-	DoNothing bool `json:"doNothing"`
-
 	OnConflictStrategy *PostgresOnConflictStrategy `json:"onConflictStrategy,omitempty"`
 }
 
@@ -2071,7 +2034,7 @@ func (t *PostgresOnConflictConfig) ToDto() *mgmtv1alpha1.PostgresOnConflictConfi
 			Strategy: &mgmtv1alpha1.PostgresOnConflictConfig_Update{},
 		}
 	}
-	if (t.OnConflictStrategy != nil && t.OnConflictStrategy.Nothing != nil) || t.DoNothing {
+	if t.OnConflictStrategy != nil && t.OnConflictStrategy.Nothing != nil {
 		return &mgmtv1alpha1.PostgresOnConflictConfig{
 			Strategy: &mgmtv1alpha1.PostgresOnConflictConfig_Nothing{},
 		}
@@ -2086,7 +2049,7 @@ func (t *PostgresOnConflictConfig) FromDto(dto *mgmtv1alpha1.PostgresOnConflictC
 		t.OnConflictStrategy = &PostgresOnConflictStrategy{
 			Update: &PostgresUpdateStrategy{},
 		}
-	} else if dto.GetNothing() != nil || t.DoNothing {
+	} else if dto.GetNothing() != nil {
 		t.OnConflictStrategy = &PostgresOnConflictStrategy{
 			Nothing: &PostgresDoNothingStrategy{},
 		}
@@ -2164,9 +2127,6 @@ func (m *MysqlDestinationOptions) FromDto(dto *mgmtv1alpha1.MysqlDestinationConn
 }
 
 type MysqlOnConflictConfig struct {
-	// @deprecated
-	DoNothing bool `json:"doNothing"`
-
 	OnConflictStrategy *MysqlOnConflictStrategy `json:"onConflictStrategy,omitempty"`
 }
 
@@ -2184,7 +2144,7 @@ func (t *MysqlOnConflictConfig) ToDto() *mgmtv1alpha1.MysqlOnConflictConfig {
 			Strategy: &mgmtv1alpha1.MysqlOnConflictConfig_Update{},
 		}
 	}
-	if (t.OnConflictStrategy != nil && t.OnConflictStrategy.Nothing != nil) || t.DoNothing {
+	if t.OnConflictStrategy != nil && t.OnConflictStrategy.Nothing != nil {
 		return &mgmtv1alpha1.MysqlOnConflictConfig{
 			Strategy: &mgmtv1alpha1.MysqlOnConflictConfig_Nothing{},
 		}
@@ -2199,7 +2159,7 @@ func (t *MysqlOnConflictConfig) FromDto(dto *mgmtv1alpha1.MysqlOnConflictConfig)
 		t.OnConflictStrategy = &MysqlOnConflictStrategy{
 			Update: &MysqlUpdateStrategy{},
 		}
-	} else if dto.GetNothing() != nil || t.DoNothing {
+	} else if dto.GetNothing() != nil {
 		t.OnConflictStrategy = &MysqlOnConflictStrategy{
 			Nothing: &MysqlDoNothingStrategy{},
 		}
@@ -2469,16 +2429,26 @@ func (t *TemporalConfig) FromDto(dto *mgmtv1alpha1.AccountTemporalConfig) {
 
 type WorkflowOptions struct {
 	RunTimeout *int64 `json:"runTimeout,omitempty"`
+	// Engine : moteur de transformation choisi pour ce job (enum JobEngine stocké
+	// en int32). 0 = unspecified = défaut déploiement.
+	Engine int32 `json:"engine,omitempty"`
+	// ConsistencyScope : portée de la cohérence déterministe (enum ConsistencyScope
+	// stocké en int32). 0 = unspecified = run.
+	ConsistencyScope int32 `json:"consistencyScope,omitempty"`
 }
 
 func (a *WorkflowOptions) ToDto() *mgmtv1alpha1.WorkflowOptions {
 	return &mgmtv1alpha1.WorkflowOptions{
-		RunTimeout: a.RunTimeout,
+		RunTimeout:       a.RunTimeout,
+		Engine:           mgmtv1alpha1.JobEngine(a.Engine),
+		ConsistencyScope: mgmtv1alpha1.ConsistencyScope(a.ConsistencyScope),
 	}
 }
 
 func (a *WorkflowOptions) FromDto(dto *mgmtv1alpha1.WorkflowOptions) {
 	a.RunTimeout = dto.RunTimeout
+	a.Engine = int32(dto.GetEngine())
+	a.ConsistencyScope = int32(dto.GetConsistencyScope())
 }
 
 type ActivityOptions struct {

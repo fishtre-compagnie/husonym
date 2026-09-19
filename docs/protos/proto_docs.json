@@ -2792,6 +2792,90 @@
           ]
         },
         {
+          "name": "JavascriptRule",
+          "longName": "JavascriptRule",
+          "fullName": "mgmt.v1alpha1.JavascriptRule",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "column",
+              "description": "The column the rule writes. A transform rule receives its value.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transformer",
+              "description": "A TransformJavascript or GenerateJavascript transformer.",
+              "label": "",
+              "type": "TransformerConfig",
+              "longType": "TransformerConfig",
+              "fullType": "mgmt.v1alpha1.TransformerConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "JavascriptRuleFailure",
+          "longName": "JavascriptRuleFailure",
+          "fullName": "mgmt.v1alpha1.JavascriptRuleFailure",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "row",
+              "description": "The row, by its index in the request.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose rule failed, when the failure comes from one.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "message",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "Null",
           "longName": "Null",
           "fullName": "mgmt.v1alpha1.Null",
@@ -3085,21 +3169,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "data_type",
-              "description": "@deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.",
-              "label": "",
-              "type": "TransformerDataType",
-              "longType": "TransformerDataType",
-              "fullType": "mgmt.v1alpha1.TransformerDataType",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
             },
             {
               "name": "source",
@@ -4254,6 +4323,90 @@
           ]
         },
         {
+          "name": "TryJavascriptRulesRequest",
+          "longName": "TryJavascriptRulesRequest",
+          "fullName": "mgmt.v1alpha1.TryJavascriptRulesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The account the rules are tried for.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rules",
+              "description": "The JavaScript rules of one table, in the order the job maps them: they run together\non each row, and share their state for the row, the way a job runs them.",
+              "label": "repeated",
+              "type": "JavascriptRule",
+              "longType": "JavascriptRule",
+              "fullType": "mgmt.v1alpha1.JavascriptRule",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rows",
+              "description": "The rows to try the rules on, each a JSON object from column name to value. They are\nthe rows the user types, never rows read from a source.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TryJavascriptRulesResponse",
+          "longName": "TryJavascriptRulesResponse",
+          "fullName": "mgmt.v1alpha1.TryJavascriptRulesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "rows",
+              "description": "The rows once every rule ran, JSON objects in the order of the request. Empty when a\nrule failed.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "failure",
+              "description": "The first failure, when a rule failed.",
+              "label": "",
+              "type": "JavascriptRuleFailure",
+              "longType": "JavascriptRuleFailure",
+              "fullType": "mgmt.v1alpha1.JavascriptRuleFailure",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "UpdateUserDefinedTransformerRequest",
           "longName": "UpdateUserDefinedTransformerRequest",
           "fullName": "mgmt.v1alpha1.UpdateUserDefinedTransformerRequest",
@@ -4382,21 +4535,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "data_type",
-              "description": "@deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.",
-              "label": "",
-              "type": "TransformerDataType",
-              "longType": "TransformerDataType",
-              "fullType": "mgmt.v1alpha1.TransformerDataType",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
             },
             {
               "name": "source",
@@ -4537,6 +4675,18 @@
               "type": "bool",
               "longType": "bool",
               "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "global_writes",
+              "description": "Where the code writes outside its own variables: a variable assigned without a\ndeclaration, or a property of neosync, husonym, globalThis or this. That state lives\nfor one row: it is shared with the other columns of the row, and gone at the next one.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -4718,6 +4868,18 @@
               "responseType": "ValidateUserJavascriptCodeResponse",
               "responseLongType": "ValidateUserJavascriptCodeResponse",
               "responseFullType": "mgmt.v1alpha1.ValidateUserJavascriptCodeResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "TryJavascriptRules",
+              "description": "Try JavaScript rules on a few rows, the way Athanor runs them in a job. The\ndeterministic functions (pseudo.*) derive from a key drawn for the call: their outputs\nhave the shape of a run's, never its values.",
+              "requestType": "TryJavascriptRulesRequest",
+              "requestLongType": "TryJavascriptRulesRequest",
+              "requestFullType": "mgmt.v1alpha1.TryJavascriptRulesRequest",
+              "requestStreaming": false,
+              "responseType": "TryJavascriptRulesResponse",
+              "responseLongType": "TryJavascriptRulesResponse",
+              "responseFullType": "mgmt.v1alpha1.TryJavascriptRulesResponse",
               "responseStreaming": false
             },
             {
@@ -8232,11 +8394,68 @@
       "name": "mgmt/v1alpha1/connection_data.proto",
       "description": "",
       "package": "mgmt.v1alpha1",
-      "hasEnums": false,
+      "hasEnums": true,
       "hasExtensions": false,
       "hasMessages": true,
       "hasServices": true,
-      "enums": [],
+      "enums": [
+        {
+          "name": "PiiConfidence",
+          "longName": "PiiConfidence",
+          "fullName": "mgmt.v1alpha1.PiiConfidence",
+          "description": "Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il\ndit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.",
+          "values": [
+            {
+              "name": "PII_CONFIDENCE_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PII_CONFIDENCE_CONFIRMED",
+              "number": "1",
+              "description": "Preuve déterministe : heuristique nom+type, ou clé de contrôle vérifiée\n(NIR mod 97, IBAN mod 97, Luhn...) sur la quasi-totalité de l'échantillon.\nLe transformer suggéré peut être appliqué automatiquement."
+            },
+            {
+              "name": "PII_CONFIDENCE_NEEDS_REVIEW",
+              "number": "2",
+              "description": "Indice non prouvé : modèle statistique (Presidio/NER), clé de contrôle\nvalide sur une partie seulement, ou format de date indécidable.\nÀ signaler à l'utilisateur pour levée de doute, sans rien appliquer."
+            }
+          ]
+        },
+        {
+          "name": "PiiDetectionMethod",
+          "longName": "PiiDetectionMethod",
+          "fullName": "mgmt.v1alpha1.PiiDetectionMethod",
+          "description": "Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.",
+          "values": [
+            {
+              "name": "PII_DETECTION_METHOD_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PII_DETECTION_METHOD_COLUMN_NAME",
+              "number": "1",
+              "description": "Nom de la colonne + type SQL, sans lecture de données."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_CHECKSUM",
+              "number": "2",
+              "description": "Clé de contrôle vérifiée sur les valeurs échantillonnées."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_CONTENT",
+              "number": "3",
+              "description": "Reconnaissance d'entités par Presidio sur les valeurs échantillonnées."
+            },
+            {
+              "name": "PII_DETECTION_METHOD_FORMAT",
+              "number": "4",
+              "description": "Format inféré depuis les valeurs (ex: date jj/mm/aaaa)."
+            }
+          ]
+        }
+      ],
       "extensions": [],
       "messages": [
         {
@@ -8318,6 +8537,210 @@
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "id",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ColumnPiiDetection",
+          "longName": "ColumnPiiDetection",
+          "fullName": "mgmt.v1alpha1.ColumnPiiDetection",
+          "description": "PII detected in a column by analyzing sampled content (Presidio).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "entity_type",
+              "description": "Dominant Presidio entity type detected (ex: EMAIL_ADDRESS). Empty if none.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "score",
+              "description": "Average score of the detected entity in [0,1].",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "Recommended transformer for this entity.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_sensitive",
+              "description": "True if the column is considered personal data (GDPR).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "match_count",
+              "description": "Number of sampled values in which the entity was found.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sampled_count",
+              "description": "Total number of non-empty sampled values analyzed.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_category",
+              "description": "Catégorie sémantique déduite de l'entité (ex: \"email\", \"nir\"). Alimente le libellé du badge.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_confidence",
+              "description": "Niveau de confiance. Une détection issue d'une clé de contrôle est CONFIRMED,\nune détection Presidio est NEEDS_REVIEW.",
+              "label": "",
+              "type": "PiiConfidence",
+              "longType": "PiiConfidence",
+              "fullType": "mgmt.v1alpha1.PiiConfidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_detection_method",
+              "description": "Comment la détection a été obtenue.",
+              "label": "",
+              "type": "PiiDetectionMethod",
+              "longType": "PiiDetectionMethod",
+              "fullType": "mgmt.v1alpha1.PiiDetectionMethod",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_evidence",
+              "description": "Détail lisible de la preuve, pour l'infobulle.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ColumnSampleValue",
+          "longName": "ColumnSampleValue",
+          "fullName": "mgmt.v1alpha1.ColumnSampleValue",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "value",
+              "description": "Représentation textuelle de la valeur. Vide si is_null.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_null",
+              "description": "Distingue un NULL d'une chaîne vide — la différence compte pour juger d'une\ncolonne (« vide » et « absent » ne se traitent pas pareil).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
               "defaultValue": ""
             }
           ]
@@ -8595,6 +9018,78 @@
               "isoneof": true,
               "oneofdecl": "_identity_generation",
               "defaultValue": ""
+            },
+            {
+              "name": "data_category",
+              "description": "Nature sémantique détectée pour cette colonne (heuristique nom+type SQL). Ex: \"email\", \"phone_number\", \"person_full_name\". Vide si rien de détecté.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_sensitive",
+              "description": "True si la colonne est considérée comme une donnée à caractère personnel (RGPD).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "Transformer recommandé pour anonymiser cette colonne. TRANSFORMER_SOURCE_UNSPECIFIED si aucune suggestion.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_confidence",
+              "description": "Niveau de confiance de la détection. Seul CONFIRMED autorise l'application\nautomatique du transformer suggéré.",
+              "label": "",
+              "type": "PiiConfidence",
+              "longType": "PiiConfidence",
+              "fullType": "mgmt.v1alpha1.PiiConfidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_detection_method",
+              "description": "Comment la détection a été obtenue.",
+              "label": "",
+              "type": "PiiDetectionMethod",
+              "longType": "PiiDetectionMethod",
+              "fullType": "mgmt.v1alpha1.PiiDetectionMethod",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_evidence",
+              "description": "Détail lisible de la preuve, pour l'infobulle. Ex: \"clé NIR valide sur 18/18 valeurs\",\n\"format jj/mm/aaaa prouvé (14 valeurs avec jour \u003e 12)\", \"format ambigu : jj/mm ou mm/jj\".",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
@@ -8627,6 +9122,126 @@
               "type": "string",
               "longType": "string",
               "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "DetectPiiInConnectionDataRequest",
+          "longName": "DetectPiiInConnectionDataRequest",
+          "fullName": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to scan.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "columns",
+              "description": "Columns to analyze. Empty means every column of the table.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sample_size",
+              "description": "Number of sampled values per column (default 20).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "score_threshold",
+              "description": "Presidio score threshold in [0,1] (default 0.5).",
+              "label": "",
+              "type": "float",
+              "longType": "float",
+              "fullType": "float",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "language",
+              "description": "Content language (ISO 639-1). Default: server default or \"en\".",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "DetectPiiInConnectionDataResponse",
+          "longName": "DetectPiiInConnectionDataResponse",
+          "fullName": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "detections",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnPiiDetection",
+              "longType": "ColumnPiiDetection",
+              "fullType": "mgmt.v1alpha1.ColumnPiiDetection",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -9054,6 +9669,102 @@
           ]
         },
         {
+          "name": "GetColumnSampleValuesRequest",
+          "longName": "GetColumnSampleValuesRequest",
+          "fullName": "mgmt.v1alpha1.GetColumnSampleValuesRequest",
+          "description": "Échantillon des valeurs d'une colonne, pour lever un doute sur une détection\nRGPD en regardant les données réelles.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection to read from.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to read.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose values are returned.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "limit",
+              "description": "Number of rows to return (default 20, max 200).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetColumnSampleValuesResponse",
+          "longName": "GetColumnSampleValuesResponse",
+          "fullName": "mgmt.v1alpha1.GetColumnSampleValuesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "values",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetConnectionDataStreamRequest",
           "longName": "GetConnectionDataStreamRequest",
           "fullName": "mgmt.v1alpha1.GetConnectionDataStreamRequest",
@@ -9184,21 +9895,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "table_init_statements",
-              "description": "@deprecated - Use schema_init_statements instead",
-              "label": "repeated",
-              "type": "TableInitStatementsEntry",
-              "longType": "GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-              "fullType": "mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-              "ismap": true,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "table_truncate_statements",
               "description": "The key here is \u003cschema\u003e.\u003ctable\u003e and value is the table truncate statement.",
               "label": "repeated",
@@ -9217,42 +9913,6 @@
               "type": "SchemaInitStatements",
               "longType": "SchemaInitStatements",
               "fullType": "mgmt.v1alpha1.SchemaInitStatements",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            }
-          ]
-        },
-        {
-          "name": "TableInitStatementsEntry",
-          "longName": "GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-          "fullName": "mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-          "description": "",
-          "hasExtensions": false,
-          "hasFields": true,
-          "hasOneofs": false,
-          "extensions": [],
-          "fields": [
-            {
-              "name": "key",
-              "description": "",
-              "label": "",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            },
-            {
-              "name": "value",
-              "description": "",
-              "label": "",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -10215,6 +10875,36 @@
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
               }
+            },
+            {
+              "name": "DetectPiiInConnectionData",
+              "description": "Scans sampled column content through Presidio to detect PII (deep scan).\nComplements the name-based heuristic returned by GetConnectionSchema.",
+              "requestType": "DetectPiiInConnectionDataRequest",
+              "requestLongType": "DetectPiiInConnectionDataRequest",
+              "requestFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataRequest",
+              "requestStreaming": false,
+              "responseType": "DetectPiiInConnectionDataResponse",
+              "responseLongType": "DetectPiiInConnectionDataResponse",
+              "responseFullType": "mgmt.v1alpha1.DetectPiiInConnectionDataResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetColumnSampleValues",
+              "description": "Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur\nune détection RGPD en consultant les données réelles.",
+              "requestType": "GetColumnSampleValuesRequest",
+              "requestLongType": "GetColumnSampleValuesRequest",
+              "requestFullType": "mgmt.v1alpha1.GetColumnSampleValuesRequest",
+              "requestStreaming": false,
+              "responseType": "GetColumnSampleValuesResponse",
+              "responseLongType": "GetColumnSampleValuesResponse",
+              "responseFullType": "mgmt.v1alpha1.GetColumnSampleValuesResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
             }
           ]
         }
@@ -10402,6 +11092,34 @@
           ]
         },
         {
+          "name": "ConsistencyScope",
+          "longName": "ConsistencyScope",
+          "fullName": "mgmt.v1alpha1.ConsistencyScope",
+          "description": "Reach of deterministic consistency: the same input value produces the same output\nvalue everywhere inside the scope, and unrelated outputs outside of it.",
+          "values": [
+            {
+              "name": "CONSISTENCY_SCOPE_UNSPECIFIED",
+              "number": "0",
+              "description": "Same as CONSISTENCY_SCOPE_RUN."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_RUN",
+              "number": "1",
+              "description": "Consistent within a single run only; outputs cannot be linked across runs."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_JOB",
+              "number": "2",
+              "description": "Consistent across every run of the same job."
+            },
+            {
+              "name": "CONSISTENCY_SCOPE_ACCOUNT",
+              "number": "3",
+              "description": "Consistent across every job of the account. Outputs stay linkable over time:\nthis is pseudonymization, not anonymization, in the GDPR sense."
+            }
+          ]
+        },
+        {
           "name": "DatabaseErrorCode",
           "longName": "DatabaseError.DatabaseErrorCode",
           "fullName": "mgmt.v1alpha1.DatabaseError.DatabaseErrorCode",
@@ -10444,6 +11162,29 @@
               "name": "TIMING_POSTSYNC",
               "number": "2",
               "description": "Only returns postsync hooks"
+            }
+          ]
+        },
+        {
+          "name": "JobEngine",
+          "longName": "JobEngine",
+          "fullName": "mgmt.v1alpha1.JobEngine",
+          "description": "Config that contains various timeouts that are configured in the underlying temporal workflow\nMore options will come in the future as needed\nWhich transformation engine runs a job.",
+          "values": [
+            {
+              "name": "JOB_ENGINE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defer to the deployment default (ENABLE_ATHANOR_ENGINE / per-worker policy)."
+            },
+            {
+              "name": "JOB_ENGINE_ATHANOR",
+              "number": "1",
+              "description": "New vectorized engine (deterministic consistency, native referential integrity)."
+            },
+            {
+              "name": "JOB_ENGINE_BENTHOS",
+              "number": "2",
+              "description": "Original row-by-row streaming engine (Benthos/redpanda-connect)."
             }
           ]
         },
@@ -11072,21 +11813,6 @@
               "defaultValue": ""
             },
             {
-              "name": "errors",
-              "description": "@deprecated - Use error_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "error_reports",
               "description": "The list of error reports",
               "label": "repeated",
@@ -11181,21 +11907,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "warnings",
-              "description": "@deprecated - Use warning_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
             },
             {
               "name": "warning_reports",
@@ -11616,21 +12327,6 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": [
-            {
-              "name": "errors",
-              "description": "@deprecated - Use error_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "error_reports",
               "description": "The list of error reports",
@@ -15162,21 +15858,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "halt_on_new_column_addition",
-              "description": "Whether to halt the job if a new column is added\nDeprecated: Use new_column_addition_strategy instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "schemas",
               "description": "The list of schemas (and their tables) along with any configuration options that will be used.",
               "label": "repeated",
@@ -15569,18 +16250,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "do_nothing",
-              "description": "@deprecated - Use strategy nothing instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            },
-            {
               "name": "nothing",
               "description": "Do nothing when a conflict occurs",
               "label": "",
@@ -15638,21 +16307,6 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": [
-            {
-              "name": "halt_on_new_column_addition",
-              "description": "Whether to halt the job if a new column is added\nDeprecated: Use new_column_addition_strategy instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "schemas",
               "description": "The list of schemas (and their tables) along with any configuration options that will be used.",
@@ -16440,21 +17094,6 @@
           "hasOneofs": true,
           "extensions": [],
           "fields": [
-            {
-              "name": "do_nothing",
-              "description": "@deprecated - Use strategy nothing instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "nothing",
               "description": "Do nothing when a conflict occurs",
@@ -18119,7 +18758,7 @@
           "name": "WorkflowOptions",
           "longName": "WorkflowOptions",
           "fullName": "mgmt.v1alpha1.WorkflowOptions",
-          "description": "Config that contains various timeouts that are configured in the underlying temporal workflow\nMore options will come in the future as needed",
+          "description": "",
           "hasExtensions": false,
           "hasFields": true,
           "hasOneofs": true,
@@ -18135,6 +18774,30 @@
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "_run_timeout",
+              "defaultValue": ""
+            },
+            {
+              "name": "engine",
+              "description": "Which transformation engine runs this job. Unspecified = deployment default.",
+              "label": "",
+              "type": "JobEngine",
+              "longType": "JobEngine",
+              "fullType": "mgmt.v1alpha1.JobEngine",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "consistency_scope",
+              "description": "How far deterministic consistency reaches (Athanor only). Unspecified = run.",
+              "label": "",
+              "type": "ConsistencyScope",
+              "longType": "ConsistencyScope",
+              "fullType": "mgmt.v1alpha1.ConsistencyScope",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
               "defaultValue": ""
             }
           ]

@@ -38,9 +38,8 @@ type RegistryEntry struct {
 	Note string `json:"note,omitempty"`
 }
 
-// State reports where this license sits in its lifecycle right now. A value receiver so
-// it can be called directly on entries returned from the query helpers below.
-func (e RegistryEntry) State() State {
+// State reports where this license sits in its lifecycle right now.
+func (e *RegistryEntry) State() State {
 	c := &licenseContents{ExpiresAt: e.ExpiresAt, GraceDays: e.GraceDays}
 	return c.State()
 }
@@ -72,13 +71,13 @@ func LoadRegistry(path string) (*Registry, error) {
 
 // Add records an issued license. Duplicate ids are refused: two entries sharing an id
 // would make the registry ambiguous about what is in the field.
-func (r *Registry) Add(entry RegistryEntry) error {
+func (r *Registry) Add(entry *RegistryEntry) error {
 	for i := range r.Entries {
 		if r.Entries[i].Id == entry.Id {
 			return fmt.Errorf("license id %q is already in the registry", entry.Id)
 		}
 	}
-	r.Entries = append(r.Entries, entry)
+	r.Entries = append(r.Entries, *entry)
 	return nil
 }
 
@@ -124,9 +123,9 @@ func (r *Registry) Find(id string) (*RegistryEntry, bool) {
 // customer usually has a chain of renewals rather than a single license.
 func (r *Registry) ForCustomer(customerId string) []RegistryEntry {
 	var out []RegistryEntry
-	for _, e := range r.Entries {
-		if e.CustomerId == customerId {
-			out = append(out, e)
+	for i := range r.Entries {
+		if r.Entries[i].CustomerId == customerId {
+			out = append(out, r.Entries[i])
 		}
 	}
 	sortByExpiry(out)
@@ -141,12 +140,13 @@ func (r *Registry) ForCustomer(customerId string) []RegistryEntry {
 func (r *Registry) ExpiringWithin(window time.Duration) []RegistryEntry {
 	cutoff := time.Now().UTC().Add(window)
 	var out []RegistryEntry
-	for _, e := range r.Entries {
+	for i := range r.Entries {
+		e := &r.Entries[i]
 		if e.State() == StateFrozen {
 			continue
 		}
 		if e.ExpiresAt.Before(cutoff) {
-			out = append(out, e)
+			out = append(out, *e)
 		}
 	}
 	sortByExpiry(out)
@@ -156,9 +156,9 @@ func (r *Registry) ExpiringWithin(window time.Duration) []RegistryEntry {
 // Frozen lists licenses whose grace period has run out.
 func (r *Registry) Frozen() []RegistryEntry {
 	var out []RegistryEntry
-	for _, e := range r.Entries {
-		if e.State() == StateFrozen {
-			out = append(out, e)
+	for i := range r.Entries {
+		if r.Entries[i].State() == StateFrozen {
+			out = append(out, r.Entries[i])
 		}
 	}
 	sortByExpiry(out)

@@ -1,0 +1,6 @@
+# Le moteur d'analyse doit declarer les MEMES langues que le registre de
+# reconnaisseurs, sinon il refuse de demarrer.
+supported_languages:
+  - en
+  - fr
+default_score_threshold: 0

@@ -12,6 +12,11 @@ updates:
         update-types:
           - minor
           - patch
+    # client-go requires the api and apimachinery of its own release: raised on their own,
+    # ahead of it, they break its build. They follow client-go instead.
+    ignore:
+      - dependency-name: "k8s.io/api"
+      - dependency-name: "k8s.io/apimachinery"
   - package-ecosystem: "gomod"
     schedule:
       interval: "daily"

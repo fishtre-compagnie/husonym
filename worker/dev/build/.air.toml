@@ -7,7 +7,8 @@ tmp_dir = "tmp"
   bin = "./tmp/worker"
   cmd = "go build -gcflags=\"all=-N -l\" -o ./tmp/worker worker/cmd/worker/*.go"
   delay = 1000
-  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  # .claude holds the git worktrees of agents: their checkout would rebuild and restart the process.
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", ".claude"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = true

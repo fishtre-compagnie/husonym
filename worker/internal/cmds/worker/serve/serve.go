@@ -39,12 +39,13 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	piidetect_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/register"
+	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -386,6 +387,21 @@ func serve(ctx context.Context) error {
 	if pageLimit <= 0 {
 		pageLimit = 100_000
 	}
+	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
+	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
+	athanorConfig := sync_activity.AthanorConfig{
+		Policy: shared.NewAthanorPolicy(
+			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
+			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
+			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
+		),
+		ConsistencyKey: viper.GetString("ATHANOR_CONSISTENCY_KEY"),
+	}
+	if athanorConfig.ConsistencyKey == "" {
+		// A job may pick Athanor in the UI whatever the default of the deployment: warn
+		// at startup rather than on its first run.
+		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine will fail")
+	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
 		w,
@@ -398,7 +414,9 @@ func serve(ctx context.Context) error {
 		temporalClient,
 		maxIterations,
 		anonymizationclient,
+		transformerclient,
 		redisclient,
+		athanorConfig,
 	)
 
 	schemainit_workflow_register.Register(
@@ -413,7 +431,7 @@ func serve(ctx context.Context) error {
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
-		sqlmanager, cascadelicense, redisclient,
+		sqlmanager, sqlconnmanager, athanorConfig.Policy, cascadelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
 		postgresSchemaDrift,

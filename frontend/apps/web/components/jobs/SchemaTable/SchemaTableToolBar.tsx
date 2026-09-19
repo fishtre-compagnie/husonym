@@ -1,10 +1,11 @@
 'use client';
 
-import { Row, Table } from '@tanstack/react-table';
+import { ReactTable, Row, RowData } from '@tanstack/react-table';
 
 import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
 import ButtonText from '@/components/ButtonText';
 import FormErrorMessage from '@/components/FormErrorMessage';
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/libs/utils';
 import { isSystemTransformer, Transformer } from '@/shared/transformers';
@@ -23,7 +24,12 @@ import {
   SystemTransformer,
   UserDefinedTransformer,
 } from '@husonym/sdk';
-import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
+import {
+  CheckIcon,
+  Cross2Icon,
+  MagnifyingGlassIcon,
+  ReloadIcon,
+} from '@radix-ui/react-icons';
 import { useState } from 'react';
 import ApplyDefaultTransformersButton from './ApplyDefaultTransformersButton';
 import ExportJobMappingsButton from './ExportJobMappingsButton';
@@ -34,9 +40,11 @@ import { SchemaTableViewOptions } from './SchemaTableViewOptions';
 import TransformerSelect from './TransformerSelect';
 import { TransformerResult } from './transformer-handler';
 
-interface DataTableToolbarProps<TData> {
-  table: Table<TData>;
-  getAllowedTransformers(rows: Row<TData>[]): TransformerResult;
+interface DataTableToolbarProps<TData extends RowData> {
+  table: ReactTable<AppTableFeatures, TData>;
+  getAllowedTransformers(
+    rows: Row<AppTableFeatures, TData>[]
+  ): TransformerResult;
   getTransformerFromField(selected: JobMappingTransformerForm): Transformer;
   onBulkUpdate(indices: number[], value: JobMappingTransformerForm): void;
   onExportMappingsClick(shouldFormat: boolean): void;
@@ -50,11 +58,16 @@ interface DataTableToolbarProps<TData> {
 
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
+
+  // Scan de contenu PII (Presidio) — présent seulement pour les jobs sync.
+  showPiiScan?: boolean;
+  onScanContent?(): void;
+  isScanningPii?: boolean;
 }
 
 const DEFAULT_TRANSFORMER_BUTTON_TEXT = 'Bulk set transformers';
 
-export function SchemaTableToolbar<TData>({
+export function SchemaTableToolbar<TData extends RowData>({
   table,
   onExportMappingsClick,
   onImportMappingsClick,
@@ -66,10 +79,12 @@ export function SchemaTableToolbar<TData>({
   onApplyDefaultClick,
   hasMissingSourceColumnMappings,
   onRemoveMissingSourceColumnMappings,
+  showPiiScan,
+  onScanContent,
+  isScanningPii,
 }: DataTableToolbarProps<TData>) {
-  const tableState = table.getState();
-  const isFiltered = tableState.columnFilters.length > 0;
-  const hasSelectedRows = Object.values(tableState.rowSelection).some(
+  const isFiltered = table.state.columnFilters.length > 0;
+  const hasSelectedRows = Object.values(table.state.rowSelection).some(
     (value) => value
   );
 
@@ -171,6 +186,28 @@ export function SchemaTableToolbar<TData>({
               onClick={onRemoveMissingSourceColumnMappings}
             >
               <ButtonText text="Remove Missing Source Column Mappings" />
+            </Button>
+          )}
+          {showPiiScan && (
+            <Button
+              variant="outline"
+              type="button"
+              disabled={isScanningPii}
+              onClick={() => onScanContent?.()}
+              title="Analyse le contenu échantillonné des colonnes (Presidio) pour détecter des données personnelles, y compris dans des colonnes mal nommées. Les transformers suggérés sont appliqués automatiquement."
+            >
+              <ButtonText
+                leftIcon={
+                  isScanningPii ? (
+                    <ReloadIcon className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <MagnifyingGlassIcon className="h-3 w-3" />
+                  )
+                }
+                text={
+                  isScanningPii ? 'Scan en cours…' : 'Scan de contenu (RGPD)'
+                }
+              />
             </Button>
           )}
           {displayApplyDefaultTransformersButton && (

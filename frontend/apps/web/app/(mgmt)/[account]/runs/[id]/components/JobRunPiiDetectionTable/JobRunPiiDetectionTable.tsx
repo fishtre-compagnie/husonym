@@ -1,16 +1,12 @@
 import FastTable from '@/components/FastTable/FastTable';
 import { useAccount } from '@/components/providers/account-provider';
+import { unpaginatedTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { cn, refreshWhenJobRunning } from '@/libs/utils';
 import { useQuery } from '@connectrpc/connect-query';
 import { JobService, PiiDetectionReport_TableReport } from '@husonym/sdk';
 import { DownloadIcon, ReloadIcon } from '@radix-ui/react-icons';
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
+import { useTable } from '@tanstack/react-table';
 import Papa from 'papaparse';
 import { ReactElement, useCallback, useMemo } from 'react';
 import { PII_DETECTION_COLUMNS, PiiDetectionRow } from './columns';
@@ -55,12 +51,10 @@ export default function JobRunPiiDetectionTable(props: Props): ReactElement {
     return getPiiDetectionRowsFromTables(report.tables);
   }, [reportResp?.report, isLoadingReport, isPendingReport, isFetchingReport]);
 
-  const table = useReactTable({
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data: data,
     columns: PII_DETECTION_COLUMNS,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
   });
 
   function onRefreshClick(): void {

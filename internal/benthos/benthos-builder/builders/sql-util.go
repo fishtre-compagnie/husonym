@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +17,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
@@ -1634,4 +1637,87 @@ func getTableDeferrableMap(
 		}
 	}
 	return tableDeferrableMap, nil
+}
+
+// withoutNullableColumns keeps, per table, the unique keys whose columns are all NOT
+// NULL: only those can order the pages of a table sync. A unique index accepts any
+// number of NULLs, which keyset pagination ("col > last value") never reads past.
+func withoutNullableColumns(
+	uniqueKeys map[string][][]string,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) map[string][][]string {
+	filtered := make(map[string][][]string, len(uniqueKeys))
+	for table, keys := range uniqueKeys {
+		for _, key := range keys {
+			nullable := slices.ContainsFunc(key, func(column string) bool {
+				info, ok := columnInfo[table][column]
+				return !ok || info.IsNullable
+			})
+			if !nullable {
+				filtered[table] = append(filtered[table], key)
+			}
+		}
+	}
+	return filtered
+}
+
+// planForeignKeys describes, per run config, the foreign keys of its table for the
+// engine-neutral plan: which parents the job copies only in part, which value of a
+// mandatory key means "no parent", and where the new values of a transformed parent key
+// are published (keyStore, "" for a column copied as it is).
+func planForeignKeys(
+	runConfigs []*rc.RunConfig,
+	subsetByForeignKeyConstraints bool,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	keyStore func(table, column string) string,
+) map[string][]*tableplan.ForeignKey {
+	reduced := make(map[string]bool, len(runConfigs))
+	for _, config := range runConfigs {
+		if subsetByForeignKeyConstraints {
+			reduced[config.Table()] = len(config.SubsetPaths()) > 0
+		} else {
+			reduced[config.Table()] = config.WhereClause() != nil && *config.WhereClause() != ""
+		}
+	}
+
+	byConfig := make(map[string][]*tableplan.ForeignKey, len(runConfigs))
+	for _, config := range runConfigs {
+		for _, fk := range config.ForeignKeys() {
+			planned := &tableplan.ForeignKey{
+				Columns:       fk.Columns,
+				NotNull:       fk.NotNullable,
+				ParentSchema:  fk.ReferenceSchema,
+				ParentTable:   fk.ReferenceTable,
+				ParentColumns: fk.ReferenceColumns,
+				ParentReduced: reduced[fk.ReferenceSchema+"."+fk.ReferenceTable],
+			}
+			parentKey := fk.ReferenceSchema + "." + fk.ReferenceTable
+			for _, parentColumn := range fk.ReferenceColumns {
+				planned.ParentKeyStores = append(planned.ParentKeyStores, keyStore(parentKey, parentColumn))
+			}
+			// parent_id NOT NULL DEFAULT 0: the default stands for "no parent".
+			if len(fk.Columns) == 1 && planned.IsMandatory() {
+				if info, ok := columnInfo[config.Table()][fk.Columns[0]]; ok && info.ColumnDefault != "" {
+					noParent := strings.Trim(info.ColumnDefault, "'")
+					planned.NoParentValue = &noParent
+				}
+			}
+			byConfig[config.Id()] = append(byConfig[config.Id()], planned)
+		}
+	}
+	return byConfig
+}
+
+// generatedColumns returns, in name order, the columns of a table the database computes
+// itself and refuses any value for. Identity columns are not among them: they accept the
+// values of the source.
+func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) []string {
+	var generated []string
+	for name, info := range columns {
+		if !info.UpdateAllowed && info.IdentityGeneration == nil {
+			generated = append(generated, name)
+		}
+	}
+	slices.Sort(generated)
+	return generated
 }
