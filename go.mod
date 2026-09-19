@@ -34,15 +34,15 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/gliderlabs/ssh v0.3.8
 	github.com/go-logr/logr v1.4.4
-	github.com/go-sql-driver/mysql v1.10.0
+	github.com/go-sql-driver/mysql v1.10.1
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.4.2
 	github.com/itchyny/gojq v0.12.19
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/lestrrat-go/jwx/v3 v3.0.13
 	github.com/lib/pq v1.12.3
-	github.com/microsoft/go-mssqldb v1.10.0
+	github.com/microsoft/go-mssqldb v1.11.0
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.7.0
@@ -70,7 +70,7 @@ require (
 	github.com/veqryn/slog-dedup v0.6.0
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	github.com/zeebo/assert v1.3.1
-	go.mongodb.org/mongo-driver v1.17.9
+	go.mongodb.org/mongo-driver v1.17.10
 	go.opentelemetry.io/otel v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.46.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.46.0
