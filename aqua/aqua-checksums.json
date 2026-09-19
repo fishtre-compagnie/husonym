@@ -1,26 +1,6 @@
 {
   "checksums": [
     {
-      "id": "github_release/github.com/Infisical/cli/v0.43.110/cli_0.43.110_darwin_amd64.tar.gz",
-      "checksum": "554F112AB68290059827395506C7F1F6386076925867D4160FA35B956FAFA606",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/Infisical/cli/v0.43.110/cli_0.43.110_darwin_arm64.tar.gz",
-      "checksum": "3CBCBFFB2BD3E21C18EEF8F90D256F0AF6BE5FBD2505F74A2896C2047007C0C6",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/Infisical/cli/v0.43.110/cli_0.43.110_linux_amd64.tar.gz",
-      "checksum": "C7E145CB7672CA94E6997117F066B506F8DF38179BC5700A1DAB2FB3340EB478",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/Infisical/cli/v0.43.110/cli_0.43.110_linux_arm64.tar.gz",
-      "checksum": "B37227C8B7D1378CC6E01FC37AE8A38FD4F928E75B723EF1B53D018BF3565B34",
-      "algorithm": "sha256"
-    },
-    {
       "id": "github_release/github.com/Infisical/cli/v0.43.132/cli_0.43.132_darwin_amd64.tar.gz",
       "checksum": "B1CA573839316BC9F9F4A8AFEB8EB55EB7EDA814D19D8C7319D3378BA0130A10",
       "algorithm": "sha256"
@@ -38,36 +18,6 @@
     {
       "id": "github_release/github.com/Infisical/cli/v0.43.132/cli_0.43.132_linux_arm64.tar.gz",
       "checksum": "0DC149B0673EF92693796203BA3B34AE2ADDA74C4912F589325431515DBCC5A6",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-darwin-amd64.tar.gz",
-      "checksum": "F6F06D94B6241521C53D15450C5209B028270BF966F842AFB11C030C79F5BC16",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-darwin-arm64.tar.gz",
-      "checksum": "A9C54498731B3128F79E090BE6110F3E5FFFCCC617B08142ED244D4126C73F29",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz",
-      "checksum": "8DF580D2670FED8FA984AAC0507099AF8DF275E665215F5C7A2AE3943893A553",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-linux-arm64.tar.gz",
-      "checksum": "44CD40A8C76C86755375ADFEEA52CFD3533CB43D7BD647771E0AE065E166DF3A",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-windows-amd64.zip",
-      "checksum": "BD42E3EBC8CB4ECECB86941983BAAF1DC221BBB04D838E94CE63B49CC91E02BB",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/golangci/golangci-lint/v2.12.2/golangci-lint-2.12.2-windows-arm64.zip",
-      "checksum": "947B9A5BF762D465710B376C156F0184ABB2168378B0826AF1899E0EE7183742",
       "algorithm": "sha256"
     },
     {
@@ -116,36 +66,6 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Darwin_arm64.tar.gz",
-      "checksum": "B84B788551D80A46C9FD56F92F0257A2F833E3432CECD0132E45257BE1DB3CC5",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Darwin_x86_64.tar.gz",
-      "checksum": "50A595D68F3C821C51ACA0F70E4023A0C5111185EDE9A36662B6597C22AFA5B8",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Linux_arm64.tar.gz",
-      "checksum": "9F95A4CBD1427F4D22DFDF0E9CF3138B72C3F4AEDCE0CC6FA89E75BA0074B711",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Linux_x86_64.tar.gz",
-      "checksum": "A1B0A9191BCAB64688B483115293706F841D98048C0F918D7ACA89600BBA845B",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Windows_arm64.tar.gz",
-      "checksum": "664500670DDE8C256BD4BC0D0B847A6C3CA9BC846F28C4DE15E98375A5C035C3",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "github_release/github.com/vektra/mockery/v2.53.7/mockery_2.53.7_Windows_x86_64.tar.gz",
-      "checksum": "20E50B14DC80A823CA92FEBEE1B246C41156D9AE85414D64839F2231B0817592",
-      "algorithm": "sha256"
-    },
-    {
       "id": "github_release/github.com/vektra/mockery/v3.8.0/mockery_3.8.0_Darwin_arm64.tar.gz",
       "checksum": "4830C454DC4BFF7C59A5D6FDE67EA45FCF94E22344FBE1D9992FB7F2FFD5E5FF",
       "algorithm": "sha256"
@@ -176,63 +96,33 @@
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.darwin-amd64.tar.gz",
-      "checksum": "05DC9B5F9997744520AAEBB3D5DEAA7C755371AEBBFB7F97C2511A9F3367538D",
+      "id": "http/golang.org/dl/go1.27.1.darwin-amd64.tar.gz",
+      "checksum": "8F8F52C6649542CF027BBC9B9C68D1EC042F9F34808A40413F0B8B3F66F3CAA4",
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.darwin-arm64.tar.gz",
-      "checksum": "B62AD2B6D7D2464F12A5BCAD7FF47F19D08325773B5EFD21610E445A05A9BF53",
+      "id": "http/golang.org/dl/go1.27.1.darwin-arm64.tar.gz",
+      "checksum": "EE215D57E0EC269C60CC9CECA68E6BDA321BA9EE5AFE24F4B0988703C2D87D12",
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.linux-amd64.tar.gz",
-      "checksum": "1153D3D50E0AC764B447ADFE05C2BCF08E889D42A02E0FE0259BD47F6733AD7F",
+      "id": "http/golang.org/dl/go1.27.1.linux-amd64.tar.gz",
+      "checksum": "63D339F0DA5AB53635A56F2490A7984DFE12DFCFF22AD749F63EDAF590168445",
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.linux-arm64.tar.gz",
-      "checksum": "EF758AE7C6CF9267C9C0EF080B8965F453D89AB2D25D9EB22DE4405925238768",
+      "id": "http/golang.org/dl/go1.27.1.linux-arm64.tar.gz",
+      "checksum": "3450B45A3F9EE8568792736A5C5E70A1F2E9B36C35A8F74958C03E51D7D92BEC",
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.windows-amd64.zip",
-      "checksum": "3CA8FB4630B07C419CBDD51F754E31363CFCFB83B3A5354D9E895C90BE2CC345",
+      "id": "http/golang.org/dl/go1.27.1.windows-amd64.zip",
+      "checksum": "A3911B5E0E1B1053F25ED0675F4C1C6AAD1E2BFCF253DF2B9BE4CAABD2EDD95D",
       "algorithm": "sha256"
     },
     {
-      "id": "http/golang.org/dl/go1.26.4.windows-arm64.zip",
-      "checksum": "62247F56FB7D7B827D237152C4E3FCD69A24D0FA9430DC73DBDA7593AE82BC8D",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.darwin-amd64.tar.gz",
-      "checksum": "186BE014105AA6542B767D2C6ED5CCA10A0214BDFF809EF1724022A8C7894150",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.darwin-arm64.tar.gz",
-      "checksum": "A012B25B571BD0138A03DCD25375CEBA866FE5CA822F426D2C66A4DE56FD3F4B",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.linux-amd64.tar.gz",
-      "checksum": "D0F743B33E8D8945E6B1F432EDD15785C70507121D6E2A723B21285EDDF8B57B",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.linux-arm64.tar.gz",
-      "checksum": "211FFCED9DCB9633A55EAC6364816EC0DDD951389A740E88FA8B3337971BDDA0",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.windows-amd64.zip",
-      "checksum": "B92C3B2ADAE85A11BA71FE7216DAF0D84E82AF4C8AB6C5625807F28622043A59",
-      "algorithm": "sha256"
-    },
-    {
-      "id": "http/golang.org/dl/go1.26.8.windows-arm64.zip",
-      "checksum": "4BC560ED3CCB64EEC0BE6180B8C29185C07F5215276820ADB4303D7BF3365435",
+      "id": "http/golang.org/dl/go1.27.1.windows-arm64.zip",
+      "checksum": "13B69B87BB0E83F96BC68560A8CACE7F0343B1E03469F1110EA18D17E3234069",
       "algorithm": "sha256"
     },
     {
