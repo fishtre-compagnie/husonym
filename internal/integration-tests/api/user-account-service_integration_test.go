@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v86"
 )
 
 var (
@@ -249,9 +249,9 @@ func (s *IntegrationTestSuite) Test_UserAccountService_CreateTeamAccount_Husonym
 	)
 	s.setUser(s.ctx, client)
 
-	s.Mocks.Billingclient.On("NewCustomer", mock.Anything).Once().
+	s.Mocks.Billingclient.On("NewCustomer", mock.Anything, mock.Anything).Once().
 		Return(&stripe.Customer{ID: "test-stripe-id"}, nil)
-	s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Once().
 		Return(&stripe.CheckoutSession{URL: "test-url"}, nil)
 
@@ -466,23 +466,6 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymC
 	)
 }
 
-type testSubscriptionIter struct {
-	subscriptions []*stripe.Subscription
-	current       int
-}
-
-func (t *testSubscriptionIter) Next() bool {
-	return t.current < len(t.subscriptions)
-}
-func (t *testSubscriptionIter) Subscription() *stripe.Subscription {
-	sub := t.subscriptions[t.current]
-	t.current++
-	return sub
-}
-func (t *testSubscriptionIter) Err() error {
-	return nil
-}
-
 func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymCloud_Billed() {
 	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
@@ -494,12 +477,12 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymC
 	t.Run("active_sub", func(t *testing.T) {
 		custId := "cust_id1"
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test-team", custId)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
 				{Status: stripe.SubscriptionStatusActive},
-			}}, nil)
+			}, nil)
 
 		resp, err := userclient.GetAccountStatus(
 			s.ctx,
@@ -522,12 +505,12 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountStatus_HusonymC
 		err := s.setAccountCreatedAt(s.ctx, accountId, time.Now().UTC().Add(-30*24*time.Hour))
 		assert.NoError(s.T(), err)
 
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
-			}}, nil)
+			}, nil)
 
 		resp, err := userclient.GetAccountStatus(
 			s.ctx,
@@ -595,11 +578,11 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Huso
 	t.Run("active", func(t *testing.T) {
 		custId := "cust_id1"
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test1", custId)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusActive},
-			}}, nil)
+			}, nil)
 		resp, err := userclient.IsAccountStatusValid(
 			s.ctx,
 			connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{
@@ -622,11 +605,11 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Huso
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test2", custId)
 		err := s.setAccountCreatedAt(s.ctx, accountId, time.Now().UTC().Add(-30*24*time.Hour))
 		assert.NoError(t, err)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
-			}}, nil)
+			}, nil)
 
 		resp, err := userclient.IsAccountStatusValid(
 			s.ctx,
@@ -648,9 +631,9 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Huso
 	t.Run("no_subs_active_trial", func(t *testing.T) {
 		custId := "cust_id3"
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test3", custId)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{}}, nil)
+			Return([]*stripe.Subscription{}, nil)
 
 		resp, err := userclient.IsAccountStatusValid(
 			s.ctx,
@@ -673,9 +656,9 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Huso
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test4", custId)
 		err := s.setAccountCreatedAt(s.ctx, accountId, time.Now().UTC().Add(-30*24*time.Hour))
 		assert.NoError(t, err)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{}}, nil)
+			Return([]*stripe.Subscription{}, nil)
 
 		resp, err := userclient.IsAccountStatusValid(
 			s.ctx,
@@ -697,11 +680,11 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_Huso
 	t.Run("no_active_subs_active_trial", func(t *testing.T) {
 		custId := "cust_id5"
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "test5", custId)
-		s.Mocks.Billingclient.On("GetSubscriptions", custId).
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, custId).
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
-			}}, nil)
+			}, nil)
 
 		resp, err := userclient.IsAccountStatusValid(
 			s.ctx,
@@ -732,7 +715,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingCheckout
 	t.Run("billed account - allowed", func(t *testing.T) {
 		teamAccountId := s.createBilledTeamAccount(s.ctx, userclient, "test-team", "test-stripe-id")
 
-		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Once().
 			Return(&stripe.CheckoutSession{URL: "new-test-url"}, nil)
 
@@ -783,7 +766,7 @@ func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingPortalSe
 	t.Run("billed account - allowed", func(t *testing.T) {
 		teamAccountId := s.createBilledTeamAccount(s.ctx, userclient, "test-team", "test-stripe-id")
 
-		s.Mocks.Billingclient.On("NewBillingPortalSession", mock.Anything, mock.Anything).Once().
+		s.Mocks.Billingclient.On("NewBillingPortalSession", mock.Anything, mock.Anything, mock.Anything).Once().
 			Return(&stripe.BillingPortalSession{URL: "new-test-url"}, nil)
 
 		resp, err := userclient.GetAccountBillingPortalSession(
@@ -825,9 +808,9 @@ func (s *IntegrationTestSuite) createBilledTeamAccount(
 	client mgmtv1alpha1connect.UserAccountServiceClient,
 	name, stripeCustomerId string,
 ) string {
-	s.Mocks.Billingclient.On("NewCustomer", mock.Anything).Once().
+	s.Mocks.Billingclient.On("NewCustomer", mock.Anything, mock.Anything).Once().
 		Return(&stripe.Customer{ID: stripeCustomerId}, nil)
-	s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Once().
 		Return(&stripe.CheckoutSession{URL: "test-url"}, nil)
 	return s.createTeamAccount(ctx, client, name)
@@ -955,9 +938,9 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 		accountId := s.createPersonalAccount(s.ctx, userclient)
 
 		stripeCustomerId := "foo"
-		s.Mocks.Billingclient.On("NewCustomer", mock.Anything).Once().
+		s.Mocks.Billingclient.On("NewCustomer", mock.Anything, mock.Anything).Once().
 			Return(&stripe.Customer{ID: stripeCustomerId}, nil)
-		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Once().
 			Return(&stripe.CheckoutSession{URL: "test-url"}, nil)
 		resp, err := userclient.ConvertPersonalToTeamAccount(
@@ -978,9 +961,9 @@ func (s *IntegrationTestSuite) Test_ConvertPersonalToTeamAccount() {
 		s.setUser(s.ctx, userclient)
 
 		stripeCustomerId := "foo"
-		s.Mocks.Billingclient.On("NewCustomer", mock.Anything).Once().
+		s.Mocks.Billingclient.On("NewCustomer", mock.Anything, mock.Anything).Once().
 			Return(&stripe.Customer{ID: stripeCustomerId}, nil)
-		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		s.Mocks.Billingclient.On("NewCheckoutSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 			Once().
 			Return(&stripe.CheckoutSession{URL: "test-url"}, nil)
 		resp, err := userclient.ConvertPersonalToTeamAccount(
@@ -1015,7 +998,7 @@ func (s *IntegrationTestSuite) Test_SetBillingMeterEvent() {
 	)
 
 	t.Run("new event", func(t *testing.T) {
-		s.Mocks.Billingclient.On("NewMeterEvent", mock.Anything).
+		s.Mocks.Billingclient.On("NewMeterEvent", mock.Anything, mock.Anything).
 			Once().
 			Return(&stripe.BillingMeterEvent{}, nil)
 		ts := uint64(1)
@@ -1065,7 +1048,7 @@ func (s *IntegrationTestSuite) Test_SetBillingMeterEvent() {
 			Type: stripe.ErrorTypeInvalidRequest,
 			Msg:  fmt.Sprintf("An event already exists with identifier %s", eventId),
 		}
-		s.Mocks.Billingclient.On("NewMeterEvent", mock.Anything).Once().Return(nil, stripeerr)
+		s.Mocks.Billingclient.On("NewMeterEvent", mock.Anything, mock.Anything).Once().Return(nil, stripeerr)
 		ts := uint64(1)
 		resp, err := workeruserclient.SetBillingMeterEvent(
 			s.ctx,

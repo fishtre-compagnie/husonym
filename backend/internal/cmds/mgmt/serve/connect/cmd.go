@@ -90,7 +90,7 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promconfig "github.com/prometheus/common/config"
 
-	stripeapiclient "github.com/stripe/stripe-go/v81/client"
+	"github.com/stripe/stripe-go/v86"
 )
 
 func NewCmd() *cobra.Command {
@@ -1262,10 +1262,10 @@ func getDefaultMaxAllowedRecords() *int64 {
 	return &val
 }
 
-func getStripeApiClient() *stripeapiclient.API {
+func getStripeApiClient() *stripe.Client {
 	apiKey := getStripeApiKey()
 	if apiKey != nil {
-		return stripeapiclient.New(*apiKey, nil)
+		return stripe.NewClient(*apiKey)
 	}
 	return nil
 }

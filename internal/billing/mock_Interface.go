@@ -5,10 +5,11 @@
 package billing
 
 import (
+	"context"
 	"log/slog"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v86"
 )
 
 // NewMockInterface creates a new instance of MockInterface. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -48,22 +49,31 @@ func (_m *MockInterface) EXPECT() *MockInterface_Expecter {
 }
 
 // GetSubscriptions provides a mock function for the type MockInterface
-func (_mock *MockInterface) GetSubscriptions(customerId string) SubscriptionIter {
-	ret := _mock.Called(customerId)
+func (_mock *MockInterface) GetSubscriptions(ctx context.Context, customerId string) ([]*stripe.Subscription, error) {
+	ret := _mock.Called(ctx, customerId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSubscriptions")
 	}
 
-	var r0 SubscriptionIter
-	if returnFunc, ok := ret.Get(0).(func(string) SubscriptionIter); ok {
-		r0 = returnFunc(customerId)
+	var r0 []*stripe.Subscription
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]*stripe.Subscription, error)); ok {
+		return returnFunc(ctx, customerId)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []*stripe.Subscription); ok {
+		r0 = returnFunc(ctx, customerId)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(SubscriptionIter)
+			r0 = ret.Get(0).([]*stripe.Subscription)
 		}
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, customerId)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockInterface_GetSubscriptions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSubscriptions'
@@ -72,37 +82,43 @@ type MockInterface_GetSubscriptions_Call struct {
 }
 
 // GetSubscriptions is a helper method to define mock.On call
+//   - ctx context.Context
 //   - customerId string
-func (_e *MockInterface_Expecter) GetSubscriptions(customerId any) *MockInterface_GetSubscriptions_Call {
-	return &MockInterface_GetSubscriptions_Call{Call: _e.mock.On("GetSubscriptions", customerId)}
+func (_e *MockInterface_Expecter) GetSubscriptions(ctx any, customerId any) *MockInterface_GetSubscriptions_Call {
+	return &MockInterface_GetSubscriptions_Call{Call: _e.mock.On("GetSubscriptions", ctx, customerId)}
 }
 
-func (_c *MockInterface_GetSubscriptions_Call) Run(run func(customerId string)) *MockInterface_GetSubscriptions_Call {
+func (_c *MockInterface_GetSubscriptions_Call) Run(run func(ctx context.Context, customerId string)) *MockInterface_GetSubscriptions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(string)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
 }
 
-func (_c *MockInterface_GetSubscriptions_Call) Return(subscriptionIter SubscriptionIter) *MockInterface_GetSubscriptions_Call {
-	_c.Call.Return(subscriptionIter)
+func (_c *MockInterface_GetSubscriptions_Call) Return(subscriptions []*stripe.Subscription, err error) *MockInterface_GetSubscriptions_Call {
+	_c.Call.Return(subscriptions, err)
 	return _c
 }
 
-func (_c *MockInterface_GetSubscriptions_Call) RunAndReturn(run func(customerId string) SubscriptionIter) *MockInterface_GetSubscriptions_Call {
+func (_c *MockInterface_GetSubscriptions_Call) RunAndReturn(run func(ctx context.Context, customerId string) ([]*stripe.Subscription, error)) *MockInterface_GetSubscriptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NewBillingPortalSession provides a mock function for the type MockInterface
-func (_mock *MockInterface) NewBillingPortalSession(customerId string, accountSlug string) (*stripe.BillingPortalSession, error) {
-	ret := _mock.Called(customerId, accountSlug)
+func (_mock *MockInterface) NewBillingPortalSession(ctx context.Context, customerId string, accountSlug string) (*stripe.BillingPortalSession, error) {
+	ret := _mock.Called(ctx, customerId, accountSlug)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewBillingPortalSession")
@@ -110,18 +126,18 @@ func (_mock *MockInterface) NewBillingPortalSession(customerId string, accountSl
 
 	var r0 *stripe.BillingPortalSession
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string, string) (*stripe.BillingPortalSession, error)); ok {
-		return returnFunc(customerId, accountSlug)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*stripe.BillingPortalSession, error)); ok {
+		return returnFunc(ctx, customerId, accountSlug)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string, string) *stripe.BillingPortalSession); ok {
-		r0 = returnFunc(customerId, accountSlug)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *stripe.BillingPortalSession); ok {
+		r0 = returnFunc(ctx, customerId, accountSlug)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*stripe.BillingPortalSession)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = returnFunc(customerId, accountSlug)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, customerId, accountSlug)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -134,25 +150,31 @@ type MockInterface_NewBillingPortalSession_Call struct {
 }
 
 // NewBillingPortalSession is a helper method to define mock.On call
+//   - ctx context.Context
 //   - customerId string
 //   - accountSlug string
-func (_e *MockInterface_Expecter) NewBillingPortalSession(customerId any, accountSlug any) *MockInterface_NewBillingPortalSession_Call {
-	return &MockInterface_NewBillingPortalSession_Call{Call: _e.mock.On("NewBillingPortalSession", customerId, accountSlug)}
+func (_e *MockInterface_Expecter) NewBillingPortalSession(ctx any, customerId any, accountSlug any) *MockInterface_NewBillingPortalSession_Call {
+	return &MockInterface_NewBillingPortalSession_Call{Call: _e.mock.On("NewBillingPortalSession", ctx, customerId, accountSlug)}
 }
 
-func (_c *MockInterface_NewBillingPortalSession_Call) Run(run func(customerId string, accountSlug string)) *MockInterface_NewBillingPortalSession_Call {
+func (_c *MockInterface_NewBillingPortalSession_Call) Run(run func(ctx context.Context, customerId string, accountSlug string)) *MockInterface_NewBillingPortalSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(string)
+			arg0 = args[0].(context.Context)
 		}
 		var arg1 string
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -163,14 +185,14 @@ func (_c *MockInterface_NewBillingPortalSession_Call) Return(billingPortalSessio
 	return _c
 }
 
-func (_c *MockInterface_NewBillingPortalSession_Call) RunAndReturn(run func(customerId string, accountSlug string) (*stripe.BillingPortalSession, error)) *MockInterface_NewBillingPortalSession_Call {
+func (_c *MockInterface_NewBillingPortalSession_Call) RunAndReturn(run func(ctx context.Context, customerId string, accountSlug string) (*stripe.BillingPortalSession, error)) *MockInterface_NewBillingPortalSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NewCheckoutSession provides a mock function for the type MockInterface
-func (_mock *MockInterface) NewCheckoutSession(customerId string, accountSlug string, userId string, logger *slog.Logger) (*stripe.CheckoutSession, error) {
-	ret := _mock.Called(customerId, accountSlug, userId, logger)
+func (_mock *MockInterface) NewCheckoutSession(ctx context.Context, customerId string, accountSlug string, userId string, logger *slog.Logger) (*stripe.CheckoutSession, error) {
+	ret := _mock.Called(ctx, customerId, accountSlug, userId, logger)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewCheckoutSession")
@@ -178,18 +200,18 @@ func (_mock *MockInterface) NewCheckoutSession(customerId string, accountSlug st
 
 	var r0 *stripe.CheckoutSession
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(string, string, string, *slog.Logger) (*stripe.CheckoutSession, error)); ok {
-		return returnFunc(customerId, accountSlug, userId, logger)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, *slog.Logger) (*stripe.CheckoutSession, error)); ok {
+		return returnFunc(ctx, customerId, accountSlug, userId, logger)
 	}
-	if returnFunc, ok := ret.Get(0).(func(string, string, string, *slog.Logger) *stripe.CheckoutSession); ok {
-		r0 = returnFunc(customerId, accountSlug, userId, logger)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, *slog.Logger) *stripe.CheckoutSession); ok {
+		r0 = returnFunc(ctx, customerId, accountSlug, userId, logger)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*stripe.CheckoutSession)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(string, string, string, *slog.Logger) error); ok {
-		r1 = returnFunc(customerId, accountSlug, userId, logger)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, *slog.Logger) error); ok {
+		r1 = returnFunc(ctx, customerId, accountSlug, userId, logger)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -202,19 +224,20 @@ type MockInterface_NewCheckoutSession_Call struct {
 }
 
 // NewCheckoutSession is a helper method to define mock.On call
+//   - ctx context.Context
 //   - customerId string
 //   - accountSlug string
 //   - userId string
 //   - logger *slog.Logger
-func (_e *MockInterface_Expecter) NewCheckoutSession(customerId any, accountSlug any, userId any, logger any) *MockInterface_NewCheckoutSession_Call {
-	return &MockInterface_NewCheckoutSession_Call{Call: _e.mock.On("NewCheckoutSession", customerId, accountSlug, userId, logger)}
+func (_e *MockInterface_Expecter) NewCheckoutSession(ctx any, customerId any, accountSlug any, userId any, logger any) *MockInterface_NewCheckoutSession_Call {
+	return &MockInterface_NewCheckoutSession_Call{Call: _e.mock.On("NewCheckoutSession", ctx, customerId, accountSlug, userId, logger)}
 }
 
-func (_c *MockInterface_NewCheckoutSession_Call) Run(run func(customerId string, accountSlug string, userId string, logger *slog.Logger)) *MockInterface_NewCheckoutSession_Call {
+func (_c *MockInterface_NewCheckoutSession_Call) Run(run func(ctx context.Context, customerId string, accountSlug string, userId string, logger *slog.Logger)) *MockInterface_NewCheckoutSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 string
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(string)
+			arg0 = args[0].(context.Context)
 		}
 		var arg1 string
 		if args[1] != nil {
@@ -224,15 +247,20 @@ func (_c *MockInterface_NewCheckoutSession_Call) Run(run func(customerId string,
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 *slog.Logger
+		var arg3 string
 		if args[3] != nil {
-			arg3 = args[3].(*slog.Logger)
+			arg3 = args[3].(string)
+		}
+		var arg4 *slog.Logger
+		if args[4] != nil {
+			arg4 = args[4].(*slog.Logger)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
+			arg4,
 		)
 	})
 	return _c
@@ -243,14 +271,14 @@ func (_c *MockInterface_NewCheckoutSession_Call) Return(checkoutSession *stripe.
 	return _c
 }
 
-func (_c *MockInterface_NewCheckoutSession_Call) RunAndReturn(run func(customerId string, accountSlug string, userId string, logger *slog.Logger) (*stripe.CheckoutSession, error)) *MockInterface_NewCheckoutSession_Call {
+func (_c *MockInterface_NewCheckoutSession_Call) RunAndReturn(run func(ctx context.Context, customerId string, accountSlug string, userId string, logger *slog.Logger) (*stripe.CheckoutSession, error)) *MockInterface_NewCheckoutSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NewCustomer provides a mock function for the type MockInterface
-func (_mock *MockInterface) NewCustomer(req *CustomerRequest) (*stripe.Customer, error) {
-	ret := _mock.Called(req)
+func (_mock *MockInterface) NewCustomer(ctx context.Context, req *CustomerRequest) (*stripe.Customer, error) {
+	ret := _mock.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewCustomer")
@@ -258,18 +286,18 @@ func (_mock *MockInterface) NewCustomer(req *CustomerRequest) (*stripe.Customer,
 
 	var r0 *stripe.Customer
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(*CustomerRequest) (*stripe.Customer, error)); ok {
-		return returnFunc(req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *CustomerRequest) (*stripe.Customer, error)); ok {
+		return returnFunc(ctx, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(*CustomerRequest) *stripe.Customer); ok {
-		r0 = returnFunc(req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *CustomerRequest) *stripe.Customer); ok {
+		r0 = returnFunc(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*stripe.Customer)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(*CustomerRequest) error); ok {
-		r1 = returnFunc(req)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *CustomerRequest) error); ok {
+		r1 = returnFunc(ctx, req)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -282,19 +310,25 @@ type MockInterface_NewCustomer_Call struct {
 }
 
 // NewCustomer is a helper method to define mock.On call
+//   - ctx context.Context
 //   - req *CustomerRequest
-func (_e *MockInterface_Expecter) NewCustomer(req any) *MockInterface_NewCustomer_Call {
-	return &MockInterface_NewCustomer_Call{Call: _e.mock.On("NewCustomer", req)}
+func (_e *MockInterface_Expecter) NewCustomer(ctx any, req any) *MockInterface_NewCustomer_Call {
+	return &MockInterface_NewCustomer_Call{Call: _e.mock.On("NewCustomer", ctx, req)}
 }
 
-func (_c *MockInterface_NewCustomer_Call) Run(run func(req *CustomerRequest)) *MockInterface_NewCustomer_Call {
+func (_c *MockInterface_NewCustomer_Call) Run(run func(ctx context.Context, req *CustomerRequest)) *MockInterface_NewCustomer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 *CustomerRequest
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(*CustomerRequest)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *CustomerRequest
+		if args[1] != nil {
+			arg1 = args[1].(*CustomerRequest)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -305,14 +339,14 @@ func (_c *MockInterface_NewCustomer_Call) Return(customer *stripe.Customer, err 
 	return _c
 }
 
-func (_c *MockInterface_NewCustomer_Call) RunAndReturn(run func(req *CustomerRequest) (*stripe.Customer, error)) *MockInterface_NewCustomer_Call {
+func (_c *MockInterface_NewCustomer_Call) RunAndReturn(run func(ctx context.Context, req *CustomerRequest) (*stripe.Customer, error)) *MockInterface_NewCustomer_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // NewMeterEvent provides a mock function for the type MockInterface
-func (_mock *MockInterface) NewMeterEvent(req *MeterEventRequest) (*stripe.BillingMeterEvent, error) {
-	ret := _mock.Called(req)
+func (_mock *MockInterface) NewMeterEvent(ctx context.Context, req *MeterEventRequest) (*stripe.BillingMeterEvent, error) {
+	ret := _mock.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewMeterEvent")
@@ -320,18 +354,18 @@ func (_mock *MockInterface) NewMeterEvent(req *MeterEventRequest) (*stripe.Billi
 
 	var r0 *stripe.BillingMeterEvent
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(*MeterEventRequest) (*stripe.BillingMeterEvent, error)); ok {
-		return returnFunc(req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *MeterEventRequest) (*stripe.BillingMeterEvent, error)); ok {
+		return returnFunc(ctx, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(*MeterEventRequest) *stripe.BillingMeterEvent); ok {
-		r0 = returnFunc(req)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *MeterEventRequest) *stripe.BillingMeterEvent); ok {
+		r0 = returnFunc(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*stripe.BillingMeterEvent)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(*MeterEventRequest) error); ok {
-		r1 = returnFunc(req)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *MeterEventRequest) error); ok {
+		r1 = returnFunc(ctx, req)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -344,19 +378,25 @@ type MockInterface_NewMeterEvent_Call struct {
 }
 
 // NewMeterEvent is a helper method to define mock.On call
+//   - ctx context.Context
 //   - req *MeterEventRequest
-func (_e *MockInterface_Expecter) NewMeterEvent(req any) *MockInterface_NewMeterEvent_Call {
-	return &MockInterface_NewMeterEvent_Call{Call: _e.mock.On("NewMeterEvent", req)}
+func (_e *MockInterface_Expecter) NewMeterEvent(ctx any, req any) *MockInterface_NewMeterEvent_Call {
+	return &MockInterface_NewMeterEvent_Call{Call: _e.mock.On("NewMeterEvent", ctx, req)}
 }
 
-func (_c *MockInterface_NewMeterEvent_Call) Run(run func(req *MeterEventRequest)) *MockInterface_NewMeterEvent_Call {
+func (_c *MockInterface_NewMeterEvent_Call) Run(run func(ctx context.Context, req *MeterEventRequest)) *MockInterface_NewMeterEvent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 *MeterEventRequest
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(*MeterEventRequest)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *MeterEventRequest
+		if args[1] != nil {
+			arg1 = args[1].(*MeterEventRequest)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -367,7 +407,7 @@ func (_c *MockInterface_NewMeterEvent_Call) Return(billingMeterEvent *stripe.Bil
 	return _c
 }
 
-func (_c *MockInterface_NewMeterEvent_Call) RunAndReturn(run func(req *MeterEventRequest) (*stripe.BillingMeterEvent, error)) *MockInterface_NewMeterEvent_Call {
+func (_c *MockInterface_NewMeterEvent_Call) RunAndReturn(run func(ctx context.Context, req *MeterEventRequest) (*stripe.BillingMeterEvent, error)) *MockInterface_NewMeterEvent_Call {
 	_c.Call.Return(run)
 	return _c
 }

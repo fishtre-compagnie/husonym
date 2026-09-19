@@ -19,7 +19,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v86"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -88,9 +88,9 @@ func (s *Service) GetAccountStatus(
 	}
 
 	logger.Debug("attempting to find active stripe subscription")
-	subscriptions, err := s.getStripeSubscriptions(account.StripeCustomerID.String)
+	subscriptions, err := s.billingclient.GetSubscriptions(ctx, account.StripeCustomerID.String)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encountered error when retrieving stripe subscriptions: %w", err)
 	}
 	logger.Debug(fmt.Sprintf("found %d stripe subscriptions for account", len(subscriptions)))
 	_, hasActiveSub := findActiveStripeSubscription(subscriptions)
@@ -130,21 +130,6 @@ func getTrialStatus(ts pgtype.Timestamp) mgmtv1alpha1.BillingStatus {
 		return mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_ACTIVE
 	}
 	return mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_EXPIRED
-}
-
-func (s *Service) getStripeSubscriptions(customerId string) ([]*stripe.Subscription, error) {
-	subIter := s.billingclient.GetSubscriptions(customerId)
-	output := []*stripe.Subscription{}
-	for subIter.Next() {
-		output = append(output, subIter.Subscription())
-	}
-	if subIter.Err() != nil {
-		return nil, fmt.Errorf(
-			"encountered error when retrieving stripe subscriptions: %w",
-			subIter.Err(),
-		)
-	}
-	return output, nil
 }
 
 func findActiveStripeSubscription(subs []*stripe.Subscription) (*stripe.Subscription, bool) {
@@ -310,6 +295,7 @@ func (s *Service) GetAccountBillingCheckoutSession(
 	}
 
 	session, err := s.generateCheckoutSession(
+		ctx,
 		account.StripeCustomerID.String,
 		account.AccountSlug,
 		user.Id(),
@@ -370,6 +356,7 @@ func (s *Service) GetAccountBillingPortalSession(
 	}
 
 	session, err := s.billingclient.NewBillingPortalSession(
+		ctx,
 		account.StripeCustomerID.String,
 		account.AccountSlug,
 	)
@@ -466,7 +453,7 @@ func (s *Service) SetBillingMeterEvent(
 		}
 		ts = &conv
 	}
-	_, err = s.billingclient.NewMeterEvent(&billing.MeterEventRequest{
+	_, err = s.billingclient.NewMeterEvent(ctx, &billing.MeterEventRequest{
 		EventName:  req.Msg.GetEventName(),
 		Identifier: req.Msg.GetEventId(),
 		Timestamp:  ts,
