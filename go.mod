@@ -80,9 +80,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.46.0
 	go.opentelemetry.io/otel/sdk/metric v1.46.0
 	go.opentelemetry.io/otel/trace v1.46.0
-	go.temporal.io/api v1.62.14
-	go.temporal.io/sdk v1.44.1
-	go.temporal.io/sdk/contrib/opentelemetry v0.7.0
+	go.temporal.io/api v1.63.6
+	go.temporal.io/sdk v1.49.0
+	go.temporal.io/sdk/contrib/opentelemetry v0.8.1
 	go.uber.org/atomic v1.12.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/sync v0.23.0
@@ -350,7 +350,7 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/neo4j/neo4j-go-driver v1.8.1-0.20200803113522-b626aa943eba // indirect
 	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
-	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
+	github.com/nexus-rpc/sdk-go v0.7.0 // indirect
 	github.com/nsf/jsondiff v0.0.0-20260207060731-8e8d90c4c0ac // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
