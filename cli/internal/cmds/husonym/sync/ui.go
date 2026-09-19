@@ -15,9 +15,9 @@ import (
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	"github.com/redpanda-data/benthos/v4/public/service"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type model struct {
@@ -78,7 +78,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
 			return m, tea.Quit
@@ -111,12 +111,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) View() string {
+func (m *model) View() tea.View {
 	configCount := getConfigCount(m.groupedConfigs)
 	w := lipgloss.Width(fmt.Sprintf("%d", configCount))
 
 	if m.done {
-		return doneStyle.Render(fmt.Sprintf("Done! Completed %d tables.\n", configCount))
+		return tea.NewView(doneStyle.Render(fmt.Sprintf("Done! Completed %d tables.\n", configCount)))
 	}
 
 	pkgCount := fmt.Sprintf(" %*d/%*d", w, m.tableSynced, w, configCount)
@@ -142,7 +142,7 @@ func (m *model) View() string {
 		pkgName = currentPkgNameStyle.Render(strings.Join(processingTables, "\n"))
 	}
 	info := lipgloss.NewStyle().MaxWidth(cellsAvail).Render("Syncing " + pkgCount + " \n" + pkgName)
-	return printlog.Render("\n") + spin + info
+	return tea.NewView(printlog.Render("\n") + spin + info)
 }
 
 type syncedDataMsg map[string]string
