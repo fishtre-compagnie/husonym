@@ -147,3 +147,43 @@ func TestInTransaction_NoSessionToDiscard(t *testing.T) {
 	require.False(t, ok)
 	require.Empty(t, stmt)
 }
+
+// A setting that fails half way leaves the session changed: foreign key checks are already
+// off when the sql_mode statement fails. The connection must be thrown away rather than go
+// back to the pool, where the next table would be written unchecked with nothing saying so.
+func TestInTransaction_SessionDiscardedWhenBeginFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).
+		WillReturnError(errors.New("connexion perdue"))
+	mock.ExpectExec(regexp.QuoteMeta("KILL CONNECTION CONNECTION_ID()")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	written := false
+	err = InTransaction(context.Background(), db, MySQLDialect{}, true, func(Tx) error {
+		written = true
+		return nil
+	})
+	require.ErrorContains(t, err, "réglage de la session")
+	require.False(t, written, "nothing is written on a session that could not be set")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// The very first setting failing changes nothing: the connection is healthy and is kept.
+func TestInTransaction_HealthySessionKeptWhenFirstSettingFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnError(errors.New("refusé"))
+	mock.ExpectRollback()
+
+	err = InTransaction(context.Background(), db, MySQLDialect{}, true, func(Tx) error { return nil })
+	require.ErrorContains(t, err, "réglage de la session")
+	require.NoError(t, mock.ExpectationsWereMet())
+}

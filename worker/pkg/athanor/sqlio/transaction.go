@@ -41,12 +41,18 @@ func InTransaction(
 	if err != nil {
 		return fmt.Errorf("sqlio: ouverture de transaction: %w", err)
 	}
-	for _, stmt := range begin {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return errors.Join(fmt.Errorf("sqlio: réglage de la session d'écriture (%s): %w", stmt, err), tx.Rollback())
-		}
-	}
+	// applied counts the settings already in place, and begun says they all are. The
+	// defer is registered before the first of them: a setting that fails half way leaves
+	// the session changed, and the connection must not go back to the pool that way.
+	applied, begun := 0, false
 	defer func() {
+		if !begun {
+			if applied > 0 {
+				discardSession(ctx, tx, dialect)
+			}
+			err = errors.Join(err, tx.Rollback())
+			return
+		}
 		restored := true
 		for _, stmt := range end {
 			if _, rerr := tx.ExecContext(ctx, stmt); rerr != nil {
@@ -65,6 +71,13 @@ func InTransaction(
 			err = fmt.Errorf("sqlio: validation de la transaction: %w", cerr)
 		}
 	}()
+	for i, stmt := range begin {
+		if _, serr := tx.ExecContext(ctx, stmt); serr != nil {
+			return fmt.Errorf("sqlio: réglage de la session d'écriture (%s): %w", stmt, serr)
+		}
+		applied = i + 1
+	}
+	begun = true
 	return write(tx)
 }
 
