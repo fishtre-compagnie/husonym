@@ -134,7 +134,10 @@ func BuildInsertQuery(
 	sqltable := goqu.S(schema).Table(table)
 	insert := builder.Insert(sqltable).Prepared(true).Rows(records)
 	// adds on conflict do nothing to insert query
-	mysqlDoNothing := *onConflictDoNothing && driver == sqlmanager_shared.MysqlDriver && len(records) > 0
+	// len(records[0]) > 0: the conflict clause names a column of the record, and a record
+	// without one gives none.
+	mysqlDoNothing := *onConflictDoNothing && driver == sqlmanager_shared.MysqlDriver &&
+		len(records) > 0 && len(records[0]) > 0
 	switch {
 	case mysqlDoNothing:
 		// MySQL spells "do nothing" INSERT IGNORE, which skips rows already there but
