@@ -226,3 +226,27 @@ func TestClassify_DateNaissanceSensibleSansTransformer(t *testing.T) {
 		t.Errorf("Classify(\"created_at\") marquée sensible : %+v", got)
 	}
 }
+
+// Une colonne en _name nomme le plus souvent une chose, pas une personne. La
+// classer comme nom de personne marquait des catalogues entiers comme donnée
+// personnelle et proposait d'y écrire des noms de personnes.
+func TestClassify_NameNeDesignePasToujoursUnePersonne(t *testing.T) {
+	choses := []string{
+		"file_name", "product_name", "table_name", "host_name", "domain_name",
+		"companyName", "role_name", "event_name", "template_name", "bucket_name",
+		"nom_fichier", "nom_produit",
+	}
+	for _, column := range choses {
+		if got, ok := Classify(column, "varchar"); ok && got.Sensitive {
+			t.Errorf("%s classé %s (sensible) alors qu'il nomme une chose", column, got.Category)
+		}
+	}
+
+	personnes := []string{"name", "client_name", "customer_name", "full_name", "nom_complet", "contact_name"}
+	for _, column := range personnes {
+		got, ok := Classify(column, "varchar")
+		if !ok || got.Category != "person_full_name" {
+			t.Errorf("%s: attendu person_full_name, obtenu %q (ok=%v)", column, got.Category, ok)
+		}
+	}
+}

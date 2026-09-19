@@ -55,6 +55,28 @@ type rule struct {
 	suggestIfTemporal mgmtv1alpha1.TransformerSource
 }
 
+// objectTokens : tokens qui disent que la colonne nomme une CHOSE, pas une personne.
+// "name" et "nom" ne disent pas à eux seuls ce qui est nommé, et l'immense majorité
+// des colonnes qui les portent nomment un objet : file_name, product_name,
+// nom_fichier. Sans ces exclusions, introspecter un schéma catalogue marque les noms
+// de produits comme donnée personnelle et propose de les remplacer par des noms de
+// personnes. Partagés par les règles person_last_name et person_full_name.
+var objectTokens = []string{
+	"file", "product", "table", "column", "field", "schema", "index",
+	"host", "domain", "server", "cluster", "node", "database", "db",
+	"company", "brand", "store", "shop", "site",
+	"service", "app", "application", "module", "package", "class", "method",
+	"project", "task", "job", "step", "rule", "policy", "role", "group",
+	"type", "category", "tag", "label", "template", "theme", "style",
+	"event", "queue", "topic", "bucket", "folder", "directory", "path",
+	"param", "variable", "attribute", "property", "status", "state",
+	"image", "icon", "color", "currency", "unit", "measure",
+	// Équivalents français des plus courants.
+	"fichier", "produit", "societe", "marque", "magasin",
+	"projet", "tache", "regle", "groupe", "categorie", "etiquette",
+	"modele", "evenement", "dossier", "chemin", "etat", "devise", "unite",
+}
+
 // L'ordre est significatif : première règle qui matche = gagnante. Les règles les
 // plus spécifiques (username, prénom) précèdent les plus génériques (nom, name).
 var rules = []rule{
@@ -95,14 +117,15 @@ var rules = []rule{
 		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
 		keywords:      []string{"lastname", "surname", "familyname", "patronyme"},
 		tokenOnly:     []string{"lname", "nom"},
-		excludeTokens: []string{"complet", "full", "entier"},
+		excludeTokens: append([]string{"complet", "full", "entier"}, objectTokens...),
 	},
 	{
 		category:  "person_full_name",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
 		keywords:  []string{"fullname", "nomcomplet"},
-		tokenOnly: []string{"name"},
+		tokenOnly:     []string{"name"},
+		excludeTokens: objectTokens,
 	},
 	{
 		// Avant street_address : "ip_address" contient la sous-chaîne "address".
