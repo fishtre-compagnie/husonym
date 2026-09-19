@@ -278,14 +278,7 @@ class SchemaInitStatements(_message.Message):
     def __init__(self, label: _Optional[str] = ..., statements: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class GetConnectionInitStatementsResponse(_message.Message):
-    __slots__ = ("table_init_statements", "table_truncate_statements", "schema_init_statements")
-    class TableInitStatementsEntry(_message.Message):
-        __slots__ = ("key", "value")
-        KEY_FIELD_NUMBER: _ClassVar[int]
-        VALUE_FIELD_NUMBER: _ClassVar[int]
-        key: str
-        value: str
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    __slots__ = ("table_truncate_statements", "schema_init_statements")
     class TableTruncateStatementsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -293,13 +286,11 @@ class GetConnectionInitStatementsResponse(_message.Message):
         key: str
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
-    TABLE_INIT_STATEMENTS_FIELD_NUMBER: _ClassVar[int]
     TABLE_TRUNCATE_STATEMENTS_FIELD_NUMBER: _ClassVar[int]
     SCHEMA_INIT_STATEMENTS_FIELD_NUMBER: _ClassVar[int]
-    table_init_statements: _containers.ScalarMap[str, str]
     table_truncate_statements: _containers.ScalarMap[str, str]
     schema_init_statements: _containers.RepeatedCompositeFieldContainer[SchemaInitStatements]
-    def __init__(self, table_init_statements: _Optional[_Mapping[str, str]] = ..., table_truncate_statements: _Optional[_Mapping[str, str]] = ..., schema_init_statements: _Optional[_Iterable[_Union[SchemaInitStatements, _Mapping]]] = ...) -> None: ...
+    def __init__(self, table_truncate_statements: _Optional[_Mapping[str, str]] = ..., schema_init_statements: _Optional[_Iterable[_Union[SchemaInitStatements, _Mapping]]] = ...) -> None: ...
 
 class PrimaryConstraint(_message.Message):
     __slots__ = ("columns",)

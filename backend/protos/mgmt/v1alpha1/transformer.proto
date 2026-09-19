@@ -99,9 +99,8 @@ message UserDefinedTransformer {
   // The description of the user defined transformer.
   string description = 3;
 
-  reserved 4;
-  // @deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.
-  TransformerDataType data_type = 5 [deprecated = true];
+  reserved 4, 5;
+  reserved "data_type"; // the data types are the ones of the system transformer it is made from
   // The source of the user defined transformer.
   TransformerSource source = 6;
   // The configuration of the user defined transformer.
@@ -190,8 +189,8 @@ message SystemTransformer {
   string name = 1;
   // The description of the transformer.
   string description = 2;
-  // @deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.
-  TransformerDataType data_type = 3 [deprecated = true];
+  reserved 3;
+  reserved "data_type"; // replaced by data_types
   // The source of the transformer.
   TransformerSource source = 4;
   // The configuration of the transformer.

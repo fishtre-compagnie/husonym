@@ -25,7 +25,6 @@ var (
 
 			Name:        "Generate Email",
 			Description: "Generates a new randomized email address.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -46,7 +45,6 @@ var (
 		{
 			Name:        "Transform Email",
 			Description: "Transforms an existing email address.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -70,7 +68,6 @@ var (
 		{
 			Name:        "Generate Boolean",
 			Description: "Generates a boolean value at random.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_BOOLEAN,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_BOOLEAN,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -89,7 +86,6 @@ var (
 		{
 			Name:        "Generate Card Number",
 			Description: "Generates a card number.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -110,7 +106,6 @@ var (
 		{
 			Name:        "Generate City",
 			Description: "Randomly selects a city from a list of predfined US cities.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -129,7 +124,6 @@ var (
 		{
 			Name:        "Use Column Default",
 			Description: "Defers to the database column default",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -148,7 +142,6 @@ var (
 		{
 			Name:        "Generate International Phone Number",
 			Description: "Generates a phone number in international format with the + character at the start of the phone number. Note that the + sign is not included in the min or max.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -170,7 +163,6 @@ var (
 		{
 			Name:        "Generate First Name",
 			Description: "Generates a random first name. ",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -189,7 +181,6 @@ var (
 		{
 			Name:        "Generate Float64",
 			Description: "Generates a random float64 value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_FLOAT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_FLOAT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -213,7 +204,6 @@ var (
 		{
 			Name:        "Generate Full Address",
 			Description: "Randomly generates a street address in the format: {street_num} {street_addresss} {street_descriptor} {city}, {state} {zipcode}. For example, 123 Main Street Boston, Massachusetts 02169.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -232,7 +222,6 @@ var (
 		{
 			Name:        "Generate Full Name",
 			Description: "Generates a new full name consisting of a first and last name",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -251,7 +240,6 @@ var (
 		{
 			Name:        "Generate Gender",
 			Description: "Randomly generates one of the following genders: female, male, undefined, nonbinary.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -272,7 +260,6 @@ var (
 		{
 			Name:        "Generate Int64 Phone Number",
 			Description: "Generates a new phone number with a default length of 10.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -291,7 +278,6 @@ var (
 		{
 			Name:        "Generate Random Int64",
 			Description: "Generates a random int64 value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -314,7 +300,6 @@ var (
 		{
 			Name:        "Generate Last Name",
 			Description: "Generates a random last name.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -333,7 +318,6 @@ var (
 		{
 			Name:        "Generate SHA256 Hash",
 			Description: "SHA256 hashes a randomly generated value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -352,7 +336,6 @@ var (
 		{
 			Name:        "Generate SSN",
 			Description: "Generates a completely random social security numbers including the hyphens in the format <xxx-xx-xxxx>",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -371,7 +354,6 @@ var (
 		{
 			Name:        "Generate State",
 			Description: "Randomly selects a US state.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -392,7 +374,6 @@ var (
 		{
 			Name:        "Generate Street Address",
 			Description: "Randomly generates a street address in the format: {street_num} {street_addresss} {street_descriptor}. For example, 123 Main Street.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -411,7 +392,6 @@ var (
 		{
 			Name:        "Generate String Phone Number",
 			Description: "Generates a phone number and returns it as a string.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -433,7 +413,6 @@ var (
 		{
 			Name:        "Generate Random String",
 			Description: "Creates a randomly ordered alphanumeric string between the specified range",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -455,7 +434,6 @@ var (
 		{
 			Name:        "Generate Unix Timestamp",
 			Description: "Randomly generates a Unix timestamp",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -474,7 +452,6 @@ var (
 		{
 			Name:        "Generate Username",
 			Description: "Randomly generates a username in the format <first_initial><last_name>.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -493,7 +470,6 @@ var (
 		{
 			Name:        "Generate UTC Timestamp",
 			Description: "Randomly generates a UTC timestamp.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_TIME,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_TIME,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -512,7 +488,6 @@ var (
 		{
 			Name:        "Generate UUID",
 			Description: "Generates a new UUIDv4 identifier.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_UUID,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_UUID,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -534,7 +509,6 @@ var (
 		{
 			Name:        "Generate Zipcode",
 			Description: "Randomly selects a zip code from a list of predefined US zipcodes.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -553,7 +527,6 @@ var (
 		{
 			Name:        "Transform E164 Phone Number",
 			Description: "Transforms an existing E164 formatted phone number.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -573,7 +546,6 @@ var (
 		{
 			Name:        "Transform First Name",
 			Description: "Transforms an existing first name",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -593,7 +565,6 @@ var (
 		{
 			Name:        "Transform Float64",
 			Description: "Transforms an existing float value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_FLOAT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_FLOAT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -614,7 +585,6 @@ var (
 		{
 			Name:        "Transform Full Name",
 			Description: "Transforms an existing full name.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -634,7 +604,6 @@ var (
 		{
 			Name:        "Transform Int64 Phone Number",
 			Description: "Transforms an existing phone number that is typed as an integer",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -654,7 +623,6 @@ var (
 		{
 			Name:        "Transform Int64",
 			Description: "Transforms an existing integer value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -675,7 +643,6 @@ var (
 		{
 			Name:        "Transform Last Name",
 			Description: "Transforms an existing last name.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -695,7 +662,6 @@ var (
 		{
 			Name:        "Transform String Phone Number",
 			Description: "Transforms an existing phone number that is typed as a string.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -715,7 +681,6 @@ var (
 		{
 			Name:        "Transform String",
 			Description: "Transforms an existing string value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -735,7 +700,6 @@ var (
 		{
 			Name:        "Passthrough",
 			Description: "Passes the input value through to the desination with no changes.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -753,7 +717,6 @@ var (
 		{
 			Name:        "Null",
 			Description: "Inserts a <null> string instead of the source value.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
 			},
@@ -771,7 +734,6 @@ var (
 		{
 			Name:        "Transform Javascript",
 			Description: "Write custom javascript to transform data",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -791,7 +753,6 @@ var (
 		{
 			Name:        "Generate Categorical",
 			Description: "Randomly selects a value from a predefined list of values",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -812,7 +773,6 @@ var (
 		{
 			Name:        "Transform Character Scramble",
 			Description: "Transforms a string value by scrambling each character with another character in the same unicode block. Letters will be substituted with letters, numbers with numbers and special characters with special characters. Spaces and capitalization is preserved.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -832,7 +792,6 @@ var (
 		{
 			Name:        "Generate Javascript",
 			Description: "Write custom Javascript to generate synthetic data.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_ANY,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -853,7 +812,6 @@ var (
 		{
 			Name:        "Generate Country",
 			Description: "Randomly selects a Country.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -874,7 +832,6 @@ var (
 		{
 			Name:        "Generate Business Name",
 			Description: "Generates a random business name.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -893,7 +850,6 @@ var (
 		{
 			Name:        "Generate IP Address",
 			Description: "Generates a random IP address.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -914,7 +870,6 @@ var (
 		{
 			Name:        "Transform UUID",
 			Description: "Transforms a UUID",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_UUID,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_UUID,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -933,7 +888,6 @@ var (
 		{
 			Name:        "Scramble Identity",
 			Description: "Scrambles an integer while keeping it unique.",
-			DataType:    mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,

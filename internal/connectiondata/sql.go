@@ -401,7 +401,6 @@ func (s *SQLConnectionDataService) GetInitStatements(
 	}
 
 	return &mgmtv1alpha1.GetConnectionInitStatementsResponse{
-		TableInitStatements:     map[string]string{},
 		TableTruncateStatements: truncateStmtsMap,
 		SchemaInitStatements:    initSchemaStmts,
 	}, nil

@@ -2035,11 +2035,6 @@ func (x *PostgresSourceTableOption) GetWhereClause() string {
 
 type MysqlSourceConnectionOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether to halt the job if a new column is added
-	// Deprecated: Use new_column_addition_strategy instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	HaltOnNewColumnAddition bool `protobuf:"varint,1,opt,name=halt_on_new_column_addition,json=haltOnNewColumnAddition,proto3" json:"halt_on_new_column_addition,omitempty"`
 	// The list of schemas (and their tables) along with any configuration options that will be used.
 	Schemas []*MysqlSourceSchemaOption `protobuf:"bytes,2,rep,name=schemas,proto3" json:"schemas,omitempty"`
 	// The unique connection id to a mysql connection configuration
@@ -2082,14 +2077,6 @@ func (x *MysqlSourceConnectionOptions) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MysqlSourceConnectionOptions.ProtoReflect.Descriptor instead.
 func (*MysqlSourceConnectionOptions) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{19}
-}
-
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *MysqlSourceConnectionOptions) GetHaltOnNewColumnAddition() bool {
-	if x != nil {
-		return x.HaltOnNewColumnAddition
-	}
-	return false
 }
 
 func (x *MysqlSourceConnectionOptions) GetSchemas() []*MysqlSourceSchemaOption {
@@ -2238,11 +2225,6 @@ func (x *MysqlSourceTableOption) GetWhereClause() string {
 
 type MssqlSourceConnectionOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether to halt the job if a new column is added
-	// Deprecated: Use new_column_addition_strategy instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	HaltOnNewColumnAddition bool `protobuf:"varint,1,opt,name=halt_on_new_column_addition,json=haltOnNewColumnAddition,proto3" json:"halt_on_new_column_addition,omitempty"`
 	// The list of schemas (and their tables) along with any configuration options that will be used.
 	Schemas []*MssqlSourceSchemaOption `protobuf:"bytes,2,rep,name=schemas,proto3" json:"schemas,omitempty"`
 	// The unique connection id to a mssql connection configuration
@@ -2285,14 +2267,6 @@ func (x *MssqlSourceConnectionOptions) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MssqlSourceConnectionOptions.ProtoReflect.Descriptor instead.
 func (*MssqlSourceConnectionOptions) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{22}
-}
-
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *MssqlSourceConnectionOptions) GetHaltOnNewColumnAddition() bool {
-	if x != nil {
-		return x.HaltOnNewColumnAddition
-	}
-	return false
 }
 
 func (x *MssqlSourceConnectionOptions) GetSchemas() []*MssqlSourceSchemaOption {
@@ -2915,10 +2889,6 @@ func (x *PostgresDestinationConnectionOptions) GetMaxInFlight() uint32 {
 
 type PostgresOnConflictConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// @deprecated - Use strategy nothing instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	DoNothing bool `protobuf:"varint,1,opt,name=do_nothing,json=doNothing,proto3" json:"do_nothing,omitempty"`
 	// Types that are valid to be assigned to Strategy:
 	//
 	//	*PostgresOnConflictConfig_Nothing
@@ -2956,14 +2926,6 @@ func (x *PostgresOnConflictConfig) ProtoReflect() protoreflect.Message {
 // Deprecated: Use PostgresOnConflictConfig.ProtoReflect.Descriptor instead.
 func (*PostgresOnConflictConfig) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{32}
-}
-
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *PostgresOnConflictConfig) GetDoNothing() bool {
-	if x != nil {
-		return x.DoNothing
-	}
-	return false
 }
 
 func (x *PostgresOnConflictConfig) GetStrategy() isPostgresOnConflictConfig_Strategy {
@@ -3200,8 +3162,6 @@ func (x *MysqlTruncateTableConfig) GetTruncateBeforeInsert() bool {
 
 type MysqlOnConflictConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// @deprecated - Use strategy nothing instead
-	DoNothing bool `protobuf:"varint,1,opt,name=do_nothing,json=doNothing,proto3" json:"do_nothing,omitempty"`
 	// Types that are valid to be assigned to Strategy:
 	//
 	//	*MysqlOnConflictConfig_Nothing
@@ -3239,13 +3199,6 @@ func (x *MysqlOnConflictConfig) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MysqlOnConflictConfig.ProtoReflect.Descriptor instead.
 func (*MysqlOnConflictConfig) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *MysqlOnConflictConfig) GetDoNothing() bool {
-	if x != nil {
-		return x.DoNothing
-	}
-	return false
 }
 
 func (x *MysqlOnConflictConfig) GetStrategy() isMysqlOnConflictConfig_Strategy {
@@ -7944,10 +7897,6 @@ type ColumnError struct {
 	Table string `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
 	// The column of the error
 	Column string `protobuf:"bytes,3,opt,name=column,proto3" json:"column,omitempty"`
-	// @deprecated - Use error_reports instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	Errors []string `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
 	// The list of error reports
 	ErrorReports  []*ColumnError_ColumnErrorReport `protobuf:"bytes,5,rep,name=error_reports,json=errorReports,proto3" json:"error_reports,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -8005,14 +7954,6 @@ func (x *ColumnError) GetColumn() string {
 	return ""
 }
 
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *ColumnError) GetErrors() []string {
-	if x != nil {
-		return x.Errors
-	}
-	return nil
-}
-
 func (x *ColumnError) GetErrorReports() []*ColumnError_ColumnErrorReport {
 	if x != nil {
 		return x.ErrorReports
@@ -8028,10 +7969,6 @@ type ColumnWarning struct {
 	Table string `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
 	// The column of the warning
 	Column string `protobuf:"bytes,3,opt,name=column,proto3" json:"column,omitempty"`
-	// @deprecated - Use warning_reports instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	Warnings []string `protobuf:"bytes,5,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	// The list of warning reports
 	WarningReports []*ColumnWarning_ColumnWarningReport `protobuf:"bytes,6,rep,name=warning_reports,json=warningReports,proto3" json:"warning_reports,omitempty"`
 	unknownFields  protoimpl.UnknownFields
@@ -8089,14 +8026,6 @@ func (x *ColumnWarning) GetColumn() string {
 	return ""
 }
 
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *ColumnWarning) GetWarnings() []string {
-	if x != nil {
-		return x.Warnings
-	}
-	return nil
-}
-
 func (x *ColumnWarning) GetWarningReports() []*ColumnWarning_ColumnWarningReport {
 	if x != nil {
 		return x.WarningReports
@@ -8106,10 +8035,6 @@ func (x *ColumnWarning) GetWarningReports() []*ColumnWarning_ColumnWarningReport
 
 type DatabaseError struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// @deprecated - Use error_reports instead
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-	Errors []string `protobuf:"bytes,1,rep,name=errors,proto3" json:"errors,omitempty"`
 	// The list of error reports
 	ErrorReports  []*DatabaseError_DatabaseErrorReport `protobuf:"bytes,2,rep,name=error_reports,json=errorReports,proto3" json:"error_reports,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -8144,14 +8069,6 @@ func (x *DatabaseError) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DatabaseError.ProtoReflect.Descriptor instead.
 func (*DatabaseError) Descriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_job_proto_rawDescGZIP(), []int{120}
-}
-
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/job.proto.
-func (x *DatabaseError) GetErrors() []string {
-	if x != nil {
-		return x.Errors
-	}
-	return nil
 }
 
 func (x *DatabaseError) GetErrorReports() []*DatabaseError_DatabaseErrorReport {
@@ -12685,9 +12602,8 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x19PostgresSourceTableOption\x12\x1d\n" +
 	"\x05table\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05table\x12&\n" +
 	"\fwhere_clause\x18\x02 \x01(\tH\x00R\vwhereClause\x88\x01\x01B\x0f\n" +
-	"\r_where_clause\"\xd9\t\n" +
+	"\r_where_clause\"\xba\t\n" +
 	"\x1cMysqlSourceConnectionOptions\x12@\n" +
-	"\x1bhalt_on_new_column_addition\x18\x01 \x01(\bB\x02\x18\x01R\x17haltOnNewColumnAddition\x12@\n" +
 	"\aschemas\x18\x02 \x03(\v2&.mgmt.v1alpha1.MysqlSourceSchemaOptionR\aschemas\x12-\n" +
 	"\rconnection_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\fconnectionId\x12H\n" +
 	"!subset_by_foreign_key_constraints\x18\x04 \x01(\bR\x1dsubsetByForeignKeyConstraints\x12y\n" +
@@ -12708,16 +12624,15 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\aAutoMap\x1a\r\n" +
 	"\vPassthroughB\n" +
 	"\n" +
-	"\bstrategy\"\x83\x01\n" +
+	"\bstrategyJ\x04\b\x01\x10\x02R\x1bhalt_on_new_column_addition\"\x83\x01\n" +
 	"\x17MysqlSourceSchemaOption\x12\x1f\n" +
 	"\x06schema\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06schema\x12G\n" +
 	"\x06tables\x18\x02 \x03(\v2%.mgmt.v1alpha1.MysqlSourceTableOptionB\b\xbaH\x05\x92\x01\x02\b\x01R\x06tables\"p\n" +
 	"\x16MysqlSourceTableOption\x12\x1d\n" +
 	"\x05table\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05table\x12&\n" +
 	"\fwhere_clause\x18\x02 \x01(\tH\x00R\vwhereClause\x88\x01\x01B\x0f\n" +
-	"\r_where_clause\"\xe2\b\n" +
+	"\r_where_clause\"\xc3\b\n" +
 	"\x1cMssqlSourceConnectionOptions\x12@\n" +
-	"\x1bhalt_on_new_column_addition\x18\x01 \x01(\bB\x02\x18\x01R\x17haltOnNewColumnAddition\x12@\n" +
 	"\aschemas\x18\x02 \x03(\v2&.mgmt.v1alpha1.MssqlSourceSchemaOptionR\aschemas\x12-\n" +
 	"\rconnection_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\fconnectionId\x12H\n" +
 	"!subset_by_foreign_key_constraints\x18\x04 \x01(\bR\x1dsubsetByForeignKeyConstraints\x12y\n" +
@@ -12736,7 +12651,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\aHaltJob\x1a\r\n" +
 	"\vPassthroughB\n" +
 	"\n" +
-	"\bstrategy\"\x83\x01\n" +
+	"\bstrategyJ\x04\b\x01\x10\x02R\x1bhalt_on_new_column_addition\"\x83\x01\n" +
 	"\x17MssqlSourceSchemaOption\x12\x1f\n" +
 	"\x06schema\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06schema\x12G\n" +
 	"\x06tables\x18\x02 \x03(\v2%.mgmt.v1alpha1.MssqlSourceTableOptionB\b\xbaH\x05\x92\x01\x02\b\x01R\x06tables\"p\n" +
@@ -12770,15 +12685,14 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x1bskip_foreign_key_violations\x18\x04 \x01(\bR\x18skipForeignKeyViolations\x120\n" +
 	"\x05batch\x18\x05 \x01(\v2\x1a.mgmt.v1alpha1.BatchConfigR\x05batch\x120\n" +
 	"\rmax_in_flight\x18\x06 \x01(\rB\a\xbaH\x04*\x02(\x01H\x00R\vmaxInFlight\x88\x01\x01B\x10\n" +
-	"\x0e_max_in_flight\"\xc8\x02\n" +
-	"\x18PostgresOnConflictConfig\x12!\n" +
-	"\n" +
-	"do_nothing\x18\x01 \x01(\bB\x02\x18\x01R\tdoNothing\x12_\n" +
+	"\x0e_max_in_flight\"\xb7\x02\n" +
+	"\x18PostgresOnConflictConfig\x12_\n" +
 	"\anothing\x18\x02 \x01(\v2C.mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothingH\x00R\anothing\x12Z\n" +
 	"\x06update\x18\x03 \x01(\v2@.mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictUpdateH\x00R\x06update\x1a\x1d\n" +
 	"\x1bPostgresOnConflictDoNothing\x1a\x1a\n" +
 	"\x18PostgresOnConflictUpdateB\x11\n" +
-	"\bstrategy\x12\x05\xbaH\x02\b\x00\"m\n" +
+	"\bstrategy\x12\x05\xbaH\x02\b\x00J\x04\b\x01\x10\x02R\n" +
+	"do_nothing\"m\n" +
 	"\x1bPostgresTruncateTableConfig\x124\n" +
 	"\x16truncate_before_insert\x18\x01 \x01(\bR\x14truncateBeforeInsert\x12\x18\n" +
 	"\acascade\x18\x02 \x01(\bR\acascade\"\x9b\x03\n" +
@@ -12792,15 +12706,14 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\rmax_in_flight\x18\x06 \x01(\rB\a\xbaH\x04*\x02(\x01H\x00R\vmaxInFlight\x88\x01\x01B\x10\n" +
 	"\x0e_max_in_flight\"P\n" +
 	"\x18MysqlTruncateTableConfig\x124\n" +
-	"\x16truncate_before_insert\x18\x01 \x01(\bR\x14truncateBeforeInsert\"\xaf\x02\n" +
-	"\x15MysqlOnConflictConfig\x12\x1d\n" +
-	"\n" +
-	"do_nothing\x18\x01 \x01(\bR\tdoNothing\x12Y\n" +
+	"\x16truncate_before_insert\x18\x01 \x01(\bR\x14truncateBeforeInsert\"\xa2\x02\n" +
+	"\x15MysqlOnConflictConfig\x12Y\n" +
 	"\anothing\x18\x02 \x01(\v2=.mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothingH\x00R\anothing\x12T\n" +
 	"\x06update\x18\x03 \x01(\v2:.mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictUpdateH\x00R\x06update\x1a\x1a\n" +
 	"\x18MysqlOnConflictDoNothing\x1a\x17\n" +
 	"\x15MysqlOnConflictUpdateB\x11\n" +
-	"\bstrategy\x12\x05\xbaH\x02\b\x00\"\x9b\x03\n" +
+	"\bstrategy\x12\x05\xbaH\x02\b\x00J\x04\b\x01\x10\x02R\n" +
+	"do_nothing\"\x9b\x03\n" +
 	"!MssqlDestinationConnectionOptions\x12N\n" +
 	"\x0etruncate_table\x18\x01 \x01(\v2'.mgmt.v1alpha1.MssqlTruncateTableConfigR\rtruncateTable\x12*\n" +
 	"\x11init_table_schema\x18\x02 \x01(\bR\x0finitTableSchema\x12E\n" +
@@ -13178,12 +13091,11 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x14virtual_foreign_keys\x18\x04 \x03(\v2'.mgmt.v1alpha1.VirtualForeignConstraintR\x12virtualForeignKeys\x12<\n" +
 	"\n" +
 	"job_source\x18\x05 \x01(\v2\x18.mgmt.v1alpha1.JobSourceH\x00R\tjobSource\x88\x01\x01B\r\n" +
-	"\v_job_source\"\xe7\a\n" +
+	"\v_job_source\"\xd9\a\n" +
 	"\vColumnError\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\tR\x06schema\x12\x14\n" +
 	"\x05table\x18\x02 \x01(\tR\x05table\x12\x16\n" +
-	"\x06column\x18\x03 \x01(\tR\x06column\x12\x1a\n" +
-	"\x06errors\x18\x04 \x03(\tB\x02\x18\x01R\x06errors\x12Q\n" +
+	"\x06column\x18\x03 \x01(\tR\x06column\x12Q\n" +
 	"\rerror_reports\x18\x05 \x03(\v2,.mgmt.v1alpha1.ColumnError.ColumnErrorReportR\ferrorReports\x1am\n" +
 	"\x11ColumnErrorReport\x12>\n" +
 	"\x04code\x18\x01 \x01(\x0e2*.mgmt.v1alpha1.ColumnError.ColumnErrorCodeR\x04code\x12\x18\n" +
@@ -13201,12 +13113,11 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"7COLUMN_ERROR_CODE_VFK_TARGET_COLUMN_NOT_FOUND_IN_SOURCE\x10\t\x122\n" +
 	".COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH\x10\n" +
 	"\x122\n" +
-	".COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE\x10\v\"\xdb\x03\n" +
+	".COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE\x10\vJ\x04\b\x04\x10\x05R\x06errors\"\xcb\x03\n" +
 	"\rColumnWarning\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\tR\x06schema\x12\x14\n" +
 	"\x05table\x18\x02 \x01(\tR\x05table\x12\x16\n" +
-	"\x06column\x18\x03 \x01(\tR\x06column\x12\x1e\n" +
-	"\bwarnings\x18\x05 \x03(\tB\x02\x18\x01R\bwarnings\x12Y\n" +
+	"\x06column\x18\x03 \x01(\tR\x06column\x12Y\n" +
 	"\x0fwarning_reports\x18\x06 \x03(\v20.mgmt.v1alpha1.ColumnWarning.ColumnWarningReportR\x0ewarningReports\x1as\n" +
 	"\x13ColumnWarningReport\x12B\n" +
 	"\x04code\x18\x01 \x01(\x0e2..mgmt.v1alpha1.ColumnWarning.ColumnWarningCodeR\x04code\x12\x18\n" +
@@ -13214,9 +13125,8 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x11ColumnWarningCode\x12#\n" +
 	"\x1fCOLUMN_WARNING_CODE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE\x10\x01\x12,\n" +
-	"(COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING\x10\x02\"\xae\x03\n" +
-	"\rDatabaseError\x12\x1a\n" +
-	"\x06errors\x18\x01 \x03(\tB\x02\x18\x01R\x06errors\x12U\n" +
+	"(COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING\x10\x02J\x04\b\x05\x10\x06R\bwarnings\"\xa0\x03\n" +
+	"\rDatabaseError\x12U\n" +
 	"\rerror_reports\x18\x02 \x03(\v20.mgmt.v1alpha1.DatabaseError.DatabaseErrorReportR\ferrorReports\x1as\n" +
 	"\x13DatabaseErrorReport\x12B\n" +
 	"\x04code\x18\x01 \x01(\x0e2..mgmt.v1alpha1.DatabaseError.DatabaseErrorCodeR\x04code\x12\x18\n" +
@@ -13224,7 +13134,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x11DatabaseErrorCode\x12#\n" +
 	"\x1fDATABASE_ERROR_CODE_UNSPECIFIED\x10\x00\x12M\n" +
 	"IDATABASE_ERROR_CODE_UNSUPPORTED_CIRCULAR_DEPENDENCY_AT_LEAST_ONE_NULLABLE\x10\x01\x12+\n" +
-	"'DATABASE_ERROR_CODE_VFK_COLUMN_MISMATCH\x10\x02\"\xca\x04\n" +
+	"'DATABASE_ERROR_CODE_VFK_COLUMN_MISMATCH\x10\x02J\x04\b\x01\x10\x02R\x06errors\"\xca\x04\n" +
 	"\n" +
 	"TableError\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\tR\x06schema\x12\x14\n" +

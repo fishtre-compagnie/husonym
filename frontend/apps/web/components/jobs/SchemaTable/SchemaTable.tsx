@@ -714,7 +714,7 @@ export function getAllFormErrors(
   const colErr = validationErrors.columnErrors.map((e) => {
     return {
       path: `${e.schema}.${e.table}.${e.column}`,
-      message: e.errors.join('. '),
+      message: e.errorReports.map((r) => r.message).join('. '),
       level: 'error' as ErrorLevel,
     };
   });

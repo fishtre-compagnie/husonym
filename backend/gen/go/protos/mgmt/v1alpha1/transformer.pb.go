@@ -1356,10 +1356,6 @@ type UserDefinedTransformer struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The description of the user defined transformer.
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	// @deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/transformer.proto.
-	DataType TransformerDataType `protobuf:"varint,5,opt,name=data_type,json=dataType,proto3,enum=mgmt.v1alpha1.TransformerDataType" json:"data_type,omitempty"`
 	// The source of the user defined transformer.
 	Source TransformerSource `protobuf:"varint,6,opt,name=source,proto3,enum=mgmt.v1alpha1.TransformerSource" json:"source,omitempty"`
 	// The configuration of the user defined transformer.
@@ -1427,14 +1423,6 @@ func (x *UserDefinedTransformer) GetDescription() string {
 	return ""
 }
 
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/transformer.proto.
-func (x *UserDefinedTransformer) GetDataType() TransformerDataType {
-	if x != nil {
-		return x.DataType
-	}
-	return TransformerDataType_TRANSFORMER_DATA_TYPE_UNSPECIFIED
-}
-
 func (x *UserDefinedTransformer) GetSource() TransformerSource {
 	if x != nil {
 		return x.Source
@@ -1485,10 +1473,6 @@ type SystemTransformer struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The description of the transformer.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	// @deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.
-	//
-	// Deprecated: Marked as deprecated in mgmt/v1alpha1/transformer.proto.
-	DataType TransformerDataType `protobuf:"varint,3,opt,name=data_type,json=dataType,proto3,enum=mgmt.v1alpha1.TransformerDataType" json:"data_type,omitempty"`
 	// The source of the transformer.
 	Source TransformerSource `protobuf:"varint,4,opt,name=source,proto3,enum=mgmt.v1alpha1.TransformerSource" json:"source,omitempty"`
 	// The configuration of the transformer.
@@ -1542,14 +1526,6 @@ func (x *SystemTransformer) GetDescription() string {
 		return x.Description
 	}
 	return ""
-}
-
-// Deprecated: Marked as deprecated in mgmt/v1alpha1/transformer.proto.
-func (x *SystemTransformer) GetDataType() TransformerDataType {
-	if x != nil {
-		return x.DataType
-	}
-	return TransformerDataType_TRANSFORMER_DATA_TYPE_UNSPECIFIED
 }
 
 func (x *SystemTransformer) GetSource() TransformerSource {
@@ -5555,12 +5531,11 @@ const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12D\n" +
 	"\x10transformer_name\x18\x02 \x01(\tB\x19\xbaH\x16r\x142\x12^[a-z0-9-]{3,100}$R\x0ftransformerName\"G\n" +
 	"\"IsTransformerNameAvailableResponse\x12!\n" +
-	"\fis_available\x18\x01 \x01(\bR\visAvailable\"\xff\x03\n" +
+	"\fis_available\x18\x01 \x01(\bR\visAvailable\"\xcb\x03\n" +
 	"\x16UserDefinedTransformer\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12C\n" +
-	"\tdata_type\x18\x05 \x01(\x0e2\".mgmt.v1alpha1.TransformerDataTypeB\x02\x18\x01R\bdataType\x128\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x128\n" +
 	"\x06source\x18\x06 \x01(\x0e2 .mgmt.v1alpha1.TransformerSourceR\x06source\x128\n" +
 	"\x06config\x18\a \x01(\v2 .mgmt.v1alpha1.TransformerConfigR\x06config\x129\n" +
 	"\n" +
@@ -5571,16 +5546,15 @@ const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"account_id\x18\n" +
 	" \x01(\tR\taccountId\x12A\n" +
 	"\n" +
-	"data_types\x18\v \x03(\x0e2\".mgmt.v1alpha1.TransformerDataTypeR\tdataTypesJ\x04\b\x04\x10\x05\"\x96\x03\n" +
+	"data_types\x18\v \x03(\x0e2\".mgmt.v1alpha1.TransformerDataTypeR\tdataTypesJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\tdata_type\"\xe2\x02\n" +
 	"\x11SystemTransformer\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12C\n" +
-	"\tdata_type\x18\x03 \x01(\x0e2\".mgmt.v1alpha1.TransformerDataTypeB\x02\x18\x01R\bdataType\x128\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x128\n" +
 	"\x06source\x18\x04 \x01(\x0e2 .mgmt.v1alpha1.TransformerSourceR\x06source\x128\n" +
 	"\x06config\x18\x05 \x01(\v2 .mgmt.v1alpha1.TransformerConfigR\x06config\x12A\n" +
 	"\n" +
 	"data_types\x18\x06 \x03(\x0e2\".mgmt.v1alpha1.TransformerDataTypeR\tdataTypes\x12O\n" +
-	"\x13supported_job_types\x18\a \x03(\x0e2\x1f.mgmt.v1alpha1.SupportedJobTypeR\x11supportedJobTypes\"\xc7$\n" +
+	"\x13supported_job_types\x18\a \x03(\x0e2\x1f.mgmt.v1alpha1.SupportedJobTypeR\x11supportedJobTypesJ\x04\b\x03\x10\x04R\tdata_type\"\xc7$\n" +
 	"\x11TransformerConfig\x12R\n" +
 	"\x15generate_email_config\x18\x01 \x01(\v2\x1c.mgmt.v1alpha1.GenerateEmailH\x00R\x13generateEmailConfig\x12U\n" +
 	"\x16transform_email_config\x18\x02 \x01(\v2\x1d.mgmt.v1alpha1.TransformEmailH\x00R\x14transformEmailConfig\x12O\n" +
@@ -6067,112 +6041,110 @@ var file_mgmt_v1alpha1_transformer_proto_depIdxs = []int32{
 	23, // 7: mgmt.v1alpha1.CreateUserDefinedTransformerResponse.transformer:type_name -> mgmt.v1alpha1.UserDefinedTransformer
 	25, // 8: mgmt.v1alpha1.UpdateUserDefinedTransformerRequest.transformer_config:type_name -> mgmt.v1alpha1.TransformerConfig
 	23, // 9: mgmt.v1alpha1.UpdateUserDefinedTransformerResponse.transformer:type_name -> mgmt.v1alpha1.UserDefinedTransformer
-	1,  // 10: mgmt.v1alpha1.UserDefinedTransformer.data_type:type_name -> mgmt.v1alpha1.TransformerDataType
-	0,  // 11: mgmt.v1alpha1.UserDefinedTransformer.source:type_name -> mgmt.v1alpha1.TransformerSource
-	25, // 12: mgmt.v1alpha1.UserDefinedTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
-	92, // 13: mgmt.v1alpha1.UserDefinedTransformer.created_at:type_name -> google.protobuf.Timestamp
-	92, // 14: mgmt.v1alpha1.UserDefinedTransformer.updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 15: mgmt.v1alpha1.UserDefinedTransformer.data_types:type_name -> mgmt.v1alpha1.TransformerDataType
-	1,  // 16: mgmt.v1alpha1.SystemTransformer.data_type:type_name -> mgmt.v1alpha1.TransformerDataType
-	0,  // 17: mgmt.v1alpha1.SystemTransformer.source:type_name -> mgmt.v1alpha1.TransformerSource
-	25, // 18: mgmt.v1alpha1.SystemTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
-	1,  // 19: mgmt.v1alpha1.SystemTransformer.data_types:type_name -> mgmt.v1alpha1.TransformerDataType
-	2,  // 20: mgmt.v1alpha1.SystemTransformer.supported_job_types:type_name -> mgmt.v1alpha1.SupportedJobType
-	30, // 21: mgmt.v1alpha1.TransformerConfig.generate_email_config:type_name -> mgmt.v1alpha1.GenerateEmail
-	31, // 22: mgmt.v1alpha1.TransformerConfig.transform_email_config:type_name -> mgmt.v1alpha1.TransformEmail
-	32, // 23: mgmt.v1alpha1.TransformerConfig.generate_bool_config:type_name -> mgmt.v1alpha1.GenerateBool
-	33, // 24: mgmt.v1alpha1.TransformerConfig.generate_card_number_config:type_name -> mgmt.v1alpha1.GenerateCardNumber
-	34, // 25: mgmt.v1alpha1.TransformerConfig.generate_city_config:type_name -> mgmt.v1alpha1.GenerateCity
-	36, // 26: mgmt.v1alpha1.TransformerConfig.generate_e164_phone_number_config:type_name -> mgmt.v1alpha1.GenerateE164PhoneNumber
-	37, // 27: mgmt.v1alpha1.TransformerConfig.generate_first_name_config:type_name -> mgmt.v1alpha1.GenerateFirstName
-	38, // 28: mgmt.v1alpha1.TransformerConfig.generate_float64_config:type_name -> mgmt.v1alpha1.GenerateFloat64
-	39, // 29: mgmt.v1alpha1.TransformerConfig.generate_full_address_config:type_name -> mgmt.v1alpha1.GenerateFullAddress
-	40, // 30: mgmt.v1alpha1.TransformerConfig.generate_full_name_config:type_name -> mgmt.v1alpha1.GenerateFullName
-	41, // 31: mgmt.v1alpha1.TransformerConfig.generate_gender_config:type_name -> mgmt.v1alpha1.GenerateGender
-	42, // 32: mgmt.v1alpha1.TransformerConfig.generate_int64_phone_number_config:type_name -> mgmt.v1alpha1.GenerateInt64PhoneNumber
-	43, // 33: mgmt.v1alpha1.TransformerConfig.generate_int64_config:type_name -> mgmt.v1alpha1.GenerateInt64
-	44, // 34: mgmt.v1alpha1.TransformerConfig.generate_last_name_config:type_name -> mgmt.v1alpha1.GenerateLastName
-	45, // 35: mgmt.v1alpha1.TransformerConfig.generate_sha256hash_config:type_name -> mgmt.v1alpha1.GenerateSha256Hash
-	46, // 36: mgmt.v1alpha1.TransformerConfig.generate_ssn_config:type_name -> mgmt.v1alpha1.GenerateSSN
-	47, // 37: mgmt.v1alpha1.TransformerConfig.generate_state_config:type_name -> mgmt.v1alpha1.GenerateState
-	48, // 38: mgmt.v1alpha1.TransformerConfig.generate_street_address_config:type_name -> mgmt.v1alpha1.GenerateStreetAddress
-	49, // 39: mgmt.v1alpha1.TransformerConfig.generate_string_phone_number_config:type_name -> mgmt.v1alpha1.GenerateStringPhoneNumber
-	50, // 40: mgmt.v1alpha1.TransformerConfig.generate_string_config:type_name -> mgmt.v1alpha1.GenerateString
-	51, // 41: mgmt.v1alpha1.TransformerConfig.generate_unixtimestamp_config:type_name -> mgmt.v1alpha1.GenerateUnixTimestamp
-	52, // 42: mgmt.v1alpha1.TransformerConfig.generate_username_config:type_name -> mgmt.v1alpha1.GenerateUsername
-	53, // 43: mgmt.v1alpha1.TransformerConfig.generate_utctimestamp_config:type_name -> mgmt.v1alpha1.GenerateUtcTimestamp
-	54, // 44: mgmt.v1alpha1.TransformerConfig.generate_uuid_config:type_name -> mgmt.v1alpha1.GenerateUuid
-	55, // 45: mgmt.v1alpha1.TransformerConfig.generate_zipcode_config:type_name -> mgmt.v1alpha1.GenerateZipcode
-	56, // 46: mgmt.v1alpha1.TransformerConfig.transform_e164_phone_number_config:type_name -> mgmt.v1alpha1.TransformE164PhoneNumber
-	57, // 47: mgmt.v1alpha1.TransformerConfig.transform_first_name_config:type_name -> mgmt.v1alpha1.TransformFirstName
-	58, // 48: mgmt.v1alpha1.TransformerConfig.transform_float64_config:type_name -> mgmt.v1alpha1.TransformFloat64
-	59, // 49: mgmt.v1alpha1.TransformerConfig.transform_full_name_config:type_name -> mgmt.v1alpha1.TransformFullName
-	60, // 50: mgmt.v1alpha1.TransformerConfig.transform_int64_phone_number_config:type_name -> mgmt.v1alpha1.TransformInt64PhoneNumber
-	61, // 51: mgmt.v1alpha1.TransformerConfig.transform_int64_config:type_name -> mgmt.v1alpha1.TransformInt64
-	62, // 52: mgmt.v1alpha1.TransformerConfig.transform_last_name_config:type_name -> mgmt.v1alpha1.TransformLastName
-	63, // 53: mgmt.v1alpha1.TransformerConfig.transform_phone_number_config:type_name -> mgmt.v1alpha1.TransformPhoneNumber
-	64, // 54: mgmt.v1alpha1.TransformerConfig.transform_string_config:type_name -> mgmt.v1alpha1.TransformString
-	65, // 55: mgmt.v1alpha1.TransformerConfig.passthrough_config:type_name -> mgmt.v1alpha1.Passthrough
-	66, // 56: mgmt.v1alpha1.TransformerConfig.nullconfig:type_name -> mgmt.v1alpha1.Null
-	68, // 57: mgmt.v1alpha1.TransformerConfig.user_defined_transformer_config:type_name -> mgmt.v1alpha1.UserDefinedTransformerConfig
-	35, // 58: mgmt.v1alpha1.TransformerConfig.generate_default_config:type_name -> mgmt.v1alpha1.GenerateDefault
-	67, // 59: mgmt.v1alpha1.TransformerConfig.transform_javascript_config:type_name -> mgmt.v1alpha1.TransformJavascript
-	75, // 60: mgmt.v1alpha1.TransformerConfig.generate_categorical_config:type_name -> mgmt.v1alpha1.GenerateCategorical
-	76, // 61: mgmt.v1alpha1.TransformerConfig.transform_character_scramble_config:type_name -> mgmt.v1alpha1.TransformCharacterScramble
-	77, // 62: mgmt.v1alpha1.TransformerConfig.generate_javascript_config:type_name -> mgmt.v1alpha1.GenerateJavascript
-	80, // 63: mgmt.v1alpha1.TransformerConfig.generate_country_config:type_name -> mgmt.v1alpha1.GenerateCountry
-	27, // 64: mgmt.v1alpha1.TransformerConfig.transform_pii_text_config:type_name -> mgmt.v1alpha1.TransformPiiText
-	83, // 65: mgmt.v1alpha1.TransformerConfig.generate_business_name_config:type_name -> mgmt.v1alpha1.GenerateBusinessName
-	84, // 66: mgmt.v1alpha1.TransformerConfig.generate_ip_address_config:type_name -> mgmt.v1alpha1.GenerateIpAddress
-	85, // 67: mgmt.v1alpha1.TransformerConfig.transform_uuid_config:type_name -> mgmt.v1alpha1.TransformUuid
-	26, // 68: mgmt.v1alpha1.TransformerConfig.transform_scramble_identity_config:type_name -> mgmt.v1alpha1.TransformScrambleIdentity
-	29, // 69: mgmt.v1alpha1.TransformPiiText.default_anonymizer:type_name -> mgmt.v1alpha1.PiiAnonymizer
-	28, // 70: mgmt.v1alpha1.TransformPiiText.deny_recognizers:type_name -> mgmt.v1alpha1.PiiDenyRecognizer
-	86, // 71: mgmt.v1alpha1.TransformPiiText.entity_anonymizers:type_name -> mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry
-	87, // 72: mgmt.v1alpha1.PiiAnonymizer.replace:type_name -> mgmt.v1alpha1.PiiAnonymizer.Replace
-	88, // 73: mgmt.v1alpha1.PiiAnonymizer.redact:type_name -> mgmt.v1alpha1.PiiAnonymizer.Redact
-	89, // 74: mgmt.v1alpha1.PiiAnonymizer.mask:type_name -> mgmt.v1alpha1.PiiAnonymizer.Mask
-	90, // 75: mgmt.v1alpha1.PiiAnonymizer.hash:type_name -> mgmt.v1alpha1.PiiAnonymizer.Hash
-	91, // 76: mgmt.v1alpha1.PiiAnonymizer.transform:type_name -> mgmt.v1alpha1.PiiAnonymizer.Transform
-	3,  // 77: mgmt.v1alpha1.GenerateEmail.email_type:type_name -> mgmt.v1alpha1.GenerateEmailType
-	3,  // 78: mgmt.v1alpha1.TransformEmail.email_type:type_name -> mgmt.v1alpha1.GenerateEmailType
-	4,  // 79: mgmt.v1alpha1.TransformEmail.invalid_email_action:type_name -> mgmt.v1alpha1.InvalidEmailAction
-	72, // 80: mgmt.v1alpha1.TryJavascriptRulesRequest.rules:type_name -> mgmt.v1alpha1.JavascriptRule
-	25, // 81: mgmt.v1alpha1.JavascriptRule.transformer:type_name -> mgmt.v1alpha1.TransformerConfig
-	74, // 82: mgmt.v1alpha1.TryJavascriptRulesResponse.failure:type_name -> mgmt.v1alpha1.JavascriptRuleFailure
-	5,  // 83: mgmt.v1alpha1.GenerateIpAddress.ip_type:type_name -> mgmt.v1alpha1.GenerateIpAddressType
-	29, // 84: mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry.value:type_name -> mgmt.v1alpha1.PiiAnonymizer
-	6,  // 85: mgmt.v1alpha1.PiiAnonymizer.Hash.algo:type_name -> mgmt.v1alpha1.PiiAnonymizer.Hash.HashType
-	25, // 86: mgmt.v1alpha1.PiiAnonymizer.Transform.config:type_name -> mgmt.v1alpha1.TransformerConfig
-	7,  // 87: mgmt.v1alpha1.TransformersService.GetSystemTransformers:input_type -> mgmt.v1alpha1.GetSystemTransformersRequest
-	9,  // 88: mgmt.v1alpha1.TransformersService.GetSystemTransformerBySource:input_type -> mgmt.v1alpha1.GetSystemTransformerBySourceRequest
-	11, // 89: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformers:input_type -> mgmt.v1alpha1.GetUserDefinedTransformersRequest
-	13, // 90: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformerById:input_type -> mgmt.v1alpha1.GetUserDefinedTransformerByIdRequest
-	15, // 91: mgmt.v1alpha1.TransformersService.CreateUserDefinedTransformer:input_type -> mgmt.v1alpha1.CreateUserDefinedTransformerRequest
-	17, // 92: mgmt.v1alpha1.TransformersService.DeleteUserDefinedTransformer:input_type -> mgmt.v1alpha1.DeleteUserDefinedTransformerRequest
-	19, // 93: mgmt.v1alpha1.TransformersService.UpdateUserDefinedTransformer:input_type -> mgmt.v1alpha1.UpdateUserDefinedTransformerRequest
-	21, // 94: mgmt.v1alpha1.TransformersService.IsTransformerNameAvailable:input_type -> mgmt.v1alpha1.IsTransformerNameAvailableRequest
-	69, // 95: mgmt.v1alpha1.TransformersService.ValidateUserJavascriptCode:input_type -> mgmt.v1alpha1.ValidateUserJavascriptCodeRequest
-	71, // 96: mgmt.v1alpha1.TransformersService.TryJavascriptRules:input_type -> mgmt.v1alpha1.TryJavascriptRulesRequest
-	78, // 97: mgmt.v1alpha1.TransformersService.ValidateUserRegexCode:input_type -> mgmt.v1alpha1.ValidateUserRegexCodeRequest
-	81, // 98: mgmt.v1alpha1.TransformersService.GetTransformPiiEntities:input_type -> mgmt.v1alpha1.GetTransformPiiEntitiesRequest
-	8,  // 99: mgmt.v1alpha1.TransformersService.GetSystemTransformers:output_type -> mgmt.v1alpha1.GetSystemTransformersResponse
-	10, // 100: mgmt.v1alpha1.TransformersService.GetSystemTransformerBySource:output_type -> mgmt.v1alpha1.GetSystemTransformerBySourceResponse
-	12, // 101: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformers:output_type -> mgmt.v1alpha1.GetUserDefinedTransformersResponse
-	14, // 102: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformerById:output_type -> mgmt.v1alpha1.GetUserDefinedTransformerByIdResponse
-	16, // 103: mgmt.v1alpha1.TransformersService.CreateUserDefinedTransformer:output_type -> mgmt.v1alpha1.CreateUserDefinedTransformerResponse
-	18, // 104: mgmt.v1alpha1.TransformersService.DeleteUserDefinedTransformer:output_type -> mgmt.v1alpha1.DeleteUserDefinedTransformerResponse
-	20, // 105: mgmt.v1alpha1.TransformersService.UpdateUserDefinedTransformer:output_type -> mgmt.v1alpha1.UpdateUserDefinedTransformerResponse
-	22, // 106: mgmt.v1alpha1.TransformersService.IsTransformerNameAvailable:output_type -> mgmt.v1alpha1.IsTransformerNameAvailableResponse
-	70, // 107: mgmt.v1alpha1.TransformersService.ValidateUserJavascriptCode:output_type -> mgmt.v1alpha1.ValidateUserJavascriptCodeResponse
-	73, // 108: mgmt.v1alpha1.TransformersService.TryJavascriptRules:output_type -> mgmt.v1alpha1.TryJavascriptRulesResponse
-	79, // 109: mgmt.v1alpha1.TransformersService.ValidateUserRegexCode:output_type -> mgmt.v1alpha1.ValidateUserRegexCodeResponse
-	82, // 110: mgmt.v1alpha1.TransformersService.GetTransformPiiEntities:output_type -> mgmt.v1alpha1.GetTransformPiiEntitiesResponse
-	99, // [99:111] is the sub-list for method output_type
-	87, // [87:99] is the sub-list for method input_type
-	87, // [87:87] is the sub-list for extension type_name
-	87, // [87:87] is the sub-list for extension extendee
-	0,  // [0:87] is the sub-list for field type_name
+	0,  // 10: mgmt.v1alpha1.UserDefinedTransformer.source:type_name -> mgmt.v1alpha1.TransformerSource
+	25, // 11: mgmt.v1alpha1.UserDefinedTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
+	92, // 12: mgmt.v1alpha1.UserDefinedTransformer.created_at:type_name -> google.protobuf.Timestamp
+	92, // 13: mgmt.v1alpha1.UserDefinedTransformer.updated_at:type_name -> google.protobuf.Timestamp
+	1,  // 14: mgmt.v1alpha1.UserDefinedTransformer.data_types:type_name -> mgmt.v1alpha1.TransformerDataType
+	0,  // 15: mgmt.v1alpha1.SystemTransformer.source:type_name -> mgmt.v1alpha1.TransformerSource
+	25, // 16: mgmt.v1alpha1.SystemTransformer.config:type_name -> mgmt.v1alpha1.TransformerConfig
+	1,  // 17: mgmt.v1alpha1.SystemTransformer.data_types:type_name -> mgmt.v1alpha1.TransformerDataType
+	2,  // 18: mgmt.v1alpha1.SystemTransformer.supported_job_types:type_name -> mgmt.v1alpha1.SupportedJobType
+	30, // 19: mgmt.v1alpha1.TransformerConfig.generate_email_config:type_name -> mgmt.v1alpha1.GenerateEmail
+	31, // 20: mgmt.v1alpha1.TransformerConfig.transform_email_config:type_name -> mgmt.v1alpha1.TransformEmail
+	32, // 21: mgmt.v1alpha1.TransformerConfig.generate_bool_config:type_name -> mgmt.v1alpha1.GenerateBool
+	33, // 22: mgmt.v1alpha1.TransformerConfig.generate_card_number_config:type_name -> mgmt.v1alpha1.GenerateCardNumber
+	34, // 23: mgmt.v1alpha1.TransformerConfig.generate_city_config:type_name -> mgmt.v1alpha1.GenerateCity
+	36, // 24: mgmt.v1alpha1.TransformerConfig.generate_e164_phone_number_config:type_name -> mgmt.v1alpha1.GenerateE164PhoneNumber
+	37, // 25: mgmt.v1alpha1.TransformerConfig.generate_first_name_config:type_name -> mgmt.v1alpha1.GenerateFirstName
+	38, // 26: mgmt.v1alpha1.TransformerConfig.generate_float64_config:type_name -> mgmt.v1alpha1.GenerateFloat64
+	39, // 27: mgmt.v1alpha1.TransformerConfig.generate_full_address_config:type_name -> mgmt.v1alpha1.GenerateFullAddress
+	40, // 28: mgmt.v1alpha1.TransformerConfig.generate_full_name_config:type_name -> mgmt.v1alpha1.GenerateFullName
+	41, // 29: mgmt.v1alpha1.TransformerConfig.generate_gender_config:type_name -> mgmt.v1alpha1.GenerateGender
+	42, // 30: mgmt.v1alpha1.TransformerConfig.generate_int64_phone_number_config:type_name -> mgmt.v1alpha1.GenerateInt64PhoneNumber
+	43, // 31: mgmt.v1alpha1.TransformerConfig.generate_int64_config:type_name -> mgmt.v1alpha1.GenerateInt64
+	44, // 32: mgmt.v1alpha1.TransformerConfig.generate_last_name_config:type_name -> mgmt.v1alpha1.GenerateLastName
+	45, // 33: mgmt.v1alpha1.TransformerConfig.generate_sha256hash_config:type_name -> mgmt.v1alpha1.GenerateSha256Hash
+	46, // 34: mgmt.v1alpha1.TransformerConfig.generate_ssn_config:type_name -> mgmt.v1alpha1.GenerateSSN
+	47, // 35: mgmt.v1alpha1.TransformerConfig.generate_state_config:type_name -> mgmt.v1alpha1.GenerateState
+	48, // 36: mgmt.v1alpha1.TransformerConfig.generate_street_address_config:type_name -> mgmt.v1alpha1.GenerateStreetAddress
+	49, // 37: mgmt.v1alpha1.TransformerConfig.generate_string_phone_number_config:type_name -> mgmt.v1alpha1.GenerateStringPhoneNumber
+	50, // 38: mgmt.v1alpha1.TransformerConfig.generate_string_config:type_name -> mgmt.v1alpha1.GenerateString
+	51, // 39: mgmt.v1alpha1.TransformerConfig.generate_unixtimestamp_config:type_name -> mgmt.v1alpha1.GenerateUnixTimestamp
+	52, // 40: mgmt.v1alpha1.TransformerConfig.generate_username_config:type_name -> mgmt.v1alpha1.GenerateUsername
+	53, // 41: mgmt.v1alpha1.TransformerConfig.generate_utctimestamp_config:type_name -> mgmt.v1alpha1.GenerateUtcTimestamp
+	54, // 42: mgmt.v1alpha1.TransformerConfig.generate_uuid_config:type_name -> mgmt.v1alpha1.GenerateUuid
+	55, // 43: mgmt.v1alpha1.TransformerConfig.generate_zipcode_config:type_name -> mgmt.v1alpha1.GenerateZipcode
+	56, // 44: mgmt.v1alpha1.TransformerConfig.transform_e164_phone_number_config:type_name -> mgmt.v1alpha1.TransformE164PhoneNumber
+	57, // 45: mgmt.v1alpha1.TransformerConfig.transform_first_name_config:type_name -> mgmt.v1alpha1.TransformFirstName
+	58, // 46: mgmt.v1alpha1.TransformerConfig.transform_float64_config:type_name -> mgmt.v1alpha1.TransformFloat64
+	59, // 47: mgmt.v1alpha1.TransformerConfig.transform_full_name_config:type_name -> mgmt.v1alpha1.TransformFullName
+	60, // 48: mgmt.v1alpha1.TransformerConfig.transform_int64_phone_number_config:type_name -> mgmt.v1alpha1.TransformInt64PhoneNumber
+	61, // 49: mgmt.v1alpha1.TransformerConfig.transform_int64_config:type_name -> mgmt.v1alpha1.TransformInt64
+	62, // 50: mgmt.v1alpha1.TransformerConfig.transform_last_name_config:type_name -> mgmt.v1alpha1.TransformLastName
+	63, // 51: mgmt.v1alpha1.TransformerConfig.transform_phone_number_config:type_name -> mgmt.v1alpha1.TransformPhoneNumber
+	64, // 52: mgmt.v1alpha1.TransformerConfig.transform_string_config:type_name -> mgmt.v1alpha1.TransformString
+	65, // 53: mgmt.v1alpha1.TransformerConfig.passthrough_config:type_name -> mgmt.v1alpha1.Passthrough
+	66, // 54: mgmt.v1alpha1.TransformerConfig.nullconfig:type_name -> mgmt.v1alpha1.Null
+	68, // 55: mgmt.v1alpha1.TransformerConfig.user_defined_transformer_config:type_name -> mgmt.v1alpha1.UserDefinedTransformerConfig
+	35, // 56: mgmt.v1alpha1.TransformerConfig.generate_default_config:type_name -> mgmt.v1alpha1.GenerateDefault
+	67, // 57: mgmt.v1alpha1.TransformerConfig.transform_javascript_config:type_name -> mgmt.v1alpha1.TransformJavascript
+	75, // 58: mgmt.v1alpha1.TransformerConfig.generate_categorical_config:type_name -> mgmt.v1alpha1.GenerateCategorical
+	76, // 59: mgmt.v1alpha1.TransformerConfig.transform_character_scramble_config:type_name -> mgmt.v1alpha1.TransformCharacterScramble
+	77, // 60: mgmt.v1alpha1.TransformerConfig.generate_javascript_config:type_name -> mgmt.v1alpha1.GenerateJavascript
+	80, // 61: mgmt.v1alpha1.TransformerConfig.generate_country_config:type_name -> mgmt.v1alpha1.GenerateCountry
+	27, // 62: mgmt.v1alpha1.TransformerConfig.transform_pii_text_config:type_name -> mgmt.v1alpha1.TransformPiiText
+	83, // 63: mgmt.v1alpha1.TransformerConfig.generate_business_name_config:type_name -> mgmt.v1alpha1.GenerateBusinessName
+	84, // 64: mgmt.v1alpha1.TransformerConfig.generate_ip_address_config:type_name -> mgmt.v1alpha1.GenerateIpAddress
+	85, // 65: mgmt.v1alpha1.TransformerConfig.transform_uuid_config:type_name -> mgmt.v1alpha1.TransformUuid
+	26, // 66: mgmt.v1alpha1.TransformerConfig.transform_scramble_identity_config:type_name -> mgmt.v1alpha1.TransformScrambleIdentity
+	29, // 67: mgmt.v1alpha1.TransformPiiText.default_anonymizer:type_name -> mgmt.v1alpha1.PiiAnonymizer
+	28, // 68: mgmt.v1alpha1.TransformPiiText.deny_recognizers:type_name -> mgmt.v1alpha1.PiiDenyRecognizer
+	86, // 69: mgmt.v1alpha1.TransformPiiText.entity_anonymizers:type_name -> mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry
+	87, // 70: mgmt.v1alpha1.PiiAnonymizer.replace:type_name -> mgmt.v1alpha1.PiiAnonymizer.Replace
+	88, // 71: mgmt.v1alpha1.PiiAnonymizer.redact:type_name -> mgmt.v1alpha1.PiiAnonymizer.Redact
+	89, // 72: mgmt.v1alpha1.PiiAnonymizer.mask:type_name -> mgmt.v1alpha1.PiiAnonymizer.Mask
+	90, // 73: mgmt.v1alpha1.PiiAnonymizer.hash:type_name -> mgmt.v1alpha1.PiiAnonymizer.Hash
+	91, // 74: mgmt.v1alpha1.PiiAnonymizer.transform:type_name -> mgmt.v1alpha1.PiiAnonymizer.Transform
+	3,  // 75: mgmt.v1alpha1.GenerateEmail.email_type:type_name -> mgmt.v1alpha1.GenerateEmailType
+	3,  // 76: mgmt.v1alpha1.TransformEmail.email_type:type_name -> mgmt.v1alpha1.GenerateEmailType
+	4,  // 77: mgmt.v1alpha1.TransformEmail.invalid_email_action:type_name -> mgmt.v1alpha1.InvalidEmailAction
+	72, // 78: mgmt.v1alpha1.TryJavascriptRulesRequest.rules:type_name -> mgmt.v1alpha1.JavascriptRule
+	25, // 79: mgmt.v1alpha1.JavascriptRule.transformer:type_name -> mgmt.v1alpha1.TransformerConfig
+	74, // 80: mgmt.v1alpha1.TryJavascriptRulesResponse.failure:type_name -> mgmt.v1alpha1.JavascriptRuleFailure
+	5,  // 81: mgmt.v1alpha1.GenerateIpAddress.ip_type:type_name -> mgmt.v1alpha1.GenerateIpAddressType
+	29, // 82: mgmt.v1alpha1.TransformPiiText.EntityAnonymizersEntry.value:type_name -> mgmt.v1alpha1.PiiAnonymizer
+	6,  // 83: mgmt.v1alpha1.PiiAnonymizer.Hash.algo:type_name -> mgmt.v1alpha1.PiiAnonymizer.Hash.HashType
+	25, // 84: mgmt.v1alpha1.PiiAnonymizer.Transform.config:type_name -> mgmt.v1alpha1.TransformerConfig
+	7,  // 85: mgmt.v1alpha1.TransformersService.GetSystemTransformers:input_type -> mgmt.v1alpha1.GetSystemTransformersRequest
+	9,  // 86: mgmt.v1alpha1.TransformersService.GetSystemTransformerBySource:input_type -> mgmt.v1alpha1.GetSystemTransformerBySourceRequest
+	11, // 87: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformers:input_type -> mgmt.v1alpha1.GetUserDefinedTransformersRequest
+	13, // 88: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformerById:input_type -> mgmt.v1alpha1.GetUserDefinedTransformerByIdRequest
+	15, // 89: mgmt.v1alpha1.TransformersService.CreateUserDefinedTransformer:input_type -> mgmt.v1alpha1.CreateUserDefinedTransformerRequest
+	17, // 90: mgmt.v1alpha1.TransformersService.DeleteUserDefinedTransformer:input_type -> mgmt.v1alpha1.DeleteUserDefinedTransformerRequest
+	19, // 91: mgmt.v1alpha1.TransformersService.UpdateUserDefinedTransformer:input_type -> mgmt.v1alpha1.UpdateUserDefinedTransformerRequest
+	21, // 92: mgmt.v1alpha1.TransformersService.IsTransformerNameAvailable:input_type -> mgmt.v1alpha1.IsTransformerNameAvailableRequest
+	69, // 93: mgmt.v1alpha1.TransformersService.ValidateUserJavascriptCode:input_type -> mgmt.v1alpha1.ValidateUserJavascriptCodeRequest
+	71, // 94: mgmt.v1alpha1.TransformersService.TryJavascriptRules:input_type -> mgmt.v1alpha1.TryJavascriptRulesRequest
+	78, // 95: mgmt.v1alpha1.TransformersService.ValidateUserRegexCode:input_type -> mgmt.v1alpha1.ValidateUserRegexCodeRequest
+	81, // 96: mgmt.v1alpha1.TransformersService.GetTransformPiiEntities:input_type -> mgmt.v1alpha1.GetTransformPiiEntitiesRequest
+	8,  // 97: mgmt.v1alpha1.TransformersService.GetSystemTransformers:output_type -> mgmt.v1alpha1.GetSystemTransformersResponse
+	10, // 98: mgmt.v1alpha1.TransformersService.GetSystemTransformerBySource:output_type -> mgmt.v1alpha1.GetSystemTransformerBySourceResponse
+	12, // 99: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformers:output_type -> mgmt.v1alpha1.GetUserDefinedTransformersResponse
+	14, // 100: mgmt.v1alpha1.TransformersService.GetUserDefinedTransformerById:output_type -> mgmt.v1alpha1.GetUserDefinedTransformerByIdResponse
+	16, // 101: mgmt.v1alpha1.TransformersService.CreateUserDefinedTransformer:output_type -> mgmt.v1alpha1.CreateUserDefinedTransformerResponse
+	18, // 102: mgmt.v1alpha1.TransformersService.DeleteUserDefinedTransformer:output_type -> mgmt.v1alpha1.DeleteUserDefinedTransformerResponse
+	20, // 103: mgmt.v1alpha1.TransformersService.UpdateUserDefinedTransformer:output_type -> mgmt.v1alpha1.UpdateUserDefinedTransformerResponse
+	22, // 104: mgmt.v1alpha1.TransformersService.IsTransformerNameAvailable:output_type -> mgmt.v1alpha1.IsTransformerNameAvailableResponse
+	70, // 105: mgmt.v1alpha1.TransformersService.ValidateUserJavascriptCode:output_type -> mgmt.v1alpha1.ValidateUserJavascriptCodeResponse
+	73, // 106: mgmt.v1alpha1.TransformersService.TryJavascriptRules:output_type -> mgmt.v1alpha1.TryJavascriptRulesResponse
+	79, // 107: mgmt.v1alpha1.TransformersService.ValidateUserRegexCode:output_type -> mgmt.v1alpha1.ValidateUserRegexCodeResponse
+	82, // 108: mgmt.v1alpha1.TransformersService.GetTransformPiiEntities:output_type -> mgmt.v1alpha1.GetTransformPiiEntitiesResponse
+	97, // [97:109] is the sub-list for method output_type
+	85, // [85:97] is the sub-list for method input_type
+	85, // [85:85] is the sub-list for extension type_name
+	85, // [85:85] is the sub-list for extension extendee
+	0,  // [0:85] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_transformer_proto_init() }

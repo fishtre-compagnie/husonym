@@ -210,9 +210,8 @@ message PostgresSourceTableOption {
 }
 
 message MysqlSourceConnectionOptions {
-  // Whether to halt the job if a new column is added
-  // Deprecated: Use new_column_addition_strategy instead
-  bool halt_on_new_column_addition = 1 [deprecated = true];
+  reserved 1;
+  reserved "halt_on_new_column_addition"; // replaced by new_column_addition_strategy
   // The list of schemas (and their tables) along with any configuration options that will be used.
   repeated MysqlSourceSchemaOption schemas = 2;
   // The unique connection id to a mysql connection configuration
@@ -276,9 +275,8 @@ message MysqlSourceTableOption {
 }
 
 message MssqlSourceConnectionOptions {
-  // Whether to halt the job if a new column is added
-  // Deprecated: Use new_column_addition_strategy instead
-  bool halt_on_new_column_addition = 1 [deprecated = true];
+  reserved 1;
+  reserved "halt_on_new_column_addition"; // replaced by new_column_addition_strategy
   // The list of schemas (and their tables) along with any configuration options that will be used.
   repeated MssqlSourceSchemaOption schemas = 2;
   // The unique connection id to a mssql connection configuration
@@ -389,8 +387,8 @@ message PostgresDestinationConnectionOptions {
 }
 
 message PostgresOnConflictConfig {
-  // @deprecated - Use strategy nothing instead
-  bool do_nothing = 1 [deprecated = true];
+  reserved 1;
+  reserved "do_nothing"; // replaced by the nothing strategy
 
   oneof strategy {
     option (buf.validate.oneof).required = false;
@@ -450,8 +448,8 @@ message MysqlTruncateTableConfig {
   bool truncate_before_insert = 1;
 }
 message MysqlOnConflictConfig {
-  // @deprecated - Use strategy nothing instead
-  bool do_nothing = 1;
+  reserved 1;
+  reserved "do_nothing"; // replaced by the nothing strategy
 
   oneof strategy {
     option (buf.validate.oneof).required = false;
@@ -1273,8 +1271,8 @@ message ColumnError {
   string table = 2;
   // The column of the error
   string column = 3;
-  // @deprecated - Use error_reports instead
-  repeated string errors = 4 [deprecated = true];
+  reserved 4;
+  reserved "errors"; // replaced by error_reports
 
   // The list of error reports
   repeated ColumnErrorReport error_reports = 5;
@@ -1323,8 +1321,8 @@ message ColumnWarning {
   string table = 2;
   // The column of the warning
   string column = 3;
-  // @deprecated - Use warning_reports instead
-  repeated string warnings = 5 [deprecated = true];
+  reserved 5;
+  reserved "warnings"; // replaced by warning_reports
   // The list of warning reports
   repeated ColumnWarningReport warning_reports = 6;
 
@@ -1348,8 +1346,8 @@ message ColumnWarning {
 }
 
 message DatabaseError {
-  // @deprecated - Use error_reports instead
-  repeated string errors = 1 [deprecated = true];
+  reserved 1;
+  reserved "errors"; // replaced by error_reports
   // The list of error reports
   repeated DatabaseErrorReport error_reports = 2;
 

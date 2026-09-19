@@ -993,13 +993,6 @@ components:
     mgmt.v1alpha1.GetConnectionInitStatementsResponse:
       type: object
       properties:
-        tableInitStatements:
-          type: object
-          title: table_init_statements
-          additionalProperties:
-            type: string
-            title: value
-          description: '@deprecated - Use schema_init_statements instead'
         tableTruncateStatements:
           type: object
           title: table_truncate_statements
@@ -1016,17 +1009,6 @@ components:
       title: GetConnectionInitStatementsResponse
       additionalProperties: false
       description: Init statement for a specific table
-    mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          type: string
-          title: value
-      title: TableInitStatementsEntry
-      additionalProperties: false
     mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry:
       type: object
       properties:

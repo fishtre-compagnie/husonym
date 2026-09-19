@@ -3171,21 +3171,6 @@
               "defaultValue": ""
             },
             {
-              "name": "data_type",
-              "description": "@deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.",
-              "label": "",
-              "type": "TransformerDataType",
-              "longType": "TransformerDataType",
-              "fullType": "mgmt.v1alpha1.TransformerDataType",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "source",
               "description": "The source of the transformer.",
               "label": "",
@@ -4550,21 +4535,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "data_type",
-              "description": "@deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.",
-              "label": "",
-              "type": "TransformerDataType",
-              "longType": "TransformerDataType",
-              "fullType": "mgmt.v1alpha1.TransformerDataType",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
             },
             {
               "name": "source",
@@ -9925,21 +9895,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "table_init_statements",
-              "description": "@deprecated - Use schema_init_statements instead",
-              "label": "repeated",
-              "type": "TableInitStatementsEntry",
-              "longType": "GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-              "fullType": "mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-              "ismap": true,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "table_truncate_statements",
               "description": "The key here is \u003cschema\u003e.\u003ctable\u003e and value is the table truncate statement.",
               "label": "repeated",
@@ -9958,42 +9913,6 @@
               "type": "SchemaInitStatements",
               "longType": "SchemaInitStatements",
               "fullType": "mgmt.v1alpha1.SchemaInitStatements",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            }
-          ]
-        },
-        {
-          "name": "TableInitStatementsEntry",
-          "longName": "GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-          "fullName": "mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableInitStatementsEntry",
-          "description": "",
-          "hasExtensions": false,
-          "hasFields": true,
-          "hasOneofs": false,
-          "extensions": [],
-          "fields": [
-            {
-              "name": "key",
-              "description": "",
-              "label": "",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            },
-            {
-              "name": "value",
-              "description": "",
-              "label": "",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -11894,21 +11813,6 @@
               "defaultValue": ""
             },
             {
-              "name": "errors",
-              "description": "@deprecated - Use error_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "error_reports",
               "description": "The list of error reports",
               "label": "repeated",
@@ -12003,21 +11907,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "warnings",
-              "description": "@deprecated - Use warning_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
             },
             {
               "name": "warning_reports",
@@ -12438,21 +12327,6 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": [
-            {
-              "name": "errors",
-              "description": "@deprecated - Use error_reports instead",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "error_reports",
               "description": "The list of error reports",
@@ -15984,21 +15858,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "halt_on_new_column_addition",
-              "description": "Whether to halt the job if a new column is added\nDeprecated: Use new_column_addition_strategy instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
-            {
               "name": "schemas",
               "description": "The list of schemas (and their tables) along with any configuration options that will be used.",
               "label": "repeated",
@@ -16391,18 +16250,6 @@
           "extensions": [],
           "fields": [
             {
-              "name": "do_nothing",
-              "description": "@deprecated - Use strategy nothing instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            },
-            {
               "name": "nothing",
               "description": "Do nothing when a conflict occurs",
               "label": "",
@@ -16460,21 +16307,6 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": [
-            {
-              "name": "halt_on_new_column_addition",
-              "description": "Whether to halt the job if a new column is added\nDeprecated: Use new_column_addition_strategy instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "schemas",
               "description": "The list of schemas (and their tables) along with any configuration options that will be used.",
@@ -17262,21 +17094,6 @@
           "hasOneofs": true,
           "extensions": [],
           "fields": [
-            {
-              "name": "do_nothing",
-              "description": "@deprecated - Use strategy nothing instead",
-              "label": "",
-              "type": "bool",
-              "longType": "bool",
-              "fullType": "bool",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": "",
-              "options": {
-                "deprecated": true
-              }
-            },
             {
               "name": "nothing",
               "description": "Do nothing when a conflict occurs",

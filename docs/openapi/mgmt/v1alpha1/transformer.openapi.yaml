@@ -1117,11 +1117,6 @@ components:
           type: string
           title: description
           description: The description of the transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: '@deprecated: data_types is deprecated and will be removed in a future release. Use data_types instead.'
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
@@ -2256,11 +2251,6 @@ components:
           type: string
           title: description
           description: The description of the user defined transformer.
-        dataType:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerDataType'
-          title: data_type
-          description: '@deprecated: data_type is deprecated and will be removed in a future release. Use data_types instead.'
         source:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'

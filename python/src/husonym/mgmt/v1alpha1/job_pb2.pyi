@@ -314,7 +314,7 @@ class PostgresSourceTableOption(_message.Message):
     def __init__(self, table: _Optional[str] = ..., where_clause: _Optional[str] = ...) -> None: ...
 
 class MysqlSourceConnectionOptions(_message.Message):
-    __slots__ = ("halt_on_new_column_addition", "schemas", "connection_id", "subset_by_foreign_key_constraints", "column_removal_strategy", "new_column_addition_strategy")
+    __slots__ = ("schemas", "connection_id", "subset_by_foreign_key_constraints", "column_removal_strategy", "new_column_addition_strategy")
     class ColumnRemovalStrategy(_message.Message):
         __slots__ = ("halt_job", "continue_job")
         class HaltJob(_message.Message):
@@ -346,19 +346,17 @@ class MysqlSourceConnectionOptions(_message.Message):
         auto_map: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
         def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
-    HALT_ON_NEW_COLUMN_ADDITION_FIELD_NUMBER: _ClassVar[int]
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
     COLUMN_REMOVAL_STRATEGY_FIELD_NUMBER: _ClassVar[int]
     NEW_COLUMN_ADDITION_STRATEGY_FIELD_NUMBER: _ClassVar[int]
-    halt_on_new_column_addition: bool
     schemas: _containers.RepeatedCompositeFieldContainer[MysqlSourceSchemaOption]
     connection_id: str
     subset_by_foreign_key_constraints: bool
     column_removal_strategy: MysqlSourceConnectionOptions.ColumnRemovalStrategy
     new_column_addition_strategy: MysqlSourceConnectionOptions.NewColumnAdditionStrategy
-    def __init__(self, halt_on_new_column_addition: _Optional[bool] = ..., schemas: _Optional[_Iterable[_Union[MysqlSourceSchemaOption, _Mapping]]] = ..., connection_id: _Optional[str] = ..., subset_by_foreign_key_constraints: _Optional[bool] = ..., column_removal_strategy: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy, _Mapping]] = ..., new_column_addition_strategy: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy, _Mapping]] = ...) -> None: ...
+    def __init__(self, schemas: _Optional[_Iterable[_Union[MysqlSourceSchemaOption, _Mapping]]] = ..., connection_id: _Optional[str] = ..., subset_by_foreign_key_constraints: _Optional[bool] = ..., column_removal_strategy: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy, _Mapping]] = ..., new_column_addition_strategy: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy, _Mapping]] = ...) -> None: ...
 
 class MysqlSourceSchemaOption(_message.Message):
     __slots__ = ("schema", "tables")
@@ -377,7 +375,7 @@ class MysqlSourceTableOption(_message.Message):
     def __init__(self, table: _Optional[str] = ..., where_clause: _Optional[str] = ...) -> None: ...
 
 class MssqlSourceConnectionOptions(_message.Message):
-    __slots__ = ("halt_on_new_column_addition", "schemas", "connection_id", "subset_by_foreign_key_constraints", "column_removal_strategy", "new_column_addition_strategy")
+    __slots__ = ("schemas", "connection_id", "subset_by_foreign_key_constraints", "column_removal_strategy", "new_column_addition_strategy")
     class ColumnRemovalStrategy(_message.Message):
         __slots__ = ("halt_job", "continue_job")
         class HaltJob(_message.Message):
@@ -404,19 +402,17 @@ class MssqlSourceConnectionOptions(_message.Message):
         halt_job: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         passthrough: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
         def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
-    HALT_ON_NEW_COLUMN_ADDITION_FIELD_NUMBER: _ClassVar[int]
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
     COLUMN_REMOVAL_STRATEGY_FIELD_NUMBER: _ClassVar[int]
     NEW_COLUMN_ADDITION_STRATEGY_FIELD_NUMBER: _ClassVar[int]
-    halt_on_new_column_addition: bool
     schemas: _containers.RepeatedCompositeFieldContainer[MssqlSourceSchemaOption]
     connection_id: str
     subset_by_foreign_key_constraints: bool
     column_removal_strategy: MssqlSourceConnectionOptions.ColumnRemovalStrategy
     new_column_addition_strategy: MssqlSourceConnectionOptions.NewColumnAdditionStrategy
-    def __init__(self, halt_on_new_column_addition: _Optional[bool] = ..., schemas: _Optional[_Iterable[_Union[MssqlSourceSchemaOption, _Mapping]]] = ..., connection_id: _Optional[str] = ..., subset_by_foreign_key_constraints: _Optional[bool] = ..., column_removal_strategy: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy, _Mapping]] = ..., new_column_addition_strategy: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy, _Mapping]] = ...) -> None: ...
+    def __init__(self, schemas: _Optional[_Iterable[_Union[MssqlSourceSchemaOption, _Mapping]]] = ..., connection_id: _Optional[str] = ..., subset_by_foreign_key_constraints: _Optional[bool] = ..., column_removal_strategy: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy, _Mapping]] = ..., new_column_addition_strategy: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy, _Mapping]] = ...) -> None: ...
 
 class MssqlSourceSchemaOption(_message.Message):
     __slots__ = ("schema", "tables")
@@ -497,20 +493,18 @@ class PostgresDestinationConnectionOptions(_message.Message):
     def __init__(self, truncate_table: _Optional[_Union[PostgresTruncateTableConfig, _Mapping]] = ..., init_table_schema: _Optional[bool] = ..., on_conflict: _Optional[_Union[PostgresOnConflictConfig, _Mapping]] = ..., skip_foreign_key_violations: _Optional[bool] = ..., batch: _Optional[_Union[BatchConfig, _Mapping]] = ..., max_in_flight: _Optional[int] = ...) -> None: ...
 
 class PostgresOnConflictConfig(_message.Message):
-    __slots__ = ("do_nothing", "nothing", "update")
+    __slots__ = ("nothing", "update")
     class PostgresOnConflictDoNothing(_message.Message):
         __slots__ = ()
         def __init__(self) -> None: ...
     class PostgresOnConflictUpdate(_message.Message):
         __slots__ = ()
         def __init__(self) -> None: ...
-    DO_NOTHING_FIELD_NUMBER: _ClassVar[int]
     NOTHING_FIELD_NUMBER: _ClassVar[int]
     UPDATE_FIELD_NUMBER: _ClassVar[int]
-    do_nothing: bool
     nothing: PostgresOnConflictConfig.PostgresOnConflictDoNothing
     update: PostgresOnConflictConfig.PostgresOnConflictUpdate
-    def __init__(self, do_nothing: _Optional[bool] = ..., nothing: _Optional[_Union[PostgresOnConflictConfig.PostgresOnConflictDoNothing, _Mapping]] = ..., update: _Optional[_Union[PostgresOnConflictConfig.PostgresOnConflictUpdate, _Mapping]] = ...) -> None: ...
+    def __init__(self, nothing: _Optional[_Union[PostgresOnConflictConfig.PostgresOnConflictDoNothing, _Mapping]] = ..., update: _Optional[_Union[PostgresOnConflictConfig.PostgresOnConflictUpdate, _Mapping]] = ...) -> None: ...
 
 class PostgresTruncateTableConfig(_message.Message):
     __slots__ = ("truncate_before_insert", "cascade")
@@ -543,20 +537,18 @@ class MysqlTruncateTableConfig(_message.Message):
     def __init__(self, truncate_before_insert: _Optional[bool] = ...) -> None: ...
 
 class MysqlOnConflictConfig(_message.Message):
-    __slots__ = ("do_nothing", "nothing", "update")
+    __slots__ = ("nothing", "update")
     class MysqlOnConflictDoNothing(_message.Message):
         __slots__ = ()
         def __init__(self) -> None: ...
     class MysqlOnConflictUpdate(_message.Message):
         __slots__ = ()
         def __init__(self) -> None: ...
-    DO_NOTHING_FIELD_NUMBER: _ClassVar[int]
     NOTHING_FIELD_NUMBER: _ClassVar[int]
     UPDATE_FIELD_NUMBER: _ClassVar[int]
-    do_nothing: bool
     nothing: MysqlOnConflictConfig.MysqlOnConflictDoNothing
     update: MysqlOnConflictConfig.MysqlOnConflictUpdate
-    def __init__(self, do_nothing: _Optional[bool] = ..., nothing: _Optional[_Union[MysqlOnConflictConfig.MysqlOnConflictDoNothing, _Mapping]] = ..., update: _Optional[_Union[MysqlOnConflictConfig.MysqlOnConflictUpdate, _Mapping]] = ...) -> None: ...
+    def __init__(self, nothing: _Optional[_Union[MysqlOnConflictConfig.MysqlOnConflictDoNothing, _Mapping]] = ..., update: _Optional[_Union[MysqlOnConflictConfig.MysqlOnConflictUpdate, _Mapping]] = ...) -> None: ...
 
 class MssqlDestinationConnectionOptions(_message.Message):
     __slots__ = ("truncate_table", "init_table_schema", "on_conflict", "skip_foreign_key_violations", "batch", "max_in_flight")
@@ -1328,7 +1320,7 @@ class ValidateJobMappingsRequest(_message.Message):
     def __init__(self, account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., connection_id: _Optional[str] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_source: _Optional[_Union[JobSource, _Mapping]] = ...) -> None: ...
 
 class ColumnError(_message.Message):
-    __slots__ = ("schema", "table", "column", "errors", "error_reports")
+    __slots__ = ("schema", "table", "column", "error_reports")
     class ColumnErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
         COLUMN_ERROR_CODE_UNSPECIFIED: _ClassVar[ColumnError.ColumnErrorCode]
@@ -1365,17 +1357,15 @@ class ColumnError(_message.Message):
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
-    ERRORS_FIELD_NUMBER: _ClassVar[int]
     ERROR_REPORTS_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
-    errors: _containers.RepeatedScalarFieldContainer[str]
     error_reports: _containers.RepeatedCompositeFieldContainer[ColumnError.ColumnErrorReport]
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., errors: _Optional[_Iterable[str]] = ..., error_reports: _Optional[_Iterable[_Union[ColumnError.ColumnErrorReport, _Mapping]]] = ...) -> None: ...
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., error_reports: _Optional[_Iterable[_Union[ColumnError.ColumnErrorReport, _Mapping]]] = ...) -> None: ...
 
 class ColumnWarning(_message.Message):
-    __slots__ = ("schema", "table", "column", "warnings", "warning_reports")
+    __slots__ = ("schema", "table", "column", "warning_reports")
     class ColumnWarningCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
         COLUMN_WARNING_CODE_UNSPECIFIED: _ClassVar[ColumnWarning.ColumnWarningCode]
@@ -1394,17 +1384,15 @@ class ColumnWarning(_message.Message):
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
-    WARNINGS_FIELD_NUMBER: _ClassVar[int]
     WARNING_REPORTS_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
-    warnings: _containers.RepeatedScalarFieldContainer[str]
     warning_reports: _containers.RepeatedCompositeFieldContainer[ColumnWarning.ColumnWarningReport]
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., warnings: _Optional[_Iterable[str]] = ..., warning_reports: _Optional[_Iterable[_Union[ColumnWarning.ColumnWarningReport, _Mapping]]] = ...) -> None: ...
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., warning_reports: _Optional[_Iterable[_Union[ColumnWarning.ColumnWarningReport, _Mapping]]] = ...) -> None: ...
 
 class DatabaseError(_message.Message):
-    __slots__ = ("errors", "error_reports")
+    __slots__ = ("error_reports",)
     class DatabaseErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
         DATABASE_ERROR_CODE_UNSPECIFIED: _ClassVar[DatabaseError.DatabaseErrorCode]
@@ -1420,11 +1408,9 @@ class DatabaseError(_message.Message):
         code: DatabaseError.DatabaseErrorCode
         message: str
         def __init__(self, code: _Optional[_Union[DatabaseError.DatabaseErrorCode, str]] = ..., message: _Optional[str] = ...) -> None: ...
-    ERRORS_FIELD_NUMBER: _ClassVar[int]
     ERROR_REPORTS_FIELD_NUMBER: _ClassVar[int]
-    errors: _containers.RepeatedScalarFieldContainer[str]
     error_reports: _containers.RepeatedCompositeFieldContainer[DatabaseError.DatabaseErrorReport]
-    def __init__(self, errors: _Optional[_Iterable[str]] = ..., error_reports: _Optional[_Iterable[_Union[DatabaseError.DatabaseErrorReport, _Mapping]]] = ...) -> None: ...
+    def __init__(self, error_reports: _Optional[_Iterable[_Union[DatabaseError.DatabaseErrorReport, _Mapping]]] = ...) -> None: ...
 
 class TableError(_message.Message):
     __slots__ = ("schema", "table", "error_reports")

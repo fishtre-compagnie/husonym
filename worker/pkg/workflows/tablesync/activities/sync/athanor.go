@@ -345,7 +345,7 @@ func conflictFromMysql(oc *mgmtv1alpha1.MysqlOnConflictConfig) sqlio.ConflictAct
 	if oc.GetUpdate() != nil {
 		return sqlio.ConflictDoUpdate
 	}
-	if oc.GetNothing() != nil || oc.GetDoNothing() {
+	if oc.GetNothing() != nil {
 		return sqlio.ConflictDoNothing
 	}
 	return sqlio.ConflictNone
@@ -358,9 +358,7 @@ func conflictFromPostgres(oc *mgmtv1alpha1.PostgresOnConflictConfig) sqlio.Confl
 	if oc.GetUpdate() != nil {
 		return sqlio.ConflictDoUpdate
 	}
-	// GetDoNothing est déprécié au profit de GetNothing, mais reste lu : les jobs
-	// enregistrés avant le changement de proto portent encore l'ancien champ.
-	if oc.GetNothing() != nil || oc.GetDoNothing() { //nolint:staticcheck // compat des jobs existants
+	if oc.GetNothing() != nil {
 		return sqlio.ConflictDoNothing
 	}
 	return sqlio.ConflictNone

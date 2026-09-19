@@ -632,12 +632,6 @@ components:
           type: string
           title: column
           description: The column of the error
-        errors:
-          type: array
-          items:
-            type: string
-          title: errors
-          description: '@deprecated - Use error_reports instead'
         errorReports:
           type: array
           items:
@@ -676,12 +670,6 @@ components:
           type: string
           title: column
           description: The column of the warning
-        warnings:
-          type: array
-          items:
-            type: string
-          title: warnings
-          description: '@deprecated - Use warning_reports instead'
         warningReports:
           type: array
           items:
@@ -980,12 +968,6 @@ components:
     mgmt.v1alpha1.DatabaseError:
       type: object
       properties:
-        errors:
-          type: array
-          items:
-            type: string
-          title: errors
-          description: '@deprecated - Use error_reports instead'
         errorReports:
           type: array
           items:
@@ -3382,12 +3364,6 @@ components:
     mgmt.v1alpha1.MssqlSourceConnectionOptions:
       type: object
       properties:
-        haltOnNewColumnAddition:
-          type: boolean
-          title: halt_on_new_column_addition
-          description: |-
-            Whether to halt the job if a new column is added
-             Deprecated: Use new_column_addition_strategy instead
         schemas:
           type: array
           items:
@@ -3653,10 +3629,6 @@ components:
               - required:
                   - update
       properties:
-        doNothing:
-          type: boolean
-          title: do_nothing
-          description: '@deprecated - Use strategy nothing instead'
         nothing:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlOnConflictConfig.MysqlOnConflictDoNothing'
@@ -3684,12 +3656,6 @@ components:
     mgmt.v1alpha1.MysqlSourceConnectionOptions:
       type: object
       properties:
-        haltOnNewColumnAddition:
-          type: boolean
-          title: halt_on_new_column_addition
-          description: |-
-            Whether to halt the job if a new column is added
-             Deprecated: Use new_column_addition_strategy instead
         schemas:
           type: array
           items:
@@ -4381,10 +4347,6 @@ components:
               - required:
                   - update
       properties:
-        doNothing:
-          type: boolean
-          title: do_nothing
-          description: '@deprecated - Use strategy nothing instead'
         nothing:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresOnConflictConfig.PostgresOnConflictDoNothing'

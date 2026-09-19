@@ -1796,19 +1796,14 @@ func (s *Service) ValidateJobMappings(
 		return nil, err
 	}
 
-	dbErrMsgs := []string{}
 	dbErrReports := []*mgmtv1alpha1.DatabaseError_DatabaseErrorReport{}
 	for _, err := range result.DatabaseErrors {
-		dbErrMsgs = append(dbErrMsgs, err.Message)
 		dbErrReports = append(dbErrReports, &mgmtv1alpha1.DatabaseError_DatabaseErrorReport{
 			Code:    err.Code,
 			Message: err.Message,
 		})
 	}
-	dbErrors := &mgmtv1alpha1.DatabaseError{
-		Errors:       dbErrMsgs,
-		ErrorReports: dbErrReports,
-	}
+	dbErrors := &mgmtv1alpha1.DatabaseError{ErrorReports: dbErrReports}
 
 	tableErrors := []*mgmtv1alpha1.TableError{}
 	for tableName, errs := range result.TableErrors {
@@ -1828,7 +1823,6 @@ func (s *Service) ValidateJobMappings(
 				Schema:       schema,
 				Table:        table,
 				Column:       col,
-				Errors:       getErrorMessages(errors),
 				ErrorReports: errors,
 			})
 		}
@@ -1842,7 +1836,6 @@ func (s *Service) ValidateJobMappings(
 				Schema:         schema,
 				Table:          table,
 				Column:         col,
-				Warnings:       getErrorMessages(warnings),
 				WarningReports: warnings,
 			})
 		}
@@ -1854,18 +1847,6 @@ func (s *Service) ValidateJobMappings(
 		ColumnErrors:   colErrors,
 		ColumnWarnings: colWarnings,
 	}), nil
-}
-
-type ErrorReport interface {
-	GetMessage() string
-}
-
-func getErrorMessages[T ErrorReport](errorsReports []T) []string {
-	messages := []string{}
-	for _, err := range errorsReports {
-		messages = append(messages, err.GetMessage())
-	}
-	return messages
 }
 
 func (s *Service) ValidateSchema(
