@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
@@ -134,7 +134,7 @@ func InitializeTransformerByConfigType(
 
 		transformPiiTextApi := execCfg.resolvePiiTextApi()
 		jsCode, propertyPath := javascript_userland.GetSingleGenerateFunction(config.GetCode())
-		program, err := goja.Compile("main.js", jsCode, false)
+		program, err := javascript_vm.Compile("main.js", jsCode)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func InitializeTransformerByConfigType(
 
 		transformPiiTextApi := execCfg.resolvePiiTextApi()
 		jsCode, propertyPath := javascript_userland.GetSingleTransformFunction(config.GetCode())
-		program, err := goja.Compile("main.js", jsCode, false)
+		program, err := javascript_vm.Compile("main.js", jsCode)
 		if err != nil {
 			return nil, err
 		}

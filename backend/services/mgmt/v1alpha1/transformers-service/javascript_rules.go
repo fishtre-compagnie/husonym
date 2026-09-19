@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 )
 
@@ -43,7 +43,8 @@ func (s *Service) ValidateUserJavascriptCode(
 	req *connect.Request[mgmtv1alpha1.ValidateUserJavascriptCodeRequest],
 ) (*connect.Response[mgmtv1alpha1.ValidateUserJavascriptCodeResponse], error) {
 	code := req.Msg.GetCode()
-	if _, err := goja.Compile("rule.js", javascript_userland.GetTransformJavascriptFunction(code, "rule", true), false); err != nil {
+	// The same compilation the run does, so that what validates here runs there.
+	if _, err := javascript_vm.Compile("rule.js", javascript_userland.GetTransformJavascriptFunction(code, "rule", true)); err != nil {
 		return connect.NewResponse(&mgmtv1alpha1.ValidateUserJavascriptCodeResponse{Valid: false}), nil
 	}
 	analysis, err := javascript_userland.Analyze(code)

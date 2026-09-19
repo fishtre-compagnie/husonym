@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/dop251/goja"
+	"github.com/dop251/goja/ast"
+	"github.com/dop251/goja/parser"
 )
 
 // A run transforms one row, or one value, and keeps nothing for the next one. A runner is
@@ -115,6 +117,56 @@ func (r *Runner) seal() error {
 	}
 	r.sealedGlobal = global
 	return nil
+}
+
+// Compile turns the source of a run into a program a runner keeps nothing of. Every
+// program a runner runs is compiled here, and never with goja.Compile.
+//
+// A new global object is not enough on its own: top-level let, const and class
+// declarations do not land on the global object but in the global lexical environment,
+// which belongs to the goja runtime and which SetGlobalObject leaves as it is. A runner
+// is reused — from a pool, row after row, across accounts — so such a declaration would
+// reach the next run: it would read the value of the previous row, and declaring it again
+// would fail from the second row on with "Identifier 'x' has already been declared".
+//
+// Wrapping the source in a block gives those declarations a scope that ends with the run.
+// Nothing else moves: a block evaluates to its last statement, so the program still
+// returns the value the run reads; var and function declarations keep the scope they had,
+// the per-run global object; and no line is added, so the positions a stack trace reports
+// stay those of the source.
+func Compile(filename, src string) (*goja.Program, error) {
+	// A directive stays in front of the block: inside it, "use strict" would be a plain
+	// string expression and the run would quietly lose strict mode.
+	prologue, body := splitDirectivePrologue(src)
+	if prologue != "" {
+		prologue += ";"
+	}
+	return goja.Compile(filename, prologue+"{"+body+"\n}", false)
+}
+
+// splitDirectivePrologue cuts src after its directive prologue ("use strict"…). Source
+// the parser refuses is left whole, for Compile to report the error on the source as it
+// was written.
+func splitDirectivePrologue(src string) (prologue, body string) {
+	program, err := parser.ParseFile(nil, "", src, 0)
+	if err != nil {
+		return "", src
+	}
+	cut := 0
+	for _, statement := range program.Body {
+		expression, ok := statement.(*ast.ExpressionStatement)
+		if !ok {
+			break
+		}
+		if _, ok := expression.Expression.(*ast.StringLiteral); !ok {
+			break
+		}
+		cut = int(expression.Idx1()) - 1 // file.Idx counts from 1
+	}
+	if cut <= 0 || cut > len(src) {
+		return "", src
+	}
+	return src[:cut], src[cut:]
 }
 
 // resetState gives the next run a global object of its own.

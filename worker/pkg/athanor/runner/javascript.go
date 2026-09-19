@@ -20,6 +20,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
@@ -91,7 +92,7 @@ func newJavascriptRows(
 		writes = append(writes, c.column)
 	}
 
-	program, err := goja.Compile("main.js", javascript_userland.GetFunction(functions, setters), false)
+	program, err := javascript_vm.Compile("main.js", javascript_userland.GetFunction(functions, setters))
 	if err != nil {
 		return nil, fmt.Errorf("runner: compilation du JavaScript de la table: %w", err)
 	}

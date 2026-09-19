@@ -57,7 +57,7 @@ func newJavascriptProcessorFromConfig(
 	}
 
 	filename := "main.js"
-	program, err := goja.Compile(filename, code, false)
+	program, err := javascript_vm.Compile(filename, code)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile javascript code: %v", err)
 	}

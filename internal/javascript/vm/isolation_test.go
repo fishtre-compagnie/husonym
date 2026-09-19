@@ -25,7 +25,11 @@ func isolationRunner(t *testing.T) *Runner {
 
 func run(t *testing.T, runner *Runner, code string) goja.Value {
 	t.Helper()
-	result, err := runner.Run(context.Background(), goja.MustCompile("test.js", code, false))
+	// Compile, and not goja.Compile: it is how a run is compiled everywhere, and part of
+	// what keeps one run from reaching the next.
+	program, err := Compile("test.js", code)
+	require.NoError(t, err)
+	result, err := runner.Run(context.Background(), program)
 	require.NoError(t, err)
 	return result
 }
@@ -54,6 +58,12 @@ func TestRunner_NoStateAcrossRuns(t *testing.T) {
 		"console":           {`console.kept = "row 1";`, `console.kept`},
 		"function":          {`current.hello.kept = "row 1";`, `current.hello.kept`},
 		"namespace deleted": {`delete current; current = {kept: "row 1"};`, `current.kept`},
+		// Declarations of the global lexical environment: they never reach the global
+		// object, so replacing it leaves them where they are.
+		"let":   {`let kept = "row 1";`, `typeof kept === "undefined" ? undefined : kept`},
+		"const": {`const kept = "row 1";`, `typeof kept === "undefined" ? undefined : kept`},
+		"class": {`class kept { static of() { return "row 1"; } }`,
+			`typeof kept === "undefined" ? undefined : kept.of()`},
 	}
 	for name, way := range ways {
 		t.Run(name, func(t *testing.T) {
@@ -96,4 +106,39 @@ func TestRunner_ShadowingBuiltInProperties(t *testing.T) {
 	require.ErrorContains(t, err, "read only property 'toString' of a built-in object")
 	require.Equal(t, "[object Object]", run(t, runner, `String({})`).String(), "the built-in is untouched")
 	require.Equal(t, "hello", run(t, runner, `legacy.hello()`).String())
+}
+
+// A run declaring at its top level runs again, and again: the block Compile wraps it in
+// ends with the run, so the second declaration is not a redeclaration.
+func TestRunner_TopLevelDeclarationsRunAgain(t *testing.T) {
+	runner := isolationRunner(t)
+	for _, row := range []string{"row 1", "row 2", "row 3"} {
+		result := run(t, runner, `
+			const kept = "`+row+`";
+			let seen = kept;
+			class Named { value() { return seen; } }
+			new Named().value();`)
+		require.Equal(t, row, result.String())
+	}
+}
+
+// Compile keeps what the source says: its value, its strict mode, and the lines a stack
+// trace reports.
+func TestCompile_KeepsProgramSemantics(t *testing.T) {
+	runner := isolationRunner(t)
+
+	require.Equal(t, "the value", run(t, runner, `"the value"`).String(),
+		"the program still evaluates to its last statement")
+
+	strict := run(t, runner, `"use strict";
+		try { undeclared = 1; "assigned" } catch (e) { e.constructor.name }`)
+	require.Equal(t, "ReferenceError", strict.String(), "the directive prologue still applies")
+
+	sloppy := run(t, runner, `try { undeclared = 1; "assigned" } catch (e) { "threw" }`)
+	require.Equal(t, "assigned", sloppy.String(), "code without a directive stays sloppy")
+
+	program, err := Compile("test.js", "\n\nthrow new Error('boom');")
+	require.NoError(t, err)
+	_, err = runner.Run(context.Background(), program)
+	require.ErrorContains(t, err, "test.js:3:", "the line of the source is the line reported")
 }
