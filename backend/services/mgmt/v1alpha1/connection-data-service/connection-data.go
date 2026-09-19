@@ -14,8 +14,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	husonymgob "github.com/fishtre-compagnie/husonym/internal/gob"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/structpb"

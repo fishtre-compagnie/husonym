@@ -39,8 +39,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
