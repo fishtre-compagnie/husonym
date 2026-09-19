@@ -7,7 +7,7 @@ replace github.com/fishtre-compagnie/husonym => ../
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/fishtre-compagnie/husonym v0.5.1
-	github.com/pganalyze/pg_query_go/v5 v5.1.0
+	github.com/pganalyze/pg_query_go/v6 v6.2.2
 )
 
 require (

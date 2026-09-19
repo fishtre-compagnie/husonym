@@ -14,7 +14,7 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
-	pg_query "github.com/pganalyze/pg_query_go/v5"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 	"github.com/xwb1989/sqlparser"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
