@@ -8,7 +8,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v7"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
 	"github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"

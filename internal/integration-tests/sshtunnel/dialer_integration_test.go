@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v7"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mssqltunconnector"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mysqltunconnector"

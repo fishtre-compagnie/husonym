@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v7"
 	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
 	"golang.org/x/crypto/ssh"
 )
