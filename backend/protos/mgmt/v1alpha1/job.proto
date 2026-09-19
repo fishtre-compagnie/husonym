@@ -406,7 +406,6 @@ message PostgresOnConflictConfig {
     // // List of table-specific update configurations
     // repeated PostgresOnConflictSchemaUpdate schemas = 1;
   }
-
   // message PostgresOnConflictSchemaUpdate {
   //   // The schema this configuration applies to
   //   string schema = 1 [(buf.validate.field).string.min_len = 1];
@@ -467,7 +466,6 @@ message MysqlOnConflictConfig {
     // // List of table-specific update configurations
     // repeated MysqlOnConflictSchemaUpdate schemas = 1;
   }
-
   // message MysqlOnConflictSchemaUpdate {
   //   // The schema this configuration applies to
   //   string schema = 1 [(buf.validate.field).string.min_len = 1];
