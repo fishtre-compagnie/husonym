@@ -66,6 +66,9 @@ services:
     build:
       context: ./
       dockerfile: ./backend/dev/build/Dockerfile.dev
+    # air runs as PID 1 and reaps none of the processes it starts: every rebuild left a
+    # defunct dlv, tens of thousands in a night, until the host could fork no more.
+    init: true
     ports:
       - 8080:8080
       - 2345:2345 # DLV API
@@ -131,6 +134,8 @@ services:
     build:
       context: ./
       dockerfile: ./worker/dev/build/Dockerfile.dev
+    # Same as the api: an init reaps what air leaves behind.
+    init: true
     ports:
       - 2346:2345 # DLV Worker
     environment:
