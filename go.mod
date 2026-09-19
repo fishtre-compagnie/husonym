@@ -43,7 +43,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/lib/pq v1.12.3
 	github.com/microsoft/go-mssqldb v1.10.0
-	github.com/neilotoole/slogt v1.1.0
+	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/openai/openai-go v1.12.0

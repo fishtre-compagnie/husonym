@@ -16,7 +16,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 
-	"github.com/neilotoole/slogt"
+	"github.com/neilotoole/slogt/v2"
 	"github.com/testcontainers/testcontainers-go"
 )
 
