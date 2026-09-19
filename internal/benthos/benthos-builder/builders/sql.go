@@ -254,7 +254,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		}
 		return husonym_benthos.HashBenthosCacheKey(job.Id, params.JobRunId, table, column)
 	}
-	foreignKeys := planForeignKeys(runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints, groupedColumnInfo, keyStore)
+	foreignKeys := planForeignKeys(
+		db.Driver(), runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints,
+		groupedColumnInfo, foreignKeysMap, keyStore)
 	for _, config := range configs {
 		config.ForeignKeys = foreignKeys[config.Name]
 		tableKey := sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)
