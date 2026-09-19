@@ -1,6 +1,6 @@
 package rbac
 
-import "github.com/casbin/casbin/v2"
+import "github.com/casbin/casbin/v3"
 
 type Rbac struct {
 	e casbin.IEnforcer
