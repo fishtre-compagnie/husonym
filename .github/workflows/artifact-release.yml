@@ -31,8 +31,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -46,8 +48,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Get current time
@@ -108,8 +112,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -122,8 +128,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
         id: meta
@@ -174,8 +182,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -188,8 +198,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
         id: meta
@@ -245,8 +257,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -259,8 +273,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -351,8 +367,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -365,8 +383,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -457,8 +477,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -472,8 +494,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -566,8 +590,10 @@ jobs:
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -581,8 +607,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
