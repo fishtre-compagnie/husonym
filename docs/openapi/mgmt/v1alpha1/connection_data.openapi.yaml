@@ -1,6 +1,7 @@
 openapi: 3.1.0
 info:
   summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
   version: "0.5"
   termsOfService: "https://husonym.com/terms-of-service"
   contact:
@@ -24,6 +25,77 @@ servers:
         description: The port to use for the development server
 components:
   schemas:
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.ListValue:
+      type: array
+      items:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: A JSON array whose elements may be any JSON value.
     google.protobuf.NullValue:
       type: string
       title: NullValue
@@ -39,132 +111,11 @@ components:
          invalid. Most ProtoJSON serializers will emit a Value with a `null_value` set
          as a JSON `null` regardless of the integer value, and so will round trip to
          a `0` value.
-    mgmt.v1alpha1.PiiConfidence:
-      type: string
-      title: PiiConfidence
-      enum:
-        - PII_CONFIDENCE_UNSPECIFIED
-        - PII_CONFIDENCE_CONFIRMED
-        - PII_CONFIDENCE_NEEDS_REVIEW
-      description: |-
-        Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il
-         dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
-    mgmt.v1alpha1.PiiDetectionMethod:
-      type: string
-      title: PiiDetectionMethod
-      enum:
-        - PII_DETECTION_METHOD_UNSPECIFIED
-        - PII_DETECTION_METHOD_COLUMN_NAME
-        - PII_DETECTION_METHOD_CHECKSUM
-        - PII_DETECTION_METHOD_CONTENT
-        - PII_DETECTION_METHOD_FORMAT
-      description: Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
-    mgmt.v1alpha1.TransformerSource:
-      type: string
-      title: TransformerSource
-      enum:
-        - TRANSFORMER_SOURCE_UNSPECIFIED
-        - TRANSFORMER_SOURCE_PASSTHROUGH
-        - TRANSFORMER_SOURCE_GENERATE_DEFAULT
-        - TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT
-        - TRANSFORMER_SOURCE_GENERATE_EMAIL
-        - TRANSFORMER_SOURCE_TRANSFORM_EMAIL
-        - TRANSFORMER_SOURCE_GENERATE_BOOL
-        - TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_CITY
-        - TRANSFORMER_SOURCE_GENERATE_E164_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_FIRST_NAME
-        - TRANSFORMER_SOURCE_GENERATE_FLOAT64
-        - TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
-        - TRANSFORMER_SOURCE_GENERATE_FULL_NAME
-        - TRANSFORMER_SOURCE_GENERATE_GENDER
-        - TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_INT64
-        - TRANSFORMER_SOURCE_GENERATE_RANDOM_INT64
-        - TRANSFORMER_SOURCE_GENERATE_LAST_NAME
-        - TRANSFORMER_SOURCE_GENERATE_SHA256HASH
-        - TRANSFORMER_SOURCE_GENERATE_SSN
-        - TRANSFORMER_SOURCE_GENERATE_STATE
-        - TRANSFORMER_SOURCE_GENERATE_STREET_ADDRESS
-        - TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_GENERATE_STRING
-        - TRANSFORMER_SOURCE_GENERATE_RANDOM_STRING
-        - TRANSFORMER_SOURCE_GENERATE_UNIXTIMESTAMP
-        - TRANSFORMER_SOURCE_GENERATE_USERNAME
-        - TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP
-        - TRANSFORMER_SOURCE_GENERATE_UUID
-        - TRANSFORMER_SOURCE_GENERATE_ZIPCODE
-        - TRANSFORMER_SOURCE_TRANSFORM_E164_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_FIRST_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_FLOAT64
-        - TRANSFORMER_SOURCE_TRANSFORM_FULL_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_INT64_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_INT64
-        - TRANSFORMER_SOURCE_TRANSFORM_LAST_NAME
-        - TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER
-        - TRANSFORMER_SOURCE_TRANSFORM_STRING
-        - TRANSFORMER_SOURCE_GENERATE_NULL
-        - TRANSFORMER_SOURCE_GENERATE_CATEGORICAL
-        - TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE
-        - TRANSFORMER_SOURCE_USER_DEFINED
-        - TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT
-        - TRANSFORMER_SOURCE_GENERATE_COUNTRY
-        - TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
-        - TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME
-        - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
-        - TRANSFORMER_SOURCE_TRANSFORM_UUID
-        - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
-    google.protobuf.ListValue:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            $ref: '#/components/schemas/google.protobuf.Value'
-          title: values
-          description: Repeated field of dynamically typed values.
-      title: ListValue
-      additionalProperties: false
-      description: Represents a JSON array.
     google.protobuf.Struct:
       type: object
-      properties:
-        fields:
-          type: object
-          title: fields
-          additionalProperties:
-            allOf:
-              - $ref: '#/components/schemas/google.protobuf.Value'
-            title: value
-          description: Unordered map of dynamically typed values.
-      title: Struct
-      additionalProperties: false
-      description: |-
-        Represents a JSON object.
-
-         An unordered key-value map, intending to perfectly capture the semantics of a
-         JSON object. This enables parsing any arbitrary JSON payload as a message
-         field in ProtoJSON format.
-
-         This follows RFC 8259 guidelines for interoperable JSON: notably this type
-         cannot represent large Int64 values or `NaN`/`Infinity` numbers,
-         since the JSON format generally does not support those values in its number
-         type.
-
-         If you do not intend to parse arbitrary JSON into your message, a custom
-         typed message should be preferred instead of using this type.
-    google.protobuf.Struct.FieldsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/google.protobuf.Value'
-          title: value
-      title: FieldsEntry
-      additionalProperties: false
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: A JSON object whose property values may be any JSON value.
     google.protobuf.Value:
       oneOf:
         - type: "null"
@@ -174,93 +125,79 @@ components:
         - type: array
         - type: object
           additionalProperties: true
-      description: |-
-        Represents a JSON value.
-
-         `Value` represents a dynamically typed value which can be either
-         null, a number, a string, a boolean, a recursive struct value, or a
-         list of values. A producer of value is expected to set one of these
-         variants. Absence of any variant is an invalid state.
+      description: 'Any JSON value: `null`, number, string, boolean, array, or object.'
     mgmt.v1alpha1.AwsDynamoDBStreamConfig:
       type: object
       title: AwsDynamoDBStreamConfig
       additionalProperties: false
     mgmt.v1alpha1.AwsS3SchemaConfig:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - jobId
-            - required:
-                - jobRunId
-            - not:
-                anyOf:
-                  - required:
-                      - jobId
-                  - required:
-                      - jobRunId
       anyOf:
-        - required:
-            - jobId
-        - required:
-            - jobRunId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The unique identifier of the job to get the schema for.
+          title: job_id
+        - type: object
+          properties:
+            jobRunId:
+              type: string
+              title: job_run_id
+              minLength: 1
+              description: The unique identifier of the job run to get the schema for.
+          title: job_run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - jobId
               - required:
                   - jobRunId
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The unique identifier of the job to get the schema for.
-        jobRunId:
-          type: string
-          title: job_run_id
-          minLength: 1
-          description: The unique identifier of the job run to get the schema for.
+          - not:
+              oneOf:
+                - required:
+                    - jobId
+                - required:
+                    - jobRunId
       title: AwsS3SchemaConfig
-      additionalProperties: false
     mgmt.v1alpha1.AwsS3StreamConfig:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - jobId
-            - required:
-                - jobRunId
-            - not:
-                anyOf:
-                  - required:
-                      - jobId
-                  - required:
-                      - jobRunId
       anyOf:
-        - required:
-            - jobId
-        - required:
-            - jobRunId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The unique identifier of the job to get the data stream for.
+          title: job_id
+        - type: object
+          properties:
+            jobRunId:
+              type: string
+              title: job_run_id
+              minLength: 1
+              description: The unique identifier of the job run to get the data stream for.
+          title: job_run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - jobId
               - required:
                   - jobRunId
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The unique identifier of the job to get the data stream for.
-        jobRunId:
-          type: string
-          title: job_run_id
-          minLength: 1
-          description: The unique identifier of the job run to get the data stream for.
+          - not:
+              oneOf:
+                - required:
+                    - jobId
+                - required:
+                    - jobRunId
       title: AwsS3StreamConfig
-      additionalProperties: false
     mgmt.v1alpha1.ColumnPiiDetection:
       type: object
       properties:
@@ -340,54 +277,75 @@ components:
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
       allOf:
-        - anyOf:
+        - oneOf:
+            - required:
+                - pgConfig
             - required:
                 - awsS3Config
             - required:
-                - dynamodbConfig
-            - required:
-                - gcpCloudstorageConfig
+                - mysqlConfig
             - required:
                 - mongoConfig
             - required:
+                - gcpCloudstorageConfig
+            - required:
+                - dynamodbConfig
+            - required:
                 - mssqlConfig
-            - required:
-                - mysqlConfig
-            - required:
-                - pgConfig
-            - not:
-                anyOf:
-                  - required:
-                      - awsS3Config
-                  - required:
-                      - dynamodbConfig
-                  - required:
-                      - gcpCloudstorageConfig
-                  - required:
-                      - mongoConfig
-                  - required:
-                      - mssqlConfig
-                  - required:
-                      - mysqlConfig
-                  - required:
-                      - pgConfig
       anyOf:
-        - required:
-            - awsS3Config
-        - required:
-            - dynamodbConfig
-        - required:
-            - gcpCloudstorageConfig
-        - required:
-            - mongoConfig
-        - required:
-            - mssqlConfig
-        - required:
-            - mysqlConfig
-        - required:
-            - pgConfig
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            awsS3Config:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AwsS3SchemaConfig'
+              title: aws_s3_config
+          title: aws_s3_config
+        - type: object
+          properties:
+            dynamodbConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.DynamoDBSchemaConfig'
+              title: dynamodb_config
+          title: dynamodb_config
+        - type: object
+          properties:
+            gcpCloudstorageConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.GcpCloudStorageSchemaConfig'
+              title: gcp_cloudstorage_config
+          title: gcp_cloudstorage_config
+        - type: object
+          properties:
+            mongoConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MongoSchemaConfig'
+              title: mongo_config
+          title: mongo_config
+        - type: object
+          properties:
+            mssqlConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSchemaConfig'
+              title: mssql_config
+          title: mssql_config
+        - type: object
+          properties:
+            mysqlConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSchemaConfig'
+              title: mysql_config
+          title: mysql_config
+        - type: object
+          properties:
+            pgConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSchemaConfig'
+              title: pg_config
+          title: pg_config
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - awsS3Config
               - required:
@@ -402,76 +360,77 @@ components:
                   - mysqlConfig
               - required:
                   - pgConfig
-      properties:
-        pgConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSchemaConfig'
-          title: pg_config
-        awsS3Config:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.AwsS3SchemaConfig'
-          title: aws_s3_config
-        mysqlConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSchemaConfig'
-          title: mysql_config
-        mongoConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.MongoSchemaConfig'
-          title: mongo_config
-        gcpCloudstorageConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.GcpCloudStorageSchemaConfig'
-          title: gcp_cloudstorage_config
-        dynamodbConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.DynamoDBSchemaConfig'
-          title: dynamodb_config
-        mssqlConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSchemaConfig'
-          title: mssql_config
+          - not:
+              oneOf:
+                - required:
+                    - awsS3Config
+                - required:
+                    - dynamodbConfig
+                - required:
+                    - gcpCloudstorageConfig
+                - required:
+                    - mongoConfig
+                - required:
+                    - mssqlConfig
+                - required:
+                    - mysqlConfig
+                - required:
+                    - pgConfig
       title: ConnectionSchemaConfig
-      additionalProperties: false
     mgmt.v1alpha1.ConnectionStreamConfig:
       type: object
       allOf:
-        - anyOf:
+        - oneOf:
+            - required:
+                - pgConfig
             - required:
                 - awsS3Config
             - required:
-                - dynamodbConfig
+                - mysqlConfig
             - required:
                 - gcpCloudstorageConfig
             - required:
-                - mysqlConfig
-            - required:
-                - pgConfig
-            - not:
-                anyOf:
-                  - required:
-                      - awsS3Config
-                  - required:
-                      - dynamodbConfig
-                  - required:
-                      - gcpCloudstorageConfig
-                  - required:
-                      - mysqlConfig
-                  - required:
-                      - pgConfig
+                - dynamodbConfig
       anyOf:
-        - required:
-            - awsS3Config
-        - required:
-            - dynamodbConfig
-        - required:
-            - gcpCloudstorageConfig
-        - required:
-            - mysqlConfig
-        - required:
-            - pgConfig
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            awsS3Config:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AwsS3StreamConfig'
+              title: aws_s3_config
+          title: aws_s3_config
+        - type: object
+          properties:
+            dynamodbConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AwsDynamoDBStreamConfig'
+              title: dynamodb_config
+          title: dynamodb_config
+        - type: object
+          properties:
+            gcpCloudstorageConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.GcpCloudStorageStreamConfig'
+              title: gcp_cloudstorage_config
+          title: gcp_cloudstorage_config
+        - type: object
+          properties:
+            mysqlConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlStreamConfig'
+              title: mysql_config
+          title: mysql_config
+        - type: object
+          properties:
+            pgConfig:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresStreamConfig'
+              title: pg_config
+          title: pg_config
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - awsS3Config
               - required:
@@ -482,53 +441,21 @@ components:
                   - mysqlConfig
               - required:
                   - pgConfig
-      properties:
-        pgConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresStreamConfig'
-          title: pg_config
-        awsS3Config:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.AwsS3StreamConfig'
-          title: aws_s3_config
-        mysqlConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlStreamConfig'
-          title: mysql_config
-        gcpCloudstorageConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.GcpCloudStorageStreamConfig'
-          title: gcp_cloudstorage_config
-        dynamodbConfig:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.AwsDynamoDBStreamConfig'
-          title: dynamodb_config
+          - not:
+              oneOf:
+                - required:
+                    - awsS3Config
+                - required:
+                    - dynamodbConfig
+                - required:
+                    - gcpCloudstorageConfig
+                - required:
+                    - mysqlConfig
+                - required:
+                    - pgConfig
       title: ConnectionStreamConfig
-      additionalProperties: false
     mgmt.v1alpha1.DatabaseColumn:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - columnDefault
-            - not:
-                anyOf:
-                  - required:
-                      - columnDefault
-        - anyOf:
-            - required:
-                - generatedType
-            - not:
-                anyOf:
-                  - required:
-                      - generatedType
-        - anyOf:
-            - required:
-                - identityGeneration
-            - not:
-                anyOf:
-                  - required:
-                      - identityGeneration
       properties:
         schema:
           type: string
@@ -551,17 +478,23 @@ components:
           title: is_nullable
           description: The isNullable Flag of the column
         columnDefault:
-          type: string
+          type:
+            - string
+            - "null"
           title: column_default
           description: The default value of the column if available
         generatedType:
-          type: string
+          type:
+            - string
+            - "null"
           title: generated_type
           description: |-
             Populated if the column is generated. The value is the type of generated column it is. For example, postgres is 's' for stored
              May be other values in the future, or other DB providers may use a different value types.
         identityGeneration:
-          type: string
+          type:
+            - string
+            - "null"
           title: identity_generation
           description: Populated if the column is an identity. The value is the type of the identity column it is. For example, postgres is 'd' for generated by default, or 'a' for generated always.
         dataCategory:
@@ -715,97 +648,74 @@ components:
       additionalProperties: false
     mgmt.v1alpha1.GcpCloudStorageSchemaConfig:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - jobId
-            - required:
-                - jobRunId
-            - not:
-                anyOf:
-                  - required:
-                      - jobId
-                  - required:
-                      - jobRunId
       anyOf:
-        - required:
-            - jobId
-        - required:
-            - jobRunId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The unique identifier of the job to get the schema for.
+          title: job_id
+        - type: object
+          properties:
+            jobRunId:
+              type: string
+              title: job_run_id
+              minLength: 1
+              description: The unique identifier of the job run to get the schema for.
+          title: job_run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - jobId
               - required:
                   - jobRunId
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The unique identifier of the job to get the schema for.
-        jobRunId:
-          type: string
-          title: job_run_id
-          minLength: 1
-          description: The unique identifier of the job run to get the schema for.
+          - not:
+              oneOf:
+                - required:
+                    - jobId
+                - required:
+                    - jobRunId
       title: GcpCloudStorageSchemaConfig
-      additionalProperties: false
     mgmt.v1alpha1.GcpCloudStorageStreamConfig:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - jobId
-            - required:
-                - jobRunId
-            - not:
-                anyOf:
-                  - required:
-                      - jobId
-                  - required:
-                      - jobRunId
       anyOf:
-        - required:
-            - jobId
-        - required:
-            - jobRunId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The unique identifier of the job to get the data stream for.
+          title: job_id
+        - type: object
+          properties:
+            jobRunId:
+              type: string
+              title: job_run_id
+              minLength: 1
+              description: The unique identifier of the job run to get the data stream for.
+          title: job_run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - jobId
               - required:
                   - jobRunId
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The unique identifier of the job to get the data stream for.
-        jobRunId:
-          type: string
-          title: job_run_id
-          minLength: 1
-          description: The unique identifier of the job run to get the data stream for.
+          - not:
+              oneOf:
+                - required:
+                    - jobId
+                - required:
+                    - jobRunId
       title: GcpCloudStorageStreamConfig
-      additionalProperties: false
     mgmt.v1alpha1.GetAiGeneratedDataRequest:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - userPrompt
-            - not:
-                anyOf:
-                  - required:
-                      - userPrompt
-      anyOf:
-        - required:
-            - userPrompt
-        - not:
-            anyOf:
-              - required:
-                  - userPrompt
       properties:
         aiConnectionId:
           type: string
@@ -813,9 +723,7 @@ components:
           format: uuid
           description: The unique identifier of a connection, specifically one that is configured for LLM use.
         count:
-          type:
-            - integer
-            - string
+          type: string
           title: count
           maximum: 10
           minimum: 1
@@ -827,7 +735,9 @@ components:
           minLength: 1
           description: The LLM model name to use that works with the configured connection id.
         userPrompt:
-          type: string
+          type:
+            - string
+            - "null"
           title: user_prompt
           description: The prompt that will be used to further refine the data generation. This is appended to the prompt that Husonym generates that includes schema information.
         dataConnectionId:
@@ -1016,17 +926,6 @@ components:
       title: GetConnectionInitStatementsResponse
       additionalProperties: false
       description: Init statement for a specific table
-    mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          type: string
-          title: value
-      title: TableTruncateStatementsEntry
-      additionalProperties: false
     mgmt.v1alpha1.GetConnectionSchemaMapRequest:
       type: object
       properties:
@@ -1054,18 +953,6 @@ components:
             title: value
           description: Returns the database columns separated by the fully qualified <schema>.<table>
       title: GetConnectionSchemaMapResponse
-      additionalProperties: false
-    mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionSchemaResponse'
-          title: value
-      title: SchemaMapEntry
       additionalProperties: false
     mgmt.v1alpha1.GetConnectionSchemaMapsRequest:
       type: object
@@ -1168,71 +1055,8 @@ components:
           description: the key here is <schema>.<table> and value is the unique index
       title: GetConnectionTableConstraintsResponse
       additionalProperties: false
-    mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.ForeignConstraintTables'
-          title: value
-      title: ForeignKeyConstraintsEntry
-      additionalProperties: false
-    mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.PrimaryConstraint'
-          title: value
-      title: PrimaryKeyConstraintsEntry
-      additionalProperties: false
-    mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.UniqueConstraints'
-          title: value
-      title: UniqueConstraintsEntry
-      additionalProperties: false
-    mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.UniqueIndexes'
-          title: value
-      title: UniqueIndexesEntry
-      additionalProperties: false
     mgmt.v1alpha1.GetTableRowCountRequest:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - whereClause
-            - not:
-                anyOf:
-                  - required:
-                      - whereClause
-      anyOf:
-        - required:
-            - whereClause
-        - not:
-            anyOf:
-              - required:
-                  - whereClause
       properties:
         connectionId:
           type: string
@@ -1250,7 +1074,9 @@ components:
           minLength: 1
           description: The table to get the row count for.
         whereClause:
-          type: string
+          type:
+            - string
+            - "null"
           title: where_clause
           description: The optional where clause to filter the rows by.
       title: GetTableRowCountRequest
@@ -1259,9 +1085,7 @@ components:
       type: object
       properties:
         count:
-          type:
-            - integer
-            - string
+          type: string
           title: count
           format: int64
           description: The count of the rows in the table
@@ -1300,6 +1124,26 @@ components:
       type: object
       title: MysqlStreamConfig
       additionalProperties: false
+    mgmt.v1alpha1.PiiConfidence:
+      type: string
+      title: PiiConfidence
+      enum:
+        - PII_CONFIDENCE_UNSPECIFIED
+        - PII_CONFIDENCE_CONFIRMED
+        - PII_CONFIDENCE_NEEDS_REVIEW
+      description: |-
+        Niveau de confiance d'une détection RGPD. Il n'est PAS dérivé d'un score : il
+         dit COMMENT la détection a été obtenue, ce qui détermine si on peut agir seul.
+    mgmt.v1alpha1.PiiDetectionMethod:
+      type: string
+      title: PiiDetectionMethod
+      enum:
+        - PII_DETECTION_METHOD_UNSPECIFIED
+        - PII_DETECTION_METHOD_COLUMN_NAME
+        - PII_DETECTION_METHOD_CHECKSUM
+        - PII_DETECTION_METHOD_CONTENT
+        - PII_DETECTION_METHOD_FORMAT
+      description: Origine d'une détection RGPD. Sert à expliquer la décision à l'utilisateur.
     mgmt.v1alpha1.PostgresSchemaConfig:
       type: object
       title: PostgresSchemaConfig
@@ -1334,6 +1178,61 @@ components:
           description: A list of SQL statements that may be used to initialize a database from scratch.
       title: SchemaInitStatements
       additionalProperties: false
+    mgmt.v1alpha1.TransformerSource:
+      type: string
+      title: TransformerSource
+      enum:
+        - TRANSFORMER_SOURCE_UNSPECIFIED
+        - TRANSFORMER_SOURCE_PASSTHROUGH
+        - TRANSFORMER_SOURCE_GENERATE_DEFAULT
+        - TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_EMAIL
+        - TRANSFORMER_SOURCE_TRANSFORM_EMAIL
+        - TRANSFORMER_SOURCE_GENERATE_BOOL
+        - TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_CITY
+        - TRANSFORMER_SOURCE_GENERATE_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_FIRST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_FLOAT64
+        - TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_FULL_NAME
+        - TRANSFORMER_SOURCE_GENERATE_GENDER
+        - TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_INT64
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_INT64
+        - TRANSFORMER_SOURCE_GENERATE_LAST_NAME
+        - TRANSFORMER_SOURCE_GENERATE_SHA256HASH
+        - TRANSFORMER_SOURCE_GENERATE_SSN
+        - TRANSFORMER_SOURCE_GENERATE_STATE
+        - TRANSFORMER_SOURCE_GENERATE_STREET_ADDRESS
+        - TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_GENERATE_STRING
+        - TRANSFORMER_SOURCE_GENERATE_RANDOM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_UNIXTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_USERNAME
+        - TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP
+        - TRANSFORMER_SOURCE_GENERATE_UUID
+        - TRANSFORMER_SOURCE_GENERATE_ZIPCODE
+        - TRANSFORMER_SOURCE_TRANSFORM_E164_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_FIRST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_FLOAT64
+        - TRANSFORMER_SOURCE_TRANSFORM_FULL_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_INT64
+        - TRANSFORMER_SOURCE_TRANSFORM_LAST_NAME
+        - TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER
+        - TRANSFORMER_SOURCE_TRANSFORM_STRING
+        - TRANSFORMER_SOURCE_GENERATE_NULL
+        - TRANSFORMER_SOURCE_GENERATE_CATEGORICAL
+        - TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE
+        - TRANSFORMER_SOURCE_USER_DEFINED
+        - TRANSFORMER_SOURCE_GENERATE_JAVASCRIPT
+        - TRANSFORMER_SOURCE_GENERATE_COUNTRY
+        - TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
+        - TRANSFORMER_SOURCE_GENERATE_BUSINESS_NAME
+        - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
+        - TRANSFORMER_SOURCE_TRANSFORM_UUID
+        - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
     mgmt.v1alpha1.UniqueConstraint:
       type: object
       properties:
@@ -1378,66 +1277,216 @@ components:
           description: The unique indexes found for the table
       title: UniqueIndexes
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - CodeNotFound
-          enum:
-            - CodeCanceled
-            - CodeUnknown
-            - CodeInvalidArgument
-            - CodeDeadlineExceeded
-            - CodeNotFound
-            - CodeAlreadyExists
-            - CodePermissionDenied
-            - CodeResourceExhausted
-            - CodeFailedPrecondition
-            - CodeAborted
-            - CodeOutOfRange
-            - CodeInternal
-            - CodeUnavailable
-            - CodeDataLoss
-            - CodeUnauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security:
   - BearerAuth: []
 paths:
+  /mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: DetectPiiInConnectionData
+      description: |-
+        Scans sampled column content through Presidio to detect PII (deep scan).
+         Complements the name-based heuristic returned by GetConnectionSchema.
+      operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetAiGeneratedData:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetAiGeneratedData
+      description: Query an AI connection by providing the necessary values. Typically used for generating preview data
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAiGeneratedDataRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAiGeneratedDataResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetAllSchemasAndTables:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetAllSchemasAndTables
+      description: Get all schemas and tables for a connection
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesResponse'
+  /mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetColumnSampleValues
+      description: |-
+        Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
+         une détection RGPD en consultant les données réelles.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesResponse'
   /mgmt.v1alpha1.ConnectionDataService/GetConnectionDataStream: {}
+  /mgmt.v1alpha1.ConnectionDataService/GetConnectionInitStatements:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetConnectionInitStatements
+      description: |-
+        For a specific connection, returns the init table statements. Mostly useful for SQL-based Connections.
+         Used primarily by the CLI sync command to create table schema init statement.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionInitStatementsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionInitStatementsResponse'
   /mgmt.v1alpha1.ConnectionDataService/GetConnectionSchema:
     post:
       tags:
@@ -1448,13 +1497,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1484,13 +1537,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1520,13 +1577,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1556,13 +1617,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1582,80 +1647,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionTableConstraintsResponse'
-  /mgmt.v1alpha1.ConnectionDataService/GetConnectionInitStatements:
-    post:
-      tags:
-        - mgmt.v1alpha1.ConnectionDataService
-      summary: GetConnectionInitStatements
-      description: |-
-        For a specific connection, returns the init table statements. Mostly useful for SQL-based Connections.
-         Used primarily by the CLI sync command to create table schema init statement.
-      operationId: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionInitStatementsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetConnectionInitStatementsResponse'
-  /mgmt.v1alpha1.ConnectionDataService/GetAiGeneratedData:
-    post:
-      tags:
-        - mgmt.v1alpha1.ConnectionDataService
-      summary: GetAiGeneratedData
-      description: Query an AI connection by providing the necessary values. Typically used for generating preview data
-      operationId: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAiGeneratedDataRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAiGeneratedDataResponse'
   /mgmt.v1alpha1.ConnectionDataService/GetTableRowCount:
     post:
       tags:
@@ -1666,13 +1657,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1692,118 +1687,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetTableRowCountResponse'
-  /mgmt.v1alpha1.ConnectionDataService/GetAllSchemasAndTables:
-    post:
-      tags:
-        - mgmt.v1alpha1.ConnectionDataService
-      summary: GetAllSchemasAndTables
-      description: Get all schemas and tables for a connection
-      operationId: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAllSchemasAndTablesResponse'
-  /mgmt.v1alpha1.ConnectionDataService/DetectPiiInConnectionData:
-    post:
-      tags:
-        - mgmt.v1alpha1.ConnectionDataService
-      summary: DetectPiiInConnectionData
-      description: |-
-        Scans sampled column content through Presidio to detect PII (deep scan).
-         Complements the name-based heuristic returned by GetConnectionSchema.
-      operationId: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.DetectPiiInConnectionDataResponse'
-  /mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues:
-    post:
-      tags:
-        - mgmt.v1alpha1.ConnectionDataService
-      summary: GetColumnSampleValues
-      description: |-
-        Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
-         une détection RGPD en consultant les données réelles.
-      operationId: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnSampleValuesResponse'
 tags:
   - name: mgmt.v1alpha1.ConnectionDataService
     description: |-
