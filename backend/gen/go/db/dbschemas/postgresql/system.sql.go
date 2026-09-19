@@ -294,6 +294,7 @@ WITH relevant_schemas_tables AS (
 columns_with_custom_sequences AS (
   SELECT
 		at.attrelid AS table_oid,
+		s.oid AS sequence_oid,
 		sn.nspname AS sequence_schema_name,
 		s.relname AS sequence_name,
 		st.nspname AS schema_name,
@@ -321,19 +322,19 @@ SELECT
     cws.sequence_name,
    (
         'CREATE SEQUENCE ' || quote_ident(cws.sequence_schema_name) || '.' || quote_ident(cws.sequence_name) ||
-        ' START WITH ' || seqs.start_value ||
-        ' INCREMENT BY ' || seqs.increment_by ||
-        ' MINVALUE ' || seqs.min_value ||
-        ' MAXVALUE ' || seqs.max_value ||
-        ' CACHE ' || seqs.cache_size ||
-        CASE WHEN seqs.cycle THEN ' CYCLE' ELSE ' NO CYCLE' END || ';'
+        ' START WITH ' || seqs.seqstart ||
+        ' INCREMENT BY ' || seqs.seqincrement ||
+        ' MINVALUE ' || seqs.seqmin ||
+        ' MAXVALUE ' || seqs.seqmax ||
+        ' CACHE ' || seqs.seqcache ||
+        CASE WHEN seqs.seqcycle THEN ' CYCLE' ELSE ' NO CYCLE' END || ';'
     )::text AS "definition"
 FROM
     relevant_schemas_tables rst
 JOIN
     columns_with_custom_sequences cws ON rst.table_oid = cws.table_oid
 JOIN
-    pg_catalog.pg_sequences seqs ON seqs.schemaname = cws.sequence_schema_name AND seqs.sequencename = cws.sequence_name
+    pg_catalog.pg_sequence seqs ON seqs.seqrelid = cws.sequence_oid
 ORDER BY
     rst.schema_name,
     rst.table_name,
@@ -354,6 +355,9 @@ type GetCustomSequencesBySchemaAndTablesRow struct {
 	Definition         string
 }
 
+// pg_catalog.pg_sequence rather than the pg_sequences view: the view computes
+// last_value with pg_sequence_last_value() for every sequence of the database,
+// which fails when another session drops one of them meanwhile.
 func (q *Queries) GetCustomSequencesBySchemaAndTables(ctx context.Context, db DBTX, arg *GetCustomSequencesBySchemaAndTablesParams) ([]*GetCustomSequencesBySchemaAndTablesRow, error) {
 	rows, err := db.QueryContext(ctx, getCustomSequencesBySchemaAndTables, arg.Schema, pq.Array(arg.Tables))
 	if err != nil {
