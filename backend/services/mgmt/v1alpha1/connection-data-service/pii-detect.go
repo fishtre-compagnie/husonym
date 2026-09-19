@@ -105,6 +105,20 @@ func (s *Service) DetectPiiInConnectionData(
 		return nil, fmt.Errorf("unable to sample data for pii scan: %w", err)
 	}
 
+	// Type SQL de chaque colonne : il décide de la variante du transformer suggéré
+	// (un téléphone en BIGINT veut GENERATE_INT64_PHONE_NUMBER, pas la variante
+	// chaîne, qui ferait échouer la synchronisation). Son absence ne justifie pas
+	// de refuser le scan : la suggestion retombe alors sur la variante chaîne.
+	columnTypes := map[string]string{}
+	if columns, terr := dataconn.GetTableSchema(ctx, req.Msg.GetSchema(), req.Msg.GetTable()); terr != nil {
+		logger.Warn(fmt.Sprintf("unable to read the column types of %s.%s, suggesting string transformers: %v",
+			req.Msg.GetSchema(), req.Msg.GetTable(), terr))
+	} else {
+		for _, column := range columns {
+			columnTypes[column.GetColumn()] = column.GetDataType()
+		}
+	}
+
 	// Filtre optionnel sur un sous-ensemble de colonnes.
 	var wanted map[string]struct{}
 	if cols := req.Msg.GetColumns(); len(cols) > 0 {
@@ -166,7 +180,7 @@ func (s *Service) DetectPiiInConnectionData(
 		// modèle : c'est plus fiable (Presidio classe un NIR en CREDIT_CARD avec
 		// un score de 1.00 quand celui-ci passe Luhn par hasard) et ça évite un
 		// appel HTTP par valeur.
-		if cc, ok := piidetect.ClassifyValues(values, ""); ok {
+		if cc, ok := piidetect.ClassifyValues(values, columnTypes[col]); ok {
 			detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
 				Schema:                     req.Msg.GetSchema(),
 				Table:                      req.Msg.GetTable(),
@@ -240,7 +254,7 @@ func (s *Service) DetectPiiInConnectionData(
 		if matchCount < minMatches {
 			continue
 		}
-		suggestion, ok := piidetect.SuggestionForEntity(entity, "")
+		suggestion, ok := piidetect.SuggestionForEntity(entity, columnTypes[col])
 		if !ok {
 			continue
 		}
