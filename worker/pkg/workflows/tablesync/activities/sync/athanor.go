@@ -46,20 +46,24 @@ func jobIDFromRunID(runID string) (string, error) {
 
 // useAthanorForJob décide, PAR JOB, si Athanor doit traiter ce run. Priorité au
 // champ `engine` du job (réglé dans l'UI, WorkflowOptions) ; à défaut
-// (UNSPECIFIED) ou en cas d'échec de lecture, on retombe sur la policy de
-// déploiement (AthanorConfig.Policy, variables d'env).
-func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string, logger *slog.Logger) bool {
+// (UNSPECIFIED) on retombe sur la policy de déploiement (AthanorConfig.Policy,
+// variables d'env).
+//
+// Une lecture du job qui échoue est une erreur, jamais un repli : le moteur doit
+// être le même pour toutes les tables d'un run. Les deux moteurs dérivent des
+// valeurs anonymisées différentes, donc une seule table passée sur l'autre moteur
+// — le temps d'un timeout, ou entre deux tentatives d'une même activité — casse
+// les clés étrangères entre les tables du run. Mieux vaut refaire la tentative.
+func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string) (bool, error) {
 	jobID, _ := jobIDFromRunID(jobRunID)
-	deploymentDefault := a.athanor.Policy.EnabledFor(jobID)
 	if jobID == "" {
-		return deploymentDefault
+		return a.athanor.Policy.EnabledFor(jobID), nil
 	}
 	resp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
 	if err != nil {
-		logger.Warn("athanor: lecture du moteur du job impossible, repli sur le défaut", "error", err)
-		return deploymentDefault
+		return false, fmt.Errorf("athanor: lecture du moteur du job %s: %w", jobID, err)
 	}
-	return a.athanor.Policy.UsesAthanor(resp.Msg.GetJob())
+	return a.athanor.Policy.UsesAthanor(resp.Msg.GetJob()), nil
 }
 
 // getTablePlan loads the engine-neutral plan of this table sync. It returns nil, and no

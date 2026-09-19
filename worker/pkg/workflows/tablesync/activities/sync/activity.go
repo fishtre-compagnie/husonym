@@ -194,7 +194,11 @@ func (a *Activity) SyncTable(
 
 	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Athanor exécute le
 	// plan neutre de la table ; sans plan (source non SQL), Benthos reste le moteur.
-	if a.useAthanorForJob(ctx, req.JobRunId, logger) {
+	useAthanor, err := a.useAthanorForJob(ctx, req.JobRunId)
+	if err != nil {
+		return nil, err
+	}
+	if useAthanor {
 		plan, perr := a.getTablePlan(ctx, req)
 		if perr != nil {
 			return nil, perr
