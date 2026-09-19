@@ -535,11 +535,13 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		return nil, err
 	}
 
-	triggersRestored = true
 	err = restoreDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId)
 	if err != nil {
+		// The deferred restore, on a context of its own, is the one chance left: the flag
+		// stays down so that it runs.
 		return nil, err
 	}
+	triggersRestored = true
 
 	err = execRunJobHooksByTiming(
 		ctx,

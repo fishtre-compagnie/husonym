@@ -292,6 +292,12 @@ func (a *Activity) session(ctx context.Context) connectionmanager.SessionInterfa
 
 // recordKey is where the triggers out of the way are recorded: per job, not per run, so
 // that a run stopped before putting them back leaves them to the next run of the job.
+//
+// One record for the whole job holds because two runs of a job never overlap: the job is
+// a Temporal schedule, and both its cron firings and the triggers of CreateJobRun go
+// through its overlap policy, which is the default — skip a firing while a run is still
+// going. A policy letting them overlap would have one run put the triggers back while the
+// other is still writing, and this record would have to say which runs hold them.
 func recordKey(jobID, accountID string) *mgmtv1alpha1.RunContextKey {
 	return &mgmtv1alpha1.RunContextKey{
 		JobRunId:   jobID,
