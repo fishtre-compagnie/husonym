@@ -1193,6 +1193,11 @@ function setDefaultDefineFormValues(
           runTimeout: job.workflowOptions.runTimeout
             ? convertNanosecondsToMinutes(job.workflowOptions.runTimeout)
             : undefined,
+          // Le moteur et la portée de cohérence font partie du job au même titre que
+          // le timeout : sans eux, la copie repart sur le défaut de déploiement et
+          // l'étape Define affiche ce défaut, donc rien ne signale la perte.
+          engine: job.workflowOptions.engine,
+          consistencyScope: job.workflowOptions.consistencyScope,
         }
       : undefined,
   };

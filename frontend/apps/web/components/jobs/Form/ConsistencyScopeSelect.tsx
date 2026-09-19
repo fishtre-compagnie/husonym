@@ -23,7 +23,13 @@ export default function ConsistencyScopeSelect({
   return (
     <Select
       onValueChange={(v) => onChange(Number(v))}
-      value={String(value ?? ConsistencyScope.UNSPECIFIED)}
+      // RUN et UNSPECIFIED désignent la même portée : un job enregistré avec RUN
+      // n'a pas d'option à lui et affichait un select vide.
+      value={String(
+        value === undefined || value === ConsistencyScope.RUN
+          ? ConsistencyScope.UNSPECIFIED
+          : value
+      )}
     >
       <SelectTrigger>
         <SelectValue />
