@@ -164,16 +164,23 @@ func TestRunner_ExceptionOutlivesItsRun(t *testing.T) {
 		goja.MustCompile("throw.js", `function rule() { throw new Error("refusé") } rule()`, false))
 	require.Error(t, runErr)
 
-	next := make(chan error)
+	next := make(chan error, 1)
 	go func() {
 		_, err := runner.Run(context.Background(), goja.MustCompile("next.js",
-			`let s = ""; for (let i = 0; i < 100000; i++) { s += String(i) }`, false))
+			`const o = {}; for (let i = 0; i < 20000; i++) { o["k" + (i % 16)] = i }`, false))
 		next <- err
 	}()
-	for range 100 {
+	// The error is read for as long as the next run lasts: one read during it is enough
+	// for the race detector.
+	for running := true; running; {
 		require.Contains(t, runErr.Error(), "refusé")
+		select {
+		case err := <-next:
+			require.NoError(t, err)
+			running = false
+		default:
+		}
 	}
-	require.NoError(t, <-next)
 
 	var stacked interface{ Stack() []goja.StackFrame }
 	require.ErrorAs(t, runErr, &stacked)
