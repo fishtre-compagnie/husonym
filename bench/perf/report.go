@@ -137,7 +137,6 @@ func (r *Report) Markdown() string {
 		if len(measures) == 0 {
 			continue
 		}
-		//nolint:misspell // rapport rédigé en français
 		fmt.Fprintf(&b, "### %s\n\n| Activité | Nombre | Cumul | La plus longue |\n|---|---|---|---|\n", engine)
 		for _, activity := range measures[0].Activities {
 			fmt.Fprintf(&b, "| %s | %d | %.1fs | %.1fs |\n",
