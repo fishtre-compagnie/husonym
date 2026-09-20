@@ -15,6 +15,7 @@ func subsetForeignKeyCases() []*Case {
 		fkDiamond(),
 		fkCycleTwoTables(),
 		fkSeveralToSameParent(),
+		fkMandatoryParentOutOfSubsetWithoutSkip(),
 		fkCompositePartiallyNull(),
 		fkCompositeColumnOrder(),
 		fkVirtual(),
@@ -296,6 +297,55 @@ func fkSeveralToSameParent() *Case {
 				emit.Row("TRANSFERT", []any{200 + i, stationKept, stationKept, stationDropped}, Kept("station_retour_id"))
 				emit.Row("TRANSFERT", []any{300 + i, stationKept, stationDropped, nil}, Dropped())
 				emit.Row("TRANSFERT", []any{400 + i, stationDropped, stationKept, nil}, Dropped())
+			}
+		},
+	}
+}
+
+// fkMandatoryParentOutOfSubsetWithoutSkip is fkSeveralToSameParent without
+// skip_foreign_key_violations: a mandatory key to a parent left out of the subset leaves
+// the row out just the same.
+//
+// The option chooses what to do with a row the destination refuses; a mandatory key to a
+// parent that is not there cannot be written at all, so failing the run would only trade
+// a row that has to go for a job that never finishes. A live source makes this ordinary
+// rather than exceptional — a parent and its child created between the read of the parent
+// table and the read of the child table select the child without its parent, and no
+// ordering of the tables prevents it. The referential integrity check at the end of the
+// run stays the one place that judges the destination as a whole.
+func fkMandatoryParentOutOfSubsetWithoutSkip() *Case {
+	return &Case{
+		ID:       "fk-mandatory-parent-out-of-subset-without-skip",
+		Priority: P1,
+		Title:    "FK obligatoire vers un parent hors subset, sans skip_foreign_key_violations",
+		Tables: []*schema.Table{
+			stationTable(),
+			{
+				Name: "TRANSFERT",
+				Columns: []schema.Column{
+					{Name: idColumn, Type: schema.Int64()},
+					{Name: "station_arrivee_id", Type: schema.Int64()},
+					{Name: "station_depart_id", Type: schema.Int64()},
+				},
+				PrimaryKey: []string{idColumn},
+				ForeignKeys: []schema.ForeignKey{
+					foreignKeyToID("fk_transfert_arrivee", "station_arrivee_id", "STATION"),
+					foreignKeyToID("fk_transfert_depart", "station_depart_id", "STATION"),
+				},
+			},
+		},
+		Job: Job{
+			Where:                    map[string]string{"STATION": fmt.Sprintf("id = %d", stationKept)},
+			SubsetByForeignKeys:      true,
+			SkipForeignKeyViolations: false,
+		},
+		Seed: func(p Params, emit Emitter) {
+			seedStations(emit)
+			for i := int64(1); i <= 10; i++ {
+				emit.Row("TRANSFERT", []any{i, stationKept, stationKept}, Kept())
+				// La seconde clé, obligatoire, sort du subset : la ligne est retenue par
+				// la première mais ne peut pas être écrite.
+				emit.Row("TRANSFERT", []any{300 + i, stationKept, stationDropped}, Dropped())
 			}
 		},
 	}

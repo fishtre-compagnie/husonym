@@ -8,6 +8,16 @@ package sqlio
 // all select such rows. A nullable key is read as NULL by the query itself; a mandatory
 // one cannot be cleared, so the row cannot be written. The parent tables are complete by
 // then: the workflow syncs them first.
+//
+// Such a row is always left out, whatever skip_foreign_key_violations says. That option
+// chooses what to do with a row the destination refuses; here nothing can be written at
+// all, so failing the page would only turn a row that has to go into a run that does not
+// finish. A live source makes this ordinary rather than exceptional: a parent and its
+// child created between the read of the parent table and the read of the child table
+// select the child without its parent, and no ordering of the tables prevents it. The
+// rows left out are counted and their keys withheld, so their own children follow them
+// out, and the referential integrity check at the end of the run — which sees the whole
+// destination — remains the one place that judges what was written.
 
 import (
 	"context"
@@ -47,14 +57,12 @@ type parentCheckWriter struct {
 	inner     RowWriter
 	table     string
 	checks    []ParentCheck
-	skip      bool
 	onDiscard func(dropped []int)
 }
 
 // NewParentCheckWriter wraps a writer so that rows referencing a missing parent never
-// reach it. With skip they are left out and reported through onDiscard, by their index in
-// the batch this writer was given; without, the first one fails the write, as the foreign
-// key itself would have.
+// reach it. They are left out and reported through onDiscard, by their index in the batch
+// this writer was given.
 func NewParentCheckWriter(
 	ctx context.Context,
 	tx Tx,
@@ -62,7 +70,6 @@ func NewParentCheckWriter(
 	inner RowWriter,
 	table string,
 	checks []ParentCheck,
-	skip bool,
 	onDiscard func(dropped []int),
 ) RowWriter {
 	if len(checks) == 0 {
@@ -70,7 +77,7 @@ func NewParentCheckWriter(
 	}
 	return &parentCheckWriter{
 		ctx: ctx, tx: tx, dialect: dialect, inner: inner, table: table,
-		checks: checks, skip: skip, onDiscard: onDiscard,
+		checks: checks, onDiscard: onDiscard,
 	}
 }
 
@@ -82,10 +89,6 @@ func (w *parentCheckWriter) WriteBatch(columns []string, rows [][]any) error {
 			return err
 		}
 		if len(dropped) > 0 {
-			if !w.skip {
-				return fmt.Errorf("sqlio: %d ligne(s) de %s violent la clé étrangère (%s) vers %s.%s : parent absent de la destination",
-					len(dropped), w.table, strings.Join(check.Columns, ", "), check.ParentSchema, check.ParentTable)
-			}
 			w.onDiscard(dropped)
 			rows = kept
 		}

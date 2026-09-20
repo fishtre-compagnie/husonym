@@ -323,20 +323,11 @@ func writeConfigForDest(dst *mgmtv1alpha1.JobDestination) runner.WriteConfig {
 	opts := dst.GetOptions()
 	switch {
 	case opts.GetMysqlOptions() != nil:
-		return runner.WriteConfig{
-			OnConflict:               conflictFromMysql(opts.GetMysqlOptions().GetOnConflict()),
-			SkipForeignKeyViolations: opts.GetMysqlOptions().GetSkipForeignKeyViolations(),
-		}
+		return runner.WriteConfig{OnConflict: conflictFromMysql(opts.GetMysqlOptions().GetOnConflict())}
 	case opts.GetPostgresOptions() != nil:
-		return runner.WriteConfig{
-			OnConflict:               conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict()),
-			SkipForeignKeyViolations: opts.GetPostgresOptions().GetSkipForeignKeyViolations(),
-		}
+		return runner.WriteConfig{OnConflict: conflictFromPostgres(opts.GetPostgresOptions().GetOnConflict())}
 	case opts.GetMssqlOptions() != nil:
-		return runner.WriteConfig{
-			OnConflict:               conflictFromMssql(opts.GetMssqlOptions().GetOnConflict()),
-			SkipForeignKeyViolations: opts.GetMssqlOptions().GetSkipForeignKeyViolations(),
-		}
+		return runner.WriteConfig{OnConflict: conflictFromMssql(opts.GetMssqlOptions().GetOnConflict())}
 	default:
 		return runner.WriteConfig{}
 	}

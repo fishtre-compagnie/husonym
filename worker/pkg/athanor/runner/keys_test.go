@@ -66,7 +66,7 @@ func Test_keysArePublishedThenFollowed(t *testing.T) {
 	child := &capturingWriter{}
 	discarded := 0
 	translator := &keyTranslator{
-		ctx: ctx, store: store, table: "shop.COMMANDE", inner: child, skip: true,
+		ctx: ctx, store: store, table: "shop.COMMANDE", inner: child,
 		onDiscard:   func(dropped []int) { discarded += len(dropped) },
 		foreignKeys: []*tableplan.ForeignKey{clientKey(true)},
 	}
@@ -88,11 +88,17 @@ func Test_keyTranslator_UnpublishedParent(t *testing.T) {
 	}).WriteBatch([]string{"id", "client_id"}, rows()))
 	require.Equal(t, [][]any{{int64(10), nil}, {int64(11), nil}}, nullable.rows, "a nullable key is cleared")
 
-	err := (&keyTranslator{
-		ctx: ctx, store: memoryKeyStore{}, table: "shop.COMMANDE", inner: &capturingWriter{},
+	// A mandatory key whose parent was never published leaves the row out rather than
+	// failing the page: the row cannot be written, and a live source makes an uncopied
+	// parent ordinary. See sqlio/parent_check.go.
+	mandatory, discarded := &capturingWriter{}, 0
+	require.NoError(t, (&keyTranslator{
+		ctx: ctx, store: memoryKeyStore{}, table: "shop.COMMANDE", inner: mandatory,
+		onDiscard:   func(dropped []int) { discarded += len(dropped) },
 		foreignKeys: []*tableplan.ForeignKey{clientKey(true)},
-	}).WriteBatch([]string{"id", "client_id"}, [][]any{{int64(10), int64(99)}})
-	require.ErrorContains(t, err, "parent non copié", "without skip a mandatory key fails the page")
+	}).WriteBatch([]string{"id", "client_id"}, [][]any{{int64(10), int64(99)}}))
+	require.Empty(t, mandatory.rows, "la ligne au parent non copié n'est pas écrite")
+	require.Equal(t, 1, discarded, "elle est comptée")
 }
 
 // A self-reference following a transformed key is deferred by the insert pass, which writes
