@@ -187,6 +187,50 @@ func TestValidateJobMappingsExistInSource(t *testing.T) {
 			}, warnings["schema1.table1"]["col2"])
 		},
 	)
+
+	t.Run(
+		"should single out an unmapped column that looks like personal data",
+		func(t *testing.T) {
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{Schema: "public", Table: "users", Column: "id"},
+			}
+
+			sourceCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+				"public.users": {
+					"id":    &sqlmanager_shared.DatabaseSchemaRow{DataType: "integer"},
+					"email": &sqlmanager_shared.DatabaseSchemaRow{DataType: "character varying(255)"},
+					"total": &sqlmanager_shared.DatabaseSchemaRow{DataType: "numeric"},
+				},
+			}
+
+			jmv := NewJobMappingsValidator(mappings, WithJobSourceOptions(&SqlJobSourceOpts{
+				PassthroughOnNewColumnAddition: true,
+				PassthroughPendingReview:       true,
+			}))
+			jmv.ValidateJobMappingsExistInSource(sourceCols)
+
+			// Still never an error: the strategy is what keeps a run going.
+			assert.Empty(t, jmv.GetColumnErrors())
+
+			warnings := jmv.GetColumnWarnings()
+			assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+				{
+					Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH,
+					Message: "Column is not in the job mappings and looks like personal data (email), yet it is passed through as is: public.users.email",
+				},
+			}, warnings["public.users"]["email"])
+
+			// The column the heuristic did not recognise is NOT cleared by that silence: it
+			// keeps its warning, one rank down. Dropping it here is how an anonymizer starts
+			// leaking quietly again.
+			assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+				{
+					Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW,
+					Message: "Column is not in the job mappings and is passed through as is, awaiting a decision: public.users.total",
+				},
+			}, warnings["public.users"]["total"])
+		},
+	)
 }
 
 func TestJobMappingsValidator_ValidateRequiredForeignKeys(t *testing.T) {

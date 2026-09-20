@@ -587,3 +587,40 @@ func Test_formatMappingColumns(t *testing.T) {
 		require.Empty(t, formatMappingColumns(nil))
 	})
 }
+
+func Test_splitSensitiveColumns(t *testing.T) {
+	columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+		"public.users": {
+			"email":       {DataType: "character varying(255)"},
+			"champ_libre": {DataType: "text"},
+			"total":       {DataType: "numeric"},
+		},
+	}
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "public", Table: "users", Column: "total"},
+		{Schema: "public", Table: "users", Column: "email"},
+		{Schema: "public", Table: "users", Column: "champ_libre"},
+	}
+
+	sensitive, others := splitSensitiveColumns(mappings, columnInfo)
+
+	t.Run("names what reads as personal data, with its category", func(t *testing.T) {
+		require.Equal(t, []string{"public.users.email (email)"}, sensitive)
+	})
+
+	t.Run("keeps the rest, because the heuristic clears nothing", func(t *testing.T) {
+		// champ_libre is exactly the column this heuristic cannot see into. Dropping it from
+		// the log because nothing matched would hide the one that needs a human the most.
+		require.Equal(t, []string{"public.users.champ_libre", "public.users.total"}, others)
+	})
+
+	t.Run("survives a column the schema does not describe", func(t *testing.T) {
+		sensitive, others := splitSensitiveColumns(
+			[]*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "ghost", Column: "email"}},
+			columnInfo,
+		)
+		// No type to go on, but the name alone is enough: it must not silently become "other".
+		require.Equal(t, []string{"public.ghost.email (email)"}, sensitive)
+		require.Empty(t, others)
+	})
+}

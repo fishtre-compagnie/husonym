@@ -595,6 +595,10 @@ const (
 	// decision (new_column_addition_strategy = passthrough_pending_review). The run copies
 	// it as is; this warning is what keeps it from being forgotten.
 	ColumnWarning_COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW ColumnWarning_ColumnWarningCode = 3
+	// Same as above, and the column name and type look like personal data. The run still
+	// copies it as is — the strategy exists so that a new column never stops a run — so this
+	// is the one to act on first: it names data leaving the source untransformed.
+	ColumnWarning_COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH ColumnWarning_ColumnWarningCode = 4
 )
 
 // Enum value maps for ColumnWarning_ColumnWarningCode.
@@ -604,12 +608,14 @@ var (
 		1: "COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE",
 		2: "COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING",
 		3: "COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW",
+		4: "COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH",
 	}
 	ColumnWarning_ColumnWarningCode_value = map[string]int32{
-		"COLUMN_WARNING_CODE_UNSPECIFIED":                0,
-		"COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE":        1,
-		"COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING":       2,
-		"COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW": 3,
+		"COLUMN_WARNING_CODE_UNSPECIFIED":                     0,
+		"COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE":             1,
+		"COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING":            2,
+		"COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW":      3,
+		"COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH": 4,
 	}
 )
 
@@ -13308,7 +13314,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"7COLUMN_ERROR_CODE_VFK_TARGET_COLUMN_NOT_FOUND_IN_SOURCE\x10\t\x122\n" +
 	".COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH\x10\n" +
 	"\x122\n" +
-	".COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE\x10\vJ\x04\b\x04\x10\x05R\x06errors\"\xff\x03\n" +
+	".COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE\x10\vJ\x04\b\x04\x10\x05R\x06errors\"\xb8\x04\n" +
 	"\rColumnWarning\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\tR\x06schema\x12\x14\n" +
 	"\x05table\x18\x02 \x01(\tR\x05table\x12\x16\n" +
@@ -13316,12 +13322,13 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x0fwarning_reports\x18\x06 \x03(\v20.mgmt.v1alpha1.ColumnWarning.ColumnWarningReportR\x0ewarningReports\x1as\n" +
 	"\x13ColumnWarningReport\x12B\n" +
 	"\x04code\x18\x01 \x01(\x0e2..mgmt.v1alpha1.ColumnWarning.ColumnWarningCodeR\x04code\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xc7\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x80\x02\n" +
 	"\x11ColumnWarningCode\x12#\n" +
 	"\x1fCOLUMN_WARNING_CODE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE\x10\x01\x12,\n" +
 	"(COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING\x10\x02\x122\n" +
-	".COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW\x10\x03J\x04\b\x05\x10\x06R\bwarnings\"\xa0\x03\n" +
+	".COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW\x10\x03\x127\n" +
+	"3COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH\x10\x04J\x04\b\x05\x10\x06R\bwarnings\"\xa0\x03\n" +
 	"\rDatabaseError\x12U\n" +
 	"\rerror_reports\x18\x02 \x03(\v20.mgmt.v1alpha1.DatabaseError.DatabaseErrorReportR\ferrorReports\x1as\n" +
 	"\x13DatabaseErrorReport\x12B\n" +

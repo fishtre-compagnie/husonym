@@ -133,6 +133,38 @@ func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
 	return columns
 }
 
+// splitSensitiveColumns separates the unmapped columns whose name and type read as personal data
+// from the rest, naming each with the category that was recognised.
+//
+// The verdict comes from job_util.LooksSensitive, the same call the validator makes, so the form
+// and the run cannot disagree about a column. And the split is a ranking, not a filter: the
+// others are still logged, because the heuristic recognising nothing in `champ_libre` says
+// nothing about what it holds.
+func splitSensitiveColumns(
+	mappings []*mgmtv1alpha1.JobMapping,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) (sensitive, others []string) {
+	for _, m := range mappings {
+		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
+		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
+
+		var dataType string
+		if cols, ok := columnInfo[table]; ok {
+			if info, ok := cols[m.GetColumn()]; ok && info != nil {
+				dataType = info.DataType
+			}
+		}
+		if category, isSensitive := job_util.LooksSensitive(m.GetColumn(), dataType); isSensitive {
+			sensitive = append(sensitive, fmt.Sprintf("%s (%s)", name, category))
+			continue
+		}
+		others = append(others, name)
+	}
+	slices.Sort(sensitive)
+	slices.Sort(others)
+	return sensitive, others
+}
+
 func getMapValuesCount[K comparable, V any](m map[K][]V) int {
 	count := 0
 	for _, v := range m {

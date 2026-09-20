@@ -134,13 +134,28 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 			// Named, and at warning level, because this is the whole point of the strategy: the
 			// run does not stop, so the log line is what tells someone that data left the source
 			// untransformed. A count alone would not let them decide anything.
-			logger.Warn(
-				fmt.Sprintf(
-					"%d unmapped columns passed through as is, awaiting a decision: [%s]",
-					len(extraMappings),
-					strings.Join(formatMappingColumns(extraMappings), ", "),
-				),
-			)
+			//
+			// The ones that read as personal data get their own line, first: on a wide table
+			// the interesting three would otherwise sit in the middle of sixty.
+			sensitive, others := splitSensitiveColumns(extraMappings, groupedColumnInfo)
+			if len(sensitive) > 0 {
+				logger.Warn(
+					fmt.Sprintf(
+						"%d unmapped columns look like personal data and were passed through untransformed: [%s]",
+						len(sensitive),
+						strings.Join(sensitive, ", "),
+					),
+				)
+			}
+			if len(others) > 0 {
+				logger.Warn(
+					fmt.Sprintf(
+						"%d unmapped columns passed through as is, awaiting a decision: [%s]",
+						len(others),
+						strings.Join(others, ", "),
+					),
+				)
+			}
 		} else {
 			logger.Debug(
 				fmt.Sprintf(

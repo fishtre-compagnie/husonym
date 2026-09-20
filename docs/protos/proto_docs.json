@@ -11262,6 +11262,11 @@
               "name": "COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW",
               "number": "3",
               "description": "Column is not in the job mapping and the job passes it through while it awaits a\ndecision (new_column_addition_strategy = passthrough_pending_review). The run copies\nit as is; this warning is what keeps it from being forgotten."
+            },
+            {
+              "name": "COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH",
+              "number": "4",
+              "description": "Same as above, and the column name and type look like personal data. The run still\ncopies it as is — the strategy exists so that a new column never stops a run — so this\nis the one to act on first: it names data leaving the source untransformed."
             }
           ]
         },

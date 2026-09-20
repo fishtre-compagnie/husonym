@@ -212,6 +212,23 @@ func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 				// generic message above would read as advice; this one is a statement of fact
 				// about data leaving the source untransformed.
 				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview:
+					// A column whose name and type read as personal data gets its own code, so
+					// a reviewer with sixty warnings knows which three to open. The others are
+					// not cleared by the heuristic's silence — they are only less urgent.
+					if category, sensitive := LooksSensitive(col, colMap[col].DataType); sensitive {
+						j.addColumnWarning(
+							table,
+							col,
+							fmt.Sprintf(
+								"Column is not in the job mappings and looks like personal data (%s), yet it is passed through as is: %s.%s",
+								category,
+								table,
+								col,
+							),
+							mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH,
+						)
+						continue
+					}
 					j.addColumnWarning(
 						table,
 						col,

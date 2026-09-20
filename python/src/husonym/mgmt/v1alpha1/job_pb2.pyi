@@ -1387,10 +1387,12 @@ class ColumnWarning(_message.Message):
         COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: _ClassVar[ColumnWarning.ColumnWarningCode]
+        COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: _ClassVar[ColumnWarning.ColumnWarningCode]
     COLUMN_WARNING_CODE_UNSPECIFIED: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: ColumnWarning.ColumnWarningCode
+    COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: ColumnWarning.ColumnWarningCode
     class ColumnWarningReport(_message.Message):
         __slots__ = ("code", "message")
         CODE_FIELD_NUMBER: _ClassVar[int]

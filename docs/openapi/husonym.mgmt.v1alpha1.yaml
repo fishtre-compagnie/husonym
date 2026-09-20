@@ -10837,6 +10837,7 @@ components:
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
         - COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW
+        - COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH
       description: An enumeration of column warning codes
     mgmt.v1alpha1.ColumnWarning.ColumnWarningReport:
       type: object
