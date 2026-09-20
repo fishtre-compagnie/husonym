@@ -43,7 +43,7 @@ func TestParentCheckWriter_DiscardsRowsWithoutParent(t *testing.T) {
 	require.NoError(t, err)
 	inner, discarded := &recordingWriter{}, 0
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.FACTURE",
-		factureCheck(nil), true, func(dropped []int) { discarded += len(dropped) })
+		factureCheck(nil), func(dropped []int) { discarded += len(dropped) })
 
 	require.NoError(t, w.WriteBatch([]string{"id", "commande_id"},
 		[][]any{{int64(1), int64(7)}, {int64(2), int64(1007)}, {int64(3), int64(7)}}))
@@ -52,7 +52,11 @@ func TestParentCheckWriter_DiscardsRowsWithoutParent(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestParentCheckWriter_FailsWithoutSkip(t *testing.T) {
+// A mandatory key to a parent the destination does not hold leaves the row out whatever
+// skip_foreign_key_violations says: the row cannot be written at all, so failing the page
+// would turn a row that has to go into a run that does not finish. A live source makes
+// this ordinary — a parent and its child created between the read of the two tables.
+func TestParentCheckWriter_DiscardsEvenWhenViolationsAreNotSkipped(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
@@ -61,13 +65,13 @@ func TestParentCheckWriter_FailsWithoutSkip(t *testing.T) {
 
 	tx, err := db.BeginTx(context.Background(), nil)
 	require.NoError(t, err)
-	inner := &recordingWriter{}
+	inner, discarded := &recordingWriter{}, 0
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.FACTURE",
-		factureCheck(nil), false, func([]int) {})
+		factureCheck(nil), func(dropped []int) { discarded += len(dropped) })
 
-	err = w.WriteBatch([]string{"id", "commande_id"}, [][]any{{int64(1), int64(1007)}})
-	require.ErrorContains(t, err, "violent la clé étrangère (commande_id) vers shop.COMMANDE")
-	require.Empty(t, inner.rows)
+	require.NoError(t, w.WriteBatch([]string{"id", "commande_id"}, [][]any{{int64(1), int64(1007)}}))
+	require.Empty(t, inner.rows, "la ligne sans parent n'est pas écrite")
+	require.Equal(t, 1, discarded, "elle est comptée, pour que le run le dise")
 }
 
 // parent_id NOT NULL DEFAULT 0: rows holding the "no parent" value are kept without
@@ -82,7 +86,7 @@ func TestParentCheckWriter_KeepsNoParentValue(t *testing.T) {
 	require.NoError(t, err)
 	inner, zero := &recordingWriter{}, "0"
 	w := NewParentCheckWriter(context.Background(), tx, MySQLDialect{}, inner, "shop.AVOIR",
-		factureCheck(&zero), true, func([]int) {})
+		factureCheck(&zero), func([]int) {})
 
 	require.NoError(t, w.WriteBatch([]string{"id", "commande_id"}, [][]any{{int64(1), int64(0)}}))
 	require.Len(t, inner.rows, 1)
@@ -91,7 +95,7 @@ func TestParentCheckWriter_KeepsNoParentValue(t *testing.T) {
 
 func TestNewParentCheckWriter_NothingToCheck(t *testing.T) {
 	inner := &recordingWriter{}
-	require.Same(t, RowWriter(inner), NewParentCheckWriter(context.Background(), nil, MySQLDialect{}, inner, "t", nil, true, nil))
+	require.Same(t, RowWriter(inner), NewParentCheckWriter(context.Background(), nil, MySQLDialect{}, inner, "t", nil, nil))
 }
 
 // A composite key costs one parameter per column plus the ordinal: a fixed bound of 500

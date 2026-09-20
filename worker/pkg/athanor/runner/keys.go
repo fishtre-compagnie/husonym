@@ -157,7 +157,6 @@ type keyTranslator struct {
 	foreignKeys []*tableplan.ForeignKey
 	// deferred are written NULL: an update pass fills them in (see followingForeignKeys).
 	deferred  []*tableplan.ForeignKey
-	skip      bool
 	onDiscard func(dropped []int)
 	inner     sqlio.RowWriter
 }
@@ -239,12 +238,12 @@ func (t *keyTranslator) translate(fk *tableplan.ForeignKey, columns []string, ro
 					row[columnIndex(columns, column)] = nil
 				}
 			}
-		case t.skip:
+		default:
+			// Le parent n'a pas été copié : la clé est obligatoire, donc la ligne ne peut
+			// pas être écrite. Elle est écartée plutôt que de faire échouer la page —
+			// voir sqlio/parent_check.go, qui porte le même raisonnement.
 			dropped = append(dropped, r)
 			continue
-		default:
-			return nil, fmt.Errorf("runner: une ligne de %s viole la clé étrangère (%s) vers %s.%s : parent non copié",
-				t.table, strings.Join(fk.Columns, ", "), fk.ParentSchema, fk.ParentTable)
 		}
 		kept = append(kept, row)
 	}

@@ -29,9 +29,6 @@ type WriteConfig struct {
 	// DisableForeignKeyChecks writes the page with foreign key checks off, so the table
 	// is written in one pass whatever the order of its rows. The dialect must allow it.
 	DisableForeignKeyChecks bool
-	// SkipForeignKeyViolations leaves out the rows whose mandatory parent is missing;
-	// without it the first one fails the page.
-	SkipForeignKeyViolations bool
 }
 
 // Destination is where a table is written: each page in a transaction of its own.
@@ -122,12 +119,11 @@ func RunTablePage(
 			result.RowsDiscarded += len(dropped)
 			publisher.dropped(dropped)
 		}
-		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan),
-			wc.SkipForeignKeyViolations, discard)
+		w = sqlio.NewParentCheckWriter(ctx, tx, dialect, w, plan.Schema+"."+plan.Table, parentChecks(plan), discard)
 		if len(translated) > 0 || len(deferred) > 0 {
 			w = &keyTranslator{
 				ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table, foreignKeys: translated,
-				deferred: deferred, skip: wc.SkipForeignKeyViolations, onDiscard: discard, inner: w,
+				deferred: deferred, onDiscard: discard, inner: w,
 			}
 		}
 		if len(plan.PublishedKeys) > 0 {
@@ -170,9 +166,9 @@ func RunUpdatePage(ctx context.Context, src Querier, dst Destination, dialect sq
 		// the insert pass did not write, whose key was never published.
 		w := &keyTranslator{
 			ctx: ctx, store: page.Keys, table: plan.Schema + "." + plan.Table,
-			foreignKeys: append(slices.Clone(translated), ownKey(plan)), skip: true,
-			onDiscard: func([]int) {},
-			inner:     sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey),
+			foreignKeys: append(slices.Clone(translated), ownKey(plan)),
+			onDiscard:   func([]int) {},
+			inner:       sqlio.NewUpdateWriter(ctx, tx, dialect, plan.Schema, plan.Table, plan.PrimaryKey),
 		}
 		return reader.pipeline(ctx, page.BatchSize, engine.Spec{}, w, slices.Concat(plan.PrimaryKey, plan.Columns))
 	})
