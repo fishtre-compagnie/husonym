@@ -71,6 +71,11 @@ class ConnectionDataServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.FromString,
                 _registered_method=True)
+        self.GetJavascriptDraftPrompt = channel.unary_unary(
+                '/mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt',
+                request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.FromString,
+                _registered_method=True)
 
 
 class ConnectionDataServiceServicer:
@@ -159,6 +164,16 @@ class ConnectionDataServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetJavascriptDraftPrompt(self, request, context):
+        """Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a
+        model. The server fills it from what it knows and the caller does not: the execution
+        contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+        the deterministic functions in scope. It reads the schema, never the column's data.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ConnectionDataServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -216,6 +231,11 @@ def add_ConnectionDataServiceServicer_to_server(servicer, server):
                     servicer.GetColumnSampleValues,
                     request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.SerializeToString,
+            ),
+            'GetJavascriptDraftPrompt': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJavascriptDraftPrompt,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -517,6 +537,33 @@ class ConnectionDataService:
             '/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues',
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetColumnSampleValuesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetJavascriptDraftPrompt(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt',
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.FromString,
             options,
             channel_credentials,
             insecure,

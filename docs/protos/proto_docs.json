@@ -8400,6 +8400,52 @@
       "hasServices": true,
       "enums": [
         {
+          "name": "JavascriptDraftEngine",
+          "longName": "JavascriptDraftEngine",
+          "fullName": "mgmt.v1alpha1.JavascriptDraftEngine",
+          "description": "The engine that will run the drafted rule. It decides what the rule may call: the\ndeterministic pseudo functions exist under Athanor only, and calling one under Benthos fails\nat runtime, so a draft written for the wrong engine is a run that breaks.",
+          "values": [
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defaults to athanor, the default engine."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_ATHANOR",
+              "number": "1",
+              "description": ""
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_BENTHOS",
+              "number": "2",
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "JavascriptDraftMode",
+          "longName": "JavascriptDraftMode",
+          "fullName": "mgmt.v1alpha1.JavascriptDraftMode",
+          "description": "What a drafted rule derives its output from.",
+          "values": [
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defaults to transform."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_TRANSFORM",
+              "number": "1",
+              "description": "The rule receives the current value and derives the new one from it."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_GENERATE",
+              "number": "2",
+              "description": "The rule ignores the current value and produces a new one."
+            }
+          ]
+        },
+        {
           "name": "PiiConfidence",
           "longName": "PiiConfidence",
           "fullName": "mgmt.v1alpha1.PiiConfidence",
@@ -10401,6 +10447,114 @@
           ]
         },
         {
+          "name": "GetJavascriptDraftPromptRequest",
+          "longName": "GetJavascriptDraftPromptRequest",
+          "fullName": "mgmt.v1alpha1.GetJavascriptDraftPromptRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The connection whose schema describes the column.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table the column belongs to.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column a rule is being drafted for.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mode",
+              "description": "What the rule derives its output from. Defaults to transform.",
+              "label": "",
+              "type": "JavascriptDraftMode",
+              "longType": "JavascriptDraftMode",
+              "fullType": "mgmt.v1alpha1.JavascriptDraftMode",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "engine",
+              "description": "The engine that will run it. Defaults to athanor.",
+              "label": "",
+              "type": "JavascriptDraftEngine",
+              "longType": "JavascriptDraftEngine",
+              "fullType": "mgmt.v1alpha1.JavascriptDraftEngine",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJavascriptDraftPromptResponse",
+          "longName": "GetJavascriptDraftPromptResponse",
+          "fullName": "mgmt.v1alpha1.GetJavascriptDraftPromptResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "prompt",
+              "description": "The prompt, ready to send to a model. It carries the execution contract, the column's\nconstraints and the functions in scope — never any of the column's values.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetTableRowCountRequest",
           "longName": "GetTableRowCountRequest",
           "fullName": "mgmt.v1alpha1.GetTableRowCountRequest",
@@ -10901,6 +11055,21 @@
               "responseType": "GetColumnSampleValuesResponse",
               "responseLongType": "GetColumnSampleValuesResponse",
               "responseFullType": "mgmt.v1alpha1.GetColumnSampleValuesResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetJavascriptDraftPrompt",
+              "description": "Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a\nmodel. The server fills it from what it knows and the caller does not: the execution\ncontract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and\nthe deterministic functions in scope. It reads the schema, never the column's data.",
+              "requestType": "GetJavascriptDraftPromptRequest",
+              "requestLongType": "GetJavascriptDraftPromptRequest",
+              "requestFullType": "mgmt.v1alpha1.GetJavascriptDraftPromptRequest",
+              "requestStreaming": false,
+              "responseType": "GetJavascriptDraftPromptResponse",
+              "responseLongType": "GetJavascriptDraftPromptResponse",
+              "responseFullType": "mgmt.v1alpha1.GetJavascriptDraftPromptResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

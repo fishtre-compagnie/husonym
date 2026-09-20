@@ -140,6 +140,112 @@ func (PiiDetectionMethod) EnumDescriptor() ([]byte, []int) {
 	return file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP(), []int{1}
 }
 
+// What a drafted rule derives its output from.
+type JavascriptDraftMode int32
+
+const (
+	// Defaults to transform.
+	JavascriptDraftMode_JAVASCRIPT_DRAFT_MODE_UNSPECIFIED JavascriptDraftMode = 0
+	// The rule receives the current value and derives the new one from it.
+	JavascriptDraftMode_JAVASCRIPT_DRAFT_MODE_TRANSFORM JavascriptDraftMode = 1
+	// The rule ignores the current value and produces a new one.
+	JavascriptDraftMode_JAVASCRIPT_DRAFT_MODE_GENERATE JavascriptDraftMode = 2
+)
+
+// Enum value maps for JavascriptDraftMode.
+var (
+	JavascriptDraftMode_name = map[int32]string{
+		0: "JAVASCRIPT_DRAFT_MODE_UNSPECIFIED",
+		1: "JAVASCRIPT_DRAFT_MODE_TRANSFORM",
+		2: "JAVASCRIPT_DRAFT_MODE_GENERATE",
+	}
+	JavascriptDraftMode_value = map[string]int32{
+		"JAVASCRIPT_DRAFT_MODE_UNSPECIFIED": 0,
+		"JAVASCRIPT_DRAFT_MODE_TRANSFORM":   1,
+		"JAVASCRIPT_DRAFT_MODE_GENERATE":    2,
+	}
+)
+
+func (x JavascriptDraftMode) Enum() *JavascriptDraftMode {
+	p := new(JavascriptDraftMode)
+	*p = x
+	return p
+}
+
+func (x JavascriptDraftMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (JavascriptDraftMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_connection_data_proto_enumTypes[2].Descriptor()
+}
+
+func (JavascriptDraftMode) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_connection_data_proto_enumTypes[2]
+}
+
+func (x JavascriptDraftMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use JavascriptDraftMode.Descriptor instead.
+func (JavascriptDraftMode) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP(), []int{2}
+}
+
+// The engine that will run the drafted rule. It decides what the rule may call: the
+// deterministic pseudo functions exist under Athanor only, and calling one under Benthos fails
+// at runtime, so a draft written for the wrong engine is a run that breaks.
+type JavascriptDraftEngine int32
+
+const (
+	// Defaults to athanor, the default engine.
+	JavascriptDraftEngine_JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED JavascriptDraftEngine = 0
+	JavascriptDraftEngine_JAVASCRIPT_DRAFT_ENGINE_ATHANOR     JavascriptDraftEngine = 1
+	JavascriptDraftEngine_JAVASCRIPT_DRAFT_ENGINE_BENTHOS     JavascriptDraftEngine = 2
+)
+
+// Enum value maps for JavascriptDraftEngine.
+var (
+	JavascriptDraftEngine_name = map[int32]string{
+		0: "JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED",
+		1: "JAVASCRIPT_DRAFT_ENGINE_ATHANOR",
+		2: "JAVASCRIPT_DRAFT_ENGINE_BENTHOS",
+	}
+	JavascriptDraftEngine_value = map[string]int32{
+		"JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED": 0,
+		"JAVASCRIPT_DRAFT_ENGINE_ATHANOR":     1,
+		"JAVASCRIPT_DRAFT_ENGINE_BENTHOS":     2,
+	}
+)
+
+func (x JavascriptDraftEngine) Enum() *JavascriptDraftEngine {
+	p := new(JavascriptDraftEngine)
+	*p = x
+	return p
+}
+
+func (x JavascriptDraftEngine) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (JavascriptDraftEngine) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_connection_data_proto_enumTypes[3].Descriptor()
+}
+
+func (JavascriptDraftEngine) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_connection_data_proto_enumTypes[3]
+}
+
+func (x JavascriptDraftEngine) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use JavascriptDraftEngine.Descriptor instead.
+func (JavascriptDraftEngine) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP(), []int{3}
+}
+
 type PostgresStreamConfig struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -3250,6 +3356,142 @@ func (x *GetColumnSampleValuesResponse) GetValues() []*ColumnSampleValue {
 	return nil
 }
 
+type GetJavascriptDraftPromptRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The connection whose schema describes the column.
+	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	// The schema of the table.
+	Schema string `protobuf:"bytes,2,opt,name=schema,proto3" json:"schema,omitempty"`
+	// The table the column belongs to.
+	Table string `protobuf:"bytes,3,opt,name=table,proto3" json:"table,omitempty"`
+	// The column a rule is being drafted for.
+	Column string `protobuf:"bytes,4,opt,name=column,proto3" json:"column,omitempty"`
+	// What the rule derives its output from. Defaults to transform.
+	Mode JavascriptDraftMode `protobuf:"varint,5,opt,name=mode,proto3,enum=mgmt.v1alpha1.JavascriptDraftMode" json:"mode,omitempty"`
+	// The engine that will run it. Defaults to athanor.
+	Engine        JavascriptDraftEngine `protobuf:"varint,6,opt,name=engine,proto3,enum=mgmt.v1alpha1.JavascriptDraftEngine" json:"engine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetJavascriptDraftPromptRequest) Reset() {
+	*x = GetJavascriptDraftPromptRequest{}
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetJavascriptDraftPromptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetJavascriptDraftPromptRequest) ProtoMessage() {}
+
+func (x *GetJavascriptDraftPromptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetJavascriptDraftPromptRequest.ProtoReflect.Descriptor instead.
+func (*GetJavascriptDraftPromptRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetSchema() string {
+	if x != nil {
+		return x.Schema
+	}
+	return ""
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetColumn() string {
+	if x != nil {
+		return x.Column
+	}
+	return ""
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetMode() JavascriptDraftMode {
+	if x != nil {
+		return x.Mode
+	}
+	return JavascriptDraftMode_JAVASCRIPT_DRAFT_MODE_UNSPECIFIED
+}
+
+func (x *GetJavascriptDraftPromptRequest) GetEngine() JavascriptDraftEngine {
+	if x != nil {
+		return x.Engine
+	}
+	return JavascriptDraftEngine_JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED
+}
+
+type GetJavascriptDraftPromptResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The prompt, ready to send to a model. It carries the execution contract, the column's
+	// constraints and the functions in scope — never any of the column's values.
+	Prompt        string `protobuf:"bytes,1,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetJavascriptDraftPromptResponse) Reset() {
+	*x = GetJavascriptDraftPromptResponse{}
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetJavascriptDraftPromptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetJavascriptDraftPromptResponse) ProtoMessage() {}
+
+func (x *GetJavascriptDraftPromptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetJavascriptDraftPromptResponse.ProtoReflect.Descriptor instead.
+func (*GetJavascriptDraftPromptResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *GetJavascriptDraftPromptResponse) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
 // A schema
 type GetAllSchemasAndTablesResponse_Schema struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -3261,7 +3503,7 @@ type GetAllSchemasAndTablesResponse_Schema struct {
 
 func (x *GetAllSchemasAndTablesResponse_Schema) Reset() {
 	*x = GetAllSchemasAndTablesResponse_Schema{}
-	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[56]
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3273,7 +3515,7 @@ func (x *GetAllSchemasAndTablesResponse_Schema) String() string {
 func (*GetAllSchemasAndTablesResponse_Schema) ProtoMessage() {}
 
 func (x *GetAllSchemasAndTablesResponse_Schema) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[56]
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3309,7 +3551,7 @@ type GetAllSchemasAndTablesResponse_Table struct {
 
 func (x *GetAllSchemasAndTablesResponse_Table) Reset() {
 	*x = GetAllSchemasAndTablesResponse_Table{}
-	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[57]
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3321,7 +3563,7 @@ func (x *GetAllSchemasAndTablesResponse_Table) String() string {
 func (*GetAllSchemasAndTablesResponse_Table) ProtoMessage() {}
 
 func (x *GetAllSchemasAndTablesResponse_Table) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[57]
+	mi := &file_mgmt_v1alpha1_connection_data_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3581,7 +3823,16 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\tR\x05value\x12\x17\n" +
 	"\ais_null\x18\x02 \x01(\bR\x06isNull\"Y\n" +
 	"\x1dGetColumnSampleValuesResponse\x128\n" +
-	"\x06values\x18\x01 \x03(\v2 .mgmt.v1alpha1.ColumnSampleValueR\x06values*n\n" +
+	"\x06values\x18\x01 \x03(\v2 .mgmt.v1alpha1.ColumnSampleValueR\x06values\"\xa7\x02\n" +
+	"\x1fGetJavascriptDraftPromptRequest\x12-\n" +
+	"\rconnection_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\fconnectionId\x12\x1f\n" +
+	"\x06schema\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06schema\x12\x1d\n" +
+	"\x05table\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05table\x12\x1f\n" +
+	"\x06column\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06column\x126\n" +
+	"\x04mode\x18\x05 \x01(\x0e2\".mgmt.v1alpha1.JavascriptDraftModeR\x04mode\x12<\n" +
+	"\x06engine\x18\x06 \x01(\x0e2$.mgmt.v1alpha1.JavascriptDraftEngineR\x06engine\":\n" +
+	" GetJavascriptDraftPromptResponse\x12\x16\n" +
+	"\x06prompt\x18\x01 \x01(\tR\x06prompt*n\n" +
 	"\rPiiConfidence\x12\x1e\n" +
 	"\x1aPII_CONFIDENCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18PII_CONFIDENCE_CONFIRMED\x10\x01\x12\x1f\n" +
@@ -3591,8 +3842,15 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	" PII_DETECTION_METHOD_COLUMN_NAME\x10\x01\x12!\n" +
 	"\x1dPII_DETECTION_METHOD_CHECKSUM\x10\x02\x12 \n" +
 	"\x1cPII_DETECTION_METHOD_CONTENT\x10\x03\x12\x1f\n" +
-	"\x1bPII_DETECTION_METHOD_FORMAT\x10\x042\xe4\n" +
-	"\n" +
+	"\x1bPII_DETECTION_METHOD_FORMAT\x10\x04*\x85\x01\n" +
+	"\x13JavascriptDraftMode\x12%\n" +
+	"!JAVASCRIPT_DRAFT_MODE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fJAVASCRIPT_DRAFT_MODE_TRANSFORM\x10\x01\x12\"\n" +
+	"\x1eJAVASCRIPT_DRAFT_MODE_GENERATE\x10\x02*\x8a\x01\n" +
+	"\x15JavascriptDraftEngine\x12'\n" +
+	"#JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fJAVASCRIPT_DRAFT_ENGINE_ATHANOR\x10\x01\x12#\n" +
+	"\x1fJAVASCRIPT_DRAFT_ENGINE_BENTHOS\x10\x022\xe7\v\n" +
 	"\x15ConnectionDataService\x12|\n" +
 	"\x17GetConnectionDataStream\x12-.mgmt.v1alpha1.GetConnectionDataStreamRequest\x1a..mgmt.v1alpha1.GetConnectionDataStreamResponse\"\x000\x01\x12n\n" +
 	"\x13GetConnectionSchema\x12).mgmt.v1alpha1.GetConnectionSchemaRequest\x1a*.mgmt.v1alpha1.GetConnectionSchemaResponse\"\x00\x12w\n" +
@@ -3604,7 +3862,8 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x10GetTableRowCount\x12&.mgmt.v1alpha1.GetTableRowCountRequest\x1a'.mgmt.v1alpha1.GetTableRowCountResponse\"\x03\x90\x02\x01\x12z\n" +
 	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
 	"\x19DetectPiiInConnectionData\x12/.mgmt.v1alpha1.DetectPiiInConnectionDataRequest\x1a0.mgmt.v1alpha1.DetectPiiInConnectionDataResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetColumnSampleValues\x12+.mgmt.v1alpha1.GetColumnSampleValuesRequest\x1a,.mgmt.v1alpha1.GetColumnSampleValuesResponse\"\x03\x90\x02\x01B\xd4\x01\n" +
+	"\x15GetColumnSampleValues\x12+.mgmt.v1alpha1.GetColumnSampleValuesRequest\x1a,.mgmt.v1alpha1.GetColumnSampleValuesResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
+	"\x18GetJavascriptDraftPrompt\x12..mgmt.v1alpha1.GetJavascriptDraftPromptRequest\x1a/.mgmt.v1alpha1.GetJavascriptDraftPromptResponse\"\x03\x90\x02\x01B\xd4\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x13ConnectionDataProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -3619,147 +3878,155 @@ func file_mgmt_v1alpha1_connection_data_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_connection_data_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_connection_data_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_mgmt_v1alpha1_connection_data_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
+var file_mgmt_v1alpha1_connection_data_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_mgmt_v1alpha1_connection_data_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
 var file_mgmt_v1alpha1_connection_data_proto_goTypes = []any{
 	(PiiConfidence)(0),                            // 0: mgmt.v1alpha1.PiiConfidence
 	(PiiDetectionMethod)(0),                       // 1: mgmt.v1alpha1.PiiDetectionMethod
-	(*PostgresStreamConfig)(nil),                  // 2: mgmt.v1alpha1.PostgresStreamConfig
-	(*MysqlStreamConfig)(nil),                     // 3: mgmt.v1alpha1.MysqlStreamConfig
-	(*AwsDynamoDBStreamConfig)(nil),               // 4: mgmt.v1alpha1.AwsDynamoDBStreamConfig
-	(*AwsS3StreamConfig)(nil),                     // 5: mgmt.v1alpha1.AwsS3StreamConfig
-	(*GcpCloudStorageStreamConfig)(nil),           // 6: mgmt.v1alpha1.GcpCloudStorageStreamConfig
-	(*ConnectionStreamConfig)(nil),                // 7: mgmt.v1alpha1.ConnectionStreamConfig
-	(*GetConnectionDataStreamRequest)(nil),        // 8: mgmt.v1alpha1.GetConnectionDataStreamRequest
-	(*GetConnectionDataStreamResponse)(nil),       // 9: mgmt.v1alpha1.GetConnectionDataStreamResponse
-	(*PostgresSchemaConfig)(nil),                  // 10: mgmt.v1alpha1.PostgresSchemaConfig
-	(*MysqlSchemaConfig)(nil),                     // 11: mgmt.v1alpha1.MysqlSchemaConfig
-	(*MssqlSchemaConfig)(nil),                     // 12: mgmt.v1alpha1.MssqlSchemaConfig
-	(*AwsS3SchemaConfig)(nil),                     // 13: mgmt.v1alpha1.AwsS3SchemaConfig
-	(*MongoSchemaConfig)(nil),                     // 14: mgmt.v1alpha1.MongoSchemaConfig
-	(*DynamoDBSchemaConfig)(nil),                  // 15: mgmt.v1alpha1.DynamoDBSchemaConfig
-	(*GcpCloudStorageSchemaConfig)(nil),           // 16: mgmt.v1alpha1.GcpCloudStorageSchemaConfig
-	(*ConnectionSchemaConfig)(nil),                // 17: mgmt.v1alpha1.ConnectionSchemaConfig
-	(*DatabaseColumn)(nil),                        // 18: mgmt.v1alpha1.DatabaseColumn
-	(*GetConnectionSchemaRequest)(nil),            // 19: mgmt.v1alpha1.GetConnectionSchemaRequest
-	(*GetConnectionSchemaResponse)(nil),           // 20: mgmt.v1alpha1.GetConnectionSchemaResponse
-	(*GetConnectionSchemaMapRequest)(nil),         // 21: mgmt.v1alpha1.GetConnectionSchemaMapRequest
-	(*GetConnectionSchemaMapResponse)(nil),        // 22: mgmt.v1alpha1.GetConnectionSchemaMapResponse
-	(*GetConnectionSchemaMapsRequest)(nil),        // 23: mgmt.v1alpha1.GetConnectionSchemaMapsRequest
-	(*GetConnectionSchemaMapsResponse)(nil),       // 24: mgmt.v1alpha1.GetConnectionSchemaMapsResponse
-	(*ForeignKey)(nil),                            // 25: mgmt.v1alpha1.ForeignKey
-	(*ForeignConstraint)(nil),                     // 26: mgmt.v1alpha1.ForeignConstraint
-	(*ForeignConstraintTables)(nil),               // 27: mgmt.v1alpha1.ForeignConstraintTables
-	(*InitStatementOptions)(nil),                  // 28: mgmt.v1alpha1.InitStatementOptions
-	(*GetConnectionInitStatementsRequest)(nil),    // 29: mgmt.v1alpha1.GetConnectionInitStatementsRequest
-	(*SchemaInitStatements)(nil),                  // 30: mgmt.v1alpha1.SchemaInitStatements
-	(*GetConnectionInitStatementsResponse)(nil),   // 31: mgmt.v1alpha1.GetConnectionInitStatementsResponse
-	(*PrimaryConstraint)(nil),                     // 32: mgmt.v1alpha1.PrimaryConstraint
-	(*UniqueConstraint)(nil),                      // 33: mgmt.v1alpha1.UniqueConstraint
-	(*GetAiGeneratedDataRequest)(nil),             // 34: mgmt.v1alpha1.GetAiGeneratedDataRequest
-	(*DatabaseTable)(nil),                         // 35: mgmt.v1alpha1.DatabaseTable
-	(*GetAiGeneratedDataResponse)(nil),            // 36: mgmt.v1alpha1.GetAiGeneratedDataResponse
-	(*GetConnectionTableConstraintsRequest)(nil),  // 37: mgmt.v1alpha1.GetConnectionTableConstraintsRequest
-	(*UniqueConstraints)(nil),                     // 38: mgmt.v1alpha1.UniqueConstraints
-	(*UniqueIndexes)(nil),                         // 39: mgmt.v1alpha1.UniqueIndexes
-	(*UniqueIndex)(nil),                           // 40: mgmt.v1alpha1.UniqueIndex
-	(*GetConnectionTableConstraintsResponse)(nil), // 41: mgmt.v1alpha1.GetConnectionTableConstraintsResponse
-	(*GetTableRowCountRequest)(nil),               // 42: mgmt.v1alpha1.GetTableRowCountRequest
-	(*GetTableRowCountResponse)(nil),              // 43: mgmt.v1alpha1.GetTableRowCountResponse
-	(*GetAllSchemasAndTablesRequest)(nil),         // 44: mgmt.v1alpha1.GetAllSchemasAndTablesRequest
-	(*GetAllSchemasAndTablesResponse)(nil),        // 45: mgmt.v1alpha1.GetAllSchemasAndTablesResponse
-	(*DetectPiiInConnectionDataRequest)(nil),      // 46: mgmt.v1alpha1.DetectPiiInConnectionDataRequest
-	(*ColumnPiiDetection)(nil),                    // 47: mgmt.v1alpha1.ColumnPiiDetection
-	(*DetectPiiInConnectionDataResponse)(nil),     // 48: mgmt.v1alpha1.DetectPiiInConnectionDataResponse
-	(*GetColumnSampleValuesRequest)(nil),          // 49: mgmt.v1alpha1.GetColumnSampleValuesRequest
-	(*ColumnSampleValue)(nil),                     // 50: mgmt.v1alpha1.ColumnSampleValue
-	(*GetColumnSampleValuesResponse)(nil),         // 51: mgmt.v1alpha1.GetColumnSampleValuesResponse
-	nil,                                           // 52: mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry
-	nil,                                           // 53: mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry
-	nil,                                           // 54: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry
-	nil,                                           // 55: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry
-	nil,                                           // 56: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry
-	nil,                                           // 57: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry
-	(*GetAllSchemasAndTablesResponse_Schema)(nil), // 58: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Schema
-	(*GetAllSchemasAndTablesResponse_Table)(nil),  // 59: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Table
-	(TransformerSource)(0),                        // 60: mgmt.v1alpha1.TransformerSource
-	(*structpb.Struct)(nil),                       // 61: google.protobuf.Struct
+	(JavascriptDraftMode)(0),                      // 2: mgmt.v1alpha1.JavascriptDraftMode
+	(JavascriptDraftEngine)(0),                    // 3: mgmt.v1alpha1.JavascriptDraftEngine
+	(*PostgresStreamConfig)(nil),                  // 4: mgmt.v1alpha1.PostgresStreamConfig
+	(*MysqlStreamConfig)(nil),                     // 5: mgmt.v1alpha1.MysqlStreamConfig
+	(*AwsDynamoDBStreamConfig)(nil),               // 6: mgmt.v1alpha1.AwsDynamoDBStreamConfig
+	(*AwsS3StreamConfig)(nil),                     // 7: mgmt.v1alpha1.AwsS3StreamConfig
+	(*GcpCloudStorageStreamConfig)(nil),           // 8: mgmt.v1alpha1.GcpCloudStorageStreamConfig
+	(*ConnectionStreamConfig)(nil),                // 9: mgmt.v1alpha1.ConnectionStreamConfig
+	(*GetConnectionDataStreamRequest)(nil),        // 10: mgmt.v1alpha1.GetConnectionDataStreamRequest
+	(*GetConnectionDataStreamResponse)(nil),       // 11: mgmt.v1alpha1.GetConnectionDataStreamResponse
+	(*PostgresSchemaConfig)(nil),                  // 12: mgmt.v1alpha1.PostgresSchemaConfig
+	(*MysqlSchemaConfig)(nil),                     // 13: mgmt.v1alpha1.MysqlSchemaConfig
+	(*MssqlSchemaConfig)(nil),                     // 14: mgmt.v1alpha1.MssqlSchemaConfig
+	(*AwsS3SchemaConfig)(nil),                     // 15: mgmt.v1alpha1.AwsS3SchemaConfig
+	(*MongoSchemaConfig)(nil),                     // 16: mgmt.v1alpha1.MongoSchemaConfig
+	(*DynamoDBSchemaConfig)(nil),                  // 17: mgmt.v1alpha1.DynamoDBSchemaConfig
+	(*GcpCloudStorageSchemaConfig)(nil),           // 18: mgmt.v1alpha1.GcpCloudStorageSchemaConfig
+	(*ConnectionSchemaConfig)(nil),                // 19: mgmt.v1alpha1.ConnectionSchemaConfig
+	(*DatabaseColumn)(nil),                        // 20: mgmt.v1alpha1.DatabaseColumn
+	(*GetConnectionSchemaRequest)(nil),            // 21: mgmt.v1alpha1.GetConnectionSchemaRequest
+	(*GetConnectionSchemaResponse)(nil),           // 22: mgmt.v1alpha1.GetConnectionSchemaResponse
+	(*GetConnectionSchemaMapRequest)(nil),         // 23: mgmt.v1alpha1.GetConnectionSchemaMapRequest
+	(*GetConnectionSchemaMapResponse)(nil),        // 24: mgmt.v1alpha1.GetConnectionSchemaMapResponse
+	(*GetConnectionSchemaMapsRequest)(nil),        // 25: mgmt.v1alpha1.GetConnectionSchemaMapsRequest
+	(*GetConnectionSchemaMapsResponse)(nil),       // 26: mgmt.v1alpha1.GetConnectionSchemaMapsResponse
+	(*ForeignKey)(nil),                            // 27: mgmt.v1alpha1.ForeignKey
+	(*ForeignConstraint)(nil),                     // 28: mgmt.v1alpha1.ForeignConstraint
+	(*ForeignConstraintTables)(nil),               // 29: mgmt.v1alpha1.ForeignConstraintTables
+	(*InitStatementOptions)(nil),                  // 30: mgmt.v1alpha1.InitStatementOptions
+	(*GetConnectionInitStatementsRequest)(nil),    // 31: mgmt.v1alpha1.GetConnectionInitStatementsRequest
+	(*SchemaInitStatements)(nil),                  // 32: mgmt.v1alpha1.SchemaInitStatements
+	(*GetConnectionInitStatementsResponse)(nil),   // 33: mgmt.v1alpha1.GetConnectionInitStatementsResponse
+	(*PrimaryConstraint)(nil),                     // 34: mgmt.v1alpha1.PrimaryConstraint
+	(*UniqueConstraint)(nil),                      // 35: mgmt.v1alpha1.UniqueConstraint
+	(*GetAiGeneratedDataRequest)(nil),             // 36: mgmt.v1alpha1.GetAiGeneratedDataRequest
+	(*DatabaseTable)(nil),                         // 37: mgmt.v1alpha1.DatabaseTable
+	(*GetAiGeneratedDataResponse)(nil),            // 38: mgmt.v1alpha1.GetAiGeneratedDataResponse
+	(*GetConnectionTableConstraintsRequest)(nil),  // 39: mgmt.v1alpha1.GetConnectionTableConstraintsRequest
+	(*UniqueConstraints)(nil),                     // 40: mgmt.v1alpha1.UniqueConstraints
+	(*UniqueIndexes)(nil),                         // 41: mgmt.v1alpha1.UniqueIndexes
+	(*UniqueIndex)(nil),                           // 42: mgmt.v1alpha1.UniqueIndex
+	(*GetConnectionTableConstraintsResponse)(nil), // 43: mgmt.v1alpha1.GetConnectionTableConstraintsResponse
+	(*GetTableRowCountRequest)(nil),               // 44: mgmt.v1alpha1.GetTableRowCountRequest
+	(*GetTableRowCountResponse)(nil),              // 45: mgmt.v1alpha1.GetTableRowCountResponse
+	(*GetAllSchemasAndTablesRequest)(nil),         // 46: mgmt.v1alpha1.GetAllSchemasAndTablesRequest
+	(*GetAllSchemasAndTablesResponse)(nil),        // 47: mgmt.v1alpha1.GetAllSchemasAndTablesResponse
+	(*DetectPiiInConnectionDataRequest)(nil),      // 48: mgmt.v1alpha1.DetectPiiInConnectionDataRequest
+	(*ColumnPiiDetection)(nil),                    // 49: mgmt.v1alpha1.ColumnPiiDetection
+	(*DetectPiiInConnectionDataResponse)(nil),     // 50: mgmt.v1alpha1.DetectPiiInConnectionDataResponse
+	(*GetColumnSampleValuesRequest)(nil),          // 51: mgmt.v1alpha1.GetColumnSampleValuesRequest
+	(*ColumnSampleValue)(nil),                     // 52: mgmt.v1alpha1.ColumnSampleValue
+	(*GetColumnSampleValuesResponse)(nil),         // 53: mgmt.v1alpha1.GetColumnSampleValuesResponse
+	(*GetJavascriptDraftPromptRequest)(nil),       // 54: mgmt.v1alpha1.GetJavascriptDraftPromptRequest
+	(*GetJavascriptDraftPromptResponse)(nil),      // 55: mgmt.v1alpha1.GetJavascriptDraftPromptResponse
+	nil,                                           // 56: mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry
+	nil,                                           // 57: mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry
+	nil,                                           // 58: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry
+	nil,                                           // 59: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry
+	nil,                                           // 60: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry
+	nil,                                           // 61: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry
+	(*GetAllSchemasAndTablesResponse_Schema)(nil), // 62: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Schema
+	(*GetAllSchemasAndTablesResponse_Table)(nil),  // 63: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Table
+	(TransformerSource)(0),                        // 64: mgmt.v1alpha1.TransformerSource
+	(*structpb.Struct)(nil),                       // 65: google.protobuf.Struct
 }
 var file_mgmt_v1alpha1_connection_data_proto_depIdxs = []int32{
-	2,  // 0: mgmt.v1alpha1.ConnectionStreamConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresStreamConfig
-	5,  // 1: mgmt.v1alpha1.ConnectionStreamConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3StreamConfig
-	3,  // 2: mgmt.v1alpha1.ConnectionStreamConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlStreamConfig
-	6,  // 3: mgmt.v1alpha1.ConnectionStreamConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageStreamConfig
-	4,  // 4: mgmt.v1alpha1.ConnectionStreamConfig.dynamodb_config:type_name -> mgmt.v1alpha1.AwsDynamoDBStreamConfig
-	7,  // 5: mgmt.v1alpha1.GetConnectionDataStreamRequest.stream_config:type_name -> mgmt.v1alpha1.ConnectionStreamConfig
-	10, // 6: mgmt.v1alpha1.ConnectionSchemaConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresSchemaConfig
-	13, // 7: mgmt.v1alpha1.ConnectionSchemaConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3SchemaConfig
-	11, // 8: mgmt.v1alpha1.ConnectionSchemaConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlSchemaConfig
-	14, // 9: mgmt.v1alpha1.ConnectionSchemaConfig.mongo_config:type_name -> mgmt.v1alpha1.MongoSchemaConfig
-	16, // 10: mgmt.v1alpha1.ConnectionSchemaConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageSchemaConfig
-	15, // 11: mgmt.v1alpha1.ConnectionSchemaConfig.dynamodb_config:type_name -> mgmt.v1alpha1.DynamoDBSchemaConfig
-	12, // 12: mgmt.v1alpha1.ConnectionSchemaConfig.mssql_config:type_name -> mgmt.v1alpha1.MssqlSchemaConfig
-	60, // 13: mgmt.v1alpha1.DatabaseColumn.suggested_transformer_source:type_name -> mgmt.v1alpha1.TransformerSource
+	4,  // 0: mgmt.v1alpha1.ConnectionStreamConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresStreamConfig
+	7,  // 1: mgmt.v1alpha1.ConnectionStreamConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3StreamConfig
+	5,  // 2: mgmt.v1alpha1.ConnectionStreamConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlStreamConfig
+	8,  // 3: mgmt.v1alpha1.ConnectionStreamConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageStreamConfig
+	6,  // 4: mgmt.v1alpha1.ConnectionStreamConfig.dynamodb_config:type_name -> mgmt.v1alpha1.AwsDynamoDBStreamConfig
+	9,  // 5: mgmt.v1alpha1.GetConnectionDataStreamRequest.stream_config:type_name -> mgmt.v1alpha1.ConnectionStreamConfig
+	12, // 6: mgmt.v1alpha1.ConnectionSchemaConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresSchemaConfig
+	15, // 7: mgmt.v1alpha1.ConnectionSchemaConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3SchemaConfig
+	13, // 8: mgmt.v1alpha1.ConnectionSchemaConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlSchemaConfig
+	16, // 9: mgmt.v1alpha1.ConnectionSchemaConfig.mongo_config:type_name -> mgmt.v1alpha1.MongoSchemaConfig
+	18, // 10: mgmt.v1alpha1.ConnectionSchemaConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageSchemaConfig
+	17, // 11: mgmt.v1alpha1.ConnectionSchemaConfig.dynamodb_config:type_name -> mgmt.v1alpha1.DynamoDBSchemaConfig
+	14, // 12: mgmt.v1alpha1.ConnectionSchemaConfig.mssql_config:type_name -> mgmt.v1alpha1.MssqlSchemaConfig
+	64, // 13: mgmt.v1alpha1.DatabaseColumn.suggested_transformer_source:type_name -> mgmt.v1alpha1.TransformerSource
 	0,  // 14: mgmt.v1alpha1.DatabaseColumn.pii_confidence:type_name -> mgmt.v1alpha1.PiiConfidence
 	1,  // 15: mgmt.v1alpha1.DatabaseColumn.pii_detection_method:type_name -> mgmt.v1alpha1.PiiDetectionMethod
-	17, // 16: mgmt.v1alpha1.GetConnectionSchemaRequest.schema_config:type_name -> mgmt.v1alpha1.ConnectionSchemaConfig
-	18, // 17: mgmt.v1alpha1.GetConnectionSchemaResponse.schemas:type_name -> mgmt.v1alpha1.DatabaseColumn
-	17, // 18: mgmt.v1alpha1.GetConnectionSchemaMapRequest.schema_config:type_name -> mgmt.v1alpha1.ConnectionSchemaConfig
-	52, // 19: mgmt.v1alpha1.GetConnectionSchemaMapResponse.schema_map:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry
-	21, // 20: mgmt.v1alpha1.GetConnectionSchemaMapsRequest.requests:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapRequest
-	22, // 21: mgmt.v1alpha1.GetConnectionSchemaMapsResponse.responses:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapResponse
-	25, // 22: mgmt.v1alpha1.ForeignConstraint.foreign_key:type_name -> mgmt.v1alpha1.ForeignKey
-	26, // 23: mgmt.v1alpha1.ForeignConstraintTables.constraints:type_name -> mgmt.v1alpha1.ForeignConstraint
-	28, // 24: mgmt.v1alpha1.GetConnectionInitStatementsRequest.options:type_name -> mgmt.v1alpha1.InitStatementOptions
-	53, // 25: mgmt.v1alpha1.GetConnectionInitStatementsResponse.table_truncate_statements:type_name -> mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry
-	30, // 26: mgmt.v1alpha1.GetConnectionInitStatementsResponse.schema_init_statements:type_name -> mgmt.v1alpha1.SchemaInitStatements
-	35, // 27: mgmt.v1alpha1.GetAiGeneratedDataRequest.table:type_name -> mgmt.v1alpha1.DatabaseTable
-	61, // 28: mgmt.v1alpha1.GetAiGeneratedDataResponse.records:type_name -> google.protobuf.Struct
-	33, // 29: mgmt.v1alpha1.UniqueConstraints.constraints:type_name -> mgmt.v1alpha1.UniqueConstraint
-	40, // 30: mgmt.v1alpha1.UniqueIndexes.indexes:type_name -> mgmt.v1alpha1.UniqueIndex
-	54, // 31: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.foreign_key_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry
-	55, // 32: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.primary_key_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry
-	56, // 33: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.unique_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry
-	57, // 34: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.unique_indexes:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry
-	58, // 35: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.schemas:type_name -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Schema
-	59, // 36: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.tables:type_name -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Table
-	60, // 37: mgmt.v1alpha1.ColumnPiiDetection.suggested_transformer_source:type_name -> mgmt.v1alpha1.TransformerSource
+	19, // 16: mgmt.v1alpha1.GetConnectionSchemaRequest.schema_config:type_name -> mgmt.v1alpha1.ConnectionSchemaConfig
+	20, // 17: mgmt.v1alpha1.GetConnectionSchemaResponse.schemas:type_name -> mgmt.v1alpha1.DatabaseColumn
+	19, // 18: mgmt.v1alpha1.GetConnectionSchemaMapRequest.schema_config:type_name -> mgmt.v1alpha1.ConnectionSchemaConfig
+	56, // 19: mgmt.v1alpha1.GetConnectionSchemaMapResponse.schema_map:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry
+	23, // 20: mgmt.v1alpha1.GetConnectionSchemaMapsRequest.requests:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapRequest
+	24, // 21: mgmt.v1alpha1.GetConnectionSchemaMapsResponse.responses:type_name -> mgmt.v1alpha1.GetConnectionSchemaMapResponse
+	27, // 22: mgmt.v1alpha1.ForeignConstraint.foreign_key:type_name -> mgmt.v1alpha1.ForeignKey
+	28, // 23: mgmt.v1alpha1.ForeignConstraintTables.constraints:type_name -> mgmt.v1alpha1.ForeignConstraint
+	30, // 24: mgmt.v1alpha1.GetConnectionInitStatementsRequest.options:type_name -> mgmt.v1alpha1.InitStatementOptions
+	57, // 25: mgmt.v1alpha1.GetConnectionInitStatementsResponse.table_truncate_statements:type_name -> mgmt.v1alpha1.GetConnectionInitStatementsResponse.TableTruncateStatementsEntry
+	32, // 26: mgmt.v1alpha1.GetConnectionInitStatementsResponse.schema_init_statements:type_name -> mgmt.v1alpha1.SchemaInitStatements
+	37, // 27: mgmt.v1alpha1.GetAiGeneratedDataRequest.table:type_name -> mgmt.v1alpha1.DatabaseTable
+	65, // 28: mgmt.v1alpha1.GetAiGeneratedDataResponse.records:type_name -> google.protobuf.Struct
+	35, // 29: mgmt.v1alpha1.UniqueConstraints.constraints:type_name -> mgmt.v1alpha1.UniqueConstraint
+	42, // 30: mgmt.v1alpha1.UniqueIndexes.indexes:type_name -> mgmt.v1alpha1.UniqueIndex
+	58, // 31: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.foreign_key_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry
+	59, // 32: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.primary_key_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry
+	60, // 33: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.unique_constraints:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry
+	61, // 34: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.unique_indexes:type_name -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry
+	62, // 35: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.schemas:type_name -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Schema
+	63, // 36: mgmt.v1alpha1.GetAllSchemasAndTablesResponse.tables:type_name -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse.Table
+	64, // 37: mgmt.v1alpha1.ColumnPiiDetection.suggested_transformer_source:type_name -> mgmt.v1alpha1.TransformerSource
 	0,  // 38: mgmt.v1alpha1.ColumnPiiDetection.pii_confidence:type_name -> mgmt.v1alpha1.PiiConfidence
 	1,  // 39: mgmt.v1alpha1.ColumnPiiDetection.pii_detection_method:type_name -> mgmt.v1alpha1.PiiDetectionMethod
-	47, // 40: mgmt.v1alpha1.DetectPiiInConnectionDataResponse.detections:type_name -> mgmt.v1alpha1.ColumnPiiDetection
-	50, // 41: mgmt.v1alpha1.GetColumnSampleValuesResponse.values:type_name -> mgmt.v1alpha1.ColumnSampleValue
-	20, // 42: mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry.value:type_name -> mgmt.v1alpha1.GetConnectionSchemaResponse
-	27, // 43: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry.value:type_name -> mgmt.v1alpha1.ForeignConstraintTables
-	32, // 44: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry.value:type_name -> mgmt.v1alpha1.PrimaryConstraint
-	38, // 45: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry.value:type_name -> mgmt.v1alpha1.UniqueConstraints
-	39, // 46: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry.value:type_name -> mgmt.v1alpha1.UniqueIndexes
-	8,  // 47: mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream:input_type -> mgmt.v1alpha1.GetConnectionDataStreamRequest
-	19, // 48: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchema:input_type -> mgmt.v1alpha1.GetConnectionSchemaRequest
-	21, // 49: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMap:input_type -> mgmt.v1alpha1.GetConnectionSchemaMapRequest
-	23, // 50: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMaps:input_type -> mgmt.v1alpha1.GetConnectionSchemaMapsRequest
-	37, // 51: mgmt.v1alpha1.ConnectionDataService.GetConnectionTableConstraints:input_type -> mgmt.v1alpha1.GetConnectionTableConstraintsRequest
-	29, // 52: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements:input_type -> mgmt.v1alpha1.GetConnectionInitStatementsRequest
-	34, // 53: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData:input_type -> mgmt.v1alpha1.GetAiGeneratedDataRequest
-	42, // 54: mgmt.v1alpha1.ConnectionDataService.GetTableRowCount:input_type -> mgmt.v1alpha1.GetTableRowCountRequest
-	44, // 55: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables:input_type -> mgmt.v1alpha1.GetAllSchemasAndTablesRequest
-	46, // 56: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData:input_type -> mgmt.v1alpha1.DetectPiiInConnectionDataRequest
-	49, // 57: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues:input_type -> mgmt.v1alpha1.GetColumnSampleValuesRequest
-	9,  // 58: mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream:output_type -> mgmt.v1alpha1.GetConnectionDataStreamResponse
-	20, // 59: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchema:output_type -> mgmt.v1alpha1.GetConnectionSchemaResponse
-	22, // 60: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMap:output_type -> mgmt.v1alpha1.GetConnectionSchemaMapResponse
-	24, // 61: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMaps:output_type -> mgmt.v1alpha1.GetConnectionSchemaMapsResponse
-	41, // 62: mgmt.v1alpha1.ConnectionDataService.GetConnectionTableConstraints:output_type -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse
-	31, // 63: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements:output_type -> mgmt.v1alpha1.GetConnectionInitStatementsResponse
-	36, // 64: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData:output_type -> mgmt.v1alpha1.GetAiGeneratedDataResponse
-	43, // 65: mgmt.v1alpha1.ConnectionDataService.GetTableRowCount:output_type -> mgmt.v1alpha1.GetTableRowCountResponse
-	45, // 66: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables:output_type -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse
-	48, // 67: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData:output_type -> mgmt.v1alpha1.DetectPiiInConnectionDataResponse
-	51, // 68: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues:output_type -> mgmt.v1alpha1.GetColumnSampleValuesResponse
-	58, // [58:69] is the sub-list for method output_type
-	47, // [47:58] is the sub-list for method input_type
-	47, // [47:47] is the sub-list for extension type_name
-	47, // [47:47] is the sub-list for extension extendee
-	0,  // [0:47] is the sub-list for field type_name
+	49, // 40: mgmt.v1alpha1.DetectPiiInConnectionDataResponse.detections:type_name -> mgmt.v1alpha1.ColumnPiiDetection
+	52, // 41: mgmt.v1alpha1.GetColumnSampleValuesResponse.values:type_name -> mgmt.v1alpha1.ColumnSampleValue
+	2,  // 42: mgmt.v1alpha1.GetJavascriptDraftPromptRequest.mode:type_name -> mgmt.v1alpha1.JavascriptDraftMode
+	3,  // 43: mgmt.v1alpha1.GetJavascriptDraftPromptRequest.engine:type_name -> mgmt.v1alpha1.JavascriptDraftEngine
+	22, // 44: mgmt.v1alpha1.GetConnectionSchemaMapResponse.SchemaMapEntry.value:type_name -> mgmt.v1alpha1.GetConnectionSchemaResponse
+	29, // 45: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.ForeignKeyConstraintsEntry.value:type_name -> mgmt.v1alpha1.ForeignConstraintTables
+	34, // 46: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.PrimaryKeyConstraintsEntry.value:type_name -> mgmt.v1alpha1.PrimaryConstraint
+	40, // 47: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueConstraintsEntry.value:type_name -> mgmt.v1alpha1.UniqueConstraints
+	41, // 48: mgmt.v1alpha1.GetConnectionTableConstraintsResponse.UniqueIndexesEntry.value:type_name -> mgmt.v1alpha1.UniqueIndexes
+	10, // 49: mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream:input_type -> mgmt.v1alpha1.GetConnectionDataStreamRequest
+	21, // 50: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchema:input_type -> mgmt.v1alpha1.GetConnectionSchemaRequest
+	23, // 51: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMap:input_type -> mgmt.v1alpha1.GetConnectionSchemaMapRequest
+	25, // 52: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMaps:input_type -> mgmt.v1alpha1.GetConnectionSchemaMapsRequest
+	39, // 53: mgmt.v1alpha1.ConnectionDataService.GetConnectionTableConstraints:input_type -> mgmt.v1alpha1.GetConnectionTableConstraintsRequest
+	31, // 54: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements:input_type -> mgmt.v1alpha1.GetConnectionInitStatementsRequest
+	36, // 55: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData:input_type -> mgmt.v1alpha1.GetAiGeneratedDataRequest
+	44, // 56: mgmt.v1alpha1.ConnectionDataService.GetTableRowCount:input_type -> mgmt.v1alpha1.GetTableRowCountRequest
+	46, // 57: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables:input_type -> mgmt.v1alpha1.GetAllSchemasAndTablesRequest
+	48, // 58: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData:input_type -> mgmt.v1alpha1.DetectPiiInConnectionDataRequest
+	51, // 59: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues:input_type -> mgmt.v1alpha1.GetColumnSampleValuesRequest
+	54, // 60: mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt:input_type -> mgmt.v1alpha1.GetJavascriptDraftPromptRequest
+	11, // 61: mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream:output_type -> mgmt.v1alpha1.GetConnectionDataStreamResponse
+	22, // 62: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchema:output_type -> mgmt.v1alpha1.GetConnectionSchemaResponse
+	24, // 63: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMap:output_type -> mgmt.v1alpha1.GetConnectionSchemaMapResponse
+	26, // 64: mgmt.v1alpha1.ConnectionDataService.GetConnectionSchemaMaps:output_type -> mgmt.v1alpha1.GetConnectionSchemaMapsResponse
+	43, // 65: mgmt.v1alpha1.ConnectionDataService.GetConnectionTableConstraints:output_type -> mgmt.v1alpha1.GetConnectionTableConstraintsResponse
+	33, // 66: mgmt.v1alpha1.ConnectionDataService.GetConnectionInitStatements:output_type -> mgmt.v1alpha1.GetConnectionInitStatementsResponse
+	38, // 67: mgmt.v1alpha1.ConnectionDataService.GetAiGeneratedData:output_type -> mgmt.v1alpha1.GetAiGeneratedDataResponse
+	45, // 68: mgmt.v1alpha1.ConnectionDataService.GetTableRowCount:output_type -> mgmt.v1alpha1.GetTableRowCountResponse
+	47, // 69: mgmt.v1alpha1.ConnectionDataService.GetAllSchemasAndTables:output_type -> mgmt.v1alpha1.GetAllSchemasAndTablesResponse
+	50, // 70: mgmt.v1alpha1.ConnectionDataService.DetectPiiInConnectionData:output_type -> mgmt.v1alpha1.DetectPiiInConnectionDataResponse
+	53, // 71: mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues:output_type -> mgmt.v1alpha1.GetColumnSampleValuesResponse
+	55, // 72: mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt:output_type -> mgmt.v1alpha1.GetJavascriptDraftPromptResponse
+	61, // [61:73] is the sub-list for method output_type
+	49, // [49:61] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_connection_data_proto_init() }
@@ -3808,8 +4075,8 @@ func file_mgmt_v1alpha1_connection_data_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_connection_data_proto_rawDesc), len(file_mgmt_v1alpha1_connection_data_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   58,
+			NumEnums:      4,
+			NumMessages:   60,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

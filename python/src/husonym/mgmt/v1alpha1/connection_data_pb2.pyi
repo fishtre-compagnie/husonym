@@ -23,6 +23,18 @@ class PiiDetectionMethod(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PII_DETECTION_METHOD_CHECKSUM: _ClassVar[PiiDetectionMethod]
     PII_DETECTION_METHOD_CONTENT: _ClassVar[PiiDetectionMethod]
     PII_DETECTION_METHOD_FORMAT: _ClassVar[PiiDetectionMethod]
+
+class JavascriptDraftMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: _ClassVar[JavascriptDraftMode]
+    JAVASCRIPT_DRAFT_MODE_TRANSFORM: _ClassVar[JavascriptDraftMode]
+    JAVASCRIPT_DRAFT_MODE_GENERATE: _ClassVar[JavascriptDraftMode]
+
+class JavascriptDraftEngine(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED: _ClassVar[JavascriptDraftEngine]
+    JAVASCRIPT_DRAFT_ENGINE_ATHANOR: _ClassVar[JavascriptDraftEngine]
+    JAVASCRIPT_DRAFT_ENGINE_BENTHOS: _ClassVar[JavascriptDraftEngine]
 PII_CONFIDENCE_UNSPECIFIED: PiiConfidence
 PII_CONFIDENCE_CONFIRMED: PiiConfidence
 PII_CONFIDENCE_NEEDS_REVIEW: PiiConfidence
@@ -31,6 +43,12 @@ PII_DETECTION_METHOD_COLUMN_NAME: PiiDetectionMethod
 PII_DETECTION_METHOD_CHECKSUM: PiiDetectionMethod
 PII_DETECTION_METHOD_CONTENT: PiiDetectionMethod
 PII_DETECTION_METHOD_FORMAT: PiiDetectionMethod
+JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: JavascriptDraftMode
+JAVASCRIPT_DRAFT_MODE_TRANSFORM: JavascriptDraftMode
+JAVASCRIPT_DRAFT_MODE_GENERATE: JavascriptDraftMode
+JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED: JavascriptDraftEngine
+JAVASCRIPT_DRAFT_ENGINE_ATHANOR: JavascriptDraftEngine
+JAVASCRIPT_DRAFT_ENGINE_BENTHOS: JavascriptDraftEngine
 
 class PostgresStreamConfig(_message.Message):
     __slots__ = ()
@@ -523,3 +541,25 @@ class GetColumnSampleValuesResponse(_message.Message):
     VALUES_FIELD_NUMBER: _ClassVar[int]
     values: _containers.RepeatedCompositeFieldContainer[ColumnSampleValue]
     def __init__(self, values: _Optional[_Iterable[_Union[ColumnSampleValue, _Mapping]]] = ...) -> None: ...
+
+class GetJavascriptDraftPromptRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "column", "mode", "engine")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    ENGINE_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    column: str
+    mode: JavascriptDraftMode
+    engine: JavascriptDraftEngine
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., mode: _Optional[_Union[JavascriptDraftMode, str]] = ..., engine: _Optional[_Union[JavascriptDraftEngine, str]] = ...) -> None: ...
+
+class GetJavascriptDraftPromptResponse(_message.Message):
+    __slots__ = ("prompt",)
+    PROMPT_FIELD_NUMBER: _ClassVar[int]
+    prompt: str
+    def __init__(self, prompt: _Optional[str] = ...) -> None: ...

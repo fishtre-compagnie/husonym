@@ -1986,6 +1986,55 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetJavascriptDraftPrompt
+      description: >-
+        Returns the prompt that gets a javascript rule drafted for one column,
+        by an agent or by a
+         model. The server fills it from what it knows and the caller does not: the execution
+         contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+         the deterministic functions in scope. It reads the schema, never the column's data.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.GetJavascriptDraftPromptRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.GetJavascriptDraftPromptResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.ConnectionDataService/GetTableRowCount:
     post:
       tags:
@@ -10167,6 +10216,53 @@ components:
           description: the key here is <schema>.<table> and value is the unique index
       title: GetConnectionTableConstraintsResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetJavascriptDraftPromptRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The connection whose schema describes the column.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table the column belongs to.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column a rule is being drafted for.
+        mode:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptDraftMode'
+          title: mode
+          description: What the rule derives its output from. Defaults to transform.
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptDraftEngine'
+          title: engine
+          description: The engine that will run it. Defaults to athanor.
+      title: GetJavascriptDraftPromptRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetJavascriptDraftPromptResponse:
+      type: object
+      properties:
+        prompt:
+          type: string
+          title: prompt
+          description: >-
+            The prompt, ready to send to a model. It carries the execution
+            contract, the column's
+             constraints and the functions in scope — never any of the column's values.
+      title: GetJavascriptDraftPromptResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetTableRowCountRequest:
       type: object
       properties:
@@ -10220,6 +10316,26 @@ components:
           description: Whether or not to generate truncate cascade statements.
       title: InitStatementOptions
       additionalProperties: false
+    mgmt.v1alpha1.JavascriptDraftEngine:
+      type: string
+      title: JavascriptDraftEngine
+      enum:
+        - JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED
+        - JAVASCRIPT_DRAFT_ENGINE_ATHANOR
+        - JAVASCRIPT_DRAFT_ENGINE_BENTHOS
+      description: >-
+        The engine that will run the drafted rule. It decides what the rule may
+        call: the
+         deterministic pseudo functions exist under Athanor only, and calling one under Benthos fails
+         at runtime, so a draft written for the wrong engine is a run that breaks.
+    mgmt.v1alpha1.JavascriptDraftMode:
+      type: string
+      title: JavascriptDraftMode
+      enum:
+        - JAVASCRIPT_DRAFT_MODE_UNSPECIFIED
+        - JAVASCRIPT_DRAFT_MODE_TRANSFORM
+        - JAVASCRIPT_DRAFT_MODE_GENERATE
+      description: What a drafted rule derives its output from.
     mgmt.v1alpha1.MongoSchemaConfig:
       type: object
       title: MongoSchemaConfig

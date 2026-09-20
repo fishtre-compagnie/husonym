@@ -435,6 +435,47 @@ message GetColumnSampleValuesResponse {
   repeated ColumnSampleValue values = 1;
 }
 
+// What a drafted rule derives its output from.
+enum JavascriptDraftMode {
+  // Defaults to transform.
+  JAVASCRIPT_DRAFT_MODE_UNSPECIFIED = 0;
+  // The rule receives the current value and derives the new one from it.
+  JAVASCRIPT_DRAFT_MODE_TRANSFORM = 1;
+  // The rule ignores the current value and produces a new one.
+  JAVASCRIPT_DRAFT_MODE_GENERATE = 2;
+}
+
+// The engine that will run the drafted rule. It decides what the rule may call: the
+// deterministic pseudo functions exist under Athanor only, and calling one under Benthos fails
+// at runtime, so a draft written for the wrong engine is a run that breaks.
+enum JavascriptDraftEngine {
+  // Defaults to athanor, the default engine.
+  JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED = 0;
+  JAVASCRIPT_DRAFT_ENGINE_ATHANOR = 1;
+  JAVASCRIPT_DRAFT_ENGINE_BENTHOS = 2;
+}
+
+message GetJavascriptDraftPromptRequest {
+  // The connection whose schema describes the column.
+  string connection_id = 1 [(buf.validate.field).string.uuid = true];
+  // The schema of the table.
+  string schema = 2 [(buf.validate.field).string.min_len = 1];
+  // The table the column belongs to.
+  string table = 3 [(buf.validate.field).string.min_len = 1];
+  // The column a rule is being drafted for.
+  string column = 4 [(buf.validate.field).string.min_len = 1];
+  // What the rule derives its output from. Defaults to transform.
+  JavascriptDraftMode mode = 5;
+  // The engine that will run it. Defaults to athanor.
+  JavascriptDraftEngine engine = 6;
+}
+
+message GetJavascriptDraftPromptResponse {
+  // The prompt, ready to send to a model. It carries the execution contract, the column's
+  // constraints and the functions in scope — never any of the column's values.
+  string prompt = 1;
+}
+
 // Service for managing connection data.
 // This is used in handle data from a connection
 service ConnectionDataService {
@@ -470,6 +511,13 @@ service ConnectionDataService {
   // Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
   // une détection RGPD en consultant les données réelles.
   rpc GetColumnSampleValues(GetColumnSampleValuesRequest) returns (GetColumnSampleValuesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a
+  // model. The server fills it from what it knows and the caller does not: the execution
+  // contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+  // the deterministic functions in scope. It reads the schema, never the column's data.
+  rpc GetJavascriptDraftPrompt(GetJavascriptDraftPromptRequest) returns (GetJavascriptDraftPromptResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
