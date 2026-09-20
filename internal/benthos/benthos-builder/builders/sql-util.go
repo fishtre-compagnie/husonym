@@ -117,6 +117,22 @@ func shouldHaltOnSchemaAddition(
 	return newColumns, len(newColumns) != 0
 }
 
+// formatMappingColumns names mappings the way shouldHaltOnSchemaAddition names new columns, so
+// the two messages about the same columns read alike. Sorted, because the mappings are built by
+// walking maps: without it the same run logs the same columns in a different order every time,
+// and nobody can diff two runs.
+func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
+	columns := make([]string, 0, len(mappings))
+	for _, m := range mappings {
+		columns = append(
+			columns,
+			fmt.Sprintf("%s.%s", sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable()), m.GetColumn()),
+		)
+	}
+	slices.Sort(columns)
+	return columns
+}
+
 func getMapValuesCount[K comparable, V any](m map[K][]V) int {
 	count := 0
 	for _, v := range m {

@@ -135,6 +135,58 @@ func TestValidateJobMappingsExistInSource(t *testing.T) {
 			},
 		}, warnings["schema1.table1"]["col3"])
 	})
+
+	t.Run(
+		"should report an unmapped column as passed through and awaiting review",
+		func(t *testing.T) {
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{
+					Schema: "schema1",
+					Table:  "table1",
+					Column: "col1",
+				},
+				{
+					Schema: "schema1",
+					Table:  "table1",
+					Column: "col2",
+				},
+			}
+
+			sourceCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+				"schema1.table1": {
+					"col1": &sqlmanager_shared.DatabaseSchemaRow{},
+					"col3": &sqlmanager_shared.DatabaseSchemaRow{},
+				},
+			}
+
+			jmv := NewJobMappingsValidator(mappings, WithJobSourceOptions(&SqlJobSourceOpts{
+				PassthroughOnNewColumnAddition: true,
+				PassthroughPendingReview:       true,
+			}))
+			jmv.ValidateJobMappingsExistInSource(sourceCols)
+
+			// The strategy exists so that a new column never stops a run.
+			assert.Empty(t, jmv.GetColumnErrors())
+
+			warnings := jmv.GetColumnWarnings()
+			require.NotEmpty(t, warnings)
+			assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+				{
+					Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW,
+					Message: "Column is not in the job mappings and is passed through as is, awaiting a decision: schema1.table1.col3",
+				},
+			}, warnings["schema1.table1"]["col3"])
+
+			// A column that left the source is a different problem, and the new branch must not
+			// swallow it: it is still reported as missing from the source.
+			assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+				{
+					Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE,
+					Message: "Column does not exist in source. Remove column from job mappings: schema1.table1.col2",
+				},
+			}, warnings["schema1.table1"]["col2"])
+		},
+	)
 }
 
 func TestJobMappingsValidator_ValidateRequiredForeignKeys(t *testing.T) {

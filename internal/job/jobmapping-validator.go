@@ -206,14 +206,30 @@ func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 					table,
 					col,
 				)
-				if j.jobSourceOptions != nil && !j.jobSourceOptions.HaltOnNewColumnAddition {
+				switch {
+				// The passthrough is a stopgap, so the warning says what the run will actually
+				// do with the column rather than asking for a mapping that may never come. The
+				// generic message above would read as advice; this one is a statement of fact
+				// about data leaving the source untransformed.
+				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview:
+					j.addColumnWarning(
+						table,
+						col,
+						fmt.Sprintf(
+							"Column is not in the job mappings and is passed through as is, awaiting a decision: %s.%s",
+							table,
+							col,
+						),
+						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW,
+					)
+				case j.jobSourceOptions != nil && !j.jobSourceOptions.HaltOnNewColumnAddition:
 					j.addColumnWarning(
 						table,
 						col,
 						msg,
 						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
 					)
-				} else {
+				default:
 					j.addColumnError(table, col, msg, mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_NOT_FOUND_IN_MAPPING)
 				}
 			}

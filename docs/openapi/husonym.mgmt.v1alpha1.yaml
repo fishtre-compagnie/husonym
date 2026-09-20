@@ -10720,6 +10720,7 @@ components:
         - COLUMN_WARNING_CODE_UNSPECIFIED
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
+        - COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW
       description: An enumeration of column warning codes
     mgmt.v1alpha1.ColumnWarning.ColumnWarningReport:
       type: object
@@ -12936,6 +12937,21 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
+        - type: object
+          properties:
+            passthroughPendingReview:
+              allOf:
+                - $ref: >-
+                    #/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+              title: passthrough_pending_review
+              description: >-
+                pass the new column through as is, and record it as awaiting
+                review.
+                 The data path is the one of `passthrough` — a new column never stops a run —
+                 but the column counts as undecided until someone maps it or acknowledges the
+                 passthrough, so a schema that keeps evolving cannot quietly erode the
+                 anonymization of the job.
+          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
@@ -12944,12 +12960,16 @@ components:
                   - haltJob
               - required:
                   - passthrough
+              - required:
+                  - passthroughPendingReview
           - not:
               oneOf:
                 - required:
                     - haltJob
                 - required:
                     - passthrough
+                - required:
+                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
     mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob:
       type: object
@@ -12961,6 +12981,11 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
+    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
+      type: object
+      title: PassthroughPendingReview
+      additionalProperties: false
+      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.MssqlSourceSchemaOption:
       type: object
       properties:
@@ -13226,6 +13251,21 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
+        - type: object
+          properties:
+            passthroughPendingReview:
+              allOf:
+                - $ref: >-
+                    #/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+              title: passthrough_pending_review
+              description: >-
+                pass the new column through as is, and record it as awaiting
+                review.
+                 The data path is the one of `passthrough` — a new column never stops a run —
+                 but the column counts as undecided until someone maps it or acknowledges the
+                 passthrough, so a schema that keeps evolving cannot quietly erode the
+                 anonymization of the job.
+          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
@@ -13236,6 +13276,8 @@ components:
                   - haltJob
               - required:
                   - passthrough
+              - required:
+                  - passthroughPendingReview
           - not:
               oneOf:
                 - required:
@@ -13244,6 +13286,8 @@ components:
                     - haltJob
                 - required:
                     - passthrough
+                - required:
+                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
     mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
@@ -13260,6 +13304,11 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
+    mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
+      type: object
+      title: PassthroughPendingReview
+      additionalProperties: false
+      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.MysqlSourceSchemaOption:
       type: object
       properties:
@@ -13692,6 +13741,21 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
+        - type: object
+          properties:
+            passthroughPendingReview:
+              allOf:
+                - $ref: >-
+                    #/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+              title: passthrough_pending_review
+              description: >-
+                pass the new column through as is, and record it as awaiting
+                review.
+                 The data path is the one of `passthrough` — a new column never stops a run —
+                 but the column counts as undecided until someone maps it or acknowledges the
+                 passthrough, so a schema that keeps evolving cannot quietly erode the
+                 anonymization of the job.
+          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
@@ -13702,6 +13766,8 @@ components:
                   - haltJob
               - required:
                   - passthrough
+              - required:
+                  - passthroughPendingReview
           - not:
               oneOf:
                 - required:
@@ -13710,6 +13776,8 @@ components:
                     - haltJob
                 - required:
                     - passthrough
+                - required:
+                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
     mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
@@ -13726,6 +13794,11 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
+    mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
+      type: object
+      title: PassthroughPendingReview
+      additionalProperties: false
+      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.PostgresSourceSchemaOption:
       type: object
       properties:

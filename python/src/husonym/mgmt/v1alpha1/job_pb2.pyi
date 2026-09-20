@@ -255,7 +255,7 @@ class DynamoDBSourceTableOption(_message.Message):
 class PostgresSourceConnectionOptions(_message.Message):
     __slots__ = ("schemas", "connection_id", "subset_by_foreign_key_constraints", "new_column_addition_strategy", "column_removal_strategy")
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough")
+        __slots__ = ("halt_job", "auto_map", "passthrough", "passthrough_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -265,13 +265,18 @@ class PostgresSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
+        class PassthroughPendingReview(_message.Message):
+            __slots__ = ()
+            def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
+        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
+        passthrough_pending_review: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
     class ColumnRemovalStrategy(_message.Message):
         __slots__ = ("halt_job", "continue_job")
         class HaltJob(_message.Message):
@@ -329,7 +334,7 @@ class MysqlSourceConnectionOptions(_message.Message):
         continue_job: MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough")
+        __slots__ = ("halt_job", "auto_map", "passthrough", "passthrough_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -339,13 +344,18 @@ class MysqlSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
+        class PassthroughPendingReview(_message.Message):
+            __slots__ = ()
+            def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
+        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
+        passthrough_pending_review: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
@@ -390,18 +400,23 @@ class MssqlSourceConnectionOptions(_message.Message):
         continue_job: MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "passthrough")
+        __slots__ = ("halt_job", "passthrough", "passthrough_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
+        class PassthroughPendingReview(_message.Message):
+            __slots__ = ()
+            def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
+        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         passthrough: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
+        passthrough_pending_review: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
+        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
@@ -1371,9 +1386,11 @@ class ColumnWarning(_message.Message):
         COLUMN_WARNING_CODE_UNSPECIFIED: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: _ClassVar[ColumnWarning.ColumnWarningCode]
+        COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: _ClassVar[ColumnWarning.ColumnWarningCode]
     COLUMN_WARNING_CODE_UNSPECIFIED: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: ColumnWarning.ColumnWarningCode
+    COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: ColumnWarning.ColumnWarningCode
     class ColumnWarningReport(_message.Message):
         __slots__ = ("code", "message")
         CODE_FIELD_NUMBER: _ClassVar[int]

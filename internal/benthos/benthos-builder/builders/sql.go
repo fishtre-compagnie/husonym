@@ -130,12 +130,25 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		logger.Debug(
-			fmt.Sprintf(
-				"adding %d extra passthrough mappings due to unmapped columns",
-				len(extraMappings),
-			),
-		)
+		if sqlSourceOpts.PassthroughPendingReview && len(extraMappings) > 0 {
+			// Named, and at warning level, because this is the whole point of the strategy: the
+			// run does not stop, so the log line is what tells someone that data left the source
+			// untransformed. A count alone would not let them decide anything.
+			logger.Warn(
+				fmt.Sprintf(
+					"%d unmapped columns passed through as is, awaiting a decision: [%s]",
+					len(extraMappings),
+					strings.Join(formatMappingColumns(extraMappings), ", "),
+				),
+			)
+		} else {
+			logger.Debug(
+				fmt.Sprintf(
+					"adding %d extra passthrough mappings due to unmapped columns",
+					len(extraMappings),
+				),
+			)
+		}
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
 

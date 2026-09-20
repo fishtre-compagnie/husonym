@@ -11088,6 +11088,11 @@
               "name": "COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING",
               "number": "2",
               "description": "Column not found in job mapping"
+            },
+            {
+              "name": "COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW",
+              "number": "3",
+              "description": "Column is not in the job mapping and the job passes it through while it awaits a\ndecision (new_column_addition_strategy = passthrough_pending_review). The run copies\nit as is; this warning is what keeps it from being forgotten."
             }
           ]
         },
@@ -16010,6 +16015,18 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
+            },
+            {
+              "name": "passthrough_pending_review",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough` — a new column never stops a run —\nbut the column counts as undecided until someone maps it or acknowledges the\npassthrough, so a schema that keeps evolving cannot quietly erode the\nanonymization of the job.",
+              "label": "",
+              "type": "PassthroughPendingReview",
+              "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "fullType": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "strategy",
+              "defaultValue": ""
             }
           ]
         },
@@ -16029,6 +16046,17 @@
           "longName": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "fullName": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "description": "Configuration for the Passthrough strategy",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "PassthroughPendingReview",
+          "longName": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "fullName": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "description": "Configuration for the PassthroughPendingReview strategy",
           "hasExtensions": false,
           "hasFields": false,
           "hasOneofs": false,
@@ -16472,6 +16500,18 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
+            },
+            {
+              "name": "passthrough_pending_review",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough` — a new column never stops a run —\nbut the column counts as undecided until someone maps it or acknowledges the\npassthrough, so a schema that keeps evolving cannot quietly erode the\nanonymization of the job.",
+              "label": "",
+              "type": "PassthroughPendingReview",
+              "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "fullType": "mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "strategy",
+              "defaultValue": ""
             }
           ]
         },
@@ -16502,6 +16542,17 @@
           "longName": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "fullName": "mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "description": "Configuration for the Passthrough strategy",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "PassthroughPendingReview",
+          "longName": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "fullName": "mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "description": "Configuration for the PassthroughPendingReview strategy",
           "hasExtensions": false,
           "hasFields": false,
           "hasOneofs": false,
@@ -17317,6 +17368,18 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
+            },
+            {
+              "name": "passthrough_pending_review",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough` — a new column never stops a run —\nbut the column counts as undecided until someone maps it or acknowledges the\npassthrough, so a schema that keeps evolving cannot quietly erode the\nanonymization of the job.",
+              "label": "",
+              "type": "PassthroughPendingReview",
+              "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "fullType": "mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "strategy",
+              "defaultValue": ""
             }
           ]
         },
@@ -17347,6 +17410,17 @@
           "longName": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "fullName": "mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough",
           "description": "Configuration for the Passthrough strategy",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "PassthroughPendingReview",
+          "longName": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "fullName": "mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
+          "description": "Configuration for the PassthroughPendingReview strategy",
           "hasExtensions": false,
           "hasFields": false,
           "hasOneofs": false,

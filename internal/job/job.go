@@ -15,8 +15,13 @@ type SqlJobSourceOpts struct {
 	GenerateNewColumnTransformers bool
 	// Newly detected columns are set to passthrough to the destination
 	PassthroughOnNewColumnAddition bool
-	SubsetByForeignKeyConstraints  bool
-	SchemaOpt                      []*SchemaOptions
+	// The passthrough above is a stopgap awaiting a decision, not a choice: the run copies the
+	// column as is, and every column it covers is reported until someone maps it or
+	// acknowledges the passthrough. Implies PassthroughOnNewColumnAddition, so the data path
+	// stays the one that is already tested.
+	PassthroughPendingReview      bool
+	SubsetByForeignKeyConstraints bool
+	SchemaOpt                     []*SchemaOptions
 }
 
 type SchemaOptions struct {
@@ -53,6 +58,7 @@ func GetSqlJobSourceOpts(
 		shouldHalt := false
 		shouldGenerateNewColTransforms := false
 		shouldPassthrough := false
+		pendingReview := false
 		switch jobSourceConfig.Postgres.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHalt = true
@@ -60,6 +66,9 @@ func GetSqlJobSourceOpts(
 			shouldGenerateNewColTransforms = true
 		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
+		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_:
+			shouldPassthrough = true
+			pendingReview = true
 		}
 
 		shouldHaltOnColumnRemoval := false
@@ -70,6 +79,7 @@ func GetSqlJobSourceOpts(
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHalt,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			PassthroughPendingReview:       pendingReview,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
 			GenerateNewColumnTransformers:  shouldGenerateNewColTransforms,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Postgres.SubsetByForeignKeyConstraints,
@@ -96,6 +106,7 @@ func GetSqlJobSourceOpts(
 		shouldHalt := false
 		shouldGenerateNewColTransforms := false
 		shouldPassthrough := false
+		pendingReview := false
 		switch jobSourceConfig.Mysql.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHalt = true
@@ -103,6 +114,9 @@ func GetSqlJobSourceOpts(
 			shouldGenerateNewColTransforms = true
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
+		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_:
+			shouldPassthrough = true
+			pendingReview = true
 		}
 		shouldHaltOnColumnRemoval := false
 		if jobSourceConfig.Mysql.GetColumnRemovalStrategy().GetHaltJob() != nil {
@@ -111,6 +125,7 @@ func GetSqlJobSourceOpts(
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHalt,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			PassthroughPendingReview:       pendingReview,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
 			GenerateNewColumnTransformers:  shouldGenerateNewColTransforms,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Mysql.SubsetByForeignKeyConstraints,
@@ -141,15 +156,20 @@ func GetSqlJobSourceOpts(
 
 		shouldHaltNewColumnAddition := false
 		shouldPassthrough := false
+		pendingReview := false
 		switch jobSourceConfig.Mssql.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHaltNewColumnAddition = true
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
+		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_:
+			shouldPassthrough = true
+			pendingReview = true
 		}
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHaltNewColumnAddition,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			PassthroughPendingReview:       pendingReview,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Mssql.SubsetByForeignKeyConstraints,
 			SchemaOpt:                      schemaOpt,

@@ -170,6 +170,12 @@ message PostgresSourceConnectionOptions {
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
+      // pass the new column through as is, and record it as awaiting review.
+      // The data path is the one of `passthrough` — a new column never stops a run —
+      // but the column counts as undecided until someone maps it or acknowledges the
+      // passthrough, so a schema that keeps evolving cannot quietly erode the
+      // anonymization of the job.
+      PassthroughPendingReview passthrough_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -177,6 +183,8 @@ message PostgresSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
+    // Configuration for the PassthroughPendingReview strategy
+    message PassthroughPendingReview {}
   }
 
   message ColumnRemovalStrategy {
@@ -250,6 +258,12 @@ message MysqlSourceConnectionOptions {
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
+      // pass the new column through as is, and record it as awaiting review.
+      // The data path is the one of `passthrough` — a new column never stops a run —
+      // but the column counts as undecided until someone maps it or acknowledges the
+      // passthrough, so a schema that keeps evolving cannot quietly erode the
+      // anonymization of the job.
+      PassthroughPendingReview passthrough_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -257,6 +271,8 @@ message MysqlSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
+    // Configuration for the PassthroughPendingReview strategy
+    message PassthroughPendingReview {}
   }
 }
 
@@ -309,11 +325,19 @@ message MssqlSourceConnectionOptions {
       HaltJob halt_job = 1;
       // pass the new column through as is.
       Passthrough passthrough = 2;
+      // pass the new column through as is, and record it as awaiting review.
+      // The data path is the one of `passthrough` — a new column never stops a run —
+      // but the column counts as undecided until someone maps it or acknowledges the
+      // passthrough, so a schema that keeps evolving cannot quietly erode the
+      // anonymization of the job.
+      PassthroughPendingReview passthrough_pending_review = 3;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
+    // Configuration for the PassthroughPendingReview strategy
+    message PassthroughPendingReview {}
   }
 }
 
@@ -1332,6 +1356,10 @@ message ColumnWarning {
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE = 1;
     // Column not found in job mapping
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING = 2;
+    // Column is not in the job mapping and the job passes it through while it awaits a
+    // decision (new_column_addition_strategy = passthrough_pending_review). The run copies
+    // it as is; this warning is what keeps it from being forgotten.
+    COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW = 3;
   }
 
   // Column warning report

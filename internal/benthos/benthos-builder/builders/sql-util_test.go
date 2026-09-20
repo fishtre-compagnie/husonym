@@ -561,3 +561,29 @@ func Test_withoutNullableColumns(t *testing.T) {
 		"public.badge": {{"site", "serial"}},
 	}, withoutNullableColumns(uniqueKeys, columnInfo))
 }
+
+func Test_formatMappingColumns(t *testing.T) {
+	t.Run("names a column the way the halt message does", func(t *testing.T) {
+		require.Equal(t, []string{"public.users.email"}, formatMappingColumns(
+			[]*mgmtv1alpha1.JobMapping{
+				{Schema: "public", Table: "users", Column: "email"},
+			},
+		))
+	})
+
+	t.Run("sorts, because the mappings come from walking a map", func(t *testing.T) {
+		require.Equal(t, []string{
+			"public.users.email",
+			"public.users.phone",
+			"sales.orders.total",
+		}, formatMappingColumns([]*mgmtv1alpha1.JobMapping{
+			{Schema: "sales", Table: "orders", Column: "total"},
+			{Schema: "public", Table: "users", Column: "phone"},
+			{Schema: "public", Table: "users", Column: "email"},
+		}))
+	})
+
+	t.Run("no mappings, no columns", func(t *testing.T) {
+		require.Empty(t, formatMappingColumns(nil))
+	})
+}
