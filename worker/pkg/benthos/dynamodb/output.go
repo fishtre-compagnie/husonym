@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v7"
 
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
@@ -244,10 +244,8 @@ func (d *dynamoDBWriter) WriteBatch(ctx context.Context, b service.MessageBatch)
 	}
 
 	boff := d.boffPool.Get().(backoff.BackOff)
-	defer func() {
-		boff.Reset()
-		d.boffPool.Put(boff)
-	}()
+	boff.Reset()
+	defer d.boffPool.Put(boff)
 
 	writeReqs := []types.WriteRequest{}
 	if err := b.WalkWithBatchedErrors(func(i int, p *service.Message) error {
@@ -457,17 +455,42 @@ func commonRetryBackOffCtorFromParsed(
 	}
 
 	return func() backoff.BackOff {
-		boff := backoff.NewExponentialBackOff()
-
-		boff.InitialInterval = initInterval
-		boff.MaxInterval = maxInterval
-		boff.MaxElapsedTime = maxElapsed
-
-		if maxRetries > 0 {
-			return backoff.WithMaxRetries(boff, uint64(maxRetries))
-		}
-		return boff
+		exp := backoff.NewExponentialBackOff()
+		exp.InitialInterval = initInterval
+		exp.MaxInterval = maxInterval
+		return &boundedBackOff{exp: exp, maxRetries: maxRetries, maxElapsed: maxElapsed}
 	}, nil
+}
+
+// boundedBackOff stops an exponential backoff after maxRetries waits, or once
+// the next wait would end past maxElapsed since Reset. Zero disables either
+// limit. backoff v5 and later only enforce such limits inside backoff.Retry,
+// which does not fit the partial batch retries of WriteBatch.
+type boundedBackOff struct {
+	exp        *backoff.ExponentialBackOff
+	maxRetries int
+	maxElapsed time.Duration
+
+	retries int
+	start   time.Time
+}
+
+func (b *boundedBackOff) Reset() {
+	b.exp.Reset()
+	b.retries = 0
+	b.start = time.Now()
+}
+
+func (b *boundedBackOff) NextBackOff() time.Duration {
+	if b.maxRetries > 0 && b.retries >= b.maxRetries {
+		return backoff.Stop
+	}
+	next := b.exp.NextBackOff()
+	if b.maxElapsed > 0 && time.Since(b.start)+next > b.maxElapsed {
+		return backoff.Stop
+	}
+	b.retries++
+	return next
 }
 func fieldDurationOrEmptyStr(pConf *service.ParsedConfig, path ...string) (time.Duration, error) {
 	if dStr, err := pConf.FieldString(path...); err == nil && dStr == "" {

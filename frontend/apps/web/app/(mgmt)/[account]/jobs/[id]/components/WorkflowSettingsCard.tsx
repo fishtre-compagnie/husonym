@@ -11,11 +11,19 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import ConsistencyScopeSelect from '@/components/jobs/Form/ConsistencyScopeSelect';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { convertNanosecondsToMinutes, getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
-import { Job, JobService } from '@husonym/sdk';
+import { ConsistencyScope, Job, JobEngine, JobService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -38,6 +46,9 @@ export default function WorkflowSettingsCard({
       runTimeout: job?.workflowOptions?.runTimeout
         ? convertNanosecondsToMinutes(job.workflowOptions.runTimeout)
         : 0,
+      engine: job?.workflowOptions?.engine ?? JobEngine.UNSPECIFIED,
+      consistencyScope:
+        job?.workflowOptions?.consistencyScope ?? ConsistencyScope.UNSPECIFIED,
     },
   });
   const { account } = useAccount();
@@ -90,6 +101,63 @@ export default function WorkflowSettingsCard({
                       onChange={(e) => {
                         field.onChange(e.target.valueAsNumber);
                       }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="engine"
+              render={({ field }) => (
+                <FormItem className="pt-4">
+                  <FormLabel>Engine</FormLabel>
+                  <FormDescription>
+                    Transformation engine used to run this job.{' '}
+                    <code>Default</code> follows the deployment setting.
+                  </FormDescription>
+                  <Select
+                    onValueChange={(v) => field.onChange(Number(v))}
+                    value={String(field.value ?? JobEngine.UNSPECIFIED)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={String(JobEngine.UNSPECIFIED)}>
+                        Default (deployment)
+                      </SelectItem>
+                      <SelectItem value={String(JobEngine.ATHANOR)}>
+                        Athanor
+                      </SelectItem>
+                      <SelectItem value={String(JobEngine.BENTHOS)}>
+                        Benthos (legacy)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="consistencyScope"
+              render={({ field }) => (
+                <FormItem className="pt-4">
+                  <FormLabel>Consistency scope</FormLabel>
+                  <FormDescription>
+                    Deterministic consistency (Athanor engine only): the same
+                    source value gets the same anonymized value everywhere in
+                    this scope. Beyond a single run, outputs stay linkable over
+                    time.
+                  </FormDescription>
+                  <FormControl>
+                    <ConsistencyScopeSelect
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />

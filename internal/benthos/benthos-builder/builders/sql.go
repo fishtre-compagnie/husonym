@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -18,6 +19,7 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
@@ -200,20 +202,21 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 
 	tableSubsetMap := buildTableSubsetMap(sourceTableOpts, groupedTableMapping)
 	tableColMap := getTableColMapFromMappings(groupedMappings)
+	primaryKeyToForeignKeysMap := getPrimaryKeyDependencyMap(filteredForeignKeysMap)
+	b.primaryKeyToForeignKeysMap = primaryKeyToForeignKeysMap
+
 	runConfigs, err := rc.BuildRunConfigs(
 		filteredForeignKeysMap,
 		tableSubsetMap,
 		tableConstraints.PrimaryKeyConstraints,
 		tableColMap,
-		tableConstraints.UniqueIndexes,
-		tableConstraints.UniqueConstraints,
+		withoutNullableColumns(tableConstraints.UniqueIndexes, groupedColumnInfo),
+		withoutNullableColumns(tableConstraints.UniqueConstraints, groupedColumnInfo),
+		rc.WithTransformedParentKeys(transformedParentKeys(primaryKeyToForeignKeysMap, colTransformerMap)),
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	primaryKeyToForeignKeysMap := getPrimaryKeyDependencyMap(filteredForeignKeysMap)
-	b.primaryKeyToForeignKeysMap = primaryKeyToForeignKeysMap
 
 	configQueryMap, err := b.selectQueryBuilder.BuildSelectQueryMap(
 		db.Driver(),
@@ -243,6 +246,31 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build benthos sql source config responses: %w", err)
+	}
+
+	keyStore := func(table, column string) string {
+		if !shouldProcessStrict(colTransformerMap[table][column]) {
+			return ""
+		}
+		return husonym_benthos.HashBenthosCacheKey(job.Id, params.JobRunId, table, column)
+	}
+	foreignKeys := planForeignKeys(
+		db.Driver(), runConfigs, sqlSourceOpts.SubsetByForeignKeyConstraints,
+		groupedColumnInfo, foreignKeysMap, keyStore)
+	for _, config := range configs {
+		config.ForeignKeys = foreignKeys[config.Name]
+		tableKey := sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)
+		for column := range primaryKeyToForeignKeysMap[tableKey] {
+			if store := keyStore(tableKey, column); store != "" {
+				config.PublishedKeys = append(config.PublishedKeys, &tableplan.PublishedKey{Column: column, Store: store})
+			}
+		}
+		slices.SortFunc(config.PublishedKeys, func(a, b *tableplan.PublishedKey) int {
+			return strings.Compare(a.Column, b.Column)
+		})
+		config.GeneratedColumns = generatedColumns(
+			groupedColumnInfo[sqlmanager_shared.BuildTable(config.TableSchema, config.TableName)],
+		)
 	}
 
 	return configs, nil
@@ -494,8 +522,11 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						WhereColumns:             benthosConfig.PrimaryKeys,
 
 						Batching: &husonym_benthos.Batching{
-							Period:     destOpts.BatchPeriod,
-							Count:      destOpts.BatchCount,
+							Period: destOpts.BatchPeriod,
+							Count:  destOpts.BatchCount,
+							// The last row of a page flushes the batch it lands in, instead of
+							// waiting for the period: see husonym_benthos.LastRowOfPageMetaKey.
+							Check:      husonym_benthos.LastRowOfPageCheck,
 							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 					},
@@ -571,8 +602,11 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 						Suffix:                      suffix,
 
 						Batching: &husonym_benthos.Batching{
-							Period:     destOpts.BatchPeriod,
-							Count:      destOpts.BatchCount,
+							Period: destOpts.BatchPeriod,
+							Count:  destOpts.BatchCount,
+							// The last row of a page flushes the batch it lands in, instead of
+							// waiting for the period: see husonym_benthos.LastRowOfPageMetaKey.
+							Check:      husonym_benthos.LastRowOfPageCheck,
 							Processors: []*husonym_benthos.BatchProcessor{sqlProcessor},
 						},
 						MaxInFlight: int(destOpts.MaxInFlight),
@@ -703,4 +737,23 @@ func mergeSourceDestinationColumnInfo(
 	}
 
 	return mergedCols
+}
+
+// transformedParentKeys lists, per table, the referenced columns a transformer changes.
+// A foreign key to one of them holds a value the writer can only know once that table has
+// been written, so it is not a column an update pass can fill from the source.
+func transformedParentKeys(
+	referencedColumns map[string]map[string][]*bb_internal.ReferenceKey,
+	colTransformerMap map[string]map[string]*mgmtv1alpha1.JobMappingTransformer,
+) map[string][]string {
+	byTable := map[string][]string{}
+	for table, columns := range referencedColumns {
+		for column := range columns {
+			if shouldProcessStrict(colTransformerMap[table][column]) {
+				byTable[table] = append(byTable[table], column)
+			}
+		}
+		slices.Sort(byTable[table])
+	}
+	return byTable
 }

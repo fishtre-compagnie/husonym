@@ -298,11 +298,10 @@ class IsTransformerNameAvailableResponse(_message.Message):
     def __init__(self, is_available: _Optional[bool] = ...) -> None: ...
 
 class UserDefinedTransformer(_message.Message):
-    __slots__ = ("id", "name", "description", "data_type", "source", "config", "created_at", "updated_at", "account_id", "data_types")
+    __slots__ = ("id", "name", "description", "source", "config", "created_at", "updated_at", "account_id", "data_types")
     ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
-    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
     SOURCE_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
@@ -312,32 +311,29 @@ class UserDefinedTransformer(_message.Message):
     id: str
     name: str
     description: str
-    data_type: TransformerDataType
     source: TransformerSource
     config: TransformerConfig
     created_at: _timestamp_pb2.Timestamp
     updated_at: _timestamp_pb2.Timestamp
     account_id: str
     data_types: _containers.RepeatedScalarFieldContainer[TransformerDataType]
-    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., data_type: _Optional[_Union[TransformerDataType, str]] = ..., source: _Optional[_Union[TransformerSource, str]] = ..., config: _Optional[_Union[TransformerConfig, _Mapping]] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., account_id: _Optional[str] = ..., data_types: _Optional[_Iterable[_Union[TransformerDataType, str]]] = ...) -> None: ...
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., description: _Optional[str] = ..., source: _Optional[_Union[TransformerSource, str]] = ..., config: _Optional[_Union[TransformerConfig, _Mapping]] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., account_id: _Optional[str] = ..., data_types: _Optional[_Iterable[_Union[TransformerDataType, str]]] = ...) -> None: ...
 
 class SystemTransformer(_message.Message):
-    __slots__ = ("name", "description", "data_type", "source", "config", "data_types", "supported_job_types")
+    __slots__ = ("name", "description", "source", "config", "data_types", "supported_job_types")
     NAME_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
-    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
     SOURCE_FIELD_NUMBER: _ClassVar[int]
     CONFIG_FIELD_NUMBER: _ClassVar[int]
     DATA_TYPES_FIELD_NUMBER: _ClassVar[int]
     SUPPORTED_JOB_TYPES_FIELD_NUMBER: _ClassVar[int]
     name: str
     description: str
-    data_type: TransformerDataType
     source: TransformerSource
     config: TransformerConfig
     data_types: _containers.RepeatedScalarFieldContainer[TransformerDataType]
     supported_job_types: _containers.RepeatedScalarFieldContainer[SupportedJobType]
-    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., data_type: _Optional[_Union[TransformerDataType, str]] = ..., source: _Optional[_Union[TransformerSource, str]] = ..., config: _Optional[_Union[TransformerConfig, _Mapping]] = ..., data_types: _Optional[_Iterable[_Union[TransformerDataType, str]]] = ..., supported_job_types: _Optional[_Iterable[_Union[SupportedJobType, str]]] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., source: _Optional[_Union[TransformerSource, str]] = ..., config: _Optional[_Union[TransformerConfig, _Mapping]] = ..., data_types: _Optional[_Iterable[_Union[TransformerDataType, str]]] = ..., supported_job_types: _Optional[_Iterable[_Union[SupportedJobType, str]]] = ...) -> None: ...
 
 class TransformerConfig(_message.Message):
     __slots__ = ("generate_email_config", "transform_email_config", "generate_bool_config", "generate_card_number_config", "generate_city_config", "generate_e164_phone_number_config", "generate_first_name_config", "generate_float64_config", "generate_full_address_config", "generate_full_name_config", "generate_gender_config", "generate_int64_phone_number_config", "generate_int64_config", "generate_last_name_config", "generate_sha256hash_config", "generate_ssn_config", "generate_state_config", "generate_street_address_config", "generate_string_phone_number_config", "generate_string_config", "generate_unixtimestamp_config", "generate_username_config", "generate_utctimestamp_config", "generate_uuid_config", "generate_zipcode_config", "transform_e164_phone_number_config", "transform_first_name_config", "transform_float64_config", "transform_full_name_config", "transform_int64_phone_number_config", "transform_int64_config", "transform_last_name_config", "transform_phone_number_config", "transform_string_config", "passthrough_config", "nullconfig", "user_defined_transformer_config", "generate_default_config", "transform_javascript_config", "generate_categorical_config", "transform_character_scramble_config", "generate_javascript_config", "generate_country_config", "transform_pii_text_config", "generate_business_name_config", "generate_ip_address_config", "transform_uuid_config", "transform_scramble_identity_config")
@@ -762,10 +758,48 @@ class ValidateUserJavascriptCodeRequest(_message.Message):
     def __init__(self, code: _Optional[str] = ...) -> None: ...
 
 class ValidateUserJavascriptCodeResponse(_message.Message):
-    __slots__ = ("valid",)
+    __slots__ = ("valid", "global_writes")
     VALID_FIELD_NUMBER: _ClassVar[int]
+    GLOBAL_WRITES_FIELD_NUMBER: _ClassVar[int]
     valid: bool
-    def __init__(self, valid: _Optional[bool] = ...) -> None: ...
+    global_writes: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, valid: _Optional[bool] = ..., global_writes: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class TryJavascriptRulesRequest(_message.Message):
+    __slots__ = ("account_id", "rules", "rows")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    RULES_FIELD_NUMBER: _ClassVar[int]
+    ROWS_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    rules: _containers.RepeatedCompositeFieldContainer[JavascriptRule]
+    rows: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, account_id: _Optional[str] = ..., rules: _Optional[_Iterable[_Union[JavascriptRule, _Mapping]]] = ..., rows: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class JavascriptRule(_message.Message):
+    __slots__ = ("column", "transformer")
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    TRANSFORMER_FIELD_NUMBER: _ClassVar[int]
+    column: str
+    transformer: TransformerConfig
+    def __init__(self, column: _Optional[str] = ..., transformer: _Optional[_Union[TransformerConfig, _Mapping]] = ...) -> None: ...
+
+class TryJavascriptRulesResponse(_message.Message):
+    __slots__ = ("rows", "failure")
+    ROWS_FIELD_NUMBER: _ClassVar[int]
+    FAILURE_FIELD_NUMBER: _ClassVar[int]
+    rows: _containers.RepeatedScalarFieldContainer[str]
+    failure: JavascriptRuleFailure
+    def __init__(self, rows: _Optional[_Iterable[str]] = ..., failure: _Optional[_Union[JavascriptRuleFailure, _Mapping]] = ...) -> None: ...
+
+class JavascriptRuleFailure(_message.Message):
+    __slots__ = ("row", "column", "message")
+    ROW_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    row: int
+    column: str
+    message: str
+    def __init__(self, row: _Optional[int] = ..., column: _Optional[str] = ..., message: _Optional[str] = ...) -> None: ...
 
 class GenerateCategorical(_message.Message):
     __slots__ = ("categories",)

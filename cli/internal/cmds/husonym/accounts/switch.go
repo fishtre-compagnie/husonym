@@ -16,9 +16,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/cli/internal/userconfig"
 	"github.com/spf13/cobra"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var (
@@ -38,10 +39,18 @@ var (
 				PaddingLeft(2).
 				Height(1).
 				Foreground(lipgloss.Color("170"))
-	paginationStyle = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle       = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle   = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	quitTextStyle = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
+
+// listStyles adapts the list's default styles to the terminal background,
+// which the program asks for when it starts.
+func listStyles(isDark bool) list.Styles {
+	styles := list.DefaultStyles(isDark)
+	styles.Title = titleStyle
+	styles.PaginationStyle = styles.PaginationStyle.PaddingLeft(4)
+	styles.HelpStyle = styles.HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	return styles
+}
 
 func newSwitchCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -148,9 +157,7 @@ func switchAccount(
 		l.Title = "Select an account"
 		l.SetShowStatusBar(false)
 		l.SetFilteringEnabled(false)
-		l.Styles.Title = titleStyle
-		l.Styles.PaginationStyle = paginationStyle
-		l.Styles.HelpStyle = helpStyle
+		l.Styles = listStyles(true)
 
 		m := &model{list: l}
 
@@ -261,16 +268,21 @@ type model struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	return nil
+	return tea.RequestBackgroundColor
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		m.list.Styles = listStyles(msg.IsDark())
+		m.list.Help.Styles = help.DefaultStyles(msg.IsDark())
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c":
 			m.quitting = true
@@ -290,20 +302,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) View() string {
+func (m *model) View() tea.View {
 	if m.choice.description != "" {
 		err := userconfig.SetAccountId(m.choice.description)
 		if err != nil {
-			return quitTextStyle.Render(
+			return tea.NewView(quitTextStyle.Render(
 				fmt.Sprintf("Failed to switch accounts. Error %s", err.Error()),
-			)
+			))
 		}
-		return quitTextStyle.Render(
+		return tea.NewView(quitTextStyle.Render(
 			fmt.Sprintf("Switched account to %s (%s)", m.choice.title, m.choice.description),
-		)
+		))
 	}
 	if m.quitting || m.choice.title == "Cancel" {
-		return quitTextStyle.Render("No changes made")
+		return tea.NewView(quitTextStyle.Render("No changes made"))
 	}
-	return "\n" + m.list.View()
+	return tea.NewView("\n" + m.list.View())
 }

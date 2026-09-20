@@ -2,6 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { formatDateTime } from '@/util/util';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { JobRun } from '@husonym/sdk';
@@ -16,7 +17,9 @@ interface GetColumnsProps {
   jobNameMap: Record<string, string>;
 }
 
-export function getColumns(props: GetColumnsProps): ColumnDef<JobRun>[] {
+export function getColumns(
+  props: GetColumnsProps
+): ColumnDef<AppTableFeatures, JobRun>[] {
   const { onDeleted, accountName, jobNameMap } = props;
   return [
     {

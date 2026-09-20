@@ -23,8 +23,8 @@ import (
 	"strings"
 )
 
-func newDao(db *sql.DB, driverNameIndex adapterDriverNameIndex, tableName string) dao {
-	d := dao{
+func newDao(db *sql.DB, driverNameIndex adapterDriverNameIndex, tableName string) *dao {
+	d := &dao{
 		db: db,
 
 		tableName:   tableName,
@@ -88,7 +88,7 @@ type dao struct {
 }
 
 // rebindSQL rebind SQL by different database.
-func (d dao) rebindSQL(query string) string {
+func (d *dao) rebindSQL(query string) string {
 	if d.placeHolder == defaultPlaceholder {
 		return query
 	}
@@ -116,7 +116,7 @@ func (d dao) rebindSQL(query string) string {
 }
 
 // querySQL query data by sql.
-func (d dao) querySQL(ctx context.Context, query string, args ...interface{}) ([]rule, error) {
+func (d *dao) querySQL(ctx context.Context, query string, args ...any) ([]rule, error) {
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func (d dao) querySQL(ctx context.Context, query string, args ...interface{}) ([
 		rules = append(rules, rule)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -144,7 +144,7 @@ func (d dao) querySQL(ctx context.Context, query string, args ...interface{}) ([
 }
 
 // execSQL exec sql.
-func (d dao) execSQL(ctx context.Context, query string, args ...interface{}) error {
+func (d *dao) execSQL(ctx context.Context, query string, args ...any) error {
 	_, err := d.db.ExecContext(ctx, query, args...)
 
 	return err
@@ -153,11 +153,11 @@ func (d dao) execSQL(ctx context.Context, query string, args ...interface{}) err
 type txData struct {
 	step  string
 	query string
-	args  []interface{}
+	args  []any
 }
 
 // execTxSQL exec transaction sql rows.
-func (d dao) execTxSQL(ctx context.Context, beforeTxData, afterTxData txData, query string, args [][]interface{}) error {
+func (d *dao) execTxSQL(ctx context.Context, beforeTxData, afterTxData txData, query string, args [][]any) error {
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx err: %w", err)
@@ -216,22 +216,22 @@ ROLLBACK:
 }
 
 // CreateTable create a table.
-func (d dao) CreateTable(ctx context.Context) error {
+func (d *dao) CreateTable(ctx context.Context) error {
 	return d.execSQL(ctx, d.sqlCreateTable)
 }
 
 // IsTableExist check the table exists.
-func (d dao) IsTableExist(ctx context.Context) bool {
+func (d *dao) IsTableExist(ctx context.Context) bool {
 	return d.execSQL(ctx, d.sqlTableExist) == nil
 }
 
 // SelectAll select all data from the table.
-func (d dao) SelectAll(ctx context.Context) ([]rule, error) {
+func (d *dao) SelectAll(ctx context.Context) ([]rule, error) {
 	return d.querySQL(ctx, d.sqlSelectAll)
 }
 
 // SelectRows select eligible data by args from the table.
-func (d dao) SelectRows(ctx context.Context, query string, args ...interface{}) ([]rule, error) {
+func (d *dao) SelectRows(ctx context.Context, query string, args ...any) ([]rule, error) {
 	if len(args) == 0 {
 		return d.querySQL(ctx, query)
 	}
@@ -241,8 +241,8 @@ func (d dao) SelectRows(ctx context.Context, query string, args ...interface{}) 
 	return d.querySQL(ctx, query, args...)
 }
 
-// SelectByCondition .
-func (d dao) SelectByCondition(ctx context.Context, whereCondition string, args ...interface{}) ([]rule, error) {
+// SelectByCondition selects the rows matching a condition built by GenFilteredCondition.
+func (d *dao) SelectByCondition(ctx context.Context, whereCondition string, args ...any) ([]rule, error) {
 	var buf bytes.Buffer
 
 	buf.Grow(128)
@@ -257,7 +257,7 @@ func (d dao) SelectByCondition(ctx context.Context, whereCondition string, args 
 }
 
 // SelectByFilter select eligible data by Filter from the table.
-func (d dao) SelectByFilter(ctx context.Context, filterData [maxParameterCount]filterData) (lines []rule, err error) {
+func (d *dao) SelectByFilter(ctx context.Context, filters *[maxParameterCount]filterData) ([]rule, error) {
 	var (
 		sqlBuf bytes.Buffer
 		buf    bytes.Buffer
@@ -268,7 +268,7 @@ func (d dao) SelectByFilter(ctx context.Context, filterData [maxParameterCount]f
 
 	args := make([]string, 0, maxParameterCount)
 
-	for _, col := range filterData {
+	for _, col := range filters {
 		l := len(col.arg)
 		if l == 0 {
 			continue
@@ -302,7 +302,7 @@ func (d dao) SelectByFilter(ctx context.Context, filterData [maxParameterCount]f
 		}
 	}
 
-	params := make([]interface{}, len(args))
+	params := make([]any, len(args))
 	for idx := range args {
 		params[idx] = args[idx]
 	}
@@ -311,56 +311,57 @@ func (d dao) SelectByFilter(ctx context.Context, filterData [maxParameterCount]f
 }
 
 // InsertRow insert one row to the table.
-func (d dao) InsertRow(ctx context.Context, args ...interface{}) error {
+func (d *dao) InsertRow(ctx context.Context, args ...any) error {
 	return d.execSQL(ctx, d.sqlInsertRow, args...)
 }
 
 // InsertRows insert multiple rows to the table by transaction.
-func (d dao) InsertRows(ctx context.Context, args [][]interface{}) error {
+func (d *dao) InsertRows(ctx context.Context, args [][]any) error {
 	return d.execTxSQL(ctx, txData{}, txData{}, d.sqlInsertRow, args)
 }
 
 // UpdateRow update one row to the table.
-func (d dao) UpdateRow(ctx context.Context, args ...interface{}) error {
+func (d *dao) UpdateRow(ctx context.Context, args ...any) error {
 	return d.execSQL(ctx, d.sqlUpdateRow, args...)
 }
 
 // UpdateRows update multiple rows to the table by transaction.
-func (d dao) UpdateRows(ctx context.Context, args [][]interface{}) error {
+func (d *dao) UpdateRows(ctx context.Context, args [][]any) error {
 	return d.execTxSQL(ctx, txData{}, txData{}, d.sqlUpdateRow, args)
 }
 
-// UpdateFilteredRows .
-func (d dao) UpdateFilteredRows(ctx context.Context, deleteCondition string, deleteArgs []interface{}, updateArgs [][]interface{}) error {
+// UpdateFilteredRows deletes the rows matching deleteCondition and inserts updateArgs in a single transaction.
+func (d *dao) UpdateFilteredRows(ctx context.Context, deleteCondition string, deleteArgs []any, updateArgs [][]any) error {
 	deleteQuery := d.sqlDeleteByArgs + deleteCondition
 	deleteQuery = d.rebindSQL(deleteQuery)
 
-	return d.execTxSQL(ctx, txData{step: "delete rows", query: deleteQuery, args: deleteArgs}, txData{step: "after tx exec"}, d.sqlInsertRow, updateArgs)
+	return d.execTxSQL(
+		ctx,
+		txData{step: "delete rows", query: deleteQuery, args: deleteArgs},
+		txData{step: "after tx exec"},
+		d.sqlInsertRow,
+		updateArgs,
+	)
 }
 
-// DeleteAll clear the table.
-// func (d dao) DeleteAll(ctx context.Context) error {
-// 	return d.execSQL(ctx, d.sqlDeleteAll)
-// }
-
 // DeleteRows delete eligible data.
-func (d dao) DeleteRows(ctx context.Context, args [][]interface{}) error {
+func (d *dao) DeleteRows(ctx context.Context, args [][]any) error {
 	return d.execTxSQL(ctx, txData{}, txData{}, d.sqlDeleteRow, args)
 }
 
 // DeleteAllAndInsertRows clear table and insert new rows.
-func (d dao) DeleteAllAndInsertRows(ctx context.Context, rules [][]interface{}) error {
+func (d *dao) DeleteAllAndInsertRows(ctx context.Context, rules [][]any) error {
 	return d.execTxSQL(ctx, txData{step: "delete all", query: d.sqlDeleteAll}, txData{}, d.sqlInsertRow, rules)
 }
 
 // DeleteByArgs delete eligible data.
-func (d dao) DeleteByArgs(ctx context.Context, ptype string, rule []string) error {
+func (d *dao) DeleteByArgs(ctx context.Context, ptype string, rule []string) error {
 	var sqlBuf bytes.Buffer
 
 	sqlBuf.Grow(128)
 	sqlBuf.WriteString(d.sqlDeleteByArgs)
 
-	args := make([]interface{}, 0, maxParameterCount)
+	args := make([]any, 0, maxParameterCount)
 	args = append(args, ptype)
 
 	for idx, arg := range rule {
@@ -378,21 +379,22 @@ func (d dao) DeleteByArgs(ctx context.Context, ptype string, rule []string) erro
 	return d.execSQL(ctx, query, args...)
 }
 
-// DeleteByCondition .
-func (d dao) DeleteByCondition(ctx context.Context, condition string, args ...interface{}) error {
+// DeleteByCondition deletes the rows matching a condition built by GenFilteredCondition.
+func (d *dao) DeleteByCondition(ctx context.Context, condition string, args ...any) error {
 	deleteQuery := d.sqlDeleteByArgs + condition
 	deleteQuery = d.rebindSQL(deleteQuery)
 
 	return d.execSQL(ctx, deleteQuery, args...)
 }
 
-// GenFilteredCondition .
-func (d dao) GenFilteredCondition(ptype string, fieldIndex int, fieldValues ...string) (string, []interface{}) {
+// GenFilteredCondition builds the WHERE suffix and its args matching fieldValues from fieldIndex onwards.
+// The leading ptype arg binds the "p_type=?" clause that precedes the suffix in every query using it.
+func (d *dao) GenFilteredCondition(ptype string, fieldIndex int, fieldValues ...string) (whereCondition string, args []any) {
 	var whereConditionBuf bytes.Buffer
 
 	whereConditionBuf.Grow(64)
 
-	args := make([]interface{}, 0, maxParameterCount)
+	args = make([]any, 0, maxParameterCount)
 	args = append(args, ptype)
 
 	var value string

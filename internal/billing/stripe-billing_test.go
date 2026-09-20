@@ -21,9 +21,10 @@ func Test_getNextMonthBillingCycleAnchor(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 	t.Run("timezone", func(t *testing.T) {
-		date := time.Date(2024, time.December, 1, 0, 0, 0, 0, time.Local)
+		// Still November in UTC, which the anchor is computed in
+		date := time.Date(2024, time.December, 1, 0, 0, 0, 0, time.FixedZone("UTC+1", 60*60))
 		actual := getNextMonthBillingCycleAnchor(date)
-		expected := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC).Unix()
+		expected := time.Date(2024, time.December, 1, 0, 0, 0, 0, time.UTC).Unix()
 		require.Equal(t, expected, actual)
 	})
 

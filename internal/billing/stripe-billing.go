@@ -1,33 +1,31 @@
 package billing
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/stripe/stripe-go/v81"
-	stripeapiclient "github.com/stripe/stripe-go/v81/client"
+	"github.com/stripe/stripe-go/v86"
 )
 
-type SubscriptionIter interface {
-	Subscription() *stripe.Subscription
-	Next() bool
-	Err() error
-}
-
 type Interface interface {
-	NewCustomer(req *CustomerRequest) (*stripe.Customer, error)
-	NewBillingPortalSession(customerId, accountSlug string) (*stripe.BillingPortalSession, error)
+	NewCustomer(ctx context.Context, req *CustomerRequest) (*stripe.Customer, error)
+	NewBillingPortalSession(
+		ctx context.Context,
+		customerId, accountSlug string,
+	) (*stripe.BillingPortalSession, error)
 	NewCheckoutSession(
+		ctx context.Context,
 		customerId, accountSlug, userId string,
 		logger *slog.Logger,
 	) (*stripe.CheckoutSession, error)
-	GetSubscriptions(customerId string) SubscriptionIter
-	NewMeterEvent(req *MeterEventRequest) (*stripe.BillingMeterEvent, error)
+	GetSubscriptions(ctx context.Context, customerId string) ([]*stripe.Subscription, error)
+	NewMeterEvent(ctx context.Context, req *MeterEventRequest) (*stripe.BillingMeterEvent, error)
 }
 
 type Client struct {
-	client *stripeapiclient.API
+	client *stripe.Client
 	cfg    *Config
 }
 
@@ -41,7 +39,7 @@ type Config struct {
 }
 
 func New(
-	client *stripeapiclient.API,
+	client *stripe.Client,
 	cfg *Config,
 ) *Client {
 	return &Client{client: client, cfg: cfg}
@@ -54,14 +52,24 @@ type CustomerRequest struct {
 	UserId    string
 }
 
-func (c *Client) GetSubscriptions(customerId string) SubscriptionIter {
-	return c.client.Subscriptions.List(&stripe.SubscriptionListParams{
+func (c *Client) GetSubscriptions(
+	ctx context.Context,
+	customerId string,
+) ([]*stripe.Subscription, error) {
+	subscriptions := []*stripe.Subscription{}
+	for sub, err := range c.client.V1Subscriptions.List(ctx, &stripe.SubscriptionListParams{
 		Customer: stripe.String(customerId),
-	})
+	}).All(ctx) {
+		if err != nil {
+			return nil, err
+		}
+		subscriptions = append(subscriptions, sub)
+	}
+	return subscriptions, nil
 }
 
-func (c *Client) NewCustomer(req *CustomerRequest) (*stripe.Customer, error) {
-	return c.client.Customers.New(&stripe.CustomerParams{
+func (c *Client) NewCustomer(ctx context.Context, req *CustomerRequest) (*stripe.Customer, error) {
+	return c.client.V1Customers.Create(ctx, &stripe.CustomerCreateParams{
 		Email: stripe.String(req.Email),
 		Name:  stripe.String(req.Name),
 		Metadata: map[string]string{
@@ -72,9 +80,10 @@ func (c *Client) NewCustomer(req *CustomerRequest) (*stripe.Customer, error) {
 }
 
 func (c *Client) NewBillingPortalSession(
+	ctx context.Context,
 	customerId, accountSlug string,
 ) (*stripe.BillingPortalSession, error) {
-	return c.client.BillingPortalSessions.New(&stripe.BillingPortalSessionParams{
+	return c.client.V1BillingPortalSessions.Create(ctx, &stripe.BillingPortalSessionCreateParams{
 		Customer: stripe.String(customerId),
 		ReturnURL: stripe.String(
 			fmt.Sprintf("%s/%s/settings/billing", c.cfg.AppBaseUrl, accountSlug),
@@ -83,21 +92,22 @@ func (c *Client) NewBillingPortalSession(
 }
 
 func (c *Client) NewCheckoutSession(
+	ctx context.Context,
 	customerId, accountSlug, userId string,
 	logger *slog.Logger,
 ) (*stripe.CheckoutSession, error) {
-	priceMap, err := c.getPricesFromLookupKeys()
+	priceMap, err := c.getPricesFromLookupKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	lineitems := []*stripe.CheckoutSessionLineItemParams{}
+	lineitems := []*stripe.CheckoutSessionCreateLineItemParams{}
 	for lookup, quantity := range c.cfg.PriceLookups {
 		price, ok := priceMap[lookup]
 		if !ok {
 			return nil, fmt.Errorf("unable to find stripe price for lookup key: %s", lookup)
 		}
-		lineitem := &stripe.CheckoutSessionLineItemParams{
+		lineitem := &stripe.CheckoutSessionCreateLineItemParams{
 			Price: stripe.String(price.ID),
 		}
 		if quantity > 0 {
@@ -106,7 +116,7 @@ func (c *Client) NewCheckoutSession(
 		lineitems = append(lineitems, lineitem)
 	}
 	logger.Debug("creating stripe checkout session", "numLineItems", len(lineitems))
-	return c.client.CheckoutSessions.New(&stripe.CheckoutSessionParams{
+	return c.client.V1CheckoutSessions.Create(ctx, &stripe.CheckoutSessionCreateParams{
 		Mode:      stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: lineitems,
 		SuccessURL: stripe.String(
@@ -117,7 +127,7 @@ func (c *Client) NewCheckoutSession(
 		),
 		Customer: stripe.String(customerId),
 		Metadata: map[string]string{"userId": userId},
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+		SubscriptionData: &stripe.CheckoutSessionCreateSubscriptionDataParams{
 			BillingCycleAnchor: stripe.Int64(getNextMonthBillingCycleAnchor(time.Now().UTC())),
 		},
 	})
@@ -131,8 +141,11 @@ type MeterEventRequest struct {
 	Value      string
 }
 
-func (c *Client) NewMeterEvent(req *MeterEventRequest) (*stripe.BillingMeterEvent, error) {
-	return c.client.BillingMeterEvents.New(&stripe.BillingMeterEventParams{
+func (c *Client) NewMeterEvent(
+	ctx context.Context,
+	req *MeterEventRequest,
+) (*stripe.BillingMeterEvent, error) {
+	return c.client.V1BillingMeterEvents.Create(ctx, &stripe.BillingMeterEventCreateParams{
 		EventName:  stripe.String(req.EventName),
 		Identifier: stripe.String(req.Identifier),
 		Timestamp:  req.Timestamp,
@@ -152,21 +165,19 @@ func getNextMonthBillingCycleAnchor(date time.Time) int64 {
 	return firstOfNextMonth.Unix()
 }
 
-func (c *Client) getPricesFromLookupKeys() (map[string]*stripe.Price, error) {
+func (c *Client) getPricesFromLookupKeys(ctx context.Context) (map[string]*stripe.Price, error) {
 	output := map[string]*stripe.Price{}
 	pricelistParams := &stripe.PriceListParams{
 		LookupKeys: stripe.StringSlice(toLookupKeySlice(c.cfg.PriceLookups)),
 		Active:     stripe.Bool(true),
 	}
-	iter := c.client.Prices.List(pricelistParams)
-	for iter.Next() {
-		p := iter.Price()
+	for p, err := range c.client.V1Prices.List(ctx, pricelistParams).All(ctx) {
+		if err != nil {
+			return nil, err
+		}
 		if _, ok := c.cfg.PriceLookups[p.LookupKey]; ok {
 			output[p.LookupKey] = p
 		}
-	}
-	if iter.Err() != nil {
-		return nil, iter.Err()
 	}
 	if len(output) != len(c.cfg.PriceLookups) {
 		return nil, fmt.Errorf(

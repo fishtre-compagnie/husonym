@@ -9,13 +9,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel/connectors/mssqltunconnector"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/testcontainers/testcontainers-go"
 	testmssql "github.com/testcontainers/testcontainers-go/modules/mssql"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -125,12 +123,12 @@ func WithTls() Option {
 
 // Creates and starts a MsSQL test container and sets up the connection.
 func setup(ctx context.Context, cfg *mssqlTestContainerConfig) (*MssqlTestContainer, error) {
+	// The module waits for the port and for "Recovery is complete." itself, a minute
+	// each: two servers starting next to the other databases of a test take more than
+	// the 20 seconds this used to allow on a CI runner.
 	tcOpts := []testcontainers.ContainerCustomizer{
 		testmssql.WithAcceptEULA(),
 		testmssql.WithPassword(cfg.password),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("Recovery is complete.").WithStartupTimeout(20 * time.Second),
-		),
 	}
 	if cfg.useTls {
 		mssqlDf, err := testutil.GetMssqlTlsDockerfile()

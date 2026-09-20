@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.26-bookworm AS builder
+FROM golang:1.27-trixie AS builder
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive \
@@ -38,8 +38,8 @@ COPY backend/sql sql/
 # Build
 RUN go build -ldflags="-s -w -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.buildDate=$buildDate' -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.gitCommit=$gitCommit' -X 'github.com/fishtre-compagnie/husonym/backend/internal/version.gitVersion=$gitVersion'" -o bin/mgmt cmd/mgmt/*.go
 
-# Use debian:bullseye-slim as the base image to include necessary C libraries
-FROM debian:bookworm-slim
+# Debian slim, for the C libraries the binary links against
+FROM debian:trixie-slim
 WORKDIR /
 
 # Install CA certificates for HTTPS connections

@@ -1,20 +1,40 @@
 import { cn } from '@/libs/utils';
-import { Cell, Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 import { VirtualItem } from '@tanstack/react-virtual';
 import { memo, ReactNode } from 'react';
+import { AppTableFeatures } from '../table/features';
 import { TableRow } from '../ui/table';
+import { columnFlexStyle } from './columnFlexStyle';
 import MemoizedCell from './MemoizedCell';
 
-interface Props<TData> {
-  row: Row<TData>;
+interface Props<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
   virtualRow: VirtualItem;
   selected: boolean;
   tableRowClassName?: string;
   disableTdWidth?: boolean;
+  /**
+   * Fixe la largeur de chaque cellule à la `size` de sa colonne, au lieu des
+   * 187px uniformes. Doit être activé de la même façon sur l'en-tête, sinon
+   * en-têtes et valeurs se décalent : avec `justify-between`, l'espace libre est
+   * réparti ENTRE les cellules, donc des contenus de largeurs différentes
+   * (champ de filtre en en-tête, badge en cellule) ne tombent pas au même endroit.
+   */
+  useColumnSizes?: boolean;
+  /** Ids des colonnes qui ne s'étirent pas. Doit être identique à l'en-tête,
+   *  sinon les deux se décalent. */
+  noGrowColumnIds?: string[];
 }
 
-function InnerRow<TData>(props: Props<TData>): ReactNode {
-  const { row, virtualRow, tableRowClassName, disableTdWidth } = props;
+function InnerRow<TData extends RowData>(props: Props<TData>): ReactNode {
+  const {
+    row,
+    virtualRow,
+    tableRowClassName,
+    disableTdWidth,
+    useColumnSizes,
+    noGrowColumnIds,
+  } = props;
   return (
     <TableRow
       key={row.id}
@@ -23,36 +43,54 @@ function InnerRow<TData>(props: Props<TData>): ReactNode {
         height: `${virtualRow.size}px`,
       }}
       className={cn(
-        'items-center flex absolute w-full justify-between px-2 gap-0 space-x-0',
+        'items-center flex absolute w-full px-2 gap-0 space-x-0',
+        // Largeurs fixes : les cellules se suivent, sans espace réparti entre elles.
+        useColumnSizes ? 'justify-start' : 'justify-between',
         tableRowClassName
       )}
     >
       {row.getVisibleCells().map((cell) => (
         <td
           key={cell.id}
-          className="py-2"
-          style={{
-            minWidth: cell.column.getSize(),
-            width: disableTdWidth
-              ? undefined
-              : cell.column.columnDef.id === 'isSelected'
-                ? '20px'
-                : '187px',
-          }}
+          // pl-2 : compense le padding interne du champ de filtre de l'en-tête
+          // (pl-2 + bordure), pour que le libellé de colonne tombe exactement
+          // au-dessus des valeurs. S'applique à toutes les tables, puisque
+          // l'en-tête est partagé (SchemaColumnHeader).
+          className="py-2 pl-2"
+          style={
+            useColumnSizes
+              ? columnFlexStyle(
+                  cell.column.getSize(),
+                  cell.column.id,
+                  noGrowColumnIds
+                )
+              : {
+                  minWidth: cell.column.getSize(),
+                  width: disableTdWidth
+                    ? undefined
+                    : cell.column.columnDef.id === 'isSelected'
+                      ? '20px'
+                      : '187px',
+                }
+          }
         >
-          {/* For some reason TS can't figure out how to type the incoming cell dynamically as Cell<TData, unknown>
-              so we have to cast it here */}
-          <MemoizedCell cell={cell as Cell<unknown, unknown>} />
+          <MemoizedCell cell={cell} />
         </td>
       ))}
     </TableRow>
   );
 }
 
-function shouldReRender<TData>(
+function shouldReRender<TData extends RowData>(
   prev: Props<TData>,
   next: Props<TData>
 ): boolean {
+  if (
+    prev.useColumnSizes !== next.useColumnSizes ||
+    prev.noGrowColumnIds !== next.noGrowColumnIds
+  ) {
+    return false;
+  }
   if (
     prev.tableRowClassName !== next.tableRowClassName &&
     (prev.tableRowClassName !== undefined ||
@@ -106,4 +144,6 @@ function shouldReRender<TData>(
 
 const MemoizedRow = memo(InnerRow, shouldReRender);
 MemoizedRow.displayName = 'MemoizedRow';
-export default MemoizedRow;
+// memo() drops the TData parameter of InnerRow, and table types are invariant
+// in TData: restore the generic signature for callers.
+export default MemoizedRow as typeof InnerRow;

@@ -1,16 +1,18 @@
 import FastTable from '@/components/FastTable/FastTable';
+import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
 import { CardDescription, CardTitle } from '@/components/ui/card';
 import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { JobMapping } from '@husonym/sdk';
 import {
   ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
   Row,
   RowData,
-  useReactTable,
+  TableFeatures,
+  useTable,
 } from '@tanstack/react-table';
 import { ReactElement } from 'react';
 import { GoWorkflow } from 'react-icons/go';
@@ -18,9 +20,9 @@ import { ImportMappingsConfig } from '../SchemaTable/ImportJobMappingsButton';
 import { SchemaTableToolbar } from '../SchemaTable/SchemaTableToolBar';
 import { TransformerResult } from '../SchemaTable/transformer-handler';
 
-interface Props<TData, TValue> {
+interface Props<TData extends RowData> {
   data: TData[];
-  columns: ColumnDef<TData, TValue>[];
+  columns: ColumnDef<AppTableFeatures, TData>[];
   onTransformerUpdate(index: number, config: JobMappingTransformerForm): void;
   getAvailableTransformers(index: number): TransformerResult;
   getTransformerFromField(index: number): Transformer;
@@ -29,14 +31,19 @@ interface Props<TData, TValue> {
     indices: number[],
     config: JobMappingTransformerForm
   ): void;
-  getAvalableTransformersForBulk(rows: Row<TData>[]): TransformerResult;
+  getAvalableTransformersForBulk(
+    rows: Row<AppTableFeatures, TData>[]
+  ): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
 
   isApplyDefaultTransformerButtonDisabled: boolean;
   displayApplyDefaultTransformersButton: boolean;
   onApplyDefaultClick(override: boolean): void;
 
-  onExportMappingsClick(selected: Row<TData>[], shouldFormat: boolean): void;
+  onExportMappingsClick(
+    selected: Row<AppTableFeatures, TData>[],
+    shouldFormat: boolean
+  ): void;
   onImportMappingsClick(
     jobmappings: JobMapping[],
     config: ImportMappingsConfig
@@ -49,10 +56,19 @@ interface Props<TData, TValue> {
   getAvailableCollectionsByRow(index: number): string[];
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
+
+  // Id de la connexion source, propagé aux cellules via meta pour l'aperçu.
+  sourceConnectionId?: string;
+
+  // Scan de contenu PII (Presidio) — actif uniquement pour les jobs sync.
+  showPiiScan?: boolean;
+  onScanContent?(): void;
+  isScanningPii?: boolean;
 }
 
 declare module '@tanstack/react-table' {
-  interface TableMeta<TData extends RowData> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TFeatures extends TableFeatures, TData extends RowData> {
     jmTable?: {
       onTransformerUpdate(
         rowIndex: number,
@@ -67,12 +83,15 @@ declare module '@tanstack/react-table' {
       onRowUpdate(rowIndex: number, newValue: TData): void;
       // Returns the available schema.table list
       getAvailableCollectionsByRow(rowIndex: number): string[];
+      // Id de la connexion source. Absent pour les jobs generate : il n'y a
+      // alors aucune donnée à échantillonner, le bouton d'aperçu est masqué.
+      sourceConnectionId?: string;
     };
   }
 }
 
-export default function JobMappingTable<TData, TValue>(
-  props: Props<TData, TValue>
+export default function JobMappingTable<TData extends RowData>(
+  props: Props<TData>
 ): ReactElement {
   const {
     data,
@@ -95,14 +114,16 @@ export default function JobMappingTable<TData, TValue>(
     getAvailableCollectionsByRow,
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
+    sourceConnectionId,
+    showPiiScan,
+    onScanContent,
+    isScanningPii,
   } = props;
 
-  const table = useReactTable({
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     meta: {
       jmTable: {
         onTransformerUpdate,
@@ -113,6 +134,7 @@ export default function JobMappingTable<TData, TValue>(
         canRenameColumn,
         onRowUpdate,
         getAvailableCollectionsByRow,
+        sourceConnectionId,
       },
     },
   });
@@ -150,10 +172,26 @@ export default function JobMappingTable<TData, TValue>(
           onRemoveMissingSourceColumnMappings={
             onRemoveMissingSourceColumnMappings
           }
+          showPiiScan={showPiiScan}
+          onScanContent={onScanContent}
+          isScanningPii={isScanningPii}
         />
       </div>
 
-      <FastTable table={table} estimateRowSize={() => 53} rowOverscan={50} />
+      {/* useColumnSizes : par défaut FastTable impose 187px à chaque colonne, ce
+          qui dépasse la largeur de l'écran. L'option applique la `size` déclarée
+          par chaque colonne (cf. Columns.tsx), dimensionnées pour tenir sans
+          défilement horizontal, et aligne l'en-tête sur les valeurs. */}
+      <FastTable
+        table={table}
+        estimateRowSize={() => 53}
+        rowOverscan={50}
+        useColumnSizes
+        // Les colonnes se partagent toute la largeur proportionnellement à leur
+        // `size`. Seules la case à cocher et le bouton d'aperçu gardent une
+        // largeur fixe : ce sont des icônes, les étirer ne servirait à rien.
+        noGrowColumnIds={NO_GROW_COLUMNS}
+      />
 
       <div className="text-xs text-gray-600 dark:text-gray-400 pt-4">
         Total rows: ({getFormattedCount(data.length)}) Rows visible: (
@@ -162,6 +200,10 @@ export default function JobMappingTable<TData, TValue>(
     </div>
   );
 }
+
+// Défini hors du composant : une nouvelle référence à chaque rendu invaliderait
+// la mémoïsation des lignes (cf. shouldReRender dans MemoizedRow).
+const NO_GROW_COLUMNS = ['isSelected', 'preview'];
 
 const US_NUMBER_FORMAT = new Intl.NumberFormat('en-US');
 function getFormattedCount(count: number): string {

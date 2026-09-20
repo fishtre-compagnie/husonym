@@ -19,8 +19,10 @@ import (
 	"go.temporal.io/sdk/testsuite"
 )
 
+// Not parallel: next to Test_Workflow starting its databases under -race, the workflow
+// goroutine could wait more than a second for a CPU, which the test environment of
+// Temporal reports as a deadlock (TMPRL1101).
 func Test_ProcessAccountHookWorkflow(t *testing.T) {
-	t.Parallel()
 	ok := testutil.ShouldRunWorkerIntegrationTest()
 	if !ok {
 		return

@@ -186,6 +186,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guides/detection-rgpd',
+      label: 'Détection RGPD automatique',
+    },
+    {
+      type: 'doc',
       id: 'guides/custom-code-transformers',
       label: 'Custom Code Transformers',
     },

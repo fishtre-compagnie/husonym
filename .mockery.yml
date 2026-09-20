@@ -1,153 +1,142 @@
-quiet: False
-disable-version-string: True
-with-expecter: True
-filename: "mock_{{.InterfaceName}}.go"
-dir: "{{.InterfaceDir}}"
-mockname: "Mock{{.InterfaceName}}"
-outpkg: "{{.PackageName}}"
-inpackage: True
-resolve-type-alias: False
-issue-845-fix: True
-
+dir: '{{.InterfaceDir}}'
+filename: mock_{{.InterfaceName}}.go
+structname: Mock{{.InterfaceName}}
+# backend/gen holds sqlc and connect code, which carries the generated header.
+include-auto-generated: true
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
-  github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt:
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db:
     interfaces:
-      JwtValidator:
-  github.com/fishtre-compagnie/husonym/backend/internal/auth/client:
+      DBTX: {}
+      Querier: {}
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql:
     interfaces:
-      Interface:
-  github.com/fishtre-compagnie/husonym/internal/authmgmt:
+      DBTX: {}
+      Querier: {}
+  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql:
     interfaces:
-      Interface:
-  github.com/fishtre-compagnie/husonym/backend/internal/auth/clientcred_token_provider:
+      DBTX: {}
+      Querier: {}
+  github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect:
     interfaces:
-      tokenProvider:
+      AccountHookServiceClient: {}
+      AuthServiceClient: {}
+      ConnectionServiceClient: {}
+      JobServiceClient: {}
+      JobServiceHandler: {}
+      TransformersServiceClient: {}
+      UserAccountServiceClient: {}
   github.com/fishtre-compagnie/husonym/backend/internal/auth/authmw:
     interfaces:
-      AuthClient:
-  github.com/fishtre-compagnie/husonym/internal/husonymdb:
-    # config:
+      AuthClient: {}
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/client:
     interfaces:
-      DBTX:
-  github.com/fishtre-compagnie/husonym/backend/gen/go/db:
-    # config:
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/clientcred_token_provider:
     interfaces:
-      Querier:
-      DBTX:
-  github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect:
-    # config:
+      tokenProvider: {}
+  github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt:
     interfaces:
-      UserAccountServiceClient:
-      JobServiceClient:
-      JobServiceHandler:
-      ConnectionServiceClient:
-      AuthServiceClient:
-      TransformersServiceClient:
-      AccountHookServiceClient:
-  github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager:
-    interfaces:
-      DB:
-      Interface:
-      ConfigProvider:
-  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql:
-    # config:
-    interfaces:
-      Querier:
-      DBTX:
-  github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql:
-    # config:
-    interfaces:
-      Querier:
-      DBTX:
-  github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier:
-    # config:
-    interfaces:
-      Querier:
-  github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect:
-    interfaces:
-      SqlConnector:
-      SqlDbContainer:
-  github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager:
-    interfaces:
-      SqlDatabase:
-      SqlManagerClient:
-  github.com/fishtre-compagnie/husonym/internal/aws:
-    interfaces:
-      HusonymAwsManagerClient:
-      dynamoDBAPIV2:
-  github.com/fishtre-compagnie/husonym/internal/benthos-stream:
-    interfaces:
-      BenthosStreamClient:
-      BenthosStreamManagerClient:
-  github.com/prometheus/client_golang/api/prometheus/v1:
-    config:
-      dir: "internal/mocks/{{.PackagePath}}"
-      inpackage: False
-      outpkg: promapiv1mock
-    interfaces:
-      API:
+      JwtValidator: {}
   github.com/fishtre-compagnie/husonym/backend/internal/loki:
     interfaces:
-      LokiHttpClient:
-  github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect:
-    interfaces:
-      Interface:
-      DbContainer:
-  github.com/fishtre-compagnie/husonym/internal/gcp:
-    interfaces:
-      ManagerInterface:
-      ClientInterface:
-  github.com/fishtre-compagnie/husonym/internal/connection-manager:
-    interfaces:
-      ConnectionProvider:
-  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/dynamodb:
-    interfaces:
-      dynamoDBAPIV2:
-  github.com/fishtre-compagnie/husonym/internal/billing:
-    interfaces:
-      Interface:
-  github.com/jackc/pgx/v5:
-    config:
-      dir: "internal/mocks/{{.PackagePath}}"
-      inpackage: False
-      outpkg: pgxmock
-    interfaces:
-      Tx:
-  github.com/fishtre-compagnie/husonym/internal/ee/presidio:
-    interfaces:
-      AnalyzeInterface:
-      AnonymizeInterface:
-      EntityInterface:
+      LokiHttpClient: {}
   github.com/fishtre-compagnie/husonym/backend/internal/userdata:
     interfaces:
-      Interface:
-      EntityEnforcer:
-  github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
+      EntityEnforcer: {}
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect:
     interfaces:
-      HusonymOperatorApi:
-  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor:
+      DbContainer: {}
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier:
     interfaces:
-      UserDefinedTransformerResolver:
+      Querier: {}
+  github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect:
+    interfaces:
+      SqlConnector: {}
+      SqlDbContainer: {}
   github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx:
     interfaces:
-      DBTX:
-  github.com/fishtre-compagnie/husonym/internal/encrypt/sym:
+      DBTX: {}
+  github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager:
     interfaces:
-      Interface:
-  github.com/fishtre-compagnie/husonym/internal/ee/slack:
+      SqlDatabase: {}
+      SqlManagerClient: {}
+  github.com/fishtre-compagnie/husonym/internal/authmgmt:
     interfaces:
-      Interface:
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/internal/aws:
+    interfaces:
+      HusonymAwsManagerClient: {}
+      dynamoDBAPIV2: {}
+  github.com/fishtre-compagnie/husonym/internal/benthos-stream:
+    interfaces:
+      BenthosStreamClient: {}
+      BenthosStreamManagerClient: {}
+  github.com/fishtre-compagnie/husonym/internal/billing:
+    interfaces:
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/internal/connection-manager:
+    interfaces:
+      ConnectionProvider: {}
   github.com/fishtre-compagnie/husonym/internal/connectiondata:
     interfaces:
-      ConnectionDataBuilder:
-      ConnectionDataService:
-      SampleDataStream:
-  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
+      ConnectionDataBuilder: {}
+      ConnectionDataService: {}
+      SampleDataStream: {}
+  github.com/fishtre-compagnie/husonym/internal/ee/presidio:
     interfaces:
-      OpenAiCompletionsClient:
-  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared:
+      AnalyzeInterface: {}
+      AnonymizeInterface: {}
+      EntityInterface: {}
+  github.com/fishtre-compagnie/husonym/internal/ee/slack:
     interfaces:
-      BlockAllocator:
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
+    interfaces:
+      HusonymOperatorApi: {}
+  github.com/fishtre-compagnie/husonym/internal/encrypt/sym:
+    interfaces:
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/internal/gcp:
+    interfaces:
+      ClientInterface: {}
+      ManagerInterface: {}
+  github.com/fishtre-compagnie/husonym/internal/husonymdb:
+    interfaces:
+      DBTX: {}
+  github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager:
+    interfaces:
+      ConfigProvider: {}
+      DB: {}
+      Interface: {}
+  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/dynamodb:
+    interfaces:
+      dynamoDBAPIV2: {}
+  github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor:
+    interfaces:
+      UserDefinedTransformerResolver: {}
   github.com/fishtre-compagnie/husonym/worker/pkg/rng:
     interfaces:
-      Rand:
+      Rand: {}
+  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
+    interfaces:
+      OpenAiCompletionsClient: {}
+  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared:
+    interfaces:
+      BlockAllocator: {}
+  github.com/jackc/pgx/v5:
+    config:
+      dir: internal/mocks/{{.SrcPackagePath}}
+      pkgname: pgxmock
+    interfaces:
+      Tx: {}
+  github.com/prometheus/client_golang/api/prometheus/v1:
+    config:
+      dir: internal/mocks/{{.SrcPackagePath}}
+      pkgname: promapiv1mock
+    interfaces:
+      API: {}

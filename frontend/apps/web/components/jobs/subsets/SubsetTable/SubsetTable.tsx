@@ -1,18 +1,20 @@
 import FastTable from '@/components/FastTable/FastTable';
 import {
+  AppTableFeatures,
+  unpaginatedTableFeatures,
+} from '@/components/table/features';
+import {
   ColumnDef,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
   RowData,
-  useReactTable,
+  TableFeatures,
+  useTable,
 } from '@tanstack/react-table';
 import { ReactElement } from 'react';
 import { SubsetTableToolbar } from './SubsetTableToolbar';
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface TableMeta<TData extends RowData> {
+  interface TableMeta<TFeatures extends TableFeatures, TData extends RowData> {
     subsetTable?: {
       onEdit(rowIndex: number, schema: string, table: string): void;
       onReset(rowIndex: number, schema: string, table: string): void;
@@ -21,28 +23,26 @@ declare module '@tanstack/react-table' {
   }
 }
 
-interface Props<TData, TValue> {
+interface Props<TData extends RowData> {
   data: TData[];
-  columns: ColumnDef<TData, TValue>[];
+  columns: ColumnDef<AppTableFeatures, TData>[];
   onEdit(rowIndex: number, schema: string, table: string): void;
   onReset(rowIndex: number, schema: string, table: string): void;
   hasLocalChange(rowIndex: number, schema: string, table: string): boolean;
   onBulkEdit(data: TData[], onClearSelection: () => void): void;
 }
 
-export default function SubsetTable<TData, TValue>(
-  props: Props<TData, TValue>
+export default function SubsetTable<TData extends RowData>(
+  props: Props<TData>
 ): ReactElement {
   const { data, columns, onEdit, onReset, hasLocalChange, onBulkEdit } = props;
 
-  const table = useReactTable({
+  const table = useTable({
+    features: unpaginatedTableFeatures,
     data,
     columns,
     enableRowSelection: true,
     initialState: {},
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     meta: {
       subsetTable: {
         onEdit,
@@ -55,10 +55,10 @@ export default function SubsetTable<TData, TValue>(
   return (
     <div className="flex flex-col gap-4">
       <SubsetTableToolbar
-        isFilterButtonDisabled={table.getState().columnFilters.length === 0}
+        isFilterButtonDisabled={table.state.columnFilters.length === 0}
         onClearFilters={() => table.resetColumnFilters()}
         isBulkEditButtonDisabled={
-          Object.keys(table.getState().rowSelection).length <= 1
+          Object.keys(table.state.rowSelection).length <= 1
         }
         onBulkEditClick={() => {
           const selectedRows = table

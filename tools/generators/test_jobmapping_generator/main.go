@@ -14,7 +14,7 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	parser "github.com/fishtre-compagnie/husonym/internal/tsqlparser"
-	pg_query "github.com/pganalyze/pg_query_go/v5"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
 type Input struct {

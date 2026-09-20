@@ -19,6 +19,7 @@ import { TableIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { nanoid } from 'nanoid';
 import { ReactElement, useCallback, useMemo } from 'react';
+import { AppTableFeatures } from '../../table/features';
 import { NOSQL_COLUMNS, NosqlJobMappingRow } from '../JobMappingTable/Columns';
 import JobMappingTable from '../JobMappingTable/JobMappingTable';
 import FormErrorsCard, { FormError } from '../SchemaTable/FormErrorsCard';
@@ -60,7 +61,7 @@ interface Props {
   getTransformerFromField(index: number): Transformer;
   onApplyDefaultClick(override: boolean): void;
   getAvailableTransformersForBulk(
-    rows: Row<NosqlJobMappingRow>[]
+    rows: Row<AppTableFeatures, NosqlJobMappingRow>[]
   ): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
   onTransformerBulkUpdate(

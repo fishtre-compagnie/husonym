@@ -307,7 +307,7 @@ func Test_Workflow(t *testing.T) {
 			dbManagers,
 			accountId,
 			"mariadb",
-			[]tcmysql.Option{tcmysql.WithImage("mariadb:11.4")},
+			[]tcmysql.Option{tcmysql.WithImage("mariadb:11.4.13")},
 		)
 	})
 

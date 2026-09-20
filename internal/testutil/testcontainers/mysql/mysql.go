@@ -72,7 +72,7 @@ func (m *MysqlTestSyncContainer) TearDown(ctx context.Context) error {
 }
 
 const (
-	defaultMysqlImage = "mysql:8.0.36"
+	defaultMysqlImage = "mysql:8.4.11"
 
 	mysqlReadyLog   = "port: 3306  MySQL Community Server"
 	mariadbReadyLog = "port: 3306  mariadb.org binary distribution"
@@ -140,7 +140,7 @@ func WithTls() Option {
 	}
 }
 
-// Sets the container image (e.g. "mariadb:11.4"); defaults to mysql:8.0.36
+// Sets the container image (e.g. "mariadb:11.4.13"); defaults to defaultMysqlImage
 func WithImage(image string) Option {
 	return func(mtc *mysqlTestContainerConfig) {
 		mtc.image = image
@@ -168,21 +168,28 @@ func setup(ctx context.Context, cfg *mysqlTestContainerConfig) (*MysqlTestContai
 				WithStartupTimeout(120 * time.Second),
 		),
 	}
+	serverArgs := []string{}
+	if strings.HasPrefix(cfg.image, "mysql:") {
+		// MySQL 8.4 refuses to create a foreign key on a non-unique or partial
+		// key, which 8.0 allowed and keeps across an upgrade. The fixtures
+		// model such source databases, so the test server accepts them too.
+		serverArgs = append(serverArgs, "--restrict-fk-on-non-standard-key=OFF")
+	}
 	if cfg.useTls {
 		clientCertPaths, err := testutil.GetTlsCertificatePaths()
 		if err != nil {
 			return nil, err
 		}
+		serverArgs = append(
+			serverArgs,
+			"--ssl-ca=/etc/mysql/certs/root.crt",
+			"--ssl-cert=/etc/mysql/certs/server.crt",
+			"--ssl-key=/etc/mysql/certs/server.key",
+			"--require-secure-transport=ON",
+			"--tls-version=TLSv1.2,TLSv1.3",
+		)
 		tcopts = append(
 			tcopts,
-			testutil.WithCmd([]string{
-				"mysqld",
-				"--ssl-ca=/etc/mysql/certs/root.crt",
-				"--ssl-cert=/etc/mysql/certs/server.crt",
-				"--ssl-key=/etc/mysql/certs/server.key",
-				"--require-secure-transport=ON",
-				"--tls-version=TLSv1.2,TLSv1.3",
-			}),
 			testutil.WithFiles([]testcontainers.ContainerFile{
 				{
 					HostFilePath:      clientCertPaths.ServerCertPath,
@@ -204,6 +211,9 @@ func setup(ctx context.Context, cfg *mysqlTestContainerConfig) (*MysqlTestContai
 				"chown", "mysql:mysql", "/etc/mysql/certs/server.key",
 			})),
 		)
+	}
+	if len(serverArgs) > 0 {
+		tcopts = append(tcopts, testutil.WithCmd(append([]string{"mysqld"}, serverArgs...)))
 	}
 	mysqlContainer, err := testmysql.Run(
 		ctx,

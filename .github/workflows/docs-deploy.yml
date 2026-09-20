@@ -22,7 +22,7 @@ jobs:
         working-directory: docs
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Fail early with a readable message rather than deep inside wrangler
       - name: Check Cloudflare credentials are set
@@ -40,7 +40,7 @@ jobs:
           fi
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: npm
@@ -52,12 +52,12 @@ jobs:
       # Serves build/ from Workers Static Assets on docs.husonym.com.
       # See docs/wrangler.jsonc for the routing configuration.
       #
-      # wranglerVersion must stay pinned: the action defaults to wrangler 3.90,
-      # which predates assets-only Workers and fails with "Missing entry-point"
-      # because this config has no `main`. It matches the devDependency in
-      # docs/package.json so local and CI deploys behave the same.
+      # wranglerVersion stays pinned: the major follows the devDependency in
+      # docs/package.json, so that local and CI deploys behave the same. Wrangler 3
+      # predates assets-only Workers and fails with "Missing entry-point" because this
+      # config has no `main`.
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

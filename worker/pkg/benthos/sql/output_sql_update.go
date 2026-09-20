@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
+	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
+	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
-	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
-	_ "github.com/doug-martin/goqu/v9/dialect/postgres"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 

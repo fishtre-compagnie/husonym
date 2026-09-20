@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func Test_GenerateRandomFloat(t *testing.T) {
 			randomizeSign: false,
 			min:           0,
 			max:           100,
-			precision:     shared.Ptr(int64(7)),
+			precision:     gotypeutil.ToPtr(int64(7)),
 			floor:         0,
 			ceil:          100,
 		},
@@ -39,7 +39,7 @@ func Test_GenerateRandomFloat(t *testing.T) {
 			randomizeSign: false,
 			min:           -100,
 			max:           100,
-			precision:     shared.Ptr(int64(7)),
+			precision:     gotypeutil.ToPtr(int64(7)),
 			floor:         -100,
 			ceil:          100,
 		},
@@ -48,7 +48,7 @@ func Test_GenerateRandomFloat(t *testing.T) {
 			randomizeSign: true,
 			min:           20,
 			max:           40,
-			precision:     shared.Ptr(int64(7)),
+			precision:     gotypeutil.ToPtr(int64(7)),
 			floor:         -40,
 			ceil:          40,
 		},
@@ -57,7 +57,7 @@ func Test_GenerateRandomFloat(t *testing.T) {
 			randomizeSign: false,
 			min:           12.3,
 			max:           19.2,
-			precision:     shared.Ptr(int64(7)),
+			precision:     gotypeutil.ToPtr(int64(7)),
 			floor:         12.3,
 			ceil:          19.2,
 		},
@@ -66,8 +66,8 @@ func Test_GenerateRandomFloat(t *testing.T) {
 			randomizeSign: false,
 			min:           12.3,
 			max:           19.2,
-			precision:     shared.Ptr(int64(3)),
-			scale:         shared.Ptr(int64(1)),
+			precision:     gotypeutil.ToPtr(int64(3)),
+			scale:         gotypeutil.ToPtr(int64(1)),
 			floor:         12.3,
 			ceil:          19.2,
 		},

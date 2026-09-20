@@ -23,10 +23,23 @@ const (
 	runContext_ExternalId_BenthosConfig       = "benthosconfig"
 	runContext_ExternalId_PostTableSyncConfig = "posttablesync"
 	runContext_ExternalId_ConnectionIds       = "tablesync-connectionids"
+	runContext_ExternalId_TablePlan           = "tableplan"
+	runContext_ExternalId_SuspendedTriggers   = "suspended-triggers"
 )
+
+// GetSuspendedTriggersExternalId is the run context key of the destination triggers a run
+// took out of its way, with what creates them again.
+func GetSuspendedTriggersExternalId() string {
+	return runContext_ExternalId_SuspendedTriggers
+}
 
 func GetBenthosConfigExternalId(identifier string) string {
 	return fmt.Sprintf("%s-%s", runContext_ExternalId_BenthosConfig, identifier)
+}
+
+// GetTablePlanExternalId is the run context key of the engine-neutral plan of a table sync.
+func GetTablePlanExternalId(identifier string) string {
+	return fmt.Sprintf("%s-%s", runContext_ExternalId_TablePlan, identifier)
 }
 
 func GetConnectionIdsExternalId() string {

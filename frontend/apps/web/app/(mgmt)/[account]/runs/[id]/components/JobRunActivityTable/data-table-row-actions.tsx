@@ -6,17 +6,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
+interface DataTableRowActionsProps<TData extends RowData> {
+  row: Row<AppTableFeatures, TData>;
   onViewSelectClicked(): void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends RowData>({
   onViewSelectClicked,
 }: DataTableRowActionsProps<TData>) {
   return (

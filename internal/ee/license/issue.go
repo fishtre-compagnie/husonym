@@ -86,7 +86,7 @@ type IssuedLicense struct {
 
 // Issue mints and signs a license. The returned Encoded value is what goes into
 // EE_LICENSE, and getLicense() verifies it against the embedded public key.
-func Issue(req IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
+func Issue(req *IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
 	if len(priv) == 0 {
 		return nil, errors.New("no private key provided")
 	}

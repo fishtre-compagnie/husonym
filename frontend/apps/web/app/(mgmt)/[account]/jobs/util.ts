@@ -94,8 +94,6 @@ import {
   MysqlOnConflictConfig_MysqlOnConflictDoNothingSchema,
   MysqlOnConflictConfig_MysqlOnConflictUpdateSchema,
   MysqlOnConflictConfigSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
   MysqlSourceConnectionOptionsSchema,
   MysqlSourceSchemaOption,
   MysqlSourceSchemaOptionSchema,
@@ -121,6 +119,8 @@ import {
   VirtualForeignConstraint,
   VirtualForeignConstraintSchema,
   VirtualForeignKeySchema,
+  ConsistencyScope,
+  JobEngine,
   WorkflowOptions,
   WorkflowOptionsSchema,
 } from '@husonym/sdk';
@@ -479,9 +479,13 @@ function toPiiDetectTableScanFilter(
 export function toWorkflowOptions(
   values?: WorkflowSettingsSchema
 ): WorkflowOptions | undefined {
-  if (values?.runTimeout) {
+  if (values?.runTimeout || values?.engine || values?.consistencyScope) {
     return create(WorkflowOptionsSchema, {
-      runTimeout: convertMinutesToNanoseconds(values.runTimeout),
+      runTimeout: values.runTimeout
+        ? convertMinutesToNanoseconds(values.runTimeout)
+        : undefined,
+      engine: values.engine ?? JobEngine.UNSPECIFIED,
+      consistencyScope: values.consistencyScope ?? ConsistencyScope.UNSPECIFIED,
     });
   }
   return undefined;
@@ -1189,6 +1193,11 @@ function setDefaultDefineFormValues(
           runTimeout: job.workflowOptions.runTimeout
             ? convertNanosecondsToMinutes(job.workflowOptions.runTimeout)
             : undefined,
+          // Le moteur et la portée de cohérence font partie du job au même titre que
+          // le timeout : sans eux, la copie repart sur le défaut de déploiement et
+          // l'étape Define affiche ce défaut, donc rien ne signale la perte.
+          engine: job.workflowOptions.engine,
+          consistencyScope: job.workflowOptions.consistencyScope,
         }
       : undefined,
   };
@@ -1300,23 +1309,6 @@ function setDefaultConnectFormValues(
         };
         storage.setItem(sessionKeys.piidetect.connect, JSON.stringify(values));
         return;
-      }
-      if (
-        job.source.options.config.value.haltOnNewColumnAddition &&
-        !job.source.options.config.value.newColumnAdditionStrategy
-      ) {
-        job.source.options.config.value.newColumnAdditionStrategy = create(
-          MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
-          {
-            strategy: {
-              case: 'haltJob',
-              value: create(
-                MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-                {}
-              ),
-            },
-          }
-        );
       }
       const values: ConnectFormValues = {
         sourceId: job.source.options.config.value.connectionId,

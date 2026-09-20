@@ -5,6 +5,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -193,4 +194,78 @@ func Test_isDefaultJobMappingTransformer(t *testing.T) {
 		actual := isDefaultJobMappingTransformer(nil)
 		require.False(t, actual)
 	})
+}
+
+// The default of a mandatory key says "no parent" only when it is a value. Trimming the
+// quotes alone left the type PostgreSQL reports a default with ('XX'::text -> XX'::text),
+// a sentinel no row ever matches — and the rows meant to be spared were deleted instead.
+func Test_noParentValue(t *testing.T) {
+	cases := []struct {
+		driver, columnDefault, want string
+		ok                          bool
+	}{
+		{sqlmanager_shared.PostgresDriver, `'XX'::text`, "XX", true},
+		{sqlmanager_shared.PostgresDriver, `'XX'::character varying`, "XX", true},
+		{sqlmanager_shared.PostgresDriver, `'it''s'::text`, "it's", true},
+		{sqlmanager_shared.PostgresDriver, `0`, "0", true},
+		{sqlmanager_shared.PostgresDriver, `-1`, "-1", true},
+		{sqlmanager_shared.PostgresDriver, `nextval('t_id_seq'::regclass)`, "", false},
+		{sqlmanager_shared.PostgresDriver, `gen_random_uuid()`, "", false},
+		{sqlmanager_shared.PostgresDriver, `CURRENT_TIMESTAMP`, "", false},
+		{sqlmanager_shared.PostgresDriver, ``, "", false},
+		{sqlmanager_shared.MysqlDriver, `XX`, "XX", true},
+		{sqlmanager_shared.MysqlDriver, `0`, "0", true},
+		{sqlmanager_shared.MysqlDriver, `(uuid())`, "", false},
+		{sqlmanager_shared.MssqlDriver, `(('XX'))`, "XX", true},
+		{sqlmanager_shared.MssqlDriver, `((0))`, "0", true},
+		{sqlmanager_shared.MssqlDriver, `(getdate())`, "", false},
+	}
+	for _, c := range cases {
+		got, ok := noParentValue(c.driver, c.columnDefault)
+		require.Equal(t, c.ok, ok, "%s %q", c.driver, c.columnDefault)
+		require.Equal(t, c.want, got, "%s %q", c.driver, c.columnDefault)
+	}
+}
+
+// filterForeignKeysMap takes out of a key the columns a null transformer writes NULL. What
+// is left of a composite key reads as mandatory — every column it kept refuses NULL —
+// while the key itself, holding a NULL, references nothing (MATCH SIMPLE) and the database
+// never enforces it. The plan must leave such a key out rather than delete rows over it.
+func Test_reducedKey(t *testing.T) {
+	declared := []*sqlmanager_shared.ForeignConstraint{
+		{
+			Columns:     []string{"tenant_id", "owner_id"},
+			NotNullable: []bool{true, false},
+			ForeignKey:  &sqlmanager_shared.ForeignKey{Table: "public.owners", Columns: []string{"tenant_id", "id"}},
+		},
+		{
+			Columns:     []string{"account_id"},
+			NotNullable: []bool{true},
+			ForeignKey:  &sqlmanager_shared.ForeignKey{Table: "public.accounts", Columns: []string{"id"}},
+		},
+	}
+
+	reduced := &rc.ForeignKey{
+		Columns: []string{"tenant_id"}, NotNullable: []bool{true},
+		ReferenceSchema: "public", ReferenceTable: "owners", ReferenceColumns: []string{"tenant_id"},
+	}
+	require.True(t, reducedKey(declared, reduced), "owner_id was written NULL: the key is not enforced")
+
+	whole := &rc.ForeignKey{
+		Columns: []string{"tenant_id", "owner_id"}, NotNullable: []bool{true, false},
+		ReferenceSchema: "public", ReferenceTable: "owners", ReferenceColumns: []string{"tenant_id", "id"},
+	}
+	require.False(t, reducedKey(declared, whole), "the key as it was declared")
+
+	single := &rc.ForeignKey{
+		Columns: []string{"account_id"}, NotNullable: []bool{true},
+		ReferenceSchema: "public", ReferenceTable: "accounts", ReferenceColumns: []string{"id"},
+	}
+	require.False(t, reducedKey(declared, single))
+
+	unknownParent := &rc.ForeignKey{
+		Columns: []string{"tenant_id"}, NotNullable: []bool{true},
+		ReferenceSchema: "public", ReferenceTable: "ailleurs", ReferenceColumns: []string{"id"},
+	}
+	require.False(t, reducedKey(declared, unknownParent), "a virtual key the database does not declare is kept")
 }

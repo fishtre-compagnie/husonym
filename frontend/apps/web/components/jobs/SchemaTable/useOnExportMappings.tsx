@@ -4,20 +4,24 @@ import {
 } from '@/yup-validations/jobs';
 import { create, toJson } from '@bufbuild/protobuf';
 import { JobMappingSchema } from '@husonym/sdk';
-import { Row } from '@tanstack/react-table';
+import { Row, RowData } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import { AppTableFeatures } from '../../table/features';
 import { useJsonFileDownload } from '../../useJsonFileDownload';
 
 interface Props {
   jobMappings: JobMappingFormValues[];
 }
 
-interface UseOnExportMappingsResponse<T> {
-  onClick(selectedRows: Row<T>[], shouldFormat: boolean): Promise<void>;
+interface UseOnExportMappingsResponse<T extends RowData> {
+  onClick(
+    selectedRows: Row<AppTableFeatures, T>[],
+    shouldFormat: boolean
+  ): Promise<void>;
 }
 
 // Hook that provides an onClick handler that will download job mappings to disk
-export function useOnExportMappings<T>(
+export function useOnExportMappings<T extends RowData>(
   props: Props
 ): UseOnExportMappingsResponse<T> {
   const { jobMappings } = props;
@@ -25,7 +29,7 @@ export function useOnExportMappings<T>(
 
   return {
     onClick: async function (
-      selectedRows: Row<T>[],
+      selectedRows: Row<AppTableFeatures, T>[],
       shouldFormat: boolean
     ): Promise<void> {
       // Using the raw jobMappings instead of the row due to tanstack sometimes not giving the most up to date values.

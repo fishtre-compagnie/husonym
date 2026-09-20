@@ -1,6 +1,7 @@
 openapi: 3.1.0
 info:
   summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
   version: "0.5"
   termsOfService: "https://husonym.com/terms-of-service"
   contact:
@@ -24,108 +25,79 @@ servers:
         description: The port to use for the development server
 components:
   schemas:
-    mgmt.v1alpha1.AccountHookEvent:
-      type: string
-      title: AccountHookEvent
-      enum:
-        - ACCOUNT_HOOK_EVENT_UNSPECIFIED
-        - ACCOUNT_HOOK_EVENT_JOB_RUN_CREATED
-        - ACCOUNT_HOOK_EVENT_JOB_RUN_FAILED
-        - ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED
-      description: Enum of all possible events that can trigger an account hook.
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
       format: date-time
-      description: |-
-        A Timestamp represents a point in time independent of any time zone or local
-         calendar, encoded as a count of seconds and fractions of seconds at
-         nanosecond resolution. The count is relative to an epoch at UTC midnight on
-         January 1, 1970, in the proleptic Gregorian calendar which extends the
-         Gregorian calendar backwards to year one.
-
-         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
-         second table is needed for interpretation, using a [24-hour linear
-         smear](https://developers.google.com/time/smear).
-
-         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
-         restricting to that range, we ensure that we can convert to and from [RFC
-         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
-
-         # Examples
-
-         Example 1: Compute Timestamp from POSIX `time()`.
-
-             Timestamp timestamp;
-             timestamp.set_seconds(time(NULL));
-             timestamp.set_nanos(0);
-
-         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
-
-             struct timeval tv;
-             gettimeofday(&tv, NULL);
-
-             Timestamp timestamp;
-             timestamp.set_seconds(tv.tv_sec);
-             timestamp.set_nanos(tv.tv_usec * 1000);
-
-         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
-
-             FILETIME ft;
-             GetSystemTimeAsFileTime(&ft);
-             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-
-             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
-             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
-             Timestamp timestamp;
-             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
-             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
-
-         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
-
-             long millis = System.currentTimeMillis();
-
-             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
-                 .setNanos((int) ((millis % 1000) * 1000000)).build();
-
-         Example 5: Compute Timestamp from Java `Instant.now()`.
-
-             Instant now = Instant.now();
-
-             Timestamp timestamp =
-                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
-                     .setNanos(now.getNano()).build();
-
-         Example 6: Compute Timestamp from current time in Python.
-
-             timestamp = Timestamp()
-             timestamp.GetCurrentTime()
-
-         # JSON Mapping
-
-         In JSON format, the Timestamp type is encoded as a string in the
-         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
-         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
-         where {year} is always expressed using four digits while {month}, {day},
-         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
-         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
-         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-         is required. A proto3 JSON serializer should always use UTC (as indicated by
-         "Z") when printing the Timestamp type and a proto3 JSON parser should be
-         able to accept both UTC and other timezones (as indicated by an offset).
-
-         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
-         01:30 UTC on January 15, 2017.
-
-         In JavaScript, one can convert a Date object to this format using the
-         standard
-         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
-         method. In Python, a standard `datetime.datetime` object can be converted
-         to this format using
-         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
-         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
-         the Joda Time's [`ISODateTimeFormat.dateTime()`](
-         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
-         ) to obtain a formatter capable of generating timestamps in this format.
+      description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
     mgmt.v1alpha1.AccountHook:
       type: object
       properties:
@@ -183,41 +155,43 @@ components:
     mgmt.v1alpha1.AccountHookConfig:
       type: object
       allOf:
-        - anyOf:
-            - required:
-                - slack
+        - oneOf:
             - required:
                 - webhook
-            - not:
-                anyOf:
-                  - required:
-                      - slack
-                  - required:
-                      - webhook
+            - required:
+                - slack
       anyOf:
-        - required:
-            - slack
-        - required:
-            - webhook
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            slack:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AccountHookConfig.SlackHook'
+              title: slack
+              description: 'Slack-based hooks Future: Discord, Teams, etc.'
+          title: slack
+        - type: object
+          properties:
+            webhook:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AccountHookConfig.WebHook'
+              title: webhook
+              description: Webhook-based hooks
+          title: webhook
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - slack
               - required:
                   - webhook
-      properties:
-        webhook:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountHookConfig.WebHook'
-          title: webhook
-          description: Webhook-based hooks
-        slack:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountHookConfig.SlackHook'
-          title: slack
-          description: 'Slack-based hooks Future: Discord, Teams, etc.'
+          - not:
+              oneOf:
+                - required:
+                    - slack
+                - required:
+                    - webhook
       title: AccountHookConfig
-      additionalProperties: false
       description: Hook-specific configuration
     mgmt.v1alpha1.AccountHookConfig.SlackHook:
       type: object
@@ -250,6 +224,15 @@ components:
       title: WebHook
       additionalProperties: false
       description: Webhook-specific configuration
+    mgmt.v1alpha1.AccountHookEvent:
+      type: string
+      title: AccountHookEvent
+      enum:
+        - ACCOUNT_HOOK_EVENT_UNSPECIFIED
+        - ACCOUNT_HOOK_EVENT_JOB_RUN_CREATED
+        - ACCOUNT_HOOK_EVENT_JOB_RUN_FAILED
+        - ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED
+      description: Enum of all possible events that can trigger an account hook.
     mgmt.v1alpha1.CreateAccountHookRequest:
       type: object
       properties:
@@ -517,33 +500,21 @@ components:
       additionalProperties: false
     mgmt.v1alpha1.TestSlackConnectionResponse:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - error
-            - not:
-                anyOf:
-                  - required:
-                      - error
-        - anyOf:
-            - required:
-                - testResponse
-            - not:
-                anyOf:
-                  - required:
-                      - testResponse
       properties:
         hasConfiguration:
           type: boolean
           title: has_configuration
           description: Whether there is an existing Slack configuration.
         testResponse:
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.TestSlackConnectionResponse.Response'
+            - type: "null"
           title: test_response
           description: The response from the Slack API.
         error:
-          type: string
+          type:
+            - string
+            - "null"
           title: error
           description: The error message if the connection failed.
       title: TestSlackConnectionResponse
@@ -607,137 +578,9 @@ components:
           description: The updated account hook.
       title: UpdateAccountHookResponse
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - CodeNotFound
-          enum:
-            - CodeCanceled
-            - CodeUnknown
-            - CodeInvalidArgument
-            - CodeDeadlineExceeded
-            - CodeNotFound
-            - CodeAlreadyExists
-            - CodePermissionDenied
-            - CodeResourceExhausted
-            - CodeFailedPrecondition
-            - CodeAborted
-            - CodeOutOfRange
-            - CodeInternal
-            - CodeUnavailable
-            - CodeDataLoss
-            - CodeUnauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security:
   - BearerAuth: []
 paths:
-  /mgmt.v1alpha1.AccountHookService/GetAccountHooks:
-    post:
-      tags:
-        - mgmt.v1alpha1.AccountHookService
-      summary: GetAccountHooks
-      description: Retrieves all account hooks.
-      operationId: mgmt.v1alpha1.AccountHookService.GetAccountHooks
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHooksRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHooksResponse'
-  /mgmt.v1alpha1.AccountHookService/GetAccountHook:
-    post:
-      tags:
-        - mgmt.v1alpha1.AccountHookService
-      summary: GetAccountHook
-      description: Retrieves a specific account hook.
-      operationId: mgmt.v1alpha1.AccountHookService.GetAccountHook
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHookRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHookResponse'
   /mgmt.v1alpha1.AccountHookService/CreateAccountHook:
     post:
       tags:
@@ -748,13 +591,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -774,42 +621,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.CreateAccountHookResponse'
-  /mgmt.v1alpha1.AccountHookService/UpdateAccountHook:
-    post:
-      tags:
-        - mgmt.v1alpha1.AccountHookService
-      summary: UpdateAccountHook
-      description: Updates an existing account hook.
-      operationId: mgmt.v1alpha1.AccountHookService.UpdateAccountHook
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.UpdateAccountHookRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.UpdateAccountHookResponse'
   /mgmt.v1alpha1.AccountHookService/DeleteAccountHook:
     post:
       tags:
@@ -820,13 +631,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -846,28 +661,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.DeleteAccountHookResponse'
-  /mgmt.v1alpha1.AccountHookService/IsAccountHookNameAvailable:
+  /mgmt.v1alpha1.AccountHookService/GetAccountHook:
     post:
       tags:
         - mgmt.v1alpha1.AccountHookService
-      summary: IsAccountHookNameAvailable
-      description: Checks if an account hook name is available.
-      operationId: mgmt.v1alpha1.AccountHookService.IsAccountHookNameAvailable
+      summary: GetAccountHook
+      description: Retrieves a specific account hook.
+      operationId: mgmt.v1alpha1.AccountHookService.GetAccountHook
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.IsAccountHookNameAvailableRequest'
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHookRequest'
         required: true
       responses:
         default:
@@ -881,29 +700,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.IsAccountHookNameAvailableResponse'
-  /mgmt.v1alpha1.AccountHookService/SetAccountHookEnabled:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHookResponse'
+  /mgmt.v1alpha1.AccountHookService/GetAccountHooks:
     post:
       tags:
         - mgmt.v1alpha1.AccountHookService
-      summary: SetAccountHookEnabled
-      description: Enables or disables an account hook.
-      operationId: mgmt.v1alpha1.AccountHookService.SetAccountHookEnabled
+      summary: GetAccountHooks
+      description: Retrieves all account hooks.
+      operationId: mgmt.v1alpha1.AccountHookService.GetAccountHooks
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountHookEnabledRequest'
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHooksRequest'
         required: true
       responses:
         default:
@@ -917,7 +740,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountHookEnabledResponse'
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountHooksResponse'
   /mgmt.v1alpha1.AccountHookService/GetActiveAccountHooksByEvent:
     post:
       tags:
@@ -928,13 +751,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -964,13 +791,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1000,13 +831,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1026,28 +861,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.HandleSlackOAuthCallbackResponse'
-  /mgmt.v1alpha1.AccountHookService/TestSlackConnection:
+  /mgmt.v1alpha1.AccountHookService/IsAccountHookNameAvailable:
     post:
       tags:
         - mgmt.v1alpha1.AccountHookService
-      summary: TestSlackConnection
-      description: Tests the Slack connection by using the stored access token to initiate an auth test api call to slack.
-      operationId: mgmt.v1alpha1.AccountHookService.TestSlackConnection
+      summary: IsAccountHookNameAvailable
+      description: Checks if an account hook name is available.
+      operationId: mgmt.v1alpha1.AccountHookService.IsAccountHookNameAvailable
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.TestSlackConnectionRequest'
+              $ref: '#/components/schemas/mgmt.v1alpha1.IsAccountHookNameAvailableRequest'
         required: true
       responses:
         default:
@@ -1061,7 +900,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.TestSlackConnectionResponse'
+                $ref: '#/components/schemas/mgmt.v1alpha1.IsAccountHookNameAvailableResponse'
   /mgmt.v1alpha1.AccountHookService/SendSlackMessage:
     post:
       tags:
@@ -1072,13 +911,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -1098,5 +941,125 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SendSlackMessageResponse'
+  /mgmt.v1alpha1.AccountHookService/SetAccountHookEnabled:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountHookService
+      summary: SetAccountHookEnabled
+      description: Enables or disables an account hook.
+      operationId: mgmt.v1alpha1.AccountHookService.SetAccountHookEnabled
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountHookEnabledRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountHookEnabledResponse'
+  /mgmt.v1alpha1.AccountHookService/TestSlackConnection:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountHookService
+      summary: TestSlackConnection
+      description: Tests the Slack connection by using the stored access token to initiate an auth test api call to slack.
+      operationId: mgmt.v1alpha1.AccountHookService.TestSlackConnection
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.TestSlackConnectionRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.TestSlackConnectionResponse'
+  /mgmt.v1alpha1.AccountHookService/UpdateAccountHook:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountHookService
+      summary: UpdateAccountHook
+      description: Updates an existing account hook.
+      operationId: mgmt.v1alpha1.AccountHookService.UpdateAccountHook
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.UpdateAccountHookRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.UpdateAccountHookResponse'
 tags:
   - name: mgmt.v1alpha1.AccountHookService

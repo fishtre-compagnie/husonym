@@ -17,8 +17,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 	"github.com/tiktoken-go/tokenizer"
 	"go.temporal.io/sdk/activity"
 )

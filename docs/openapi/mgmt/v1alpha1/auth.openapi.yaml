@@ -1,6 +1,7 @@
 openapi: 3.1.0
 info:
   summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
   version: "0.5"
   termsOfService: "https://husonym.com/terms-of-service"
   contact:
@@ -24,38 +25,89 @@ servers:
         description: The port to use for the development server
 components:
   schemas:
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     mgmt.v1alpha1.AccessToken:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - idToken
-            - not:
-                anyOf:
-                  - required:
-                      - idToken
-        - anyOf:
-            - required:
-                - refreshToken
-            - not:
-                anyOf:
-                  - required:
-                      - refreshToken
       properties:
         accessToken:
           type: string
           title: access_token
           description: The access token that will be provided in subsequent requests to provide authenticated access to the Api
         refreshToken:
-          type: string
+          type:
+            - string
+            - "null"
           title: refresh_token
           description: |-
             Token that can be used to retrieve a refreshed access token.
              Will not be provided if the offline_access scope is not provided in the initial login flow.
         expiresIn:
-          type:
-            - integer
-            - string
+          type: string
           title: expires_in
           format: int64
           description: Relative time in seconds that the access token will expire. Combine with the current time to get the expires_at time.
@@ -64,7 +116,9 @@ components:
           title: scope
           description: The scopes that the access token have
         idToken:
-          type: string
+          type:
+            - string
+            - "null"
           title: id_token
           description: The identity token of the authenticated user
         tokenType:
@@ -171,65 +225,131 @@ components:
           description: The access token that is returned on successful refresh
       title: RefreshCliResponse
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - CodeNotFound
-          enum:
-            - CodeCanceled
-            - CodeUnknown
-            - CodeInvalidArgument
-            - CodeDeadlineExceeded
-            - CodeNotFound
-            - CodeAlreadyExists
-            - CodePermissionDenied
-            - CodeResourceExhausted
-            - CodeFailedPrecondition
-            - CodeAborted
-            - CodeOutOfRange
-            - CodeInternal
-            - CodeUnavailable
-            - CodeDataLoss
-            - CodeUnauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security:
   - BearerAuth: []
 paths:
+  /mgmt.v1alpha1.AuthService/CheckToken:
+    post:
+      tags:
+        - mgmt.v1alpha1.AuthService
+      summary: CheckToken
+      description: Empty endpoint to simply check if the provided access token is valid
+      operationId: mgmt.v1alpha1.AuthService.CheckToken
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.CheckTokenRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.CheckTokenResponse'
+  /mgmt.v1alpha1.AuthService/GetAuthStatus:
+    post:
+      tags:
+        - mgmt.v1alpha1.AuthService
+      summary: GetAuthStatus
+      description: |-
+        Returns the auth status of the API server. Whether or not the backend has authentication enabled.
+         This is used by clients to make decisions on whether or not they should send access tokens to the API.
+      operationId: mgmt.v1alpha1.AuthService.GetAuthStatus
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthStatusRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthStatusResponse'
+  /mgmt.v1alpha1.AuthService/GetAuthorizeUrl:
+    post:
+      tags:
+        - mgmt.v1alpha1.AuthService
+      summary: GetAuthorizeUrl
+      description: Used by the CLI to retrieve an Authorize URL for use with OAuth login.
+      operationId: mgmt.v1alpha1.AuthService.GetAuthorizeUrl
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthorizeUrlRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthorizeUrlResponse'
   /mgmt.v1alpha1.AuthService/LoginCli:
     post:
       tags:
@@ -240,13 +360,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -278,13 +402,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -304,116 +432,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.RefreshCliResponse'
-  /mgmt.v1alpha1.AuthService/CheckToken:
-    post:
-      tags:
-        - mgmt.v1alpha1.AuthService
-      summary: CheckToken
-      description: Empty endpoint to simply check if the provided access token is valid
-      operationId: mgmt.v1alpha1.AuthService.CheckToken
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.CheckTokenRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.CheckTokenResponse'
-  /mgmt.v1alpha1.AuthService/GetAuthorizeUrl:
-    post:
-      tags:
-        - mgmt.v1alpha1.AuthService
-      summary: GetAuthorizeUrl
-      description: Used by the CLI to retrieve an Authorize URL for use with OAuth login.
-      operationId: mgmt.v1alpha1.AuthService.GetAuthorizeUrl
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthorizeUrlRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthorizeUrlResponse'
-  /mgmt.v1alpha1.AuthService/GetAuthStatus:
-    post:
-      tags:
-        - mgmt.v1alpha1.AuthService
-      summary: GetAuthStatus
-      description: |-
-        Returns the auth status of the API server. Whether or not the backend has authentication enabled.
-         This is used by clients to make decisions on whether or not they should send access tokens to the API.
-      operationId: mgmt.v1alpha1.AuthService.GetAuthStatus
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthStatusRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetAuthStatusResponse'
 tags:
   - name: mgmt.v1alpha1.AuthService
     description: |-

@@ -1,7 +1,7 @@
 services:
   otel-collector:
     container_name: husonym-otel
-    image: otel/opentelemetry-collector-contrib:0.96.0
+    image: otel/opentelemetry-collector-contrib:0.161.0
     networks:
       - husonym-network
       - metrics
@@ -87,7 +87,7 @@ services:
 
   loki:
     container_name: husonym-loki
-    image: grafana/loki:2.9.4
+    image: grafana/loki:3.7.8
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/loki-config.yaml
@@ -99,7 +99,8 @@ services:
 
   promtail:
     container_name: husonym-promtail
-    image: grafana/promtail:2.9.4
+    # Promtail reached its end of life at 3.6; Grafana Alloy replaces it.
+    image: grafana/promtail:3.6.11
     command: -config.file=/etc/promtail/config.yml
     volumes:
       - $PWD/scripts/promtail-config.yaml:/etc/promtail/config.yml

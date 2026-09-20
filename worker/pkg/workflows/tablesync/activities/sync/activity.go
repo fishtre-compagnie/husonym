@@ -47,7 +47,9 @@ type Activity struct {
 	benthosStreamManager benthosstream.BenthosStreamManagerClient
 	temporalclient       temporalclient.Client
 	anonymizationClient  mgmtv1alpha1connect.AnonymizationServiceClient
+	transformerclient    mgmtv1alpha1connect.TransformersServiceClient
 	redisclient          redis.UniversalClient
+	athanor              AthanorConfig
 }
 
 func New(
@@ -59,7 +61,9 @@ func New(
 	benthosStreamManager benthosstream.BenthosStreamManagerClient,
 	tclient temporalclient.Client,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
+	athanor AthanorConfig,
 ) *Activity {
 	return &Activity{
 		connclient:           connclient,
@@ -70,7 +74,9 @@ func New(
 		benthosStreamManager: benthosStreamManager,
 		temporalclient:       tclient,
 		anonymizationClient:  anonymizationClient,
+		transformerclient:    transformerclient,
 		redisclient:          redisclient,
+		athanor:              athanor,
 	}
 }
 
@@ -186,12 +192,39 @@ func (a *Activity) SyncTable(
 		return nil, err
 	}
 
+	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Athanor exécute le
+	// plan neutre de la table ; sans plan (source non SQL), Benthos reste le moteur.
+	useAthanor, err := a.useAthanorForJob(ctx, req.JobRunId)
+	if err != nil {
+		return nil, err
+	}
+	if useAthanor {
+		plan, perr := a.getTablePlan(ctx, req)
+		if perr != nil {
+			return nil, perr
+		}
+		if plan != nil {
+			resp, aerr := a.runAthanor(ctx, req, plan, info.Attempt, session, getConnectionById, logger)
+			if aerr != nil {
+				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
+			}
+			logger.Info("sync complete (athanor)", "hasMorePages", resp.ContinuationToken != nil)
+			return resp, nil
+		}
+		logger.Info("moteur=athanor demandé, mais aucun plan pour cette table (source non SQL) : Benthos exécute la synchro")
+	}
+
 	var continuationTokenToReturn *string
+	var continuationTokenErr error
 	hasMorePages := func(lastReadOrderValues []any) {
 		token := continuation_token.NewFromContents(
 			continuation_token.NewContents(lastReadOrderValues),
 		)
-		tokenStr := token.String()
+		tokenStr, err := token.Encode()
+		if err != nil {
+			continuationTokenErr = err
+			return
+		}
 		continuationTokenToReturn = &tokenStr
 	}
 
@@ -229,6 +262,10 @@ func (a *Activity) SyncTable(
 	err = <-syncResultChan
 	if err != nil {
 		return nil, fmt.Errorf("could not successfully complete sync activity: %w", err)
+	}
+
+	if continuationTokenErr != nil {
+		return nil, fmt.Errorf("could not hand over to the next page: %w", continuationTokenErr)
 	}
 
 	logger.Info("sync complete")

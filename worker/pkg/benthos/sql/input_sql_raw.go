@@ -3,6 +3,7 @@ package husonym_benthos_sql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -76,6 +77,11 @@ type pooledInput struct {
 	orderByColumns      []string
 	lastReadOrderValues []any
 	continuationToken   *continuation_token.ContinuationToken
+
+	// pending is the row read ahead of the one being returned, and endOfPage says the
+	// page held no more: together they let a row be marked as the last of its page.
+	pending   *service.Message
+	endOfPage bool
 }
 
 func newInput(
@@ -212,15 +218,49 @@ func (s *pooledInput) Connect(ctx context.Context) error {
 
 	s.rows = rows
 	s.rowsRead = 0
+	s.pending = nil
+	s.endOfPage = false
 	return nil
 }
 
+// Read returns a row of the page once it knows whether another one follows. The last row
+// of a page carries the metadata the destination batches on, so that a partial batch is
+// written as soon as the page ends: the batcher of benthos would otherwise hold it until
+// its period elapses, since the input closes only once its rows are acknowledged
+// (see husonym_benthos.LastRowOfPageMetaKey).
 func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFunc, error) {
 	s.dbMut.Lock()
 	defer s.dbMut.Unlock()
 
+	if s.pending == nil {
+		if s.endOfPage {
+			return nil, nil, service.ErrEndOfInput
+		}
+		first, err := s.readRow()
+		if err != nil {
+			return nil, nil, err
+		}
+		s.pending = first
+	}
+	current := s.pending
+	next, err := s.readRow()
+	switch {
+	case errors.Is(err, service.ErrEndOfInput):
+		s.pending, s.endOfPage = nil, true
+		current.MetaSetMut(husonym_benthos.LastRowOfPageMetaKey, "true")
+	case err != nil:
+		s.pending = nil
+		return nil, nil, err
+	default:
+		s.pending = next
+	}
+	return current, emptyAck, nil
+}
+
+// readRow reads the next row of the page, or reports the end of the page.
+func (s *pooledInput) readRow() (*service.Message, error) {
 	if s.db == nil {
-		return nil, nil, service.ErrNotConnected
+		return nil, service.ErrNotConnected
 	}
 	if s.rows == nil {
 		if s.expectedTotalRows != nil && s.onHasMorePages != nil && len(s.orderByColumns) > 0 {
@@ -237,7 +277,7 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 				s.onHasMorePages(s.lastReadOrderValues)
 			}
 		}
-		return nil, nil, service.ErrEndOfInput
+		return nil, service.ErrEndOfInput
 	}
 	if !s.rows.Next() {
 		// Check if any error occurred.
@@ -245,7 +285,7 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 		s.rows = nil
 		_ = rows.Close()
 		if err := rows.Err(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if s.expectedTotalRows != nil && s.onHasMorePages != nil && len(s.orderByColumns) > 0 {
@@ -264,14 +304,14 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 				s.onHasMorePages(s.lastReadOrderValues)
 			}
 		}
-		return nil, nil, service.ErrEndOfInput
+		return nil, service.ErrEndOfInput
 	}
 
 	obj, err := s.recordMapper.MapRecord(s.rows)
 	if err != nil {
 		_ = s.rows.Close()
 		s.rows = nil
-		return nil, nil, err
+		return nil, err
 	}
 
 	// store last order by columns values
@@ -281,9 +321,17 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 		if !ok {
 			_ = s.rows.Close()
 			s.rows = nil
-			return nil, nil, fmt.Errorf("order by column %s not found", col)
+			return nil, fmt.Errorf("order by column %s not found", col)
 		}
-		lastReadOrderValues[i] = val
+		// The record mapper wraps dates, binaries and bits in types made for the
+		// pipeline. The cursor of the next page needs what the driver binds.
+		orderValue, err := toDriverOrderValue(s.driver, val)
+		if err != nil {
+			_ = s.rows.Close()
+			s.rows = nil
+			return nil, fmt.Errorf("order by column %s: %w", col, err)
+		}
+		lastReadOrderValues[i] = orderValue
 	}
 	if len(lastReadOrderValues) > 0 {
 		s.logger.Debug(fmt.Sprintf("last read order values: %v", lastReadOrderValues))
@@ -294,7 +342,7 @@ func (s *pooledInput) Read(ctx context.Context) (*service.Message, service.AckFu
 
 	msg := service.NewMessage(nil)
 	msg.SetStructured(obj)
-	return msg, emptyAck, nil
+	return msg, nil
 }
 
 // emptyAck is a no-op ack function
@@ -322,4 +370,21 @@ func (s *pooledInput) Close(ctx context.Context) error {
 		s.db = nil // not closing here since it's managed by the pool
 	}
 	return nil
+}
+
+// toDriverOrderValue unwraps a mapped record value into the value its driver binds.
+func toDriverOrderValue(driver string, value any) (any, error) {
+	switch driver {
+	case sqlmanager_shared.MysqlDriver:
+		unwrapped, _, err := getMysqlHusonymValue(value)
+		return unwrapped, err
+	case sqlmanager_shared.PostgresDriver:
+		unwrapped, _, err := getPgxHusonymValue(value)
+		return unwrapped, err
+	case sqlmanager_shared.MssqlDriver:
+		unwrapped, _, err := getMssqlHusonymValue(value)
+		return unwrapped, err
+	default:
+		return value, nil
+	}
 }

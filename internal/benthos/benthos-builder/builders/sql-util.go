@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +18,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
@@ -1634,4 +1638,174 @@ func getTableDeferrableMap(
 		}
 	}
 	return tableDeferrableMap, nil
+}
+
+// withoutNullableColumns keeps, per table, the unique keys whose columns are all NOT
+// NULL: only those can order the pages of a table sync. A unique index accepts any
+// number of NULLs, which keyset pagination ("col > last value") never reads past.
+func withoutNullableColumns(
+	uniqueKeys map[string][][]string,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) map[string][][]string {
+	filtered := make(map[string][][]string, len(uniqueKeys))
+	for table, keys := range uniqueKeys {
+		for _, key := range keys {
+			nullable := slices.ContainsFunc(key, func(column string) bool {
+				info, ok := columnInfo[table][column]
+				return !ok || info.IsNullable
+			})
+			if !nullable {
+				filtered[table] = append(filtered[table], key)
+			}
+		}
+	}
+	return filtered
+}
+
+// planForeignKeys describes, per run config, the foreign keys of its table for the
+// engine-neutral plan: which parents the job copies only in part, which value of a
+// mandatory key means "no parent", and where the new values of a transformed parent key
+// are published (keyStore, "" for a column copied as it is).
+func planForeignKeys(
+	driver string,
+	runConfigs []*rc.RunConfig,
+	subsetByForeignKeyConstraints bool,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	declaredForeignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
+	keyStore func(table, column string) string,
+) map[string][]*tableplan.ForeignKey {
+	reduced := make(map[string]bool, len(runConfigs))
+	for _, config := range runConfigs {
+		if subsetByForeignKeyConstraints {
+			reduced[config.Table()] = len(config.SubsetPaths()) > 0
+		} else {
+			reduced[config.Table()] = config.WhereClause() != nil && *config.WhereClause() != ""
+		}
+	}
+
+	byConfig := make(map[string][]*tableplan.ForeignKey, len(runConfigs))
+	for _, config := range runConfigs {
+		for _, fk := range config.ForeignKeys() {
+			// A key the job writes only in part is never enforced: filterForeignKeysMap
+			// took out the columns a null transformer writes NULL, and a key holding a
+			// NULL references nothing (MATCH SIMPLE). What is left of such a key reads as
+			// mandatory — every column it kept refuses NULL — so the engine would delete,
+			// or refuse, rows the database accepts. It is left out of the plan.
+			if reducedKey(declaredForeignKeys[config.Table()], fk) {
+				continue
+			}
+			planned := &tableplan.ForeignKey{
+				Columns:       fk.Columns,
+				NotNull:       fk.NotNullable,
+				ParentSchema:  fk.ReferenceSchema,
+				ParentTable:   fk.ReferenceTable,
+				ParentColumns: fk.ReferenceColumns,
+				ParentReduced: reduced[fk.ReferenceSchema+"."+fk.ReferenceTable],
+			}
+			parentKey := fk.ReferenceSchema + "." + fk.ReferenceTable
+			for _, parentColumn := range fk.ReferenceColumns {
+				planned.ParentKeyStores = append(planned.ParentKeyStores, keyStore(parentKey, parentColumn))
+			}
+			// parent_id NOT NULL DEFAULT 0: the default stands for "no parent".
+			if len(fk.Columns) == 1 && planned.IsMandatory() {
+				if info, ok := columnInfo[config.Table()][fk.Columns[0]]; ok {
+					if value, ok := noParentValue(driver, info.ColumnDefault); ok {
+						planned.NoParentValue = &value
+					}
+				}
+			}
+			byConfig[config.Id()] = append(byConfig[config.Id()], planned)
+		}
+	}
+	return byConfig
+}
+
+// reducedKey reports whether a key of a run config is what is left of a declared key
+// after the columns written NULL were taken out of it. A key declared with the very
+// columns the run config holds is not reduced, whatever else the table declares.
+func reducedKey(declared []*sqlmanager_shared.ForeignConstraint, fk *rc.ForeignKey) bool {
+	parent := fk.ReferenceSchema + "." + fk.ReferenceTable
+	toParent := make([]*sqlmanager_shared.ForeignConstraint, 0, len(declared))
+	for _, candidate := range declared {
+		if candidate.ForeignKey == nil || candidate.ForeignKey.Table != parent {
+			continue
+		}
+		if slices.Equal(candidate.Columns, fk.Columns) {
+			return false
+		}
+		toParent = append(toParent, candidate)
+	}
+	for _, candidate := range toParent {
+		if len(candidate.Columns) > len(fk.Columns) && holdsAll(candidate.Columns, fk.Columns) {
+			return true
+		}
+	}
+	return false
+}
+
+func holdsAll(columns, wanted []string) bool {
+	for _, column := range wanted {
+		if !slices.Contains(columns, column) {
+			return false
+		}
+	}
+	return true
+}
+
+// noParentDefaultCast matches the type a PostgreSQL default is reported with: the default
+// of a text column reads 'XX'::text, and of a domain 'XX'::public.code.
+var noParentDefaultCast = regexp.MustCompile(`::\s*[A-Za-z_][A-Za-z0-9_. ]*(\[\])?\s*$`)
+
+// noParentValue reads, from the default of a mandatory single-column key, the value that
+// means "no parent" — the one rows holding it reference nothing on purpose with.
+//
+// Only a value is a sentinel. A default the database computes (nextval, a function call,
+// CURRENT_TIMESTAMP) names no row of the parent table, and what it produces is not known
+// here: such a default gives no sentinel rather than a wrong one. A wrong one is not
+// harmless — the rows holding it are the ones the check deletes.
+//
+// Each database reports a default in its own way: MySQL gives the value itself, PostgreSQL
+// the expression it parsed back ('XX'::text), SQL Server the same in parentheses (('XX')).
+func noParentValue(driver, columnDefault string) (string, bool) {
+	literal := strings.TrimSpace(columnDefault)
+	if literal == "" {
+		return "", false
+	}
+	if driver == sqlmanager_shared.MysqlDriver {
+		// MySQL reports the value as it is, unquoted. Only a computed default is an
+		// expression, and it is the one case it puts in parentheses.
+		if strings.HasPrefix(literal, "(") {
+			return "", false
+		}
+		return literal, true
+	}
+	// SQL Server wraps a default in parentheses, a literal in two: (('XX')), ((0)).
+	for strings.HasPrefix(literal, "(") && strings.HasSuffix(literal, ")") {
+		literal = strings.TrimSpace(literal[1 : len(literal)-1])
+	}
+	literal = strings.TrimSpace(noParentDefaultCast.ReplaceAllString(literal, ""))
+	if strings.HasPrefix(literal, "'") && strings.HasSuffix(literal, "'") && len(literal) >= 2 {
+		return strings.ReplaceAll(literal[1:len(literal)-1], "''", "'"), true
+	}
+	if noParentNumeric.MatchString(literal) {
+		return literal, true
+	}
+	return "", false
+}
+
+// noParentNumeric matches a number written out, the other shape a key's default takes.
+var noParentNumeric = regexp.MustCompile(`^[+-]?\d+(\.\d+)?$`)
+
+// generatedColumns returns, in name order, the columns of a table the database computes
+// itself and refuses any value for. Identity columns are not among them: they accept the
+// values of the source.
+func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) []string {
+	var generated []string
+	for name, info := range columns {
+		if !info.UpdateAllowed && info.IdentityGeneration == nil {
+			generated = append(generated, name)
+		}
+	}
+	slices.Sort(generated)
+	return generated
 }

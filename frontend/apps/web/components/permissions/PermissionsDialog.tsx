@@ -25,8 +25,7 @@ import { PermissionConnectionType, getPermissionColumns } from './columns';
 
 interface Props {
   checkResponse:
-    | CheckConnectionConfigResponse
-    | CheckConnectionConfigByIdResponse;
+    CheckConnectionConfigResponse | CheckConnectionConfigByIdResponse;
   openPermissionDialog: boolean;
   setOpenPermissionDialog(open: boolean): void;
   isValidating: boolean;

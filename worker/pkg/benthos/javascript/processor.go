@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
+	"runtime"
 
+	"github.com/dop251/goja"
 	"github.com/fishtre-compagnie/husonym/internal/benthos_slogger"
 	"github.com/fishtre-compagnie/husonym/internal/javascript"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
-	"github.com/dop251/goja"
 
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
@@ -36,10 +36,15 @@ func RegisterHusonymJavascriptProcessor(
 }
 
 type javascriptProcessor struct {
-	program *goja.Program
-	slogger *slog.Logger
-	vmPool  sync.Pool
+	program    *goja.Program
+	slogger    *slog.Logger
+	piiTextApi transformers.TransformPiiTextApi
 }
+
+// vmPool holds the runners of every JavaScript processor of the process: a sealed runner
+// costs milliseconds to build, and one built in the middle of a stream delays its rows
+// past the flush of their page (see javascript_vm.Pool).
+var vmPool = javascript_vm.NewPool(newPoolItem)
 
 func newJavascriptProcessorFromConfig(
 	conf *service.ParsedConfig,
@@ -52,26 +57,25 @@ func newJavascriptProcessorFromConfig(
 	}
 
 	filename := "main.js"
-	program, err := goja.Compile(filename, code, false)
+	program, err := javascript_vm.Compile(filename, code)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile javascript code: %v", err)
+	}
+
+	// Benthos runs a pipeline on one thread per CPU (threads: -1): each needs a runner as
+	// its first batch comes, and one built then delays its rows past the flush of their
+	// page. The pool keeps them for the life of the process.
+	if err := vmPool.Reserve(runtime.GOMAXPROCS(0)); err != nil {
+		return nil, fmt.Errorf("failed to build the javascript runners: %w", err)
 	}
 
 	logger := mgr.Logger()
 	slogger := benthos_slogger.NewSlogger(logger)
 
 	return &javascriptProcessor{
-		program: program,
-		slogger: slogger,
-		vmPool: sync.Pool{
-			New: func() any {
-				val, err := newPoolItem(slogger, transformPiiTextApi)
-				if err != nil {
-					return err
-				}
-				return val
-			},
-		},
+		program:    program,
+		slogger:    slogger,
+		piiTextApi: transformPiiTextApi,
 	}, nil
 }
 
@@ -87,17 +91,16 @@ func (j *javascriptProcessor) ProcessBatch(
 	var runner *javascript_vm.Runner
 	var valueApi *benthosValueApi
 
-	switch poolItem := j.vmPool.Get().(type) {
-	case *vmPoolItem:
-		runner = poolItem.runner
-		valueApi = poolItem.valueApi
-		defer func() {
-			poolItem.valueApi.SetMessage(nil) // reset the message to nil
-			j.vmPool.Put(poolItem)
-		}()
-	case error:
-		return nil, poolItem
+	poolItem, err := vmPool.Get()
+	if err != nil {
+		return nil, err
 	}
+	runner = poolItem.runner
+	valueApi = poolItem.valueApi
+	defer func() {
+		poolItem.valueApi.SetMessage(nil) // reset the message to nil
+		vmPool.Put(poolItem)
+	}()
 
 	// Add panic recovery for the entire batch processing
 	// Goja has panic recovery built in, but if it encounters an uncatchable panic
@@ -119,10 +122,11 @@ func (j *javascriptProcessor) ProcessBatch(
 	}()
 
 	var newBatch service.MessageBatch
+	runCtx := transformers.ContextWithPiiTextApi(ctx, j.piiTextApi)
 
 	for i := range batch {
 		valueApi.SetMessage(batch[i])
-		_, err := runner.Run(ctx, j.program)
+		_, err := runner.Run(runCtx, j.program, javascript_vm.WithRunLogger(j.slogger))
 		if err != nil {
 			return nil, err
 		}
@@ -138,12 +142,9 @@ func (j *javascriptProcessor) Close(ctx context.Context) error {
 	return nil
 }
 
-func newPoolItem(
-	logger *slog.Logger,
-	transformPiiTextApi transformers.TransformPiiTextApi,
-) (*vmPoolItem, error) {
+func newPoolItem() (*vmPoolItem, error) {
 	valueApi := newBatchBenthosValueApi()
-	runner, err := javascript.NewDefaultValueRunner(valueApi, transformPiiTextApi, logger)
+	runner, err := javascript.NewDefaultValueRunner(valueApi)
 	if err != nil {
 		return nil, err
 	}

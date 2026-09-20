@@ -2,16 +2,24 @@ import { ReactElement } from 'react';
 import { Control, FieldValues, UseFormReturn } from 'react-hook-form';
 import useFormPersist from './useFormPersist';
 
-interface FormPersistProps<T extends FieldValues, TTransformedValues = T> {
-  form: UseFormReturn<T, unknown, TTransformedValues>;
+// TContext suit celui du formulaire : un resolver est invariant sur son contexte,
+// et le figer à unknown rejetait tout formulaire construit avec un contexte de
+// validation (accountId, isJobNameAvailable…).
+interface FormPersistProps<
+  T extends FieldValues,
+  TContext = unknown,
+  TTransformedValues = T,
+> {
+  form: UseFormReturn<T, TContext, TTransformedValues>;
   formKey: string;
 }
 const isBrowser = () => typeof window !== 'undefined';
 
 export default function FormPersist<
   T extends FieldValues,
+  TContext = unknown,
   TTransformedValues = T,
->(props: FormPersistProps<T, TTransformedValues>): ReactElement {
+>(props: FormPersistProps<T, TContext, TTransformedValues>): ReactElement {
   const { form, formKey } = props;
   useFormPersist(formKey, {
     // useFormPersist operates on string keys and is intentionally `any`-typed;

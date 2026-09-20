@@ -1,5 +1,6 @@
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,14 +20,14 @@ import { FaSearch } from 'react-icons/fa';
 import { useDebounceCallback } from 'usehooks-ts';
 
 interface DataTableColumnHeaderProps<
-  TData,
+  TData extends RowData,
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>;
+  column: Column<AppTableFeatures, TData, TValue>;
   title: string;
 }
 
-export function SchemaColumnHeader<TData, TValue>({
+export function SchemaColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,
@@ -39,10 +40,15 @@ export function SchemaColumnHeader<TData, TValue>({
     300
   );
   return (
-    <div className="flex flex-row gap-2 items-center justify-start">
+    <div className="flex w-full min-w-0 flex-row items-center gap-1 justify-start">
       {column.getCanFilter() && (
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="relative">
+            {/* Loupe à DROITE, et non à gauche : le libellé de la colonne est le
+                placeholder de ce champ. Une icône à gauche le décalait d'environ
+                25px, si bien que « Schema » ne tombait pas au-dessus de
+                « public ». Bord gauche libéré, le texte s'aligne sur les valeurs
+                de la colonne (cf. le padding des cellules dans MemoizedRow). */}
             <Input
               type="text"
               value={inputValue}
@@ -51,9 +57,10 @@ export function SchemaColumnHeader<TData, TValue>({
                 onInputChange(e.target.value);
               }}
               placeholder={title}
-              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-transparent text-xs h-8 pl-8"
+              title={title}
+              className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-transparent text-xs h-8 w-full pl-2 pr-6"
             />
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FaSearch className="absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 transform text-gray-400" />
           </div>
         </div>
       )}
@@ -77,12 +84,12 @@ function getColumnTooltip(title: string, canMultiSort: boolean): string {
   return `Sort by ${title}`;
 }
 
-interface SortButtonWithTooltipProps<TData, TValue> {
-  column: Column<TData, TValue>;
+interface SortButtonWithTooltipProps<TData extends RowData, TValue> {
+  column: Column<AppTableFeatures, TData, TValue>;
   tooltip: string;
 }
 
-function SortButtonWithTooltip<TData, TValue>({
+function SortButtonWithTooltip<TData extends RowData, TValue>({
   column,
   tooltip,
 }: SortButtonWithTooltipProps<TData, TValue>): ReactElement {
@@ -103,7 +110,7 @@ function SortButtonWithTooltip<TData, TValue>({
               }
             }}
             variant="ghost"
-            className="px-1"
+            className="h-8 w-6 shrink-0 px-0"
           >
             {column.getIsSorted() === 'desc' ? (
               <ArrowDownIcon className="h-4 w-4" />

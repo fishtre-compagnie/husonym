@@ -19,6 +19,7 @@ import {
   getTransformerFilter,
 } from '@/components/jobs/SchemaTable/util';
 import { isValidSubsetType } from '@/components/jobs/subsets/utils';
+import { AppTableFeatures } from '@/components/table/features';
 import {
   JobMappingFormValues,
   convertJobMappingTransformerToForm,
@@ -206,7 +207,9 @@ export function getDynamoDbDestinations(
 }
 
 export function getFilteredTransformersForBulkSet(
-  rows: Row<JobMappingRow>[] | Row<NosqlJobMappingRow>[],
+  rows:
+    | Row<AppTableFeatures, JobMappingRow>[]
+    | Row<AppTableFeatures, NosqlJobMappingRow>[],
   transformerHandler: TransformerHandler,
   constraintHandler: SchemaConstraintHandler,
   jobType: JobType,
@@ -218,8 +221,10 @@ export function getFilteredTransformersForBulkSet(
   rows.forEach((row) => {
     const colkey =
       sqlType === 'nosql'
-        ? fromNosqlRowDataToColKey(row as Row<NosqlJobMappingRow>)
-        : fromRowDataToColKey(row as Row<JobMappingRow>);
+        ? fromNosqlRowDataToColKey(
+            row as Row<AppTableFeatures, NosqlJobMappingRow>
+          )
+        : fromRowDataToColKey(row as Row<AppTableFeatures, JobMappingRow>);
     const { system, userDefined } = transformerHandler.getFilteredTransformers(
       getTransformerFilter(constraintHandler, colkey, jobType)
     );

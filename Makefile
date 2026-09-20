@@ -10,7 +10,8 @@
         compose/dev/up compose/dev/down \
         compose/dev/auth/up compose/dev/auth/down \
 				helm/docs \
-				generate/backend
+				generate/backend generate/mocks \
+				bench bench/up bench/up-lower-case bench/down bench/correctness bench/perf bench/perf-up bench/pg-perf-up
 default: help
 
 help:
@@ -76,6 +77,9 @@ build/frontend: ## Builds the frontend (don't do this if intending to develop lo
 generate/backend: ## Runs the backend generate script
 	@cd ./backend && make gen
 
+generate/mocks: ## Regenerates the mocks declared in .mockery.yml (after generate/backend when an interface changed)
+	mockery
+
 # Linting
 lint: ## Lints the project
 	( \
@@ -134,6 +138,49 @@ compose/dev/auth/up: ## Composes up the development environment with auth. - Req
 
 compose/dev/auth/down: ## Composes down the development environment with auth
 	docker compose -f $(DEV_COMPOSE_FILE) -f $(DEV_AUTH_COMPOSE_FILE) down
+
+# Engine test bench (plans/banc-essai-moteurs.md)
+BENCH_COMPOSE_FILE = bench/compose.bench.yml
+BENCH_SERVICES = bench-source bench-dest-benthos bench-dest-athanor
+BENCH_PG_SERVICES = bench-pg-source bench-pg-dest-benthos bench-pg-dest-athanor
+
+bench: bench/up bench/correctness ## Stands up the engine test bench and runs it
+
+bench/up: ## Starts the bench MySQL servers and restarts the dev worker with a small page size
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
+
+bench/up-lower-case: ## Recreates the bench MySQL destinations folding table names to lower case (lower_case_table_names=1), the source as is; bench/up gives them back
+	BENCH_DEST_LOWER_CASE_TABLE_NAMES=1 docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait --force-recreate bench-dest-benthos bench-dest-athanor
+
+bench/down: ## Removes the bench MySQL servers and gives the dev worker its page size back
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) rm -sfv $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/correctness: ## Runs every bench case on both engines and checks them against their expectation
+	go run ./bench/cmd/enginebench run
+
+bench/pg-up: ## Starts the bench PostgreSQL servers and restarts the dev worker with a small page size
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_PG_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d worker
+
+bench/pg-down: ## Removes the bench PostgreSQL servers and gives the dev worker its page size back
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) rm -sfv $(BENCH_PG_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/pg-correctness: ## Runs the PostgreSQL cases on both engines and checks them against their expectation
+	BENCH_DIALECT=postgres go run ./bench/cmd/enginebench run
+
+bench/perf-up: ## Starts the bench MySQL servers with the worker at its normal page size, for measuring
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/pg-perf-up: ## Starts the bench PostgreSQL servers with the worker at its normal page size, for measuring (then: BENCH_DIALECT=postgres go run ./bench/cmd/enginebench perf)
+	docker compose -f $(DEV_COMPOSE_FILE) -f $(BENCH_COMPOSE_FILE) up -d --wait $(BENCH_PG_SERVICES)
+	docker compose -f $(DEV_COMPOSE_FILE) up -d worker
+
+bench/perf: bench/perf-up ## Measures both engines on the dataset at scale (durations, rows/s, memory)
+	go run ./bench/cmd/enginebench perf
 
 helm/docs: ## Generates documentation for the repository's helm charts.
 	./scripts/gen-helmdocs.sh

@@ -3,22 +3,23 @@ import {
   ArrowUpIcon,
   CaretSortIcon,
 } from '@radix-ui/react-icons';
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 
+import { AppTableFeatures } from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/libs/utils';
 import { FaSearch } from 'react-icons/fa';
 
 interface ColumnHeaderProps<
-  TData,
+  TData extends RowData,
   TValue,
 > extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>;
+  column: Column<AppTableFeatures, TData, TValue>;
   title: string;
 }
 
-export function ColumnHeader<TData, TValue>({
+export function ColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,

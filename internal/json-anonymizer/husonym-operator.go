@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
@@ -42,28 +40,4 @@ func (n *husonymOperatorApi) Transform(
 	default:
 		return fmt.Sprintf("%v", derefPointer(result)), nil
 	}
-}
-
-type udtResolver struct {
-	transformerClient mgmtv1alpha1connect.TransformersServiceClient
-}
-
-func newUdtResolver(transformerClient mgmtv1alpha1connect.TransformersServiceClient) *udtResolver {
-	return &udtResolver{transformerClient: transformerClient}
-}
-
-func (u *udtResolver) GetUserDefinedTransformer(
-	ctx context.Context,
-	id string,
-) (*mgmtv1alpha1.TransformerConfig, error) {
-	resp, err := u.transformerClient.GetUserDefinedTransformerById(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetUserDefinedTransformerByIdRequest{
-			TransformerId: id,
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Msg.GetTransformer().GetConfig(), nil
 }

@@ -23,7 +23,8 @@ func BuildSelectQueryMap(
 	subsetByForeignKeyConstraints bool,
 	pageLimit int,
 ) (map[string]*sqlmanager_shared.SelectQuery, error) {
-	qb := NewSelectQueryBuilder("public", driver, subsetByForeignKeyConstraints, pageLimit)
+	qb := NewSelectQueryBuilder("public", driver, subsetByForeignKeyConstraints, pageLimit).
+		WithRunConfigs(runConfigs)
 	querymap := map[string]*sqlmanager_shared.SelectQuery{}
 	for _, cfg := range runConfigs {
 		query, _, pageQuery, isNotForeignKeySafe, err := qb.BuildQuery(cfg)

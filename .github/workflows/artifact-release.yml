@@ -25,14 +25,16 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -46,8 +48,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Get current time
@@ -102,14 +106,16 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -122,8 +128,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
         id: meta
@@ -168,14 +176,16 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -188,8 +198,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
       - name: Docker meta
         id: meta
@@ -239,14 +251,16 @@ jobs:
       - docker-backend
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -259,8 +273,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -285,7 +301,7 @@ jobs:
           fi
 
       - name: Setup Chart.yaml
-        uses: mikefarah/yq@v4.53.3
+        uses: mikefarah/yq@v4.53.6
         with:
           cmd: |
             # Recursively finds all Chart.yaml files and sets their version and appVersion to the github ref
@@ -345,14 +361,16 @@ jobs:
       - docker-frontend
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
       - name: Extract develop version
         id: extract_version
@@ -365,8 +383,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -391,7 +411,7 @@ jobs:
           fi
 
       - name: Setup Chart.yaml
-        uses: mikefarah/yq@v4.53.3
+        uses: mikefarah/yq@v4.53.6
         with:
           cmd: |
             # Recursively finds all Chart.yaml files and sets their version and appVersion to the github ref
@@ -451,14 +471,16 @@ jobs:
       - docker-worker
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -472,8 +494,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -498,7 +522,7 @@ jobs:
           fi
 
       - name: Setup Chart.yaml
-        uses: mikefarah/yq@v4.53.3
+        uses: mikefarah/yq@v4.53.6
         with:
           cmd: |
             # Recursively finds all Chart.yaml files and sets their version and appVersion to the github ref
@@ -560,14 +584,16 @@ jobs:
       - helm-worker
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Calculate Next Pre-release version
         id: next_pre_version
         if: github.ref == 'refs/heads/main'
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${major}.${minor}.${patch}-pre.${increment}'
 
       - name: Extract develop version
@@ -581,8 +607,10 @@ jobs:
       - name: Calculate Next Pre-release version (develop)
         id: next_pre_version_develop
         if: startsWith(github.ref, 'refs/heads/develop/v')
-        uses: paulhatch/semantic-version@v5.4.0
+        uses: paulhatch/semantic-version@v6.0.4
         with:
+          major_pattern: "(MAJOR)"
+          minor_pattern: "(MINOR)"
           version_format: '${{ steps.extract_version.outputs.VERSION }}.0-dev.${increment}'
 
       - name: Setup Trimmed Helm Version
@@ -607,7 +635,7 @@ jobs:
           fi
 
       - name: Setup Chart.yaml
-        uses: mikefarah/yq@v4.53.3
+        uses: mikefarah/yq@v4.53.6
         with:
           cmd: |
             # Recursively finds all Chart.yaml files and sets their version and appVersion to the github ref
@@ -671,12 +699,12 @@ jobs:
         working-directory: cli
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -726,7 +754,7 @@ jobs:
         working-directory: python
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Package Version
         id: package_version
@@ -738,7 +766,7 @@ jobs:
           echo "PACKAGE_VERSION=$TRIMMED_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Build SDK
@@ -789,20 +817,20 @@ jobs:
   #       working-directory: frontend
   #   steps:
   #     - name: Checkout
-  #       uses: actions/checkout@v6
+  #       uses: actions/checkout@v7
 
   #     - name: Install jq
   #       run: sudo apt-get install jq
 
   #     - name: Set up Node
-  #       uses: actions/setup-node@v6
+  #       uses: actions/setup-node@v7
   #       with:
   #         registry-url: "https://registry.npmjs.org"
   #         scope: "@husonym"
 
   #     - name: Cache node modules
   #       id: cache-npm
-  #       uses: actions/cache@v5
+  #       uses: actions/cache@v6
   #       with:
   #         # npm cache files are stored in `~/.npm` on Linux/macOS
   #         path: |

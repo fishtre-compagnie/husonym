@@ -338,6 +338,9 @@ func (s *HusonymApiTestClient) setupMux(
 		&v1alpha1_connectiondataservice.Config{},
 		connectionService,
 		connectiondatabuilder,
+		// Pas d'analyseur Presidio dans les tests d'intégration : IsPresidioEnabled
+		// reste faux, le scan de contenu répond donc FailedPrecondition.
+		nil,
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"os"
 
-	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

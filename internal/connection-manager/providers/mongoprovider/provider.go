@@ -8,8 +8,8 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Provider struct{}
@@ -33,7 +33,7 @@ func (p *Provider) GetConnectionClient(
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts2 := options.Client().ApplyURI(connStr).SetServerAPIOptions(serverAPI)
 
-	client, err := mongo.Connect(context.Background(), opts2)
+	client, err := mongo.Connect(opts2)
 	if err != nil {
 		return nil, err
 	}

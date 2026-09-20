@@ -230,7 +230,10 @@ func (dt *HusonymDateTime) ValueMysql() (any, error) {
 		return t.Format(time.DateOnly), nil
 	}
 
-	// Otherwise return as DATETIME
+	// Otherwise return as DATETIME, with its fractional seconds when it has some
+	if dt.Nano != 0 {
+		return t.Format("2006-01-02 15:04:05.000000000"), nil
+	}
 	return t.Format(time.DateTime), nil
 }
 

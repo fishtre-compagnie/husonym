@@ -365,7 +365,7 @@ func (s *Service) CreateJob(
 		return nil, err
 	}
 	// Jobs are the paid surface: creating, configuring and running one requires an active
-	// license. Reading, pausing, cancelling and deleting deliberately do not, so an
+	// license. Reading, pausing, canceling and deleting deliberately do not, so an
 	// account whose license lapsed keeps access to its configuration and history and can
 	// still wind things down.
 	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
@@ -914,7 +914,7 @@ func (s *Service) PauseJob(
 	}
 
 	// Only resuming is gated. Pausing stays available without a license: an account whose
-	// licence lapsed must always be able to stop its schedules, and blocking that would
+	// license lapsed must always be able to stop its schedules, and blocking that would
 	// leave it with jobs it can neither run nor quiet.
 	if !req.Msg.Pause {
 		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
@@ -1796,19 +1796,14 @@ func (s *Service) ValidateJobMappings(
 		return nil, err
 	}
 
-	dbErrMsgs := []string{}
 	dbErrReports := []*mgmtv1alpha1.DatabaseError_DatabaseErrorReport{}
 	for _, err := range result.DatabaseErrors {
-		dbErrMsgs = append(dbErrMsgs, err.Message)
 		dbErrReports = append(dbErrReports, &mgmtv1alpha1.DatabaseError_DatabaseErrorReport{
 			Code:    err.Code,
 			Message: err.Message,
 		})
 	}
-	dbErrors := &mgmtv1alpha1.DatabaseError{
-		Errors:       dbErrMsgs,
-		ErrorReports: dbErrReports,
-	}
+	dbErrors := &mgmtv1alpha1.DatabaseError{ErrorReports: dbErrReports}
 
 	tableErrors := []*mgmtv1alpha1.TableError{}
 	for tableName, errs := range result.TableErrors {
@@ -1828,7 +1823,6 @@ func (s *Service) ValidateJobMappings(
 				Schema:       schema,
 				Table:        table,
 				Column:       col,
-				Errors:       getErrorMessages(errors),
 				ErrorReports: errors,
 			})
 		}
@@ -1842,7 +1836,6 @@ func (s *Service) ValidateJobMappings(
 				Schema:         schema,
 				Table:          table,
 				Column:         col,
-				Warnings:       getErrorMessages(warnings),
 				WarningReports: warnings,
 			})
 		}
@@ -1854,18 +1847,6 @@ func (s *Service) ValidateJobMappings(
 		ColumnErrors:   colErrors,
 		ColumnWarnings: colWarnings,
 	}), nil
-}
-
-type ErrorReport interface {
-	GetMessage() string
-}
-
-func getErrorMessages[T ErrorReport](errorsReports []T) []string {
-	messages := []string{}
-	for _, err := range errorsReports {
-		messages = append(messages, err.GetMessage())
-	}
-	return messages
 }
 
 func (s *Service) ValidateSchema(

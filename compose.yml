@@ -107,7 +107,7 @@ services:
 
   temporal-seed:
     container_name: husonym-temporal-seed
-    image: temporalio/admin-tools:1.26.2
+    image: temporalio/admin-tools:1.32.0
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     entrypoint: /bin/sh -c "/create_schedules.sh"
@@ -139,6 +139,9 @@ services:
     networks:
       - husonym-network
       - temporal-network
+    depends_on:
+      temporal-create-namespace:
+        condition: service_completed_successfully
     restart: on-failure
 
   redis:

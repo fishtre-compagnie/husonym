@@ -1,0 +1,189 @@
+package sqlio
+
+import (
+	"context"
+	"errors"
+	"regexp"
+	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/require"
+)
+
+// A page written without foreign key checks runs in one transaction, and checks are
+// turned back on before the connection returns to the pool.
+func TestInTransaction_ForeignKeyChecksDisabled(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `web`.`users` (`id`, `manager_id`) VALUES (?, ?), (?, ?)")).
+		WithArgs(int64(1), int64(2), int64(2), nil).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	ctx := context.Background()
+	require.NoError(t, InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
+		w := NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users")
+		return w.WriteBatch([]string{"id", "manager_id"}, [][]any{{int64(1), int64(2)}, {int64(2), nil}})
+	}))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInTransaction_ForeignKeyChecksRestoredOnFailure(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("INSERT INTO").WillReturnError(errors.New("duplicate entry"))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	ctx := context.Background()
+	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
+		return NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users").WriteBatch([]string{"id"}, [][]any{{int64(1)}})
+	})
+	require.ErrorContains(t, err, "duplicate entry")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInTransaction_ForeignKeyChecksUnsupportedDialect(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	require.Error(t, InTransaction(context.Background(), db, PostgresDialect{}, true, func(Tx) error { return nil }))
+}
+
+// Without foreign key checks to turn off, a page is still written whole or not at all:
+// several batches commit together, and a failing one leaves nothing behind.
+func TestInTransaction_PageIsAtomic(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO").WillReturnError(errors.New("bench: injected failure"))
+	mock.ExpectRollback()
+
+	ctx := context.Background()
+	err = InTransaction(ctx, db, PostgresDialect{}, false, func(tx Tx) error {
+		w := NewSQLWriter(ctx, tx, PostgresDialect{}, "public", "journal")
+		if err := w.WriteBatch([]string{"message"}, [][]any{{"lot 1"}}); err != nil {
+			return err
+		}
+		return w.WriteBatch([]string{"message"}, [][]any{{"lot 2"}})
+	})
+	require.ErrorContains(t, err, "injected failure")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestToDriverValue(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		in, want any
+	}{
+		{nil, nil},
+		{"texte", "texte"},
+		{int64(4), int64(4)},
+		{[]byte{0xff}, []byte{0xff}},
+		{now, now},
+		{map[string]any{"a": 1}, []byte(`{"a":1}`)},
+		{[]any{"x", 2}, []byte(`["x",2]`)},
+	}
+	for _, c := range cases {
+		got, err := toDriverValue(c.in)
+		require.NoError(t, err)
+		require.Equal(t, c.want, got)
+	}
+}
+
+// A session whose settings could not be restored must not go back to the pool: the next
+// table would be written with foreign key checks off, and nothing would say so.
+func TestInTransaction_SessionDiscardedWhenNotRestored(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("SET SESSION sql_mode = CONCAT").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("INSERT INTO").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("SET SESSION sql_mode = @husonym_sql_mode")).
+		WillReturnError(errors.New("connexion perdue"))
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=1")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("KILL CONNECTION CONNECTION_ID()")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	ctx := context.Background()
+	err = InTransaction(ctx, db, MySQLDialect{}, true, func(tx Tx) error {
+		return NewSQLWriter(ctx, tx, MySQLDialect{}, "web", "users").WriteBatch([]string{"id"}, [][]any{{int64(1)}})
+	})
+	// The page is rolled back rather than committed on a session left in an unknown state.
+	require.ErrorContains(t, err, "rétablissement de la session")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A dialect setting nothing on its session has nothing to throw away.
+func TestInTransaction_NoSessionToDiscard(t *testing.T) {
+	stmt, ok := PostgresDialect{}.DiscardSessionStatement()
+	require.False(t, ok)
+	require.Empty(t, stmt)
+	stmt, ok = MSSQLDialect{}.DiscardSessionStatement()
+	require.False(t, ok)
+	require.Empty(t, stmt)
+}
+
+// A setting that fails half way leaves the session changed: foreign key checks are already
+// off when the sql_mode statement fails. The connection must be thrown away rather than go
+// back to the pool, where the next table would be written unchecked with nothing saying so.
+func TestInTransaction_SessionDiscardedWhenBeginFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(regexp.QuoteMeta("SET @husonym_sql_mode = @@SESSION.sql_mode")).
+		WillReturnError(errors.New("connexion perdue"))
+	mock.ExpectExec(regexp.QuoteMeta("KILL CONNECTION CONNECTION_ID()")).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectRollback()
+
+	written := false
+	err = InTransaction(context.Background(), db, MySQLDialect{}, true, func(Tx) error {
+		written = true
+		return nil
+	})
+	require.ErrorContains(t, err, "réglage de la session")
+	require.False(t, written, "nothing is written on a session that could not be set")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// The very first setting failing changes nothing: the connection is healthy and is kept.
+func TestInTransaction_HealthySessionKeptWhenFirstSettingFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET FOREIGN_KEY_CHECKS=0")).WillReturnError(errors.New("refusé"))
+	mock.ExpectRollback()
+
+	err = InTransaction(context.Background(), db, MySQLDialect{}, true, func(Tx) error { return nil })
+	require.ErrorContains(t, err, "réglage de la session")
+	require.NoError(t, mock.ExpectationsWereMet())
+}

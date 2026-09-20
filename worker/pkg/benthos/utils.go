@@ -3,6 +3,7 @@ package husonym_benthos
 import (
 	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -57,7 +58,38 @@ func IsCriticalError(errMsg string) bool {
 			return true
 		}
 	}
-	return false
+	return isPermanentMysqlServerError(errMsg)
+}
+
+// mysqlServerError matches an error returned by a MySQL server: "Error 1264 (22003): …".
+// Driver-side failures (lost connection, bad connection) have no such prefix.
+var mysqlServerError = regexp.MustCompile(`Error (\d+) \([0-9A-Z]{5}\)`)
+
+// mysqlTransientErrors are the server errors worth another try: the same statement can
+// succeed once the contention, the connection shortage or the interruption is over. 1615
+// is one the run brings on itself — the statements of schema init, of the indexes and of
+// the truncate change a table a prepared statement was built on, and MySQL asks for it to
+// be prepared again.
+var mysqlTransientErrors = map[string]bool{
+	"1040": true, // too many connections
+	"1203": true, // too many connections for this user
+	"1205": true, // lock wait timeout
+	"1206": true, // the lock table is full
+	"1213": true, // deadlock
+	"1317": true, // query interrupted
+	"1615": true, // prepared statement needs to be re-prepared
+	"1637": true, // too many active concurrent transactions
+	"3024": true, // query exceeded max_execution_time
+}
+
+// isPermanentMysqlServerError reports a MySQL server error that the same statement will
+// get again: value out of range, data too long, generated column, command denied, unknown
+// or ambiguous column… Listing such messages one by one left most of them out, and the
+// stream retried them until the activity timed out, ten minutes later, without ever
+// failing the run.
+func isPermanentMysqlServerError(errMsg string) bool {
+	match := mysqlServerError.FindStringSubmatch(errMsg)
+	return len(match) == 2 && !mysqlTransientErrors[match[1]]
 }
 
 // checks if the error message is critical for the generate job

@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dyntypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	tcdynamodb "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	dyntypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )

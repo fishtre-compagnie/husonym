@@ -140,21 +140,27 @@ func setup(ctx context.Context, cfg *pgTestContainerConfig) (*PostgresTestContai
 				WithOccurrence(2).WithStartupTimeout(20 * time.Second),
 		),
 	}
+	// The workflow integration tests run a dozen jobs in parallel against one
+	// server, each with its own unbounded pools, which goes past the 100
+	// connections PostgreSQL allows by default ("sorry, too many clients").
+	serverArgs := []string{
+		"-c", "fsync=off",
+		"-c", "max_connections=500",
+	}
 	if cfg.useTls {
 		clientCertPaths, err := testutil.GetTlsCertificatePaths()
 		if err != nil {
 			return nil, err
 		}
+		serverArgs = append(
+			serverArgs,
+			"-c", "ssl=on",
+			"-c", "ssl_cert_file=/var/lib/postgresql/ssl/server.crt",
+			"-c", "ssl_key_file=/var/lib/postgresql/ssl/server.key",
+			"-c", "ssl_ca_file=/var/lib/postgresql/ssl/root.crt",
+		)
 		tcopts = append(
 			tcopts,
-			testutil.WithCmd([]string{
-				"postgres",
-				"-c", "fsync=off",
-				"-c", "ssl=on",
-				"-c", "ssl_cert_file=/var/lib/postgresql/ssl/server.crt",
-				"-c", "ssl_key_file=/var/lib/postgresql/ssl/server.key",
-				"-c", "ssl_ca_file=/var/lib/postgresql/ssl/root.crt",
-			}),
 			testutil.WithFiles([]testcontainers.ContainerFile{
 				{
 					HostFilePath:      clientCertPaths.ServerCertPath,
@@ -177,6 +183,7 @@ func setup(ctx context.Context, cfg *pgTestContainerConfig) (*PostgresTestContai
 			})),
 		)
 	}
+	tcopts = append(tcopts, testutil.WithCmd(append([]string{"postgres"}, serverArgs...)))
 	pgContainer, err := testpg.Run(
 		ctx,
 		"postgres:15",

@@ -9,6 +9,7 @@ import {
   PrimaryConstraint,
   PrimaryConstraintSchema,
   TransformerDataType,
+  TransformerSource,
   UniqueConstraints,
   UniqueConstraintsSchema,
   VirtualForeignConstraint,
@@ -31,6 +32,10 @@ export interface SchemaConstraintHandler {
   getIsGenerated(key: ColumnKey): boolean;
   getGeneratedType(key: ColumnKey): string | undefined;
   getIdentityType(key: ColumnKey): string | undefined;
+  // Détection RGPD (heuristique côté backend, cf. pkg/piidetect)
+  getIsSensitive(key: ColumnKey): boolean;
+  getDataCategory(key: ColumnKey): string | undefined;
+  getSuggestedTransformerSource(key: ColumnKey): TransformerSource;
 }
 
 export interface ColumnKey {
@@ -49,6 +54,9 @@ interface ColDetails {
   columnDefault?: string;
   generatedType?: string;
   identityGeneration?: string;
+  isSensitive: boolean;
+  dataCategory?: string;
+  suggestedTransformerSource: TransformerSource;
 }
 
 export function getSchemaConstraintHandler(
@@ -122,6 +130,18 @@ export function getSchemaConstraintHandler(
     getIdentityType(key) {
       return colmap[fromColKey(key)]?.identityGeneration;
     },
+    getIsSensitive(key) {
+      return colmap[fromColKey(key)]?.isSensitive ?? false;
+    },
+    getDataCategory(key) {
+      return colmap[fromColKey(key)]?.dataCategory;
+    },
+    getSuggestedTransformerSource(key) {
+      return (
+        colmap[fromColKey(key)]?.suggestedTransformerSource ??
+        TransformerSource.UNSPECIFIED
+      );
+    },
   };
 }
 
@@ -129,10 +149,67 @@ function dbDataTypeToTransformerDataType(
   dataType: string
 ): TransformerDataType {
   const dt = postgresTypeToTransformerDataType(dataType);
-  if (dt === TransformerDataType.UNSPECIFIED) {
-    return mysqlTypeToTransformerDataType(dataType);
+  if (dt !== TransformerDataType.UNSPECIFIED) {
+    return dt;
   }
-  return dt;
+  const mysqlDt = mysqlTypeToTransformerDataType(dataType);
+  if (mysqlDt !== TransformerDataType.UNSPECIFIED) {
+    return mysqlDt;
+  }
+  // SQL Server manquait à la chaîne : ses types propres (nvarchar, bit,
+  // datetime2, uniqueidentifier…) retombaient en UNSPECIFIED, et le filtre de
+  // transformers ne conserve alors que ceux marqués ANY (cf. transformer-handler).
+  // Résultat : sur une base MSSQL, aucun générateur de chaîne n'était proposé
+  // pour une colonne nvarchar — ni manuellement, ni par la suggestion RGPD.
+  return mssqlTypeToTransformerDataType(dataType);
+}
+
+function mssqlTypeToTransformerDataType(
+  mssqlType: string
+): TransformerDataType {
+  const baseType = mssqlType.split('(')[0].trim().toLowerCase();
+
+  switch (baseType) {
+    case 'int':
+    case 'bigint':
+    case 'smallint':
+    case 'tinyint':
+      return TransformerDataType.INT64;
+    case 'bit':
+      return TransformerDataType.BOOLEAN;
+    case 'decimal':
+    case 'numeric':
+    case 'money':
+    case 'smallmoney':
+    case 'float':
+    case 'real':
+      return TransformerDataType.FLOAT64;
+    case 'char':
+    case 'varchar':
+    case 'text':
+    case 'nchar':
+    case 'nvarchar':
+    case 'ntext':
+      return TransformerDataType.STRING;
+    case 'date':
+    case 'datetime':
+    case 'datetime2':
+    case 'smalldatetime':
+    case 'datetimeoffset':
+    case 'time':
+      return TransformerDataType.TIME;
+    case 'uniqueidentifier':
+      return TransformerDataType.UUID;
+    case 'binary':
+    case 'varbinary':
+    case 'image':
+    case 'xml':
+    case 'json':
+    case 'sql_variant':
+      return TransformerDataType.ANY;
+    default:
+      return TransformerDataType.UNSPECIFIED;
+  }
 }
 
 function postgresTypeToTransformerDataType(
@@ -304,6 +381,9 @@ function buildColDetailsMap(
         columnDefault: dbcol.columnDefault,
         generatedType: dbcol.generatedType,
         identityGeneration: dbcol.identityGeneration,
+        isSensitive: dbcol.isSensitive,
+        dataCategory: dbcol.dataCategory || undefined,
+        suggestedTransformerSource: dbcol.suggestedTransformerSource,
       };
     });
   });

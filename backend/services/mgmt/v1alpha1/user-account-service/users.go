@@ -24,7 +24,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v86"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -299,6 +299,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			)
 		}
 		session, err := s.generateCheckoutSession(
+			ctx,
 			account.StripeCustomerID.String,
 			account.AccountSlug,
 			user.Msg.GetUserId(),
@@ -464,6 +465,7 @@ func (s *Service) CreateTeamAccount(
 			)
 		}
 		session, err := s.generateCheckoutSession(
+			ctx,
 			account.StripeCustomerID.String,
 			account.AccountSlug,
 			user.Msg.GetUserId(),
@@ -514,7 +516,7 @@ func (s *Service) getCreateStripeAccountFunction(
 				"unable to retrieve user email from auth token when creating stripe account",
 			)
 		}
-		customer, err := s.billingclient.NewCustomer(&billing.CustomerRequest{
+		customer, err := s.billingclient.NewCustomer(ctx, &billing.CustomerRequest{
 			Email:     *email,
 			Name:      account.AccountSlug,
 			AccountId: husonymdb.UUIDString(account.ID),
@@ -528,6 +530,7 @@ func (s *Service) getCreateStripeAccountFunction(
 }
 
 func (s *Service) generateCheckoutSession(
+	ctx context.Context,
 	customerId, accountSlug, userId string,
 	logger *slog.Logger,
 ) (*stripe.CheckoutSession, error) {
@@ -535,7 +538,13 @@ func (s *Service) generateCheckoutSession(
 		return nil, errors.New("unable to generate checkout session as stripe client is nil")
 	}
 
-	session, err := s.billingclient.NewCheckoutSession(customerId, accountSlug, userId, logger)
+	session, err := s.billingclient.NewCheckoutSession(
+		ctx,
+		customerId,
+		accountSlug,
+		userId,
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create new stripe checkout session: %w", err)
 	}

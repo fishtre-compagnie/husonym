@@ -9,10 +9,9 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
-	"github.com/fishtre-compagnie/husonym/internal/javascript"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
+	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
-	"github.com/dop251/goja"
 )
 
 type TransformerExecutor struct {
@@ -23,7 +22,10 @@ type TransformerExecutor struct {
 type TransformerExecutorOption func(c *TransformerExecutorConfig)
 
 type TransformerExecutorConfig struct {
-	transformPiiText               *transformPiiTextConfig
+	transformPiiText *transformPiiTextConfig
+	// piiTextApi, when set, takes precedence over transformPiiText: callers that
+	// already hold a ready-made API (e.g. the account-aware backend client) use it.
+	piiTextApi                     transformers.TransformPiiTextApi
 	userDefinedTransformerResolver UserDefinedTransformerResolver
 	logger                         *slog.Logger
 }
@@ -51,6 +53,25 @@ func WithTransformPiiTextConfig(
 			defaultLanguage:    defaultLanguage,
 		}
 	}
+}
+
+// WithTransformPiiTextApi enables TransformPiiText (and the PII helpers exposed to
+// JavaScript transformers) through an already-built API.
+func WithTransformPiiTextApi(api transformers.TransformPiiTextApi) TransformerExecutorOption {
+	return func(c *TransformerExecutorConfig) {
+		c.piiTextApi = api
+	}
+}
+
+// resolvePiiTextApi returns the PII text API to use, or nil when PII is not enabled.
+func (c *TransformerExecutorConfig) resolvePiiTextApi() transformers.TransformPiiTextApi {
+	if c.piiTextApi != nil {
+		return c.piiTextApi
+	}
+	if c.transformPiiText != nil {
+		return newFromExecConfig(c.transformPiiText, c.transformPiiText.husonymOperatorApi, c.logger)
+	}
+	return nil
 }
 
 func WithLogger(logger *slog.Logger) TransformerExecutorOption {
@@ -111,23 +132,9 @@ func InitializeTransformerByConfigType(
 			return nil, fmt.Errorf("generate javascript config is nil")
 		}
 
-		valueApi := newAnonValueApi()
-		var transformPiiTextApi transformers.TransformPiiTextApi
-		if execCfg.transformPiiText != nil {
-			execCfg.logger.Debug("configuring using transform pii text api in generate javascript")
-			transformPiiTextApi = newFromExecConfig(
-				execCfg.transformPiiText,
-				execCfg.transformPiiText.husonymOperatorApi,
-				execCfg.logger,
-			)
-		}
-
-		runner, err := javascript.NewDefaultValueRunner(valueApi, transformPiiTextApi, execCfg.logger)
-		if err != nil {
-			return nil, err
-		}
+		transformPiiTextApi := execCfg.resolvePiiTextApi()
 		jsCode, propertyPath := javascript_userland.GetSingleGenerateFunction(config.GetCode())
-		program, err := goja.Compile("main.js", jsCode, false)
+		program, err := javascript_vm.Compile("main.js", jsCode)
 		if err != nil {
 			return nil, err
 		}
@@ -139,12 +146,12 @@ func InitializeTransformerByConfigType(
 				if err != nil {
 					return nil, fmt.Errorf("failed to create input message: %w", err)
 				}
-				valueApi.SetMessage(inputMessage)
-				_, err = runner.Run(context.Background(), program)
+				outputMessage, err := RunJavascript(context.Background(), program, inputMessage,
+					transformPiiTextApi, execCfg.logger)
 				if err != nil {
 					return nil, fmt.Errorf("failed to run program: %w", err)
 				}
-				updatedValue, err := valueApi.GetPropertyPathValue(propertyPath)
+				updatedValue, err := propertyPathValue(outputMessage, propertyPath)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get property path value: %w", err)
 				}
@@ -157,22 +164,9 @@ func InitializeTransformerByConfigType(
 			return nil, fmt.Errorf("transform javascript config is nil")
 		}
 
-		valueApi := newAnonValueApi()
-		var transformPiiTextApi transformers.TransformPiiTextApi
-		if execCfg.transformPiiText != nil {
-			execCfg.logger.Debug("configuring using transform pii text api in transform javascript")
-			transformPiiTextApi = newFromExecConfig(
-				execCfg.transformPiiText,
-				execCfg.transformPiiText.husonymOperatorApi,
-				execCfg.logger,
-			)
-		}
-		runner, err := javascript.NewDefaultValueRunner(valueApi, transformPiiTextApi, execCfg.logger)
-		if err != nil {
-			return nil, err
-		}
+		transformPiiTextApi := execCfg.resolvePiiTextApi()
 		jsCode, propertyPath := javascript_userland.GetSingleTransformFunction(config.GetCode())
-		program, err := goja.Compile("main.js", jsCode, false)
+		program, err := javascript_vm.Compile("main.js", jsCode)
 		if err != nil {
 			return nil, err
 		}
@@ -186,12 +180,12 @@ func InitializeTransformerByConfigType(
 				if err != nil {
 					return nil, fmt.Errorf("failed to create input message: %w", err)
 				}
-				valueApi.SetMessage(inputMessage)
-				_, err = runner.Run(context.Background(), program)
+				outputMessage, err := RunJavascript(context.Background(), program, inputMessage,
+					transformPiiTextApi, execCfg.logger)
 				if err != nil {
 					return nil, fmt.Errorf("failed to run program: %w", err)
 				}
-				updatedValue, err := valueApi.GetPropertyPathValue(propertyPath)
+				updatedValue, err := propertyPathValue(outputMessage, propertyPath)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get property path value: %w", err)
 				}
@@ -739,22 +733,17 @@ func InitializeTransformerByConfigType(
 		}, nil
 
 	case *mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig:
-		if execCfg.transformPiiText == nil {
+		transformPiiTextApi := execCfg.resolvePiiTextApi()
+		if transformPiiTextApi == nil {
 			return nil, fmt.Errorf("transformer: TransformPiiText is not enabled: %w", errors.ErrUnsupported)
 		}
 		config := transformerConfig.GetTransformPiiTextConfig()
 		if config == nil {
 			config = &mgmtv1alpha1.TransformPiiText{}
 		}
-		if config.GetLanguage() == "" && execCfg.transformPiiText.defaultLanguage != nil {
+		if config.GetLanguage() == "" && execCfg.transformPiiText != nil && execCfg.transformPiiText.defaultLanguage != nil {
 			config.Language = execCfg.transformPiiText.defaultLanguage
 		}
-
-		transformPiiTextApi := newFromExecConfig(
-			execCfg.transformPiiText,
-			execCfg.transformPiiText.husonymOperatorApi,
-			execCfg.logger,
-		)
 
 		return &TransformerExecutor{
 			Opts: nil,

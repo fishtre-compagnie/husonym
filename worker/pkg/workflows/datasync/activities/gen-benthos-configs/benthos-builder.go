@@ -211,6 +211,24 @@ func (b *benthosBuilder) setRunContexts(
 		if err != nil {
 			return nil, fmt.Errorf("failed to send run context: %w", err)
 		}
+		// The same work, without any Benthos type, for the Athanor engine.
+		if plan := toTablePlan(config); plan != nil {
+			planBits, err := plan.Marshal()
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal table plan: %w", err)
+			}
+			err = rcstream.Send(&mgmtv1alpha1.SetRunContextsRequest{
+				Id: &mgmtv1alpha1.RunContextKey{
+					JobRunId:   b.jobRunId,
+					ExternalId: shared.GetTablePlanExternalId(config.Name),
+					AccountId:  accountId,
+				},
+				Value: planBits,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to send table plan run context: %w", err)
+			}
+		}
 		config.Config = nil // nilling this out so that it does not persist in temporal
 	}
 

@@ -2139,10 +2139,11 @@ func test_postgres_complex(
 			{schema: "space_mission", table: "certifications", rowCount: 3},
 			{schema: "space_mission", table: "astronaut_certifications", rowCount: 4},
 			{schema: "space_mission", table: "certification_requirements", rowCount: 3},
-			{schema: "space_mission", table: "mission_logs_extended", rowCount: 2},
+			// A row whose nullable foreign key is NULL references nothing left out: it is kept
+			{schema: "space_mission", table: "mission_logs_extended", rowCount: 3},
 			{schema: "space_mission", table: "communication_channels", rowCount: 3},
 			{schema: "space_mission", table: "mission_communications", rowCount: 3},
-			{schema: "space_mission", table: "message_logs", rowCount: 2},
+			{schema: "space_mission", table: "message_logs", rowCount: 3},
 			{schema: "space_mission", table: "events", rowCount: 9},
 			// {schema: "space_mission", table: "system_events", rowCount: 3},
 			// {schema: "space_mission", table: "astronaut_events", rowCount: 3},

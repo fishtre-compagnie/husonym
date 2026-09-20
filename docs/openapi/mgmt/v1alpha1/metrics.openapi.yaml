@@ -1,6 +1,7 @@
 openapi: 3.1.0
 info:
   summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
   version: "0.5"
   termsOfService: "https://husonym.com/terms-of-service"
   contact:
@@ -24,12 +25,72 @@ servers:
         description: The port to use for the development server
 components:
   schemas:
-    mgmt.v1alpha1.RangedMetricName:
-      type: string
-      title: RangedMetricName
-      enum:
-        - RANGED_METRIC_NAME_UNSPECIFIED
-        - RANGED_METRIC_NAME_INPUT_RECEIVED
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     mgmt.v1alpha1.Date:
       type: object
       properties:
@@ -37,6 +98,7 @@ components:
           type: integer
           title: year
           maximum: 9999
+          minimum: 0
           description: |-
             Year of the date. Must be from 1 to 9999, or 0 to specify a date without
              a year.
@@ -44,6 +106,7 @@ components:
           type: integer
           title: month
           maximum: 31
+          minimum: 0
           description: |-
             Month of a year. Must be from 1 to 12, or 0 to specify a year without a
              month and day.
@@ -51,6 +114,7 @@ components:
           type: integer
           title: day
           maximum: 31
+          minimum: 0
           description: |-
             Day of a month. Must be from 1 to 31 and valid for the year and month, or 0
              to specify a year by itself or a year and month where the day isn't
@@ -80,9 +144,7 @@ components:
           title: date
           description: The date of the result
         count:
-          type:
-            - integer
-            - string
+          type: string
           title: count
           format: int64
           description: The count of the metric for the given date
@@ -90,37 +152,49 @@ components:
       additionalProperties: false
     mgmt.v1alpha1.GetDailyMetricCountRequest:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - accountId
-            - required:
-                - jobId
-            - required:
-                - runId
-            - not:
-                anyOf:
-                  - required:
-                      - accountId
-                  - required:
-                      - jobId
-                  - required:
-                      - runId
       anyOf:
-        - required:
-            - accountId
-        - required:
-            - jobId
-        - required:
-            - runId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            accountId:
+              type: string
+              title: account_id
+              format: uuid
+              description: The account identifier that will be used to filter by
+          title: account_id
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The job identifier that will be used to filter by
+          title: job_id
+        - type: object
+          properties:
+            runId:
+              type: string
+              title: run_id
+              format: uuid
+              description: The run identifier that will be used to filter by
+          title: run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - accountId
               - required:
                   - jobId
               - required:
                   - runId
+          - not:
+              oneOf:
+                - required:
+                    - accountId
+                - required:
+                    - jobId
+                - required:
+                    - runId
       properties:
         start:
           allOf:
@@ -137,23 +211,7 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.RangedMetricName'
           title: metric
           description: The metric to return
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The account identifier that will be used to filter by
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job identifier that will be used to filter by
-        runId:
-          type: string
-          title: run_id
-          format: uuid
-          description: The run identifier that will be used to filter by
       title: GetDailyMetricCountRequest
-      additionalProperties: false
     mgmt.v1alpha1.GetDailyMetricCountResponse:
       type: object
       properties:
@@ -167,58 +225,55 @@ components:
       additionalProperties: false
     mgmt.v1alpha1.GetMetricCountRequest:
       type: object
-      allOf:
-        - anyOf:
-            - required:
-                - accountId
-            - required:
-                - jobId
-            - required:
-                - runId
-            - not:
-                anyOf:
-                  - required:
-                      - accountId
-                  - required:
-                      - jobId
-                  - required:
-                      - runId
       anyOf:
-        - required:
-            - accountId
-        - required:
-            - jobId
-        - required:
-            - runId
-        - not:
-            anyOf:
+        - type: object
+          properties:
+            accountId:
+              type: string
+              title: account_id
+              format: uuid
+              description: The account identifier that will be used to filter by
+          title: account_id
+        - type: object
+          properties:
+            jobId:
+              type: string
+              title: job_id
+              format: uuid
+              description: The job identifier that will be used to filter by
+          title: job_id
+        - type: object
+          properties:
+            runId:
+              type: string
+              title: run_id
+              format: uuid
+              description: The run identifier that will be used to filter by
+          title: run_id
+      unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
               - required:
                   - accountId
               - required:
                   - jobId
               - required:
                   - runId
+          - not:
+              oneOf:
+                - required:
+                    - accountId
+                - required:
+                    - jobId
+                - required:
+                    - runId
       properties:
         metric:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.RangedMetricName'
           title: metric
           description: The metric to return
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The account identifier that will be used to filter by
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job identifier that will be used to filter by
-        runId:
-          type: string
-          title: run_id
-          format: uuid
-          description: The run identifier that will be used to filter by
         startDay:
           allOf:
             - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
@@ -228,75 +283,22 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.Date'
           title: end_day
       title: GetMetricCountRequest
-      additionalProperties: false
     mgmt.v1alpha1.GetMetricCountResponse:
       type: object
       properties:
         count:
-          type:
-            - integer
-            - string
+          type: string
           title: count
           format: int64
           description: The summed up count of the metric based on the input query and timerange specified
       title: GetMetricCountResponse
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
+    mgmt.v1alpha1.RangedMetricName:
+      type: string
+      title: RangedMetricName
       enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - CodeNotFound
-          enum:
-            - CodeCanceled
-            - CodeUnknown
-            - CodeInvalidArgument
-            - CodeDeadlineExceeded
-            - CodeNotFound
-            - CodeAlreadyExists
-            - CodePermissionDenied
-            - CodeResourceExhausted
-            - CodeFailedPrecondition
-            - CodeAborted
-            - CodeOutOfRange
-            - CodeInternal
-            - CodeUnavailable
-            - CodeDataLoss
-            - CodeUnauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        - RANGED_METRIC_NAME_UNSPECIFIED
+        - RANGED_METRIC_NAME_INPUT_RECEIVED
 security:
   - BearerAuth: []
 paths:
@@ -310,13 +312,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:
@@ -346,13 +352,17 @@ paths:
       parameters:
         - name: Connect-Protocol-Version
           in: header
+          description: Define the version of the Connect protocol
           required: true
           schema:
             $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
         - name: Connect-Timeout-Ms
           in: header
+          description: Define the timeout, in ms
           schema:
             $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
       requestBody:
         content:
           application/json:

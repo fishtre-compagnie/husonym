@@ -102,9 +102,12 @@ func ToUuid(value string) (pgtype.UUID, error) {
 	return uuid, err
 }
 
+// ToTimestamp stores value in a column without time zone as a UTC wall clock, what the
+// queries compare it with (CURRENT_TIMESTAMP). The local wall clock of a server outside
+// UTC let an invite live its lifetime plus the offset.
 func ToTimestamp(value time.Time) (pgtype.Timestamp, error) {
 	timestamp := pgtype.Timestamp{}
-	err := timestamp.Scan(value)
+	err := timestamp.Scan(value.UTC())
 	return timestamp, err
 }
 

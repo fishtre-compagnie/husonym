@@ -18,16 +18,19 @@ import * as Yup from 'yup';
 import { isValidConnectionPair } from '../../connections/util';
 
 export type NewJobType =
-  | 'data-sync'
-  | 'generate-table'
-  | 'ai-generate-table'
-  | 'pii-detection';
+  'data-sync' | 'generate-table' | 'ai-generate-table' | 'pii-detection';
 
 // Schema for a job's workflow settings
 export const WorkflowSettingsSchema = Yup.object({
   runTimeout: Yup.number()
     .optional()
     .min(0, 'The Job Run Timeout cannot be less than 0 minutes'),
+  // Transformation engine (JobEngine enum value): 0 = default (deployment),
+  // 1 = Athanor, 2 = Benthos (legacy).
+  engine: Yup.number().optional(),
+  // Deterministic consistency reach (ConsistencyScope enum value), Athanor only:
+  // 0 = run (default), 2 = job, 3 = account.
+  consistencyScope: Yup.number().optional(),
 });
 
 export type WorkflowSettingsSchema = Yup.InferType<

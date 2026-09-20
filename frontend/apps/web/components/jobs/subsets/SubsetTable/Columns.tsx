@@ -1,5 +1,6 @@
+import { AppTableFeatures } from '@/components/table/features';
 import TruncatedText from '@/components/TruncatedText';
-import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
+import { createColumnHelper } from '@tanstack/react-table';
 import IndeterminateCheckbox from '../../JobMappingTable/IndeterminateCheckbox';
 import { SchemaColumnHeader } from '../../SchemaTable/SchemaColumnHeader';
 import ActionsCell from './ActionsCell';
@@ -12,11 +13,8 @@ export interface SubsetTableRow {
   isRootTable: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ColumnTValue = any;
-
-function getColumns(): ColumnDef<SubsetTableRow, ColumnTValue>[] {
-  const columnHelper = createColumnHelper<SubsetTableRow>();
+function getColumns() {
+  const columnHelper = createColumnHelper<AppTableFeatures, SubsetTableRow>();
 
   const checkboxColumn = columnHelper.display({
     id: 'isSelected',
@@ -25,7 +23,8 @@ function getColumns(): ColumnDef<SubsetTableRow, ColumnTValue>[] {
         <IndeterminateCheckbox
           {...{
             checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
+            indeterminate:
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected(),
             onChange: table.getToggleAllRowsSelectedHandler(),
           }}
         />
@@ -133,14 +132,14 @@ function getColumns(): ColumnDef<SubsetTableRow, ColumnTValue>[] {
     },
   });
 
-  return [
+  return columnHelper.columns([
     checkboxColumn,
     schemaColumn,
     tableColumn,
     isRootTableColumn,
     whereColumn,
     actionsColumn,
-  ];
+  ]);
 }
 
 export const SUBSET_TABLE_COLUMNS = getColumns();

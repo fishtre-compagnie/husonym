@@ -10,8 +10,9 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v86"
 )
 
 func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
@@ -101,12 +102,12 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
 
 		s.setUser(s.ctx, userclient)
 		accountId := s.createBilledTeamAccount(s.ctx, userclient, "team1", "foo")
-		s.Mocks.Billingclient.On("GetSubscriptions", "foo").
+		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, "foo").
 			Once().
-			Return(&testSubscriptionIter{subscriptions: []*stripe.Subscription{
+			Return([]*stripe.Subscription{
 				{Status: stripe.SubscriptionStatusIncompleteExpired},
 				{Status: stripe.SubscriptionStatusActive},
-			}}, nil)
+			}, nil)
 		resp, err := anonclient.AnonymizeMany(
 			s.ctx,
 			connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{

@@ -1,0 +1,21 @@
+# Registre aqua LOCAL : paquets absents du registre standard, référencé par aqua.yaml.
+packages:
+  # CLI Infisical, qui injecte la clé de signature des licences (HUSONYM_EE_SIGNING_KEY)
+  # sans l'écrire sur disque. Releases goreleaser (cli_X.Y.Z_<os>_<arch>.tar.gz) sans
+  # entrée dans aquaproj/aqua-registry. Les checksums darwin sont dans un fichier séparé
+  # (notarisation Apple), d'où le template sur l'asset.
+  - type: github_release
+    repo_owner: Infisical
+    repo_name: cli
+    description: The official CLI of Infisical
+    asset: cli_{{trimV .Version}}_{{.OS}}_{{.Arch}}.tar.gz
+    format: tar.gz
+    files:
+      - name: infisical
+    checksum:
+      type: github_release
+      asset: checksums{{if eq .OS "darwin"}}-darwin{{end}}.txt
+      algorithm: sha256
+    supported_envs:
+      - darwin
+      - linux

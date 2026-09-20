@@ -1,6 +1,8 @@
 package transformer_executor
 
 import (
+	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -1664,6 +1666,32 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 		require.Equal(t, mockText, result)
 	})
 
+	t.Run("TransformPiiTextConfig_Api", func(t *testing.T) {
+		config := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+				TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{},
+			},
+		}
+
+		executor, err := InitializeTransformerByConfigType(config, WithTransformPiiTextApi(fakePiiTextApi{out: "bar"}))
+		require.NoError(t, err)
+
+		result, err := executor.Mutate("Hello, John Doe!", executor.Opts)
+		require.NoError(t, err)
+		require.Equal(t, "bar", result)
+	})
+
+	t.Run("TransformPiiTextConfig_NotEnabled", func(t *testing.T) {
+		config := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+				TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{},
+			},
+		}
+
+		_, err := InitializeTransformerByConfigType(config)
+		require.ErrorIs(t, err, errors.ErrUnsupported)
+	})
+
 	t.Run("TransformPiiTextConfig_Nil", func(t *testing.T) {
 		config := &mgmtv1alpha1.TransformerConfig{
 			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
@@ -1802,4 +1830,10 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported transformer")
 	})
+}
+
+type fakePiiTextApi struct{ out string }
+
+func (f fakePiiTextApi) Transform(context.Context, *mgmtv1alpha1.TransformPiiText, string) (string, error) {
+	return f.out, nil
 }

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/rng"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,32 +52,32 @@ func Test_AnyToFloat64(t *testing.T) {
 		"1.0",
 		[]byte("1.0"),
 		int(1),
-		shared.Ptr(int(1)),
+		gotypeutil.ToPtr(int(1)),
 		int8(1),
-		shared.Ptr(int8(1)),
+		gotypeutil.ToPtr(int8(1)),
 		int16(1),
-		shared.Ptr(int16(1)),
+		gotypeutil.ToPtr(int16(1)),
 		int32(1),
-		shared.Ptr(int32(1)),
+		gotypeutil.ToPtr(int32(1)),
 		int64(1),
-		shared.Ptr(int64(1)),
+		gotypeutil.ToPtr(int64(1)),
 		uint(1),
-		shared.Ptr(uint(1)),
+		gotypeutil.ToPtr(uint(1)),
 		uint8(1),
-		shared.Ptr(uint8(1)),
+		gotypeutil.ToPtr(uint8(1)),
 		uint16(1),
-		shared.Ptr(uint16(1)),
+		gotypeutil.ToPtr(uint16(1)),
 		uint32(1),
-		shared.Ptr(uint32(1)),
+		gotypeutil.ToPtr(uint32(1)),
 		uint64(1),
-		shared.Ptr(uint64(1)),
+		gotypeutil.ToPtr(uint64(1)),
 		float32(1),
-		shared.Ptr(float32(1)),
+		gotypeutil.ToPtr(float32(1)),
 		float64(1),
-		shared.Ptr(float64(1)),
+		gotypeutil.ToPtr(float64(1)),
 		true,
 		false,
-		shared.Ptr(true),
+		gotypeutil.ToPtr(true),
 	}
 	for _, input := range inputs {
 		output, err := AnyToFloat64(input)

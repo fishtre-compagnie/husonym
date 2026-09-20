@@ -41,9 +41,7 @@ type CloneModeProps = BaseConnectionComponentDetailsProps & {
 };
 
 type GetConnectionComponentDetailsProps =
-  | ViewModeProps
-  | EditModeProps
-  | CloneModeProps;
+  ViewModeProps | EditModeProps | CloneModeProps;
 
 function getPgHeaderType(
   connection: PostgresConnectionConfig

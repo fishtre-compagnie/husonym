@@ -1,3 +1,4 @@
+import { AppTableFeatures } from '@/components/table/features';
 import { ColumnDef } from '@tanstack/react-table';
 import { StringSelect } from '../../SchemaTable/StringSelect';
 import { ColumnHeader } from './ColumnHeader';
@@ -28,7 +29,7 @@ export interface TableMappingRow {
 
 export function getTableMappingsColumns(
   props: Props
-): ColumnDef<TableMappingRow>[] {
+): ColumnDef<AppTableFeatures, TableMappingRow>[] {
   const { destinationDetailsRecord, onUpdate } = props;
 
   return [

@@ -3,21 +3,21 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  ColumnVisibilityState,
   RowData,
   SortingState,
-  VisibilityState,
+  TableFeatures,
   createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
 } from '@tanstack/react-table';
 
 import { CopyButton } from '@/components/CopyButton';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
+import {
+  AppTableFeatures,
+  paginatedTableFeatures,
+} from '@/components/table/features';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -51,9 +51,8 @@ interface MemberInviteRow {
   role: AccountRole;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getColumns(isRbacEnabled: boolean): ColumnDef<MemberInviteRow, any>[] {
-  const columnHelper = createColumnHelper<MemberInviteRow>();
+function getColumns(isRbacEnabled: boolean) {
+  const columnHelper = createColumnHelper<AppTableFeatures, MemberInviteRow>();
   const emailColumn = columnHelper.accessor('email', {
     header: 'Email',
     cell: ({ getValue }) => <div>{getValue()}</div>,
@@ -100,19 +99,24 @@ function getColumns(isRbacEnabled: boolean): ColumnDef<MemberInviteRow, any>[] {
   });
 
   if (isRbacEnabled) {
-    return [
+    return columnHelper.columns([
       emailColumn,
       createdAtColumn,
       expiresAtColumn,
       roleColumn,
       actionsColumn,
-    ];
+    ]);
   }
 
-  return [emailColumn, createdAtColumn, expiresAtColumn, actionsColumn];
+  return columnHelper.columns([
+    emailColumn,
+    createdAtColumn,
+    expiresAtColumn,
+    actionsColumn,
+  ]);
 }
 
-function useGetColumns(): ColumnDef<MemberInviteRow>[] {
+function useGetColumns(): ColumnDef<AppTableFeatures, MemberInviteRow>[] {
   const { data: config } = useGetSystemAppConfig();
   const isRbacEnabled = config?.isRbacEnabled ?? false;
   return useMemo(() => {
@@ -166,7 +170,7 @@ export function InvitesTable(props: Props): React.ReactElement {
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface TableMeta<TData extends RowData> {
+  interface TableMeta<TFeatures extends TableFeatures, TData extends RowData> {
     invitesTable?: {
       onDeleted(id: string): void;
     };
@@ -175,25 +179,23 @@ declare module '@tanstack/react-table' {
 
 interface DataTableProps {
   data: MemberInviteRow[];
-  columns: ColumnDef<MemberInviteRow>[];
+  columns: ColumnDef<AppTableFeatures, MemberInviteRow>[];
   onDeleted(id: string): void;
 }
 function DataTable(props: DataTableProps): React.ReactElement {
   const { data, columns, onDeleted } = props;
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const table = useReactTable({
+  const table = useTable({
+    features: paginatedTableFeatures,
     data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -229,12 +231,9 @@ function DataTable(props: DataTableProps): React.ReactElement {
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <table.FlexRender header={header} />
+                      )}
                     </TableHead>
                   );
                 })}
@@ -250,10 +249,7 @@ function DataTable(props: DataTableProps): React.ReactElement {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      <table.FlexRender cell={cell} />
                     </TableCell>
                   ))}
                 </TableRow>

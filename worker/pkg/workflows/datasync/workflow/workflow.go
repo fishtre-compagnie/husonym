@@ -4,17 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
+	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
+	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
@@ -154,6 +159,15 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		)
 	}
 
+	// Version 2 checks the privileges once the configs are generated, on the very tables
+	// and columns the run writes; version 1 checked them before, from the job mappings.
+	privilegesVersion := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 2)
+	if privilegesVersion == 1 {
+		if err := runPrivilegeCheck(ctx, logger, req.JobId, nil); err != nil {
+			return nil, err
+		}
+	}
+
 	info := workflow.GetInfo(ctx)
 	var bcResp *genbenthosconfigs_activity.GenerateBenthosConfigsResponse
 	logger.Info("scheduling GenerateBenthosConfigs for execution.")
@@ -173,6 +187,15 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 	if len(bcResp.BenthosConfigs) == 0 {
 		logger.Info("found 0 benthos configs, ending workflow.")
 		return &WorkflowResponse{}, nil
+	}
+
+	// Generating the configs reads metadata only: nothing is read from the tables nor
+	// written yet, and the hooks, the schema init and the emptying of the destination come
+	// after the check.
+	if privilegesVersion >= 2 {
+		if err := runPrivilegeCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs); err != nil {
+			return nil, err
+		}
 	}
 
 	err = execRunJobHooksByTiming(
@@ -196,6 +219,27 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		actOptResp.Destinations,
 		actOptResp.PostgresSchemaDrift,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Version 2 puts the triggers back on every way out of the run, not only on success.
+	triggersVersion := workflow.GetVersion(ctx, "destination-triggers", workflow.DefaultVersion, 2)
+	triggersRestored := false
+	if triggersVersion >= 2 {
+		defer func() {
+			if triggersRestored {
+				return
+			}
+			// The run is failing or canceled: its context may be done already.
+			detachedCtx, _ := workflow.NewDisconnectedContext(ctx)
+			if err := restoreDestinationTriggers(detachedCtx, logger, triggersVersion, req.JobId, actOptResp.AccountId); err != nil {
+				logger.Error("destination triggers could not be restored on the way out of the run: "+
+					"the next run of the job will put them back", "error", err)
+			}
+		}()
+	}
+	err = suspendDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId, bcResp.BenthosConfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -486,6 +530,19 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 
 	logger.Info("data syncs completed")
 
+	err = runReferentialIntegrityCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs)
+	if err != nil {
+		return nil, err
+	}
+
+	err = restoreDestinationTriggers(ctx, logger, triggersVersion, req.JobId, actOptResp.AccountId)
+	if err != nil {
+		// The deferred restore, on a context of its own, is the one chance left: the flag
+		// stays down so that it runs.
+		return nil, err
+	}
+	triggersRestored = true
+
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
@@ -641,6 +698,159 @@ func runPostTableSyncActivity(
 		return err
 	}
 	return nil
+}
+
+// runPrivilegeCheck stops the run before anything is read or written when a connection
+// lacks what its role in the job needs, on the tables and columns of the configs. Runs of
+// version 1 pass no configs.
+func runPrivilegeCheck(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	var tables []*runprivileges_activity.TableColumns
+	byName := map[string]*runprivileges_activity.TableColumns{}
+	for _, cfg := range configs {
+		key := cfg.TableSchema + "." + cfg.TableName
+		table, ok := byName[key]
+		if !ok {
+			table = &runprivileges_activity.TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
+			byName[key] = table
+			tables = append(tables, table)
+		}
+		for _, column := range cfg.Columns {
+			// A generated column is computed by the destination, never written by the run.
+			if !slices.Contains(table.Columns, column) && !slices.Contains(cfg.GeneratedColumns, column) {
+				table.Columns = append(table.Columns, column)
+			}
+		}
+	}
+	logger.Info("scheduling privilege check")
+	var resp *runprivileges_activity.CheckRunPrivilegesResponse
+	var privilegesActivity *runprivileges_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 2 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		privilegesActivity.CheckRunPrivileges,
+		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId, Tables: tables},
+	).Get(ctx, &resp)
+}
+
+// suspendDestinationTriggers takes the triggers of the destinations out of the way of the
+// run. A trigger firing on what the run writes adds rows nothing read in the source, and
+// MySQL has no way to suspend one for a session. Runs started before this existed replay
+// without it.
+func suspendDestinationTriggers(
+	ctx workflow.Context,
+	logger log.Logger,
+	version workflow.Version,
+	jobId, accountId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var tables []destinationtriggers_activity.TableRef
+	seen := map[string]bool{}
+	for _, cfg := range configs {
+		key := cfg.TableSchema + "." + cfg.TableName
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		tables = append(tables, destinationtriggers_activity.TableRef{Schema: cfg.TableSchema, Table: cfg.TableName})
+	}
+	if len(tables) == 0 {
+		return nil
+	}
+	var resp *destinationtriggers_activity.SuspendTriggersResponse
+	var triggersActivity *destinationtriggers_activity.Activity
+	err := workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 5 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2},
+		}),
+		triggersActivity.SuspendTriggers,
+		&destinationtriggers_activity.SuspendTriggersRequest{JobId: jobId, AccountId: accountId, Tables: tables},
+	).Get(ctx, &resp)
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.Suspended > 0 {
+		logger.Info("destination triggers suspended for the time of the run", "triggers", resp.Suspended)
+	}
+	return nil
+}
+
+// restoreDestinationTriggers puts back what the job has out of its way: what this run took,
+// and what an earlier run of the job stopped before putting back.
+func restoreDestinationTriggers(
+	ctx workflow.Context,
+	logger log.Logger,
+	version workflow.Version,
+	jobId, accountId string,
+) error {
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var resp *destinationtriggers_activity.RestoreTriggersResponse
+	var triggersActivity *destinationtriggers_activity.Activity
+	err := workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 5 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
+		}),
+		triggersActivity.RestoreTriggers,
+		&destinationtriggers_activity.RestoreTriggersRequest{JobId: jobId, AccountId: accountId},
+	).Get(ctx, &resp)
+	if err != nil {
+		return err
+	}
+	if resp != nil && resp.Restored > 0 {
+		logger.Info("destination triggers restored", "triggers", resp.Restored)
+	}
+	return nil
+}
+
+// runReferentialIntegrityCheck verifies, once every table is written, that no destination
+// row references a missing parent. Runs started before the check existed replay without it.
+func runReferentialIntegrityCheck(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId string,
+	configs []*benthosbuilder.BenthosConfigResponse,
+) error {
+	version := workflow.GetVersion(ctx, "referential-integrity-check", workflow.DefaultVersion, 1)
+	if version == workflow.DefaultVersion {
+		return nil
+	}
+	var tables []*referentialintegrity_activity.TableForeignKeys
+	for _, cfg := range configs {
+		if cfg.RunType == runconfigs.RunTypeInsert && len(cfg.ForeignKeys) > 0 {
+			tables = append(tables, &referentialintegrity_activity.TableForeignKeys{
+				Schema: cfg.TableSchema, Table: cfg.TableName, ForeignKeys: cfg.ForeignKeys,
+			})
+		}
+	}
+	if len(tables) == 0 {
+		return nil
+	}
+	logger.Info("scheduling referential integrity check", "tables", len(tables))
+	var resp *referentialintegrity_activity.CheckReferentialIntegrityResponse
+	var integrityActivity *referentialintegrity_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 30 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 2},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		integrityActivity.CheckReferentialIntegrity,
+		&referentialintegrity_activity.CheckReferentialIntegrityRequest{JobId: jobId, Tables: tables},
+	).Get(ctx, &resp)
 }
 
 func runRedisCleanUpActivity(

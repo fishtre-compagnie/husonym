@@ -29,7 +29,9 @@ func Register(
 	temporalclient client.Client,
 	maxIterations int,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
+	athanor sync_activity.AthanorConfig,
 ) {
 	tsWf := tablesync_workflow.New(maxIterations)
 	w.RegisterWorkflow(tsWf.TableSync)
@@ -43,7 +45,9 @@ func Register(
 		benthosStreamManager,
 		temporalclient,
 		anonymizationClient,
+		transformerclient,
 		redisclient,
+		athanor,
 	)
 
 	w.RegisterActivity(syncActivity.Sync)

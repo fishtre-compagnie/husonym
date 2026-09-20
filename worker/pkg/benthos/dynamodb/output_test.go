@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
-	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/cenkalti/backoff/v7"
+	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -645,4 +647,46 @@ func Test_AnyToString(t *testing.T) {
 			)
 		})
 	}
+}
+
+func Test_BoundedBackOff(t *testing.T) {
+	t.Parallel()
+
+	newBoff := func(maxRetries int, maxElapsed time.Duration) *boundedBackOff {
+		exp := backoff.NewExponentialBackOff()
+		exp.InitialInterval = time.Millisecond
+		exp.MaxInterval = time.Millisecond
+		exp.RandomizationFactor = 0
+		return &boundedBackOff{exp: exp, maxRetries: maxRetries, maxElapsed: maxElapsed}
+	}
+
+	t.Run("stops after max retries until reset", func(t *testing.T) {
+		t.Parallel()
+		boff := newBoff(2, 0)
+		boff.Reset()
+		require.Equal(t, time.Millisecond, boff.NextBackOff())
+		require.Equal(t, time.Millisecond, boff.NextBackOff())
+		require.Equal(t, backoff.Stop, boff.NextBackOff())
+		boff.Reset()
+		require.Equal(t, time.Millisecond, boff.NextBackOff())
+	})
+
+	t.Run("stops once the next wait passes max elapsed time", func(t *testing.T) {
+		t.Parallel()
+		boff := newBoff(0, time.Hour)
+		boff.Reset()
+		require.Equal(t, time.Millisecond, boff.NextBackOff())
+		boff.start = time.Now().Add(-time.Hour)
+		require.Equal(t, backoff.Stop, boff.NextBackOff())
+	})
+
+	t.Run("zero limits never stop", func(t *testing.T) {
+		t.Parallel()
+		boff := newBoff(0, 0)
+		boff.Reset()
+		boff.start = time.Now().Add(-24 * time.Hour)
+		for range 100 {
+			require.Equal(t, time.Millisecond, boff.NextBackOff())
+		}
+	})
 }

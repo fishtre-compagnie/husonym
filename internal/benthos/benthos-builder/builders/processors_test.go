@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/dop251/goja"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
-	"github.com/dop251/goja"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

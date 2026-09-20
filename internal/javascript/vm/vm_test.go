@@ -2,14 +2,18 @@ package javascript_vm
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/dop251/goja"
 	javascript_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	"github.com/dop251/goja"
-	goja_require "github.com/dop251/goja_nodejs/require"
 
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +30,7 @@ func TestRunner(t *testing.T) {
 	})
 
 	t.Run("with_console", func(t *testing.T) {
-		runner, err := NewRunner(WithConsole(), WithJsRegistry(goja_require.NewRegistry()))
+		runner, err := NewRunner(WithConsole())
 		require.NoError(t, err)
 
 		program := goja.MustCompile("test.js", "console.log('hello world')", true)
@@ -37,7 +41,6 @@ func TestRunner(t *testing.T) {
 	t.Run("with_console_and_logger", func(t *testing.T) {
 		runner, err := NewRunner(
 			WithConsole(),
-			WithJsRegistry(goja_require.NewRegistry()),
 			WithLogger(testutil.GetTestLogger(t)),
 		)
 		require.NoError(t, err)
@@ -50,7 +53,6 @@ func TestRunner(t *testing.T) {
 	t.Run("parallel_runs", func(t *testing.T) {
 		runner, err := NewRunner(
 			WithConsole(),
-			WithJsRegistry(goja_require.NewRegistry()),
 			WithLogger(testutil.GetTestLogger(t)),
 		)
 		require.NoError(t, err)
@@ -66,6 +68,33 @@ func TestRunner(t *testing.T) {
 			}()
 		}
 		wg.Wait()
+	})
+
+	t.Run("with_global_alias_shares_the_object", func(t *testing.T) {
+		customFn := javascript_functions.NewFunctionDefinition(
+			"current",
+			"hello",
+			func(r javascript_functions.Runner) javascript_functions.Function {
+				return func(ctx context.Context, call goja.FunctionCall, rt *goja.Runtime, l *slog.Logger) (any, error) {
+					return "hello", nil
+				}
+			},
+		)
+		runner, err := NewRunner(WithFunctions(customFn), WithGlobalAlias("legacy", "current"))
+		require.NoError(t, err)
+
+		program := goja.MustCompile("test.js", `
+			legacy.shared = "set through the alias";
+			[legacy.hello(), current.shared].join(" / ");
+		`, true)
+		result, err := runner.Run(context.Background(), program)
+		require.NoError(t, err)
+		require.Equal(t, "hello / set through the alias", result.String())
+	})
+
+	t.Run("with_global_alias_on_undefined_target", func(t *testing.T) {
+		_, err := NewRunner(WithGlobalAlias("legacy", "missing"))
+		require.Error(t, err)
 	})
 
 	t.Run("with_functions", func(t *testing.T) {
@@ -89,10 +118,114 @@ func TestRunner(t *testing.T) {
 	})
 }
 
+// A script never reads a file of the host: require() only knows the modules built into
+// the runner.
+func TestRunner_RequireLoadsNoFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "secret.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"password":"do-not-read"}`), 0o600))
+	runner, err := NewRunner(WithConsole())
+	require.NoError(t, err)
+
+	for _, module := range []string{path, strings.TrimSuffix(path, ".json")} {
+		program := goja.MustCompile("test.js", fmt.Sprintf(`require(%q).password`, module), false)
+		result, err := runner.Run(context.Background(), program)
+		require.ErrorContains(t, err, ErrModuleFile.Error())
+		require.Nil(t, result)
+	}
+
+	program := goja.MustCompile("test.js", `typeof require("console").log`, false)
+	result, err := runner.Run(context.Background(), program)
+	require.NoError(t, err)
+	require.Equal(t, "function", result.String(), "the built-in modules stay available")
+}
+
+func TestRunner_TimeLimit(t *testing.T) {
+	runner, err := NewRunner(WithTimeLimit(50 * time.Millisecond))
+	require.NoError(t, err)
+
+	start := time.Now()
+	_, err = runner.Run(context.Background(), goja.MustCompile("loop.js", `while (true) {}`, false))
+	require.ErrorIs(t, err, ErrTimeLimit)
+	require.Less(t, time.Since(start), 2*time.Second)
+
+	// The runner stays usable: the interrupt does not carry over to the next run.
+	result, err := runner.Run(context.Background(), goja.MustCompile("next.js", `1+1`, false))
+	require.NoError(t, err)
+	require.Equal(t, int64(2), result.ToInteger())
+}
+
+// An exception outlives its run while the runner goes on to the next one: the processors
+// return the runner to its pool before their caller formats the error. Reading it must not
+// run the runtime again.
+func TestRunner_ExceptionOutlivesItsRun(t *testing.T) {
+	runner, err := NewRunner()
+	require.NoError(t, err)
+	_, runErr := runner.Run(context.Background(),
+		goja.MustCompile("throw.js", `function rule() { throw new Error("refusé") } rule()`, false))
+	require.Error(t, runErr)
+
+	next := make(chan error, 1)
+	go func() {
+		_, err := runner.Run(context.Background(), goja.MustCompile("next.js",
+			`const o = {}; for (let i = 0; i < 20000; i++) { o["k" + (i % 16)] = i }`, false))
+		next <- err
+	}()
+	// The error is read for as long as the next run lasts: one read during it is enough
+	// for the race detector.
+	for running := true; running; {
+		require.Contains(t, runErr.Error(), "refusé")
+		select {
+		case err := <-next:
+			require.NoError(t, err)
+			running = false
+		default:
+		}
+	}
+
+	var stacked interface{ Stack() []goja.StackFrame }
+	require.ErrorAs(t, runErr, &stacked)
+	require.Equal(t, "rule", stacked.Stack()[0].FuncName())
+}
+
+func TestRunner_StopsWhenTheContextEnds(t *testing.T) {
+	runner, err := NewRunner()
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err = runner.Run(ctx, goja.MustCompile("loop.js", `while (true) {}`, false))
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(start), 2*time.Second)
+}
+
+// The Go functions a script calls receive the context of the run, so that a call to a
+// service ends with it.
+func TestRunner_FunctionsReceiveTheRunContext(t *testing.T) {
+	type key struct{}
+	var seen any
+	fn := javascript_functions.NewFunctionDefinition(
+		"test",
+		"probe",
+		func(r javascript_functions.Runner) javascript_functions.Function {
+			return func(ctx context.Context, call goja.FunctionCall, rt *goja.Runtime, l *slog.Logger) (any, error) {
+				seen = ctx.Value(key{})
+				return nil, nil
+			}
+		},
+	)
+	runner, err := NewRunner(WithFunctions(fn))
+	require.NoError(t, err)
+
+	ctx := context.WithValue(context.Background(), key{}, "run")
+	_, err = runner.Run(ctx, goja.MustCompile("test.js", `test.probe()`, false))
+	require.NoError(t, err)
+	require.Equal(t, "run", seen)
+}
+
 func BenchmarkRunner_Single(b *testing.B) {
 	runner, err := NewRunner(
 		WithConsole(),
-		WithJsRegistry(goja_require.NewRegistry()),
 		WithLogger(testutil.GetTestLogger(b)),
 	)
 	require.NoError(b, err)

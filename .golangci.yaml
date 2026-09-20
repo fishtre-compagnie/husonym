@@ -52,6 +52,12 @@ linters:
       line-length: 140
     misspell:
       locale: US
+      # French words the bench names its tables with, and French words the
+      # comments use that the US locale reads as misspellings
+      ignore-rules:
+        - catalogue
+        - synchronisation
+        - activit
     mnd:
       checks:
         - argument

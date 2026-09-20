@@ -31,7 +31,9 @@ frontend/out
 /package.json
 /package-lock.json
 
+# Python virtual environments; bench/env is a Go package
 env/
+!/bench/env/
 
 tmp
 venv/
@@ -46,6 +48,8 @@ husonym_cloud_ca.key
 .env.api.local
 .env.worker.local
 
+# Bac à sable local Athanor (deux MySQL de test, non versionné)
+athanor-local-demo/
 # License signing material and the registry of issued licenses. These live outside the
 # repository (~/.husonym/ee-signing by default); the patterns are a backstop against a
 # stray copy landing here. The private key cannot be replaced and the registry holds
@@ -58,3 +62,10 @@ ee_license
 # Not a secret, but this repository is public and there is no reason to publish which
 # Infisical workspace guards it. Run `infisical init` again on a new machine.
 .infisical.json
+
+# Reports of the engine test bench
+bench/out/
+
+# Claude Code: git worktrees of agents, local settings
+.claude/worktrees/
+.claude/settings.local.json
