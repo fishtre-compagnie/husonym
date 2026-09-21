@@ -93,3 +93,37 @@ func Test_pendingChanges(t *testing.T) {
 		require.Empty(t, changes)
 	})
 }
+
+func Test_setTransformers(t *testing.T) {
+	stored := storedMappings(t,
+		passthroughMapping("users", "id"),
+		passthroughMapping("users", "email"),
+	)
+
+	t.Run("replaces the transformer of a mapped column, and only that", func(t *testing.T) {
+		out, applied, err := setTransformers(stored, []*mgmtv1alpha1.JobMapping{emailMapping("users", "email")})
+		require.NoError(t, err)
+		require.Len(t, applied, 1)
+		require.Equal(t, []string{"users.id", "users.email"}, columnsOf(out))
+
+		email, err := out[1].ToDto()
+		require.NoError(t, err)
+		require.NotNil(t, email.GetTransformer().GetConfig().GetGenerateEmailConfig())
+
+		// The job's stored mappings are not touched: the caller writes the returned ones.
+		before, err := stored[1].ToDto()
+		require.NoError(t, err)
+		require.NotNil(t, before.GetTransformer().GetConfig().GetPassthroughConfig())
+	})
+
+	t.Run("refuses a column the job does not map", func(t *testing.T) {
+		// It may be one a run has just removed: the review tab must not bring it back.
+		_, _, err := setTransformers(stored, []*mgmtv1alpha1.JobMapping{emailMapping("users", "commentaire")})
+		require.Error(t, err)
+	})
+
+	t.Run("refuses a mapping without a transformer", func(t *testing.T) {
+		_, _, err := setTransformers(stored, []*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "users", Column: "email"}})
+		require.Error(t, err)
+	})
+}

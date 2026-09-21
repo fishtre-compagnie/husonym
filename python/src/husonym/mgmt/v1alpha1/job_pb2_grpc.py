@@ -169,6 +169,11 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
                 _registered_method=True)
+        self.ApplyMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ApplyMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.FromString,
+                _registered_method=True)
         self.ValidateSchema = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ValidateSchema',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
@@ -460,6 +465,14 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ApplyMappingChanges(self, request, context):
+        """Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+        settles reviewed: correcting what a run chose is done where the change is read.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ValidateSchema(self, request, context):
         """Validates that the schema is compatible with the job mappings
         """
@@ -707,6 +720,11 @@ def add_JobServiceServicer_to_server(servicer, server):
                     servicer.ReviewMappingChanges,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.SerializeToString,
+            ),
+            'ApplyMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.ApplyMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.SerializeToString,
             ),
             'ValidateSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateSchema,
@@ -1611,6 +1629,33 @@ class JobService:
             '/mgmt.v1alpha1.JobService/ReviewMappingChanges',
             mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ApplyMappingChanges(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/ApplyMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -145,7 +145,9 @@ export function getSchemaConstraintHandler(
   };
 }
 
-function dbDataTypeToTransformerDataType(
+// Exported for the review tab, which has a column's type and not the dialect it came from: this
+// is the one place that tries every dialect.
+export function dbDataTypeToTransformerDataType(
   dataType: string
 ): TransformerDataType {
   const dt = postgresTypeToTransformerDataType(dataType);

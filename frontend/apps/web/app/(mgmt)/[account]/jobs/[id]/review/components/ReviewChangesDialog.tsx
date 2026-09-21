@@ -11,60 +11,77 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { changeLabel, columnName } from '@/util/mapping-changes';
 import { JobMappingChange } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
-import { changeLabel, columnName } from '@/util/mapping-changes';
+
+// What confirming does: mark the changes reviewed as they are, or apply the transformer chosen for
+// each column first.
+export type ReviewAction = 'review' | 'apply';
 
 interface Props {
   open: boolean;
   onOpenChange(open: boolean): void;
+  action: ReviewAction;
   changes: JobMappingChange[];
-  onReview(changes: JobMappingChange[], note?: string): Promise<void>;
+  // The transformer name shown beside each change when applying
+  transformerNameOf?(change: JobMappingChange): string;
+  onConfirm(changes: JobMappingChange[], note?: string): Promise<void>;
 }
 
-// Marks the selected changes reviewed: what the run did to them stands.
+// Confirms a selection of changes, with one note for all of them.
 //
 // One dialog and one note for the whole selection: the trace an audit asks for is kept, without
 // thirty confirmations in a row — by the fifth, people click without reading, which is exactly
 // what asking was meant to prevent.
 export default function ReviewChangesDialog(props: Props): ReactElement {
-  const { open, onOpenChange, changes, onReview } = props;
+  const { open, onOpenChange, action, changes, transformerNameOf, onConfirm } =
+    props;
   const [note, setNote] = useState('');
-  const [isReviewing, setIsReviewing] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  async function onConfirm(): Promise<void> {
-    setIsReviewing(true);
+  async function confirm(): Promise<void> {
+    setIsConfirming(true);
     try {
-      await onReview(changes, note.trim() || undefined);
+      await onConfirm(changes, note.trim() || undefined);
       setNote('');
       onOpenChange(false);
     } catch {
       // The caller has already said what went wrong. The dialog stays open, so the note is not
       // lost and the person can try again.
     } finally {
-      setIsReviewing(false);
+      setIsConfirming(false);
     }
   }
+
+  const many = changes.length !== 1;
+  const title =
+    action === 'apply'
+      ? many
+        ? `Apply ${changes.length} transformers`
+        : 'Apply this transformer'
+      : many
+        ? `Mark ${changes.length} changes reviewed`
+        : 'Mark this change reviewed';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {changes.length === 1
-              ? 'Mark this change reviewed'
-              : `Mark ${changes.length} changes reviewed`}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            The job keeps its mappings as the runs left them, and{' '}
-            {changes.length === 1 ? 'this change stops' : 'these changes stop'}{' '}
-            being reported.
+            {action === 'apply'
+              ? `The job maps ${many ? 'these columns' : 'this column'} with the chosen transformer from its next run, and ${many ? 'these changes stop' : 'this change stops'} being reported.`
+              : `The job keeps its mappings as the runs left them, and ${many ? 'these changes stop' : 'this change stops'} being reported.`}
           </DialogDescription>
         </DialogHeader>
         <ul className="max-h-40 overflow-auto text-xs font-mono flex flex-col gap-1">
           {changes.map((c) => (
             <li key={c.id}>
-              {columnName(c)} — {changeLabel(c)}
+              {columnName(c)} —{' '}
+              {action === 'apply' && transformerNameOf
+                ? transformerNameOf(c)
+                : changeLabel(c)}
             </li>
           ))}
         </ul>
@@ -89,12 +106,12 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
           </Button>
           <Button
             type="button"
-            disabled={isReviewing}
-            onClick={() => onConfirm()}
+            disabled={isConfirming}
+            onClick={() => confirm()}
           >
             <ButtonText
-              leftIcon={isReviewing ? <Spinner className="h-4 w-4" /> : null}
-              text="Mark reviewed"
+              leftIcon={isConfirming ? <Spinner className="h-4 w-4" /> : null}
+              text={action === 'apply' ? 'Apply' : 'Mark reviewed'}
             />
           </Button>
         </DialogFooter>

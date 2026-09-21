@@ -1871,6 +1871,27 @@ message ReviewMappingChangesResponse {
   repeated string change_ids = 1;
 }
 
+message ApplyMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The job the columns belong to
+  string job_id = 2 [(buf.validate.field).string.uuid = true];
+  // The transformer each column is to be mapped with from now on. Only columns the job maps:
+  // a column a run has removed is not brought back.
+  repeated JobMapping mappings = 3 [(buf.validate.field).repeated.min_items = 1];
+  // The changes this settles, marked reviewed in the same transaction
+  repeated string change_ids = 4;
+  // Why, kept with the reviewed changes
+  optional string note = 5;
+}
+
+message ApplyMappingChangesResponse {
+  // The mappings as the job now has them
+  repeated JobMapping mappings = 1;
+  // The changes the call marked reviewed
+  repeated string change_ids = 2;
+}
+
 service JobService {
   // Returns a list of jobs by either account or job
   rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {
@@ -1961,6 +1982,9 @@ service JobService {
   }
   // Marks changes reviewed, with an optional note.
   rpc ReviewMappingChanges(ReviewMappingChangesRequest) returns (ReviewMappingChangesResponse) {}
+  // Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+  // settles reviewed: correcting what a run chose is done where the change is read.
+  rpc ApplyMappingChanges(ApplyMappingChangesRequest) returns (ApplyMappingChangesResponse) {}
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 

@@ -1905,3 +1905,25 @@ class ReviewMappingChangesResponse(_message.Message):
     CHANGE_IDS_FIELD_NUMBER: _ClassVar[int]
     change_ids: _containers.RepeatedScalarFieldContainer[str]
     def __init__(self, change_ids: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class ApplyMappingChangesRequest(_message.Message):
+    __slots__ = ("account_id", "job_id", "mappings", "change_ids", "note")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    MAPPINGS_FIELD_NUMBER: _ClassVar[int]
+    CHANGE_IDS_FIELD_NUMBER: _ClassVar[int]
+    NOTE_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    job_id: str
+    mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    change_ids: _containers.RepeatedScalarFieldContainer[str]
+    note: str
+    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., change_ids: _Optional[_Iterable[str]] = ..., note: _Optional[str] = ...) -> None: ...
+
+class ApplyMappingChangesResponse(_message.Message):
+    __slots__ = ("mappings", "change_ids")
+    MAPPINGS_FIELD_NUMBER: _ClassVar[int]
+    CHANGE_IDS_FIELD_NUMBER: _ClassVar[int]
+    mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    change_ids: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., change_ids: _Optional[_Iterable[str]] = ...) -> None: ...

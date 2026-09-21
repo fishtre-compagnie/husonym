@@ -12016,6 +12016,114 @@
           ]
         },
         {
+          "name": "ApplyMappingChangesRequest",
+          "longName": "ApplyMappingChangesRequest",
+          "fullName": "mgmt.v1alpha1.ApplyMappingChangesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The job the columns belong to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mappings",
+              "description": "The transformer each column is to be mapped with from now on. Only columns the job maps:\na column a run has removed is not brought back.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "change_ids",
+              "description": "The changes this settles, marked reviewed in the same transaction",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "note",
+              "description": "Why, kept with the reviewed changes",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_note",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ApplyMappingChangesResponse",
+          "longName": "ApplyMappingChangesResponse",
+          "fullName": "mgmt.v1alpha1.ApplyMappingChangesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "mappings",
+              "description": "The mappings as the job now has them",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "change_ids",
+              "description": "The changes the call marked reviewed",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "AwsS3DestinationConnectionOptions",
           "longName": "AwsS3DestinationConnectionOptions",
           "fullName": "mgmt.v1alpha1.AwsS3DestinationConnectionOptions",
@@ -20144,6 +20252,18 @@
               "responseType": "ReviewMappingChangesResponse",
               "responseLongType": "ReviewMappingChangesResponse",
               "responseFullType": "mgmt.v1alpha1.ReviewMappingChangesResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ApplyMappingChanges",
+              "description": "Sets the transformer of columns the job maps, from the review tab, and marks the changes it\nsettles reviewed: correcting what a run chose is done where the change is read.",
+              "requestType": "ApplyMappingChangesRequest",
+              "requestLongType": "ApplyMappingChangesRequest",
+              "requestFullType": "mgmt.v1alpha1.ApplyMappingChangesRequest",
+              "requestStreaming": false,
+              "responseType": "ApplyMappingChangesResponse",
+              "responseLongType": "ApplyMappingChangesResponse",
+              "responseFullType": "mgmt.v1alpha1.ApplyMappingChangesResponse",
               "responseStreaming": false
             },
             {

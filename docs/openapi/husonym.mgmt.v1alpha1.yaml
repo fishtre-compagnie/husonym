@@ -2124,6 +2124,51 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.JobService/ApplyMappingChanges:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: ApplyMappingChanges
+      description: >-
+        Sets the transformer of columns the job maps, from the review tab, and
+        marks the changes it
+         settles reviewed: correcting what a run chose is done where the change is read.
+      operationId: mgmt.v1alpha1.JobService.ApplyMappingChanges
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.ApplyMappingChangesRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.ApplyMappingChangesResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/CancelJobRun:
     post:
       tags:
@@ -10947,6 +10992,60 @@ components:
           format: int64
           description: The total number of records to be generated.
       title: AiGenerateSourceTableOption
+      additionalProperties: false
+    mgmt.v1alpha1.ApplyMappingChangesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the columns belong to
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: mappings
+          minItems: 1
+          description: >-
+            The transformer each column is to be mapped with from now on. Only
+            columns the job maps:
+             a column a run has removed is not brought back.
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes this settles, marked reviewed in the same transaction
+        note:
+          type:
+            - string
+            - 'null'
+          title: note
+          description: Why, kept with the reviewed changes
+      title: ApplyMappingChangesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ApplyMappingChangesResponse:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: mappings
+          description: The mappings as the job now has them
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes the call marked reviewed
+      title: ApplyMappingChangesResponse
       additionalProperties: false
     mgmt.v1alpha1.AwsS3DestinationConnectionOptions:
       type: object

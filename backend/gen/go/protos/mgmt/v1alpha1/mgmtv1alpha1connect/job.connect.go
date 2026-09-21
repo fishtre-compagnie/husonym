@@ -115,6 +115,9 @@ const (
 	// JobServiceReviewMappingChangesProcedure is the fully-qualified name of the JobService's
 	// ReviewMappingChanges RPC.
 	JobServiceReviewMappingChangesProcedure = "/mgmt.v1alpha1.JobService/ReviewMappingChanges"
+	// JobServiceApplyMappingChangesProcedure is the fully-qualified name of the JobService's
+	// ApplyMappingChanges RPC.
+	JobServiceApplyMappingChangesProcedure = "/mgmt.v1alpha1.JobService/ApplyMappingChanges"
 	// JobServiceValidateSchemaProcedure is the fully-qualified name of the JobService's ValidateSchema
 	// RPC.
 	JobServiceValidateSchemaProcedure = "/mgmt.v1alpha1.JobService/ValidateSchema"
@@ -222,6 +225,9 @@ type JobServiceClient interface {
 	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
 	// Marks changes reviewed, with an optional note.
 	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
+	// Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+	// settles reviewed: correcting what a run chose is done where the change is read.
+	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -457,6 +463,12 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
 			connect.WithClientOptions(opts...),
 		),
+		applyMappingChanges: connect.NewClient[v1alpha1.ApplyMappingChangesRequest, v1alpha1.ApplyMappingChangesResponse](
+			httpClient,
+			baseURL+JobServiceApplyMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("ApplyMappingChanges")),
+			connect.WithClientOptions(opts...),
+		),
 		validateSchema: connect.NewClient[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse](
 			httpClient,
 			baseURL+JobServiceValidateSchemaProcedure,
@@ -575,6 +587,7 @@ type jobServiceClient struct {
 	reconcileJobMappings             *connect.Client[v1alpha1.ReconcileJobMappingsRequest, v1alpha1.ReconcileJobMappingsResponse]
 	getPendingMappingChanges         *connect.Client[v1alpha1.GetPendingMappingChangesRequest, v1alpha1.GetPendingMappingChangesResponse]
 	reviewMappingChanges             *connect.Client[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse]
+	applyMappingChanges              *connect.Client[v1alpha1.ApplyMappingChangesRequest, v1alpha1.ApplyMappingChangesResponse]
 	validateSchema                   *connect.Client[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse]
 	getRunContext                    *connect.Client[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse]
 	setRunContext                    *connect.Client[v1alpha1.SetRunContextRequest, v1alpha1.SetRunContextResponse]
@@ -745,6 +758,11 @@ func (c *jobServiceClient) ReviewMappingChanges(ctx context.Context, req *connec
 	return c.reviewMappingChanges.CallUnary(ctx, req)
 }
 
+// ApplyMappingChanges calls mgmt.v1alpha1.JobService.ApplyMappingChanges.
+func (c *jobServiceClient) ApplyMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error) {
+	return c.applyMappingChanges.CallUnary(ctx, req)
+}
+
 // ValidateSchema calls mgmt.v1alpha1.JobService.ValidateSchema.
 func (c *jobServiceClient) ValidateSchema(ctx context.Context, req *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {
 	return c.validateSchema.CallUnary(ctx, req)
@@ -878,6 +896,9 @@ type JobServiceHandler interface {
 	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
 	// Marks changes reviewed, with an optional note.
 	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
+	// Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+	// settles reviewed: correcting what a run chose is done where the change is read.
+	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -1109,6 +1130,12 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServiceApplyMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceApplyMappingChangesProcedure,
+		svc.ApplyMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("ApplyMappingChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
 	jobServiceValidateSchemaHandler := connect.NewUnaryHandler(
 		JobServiceValidateSchemaProcedure,
 		svc.ValidateSchema,
@@ -1255,6 +1282,8 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceGetPendingMappingChangesHandler.ServeHTTP(w, r)
 		case JobServiceReviewMappingChangesProcedure:
 			jobServiceReviewMappingChangesHandler.ServeHTTP(w, r)
+		case JobServiceApplyMappingChangesProcedure:
+			jobServiceApplyMappingChangesHandler.ServeHTTP(w, r)
 		case JobServiceValidateSchemaProcedure:
 			jobServiceValidateSchemaHandler.ServeHTTP(w, r)
 		case JobServiceGetRunContextProcedure:
@@ -1412,6 +1441,10 @@ func (UnimplementedJobServiceHandler) GetPendingMappingChanges(context.Context, 
 
 func (UnimplementedJobServiceHandler) ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ReviewMappingChanges is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ApplyMappingChanges is not implemented"))
 }
 
 func (UnimplementedJobServiceHandler) ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {

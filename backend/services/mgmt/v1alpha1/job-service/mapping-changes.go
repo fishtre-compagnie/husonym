@@ -2,6 +2,7 @@ package v1alpha1_jobservice
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -9,6 +10,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/proto"
@@ -98,33 +100,140 @@ func (s *Service) ReviewMappingChanges(
 		return nil, err
 	}
 
-	ids := make([]pgtype.UUID, 0, len(req.Msg.GetChangeIds()))
-	for _, id := range req.Msg.GetChangeIds() {
-		uuid, err := husonymdb.ToUuid(id)
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, uuid)
+	params, err := reviewParams(user.PgId(), jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
+	if err != nil {
+		return nil, err
 	}
-	var note pgtype.Text
-	if req.Msg.Note != nil && req.Msg.GetNote() != "" {
-		note = pgtype.Text{String: req.Msg.GetNote(), Valid: true}
+	reviewed, err := s.db.Q.ReviewJobMappingChanges(ctx, s.db.Db, params)
+	if err != nil {
+		return nil, err
 	}
-	reviewed, err := s.db.Q.ReviewJobMappingChanges(ctx, s.db.Db, db_queries.ReviewJobMappingChangesParams{
-		ReviewedById: user.PgId(),
-		Note:         note,
-		JobId:        jobUuid,
-		Ids:          ids,
-	})
+	return connect.NewResponse(&mgmtv1alpha1.ReviewMappingChangesResponse{ChangeIds: uuidStrings(reviewed)}), nil
+}
+
+// ApplyMappingChanges sets the transformer of columns the job maps and marks the changes this
+// settles reviewed, in one transaction: the correction and its trace cannot come apart.
+func (s *Service) ApplyMappingChanges(
+	ctx context.Context,
+	req *connect.Request[mgmtv1alpha1.ApplyMappingChangesRequest],
+) (*connect.Response[mgmtv1alpha1.ApplyMappingChangesResponse], error) {
+	user, err := s.userdataclient.GetUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+	jobUuid, err := husonymdb.ToUuid(req.Msg.GetJobId())
+	if err != nil {
+		return nil, err
+	}
+	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
+		return nil, err
+	}
+	params, err := reviewParams(user.PgId(), jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]string, 0, len(reviewed))
-	for _, id := range reviewed {
+	var applied []*mgmtv1alpha1.JobMapping
+	var reviewed []pgtype.UUID
+	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
+		job, err := s.db.Q.GetJobForUpdate(ctx, dbtx, db_queries.GetJobForUpdateParams{
+			ID:        jobUuid,
+			AccountID: accountUuid,
+		})
+		if err != nil && husonymdb.IsNoRows(err) {
+			return husonymerrors.NewNotFound("unable to find job")
+		} else if err != nil {
+			return err
+		}
+		var mappings []*pg_models.JobMapping
+		mappings, applied, err = setTransformers(job.Mappings, req.Msg.GetMappings())
+		if err != nil {
+			return err
+		}
+		if _, err := s.db.Q.UpdateJobMappings(ctx, dbtx, db_queries.UpdateJobMappingsParams{
+			ID:          jobUuid,
+			Mappings:    mappings,
+			UpdatedByID: user.PgId(),
+		}); err != nil {
+			return fmt.Errorf("unable to update job mappings: %w", err)
+		}
+		if len(params.Ids) == 0 {
+			return nil
+		}
+		reviewed, err = s.db.Q.ReviewJobMappingChanges(ctx, dbtx, params)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&mgmtv1alpha1.ApplyMappingChangesResponse{
+		Mappings:  applied,
+		ChangeIds: uuidStrings(reviewed),
+	}), nil
+}
+
+// setTransformers replaces the transformer of the given columns among the job's mappings. A column
+// the job does not map is refused rather than added: it may be one a run has just removed, and
+// bringing it back from a page that showed its removal would undo the mirror of the source.
+func setTransformers(
+	stored []*pg_models.JobMapping,
+	mappings []*mgmtv1alpha1.JobMapping,
+) (out []*pg_models.JobMapping, applied []*mgmtv1alpha1.JobMapping, err error) {
+	index := make(map[columnRef]int, len(stored))
+	for i, m := range stored {
+		index[columnRef{m.Schema, m.Table, m.Column}] = i
+	}
+	out = make([]*pg_models.JobMapping, len(stored))
+	copy(out, stored)
+	applied = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
+	for _, m := range mappings {
+		name := fmt.Sprintf("%s.%s.%s", m.GetSchema(), m.GetTable(), m.GetColumn())
+		if m.GetTransformer().GetConfig().GetConfig() == nil {
+			return nil, nil, husonymerrors.NewBadRequest("no transformer given for " + name)
+		}
+		i, ok := index[columnRef{m.GetSchema(), m.GetTable(), m.GetColumn()}]
+		if !ok {
+			return nil, nil, husonymerrors.NewBadRequest("the job does not map " + name)
+		}
+		updated := &pg_models.JobMapping{}
+		if err := updated.FromDto(m); err != nil {
+			return nil, nil, err
+		}
+		out[i] = updated
+		applied = append(applied, m)
+	}
+	return out, applied, nil
+}
+
+func reviewParams(
+	reviewer, jobUuid pgtype.UUID,
+	changeIds []string,
+	note *string,
+) (db_queries.ReviewJobMappingChangesParams, error) {
+	params := db_queries.ReviewJobMappingChangesParams{ReviewedById: reviewer, JobId: jobUuid}
+	for _, id := range changeIds {
+		uuid, err := husonymdb.ToUuid(id)
+		if err != nil {
+			return params, err
+		}
+		params.Ids = append(params.Ids, uuid)
+	}
+	if note != nil && *note != "" {
+		params.Note = pgtype.Text{String: *note, Valid: true}
+	}
+	return params, nil
+}
+
+func uuidStrings(ids []pgtype.UUID) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
 		out = append(out, husonymdb.UUIDString(id))
 	}
-	return connect.NewResponse(&mgmtv1alpha1.ReviewMappingChangesResponse{ChangeIds: out}), nil
+	return out
 }
 
 func (s *Service) keepViewableChanges(

@@ -9,7 +9,7 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **29 commits au-dessus de `main`, rien n'est poussé.** Le nom de
+`docs/plan-outillage-husonym` porte **31 commits au-dessus de `main`, rien n'est poussé.** Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
 Gate vert au dernier commit de code : `go build ./...`, `go test ./internal/... ./backend/... ./worker/...`
@@ -39,8 +39,10 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   **instantané des types** `job_source_columns`, écrit par tout run. `GetPendingMappingChanges`,
   `ReviewMappingChanges`. Anciens `unmapped_passthroughs`, `column_reviews`, acceptations par
   empreinte et codes de validation retirés ; **une seule migration** `20260921100000`.
-- `e54ddb1b` Onglet Review sur le journal (marquer revu avec note, aperçu, modification sur la page
-  Source), cloche et colonne de la liste des jobs.
+- `e54ddb1b` Onglet Review sur le journal (marquer revu avec note, aperçu), cloche et colonne de la
+  liste des jobs. `e70d0ec5` : le transformer se **corrige dans l'onglet** (sélecteur prérempli,
+  aperçu, « Apply » par colonne ou en lot, RPC `ApplyMappingChanges` qui marque revu dans la même
+  transaction et refuse une colonne que le job ne mappe pas).
 - `0956d6df` Catalogue système sorti en paquet partagé (`internal/transformers/catalog`).
 
 **Téléphones et formulaires d'options**
