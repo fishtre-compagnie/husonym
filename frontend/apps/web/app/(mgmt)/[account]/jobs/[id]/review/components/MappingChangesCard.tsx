@@ -1,4 +1,5 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
+import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
 import ColumnPreviewDialog from '@/components/jobs/JobMappingTable/ColumnPreviewDialog';
 import { dbDataTypeToTransformerDataType } from '@/components/jobs/SchemaTable/schema-constraint-handler';
 import TransformerSelect from '@/components/jobs/SchemaTable/TransformerSelect';
@@ -28,6 +29,7 @@ import {
   getFilterdTransformersByType,
   getTransformerFromField,
   getTransformerSelectButtonText,
+  isInvalidTransformer,
 } from '@/util/util';
 import {
   changeLabel,
@@ -362,6 +364,23 @@ export default function MappingChangesCard(props: Props): ReactElement {
                                 }))
                               }
                               disabled={false}
+                            />
+                            {/* The options of the transformer, as on the source page. */}
+                            <EditTransformerOptions
+                              transformer={getTransformerFromField(
+                                handler,
+                                transformer
+                              )}
+                              value={transformer}
+                              onSubmit={(value) =>
+                                setChosen((prev) => ({
+                                  ...prev,
+                                  [c.id]: value,
+                                }))
+                              }
+                              disabled={isInvalidTransformer(
+                                getTransformerFromField(handler, transformer)
+                              )}
                             />
                             <Button
                               type="button"
