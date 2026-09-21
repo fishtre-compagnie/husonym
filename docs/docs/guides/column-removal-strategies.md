@@ -29,9 +29,11 @@ For the selected tables in the job mappings, a diff is made and if a column is f
 
 ## Continue Strategy
 
-This strategy tells Husonym to ignore any difference in job mappings from the source database.
+This strategy lets the run go on when a mapped column is gone from the source.
 
-Husonym is able to detect that columns were removed in the source, and will leave them off of the insert statement.
-This may result in failures if any unmapped columns do not have a column default in the destination connection.
+The run leaves the column off of the insert statement and removes its mapping from the job: the job follows its source, as the destination does. Under the **Anonymize & Review** strategy for new columns, the removal is recorded, with the transformer the column had, and shows in the job's **Review** tab.
+A source that shows none of the columns the job maps fails the run instead: that is the wrong database, or a connection without the rights to read its tables, and removing every mapping would empty the job.
+
+Without init schema, this may result in failures if a removed column is still in the destination without a default value.
 
 With the **init schema** destination option enabled, this cannot happen: every run reconciles the destination with the source, on PostgreSQL and MySQL alike, and a column the source no longer has is dropped from the destination too. See [keeping the destination schema in step](/guides/new-column-addition-strategies#keeping-the-destination-schema-in-step).

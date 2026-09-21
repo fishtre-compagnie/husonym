@@ -16,13 +16,19 @@ This is a common occurrence for any company that is adding new columns to a data
 
 ## Driver Support
 
-| Strategy             | Description                                                                                                  | PostgreSQL | MySQL | MS SQL Server |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ | ---------- | ----- | ------------- |
-| Halt                 | Stops the job run if a new column is detected that is not found in the configured job mappings.              | ✅         | ✅    | ✅            |
-| AutoMap              | Automatically generates a fake value. See more below.                                                        | ✅         | ✅    | ❌            |
-| Passthrough & Review | Copies the new column as is, and reports it as waiting for a decision until it is mapped or accepted.        | ✅         | ✅    | ✅            |
-| Passthrough          | Copies the new column as is, silently. See more below.                                                       | ✅         | ✅    | ✅            |
-| Continue             | Ignores new columns; may fail if column doesn't have default. See more below.                                | ✅         | ✅    | ✅            |
+| Strategy           | Description                                                                                              | PostgreSQL | MySQL | MS SQL Server |
+| ------------------ | -------------------------------------------------------------------------------------------------------- | ---------- | ----- | ------------- |
+| Halt               | Stops the job run if a new column is detected that is not found in the configured job mappings.          | ✅         | ✅    | ✅            |
+| AutoMap            | Automatically generates a fake value. See more below.                                                    | ✅         | ✅    | ❌            |
+| Anonymize & Review | Anonymizes the new column as suggested, or copies it as is when nothing applies, and reports the change. | ✅         | ✅    | ✅            |
+| Passthrough        | Copies the new column as is, silently. See more below.                                                   | ✅         | ✅    | ✅            |
+| Continue           | Ignores new columns; may fail if column doesn't have default. See more below.                            | ✅         | ✅    | ✅            |
+
+## The job follows its source
+
+With **AutoMap**, **Passthrough** and **Anonymize & Review**, the run that finds a new column writes the mapping it chose into the job. A new column is decided once: the next runs find it mapped, and the job's source page shows what it is mapped with, ready to be changed. A mapping somebody sets by hand in the meantime is never overwritten.
+
+Likewise, when a column disappears from the source, the run removes its mapping from the job — unless the job's [column removal strategy](/guides/column-removal-strategies) is **Halt**.
 
 ## Halt Strategy
 
@@ -63,7 +69,7 @@ Passthrough mode is a strategy that allows Husonym to handle new columns found i
 
 This strategy is useful when you want to reduce the need for manual updates to job mappings when new columns are added to the source database.
 
-Passthrough is silent: nothing tells anyone that a new column is being copied untransformed. For an anonymization job that is rarely what you want, since every schema change can then quietly add personal data to the destination. Prefer **Passthrough & Review** below, which copies the column the same way and keeps it in front of you until someone decides.
+Passthrough is silent: nothing tells anyone that a new column is being copied untransformed. For an anonymization job that is rarely what you want, since every schema change can then quietly add personal data to the destination. Prefer **Anonymize & Review** below, which anonymizes what it recognizes and keeps every change in front of you until someone reviews it.
 
 ### Keeping the destination schema in step
 
@@ -79,17 +85,20 @@ Husonym's job is to keep a destination in step with its source, with sampling an
 
 With init schema turned off, Husonym never touches the destination schema, and it is up to you to add a new column there before the run that copies it, or the write fails.
 
-## Passthrough & Review
+## Anonymize & Review
 
-This strategy copies a new column exactly as **Passthrough** does, so a new column never halts a run. What it adds is that the column counts as undecided, and stays in sight until someone settles it:
+This strategy maps a new column the way the product would suggest it, and never halts a run:
 
-- the run records every column it copied untransformed, and the ones whose name and type read as personal data are flagged as such;
-- a bell in the header shows, as soon as you log in, how many columns are waiting across your jobs, and the jobs list and the job's **Review** tab show them per job;
-- from the **Review** tab you either **anonymize** a column — a transformer is suggested when the column reads as personal data — or **accept** that it may stay as it is, with an optional note saying why.
+1. a column the database computes itself — a generated column — keeps its database default, its value being recomputed by the destination;
+2. a column covered by a primary key, a foreign key or a unique constraint is copied as is: a transformer there could break the constraint and fail the run;
+3. a column whose name and type the PII detection recognizes is anonymized with the suggested transformer, in the configuration it starts with in the catalogue — a phone number keeps its prefix, separators and length, for instance;
+4. any other column is copied as is.
 
-An acceptance covers the column as the run saw it. If its type changes, or if the detection starts to read it as personal data, it comes back for confirmation instead of staying accepted.
+The detection reads names and types, never the data. A column it does not recognize — `notes`, `champ_libre` — may still hold personal data, which is why every change is reported:
 
-Columns the database computes itself — generated and identity columns — are never reported, since their values are not copied but recomputed by the destination.
+- the run records each change it makes to the job: the columns it mapped, with the transformer it chose; the mappings it removed with their column; and the mapped columns whose type changed since the previous run;
+- a bell in the header shows, as soon as you log in, how many changes are waiting across your jobs, and the jobs list and the job's **Review** tab show them per job — columns that read as personal data and were left in clear come first;
+- from the **Review** tab you preview a column before and after its transformer, and mark changes reviewed, with an optional note saying why they are fine. To change what the run chose, change the mapping on the job's source page: the change then leaves the list on its own.
 
 ### Postgres
 
