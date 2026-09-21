@@ -209,6 +209,13 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
   const { account } = useAccount();
   const { data: systemAppConfigData, isLoading: isSystemConfigLoading } =
     useGetSystemAppConfig();
+  // The same query as the review tab and the bell, so the three agree and refresh together.
+  const { data: pendingData } = useQuery(
+    JobService.method.getPendingColumnReviews,
+    { accountId: account?.id, jobId: job?.id },
+    { enabled: !!account?.id && !!job?.id }
+  );
+  const pendingCount = pendingData?.columns.length ?? 0;
 
   if (!account || !job) {
     return [{ title: 'Overview', href: `` }];
@@ -227,7 +234,10 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
         { title: 'Source', href: `${basePath}/source` },
         { title: 'Destinations', href: `${basePath}/destinations` },
         // Only sync jobs copy columns from a source, so only they can copy one in clear.
-        { title: 'Review', href: `${basePath}/review` },
+        {
+          title: pendingCount > 0 ? `Review (${pendingCount})` : 'Review',
+          href: `${basePath}/review`,
+        },
       ];
       if (isJobSubsettable(job)) {
         nav.push({

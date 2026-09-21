@@ -47,6 +47,13 @@ function JobTable(props: JobTableProps): ReactElement {
     { accountId: account?.id },
     { enabled: !!account?.id }
   );
+  // The same query as the bell in the header, so the list costs nothing more and the two counts
+  // cannot disagree.
+  const { data: pendingData } = useQuery(
+    JobService.method.getPendingColumnReviews,
+    { accountId: account?.id },
+    { enabled: !!account?.id }
+  );
   const columns = useMemo(
     () =>
       getColumns({
@@ -71,6 +78,16 @@ function JobTable(props: JobTableProps): ReactElement {
       {} as Record<string, JobStatus>
     ) || {};
 
+  const pendingByJob = new Map<string, { count: number; personal: number }>();
+  for (const column of pendingData?.columns ?? []) {
+    const entry = pendingByJob.get(column.jobId) ?? { count: 0, personal: 0 };
+    entry.count++;
+    if (column.piiCategory) {
+      entry.personal++;
+    }
+    pendingByJob.set(column.jobId, entry);
+  }
+
   const jobData = jobs.map((j) => {
     let jobtype = 'Sync';
     if (j.source?.options?.config.case === 'generate') {
@@ -84,6 +101,8 @@ function JobTable(props: JobTableProps): ReactElement {
       ...j,
       status: statusJobMap[j.id] || JobStatus.UNSPECIFIED,
       type: jobtype,
+      pendingReviews: pendingByJob.get(j.id)?.count ?? 0,
+      pendingPersonal: pendingByJob.get(j.id)?.personal ?? 0,
     };
   });
 

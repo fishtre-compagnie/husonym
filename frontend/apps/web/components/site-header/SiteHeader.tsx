@@ -19,6 +19,7 @@ import { MainNav } from './MainNav';
 import { MobileNav } from './MobileNav';
 import { ModeToggle } from './ModeToggle';
 import HusonymVersion from './HusonymVersion';
+import PendingReviewsBell from './PendingReviewsBell';
 import { UserNav } from './UserNav';
 
 export default function SiteHeader(): ReactElement {
@@ -32,6 +33,7 @@ export default function SiteHeader(): ReactElement {
         <div className="flex flex-1 justify-end items-center space-x-2">
           <AccountStatusHandler systemAppConfig={systemAppConfig} />
           {systemAppConfig.isAuthEnabled && <AccountSwitcher />}
+          <PendingReviewsBell />
           <SupportSheet />
           <ModeToggle />
           <UserNav />

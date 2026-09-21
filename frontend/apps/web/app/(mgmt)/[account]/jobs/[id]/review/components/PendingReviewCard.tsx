@@ -35,7 +35,11 @@ import {
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { useMutation, useQuery } from '@connectrpc/connect-query';
+import {
+  createConnectQueryKey,
+  useMutation,
+  useQuery,
+} from '@connectrpc/connect-query';
 import {
   JobMappingSchema,
   JobMappingTransformerSchema,
@@ -45,6 +49,7 @@ import {
   TransformerSource,
 } from '@husonym/sdk';
 import { CheckCircledIcon } from '@radix-ui/react-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AcceptPassthroughsDialog, {
@@ -82,11 +87,7 @@ export default function PendingReviewCard(props: Props): ReactElement {
   const { account } = useAccount();
   const accountId = account?.id ?? '';
 
-  const {
-    data,
-    isLoading,
-    refetch: refetchPending,
-  } = useQuery(
+  const { data, isLoading } = useQuery(
     JobService.method.getPendingColumnReviews,
     { accountId, jobId },
     { enabled: !!accountId && !!jobId }
@@ -99,6 +100,19 @@ export default function PendingReviewCard(props: Props): ReactElement {
   const { mutateAsync: setColumnReview } = useMutation(
     JobService.method.setColumnReview
   );
+  const queryClient = useQueryClient();
+
+  // Every pending-review query, this job's and the account's bell alike: the key carries no input,
+  // so it matches them all. Refreshing only this tab would leave the bell counting what was just
+  // settled.
+  async function refreshPending(): Promise<void> {
+    await queryClient.invalidateQueries({
+      queryKey: createConnectQueryKey({
+        schema: JobService.method.getPendingColumnReviews,
+        cardinality: undefined,
+      }),
+    });
+  }
 
   const pending = useMemo(
     () => [...(data?.columns ?? [])].sort((a, b) => urgency(a) - urgency(b)),
@@ -188,7 +202,7 @@ export default function PendingReviewCard(props: Props): ReactElement {
         }
       );
       setSelected(new Set());
-      await refetchPending();
+      await refreshPending();
     } catch (error) {
       toast.error('Unable to anonymize these columns', {
         description: getErrorMessage(error),
@@ -217,7 +231,7 @@ export default function PendingReviewCard(props: Props): ReactElement {
         `${targets.length} passthrough${targets.length === 1 ? '' : 's'} accepted`
       );
       setSelected(new Set());
-      await refetchPending();
+      await refreshPending();
     } catch (error) {
       toast.error('Unable to accept these passthroughs', {
         description: getErrorMessage(error),
@@ -332,7 +346,9 @@ export default function PendingReviewCard(props: Props): ReactElement {
                         )}
                         {c.reason ===
                         PendingColumnReason.CHANGED_SINCE_ACCEPTED ? (
-                          <Badge variant="outline">Changed since accepted</Badge>
+                          <Badge variant="outline">
+                            Changed since accepted
+                          </Badge>
                         ) : (
                           <Badge variant="outline">Never reviewed</Badge>
                         )}
