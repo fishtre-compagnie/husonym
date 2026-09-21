@@ -9,7 +9,7 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **31 commits au-dessus de `main`, rien n'est poussé.** Le nom de
+`docs/plan-outillage-husonym` porte **34 commits au-dessus de `main`, rien n'est poussé.** Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
 Gate vert au dernier commit de code : `go build ./...`, `go test ./internal/... ./backend/... ./worker/...`
