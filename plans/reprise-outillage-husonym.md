@@ -8,7 +8,7 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **16 commits au-dessus de `main`, rien n'est poussé.** Le nom de
+`docs/plan-outillage-husonym` porte **21 commits au-dessus de `main`, rien n'est poussé.** Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
 Gate vert au dernier commit : `go build ./...`, `go test ./internal/... ./backend/... ./worker/...`
@@ -56,6 +56,18 @@ Tout a été **éprouvé en réel** sur la pile de dev (PostgreSQL local, voir �
 
 **Correctifs trouvés en conditions réelles** — `82880e97`, voir §4.
 
+**Téléphones et formulaires d'options** (session du 2026-09-21 après-midi)
+- `e3f98f26` Composant partagé `TransformerForms/options/` : `OptionField` choisit le contrôle
+  d'après le descripteur protobuf du champ, `OptionsForm` déclare un formulaire comme une liste de
+  champs (noms vérifiés à la compilation). `4611fe5b` y migre 22 formulaires ; les formulaires JS
+  (éditeurs de code) restent à part.
+- `91c425ff` Option **`preserve_format`** sur `TransformPhoneNumber` (pas de nouveau transformer, par
+  décision de l'utilisateur) : préfixe (`06`, `+33 6`), séparateurs et longueur gardés, autres
+  chiffres permutés par **FF1** (`worker/pkg/fpe`, vecteurs NIST) — aucune collision. Défaut du
+  catalogue à `true`, suggéré par `piidetect` pour les colonnes téléphone texte. Mappings existants
+  inchangés. Test d'aller-retour de persistance sur **toutes** les variantes de `TransformerConfig`.
+  Clé : scope de cohérence sous Athanor ; **une clé par processus worker sous Benthos** (voir §5.1).
+
 ---
 
 ## 3. Décisions de l'utilisateur — ne pas les rediscuter
@@ -91,16 +103,13 @@ tant que la réconciliation y était coupée.
 
 ## 5. Ouvert, par priorité
 
-1. **Transformer téléphone.** `GenerateStringPhoneNumber` ignore l'entrée et tire un **entier** de
-   9 à 14 chiffres (défaut du catalogue), jamais de `0` initial ; sa description « 10 digit » est
-   fausse. `TransformStringPhoneNumber` + preserve length garde la longueur mais pas le `0`. Aucun
-   transformer ne produit un numéro français, et c'est pourtant **la suggestion** pour toute colonne
-   téléphone (onglet Review, et application automatique à la création d'un job). **Question posée à
-   l'utilisateur, sans réponse** : créer un transformer qui préserve préfixe, séparateurs et longueur,
-   déterministe, et en faire la suggestion ? Ne pas modifier `GenerateStringPhoneNumber` lui-même
-   (cela changerait les données de tous les jobs existants, samplings de recette compris). Une règle
-   JS équivalente a été vérifiée avec l'aperçu :
-   `const h = pseudo.hash(s, "telephone")`, chiffres remplacés un à un après le préfixe (`06`, `+33 7`).
+1. **Clé du téléphone sous Benthos** (question posée, sans réponse). `preserve_format` est
+   déterministe par scope sous Athanor ; sous Benthos — le moteur de la pile de dev — la clé est tirée
+   **au démarrage du worker** : même sortie dans un run et entre tables, pas d'un redémarrage à
+   l'autre. Option : dériver la clé de `ATHANOR_CONSISTENCY_KEY` et du scope du job, comme Athanor
+   (mêmes sorties sur les deux moteurs), ce qui demande que la clé soit définie en dev (elle y est
+   vide). Autre écart relevé, non traité : sous Athanor, `TransformPhoneNumber` sans l'option et les
+   deux configs **E164** passent par `PhoneFaker` (`06`/`07` + 8 chiffres), qui ignore la config.
 2. **Acceptation orpheline** : une acceptation survit à la suppression de sa colonne ; si une colonne de
    même nom et même type réapparaît, elle sera vue comme déjà acceptée. La faire tomber quand la
    colonne quitte la source.
@@ -134,6 +143,10 @@ tant que la réconciliation y était coupée.
   continue de consommer la file ou de répondre. Vérifier
   `docker exec husonym-worker ps -o pid,lstart,args | grep 'worker serve'` (idem `husonym-api`, `tmp/mgmt
   serve`) : une seule génération d'heures. Sinon `docker restart`, **hors compilation en cours**.
+- Reproduit le 2026-09-21 à 14 h 30 : après recompilation, trois `worker serve` et un `mgmt serve`
+  orphelin tenant le port de `dlv` (`bind: address already in use`) — l'API servait l'ancien binaire.
+- `golangci-lint` signale 3 constats dans `internal/benthos/benthos-builder/builders/sql-util.go`
+  (orthographe, `formatMappingColumns` inutilisée), venus de `89d2bddd` et `4acc251a`.
 - `tmp/build-errors.log` accumule d'anciens échecs : lire la chronologie `building… / running…` des logs.
 - Le volume `node_modules` du conteneur web restait en TanStack Table v8 depuis la montée du 19 (casse
   aussi `main`) : mis à jour par `docker exec -w /app husonym-app npm install`.
