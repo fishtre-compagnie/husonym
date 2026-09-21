@@ -303,30 +303,7 @@ func (s *SQLConnectionDataService) GetSchema(
 	schemas := []*mgmtv1alpha1.DatabaseColumn{}
 	for _, col := range dbschema {
 		col := col
-		var defaultColumn *string
-		if col.ColumnDefault != "" {
-			defaultColumn = &col.ColumnDefault
-		}
-		// The drivers write -1 when the type bounds nothing, which is why the rest of the
-		// repository tests for > 0 (see sql-util.go). Absent rather than zero, so a consumer
-		// can tell "no bound" from "a bound of nothing".
-		var charMaxLength *int32
-		if col.CharacterMaximumLength > 0 {
-			bounded := int32(col.CharacterMaximumLength)
-			charMaxLength = &bounded
-		}
-
-		schemas = append(schemas, &mgmtv1alpha1.DatabaseColumn{
-			Schema:                 col.TableSchema,
-			Table:                  col.TableName,
-			Column:                 col.ColumnName,
-			DataType:               col.DataType,
-			IsNullable:             col.NullableString(),
-			ColumnDefault:          defaultColumn,
-			GeneratedType:          col.GeneratedType,
-			IdentityGeneration:     col.IdentityGeneration,
-			CharacterMaximumLength: charMaxLength,
-		})
+		schemas = append(schemas, toDatabaseColumn(col))
 	}
 	return schemas, nil
 }
@@ -418,18 +395,17 @@ func (s *SQLConnectionDataService) GetInitStatements(
 func (s *SQLConnectionDataService) GetTableConstraints(
 	ctx context.Context,
 ) (*mgmtv1alpha1.GetConnectionTableConstraintsResponse, error) {
-	schemaDbCols, err := s.GetSchema(ctx, nil)
+	// Only the schema names are needed here. This used to read every column of every table to
+	// derive them, which is the most expensive way to ask a database what its schemas are —
+	// and it ran on every call, for every caller of GetConnectionTableConstraints. GetAllSchemas
+	// asks the catalogue directly, and already excludes information_schema and pg_*.
+	//
+	// It also returns schemas holding no table, which the column walk could not see. Asking for
+	// the constraints of an empty schema returns none, so the extra names cost a filter, not a
+	// wrong answer.
+	schemas, err := s.GetAllSchemas(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	schemaMap := map[string]struct{}{}
-	for _, s := range schemaDbCols {
-		schemaMap[s.Schema] = struct{}{}
-	}
-	schemas := []string{}
-	for s := range schemaMap {
-		schemas = append(schemas, s)
 	}
 
 	db, err := s.sqlmanager.NewSqlConnection(
@@ -532,19 +508,42 @@ func (s *SQLConnectionDataService) GetTableSchema(
 	}
 	schemas := []*mgmtv1alpha1.DatabaseColumn{}
 	for _, col := range dbschema {
-		isNull := "NO"
-		if col.IsNullable {
-			isNull = "YES"
-		}
-		schemas = append(schemas, &mgmtv1alpha1.DatabaseColumn{
-			Schema:     col.TableSchema,
-			Table:      col.TableName,
-			Column:     col.ColumnName,
-			DataType:   col.DataType,
-			IsNullable: isNull,
-		})
+		schemas = append(schemas, toDatabaseColumn(col))
 	}
 	return schemas, nil
+}
+
+// toDatabaseColumn converts a schema row the one way both readers use.
+//
+// They used to convert separately, and they disagreed: the whole-database reader carried the
+// default, the generated and identity markers and the length, the single-table one carried none
+// of them. Two functions returning the same type from the same source is an invitation for a
+// caller to switch to the cheaper one and silently lose half the column — which is exactly what
+// a prompt builder reaching for one table would have done.
+func toDatabaseColumn(col *sqlmanager_shared.DatabaseSchemaRow) *mgmtv1alpha1.DatabaseColumn {
+	var defaultColumn *string
+	if col.ColumnDefault != "" {
+		defaultColumn = &col.ColumnDefault
+	}
+	// The drivers write -1 when the type bounds nothing, which is why the rest of the repository
+	// tests for > 0 (see sql-util.go). Absent rather than zero, so a consumer can tell "no bound"
+	// from "a bound of nothing".
+	var charMaxLength *int32
+	if col.CharacterMaximumLength > 0 {
+		bounded := int32(col.CharacterMaximumLength)
+		charMaxLength = &bounded
+	}
+	return &mgmtv1alpha1.DatabaseColumn{
+		Schema:                 col.TableSchema,
+		Table:                  col.TableName,
+		Column:                 col.ColumnName,
+		DataType:               col.DataType,
+		IsNullable:             col.NullableString(),
+		ColumnDefault:          defaultColumn,
+		GeneratedType:          col.GeneratedType,
+		IdentityGeneration:     col.IdentityGeneration,
+		CharacterMaximumLength: charMaxLength,
+	}
 }
 
 func (s *SQLConnectionDataService) GetTableRowCount(

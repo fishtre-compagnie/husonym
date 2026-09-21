@@ -8,6 +8,8 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	javascript_draft "github.com/fishtre-compagnie/husonym/internal/javascript/draft"
 )
@@ -25,18 +27,33 @@ func (s *Service) GetJavascriptDraftPrompt(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetJavascriptDraftPromptRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJavascriptDraftPromptResponse], error) {
-	schemaResp, err := s.GetConnectionSchema(
+	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+
+	connResp, err := s.connectionService.GetConnection(
 		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetConnectionSchemaRequest{
-			ConnectionId: req.Msg.GetConnectionId(),
-		}),
+		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: req.Msg.GetConnectionId()}),
 	)
 	if err != nil {
 		return nil, err
 	}
+	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connResp.Msg.GetConnection())
+	if err != nil {
+		return nil, err
+	}
+
+	// One table, not the whole database. GetConnectionSchema would read every column of every
+	// table to hand back the one asked for, and an agent drafting rules column by column would
+	// pay that on every call.
+	columns, err := dataconn.GetTableSchema(ctx, req.Msg.GetSchema(), req.Msg.GetTable())
+	if err != nil {
+		return nil, err
+	}
+	// GetConnectionSchema enriches what it returns; reading the table directly skips that, and
+	// the detected category is what tells the model the column holds personal data.
+	piidetect.Enrich(columns)
 
 	column := findColumn(
-		schemaResp.Msg.GetSchemas(),
+		columns,
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
 		req.Msg.GetColumn(),
