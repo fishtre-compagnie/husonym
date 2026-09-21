@@ -3108,6 +3108,80 @@ func (_c *MockQuerier_GetBilledAccounts_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// GetColumnReviewsByJob provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetColumnReviewsByJob(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetColumnReviewsByJob")
+	}
+
+	var r0 []HusonymApiColumnReview
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetColumnReviewsByJobParams) []HusonymApiColumnReview); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiColumnReview)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetColumnReviewsByJobParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetColumnReviewsByJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetColumnReviewsByJob'
+type MockQuerier_GetColumnReviewsByJob_Call struct {
+	*mock.Call
+}
+
+// GetColumnReviewsByJob is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetColumnReviewsByJobParams
+func (_e *MockQuerier_Expecter) GetColumnReviewsByJob(ctx any, db any, arg any) *MockQuerier_GetColumnReviewsByJob_Call {
+	return &MockQuerier_GetColumnReviewsByJob_Call{Call: _e.mock.On("GetColumnReviewsByJob", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetColumnReviewsByJob_Call) Run(run func(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams)) *MockQuerier_GetColumnReviewsByJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetColumnReviewsByJobParams
+		if args[2] != nil {
+			arg2 = args[2].(GetColumnReviewsByJobParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetColumnReviewsByJob_Call) Return(husonymApiColumnReviews []HusonymApiColumnReview, err error) *MockQuerier_GetColumnReviewsByJob_Call {
+	_c.Call.Return(husonymApiColumnReviews, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetColumnReviewsByJob_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error)) *MockQuerier_GetColumnReviewsByJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetConnectionById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiConnection, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -5906,6 +5980,78 @@ func (_c *MockQuerier_RemoveAccountUser_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// RemoveColumnReview provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) RemoveColumnReview(ctx context.Context, db DBTX, arg RemoveColumnReviewParams) (int64, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveColumnReview")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, RemoveColumnReviewParams) (int64, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, RemoveColumnReviewParams) int64); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, RemoveColumnReviewParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_RemoveColumnReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveColumnReview'
+type MockQuerier_RemoveColumnReview_Call struct {
+	*mock.Call
+}
+
+// RemoveColumnReview is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg RemoveColumnReviewParams
+func (_e *MockQuerier_Expecter) RemoveColumnReview(ctx any, db any, arg any) *MockQuerier_RemoveColumnReview_Call {
+	return &MockQuerier_RemoveColumnReview_Call{Call: _e.mock.On("RemoveColumnReview", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_RemoveColumnReview_Call) Run(run func(ctx context.Context, db DBTX, arg RemoveColumnReviewParams)) *MockQuerier_RemoveColumnReview_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 RemoveColumnReviewParams
+		if args[2] != nil {
+			arg2 = args[2].(RemoveColumnReviewParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_RemoveColumnReview_Call) Return(n int64, err error) *MockQuerier_RemoveColumnReview_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_RemoveColumnReview_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg RemoveColumnReviewParams) (int64, error)) *MockQuerier_RemoveColumnReview_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RemoveConnectionById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) error {
 	ret := _mock.Called(ctx, db, id)
@@ -6490,6 +6636,78 @@ func (_c *MockQuerier_SetAnonymousUser_Call) Return(husonymApiUser HusonymApiUse
 }
 
 func (_c *MockQuerier_SetAnonymousUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (HusonymApiUser, error)) *MockQuerier_SetAnonymousUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetColumnReview provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetColumnReview(ctx context.Context, db DBTX, arg SetColumnReviewParams) (HusonymApiColumnReview, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetColumnReview")
+	}
+
+	var r0 HusonymApiColumnReview
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetColumnReviewParams) (HusonymApiColumnReview, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetColumnReviewParams) HusonymApiColumnReview); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiColumnReview)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, SetColumnReviewParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SetColumnReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetColumnReview'
+type MockQuerier_SetColumnReview_Call struct {
+	*mock.Call
+}
+
+// SetColumnReview is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg SetColumnReviewParams
+func (_e *MockQuerier_Expecter) SetColumnReview(ctx any, db any, arg any) *MockQuerier_SetColumnReview_Call {
+	return &MockQuerier_SetColumnReview_Call{Call: _e.mock.On("SetColumnReview", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_SetColumnReview_Call) Run(run func(ctx context.Context, db DBTX, arg SetColumnReviewParams)) *MockQuerier_SetColumnReview_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 SetColumnReviewParams
+		if args[2] != nil {
+			arg2 = args[2].(SetColumnReviewParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetColumnReview_Call) Return(husonymApiColumnReview HusonymApiColumnReview, err error) *MockQuerier_SetColumnReview_Call {
+	_c.Call.Return(husonymApiColumnReview, err)
+	return _c
+}
+
+func (_c *MockQuerier_SetColumnReview_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetColumnReviewParams) (HusonymApiColumnReview, error)) *MockQuerier_SetColumnReview_Call {
 	_c.Call.Return(run)
 	return _c
 }

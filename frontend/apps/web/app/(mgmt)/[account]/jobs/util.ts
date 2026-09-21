@@ -1902,7 +1902,11 @@ export async function validateJobMapping(
   validate: (
     req: ValidateJobMappingsRequest
   ) => Promise<ValidateJobMappingsResponse>,
-  jobSource?: JobSource
+  jobSource?: JobSource,
+  // The job being edited, when there is one. Without it the server reports every unmapped
+  // column, which is what a job still being created deserves; with it, the passthroughs
+  // already reviewed and accepted stop coming back.
+  jobId?: string
 ): Promise<ValidateJobMappingsResponse> {
   const body = create(ValidateJobMappingsRequestSchema, {
     accountId,
@@ -1939,6 +1943,7 @@ export async function validateJobMapping(
     }),
     connectionId: getConnectionIdFromSource(jobSource),
     jobSource: jobSource,
+    jobId: jobId,
   });
 
   return validate(body);

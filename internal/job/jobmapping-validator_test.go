@@ -233,6 +233,85 @@ func TestValidateJobMappingsExistInSource(t *testing.T) {
 	)
 
 	t.Run(
+		"should stop reporting a column whose passthrough was accepted",
+		func(t *testing.T) {
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{Schema: "public", Table: "users", Column: "id"},
+			}
+			sourceCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+				"public.users": {
+					"id":          &sqlmanager_shared.DatabaseSchemaRow{DataType: "integer"},
+					"commentaire": &sqlmanager_shared.DatabaseSchemaRow{DataType: "text"},
+					"note":        &sqlmanager_shared.DatabaseSchemaRow{DataType: "text"},
+				},
+			}
+
+			jmv := NewJobMappingsValidator(
+				mappings,
+				WithJobSourceOptions(&SqlJobSourceOpts{
+					PassthroughOnNewColumnAddition: true,
+					PassthroughPendingReview:       true,
+				}),
+				WithAcceptedPassthroughs(map[string]map[string]AcceptedPassthrough{
+					"public.users": {
+						"commentaire": {DataType: "text"},
+					},
+				}),
+			)
+			jmv.ValidateJobMappingsExistInSource(sourceCols)
+
+			warnings := jmv.GetColumnWarnings()
+			// The whole point: the list can shrink. Without this it only ever grows, and a list
+			// that never shrinks stops being read.
+			assert.Empty(t, warnings["public.users"]["commentaire"])
+			// And an untouched column is still reported.
+			assert.Len(t, warnings["public.users"]["note"], 1)
+		},
+	)
+
+	t.Run(
+		"should report again a column that changed since it was accepted",
+		func(t *testing.T) {
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{Schema: "public", Table: "users", Column: "id"},
+			}
+			sourceCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+				"public.users": {
+					"id": &sqlmanager_shared.DatabaseSchemaRow{DataType: "integer"},
+					// Accepted while it was a free-text note; it is something else now.
+					"commentaire": &sqlmanager_shared.DatabaseSchemaRow{
+						DataType: "character varying(255)",
+					},
+				},
+			}
+
+			jmv := NewJobMappingsValidator(
+				mappings,
+				WithJobSourceOptions(&SqlJobSourceOpts{
+					PassthroughOnNewColumnAddition: true,
+					PassthroughPendingReview:       true,
+				}),
+				WithAcceptedPassthroughs(map[string]map[string]AcceptedPassthrough{
+					"public.users": {
+						"commentaire": {DataType: "text"},
+					},
+				}),
+			)
+			jmv.ValidateJobMappingsExistInSource(sourceCols)
+
+			assert.Empty(t, jmv.GetColumnErrors())
+			// Its own code: the reviewer is asked to confirm or withdraw a decision they made,
+			// not to look at the column for the first time.
+			assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+				{
+					Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED,
+					Message: "Column has changed since its passthrough was accepted, and is passed through as is: public.users.commentaire",
+				},
+			}, jmv.GetColumnWarnings()["public.users"]["commentaire"])
+		},
+	)
+
+	t.Run(
 		"should not call a generated column passed through",
 		func(t *testing.T) {
 			stored := "s"

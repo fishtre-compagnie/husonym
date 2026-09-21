@@ -1787,9 +1787,24 @@ func (s *Service) ValidateJobMappings(
 		}
 	}
 
+	validatorOpts := []job_util.Option{job_util.WithJobSourceOptions(sqlSourceOpts)}
+	// Only an existing job can have accepted decisions. While one is being created there is no
+	// job id, and reporting every unmapped column is then the right answer rather than a gap.
+	if req.Msg.JobId != nil {
+		accepted, err := s.acceptedPassthroughsByTable(
+			ctx,
+			req.Msg.GetJobId(),
+			req.Msg.GetAccountId(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		validatorOpts = append(validatorOpts, job_util.WithAcceptedPassthroughs(accepted))
+	}
+
 	validator := job_util.NewJobMappingsValidator(
 		req.Msg.Mappings,
-		job_util.WithJobSourceOptions(sqlSourceOpts),
+		validatorOpts...,
 	)
 	result, err := validator.Validate(colInfoMap, req.Msg.VirtualForeignKeys, tableConstraints)
 	if err != nil {

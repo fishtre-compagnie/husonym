@@ -83,6 +83,21 @@ type HusonymApiCasbinRule struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type HusonymApiColumnReview struct {
+	AccountID           pgtype.UUID
+	JobID               pgtype.UUID
+	TableSchema         string
+	TableName           string
+	ColumnName          string
+	ReviewedDataType    string
+	ReviewedPiiCategory string
+	Note                pgtype.Text
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
+	CreatedByID         pgtype.UUID
+	UpdatedByID         pgtype.UUID
+}
+
 type HusonymApiConnection struct {
 	ID               pgtype.UUID
 	CreatedAt        pgtype.Timestamp

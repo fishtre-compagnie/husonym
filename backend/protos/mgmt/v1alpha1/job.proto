@@ -1284,6 +1284,83 @@ message ValidateJobMappingsRequest {
   repeated VirtualForeignConstraint virtual_foreign_keys = 4;
   // The source options of the job
   optional JobSource job_source = 5;
+  // The job being validated, when it exists. Absent while a job is still being created, which
+  // is why it is optional. With it, the columns whose passthrough has been reviewed and
+  // accepted for this job stop being reported — without it they all are, which is the right
+  // answer for a job that has no accepted decisions yet.
+  optional string job_id = 6;
+}
+
+// A column left out of a job's mappings whose passthrough someone has reviewed and accepted.
+message ColumnReview {
+  // The schema of the table
+  string table_schema = 1;
+  // The table the column belongs to
+  string table_name = 2;
+  // The reviewed column
+  string column_name = 3;
+  // The column's type when it was reviewed. A decision is about a column as it stood, so a
+  // column whose type has moved since is reported again.
+  string reviewed_data_type = 4;
+  // The detected personal-data category when it was reviewed, empty when nothing was detected.
+  // It is compared the same way: a column that has since started to read as personal data was
+  // not the column the reviewer accepted.
+  string reviewed_pii_category = 5;
+  // Why the passthrough is acceptable. This is what an audit asks for.
+  optional string note = 6;
+  // When the decision was last made
+  google.protobuf.Timestamp updated_at = 7;
+  // Who last made it
+  string updated_by_user_id = 8;
+}
+
+message GetColumnReviewsRequest {
+  // The job whose decisions are returned
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message GetColumnReviewsResponse {
+  repeated ColumnReview reviews = 1;
+}
+
+message SetColumnReviewRequest {
+  // The job the decision is made for
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The schema of the table
+  string table_schema = 3 [(buf.validate.field).string.min_len = 1];
+  // The table the column belongs to
+  string table_name = 4 [(buf.validate.field).string.min_len = 1];
+  // The column whose passthrough is accepted
+  string column_name = 5 [(buf.validate.field).string.min_len = 1];
+  // Why it is acceptable
+  optional string note = 6;
+}
+
+message SetColumnReviewResponse {
+  // The stored decision, carrying the column as the server saw it at that moment.
+  ColumnReview review = 1;
+}
+
+message RemoveColumnReviewRequest {
+  // The job the decision was made for
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The schema of the table
+  string table_schema = 3 [(buf.validate.field).string.min_len = 1];
+  // The table the column belongs to
+  string table_name = 4 [(buf.validate.field).string.min_len = 1];
+  // The column whose decision is withdrawn
+  string column_name = 5 [(buf.validate.field).string.min_len = 1];
+}
+
+message RemoveColumnReviewResponse {
+  // False when there was no such decision to withdraw.
+  bool removed = 1;
 }
 
 message ColumnError {
@@ -1364,6 +1441,11 @@ message ColumnWarning {
     // copies it as is — the strategy exists so that a new column never stops a run — so this
     // is the one to act on first: it names data leaving the source untransformed.
     COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH = 4;
+    // The passthrough of this column was reviewed and accepted, but the column has changed
+    // since: its type or its detected category is no longer the one that was accepted. The
+    // decision does not carry over to a column that is not the one it was made about, so it
+    // is reported again — to be confirmed or withdrawn, not to be redone from nothing.
+    COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED = 5;
   }
 
   // Column warning report
@@ -1860,6 +1942,15 @@ service JobService {
   rpc SetJobSyncOptions(SetJobSyncOptionsRequest) returns (SetJobSyncOptionsResponse) {}
   // Validates that the jobmapping configured can run with table constraints
   rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {}
+  // Returns the columns whose passthrough has been reviewed and accepted for this job.
+  rpc GetColumnReviews(GetColumnReviewsRequest) returns (GetColumnReviewsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Accepts the passthrough of one unmapped column, so it stops being reported. The server
+  // records the column as it stands at that moment, and reports it again if it moves.
+  rpc SetColumnReview(SetColumnReviewRequest) returns (SetColumnReviewResponse) {}
+  // Withdraws that acceptance, putting the column back in the list.
+  rpc RemoveColumnReview(RemoveColumnReviewRequest) returns (RemoveColumnReviewResponse) {}
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 

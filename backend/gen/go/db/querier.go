@@ -55,6 +55,7 @@ type Querier interface {
 	GetActivePreSyncJobHooks(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
 	GetBilledAccounts(ctx context.Context, db DBTX, accountids []pgtype.UUID) ([]HusonymApiAccount, error)
+	GetColumnReviewsByJob(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error)
 	GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiConnection, error)
 	GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error)
 	GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiConnection, error)
@@ -94,6 +95,7 @@ type Querier interface {
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountUser(ctx context.Context, db DBTX, arg RemoveAccountUserParams) error
+	RemoveColumnReview(ctx context.Context, db DBTX, arg RemoveColumnReviewParams) (int64, error)
 	RemoveConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveConnectionByNameAndAccount(ctx context.Context, db DBTX, arg RemoveConnectionByNameAndAccountParams) error
 	RemoveJobById(ctx context.Context, db DBTX, id pgtype.UUID) error
@@ -103,6 +105,7 @@ type Querier interface {
 	SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error)
 	SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error)
 	SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
+	SetColumnReview(ctx context.Context, db DBTX, arg SetColumnReviewParams) (HusonymApiColumnReview, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
 	SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSyncOptionsParams) (HusonymApiJob, error)
 	SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error)

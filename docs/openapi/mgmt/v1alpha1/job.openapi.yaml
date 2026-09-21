@@ -371,6 +371,52 @@ components:
       title: ColumnErrorReport
       additionalProperties: false
       description: Column error report
+    mgmt.v1alpha1.ColumnReview:
+      type: object
+      properties:
+        tableSchema:
+          type: string
+          title: table_schema
+          description: The schema of the table
+        tableName:
+          type: string
+          title: table_name
+          description: The table the column belongs to
+        columnName:
+          type: string
+          title: column_name
+          description: The reviewed column
+        reviewedDataType:
+          type: string
+          title: reviewed_data_type
+          description: |-
+            The column's type when it was reviewed. A decision is about a column as it stood, so a
+             column whose type has moved since is reported again.
+        reviewedPiiCategory:
+          type: string
+          title: reviewed_pii_category
+          description: |-
+            The detected personal-data category when it was reviewed, empty when nothing was detected.
+             It is compared the same way: a column that has since started to read as personal data was
+             not the column the reviewer accepted.
+        note:
+          type:
+            - string
+            - "null"
+          title: note
+          description: Why the passthrough is acceptable. This is what an audit asks for.
+        updatedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: updated_at
+          description: When the decision was last made
+        updatedByUserId:
+          type: string
+          title: updated_by_user_id
+          description: Who last made it
+      title: ColumnReview
+      additionalProperties: false
+      description: A column left out of a job's mappings whose passthrough someone has reviewed and accepted.
     mgmt.v1alpha1.ColumnWarning:
       type: object
       properties:
@@ -403,6 +449,7 @@ components:
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
         - COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW
         - COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH
+        - COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED
       description: An enumeration of column warning codes
     mgmt.v1alpha1.ColumnWarning.ColumnWarningReport:
       type: object
@@ -1265,6 +1312,31 @@ components:
           title: hooks
           description: The active job hooks
       title: GetActiveJobHooksByTimingResponse
+      additionalProperties: false
+    mgmt.v1alpha1.GetColumnReviewsRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job whose decisions are returned
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+      title: GetColumnReviewsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetColumnReviewsResponse:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnReview'
+          title: reviews
+      title: GetColumnReviewsResponse
       additionalProperties: false
     mgmt.v1alpha1.GetJobHookRequest:
       type: object
@@ -3945,6 +4017,45 @@ components:
           description: Whether to cascade the truncate to child tables
       title: PostgresTruncateTableConfig
       additionalProperties: false
+    mgmt.v1alpha1.RemoveColumnReviewRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the decision was made for
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        tableSchema:
+          type: string
+          title: table_schema
+          minLength: 1
+          description: The schema of the table
+        tableName:
+          type: string
+          title: table_name
+          minLength: 1
+          description: The table the column belongs to
+        columnName:
+          type: string
+          title: column_name
+          minLength: 1
+          description: The column whose decision is withdrawn
+      title: RemoveColumnReviewRequest
+      additionalProperties: false
+    mgmt.v1alpha1.RemoveColumnReviewResponse:
+      type: object
+      properties:
+        removed:
+          type: boolean
+          title: removed
+          description: False when there was no such decision to withdraw.
+      title: RemoveColumnReviewResponse
+      additionalProperties: false
     mgmt.v1alpha1.RetryPolicy:
       type: object
       properties:
@@ -3980,6 +4091,52 @@ components:
           minLength: 1
           description: The Husonym Account ID
       title: RunContextKey
+      additionalProperties: false
+    mgmt.v1alpha1.SetColumnReviewRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the decision is made for
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        tableSchema:
+          type: string
+          title: table_schema
+          minLength: 1
+          description: The schema of the table
+        tableName:
+          type: string
+          title: table_name
+          minLength: 1
+          description: The table the column belongs to
+        columnName:
+          type: string
+          title: column_name
+          minLength: 1
+          description: The column whose passthrough is accepted
+        note:
+          type:
+            - string
+            - "null"
+          title: note
+          description: Why it is acceptable
+      title: SetColumnReviewRequest
+      additionalProperties: false
+    mgmt.v1alpha1.SetColumnReviewResponse:
+      type: object
+      properties:
+        review:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnReview'
+          title: review
+          description: The stored decision, carrying the column as the server saw it at that moment.
+      title: SetColumnReviewResponse
       additionalProperties: false
     mgmt.v1alpha1.SetJobHookEnabledRequest:
       type: object
@@ -5308,6 +5465,16 @@ components:
             - type: "null"
           title: job_source
           description: The source options of the job
+        jobId:
+          type:
+            - string
+            - "null"
+          title: job_id
+          description: |-
+            The job being validated, when it exists. Absent while a job is still being created, which
+             is why it is optional. With it, the columns whose passthrough has been reviewed and
+             accepted for this job stop being reported — without it they all are, which is the right
+             answer for a job that has no accepted decisions yet.
       title: ValidateJobMappingsRequest
       additionalProperties: false
     mgmt.v1alpha1.ValidateJobMappingsResponse:
@@ -5866,6 +6033,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetActiveJobHooksByTimingResponse'
+  /mgmt.v1alpha1.JobService/GetColumnReviews:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: GetColumnReviews
+      description: Returns the columns whose passthrough has been reviewed and accepted for this job.
+      operationId: mgmt.v1alpha1.JobService.GetColumnReviews
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnReviewsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnReviewsResponse'
   /mgmt.v1alpha1.JobService/GetJob:
     post:
       tags:
@@ -6548,6 +6755,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.PauseJobResponse'
+  /mgmt.v1alpha1.JobService/RemoveColumnReview:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: RemoveColumnReview
+      description: Withdraws that acceptance, putting the column back in the list.
+      operationId: mgmt.v1alpha1.JobService.RemoveColumnReview
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.RemoveColumnReviewRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.RemoveColumnReviewResponse'
+  /mgmt.v1alpha1.JobService/SetColumnReview:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: SetColumnReview
+      description: |-
+        Accepts the passthrough of one unmapped column, so it stops being reported. The server
+         records the column as it stands at that moment, and reports it again if it moves.
+      operationId: mgmt.v1alpha1.JobService.SetColumnReview
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetColumnReviewRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetColumnReviewResponse'
   /mgmt.v1alpha1.JobService/SetJobHookEnabled:
     post:
       tags:

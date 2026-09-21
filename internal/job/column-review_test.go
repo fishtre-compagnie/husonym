@@ -31,3 +31,29 @@ func Test_LooksSensitive(t *testing.T) {
 		require.Empty(t, category)
 	})
 }
+
+func Test_AcceptedPassthrough_StillHoldsFor(t *testing.T) {
+	t.Run("holds for the column it was made about", func(t *testing.T) {
+		accepted := AcceptedPassthrough{DataType: "text"}
+		require.True(t, accepted.StillHoldsFor("commentaire", "text"))
+	})
+
+	t.Run("does not survive the column changing type", func(t *testing.T) {
+		// The decision was about a free-text note. A column that is now something else is not
+		// the column anybody looked at, and carrying the acceptance over is how a job keeps a
+		// clean bill of health while it starts shipping something new in clear.
+		accepted := AcceptedPassthrough{DataType: "text"}
+		require.False(t, accepted.StillHoldsFor("commentaire", "character varying(255)"))
+	})
+
+	t.Run("does not survive the detector learning to read the column", func(t *testing.T) {
+		// Category is stored, not recomputed and compared to itself: it records what the
+		// detector saw at the time. When a release teaches it to recognise a column it used to
+		// pass over, every acceptance granted while it was blind comes back up for confirmation.
+		blindWhenAccepted := AcceptedPassthrough{DataType: "varchar(255)", PiiCategory: ""}
+		require.False(t, blindWhenAccepted.StillHoldsFor("email", "varchar(255)"))
+
+		seenWhenAccepted := AcceptedPassthrough{DataType: "varchar(255)", PiiCategory: "email"}
+		require.True(t, seenWhenAccepted.StillHoldsFor("email", "varchar(255)"))
+	})
+}

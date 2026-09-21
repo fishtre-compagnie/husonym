@@ -26,3 +26,23 @@ func LooksSensitive(columnName, dataType string) (category string, sensitive boo
 	}
 	return classification.Category, true
 }
+
+// AcceptedPassthrough is a decision somebody made about one column: its passthrough is fine.
+//
+// It carries the column as it stood when the decision was made, because that is what was
+// decided about. A decision is not a property of a name — a free-text field renamed, retyped or
+// repurposed into something that holds addresses is a different column wearing the same label,
+// and the most ordinary way for a job to start leaking after having been signed off.
+type AcceptedPassthrough struct {
+	DataType    string
+	PiiCategory string
+}
+
+// StillHoldsFor reports whether the decision was made about the column as it is now.
+func (a AcceptedPassthrough) StillHoldsFor(columnName, dataType string) bool {
+	if a.DataType != dataType {
+		return false
+	}
+	category, _ := LooksSensitive(columnName, dataType)
+	return a.PiiCategory == category
+}

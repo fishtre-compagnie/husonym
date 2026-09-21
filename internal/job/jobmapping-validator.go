@@ -17,6 +17,8 @@ type JobMappingsValidator struct {
 
 	jobSourceOptions *SqlJobSourceOpts
 	jobMappings      map[string]map[string]*mgmtv1alpha1.JobMapping // schema.table -> column -> job mapping
+	// schema.table -> column -> the decision that this column may ship untransformed
+	acceptedPassthroughs map[string]map[string]AcceptedPassthrough
 }
 
 type JobMappingsValidatorResponse struct {
@@ -31,6 +33,15 @@ type Option func(*JobMappingsValidator)
 func WithJobSourceOptions(jobSourceOptions *SqlJobSourceOpts) Option {
 	return func(jmv *JobMappingsValidator) {
 		jmv.jobSourceOptions = jobSourceOptions
+	}
+}
+
+// WithAcceptedPassthroughs hands over the columns whose passthrough somebody has already
+// accepted for this job, keyed schema.table -> column. They stop being reported, which is the
+// only way the list can ever shrink — and a list that never shrinks stops being read.
+func WithAcceptedPassthroughs(accepted map[string]map[string]AcceptedPassthrough) Option {
+	return func(jmv *JobMappingsValidator) {
+		jmv.acceptedPassthroughs = accepted
 	}
 }
 
@@ -224,6 +235,26 @@ func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
 					)
 				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview:
+					if accepted, ok := j.acceptedPassthroughs[table][col]; ok {
+						if accepted.StillHoldsFor(col, colMap[col].DataType) {
+							continue
+						}
+						// Reported again, under a code of its own: the reviewer is being asked
+						// to confirm or withdraw a decision they already made, not to look at
+						// a column for the first time. Conflating the two would make them
+						// re-read everything they had already settled.
+						j.addColumnWarning(
+							table,
+							col,
+							fmt.Sprintf(
+								"Column has changed since its passthrough was accepted, and is passed through as is: %s.%s",
+								table,
+								col,
+							),
+							mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED,
+						)
+						continue
+					}
 					// A column whose name and type read as personal data gets its own code, so
 					// a reviewer with sixty warnings knows which three to open. The others are
 					// not cleared by the heuristic's silence — they are only less urgent.

@@ -419,7 +419,8 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
         account?.id || '',
         formVirtualForeignKeys,
         validateJobMappingsAsync,
-        jobsource
+        jobsource,
+        job?.id
       );
       setValidateMappingsResponse(res);
     } catch (error) {
@@ -454,7 +455,8 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
         account?.id || '',
         vfks,
         validateJobMappingsAsync,
-        jobsource
+        jobsource,
+        job?.id
       );
       setValidateMappingsResponse(res);
     } catch (error) {

@@ -1321,18 +1321,96 @@ class SetJobSyncOptionsResponse(_message.Message):
     def __init__(self, job: _Optional[_Union[Job, _Mapping]] = ...) -> None: ...
 
 class ValidateJobMappingsRequest(_message.Message):
-    __slots__ = ("account_id", "mappings", "connection_id", "virtual_foreign_keys", "job_source")
+    __slots__ = ("account_id", "mappings", "connection_id", "virtual_foreign_keys", "job_source", "job_id")
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     MAPPINGS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     VIRTUAL_FOREIGN_KEYS_FIELD_NUMBER: _ClassVar[int]
     JOB_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
     account_id: str
     mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
     connection_id: str
     virtual_foreign_keys: _containers.RepeatedCompositeFieldContainer[VirtualForeignConstraint]
     job_source: JobSource
-    def __init__(self, account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., connection_id: _Optional[str] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_source: _Optional[_Union[JobSource, _Mapping]] = ...) -> None: ...
+    job_id: str
+    def __init__(self, account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., connection_id: _Optional[str] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_source: _Optional[_Union[JobSource, _Mapping]] = ..., job_id: _Optional[str] = ...) -> None: ...
+
+class ColumnReview(_message.Message):
+    __slots__ = ("table_schema", "table_name", "column_name", "reviewed_data_type", "reviewed_pii_category", "note", "updated_at", "updated_by_user_id")
+    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
+    REVIEWED_DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    REVIEWED_PII_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    NOTE_FIELD_NUMBER: _ClassVar[int]
+    UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
+    UPDATED_BY_USER_ID_FIELD_NUMBER: _ClassVar[int]
+    table_schema: str
+    table_name: str
+    column_name: str
+    reviewed_data_type: str
+    reviewed_pii_category: str
+    note: str
+    updated_at: _timestamp_pb2.Timestamp
+    updated_by_user_id: str
+    def __init__(self, table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., reviewed_data_type: _Optional[str] = ..., reviewed_pii_category: _Optional[str] = ..., note: _Optional[str] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_by_user_id: _Optional[str] = ...) -> None: ...
+
+class GetColumnReviewsRequest(_message.Message):
+    __slots__ = ("job_id", "account_id")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ...) -> None: ...
+
+class GetColumnReviewsResponse(_message.Message):
+    __slots__ = ("reviews",)
+    REVIEWS_FIELD_NUMBER: _ClassVar[int]
+    reviews: _containers.RepeatedCompositeFieldContainer[ColumnReview]
+    def __init__(self, reviews: _Optional[_Iterable[_Union[ColumnReview, _Mapping]]] = ...) -> None: ...
+
+class SetColumnReviewRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "table_schema", "table_name", "column_name", "note")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
+    NOTE_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    table_schema: str
+    table_name: str
+    column_name: str
+    note: str
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., note: _Optional[str] = ...) -> None: ...
+
+class SetColumnReviewResponse(_message.Message):
+    __slots__ = ("review",)
+    REVIEW_FIELD_NUMBER: _ClassVar[int]
+    review: ColumnReview
+    def __init__(self, review: _Optional[_Union[ColumnReview, _Mapping]] = ...) -> None: ...
+
+class RemoveColumnReviewRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "table_schema", "table_name", "column_name")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    table_schema: str
+    table_name: str
+    column_name: str
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ...) -> None: ...
+
+class RemoveColumnReviewResponse(_message.Message):
+    __slots__ = ("removed",)
+    REMOVED_FIELD_NUMBER: _ClassVar[int]
+    removed: bool
+    def __init__(self, removed: _Optional[bool] = ...) -> None: ...
 
 class ColumnError(_message.Message):
     __slots__ = ("schema", "table", "column", "error_reports")
@@ -1388,11 +1466,13 @@ class ColumnWarning(_message.Message):
         COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: _ClassVar[ColumnWarning.ColumnWarningCode]
+        COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED: _ClassVar[ColumnWarning.ColumnWarningCode]
     COLUMN_WARNING_CODE_UNSPECIFIED: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: ColumnWarning.ColumnWarningCode
+    COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED: ColumnWarning.ColumnWarningCode
     class ColumnWarningReport(_message.Message):
         __slots__ = ("code", "message")
         CODE_FIELD_NUMBER: _ClassVar[int]

@@ -155,6 +155,21 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.FromString,
                 _registered_method=True)
+        self.GetColumnReviews = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/GetColumnReviews',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.FromString,
+                _registered_method=True)
+        self.SetColumnReview = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/SetColumnReview',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.FromString,
+                _registered_method=True)
+        self.RemoveColumnReview = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/RemoveColumnReview',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.FromString,
+                _registered_method=True)
         self.ValidateSchema = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ValidateSchema',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
@@ -423,6 +438,28 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetColumnReviews(self, request, context):
+        """Returns the columns whose passthrough has been reviewed and accepted for this job.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetColumnReview(self, request, context):
+        """Accepts the passthrough of one unmapped column, so it stops being reported. The server
+        records the column as it stands at that moment, and reports it again if it moves.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RemoveColumnReview(self, request, context):
+        """Withdraws that acceptance, putting the column back in the list.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ValidateSchema(self, request, context):
         """Validates that the schema is compatible with the job mappings
         """
@@ -655,6 +692,21 @@ def add_JobServiceServicer_to_server(servicer, server):
                     servicer.ValidateJobMappings,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.SerializeToString,
+            ),
+            'GetColumnReviews': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetColumnReviews,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.SerializeToString,
+            ),
+            'SetColumnReview': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetColumnReview,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.SerializeToString,
+            ),
+            'RemoveColumnReview': grpc.unary_unary_rpc_method_handler(
+                    servicer.RemoveColumnReview,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.SerializeToString,
             ),
             'ValidateSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateSchema,
@@ -1479,6 +1531,87 @@ class JobService:
             '/mgmt.v1alpha1.JobService/ValidateJobMappings',
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetColumnReviews(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/GetColumnReviews',
+            mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetColumnReview(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/SetColumnReview',
+            mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RemoveColumnReview(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/RemoveColumnReview',
+            mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.FromString,
             options,
             channel_credentials,
             insecure,
