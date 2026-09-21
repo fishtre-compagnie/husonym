@@ -2077,6 +2077,54 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/PreviewColumnTransformer:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: PreviewColumnTransformer
+      description: >-
+        Reads a sample of one column and shows what a transformer would make of
+        each value, before
+         anyone commits to it. The server reads the values itself: this previews a real column, and
+         cannot be turned into an unmetered way to anonymize arbitrary data.
+      operationId: mgmt.v1alpha1.ConnectionDataService.PreviewColumnTransformer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.PreviewColumnTransformerRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.PreviewColumnTransformerResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/CancelJobRun:
     post:
       tags:
@@ -9663,6 +9711,29 @@ components:
              colonne (« vide » et « absent » ne se traitent pas pareil).
       title: ColumnSampleValue
       additionalProperties: false
+    mgmt.v1alpha1.ColumnTransformerPreview:
+      type: object
+      properties:
+        input:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+          title: input
+          description: The value as read from the source.
+        output:
+          oneOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+            - type: 'null'
+          title: output
+          description: What the transformer produced. Unset when it failed on this value.
+        error:
+          type:
+            - string
+            - 'null'
+          title: error
+          description: Why the transformer failed on this value, when it did.
+      title: ColumnTransformerPreview
+      additionalProperties: false
+      description: One sampled value and what the transformer made of it.
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
       allOf:
@@ -10668,6 +10739,64 @@ components:
     mgmt.v1alpha1.PostgresStreamConfig:
       type: object
       title: PostgresStreamConfig
+      additionalProperties: false
+    mgmt.v1alpha1.PreviewColumnTransformerRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The connection to read the column from.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to read.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column whose values are transformed.
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerConfig'
+          title: transformer
+          description: The transformer to try on them.
+        limit:
+          type: integer
+          title: limit
+          description: Number of rows to read (default 20, max 50).
+      title: PreviewColumnTransformerRequest
+      required:
+        - transformer
+      additionalProperties: false
+    mgmt.v1alpha1.PreviewColumnTransformerResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnTransformerPreview'
+          title: values
+        distinctInputs:
+          type: integer
+          title: distinct_inputs
+          description: >-
+            Distinct non-null values in the sample, before and after. Fewer
+            after than before means the
+             transformer sends different values to the same one — which a column under a uniqueness
+             constraint cannot take. It is a sign, never a proof: a sample this small says nothing
+             certain about the whole table.
+        distinctOutputs:
+          type: integer
+          title: distinct_outputs
+      title: PreviewColumnTransformerResponse
       additionalProperties: false
     mgmt.v1alpha1.PrimaryConstraint:
       type: object

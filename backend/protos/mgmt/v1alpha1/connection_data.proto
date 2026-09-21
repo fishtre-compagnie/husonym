@@ -477,6 +477,41 @@ message GetJavascriptDraftPromptRequest {
   JavascriptDraftEngine engine = 6;
 }
 
+message PreviewColumnTransformerRequest {
+  // The connection to read the column from.
+  string connection_id = 1 [(buf.validate.field).string.uuid = true];
+  // The schema of the table.
+  string schema = 2 [(buf.validate.field).string.min_len = 1];
+  // The table to read.
+  string table = 3 [(buf.validate.field).string.min_len = 1];
+  // The column whose values are transformed.
+  string column = 4 [(buf.validate.field).string.min_len = 1];
+  // The transformer to try on them.
+  TransformerConfig transformer = 5 [(buf.validate.field).required = true];
+  // Number of rows to read (default 20, max 50).
+  uint32 limit = 6;
+}
+
+// One sampled value and what the transformer made of it.
+message ColumnTransformerPreview {
+  // The value as read from the source.
+  ColumnSampleValue input = 1;
+  // What the transformer produced. Unset when it failed on this value.
+  optional ColumnSampleValue output = 2;
+  // Why the transformer failed on this value, when it did.
+  optional string error = 3;
+}
+
+message PreviewColumnTransformerResponse {
+  repeated ColumnTransformerPreview values = 1;
+  // Distinct non-null values in the sample, before and after. Fewer after than before means the
+  // transformer sends different values to the same one — which a column under a uniqueness
+  // constraint cannot take. It is a sign, never a proof: a sample this small says nothing
+  // certain about the whole table.
+  uint32 distinct_inputs = 2;
+  uint32 distinct_outputs = 3;
+}
+
 message GetJavascriptDraftPromptResponse {
   // The prompt, ready to send to a model. It carries the execution contract, the column's
   // constraints and the functions in scope — never any of the column's values.
@@ -525,6 +560,12 @@ service ConnectionDataService {
   // contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
   // the deterministic functions in scope. It reads the schema, never the column's data.
   rpc GetJavascriptDraftPrompt(GetJavascriptDraftPromptRequest) returns (GetJavascriptDraftPromptResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Reads a sample of one column and shows what a transformer would make of each value, before
+  // anyone commits to it. The server reads the values itself: this previews a real column, and
+  // cannot be turned into an unmetered way to anonymize arbitrary data.
+  rpc PreviewColumnTransformer(PreviewColumnTransformerRequest) returns (PreviewColumnTransformerResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

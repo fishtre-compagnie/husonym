@@ -76,6 +76,11 @@ class ConnectionDataServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.FromString,
                 _registered_method=True)
+        self.PreviewColumnTransformer = channel.unary_unary(
+                '/mgmt.v1alpha1.ConnectionDataService/PreviewColumnTransformer',
+                request_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerResponse.FromString,
+                _registered_method=True)
 
 
 class ConnectionDataServiceServicer:
@@ -174,6 +179,15 @@ class ConnectionDataServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PreviewColumnTransformer(self, request, context):
+        """Reads a sample of one column and shows what a transformer would make of each value, before
+        anyone commits to it. The server reads the values itself: this previews a real column, and
+        cannot be turned into an unmetered way to anonymize arbitrary data.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ConnectionDataServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -236,6 +250,11 @@ def add_ConnectionDataServiceServicer_to_server(servicer, server):
                     servicer.GetJavascriptDraftPrompt,
                     request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.SerializeToString,
+            ),
+            'PreviewColumnTransformer': grpc.unary_unary_rpc_method_handler(
+                    servicer.PreviewColumnTransformer,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -564,6 +583,33 @@ class ConnectionDataService:
             '/mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt',
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_connection__data__pb2.GetJavascriptDraftPromptResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PreviewColumnTransformer(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.ConnectionDataService/PreviewColumnTransformer',
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_connection__data__pb2.PreviewColumnTransformerResponse.FromString,
             options,
             channel_credentials,
             insecure,

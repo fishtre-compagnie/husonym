@@ -28,19 +28,40 @@ func (s *Service) GetColumnSampleValues(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetColumnSampleValuesRequest],
 ) (*connect.Response[mgmtv1alpha1.GetColumnSampleValuesResponse], error) {
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+	raws, err := s.sampleColumn(
+		ctx,
+		req.Msg.GetConnectionId(),
+		req.Msg.GetSchema(),
+		req.Msg.GetTable(),
+		req.Msg.GetColumn(),
+		clampLimit(req.Msg.GetLimit(), defaultSampleLimit, maxSampleLimit),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	limit := req.Msg.GetLimit()
-	if limit == 0 {
-		limit = defaultSampleLimit
+	values := make([]*mgmtv1alpha1.ColumnSampleValue, 0, len(raws))
+	for _, raw := range raws {
+		values = append(values, toSampleValue(raw))
 	}
-	if limit > maxSampleLimit {
-		limit = maxSampleLimit
-	}
+	return connect.NewResponse(&mgmtv1alpha1.GetColumnSampleValuesResponse{
+		Values: values,
+	}), nil
+}
+
+// sampleColumn reads the first rows of a table and returns one column's values as the driver
+// gave them, nil standing for NULL. The raw values are kept, rather than their text, because a
+// transformer has to be handed a value of the column's own type.
+func (s *Service) sampleColumn(
+	ctx context.Context,
+	connectionId, schema, table, column string,
+	limit uint32,
+) ([]any, error) {
+	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
 	connResp, err := s.connectionService.GetConnection(
 		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: req.Msg.GetConnectionId()}),
+		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionId}),
 	)
 	if err != nil {
 		return nil, err
@@ -51,18 +72,11 @@ func (s *Service) GetColumnSampleValues(
 	}
 
 	collector := &rowCollector{}
-	if err := dataconn.SampleData(
-		ctx,
-		collector,
-		req.Msg.GetSchema(),
-		req.Msg.GetTable(),
-		uint(limit),
-	); err != nil {
+	if err := dataconn.SampleData(ctx, collector, schema, table, uint(limit)); err != nil {
 		return nil, fmt.Errorf("unable to sample column data: %w", err)
 	}
 
-	column := req.Msg.GetColumn()
-	values := make([]*mgmtv1alpha1.ColumnSampleValue, 0, len(collector.rows))
+	raws := make([]any, 0, len(collector.rows))
 	for _, rowbytes := range collector.rows {
 		row := map[string]any{}
 		if err := gob.NewDecoder(bytes.NewReader(rowbytes)).Decode(&row); err != nil {
@@ -75,20 +89,30 @@ func (s *Service) GetColumnSampleValues(
 			// an empty list, which would read as "no data".
 			return nil, connect.NewError(
 				connect.CodeNotFound,
-				fmt.Errorf("colonne %q absente de %s.%s",
-					column, req.Msg.GetSchema(), req.Msg.GetTable()),
+				fmt.Errorf("colonne %q absente de %s.%s", column, schema, table),
 			)
 		}
-		if raw == nil {
-			values = append(values, &mgmtv1alpha1.ColumnSampleValue{IsNull: true})
-			continue
-		}
-		values = append(values, &mgmtv1alpha1.ColumnSampleValue{
-			Value: truncateRunes(valueToText(raw), maxSampleValueRunes),
-		})
+		raws = append(raws, raw)
 	}
+	return raws, nil
+}
 
-	return connect.NewResponse(&mgmtv1alpha1.GetColumnSampleValuesResponse{
-		Values: values,
-	}), nil
+// toSampleValue renders a raw value for display.
+func toSampleValue(raw any) *mgmtv1alpha1.ColumnSampleValue {
+	if raw == nil {
+		return &mgmtv1alpha1.ColumnSampleValue{IsNull: true}
+	}
+	return &mgmtv1alpha1.ColumnSampleValue{
+		Value: truncateRunes(valueToText(raw), maxSampleValueRunes),
+	}
+}
+
+func clampLimit(limit, defaultLimit, maxLimit uint32) uint32 {
+	if limit == 0 {
+		return defaultLimit
+	}
+	if limit > maxLimit {
+		return maxLimit
+	}
+	return limit
 }

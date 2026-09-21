@@ -560,6 +560,42 @@ class GetJavascriptDraftPromptRequest(_message.Message):
     engine: JavascriptDraftEngine
     def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., mode: _Optional[_Union[JavascriptDraftMode, str]] = ..., engine: _Optional[_Union[JavascriptDraftEngine, str]] = ...) -> None: ...
 
+class PreviewColumnTransformerRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "column", "transformer", "limit")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    TRANSFORMER_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    column: str
+    transformer: _transformer_pb2.TransformerConfig
+    limit: int
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., transformer: _Optional[_Union[_transformer_pb2.TransformerConfig, _Mapping]] = ..., limit: _Optional[int] = ...) -> None: ...
+
+class ColumnTransformerPreview(_message.Message):
+    __slots__ = ("input", "output", "error")
+    INPUT_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    input: ColumnSampleValue
+    output: ColumnSampleValue
+    error: str
+    def __init__(self, input: _Optional[_Union[ColumnSampleValue, _Mapping]] = ..., output: _Optional[_Union[ColumnSampleValue, _Mapping]] = ..., error: _Optional[str] = ...) -> None: ...
+
+class PreviewColumnTransformerResponse(_message.Message):
+    __slots__ = ("values", "distinct_inputs", "distinct_outputs")
+    VALUES_FIELD_NUMBER: _ClassVar[int]
+    DISTINCT_INPUTS_FIELD_NUMBER: _ClassVar[int]
+    DISTINCT_OUTPUTS_FIELD_NUMBER: _ClassVar[int]
+    values: _containers.RepeatedCompositeFieldContainer[ColumnTransformerPreview]
+    distinct_inputs: int
+    distinct_outputs: int
+    def __init__(self, values: _Optional[_Iterable[_Union[ColumnTransformerPreview, _Mapping]]] = ..., distinct_inputs: _Optional[int] = ..., distinct_outputs: _Optional[int] = ...) -> None: ...
+
 class GetJavascriptDraftPromptResponse(_message.Message):
     __slots__ = ("prompt",)
     PROMPT_FIELD_NUMBER: _ClassVar[int]

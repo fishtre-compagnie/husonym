@@ -8792,6 +8792,54 @@
           ]
         },
         {
+          "name": "ColumnTransformerPreview",
+          "longName": "ColumnTransformerPreview",
+          "fullName": "mgmt.v1alpha1.ColumnTransformerPreview",
+          "description": "One sampled value and what the transformer made of it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "input",
+              "description": "The value as read from the source.",
+              "label": "",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "output",
+              "description": "What the transformer produced. Unset when it failed on this value.",
+              "label": "optional",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_output",
+              "defaultValue": ""
+            },
+            {
+              "name": "error",
+              "description": "Why the transformer failed on this value, when it did.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_error",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "ConnectionSchemaConfig",
           "longName": "ConnectionSchemaConfig",
           "fullName": "mgmt.v1alpha1.ConnectionSchemaConfig",
@@ -10765,6 +10813,138 @@
           "fields": []
         },
         {
+          "name": "PreviewColumnTransformerRequest",
+          "longName": "PreviewColumnTransformerRequest",
+          "fullName": "mgmt.v1alpha1.PreviewColumnTransformerRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The connection to read the column from.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to read.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose values are transformed.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transformer",
+              "description": "The transformer to try on them.",
+              "label": "",
+              "type": "TransformerConfig",
+              "longType": "TransformerConfig",
+              "fullType": "mgmt.v1alpha1.TransformerConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "limit",
+              "description": "Number of rows to read (default 20, max 50).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "PreviewColumnTransformerResponse",
+          "longName": "PreviewColumnTransformerResponse",
+          "fullName": "mgmt.v1alpha1.PreviewColumnTransformerResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "values",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnTransformerPreview",
+              "longType": "ColumnTransformerPreview",
+              "fullType": "mgmt.v1alpha1.ColumnTransformerPreview",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "distinct_inputs",
+              "description": "Distinct non-null values in the sample, before and after. Fewer after than before means the\ntransformer sends different values to the same one — which a column under a uniqueness\nconstraint cannot take. It is a sign, never a proof: a sample this small says nothing\ncertain about the whole table.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "distinct_outputs",
+              "description": "",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "PrimaryConstraint",
           "longName": "PrimaryConstraint",
           "fullName": "mgmt.v1alpha1.PrimaryConstraint",
@@ -11082,6 +11262,21 @@
               "responseType": "GetJavascriptDraftPromptResponse",
               "responseLongType": "GetJavascriptDraftPromptResponse",
               "responseFullType": "mgmt.v1alpha1.GetJavascriptDraftPromptResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "PreviewColumnTransformer",
+              "description": "Reads a sample of one column and shows what a transformer would make of each value, before\nanyone commits to it. The server reads the values itself: this previews a real column, and\ncannot be turned into an unmetered way to anonymize arbitrary data.",
+              "requestType": "PreviewColumnTransformerRequest",
+              "requestLongType": "PreviewColumnTransformerRequest",
+              "requestFullType": "mgmt.v1alpha1.PreviewColumnTransformerRequest",
+              "requestStreaming": false,
+              "responseType": "PreviewColumnTransformerResponse",
+              "responseLongType": "PreviewColumnTransformerResponse",
+              "responseFullType": "mgmt.v1alpha1.PreviewColumnTransformerResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

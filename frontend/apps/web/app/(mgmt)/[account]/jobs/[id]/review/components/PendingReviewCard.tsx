@@ -1,3 +1,5 @@
+import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
+import ColumnPreviewDialog from '@/components/jobs/JobMappingTable/ColumnPreviewDialog';
 import { dbDataTypeToTransformerDataType } from '@/components/jobs/SchemaTable/schema-constraint-handler';
 import TransformerSelect from '@/components/jobs/SchemaTable/TransformerSelect';
 import { useAccount } from '@/components/providers/account-provider';
@@ -48,7 +50,7 @@ import {
   PendingColumnReview,
   TransformerSource,
 } from '@husonym/sdk';
-import { CheckCircledIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon, EyeOpenIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -94,6 +96,13 @@ export default function PendingReviewCard(props: Props): ReactElement {
   );
   const { handler, isLoading: isTransformersLoading } =
     useGetTransformersHandler(accountId);
+  // The source connection is what the preview reads the column from.
+  const { data: jobData } = useQuery(
+    JobService.method.getJob,
+    { id: jobId },
+    { enabled: !!jobId }
+  );
+  const sourceConnectionId = getConnectionIdFromSource(jobData?.job?.source);
   const { mutateAsync: mapColumns } = useMutation(
     JobService.method.mapUnmappedColumns
   );
@@ -126,6 +135,10 @@ export default function PendingReviewCard(props: Props): ReactElement {
   >({});
   const [isApplying, setIsApplying] = useState(false);
   const [acceptTargets, setAcceptTargets] = useState<PassthroughTarget[]>([]);
+  // The column whose preview is open, if any.
+  const [previewing, setPreviewing] = useState<PendingColumnReview | null>(
+    null
+  );
 
   // The transformer a column starts with: the one the detection suggests, when it reads as
   // personal data. Nothing is pre-selected for the others — a guess would look more certain than
@@ -151,6 +164,13 @@ export default function PendingReviewCard(props: Props): ReactElement {
     c: PendingColumnReview
   ): JobMappingTransformerForm | undefined {
     return chosen[columnKey(c)] ?? suggestedFor(c);
+  }
+
+  function transformerNameFor(c: PendingColumnReview): string | undefined {
+    const transformer = transformerFor(c);
+    return transformer
+      ? getTransformerFromField(handler, transformer).name
+      : undefined;
   }
 
   function toggle(key: string): void {
@@ -388,6 +408,17 @@ export default function PendingReviewCard(props: Props): ReactElement {
                           <Button
                             type="button"
                             size="sm"
+                            variant="ghost"
+                            aria-label={`Preview ${key}`}
+                            title="Preview the values, and what the chosen transformer makes of them"
+                            disabled={!sourceConnectionId}
+                            onClick={() => setPreviewing(c)}
+                          >
+                            <EyeOpenIcon />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
                             disabled={!transformer?.config.case || isApplying}
                             onClick={() => apply([c])}
                           >
@@ -403,6 +434,15 @@ export default function PendingReviewCard(props: Props): ReactElement {
           </>
         )}
       </CardContent>
+      {previewing && sourceConnectionId && (
+        <PreviewForColumn
+          column={previewing}
+          connectionId={sourceConnectionId}
+          transformer={transformerFor(previewing)}
+          transformerName={transformerNameFor(previewing)}
+          onClose={() => setPreviewing(null)}
+        />
+      )}
       <AcceptPassthroughsDialog
         open={acceptTargets.length > 0}
         onOpenChange={(open) => {
@@ -414,5 +454,42 @@ export default function PendingReviewCard(props: Props): ReactElement {
         onAccept={accept}
       />
     </Card>
+  );
+}
+
+interface PreviewForColumnProps {
+  column: PendingColumnReview;
+  connectionId: string;
+  transformer?: JobMappingTransformerForm;
+  transformerName?: string;
+  onClose(): void;
+}
+
+// The column as it is, and — when a transformer is chosen — what it would become. Before
+// accepting, the real values are what tell whether the column holds anything personal; before
+// anonymizing, what the transformer produces, and whether it collapses values a unique column
+// cannot share.
+function PreviewForColumn(props: PreviewForColumnProps): ReactElement {
+  const { column, connectionId, transformer, transformerName, onClose } = props;
+  const config = transformer?.config.case
+    ? convertJobMappingTransformerFormToJobMappingTransformer(transformer)
+        .config
+    : undefined;
+  return (
+    <ColumnPreviewDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+      connectionId={connectionId}
+      schema={column.tableSchema}
+      table={column.tableName}
+      column={column.columnName}
+      dataType={column.dataType}
+      transformer={config}
+      transformerName={transformerName}
+    />
   );
 }
