@@ -74,6 +74,8 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   12000 ») ; le produit n'a pas d'utilisateur externe, les contrats peuvent bouger.
 - **Pas d'empilement de migrations** tant que rien n'est déployé.
 - Défaut du moteur dans le prompt JS : **Athanor** (Benthos sera retiré à terme).
+- **Pas de clé de cohérence pour le téléphone sous Benthos** (clé tirée au démarrage du worker) :
+  Benthos sera abandonné, ce n'est pas un sujet (2026-09-21). Le déterminisme par scope vaut sous Athanor.
 - Réconciliation PostgreSQL : **drapeau supprimé**, pas rendu configurable.
 - La destination est **le miroir de la source, suppressions comprises**.
 - Le brouillon JS est **rédigé par un agent** ; le produit lui fournit le prompt.
@@ -94,13 +96,8 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
 
 ## 5. Ouvert, par priorité
 
-1. **Clé du téléphone sous Benthos** (question posée, sans réponse). Sous Athanor, clé du scope de
-   cohérence ; sous Benthos — le moteur de la pile de dev — clé tirée **au démarrage du worker** :
-   stable dans un run et entre tables, pas d'un redémarrage à l'autre. Option : dériver de
-   `ATHANOR_CONSISTENCY_KEY` et du scope du job (mêmes sorties sur les deux moteurs), ce qui demande
-   de définir la clé en dev (elle y est vide). Écart voisin, non traité : sous Athanor,
-   `TransformPhoneNumber` sans l'option et les deux configs **E164** passent par `PhoneFaker`
-   (`06`/`07` + 8 chiffres), qui ignore la config.
+1. **Écart d'Athanor sur les téléphones**, non traité : `TransformPhoneNumber` sans `preserve_format`
+   et les deux configs **E164** passent par `PhoneFaker` (`06`/`07` + 8 chiffres), qui ignore la config.
 2. **Défaut de la stratégie** pour les nouveaux jobs : il reste « Continue ». Décision de l'utilisateur.
 3. **Message d'erreur vide** des transformers système qui échouent (mise en forme de `jsonanonymizer`,
    préexistant).
