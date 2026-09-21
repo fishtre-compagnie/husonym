@@ -94,7 +94,7 @@ type MappingChanges struct {
 	Removed []*mgmtv1alpha1.JobMapping
 	// Every column of the tables the job syncs, with its type as the source reports it
 	Columns []*mgmtv1alpha1.JobSourceColumn
-	// Whether the strategy asks for the changes to be reviewed (anonymize_pending_review)
+	// Whether the strategy asks for the changes to be reviewed (AutoMap & Review)
 	RecordChanges bool
 }
 

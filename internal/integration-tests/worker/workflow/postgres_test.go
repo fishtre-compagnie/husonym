@@ -123,8 +123,8 @@ func createPostgresSyncJob(
 	if config.JobOptions.PassthroughOnNewColumnAddition {
 		newColumnAdditionStrategy.Strategy = &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_{}
 	}
-	if config.JobOptions.AnonymizeNewColumns {
-		newColumnAdditionStrategy.Strategy = &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{}
+	if config.JobOptions.AutoMapNewColumns {
+		newColumnAdditionStrategy.Strategy = &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{}
 	}
 	job, err := jobclient.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
 		AccountId: config.AccountId,

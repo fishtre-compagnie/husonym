@@ -216,7 +216,7 @@ type JobServiceClient interface {
 	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
 	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
 	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
-	// Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+	// Returns the changes runs made to the mappings of jobs under auto_map that
 	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
 	// reviewed: somebody decided.
 	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
@@ -872,7 +872,7 @@ type JobServiceHandler interface {
 	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
 	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
 	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
-	// Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+	// Returns the changes runs made to the mappings of jobs under auto_map that
 	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
 	// reviewed: somebody decided.
 	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)

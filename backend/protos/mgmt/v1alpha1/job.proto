@@ -164,18 +164,14 @@ message PostgresSourceConnectionOptions {
     oneof strategy {
       // halt job if a new column is detected.
       HaltJob halt_job = 1;
-      // automatically handle unmapped columns. It handles this by using the DBs default/nullable values.
-      // If this doesn't exist, will fall back to configuring generators for supported datatypes.
-      // If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
-      // anonymize the new column with the transformer the PII detection suggests, in the config
-      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
-      // column carries a primary key, a foreign key or a unique constraint a transformer could
-      // break. The run writes the mapping to the job and records the change for review, as it
-      // records the removal of a column and the change of a column's type.
-      AnonymizePendingReview anonymize_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -183,8 +179,6 @@ message PostgresSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the AnonymizePendingReview strategy
-    message AnonymizePendingReview {}
   }
 
   message ColumnRemovalStrategy {
@@ -252,18 +246,14 @@ message MysqlSourceConnectionOptions {
     oneof strategy {
       // halt job if a new column is detected.
       HaltJob halt_job = 1;
-      // automatically handle unmapped columns. It handles this by using the DBs default/nullable values.
-      // If this doesn't exist, will fall back to configuring generators for supported datatypes.
-      // If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
-      // anonymize the new column with the transformer the PII detection suggests, in the config
-      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
-      // column carries a primary key, a foreign key or a unique constraint a transformer could
-      // break. The run writes the mapping to the job and records the change for review, as it
-      // records the removal of a column and the change of a column's type.
-      AnonymizePendingReview anonymize_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -271,8 +261,6 @@ message MysqlSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the AnonymizePendingReview strategy
-    message AnonymizePendingReview {}
   }
 }
 
@@ -325,19 +313,19 @@ message MssqlSourceConnectionOptions {
       HaltJob halt_job = 1;
       // pass the new column through as is.
       Passthrough passthrough = 2;
-      // anonymize the new column with the transformer the PII detection suggests, in the config
-      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
-      // column carries a primary key, a foreign key or a unique constraint a transformer could
-      // break. The run writes the mapping to the job and records the change for review, as it
-      // records the removal of a column and the change of a column's type.
-      AnonymizePendingReview anonymize_pending_review = 3;
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
+      AutoMap auto_map = 3;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the AnonymizePendingReview strategy
-    message AnonymizePendingReview {}
+    // Configuration for the AutoMap strategy
+    message AutoMap {}
   }
 }
 
@@ -1807,7 +1795,7 @@ message ReconcileJobMappingsRequest {
   // Every column of the tables the job syncs, with its type: what lets the next run tell that a
   // column changed type.
   repeated JobSourceColumn columns = 6;
-  // Whether the job's strategy asks for the changes to be reviewed (anonymize_pending_review):
+  // Whether the job's strategy asks for the changes to be reviewed (auto_map):
   // they are then recorded, each with what the run chose.
   bool record_changes = 7;
 }
@@ -1965,7 +1953,7 @@ service JobService {
   // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
   // as the job's strategy chose, and removes those that disappeared. Called by the worker.
   rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {}
-  // Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+  // Returns the changes runs made to the mappings of jobs under auto_map that
   // nobody has reviewed yet. An added column whose mapping has been changed since counts as
   // reviewed: somebody decided.
   rpc GetPendingMappingChanges(GetPendingMappingChangesRequest) returns (GetPendingMappingChangesResponse) {

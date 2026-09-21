@@ -31,7 +31,7 @@ For the selected tables in the job mappings, a diff is made and if a column is f
 
 This strategy lets the run go on when a mapped column is gone from the source.
 
-The run leaves the column off of the insert statement and removes its mapping from the job: the job follows its source, as the destination does. Under the **Anonymize & Review** strategy for new columns, the removal is recorded, with the transformer the column had, and shows in the job's **Review** tab.
+The run leaves the column off of the insert statement and removes its mapping from the job: the job follows its source, as the destination does. Under the **AutoMap & Review** strategy for new columns, the removal is recorded, with the transformer the column had, and shows in the job's **Review** tab.
 A source that shows none of the columns the job maps fails the run instead: that is the wrong database, or a connection without the rights to read its tables, and removing every mapping would empty the job.
 
 Without init schema, this may result in failures if a removed column is still in the destination without a default value.

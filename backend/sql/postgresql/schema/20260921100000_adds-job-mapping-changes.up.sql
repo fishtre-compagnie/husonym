@@ -1,8 +1,8 @@
 -- What the runs changed in a job's mappings, for the jobs whose strategy for new columns is
--- anonymize_pending_review.
+-- AutoMap & Review (auto_map).
 --
 -- A run brings its job's mappings in step with the source: it maps the columns that appeared and
--- removes the mappings of those that disappeared. Under anonymize_pending_review it also records
+-- removes the mappings of those that disappeared. Under AutoMap & Review it also records
 -- each change here, with what it chose, and somebody reviews it: the anonymization of a job
 -- should not move without anyone knowing. A row is pending until it is reviewed — or, for an
 -- added column, until somebody changes the mapping the run chose, which is a decision too.

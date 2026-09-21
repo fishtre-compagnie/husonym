@@ -237,9 +237,9 @@ func Test_Workflow(t *testing.T) {
 			)
 		})
 
-		t.Run("anonymize_pending_review", func(t *testing.T) {
+		t.Run("automap_review", func(t *testing.T) {
 			t.Parallel()
-			test_postgres_anonymize_pending_review(
+			test_postgres_automap_review(
 				t,
 				ctx,
 				postgres,

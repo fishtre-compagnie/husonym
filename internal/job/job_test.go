@@ -10,15 +10,15 @@ import (
 // The strategy is read once per dialect, in three switch statements that nothing keeps in step.
 // Forgetting one is silent: the job falls back to the zero value, which drops the new column
 // instead of mapping it, and no test would have noticed. Hence one case per dialect.
-func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
+func Test_GetSqlJobSourceOpts_AutoMap(t *testing.T) {
 	t.Run("postgres", func(t *testing.T) {
 		opts, err := GetSqlJobSourceOpts(&mgmtv1alpha1.JobSource{
 			Options: &mgmtv1alpha1.JobSourceOptions{
 				Config: &mgmtv1alpha1.JobSourceOptions_Postgres{
 					Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{
 						NewColumnAdditionStrategy: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy{
-							Strategy: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-								AnonymizePendingReview: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
+							Strategy: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{
+								AutoMap: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap{},
 							},
 						},
 					},
@@ -27,11 +27,10 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, opts)
-		require.True(t, opts.AnonymizeNewColumns)
+		require.True(t, opts.AutoMapNewColumns)
 		// Its own path: the passthrough is only its fallback, decided column by column.
 		require.False(t, opts.PassthroughOnNewColumnAddition)
 		require.False(t, opts.HaltOnNewColumnAddition)
-		require.False(t, opts.GenerateNewColumnTransformers)
 	})
 
 	t.Run("mysql", func(t *testing.T) {
@@ -40,8 +39,8 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 				Config: &mgmtv1alpha1.JobSourceOptions_Mysql{
 					Mysql: &mgmtv1alpha1.MysqlSourceConnectionOptions{
 						NewColumnAdditionStrategy: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy{
-							Strategy: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-								AnonymizePendingReview: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
+							Strategy: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{
+								AutoMap: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap{},
 							},
 						},
 					},
@@ -50,7 +49,7 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, opts)
-		require.True(t, opts.AnonymizeNewColumns)
+		require.True(t, opts.AutoMapNewColumns)
 		require.False(t, opts.PassthroughOnNewColumnAddition)
 	})
 
@@ -60,8 +59,8 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 				Config: &mgmtv1alpha1.JobSourceOptions_Mssql{
 					Mssql: &mgmtv1alpha1.MssqlSourceConnectionOptions{
 						NewColumnAdditionStrategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy{
-							Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-								AnonymizePendingReview: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
+							Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{
+								AutoMap: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap{},
 							},
 						},
 					},
@@ -70,11 +69,11 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, opts)
-		require.True(t, opts.AnonymizeNewColumns)
+		require.True(t, opts.AutoMapNewColumns)
 		require.False(t, opts.PassthroughOnNewColumnAddition)
 	})
 
-	t.Run("a plain passthrough anonymizes nothing", func(t *testing.T) {
+	t.Run("a plain passthrough maps nothing for review", func(t *testing.T) {
 		opts, err := GetSqlJobSourceOpts(&mgmtv1alpha1.JobSource{
 			Options: &mgmtv1alpha1.JobSourceOptions{
 				Config: &mgmtv1alpha1.JobSourceOptions_Postgres{
@@ -91,6 +90,6 @@ func Test_GetSqlJobSourceOpts_AnonymizePendingReview(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, opts)
 		require.True(t, opts.PassthroughOnNewColumnAddition)
-		require.False(t, opts.AnonymizeNewColumns)
+		require.False(t, opts.AutoMapNewColumns)
 	})
 }

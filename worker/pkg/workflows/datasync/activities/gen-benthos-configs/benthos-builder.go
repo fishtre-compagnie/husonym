@@ -77,7 +77,7 @@ type workflowMetadata struct {
 //
 // A failure fails the run. The configs already follow the source, so the data would be right;
 // but the job would not say so, the next run would decide the same columns again, and under
-// anonymize_pending_review nobody would be asked to review what this one decided.
+// AutoMap & Review nobody would be asked to review what this one decided.
 func (b *benthosBuilder) reconcileJobMappings(
 	ctx context.Context,
 	job *mgmtv1alpha1.Job,

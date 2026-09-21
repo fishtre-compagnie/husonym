@@ -159,7 +159,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
 
-	if sqlSourceOpts != nil && sqlSourceOpts.AnonymizeNewColumns {
+	if sqlSourceOpts != nil && sqlSourceOpts.AutoMapNewColumns {
 		extraMappings, err := getAdditionalPassthroughJobMappings(
 			groupedColumnInfo,
 			existingSourceMappings,
@@ -169,10 +169,10 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		extraMappings, anonymized, passedThrough := anonymizeNewColumns(extraMappings, groupedColumnInfo, tableConstraints)
+		extraMappings, anonymized, passedThrough := autoMapNewColumns(extraMappings, groupedColumnInfo, tableConstraints)
 		if len(anonymized) > 0 {
 			logger.Info(fmt.Sprintf(
-				"%s anonymized as suggested, awaiting review: [%s]",
+				"%s mapped as suggested, awaiting review: [%s]",
 				unmappedColumns(len(anonymized)),
 				strings.Join(anonymized, ", "),
 			))
@@ -189,26 +189,8 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
-
-	if sqlSourceOpts != nil && sqlSourceOpts.GenerateNewColumnTransformers {
-		extraMappings, err := getAdditionalJobMappings(
-			b.driver,
-			groupedColumnInfo,
-			existingSourceMappings,
-			splitKeyToTablePieces,
-			logger,
-		)
-		if err != nil {
-			return nil, err
-		}
-		logger.Debug(
-			fmt.Sprintf("adding %d extra mappings due to unmapped columns", len(extraMappings)),
-		)
-		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
-		existingSourceMappings = append(existingSourceMappings, extraMappings...)
-	}
 	params.MappingChanges.Columns = sourceColumnsOf(existingSourceMappings, groupedColumnInfo)
-	params.MappingChanges.RecordChanges = sqlSourceOpts != nil && sqlSourceOpts.AnonymizeNewColumns
+	params.MappingChanges.RecordChanges = sqlSourceOpts != nil && sqlSourceOpts.AutoMapNewColumns
 
 	schemaTablesMap := shared.GetSchemaTablesMapFromMappings(existingSourceMappings)
 	tableDeferrableMap, err := getTableDeferrableMap(ctx, db, sourceConnection, schemaTablesMap)

@@ -5,7 +5,9 @@ Statut : **réalisé le 2026-09-21** (`0956d6df` catalogue partagé, `664300ff` 
 l'utilisateur aux questions de la §5 : journaliser les changements de type, passthrough pour les
 colonnes à contrainte, libellé « Anonymize & Review », écrasement par la page Source accepté, run
 réel de `review-e2e` autorisé. Et **une seule migration** (`20260921100000`) au lieu d'en empiler :
-rien n'était déployé. Prolonge
+rien n'était déployé. **Puis, même jour : Anonymize & Review fusionnée dans AutoMap**
+(« AutoMap & Review », repli passthrough signalé) ; l'AutoMap hérité, qui choisissait par le type,
+est retiré. Là où ce document dit « Anonymize & Review », lire « AutoMap & Review ». Prolonge
 [reprise-outillage-husonym.md](reprise-outillage-husonym.md) ; remplace le modèle livré par
 `a2a3f2f5` (le run enregistre ce qu'il copie) et `6ee1b455` (acceptation par empreinte).
 

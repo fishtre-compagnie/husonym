@@ -445,7 +445,7 @@ class JobServiceServicer:
         raise NotImplementedError('Method not implemented!')
 
     def GetPendingMappingChanges(self, request, context):
-        """Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+        """Returns the changes runs made to the mappings of jobs under auto_map that
         nobody has reviewed yet. An added column whose mapping has been changed since counts as
         reviewed: somebody decided.
         """

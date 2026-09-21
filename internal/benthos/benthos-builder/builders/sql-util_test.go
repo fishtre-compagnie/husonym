@@ -5,210 +5,8 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
-	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_cleanPostgresType(t *testing.T) {
-	t.Run("simple type without params", func(t *testing.T) {
-		result := cleanPostgresType("integer")
-		expected := "integer"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with single parameter", func(t *testing.T) {
-		result := cleanPostgresType("varchar(255)")
-		expected := "varchar"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with multiple parameters", func(t *testing.T) {
-		result := cleanPostgresType("numeric(10,2)")
-		expected := "numeric"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("character varying with parameter", func(t *testing.T) {
-		result := cleanPostgresType("character varying(50)")
-		expected := "character varying"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with spaces and parameter", func(t *testing.T) {
-		result := cleanPostgresType("bit varying(8)")
-		expected := "bit varying"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("array type", func(t *testing.T) {
-		result := cleanPostgresType("integer[]")
-		expected := "integer[]"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with time zone", func(t *testing.T) {
-		result := cleanPostgresType("timestamp with time zone")
-		expected := "timestamp with time zone"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with trailing space", func(t *testing.T) {
-		result := cleanPostgresType("numeric(10,2) ")
-		expected := "numeric"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("type with leading space", func(t *testing.T) {
-		result := cleanPostgresType(" decimal(10,2)")
-		expected := "decimal"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("empty string", func(t *testing.T) {
-		result := cleanPostgresType("")
-		expected := ""
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("just parentheses", func(t *testing.T) {
-		result := cleanPostgresType("()")
-		expected := ""
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("multiple parentheses", func(t *testing.T) {
-		result := cleanPostgresType("foo(bar(baz))")
-		expected := "foo"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("json type", func(t *testing.T) {
-		result := cleanPostgresType("json")
-		expected := "json"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-
-	t.Run("jsonb type", func(t *testing.T) {
-		result := cleanPostgresType("jsonb")
-		expected := "jsonb"
-		if result != expected {
-			t.Errorf("got %q, want %q", result, expected)
-		}
-	})
-}
-
-// Benchmark remains the same as it's already using discrete cases
-func BenchmarkCleanPostgresType(b *testing.B) {
-	inputs := []string{
-		"integer",
-		"character varying(50)",
-		"numeric(10,2)",
-		"timestamp with time zone",
-		"text[]",
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		for _, input := range inputs {
-			cleanPostgresType(input)
-		}
-	}
-}
-
-func Test_getAdditionalMappings(t *testing.T) {
-	t.Run("postgres", func(t *testing.T) {
-		t.Run("none", func(t *testing.T) {
-			actual, err := getAdditionalJobMappings(
-				sqlmanager_shared.PostgresDriver,
-				map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
-					"public.users": {
-						"id": {},
-					},
-				},
-				[]*mgmtv1alpha1.JobMapping{{
-					Schema: "public",
-					Table:  "users",
-					Column: "id",
-					Transformer: &mgmtv1alpha1.JobMappingTransformer{
-						Config: &mgmtv1alpha1.TransformerConfig{
-							Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
-								PassthroughConfig: &mgmtv1alpha1.Passthrough{},
-							},
-						},
-					},
-				}},
-				splitKeyToTablePieces,
-				testutil.GetTestLogger(t),
-			)
-			require.NoError(t, err)
-			require.Empty(t, actual)
-		})
-		t.Run("fallbacks", func(t *testing.T) {
-			actual, err := getAdditionalJobMappings(
-				sqlmanager_shared.PostgresDriver,
-				map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
-					"public.users": {
-						"id": {},
-						"first_name": {
-							IsNullable: true,
-						},
-						"last_name": {
-							ColumnDefault: "FOO",
-						},
-						"full_name": {
-							GeneratedType: sqlmanager_shared.Ptr("first_name + last_name"),
-						},
-						"income": {
-							DataType: "numeric",
-						},
-					},
-				},
-				[]*mgmtv1alpha1.JobMapping{{
-					Schema: "public",
-					Table:  "users",
-					Column: "id",
-					Transformer: &mgmtv1alpha1.JobMappingTransformer{
-						Config: &mgmtv1alpha1.TransformerConfig{
-							Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
-								PassthroughConfig: &mgmtv1alpha1.Passthrough{},
-							},
-						},
-					},
-				}},
-				splitKeyToTablePieces,
-				testutil.GetTestLogger(t),
-			)
-			require.NoError(t, err)
-			require.Len(t, actual, 4)
-		})
-	})
-}
 
 func Test_isSourceMissingColumns(t *testing.T) {
 	t.Run("no missing columns", func(t *testing.T) {
@@ -408,160 +206,6 @@ func Test_checkSourceShowsTheJob(t *testing.T) {
 	), errSourceShowsNoMappedColumn, "a source that shows none of the job")
 }
 
-func Test_cleanMysqlType(t *testing.T) {
-	t.Run("simple type without params", func(t *testing.T) {
-		result := cleanMysqlType("varchar")
-		expected := "varchar"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("type with single parameter", func(t *testing.T) {
-		result := cleanMysqlType("varchar(255)")
-		expected := "varchar"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("type with multiple parameters", func(t *testing.T) {
-		result := cleanMysqlType("decimal(10,2)")
-		expected := "decimal"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("enum type with values", func(t *testing.T) {
-		result := cleanMysqlType("enum('small','medium','large')")
-		expected := "enum"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("set type with values", func(t *testing.T) {
-		result := cleanMysqlType("set('draft','published','archived')")
-		expected := "set"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("type with trailing space", func(t *testing.T) {
-		result := cleanMysqlType("decimal(10,2) ")
-		expected := "decimal"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("type with leading space", func(t *testing.T) {
-		result := cleanMysqlType(" decimal(10,2)")
-		expected := "decimal"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("empty string", func(t *testing.T) {
-		result := cleanMysqlType("")
-		expected := ""
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("just parentheses", func(t *testing.T) {
-		result := cleanMysqlType("()")
-		expected := ""
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("datetime type", func(t *testing.T) {
-		result := cleanMysqlType("datetime")
-		expected := "datetime"
-		require.Equal(t, expected, result)
-	})
-
-	t.Run("timestamp with precision", func(t *testing.T) {
-		result := cleanMysqlType("timestamp(6)")
-		expected := "timestamp"
-		require.Equal(t, expected, result)
-	})
-}
-
-func BenchmarkCleanMysqlType(b *testing.B) {
-	inputs := []string{
-		"varchar",
-		"decimal(10,2)",
-		"enum('small','medium','large')",
-		"set('draft','published','archived')",
-		"datetime",
-		"timestamp(6)",
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		for _, input := range inputs {
-			cleanMysqlType(input)
-		}
-	}
-}
-
-func Test_extractMysqlTypeParams(t *testing.T) {
-	t.Run("numeric parameters", func(t *testing.T) {
-		t.Run("single parameter", func(t *testing.T) {
-			result := extractMysqlTypeParams("CHAR(10)")
-			require.Equal(t, []string{"10"}, result)
-		})
-
-		t.Run("multiple parameters", func(t *testing.T) {
-			result := extractMysqlTypeParams("FLOAT(10,2)")
-			require.Equal(t, []string{"10", "2"}, result)
-		})
-
-		t.Run("parameters with spaces", func(t *testing.T) {
-			result := extractMysqlTypeParams("DECIMAL(10, 2)")
-			require.Equal(t, []string{"10", "2"}, result)
-		})
-	})
-
-	t.Run("enum values", func(t *testing.T) {
-		t.Run("simple values", func(t *testing.T) {
-			result := extractMysqlTypeParams("ENUM('small','medium','large')")
-			require.Equal(t, []string{"small", "medium", "large"}, result)
-		})
-
-		t.Run("values with spaces", func(t *testing.T) {
-			result := extractMysqlTypeParams("ENUM('small', 'medium', 'large')")
-			require.Equal(t, []string{"small", "medium", "large"}, result)
-		})
-
-		t.Run("values with special characters", func(t *testing.T) {
-			result := extractMysqlTypeParams("ENUM('draft-1','published_2','archived.3')")
-			require.Equal(t, []string{"draft-1", "published_2", "archived.3"}, result)
-		})
-	})
-
-	t.Run("set values", func(t *testing.T) {
-		result := extractMysqlTypeParams("SET('draft','published','archived')")
-		require.Equal(t, []string{"draft", "published", "archived"}, result)
-	})
-
-	t.Run("edge cases", func(t *testing.T) {
-		t.Run("no parameters", func(t *testing.T) {
-			result := extractMysqlTypeParams("VARCHAR")
-			require.Nil(t, result)
-		})
-
-		t.Run("empty parameters", func(t *testing.T) {
-			result := extractMysqlTypeParams("CHAR()")
-			require.Empty(t, result)
-		})
-
-		t.Run("missing closing parenthesis", func(t *testing.T) {
-			result := extractMysqlTypeParams("CHAR(10")
-			require.Nil(t, result)
-		})
-
-		t.Run("empty enum values", func(t *testing.T) {
-			result := extractMysqlTypeParams("ENUM('','','')")
-			require.Empty(t, result)
-		})
-
-		t.Run("mixed empty and non-empty enum values", func(t *testing.T) {
-			result := extractMysqlTypeParams("ENUM('',  'valid',  '')")
-			require.Equal(t, []string{"valid"}, result)
-		})
-	})
-}
-
 func Test_withoutNullableColumns(t *testing.T) {
 	columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
 		"public.badge": {
@@ -606,7 +250,7 @@ func Test_formatMappingColumns(t *testing.T) {
 	})
 }
 
-func Test_anonymizeNewColumns(t *testing.T) {
+func Test_autoMapNewColumns(t *testing.T) {
 	passthrough := func(schema, table, column string) *mgmtv1alpha1.JobMapping {
 		return &mgmtv1alpha1.JobMapping{
 			Schema: schema, Table: table, Column: column,
@@ -656,7 +300,7 @@ func Test_anonymizeNewColumns(t *testing.T) {
 	}
 
 	t.Run("maps a recognised column as the catalogue does, and passes the rest through", func(t *testing.T) {
-		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
+		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			passthrough("public", "users", "email"),
 			passthrough("public", "users", "telephone"),
 			passthrough("public", "users", "champ_libre"),
@@ -671,7 +315,7 @@ func Test_anonymizeNewColumns(t *testing.T) {
 	})
 
 	t.Run("a unique column stays in passthrough, even when recognised", func(t *testing.T) {
-		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
+		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			passthrough("public", "users", "login"),
 		}, columnInfo, constraints)
 
@@ -681,7 +325,7 @@ func Test_anonymizeNewColumns(t *testing.T) {
 	})
 
 	t.Run("a column the destination recomputes keeps its GenerateDefault", func(t *testing.T) {
-		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
+		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			generateDefault("public", "users", "email_normalise"),
 		}, columnInfo, constraints)
 

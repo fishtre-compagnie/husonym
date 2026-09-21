@@ -266,7 +266,7 @@ class DynamoDBSourceTableOption(_message.Message):
 class PostgresSourceConnectionOptions(_message.Message):
     __slots__ = ("schemas", "connection_id", "subset_by_foreign_key_constraints", "new_column_addition_strategy", "column_removal_strategy")
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough", "anonymize_pending_review")
+        __slots__ = ("halt_job", "auto_map", "passthrough")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -276,18 +276,13 @@ class PostgresSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class AnonymizePendingReview(_message.Message):
-            __slots__ = ()
-            def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        anonymize_pending_review: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
+        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
     class ColumnRemovalStrategy(_message.Message):
         __slots__ = ("halt_job", "continue_job")
         class HaltJob(_message.Message):
@@ -345,7 +340,7 @@ class MysqlSourceConnectionOptions(_message.Message):
         continue_job: MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough", "anonymize_pending_review")
+        __slots__ = ("halt_job", "auto_map", "passthrough")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -355,18 +350,13 @@ class MysqlSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class AnonymizePendingReview(_message.Message):
-            __slots__ = ()
-            def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        anonymize_pending_review: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
+        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
@@ -411,23 +401,23 @@ class MssqlSourceConnectionOptions(_message.Message):
         continue_job: MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "passthrough", "anonymize_pending_review")
+        __slots__ = ("halt_job", "passthrough", "auto_map")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class AnonymizePendingReview(_message.Message):
+        class AutoMap(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
+        AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         halt_job: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         passthrough: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        anonymize_pending_review: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
+        auto_map: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., auto_map: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]

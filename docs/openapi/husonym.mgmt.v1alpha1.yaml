@@ -3075,8 +3075,8 @@ paths:
         - mgmt.v1alpha1.JobService
       summary: GetPendingMappingChanges
       description: >-
-        Returns the changes runs made to the mappings of jobs under
-        anonymize_pending_review that
+        Returns the changes runs made to the mappings of jobs under auto_map
+        that
          nobody has reviewed yet. An added column whose mapping has been changed since counts as
          reviewed: somebody decided.
       operationId: mgmt.v1alpha1.JobService.GetPendingMappingChanges
@@ -13464,19 +13464,19 @@ components:
       anyOf:
         - type: object
           properties:
-            anonymizePendingReview:
+            autoMap:
               allOf:
                 - $ref: >-
-                    #/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-              title: anonymize_pending_review
+                    #/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+              title: auto_map
               description: >-
-                anonymize the new column with the transformer the PII detection
-                suggests, in the config
-                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
-                 column carries a primary key, a foreign key or a unique constraint a transformer could
-                 break. The run writes the mapping to the job and records the change for review, as it
-                 records the removal of a column and the change of a column's type.
-          title: anonymize_pending_review
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
+          title: auto_map
         - type: object
           properties:
             haltJob:
@@ -13500,7 +13500,7 @@ components:
         allOf:
           - anyOf:
               - required:
-                  - anonymizePendingReview
+                  - autoMap
               - required:
                   - haltJob
               - required:
@@ -13508,17 +13508,17 @@ components:
           - not:
               oneOf:
                 - required:
-                    - anonymizePendingReview
+                    - autoMap
                 - required:
                     - haltJob
                 - required:
                     - passthrough
       title: NewColumnAdditionStrategy
-    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
+    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
-      title: AnonymizePendingReview
+      title: AutoMap
       additionalProperties: false
-      description: Configuration for the AnonymizePendingReview strategy
+      description: Configuration for the AutoMap strategy
     mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob:
       type: object
       title: HaltJob
@@ -13765,31 +13765,18 @@ components:
       anyOf:
         - type: object
           properties:
-            anonymizePendingReview:
-              allOf:
-                - $ref: >-
-                    #/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-              title: anonymize_pending_review
-              description: >-
-                anonymize the new column with the transformer the PII detection
-                suggests, in the config
-                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
-                 column carries a primary key, a foreign key or a unique constraint a transformer could
-                 break. The run writes the mapping to the job and records the change for review, as it
-                 records the removal of a column and the change of a column's type.
-          title: anonymize_pending_review
-        - type: object
-          properties:
             autoMap:
               allOf:
                 - $ref: >-
                     #/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
               title: auto_map
               description: >-
-                automatically handle unmapped columns. It handles this by using
-                the DBs default/nullable values.
-                 If this doesn't exist, will fall back to configuring generators for supported datatypes.
-                 If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
           title: auto_map
         - type: object
           properties:
@@ -13814,8 +13801,6 @@ components:
         allOf:
           - anyOf:
               - required:
-                  - anonymizePendingReview
-              - required:
                   - autoMap
               - required:
                   - haltJob
@@ -13824,19 +13809,12 @@ components:
           - not:
               oneOf:
                 - required:
-                    - anonymizePendingReview
-                - required:
                     - autoMap
                 - required:
                     - haltJob
                 - required:
                     - passthrough
       title: NewColumnAdditionStrategy
-    mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
-      type: object
-      title: AnonymizePendingReview
-      additionalProperties: false
-      description: Configuration for the AnonymizePendingReview strategy
     mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
       title: AutoMap
@@ -14255,31 +14233,18 @@ components:
       anyOf:
         - type: object
           properties:
-            anonymizePendingReview:
-              allOf:
-                - $ref: >-
-                    #/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
-              title: anonymize_pending_review
-              description: >-
-                anonymize the new column with the transformer the PII detection
-                suggests, in the config
-                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
-                 column carries a primary key, a foreign key or a unique constraint a transformer could
-                 break. The run writes the mapping to the job and records the change for review, as it
-                 records the removal of a column and the change of a column's type.
-          title: anonymize_pending_review
-        - type: object
-          properties:
             autoMap:
               allOf:
                 - $ref: >-
                     #/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
               title: auto_map
               description: >-
-                automatically handle unmapped columns. It handles this by using
-                the DBs default/nullable values.
-                 If this doesn't exist, will fall back to configuring generators for supported datatypes.
-                 If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
           title: auto_map
         - type: object
           properties:
@@ -14304,8 +14269,6 @@ components:
         allOf:
           - anyOf:
               - required:
-                  - anonymizePendingReview
-              - required:
                   - autoMap
               - required:
                   - haltJob
@@ -14314,19 +14277,12 @@ components:
           - not:
               oneOf:
                 - required:
-                    - anonymizePendingReview
-                - required:
                     - autoMap
                 - required:
                     - haltJob
                 - required:
                     - passthrough
       title: NewColumnAdditionStrategy
-    mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
-      type: object
-      title: AnonymizePendingReview
-      additionalProperties: false
-      description: Configuration for the AnonymizePendingReview strategy
     mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
       title: AutoMap
@@ -14456,7 +14412,7 @@ components:
           title: record_changes
           description: >-
             Whether the job's strategy asks for the changes to be reviewed
-            (anonymize_pending_review):
+            (auto_map):
              they are then recorded, each with what the run chose.
       title: ReconcileJobMappingsRequest
       additionalProperties: false

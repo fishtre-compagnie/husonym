@@ -218,16 +218,6 @@ func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
 func (msg *PostgresSourceConnectionOptions_ColumnRemovalStrategy) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
@@ -358,16 +348,6 @@ func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough) U
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
 func (msg *MysqlSourceSchemaOption) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
@@ -458,12 +438,12 @@ func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough) U
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
+func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
+func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 

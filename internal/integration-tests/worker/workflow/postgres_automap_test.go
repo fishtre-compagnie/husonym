@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Under anonymize_pending_review, a run maps the new columns as the PII detection suggests — or
-// in passthrough when it suggests nothing or a key covers the column — writes the mappings to the
+// Under AutoMap & Review, a run maps the new columns as the PII detection suggests — or in
+// passthrough when it suggests nothing or a key covers the column — writes the mappings to the
 // job, and records each change for review. A later run records the columns that disappeared and
 // those that changed type.
-func test_postgres_anonymize_pending_review(
+func test_postgres_automap_review(
 	t *testing.T,
 	ctx context.Context,
 	postgres *tcpostgres.PostgresTestSyncContainer,
@@ -26,7 +26,7 @@ func test_postgres_anonymize_pending_review(
 	sourceConn, destConn *mgmtv1alpha1.Connection,
 ) {
 	jobclient := husonymApi.OSSUnauthenticatedLicensedClients.Jobs()
-	schema := "anonymize_review"
+	schema := "automap_review"
 
 	_, err := postgres.Source.DB.Exec(ctx, fmt.Sprintf(`
 		CREATE SCHEMA %[1]s;
@@ -49,7 +49,7 @@ func test_postgres_anonymize_pending_review(
 		AccountId:  accountId,
 		SourceConn: sourceConn,
 		DestConn:   destConn,
-		JobName:    "anonymize_pending_review",
+		JobName:    "automap_review",
 		JobMappings: []*mgmtv1alpha1.JobMapping{{
 			Schema: schema, Table: "clients", Column: "id",
 			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: &mgmtv1alpha1.TransformerConfig{
@@ -57,10 +57,10 @@ func test_postgres_anonymize_pending_review(
 			}},
 		}},
 		JobOptions: &TestJobOptions{
-			Truncate:            true,
-			TruncateCascade:     true,
-			InitSchema:          true,
-			AnonymizeNewColumns: true,
+			Truncate:          true,
+			TruncateCascade:   true,
+			InitSchema:        true,
+			AutoMapNewColumns: true,
 		},
 	})
 

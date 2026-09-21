@@ -9,7 +9,7 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **28 commits au-dessus de `main`, rien n'est poussé.** Le nom de
+`docs/plan-outillage-husonym` porte **29 commits au-dessus de `main`, rien n'est poussé.** Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
 Gate vert au dernier commit de code : `go build ./...`, `go test ./internal/... ./backend/... ./worker/...`
@@ -32,7 +32,10 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   source qui ne montre **aucune** colonne du job fait échouer le run au lieu de le vider.
 - `c7d3dcfd` **Anonymize & Review** remplace Passthrough & Review : suggestion de `piidetect` avec la
   config du catalogue, passthrough si rien n'est suggéré ou si une clé/contrainte d'unicité couvre la
-  colonne. **Journal** `job_mapping_changes` (ajouts, suppressions, changements de type) et
+  colonne. **Fusionnée ensuite dans AutoMap** (commit suivant les guides) : l'AutoMap hérité (choix
+  par le type : défaut, `NULL`, générateur) disparaît, `auto_map` porte ce comportement sous le nom
+  « AutoMap & Review », MSSQL compris. Stratégies restantes : Halt, AutoMap & Review, Passthrough,
+  Continue. **Journal** `job_mapping_changes` (ajouts, suppressions, changements de type) et
   **instantané des types** `job_source_columns`, écrit par tout run. `GetPendingMappingChanges`,
   `ReviewMappingChanges`. Anciens `unmapped_passthroughs`, `column_reviews`, acceptations par
   empreinte et codes de validation retirés ; **une seule migration** `20260921100000`.
@@ -59,8 +62,9 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
 - Le repli d'une colonne nouvelle est **au choix de l'utilisateur** (stratégie opt-in), signalé, **jamais bloquant**.
 - **Le run met à jour le job** qu'il concerne (colonnes nouvelles et supprimées), pour Passthrough,
   AutoMap et Anonymize & Review ; **suppression systématique** d'un mapping dont la colonne a disparu.
-- Seule **Anonymize & Review** alimente une revue (ce qui a changé et ce qui a été choisi) ;
-  Passthrough assume que la donnée reste la même, AutoMap « se débrouille ».
+- Seule **AutoMap & Review** alimente une revue (ce qui a changé et ce qui a été choisi) ;
+  Passthrough assume que la donnée reste la même. AutoMap et Anonymize & Review ne font **qu'une**
+  stratégie, dont le repli est le **passthrough signalé** ; Halt et Continue restent.
 - Changement de type **journalisé** ; colonnes à clé ou unicité en **passthrough** signalé ;
   écrasement d'un ajout du run par la page Source **accepté** (le run suivant le refait).
 - La cloche porte **ce qui est à faire**, pas des événements : les **runs en échec sont un autre
@@ -115,10 +119,10 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   été redescendues à la main ; sauvegarde des tables d'avant dans le scratchpad de session
   (`avant-migration-unique.sql`). Revenir sur `main` demande de jouer le `down` de `20260921100000`.
 - **Données de test** : compte personnel, connexions `review-e2e-source` (`test-prod-db`) /
-  `review-e2e-dest` (`test-stage-db`), job `review-e2e` passé en **Anonymize & Review** (clé JSON
-  renommée à la main) et **exécuté une fois** : `telephone` et `email_normalise` mappés par le run, deux
-  changements en attente dans l'onglet Review. `test-prod-db.public.users` a gagné `email`,
-  `email_normalise` (générée), `telephone` et perdu `commentaire`.
+  `review-e2e-dest` (`test-stage-db`), job `review-e2e` en **AutoMap & Review** (clé JSON `autoMap`,
+  renommée à la main) et **exécuté deux fois** : `telephone`, `email_normalise` puis `mobile` mappés
+  par les runs, trois changements en attente dans l'onglet Review. `test-prod-db.public.users` a gagné
+  `email`, `email_normalise` (générée), `telephone`, `mobile` et perdu `commentaire`.
 - ⚠ La connexion locale `demo-outil-franchise-source` pointe une **base de production** : n'exécuter
   aucun job existant hors `review-e2e`, n'altérer aucun schéma derrière ces connexions. Le début de son
   mot de passe a été affiché une fois dans une session : envisager une rotation.

@@ -16,7 +16,7 @@ import (
 )
 
 // GetPendingMappingChanges returns what runs changed in the mappings of jobs under
-// anonymize_pending_review and nobody has reviewed yet, for one job or for the account.
+// AutoMap & Review and nobody has reviewed yet, for one job or for the account.
 func (s *Service) GetPendingMappingChanges(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest],

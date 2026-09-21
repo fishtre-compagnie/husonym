@@ -955,13 +955,12 @@ type MssqlSourceOptions struct {
 type MssqlNewColumnAdditionStrategy struct {
 	HaltJob     *MssqlHaltJobNewColumnAdditionStrategy     `json:"haltJob,omitempty"`
 	Passthrough *MssqlPassthroughNewColumnAdditionStrategy `json:"passthrough,omitempty"`
-	// See PostgresNewColumnAdditionStrategy: absent, the strategy was lost on save.
-	AnonymizePendingReview *MssqlAnonymizePendingReviewNewColumnAdditionStrategy `json:"anonymizePendingReview,omitempty"`
+	AutoMap     *MssqlAutoMapNewColumnAdditionStrategy     `json:"autoMap,omitempty"`
 }
 
 type MssqlHaltJobNewColumnAdditionStrategy struct{}
 type MssqlPassthroughNewColumnAdditionStrategy struct{}
-type MssqlAnonymizePendingReviewNewColumnAdditionStrategy struct{}
+type MssqlAutoMapNewColumnAdditionStrategy struct{}
 
 type MssqlColumnRemovalStrategy struct {
 	HaltJob     *MssqlHaltJobColumnRemovalStrategy     `json:"haltJob,omitempty"`
@@ -1060,10 +1059,10 @@ func (s *MssqlNewColumnAdditionStrategy) ToDto() *mgmtv1alpha1.MssqlSourceConnec
 			},
 		}
 	}
-	if s.AnonymizePendingReview != nil {
+	if s.AutoMap != nil {
 		return &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-				AnonymizePendingReview: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
+			Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{
+				AutoMap: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap{},
 			},
 		}
 	}
@@ -1079,8 +1078,8 @@ func (s *MssqlNewColumnAdditionStrategy) FromDto(
 			s.HaltJob = &MssqlHaltJobNewColumnAdditionStrategy{}
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			s.Passthrough = &MssqlPassthroughNewColumnAdditionStrategy{}
-		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_:
-			s.AnonymizePendingReview = &MssqlAnonymizePendingReviewNewColumnAdditionStrategy{}
+		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_:
+			s.AutoMap = &MssqlAutoMapNewColumnAdditionStrategy{}
 		}
 	}
 }
@@ -1320,14 +1319,11 @@ type MysqlNewColumnAdditionStrategy struct {
 	HaltJob     *MysqlHaltJobNewColumnAdditionStrategy     `json:"haltJob,omitempty"`
 	AutoMap     *MysqlAutoMapNewColumnAdditionStrategy     `json:"autoMap,omitempty"`
 	Passthrough *MysqlPassthroughNewColumnAdditionStrategy `json:"passthrough,omitempty"`
-	// See PostgresNewColumnAdditionStrategy: absent, the strategy was lost on save.
-	AnonymizePendingReview *MysqlAnonymizePendingReviewNewColumnAdditionStrategy `json:"anonymizePendingReview,omitempty"`
 }
 
 type MysqlHaltJobNewColumnAdditionStrategy struct{}
 type MysqlAutoMapNewColumnAdditionStrategy struct{}
 type MysqlPassthroughNewColumnAdditionStrategy struct{}
-type MysqlAnonymizePendingReviewNewColumnAdditionStrategy struct{}
 type MysqlColumnRemovalStrategy struct {
 	HaltJob     *MysqlHaltJobColumnRemovalStrategy     `json:"haltJob,omitempty"`
 	ContinueJob *MysqlContinueJobColumnRemovalStrategy `json:"continueJob,omitempty"`
@@ -1379,9 +1375,6 @@ type PostgresNewColumnAdditionStrategy struct {
 	HaltJob     *PostgresHaltJobStrategy     `json:"haltJob,omitempty"`
 	AutoMap     *PostgresAutoMapStrategy     `json:"autoMap,omitempty"`
 	Passthrough *PostgresPassthroughStrategy `json:"passthrough,omitempty"`
-	// Without this field the strategy was dropped on save and read back as none — "continue",
-	// which ignores new columns — so choosing it in the UI silently did nothing at all.
-	AnonymizePendingReview *PostgresAnonymizePendingReviewStrategy `json:"anonymizePendingReview,omitempty"`
 }
 
 func (p *PostgresNewColumnAdditionStrategy) ToDto() *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy {
@@ -1403,12 +1396,6 @@ func (p *PostgresNewColumnAdditionStrategy) ToDto() *mgmtv1alpha1.PostgresSource
 				Passthrough: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough{},
 			},
 		}
-	} else if p.AnonymizePendingReview != nil {
-		return &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-				AnonymizePendingReview: &mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
-			},
-		}
 	}
 	return nil
 }
@@ -1426,15 +1413,12 @@ func (p *PostgresNewColumnAdditionStrategy) FromDto(
 		p.HaltJob = &PostgresHaltJobStrategy{}
 	case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 		p.Passthrough = &PostgresPassthroughStrategy{}
-	case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_:
-		p.AnonymizePendingReview = &PostgresAnonymizePendingReviewStrategy{}
 	}
 }
 
 type PostgresHaltJobStrategy struct{}
 type PostgresAutoMapStrategy struct{}
 type PostgresPassthroughStrategy struct{}
-type PostgresAnonymizePendingReviewStrategy struct{}
 
 type PostgresColumnRemovalStrategy struct {
 	HaltJob     *PostgresHaltJobColumnRemovalStrategy     `json:"haltJob,omitempty"`
@@ -1629,13 +1613,6 @@ func (s *MysqlNewColumnAdditionStrategy) ToDto() *mgmtv1alpha1.MysqlSourceConnec
 			},
 		}
 	}
-	if s.AnonymizePendingReview != nil {
-		return &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy{
-			Strategy: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_{
-				AnonymizePendingReview: &mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview{},
-			},
-		}
-	}
 	return nil
 }
 
@@ -1650,8 +1627,6 @@ func (s *MysqlNewColumnAdditionStrategy) FromDto(
 			s.AutoMap = &MysqlAutoMapNewColumnAdditionStrategy{}
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			s.Passthrough = &MysqlPassthroughNewColumnAdditionStrategy{}
-		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview_:
-			s.AnonymizePendingReview = &MysqlAnonymizePendingReviewNewColumnAdditionStrategy{}
 		}
 	}
 }

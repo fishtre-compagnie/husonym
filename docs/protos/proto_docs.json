@@ -16704,12 +16704,12 @@
               "defaultValue": ""
             },
             {
-              "name": "anonymize_pending_review",
-              "description": "anonymize the new column with the transformer the PII detection suggests, in the config\nit starts with in the catalogue; pass it through when there is no suggestion, or when the\ncolumn carries a primary key, a foreign key or a unique constraint a transformer could\nbreak. The run writes the mapping to the job and records the change for review, as it\nrecords the removal of a column and the change of a column's type.",
+              "name": "auto_map",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
               "label": "",
-              "type": "AnonymizePendingReview",
-              "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-              "fullType": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
+              "type": "AutoMap",
+              "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+              "fullType": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "strategy",
@@ -16718,10 +16718,10 @@
           ]
         },
         {
-          "name": "AnonymizePendingReview",
-          "longName": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "fullName": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "description": "Configuration for the AnonymizePendingReview strategy",
+          "name": "AutoMap",
+          "longName": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+          "fullName": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+          "description": "Configuration for the AutoMap strategy",
           "hasExtensions": false,
           "hasFields": false,
           "hasOneofs": false,
@@ -17166,7 +17166,7 @@
             },
             {
               "name": "auto_map",
-              "description": "automatically handle unmapped columns. It handles this by using the DBs default/nullable values.\nIf this doesn't exist, will fall back to configuring generators for supported datatypes.\nIf none of the criteria above can be met, the job run will fail to prevent leaking of PII.",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
               "label": "",
               "type": "AutoMap",
               "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
@@ -17187,31 +17187,8 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
-            },
-            {
-              "name": "anonymize_pending_review",
-              "description": "anonymize the new column with the transformer the PII detection suggests, in the config\nit starts with in the catalogue; pass it through when there is no suggestion, or when the\ncolumn carries a primary key, a foreign key or a unique constraint a transformer could\nbreak. The run writes the mapping to the job and records the change for review, as it\nrecords the removal of a column and the change of a column's type.",
-              "label": "",
-              "type": "AnonymizePendingReview",
-              "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-              "fullType": "mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-              "ismap": false,
-              "isoneof": true,
-              "oneofdecl": "strategy",
-              "defaultValue": ""
             }
           ]
-        },
-        {
-          "name": "AnonymizePendingReview",
-          "longName": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "fullName": "mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "description": "Configuration for the AnonymizePendingReview strategy",
-          "hasExtensions": false,
-          "hasFields": false,
-          "hasOneofs": false,
-          "extensions": [],
-          "fields": []
         },
         {
           "name": "AutoMap",
@@ -18034,7 +18011,7 @@
             },
             {
               "name": "auto_map",
-              "description": "automatically handle unmapped columns. It handles this by using the DBs default/nullable values.\nIf this doesn't exist, will fall back to configuring generators for supported datatypes.\nIf none of the criteria above can be met, the job run will fail to prevent leaking of PII.",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
               "label": "",
               "type": "AutoMap",
               "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
@@ -18055,31 +18032,8 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
-            },
-            {
-              "name": "anonymize_pending_review",
-              "description": "anonymize the new column with the transformer the PII detection suggests, in the config\nit starts with in the catalogue; pass it through when there is no suggestion, or when the\ncolumn carries a primary key, a foreign key or a unique constraint a transformer could\nbreak. The run writes the mapping to the job and records the change for review, as it\nrecords the removal of a column and the change of a column's type.",
-              "label": "",
-              "type": "AnonymizePendingReview",
-              "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-              "fullType": "mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-              "ismap": false,
-              "isoneof": true,
-              "oneofdecl": "strategy",
-              "defaultValue": ""
             }
           ]
-        },
-        {
-          "name": "AnonymizePendingReview",
-          "longName": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "fullName": "mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview",
-          "description": "Configuration for the AnonymizePendingReview strategy",
-          "hasExtensions": false,
-          "hasFields": false,
-          "hasOneofs": false,
-          "extensions": [],
-          "fields": []
         },
         {
           "name": "AutoMap",
@@ -18330,7 +18284,7 @@
             },
             {
               "name": "record_changes",
-              "description": "Whether the job's strategy asks for the changes to be reviewed (anonymize_pending_review):\nthey are then recorded, each with what the run chose.",
+              "description": "Whether the job's strategy asks for the changes to be reviewed (auto_map):\nthey are then recorded, each with what the run chose.",
               "label": "",
               "type": "bool",
               "longType": "bool",
@@ -20167,7 +20121,7 @@
             },
             {
               "name": "GetPendingMappingChanges",
-              "description": "Returns the changes runs made to the mappings of jobs under anonymize_pending_review that\nnobody has reviewed yet. An added column whose mapping has been changed since counts as\nreviewed: somebody decided.",
+              "description": "Returns the changes runs made to the mappings of jobs under auto_map that\nnobody has reviewed yet. An added column whose mapping has been changed since counts as\nreviewed: somebody decided.",
               "requestType": "GetPendingMappingChangesRequest",
               "requestLongType": "GetPendingMappingChangesRequest",
               "requestFullType": "mgmt.v1alpha1.GetPendingMappingChangesRequest",
