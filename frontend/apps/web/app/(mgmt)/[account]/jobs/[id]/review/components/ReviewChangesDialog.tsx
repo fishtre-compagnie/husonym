@@ -11,44 +11,38 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { JobMappingChange } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
-
-// The column a decision is about.
-export interface PassthroughTarget {
-  schema: string;
-  table: string;
-  column: string;
-}
+import { changeLabel, columnName } from '@/util/mapping-changes';
 
 interface Props {
   open: boolean;
   onOpenChange(open: boolean): void;
-  targets: PassthroughTarget[];
-  onAccept(targets: PassthroughTarget[], note?: string): Promise<void>;
+  changes: JobMappingChange[];
+  onReview(changes: JobMappingChange[], note?: string): Promise<void>;
 }
 
-// Accepts that the selected columns ship untransformed, so they stop being reported.
+// Marks the selected changes reviewed: what the run did to them stands.
 //
 // One dialog and one note for the whole selection: the trace an audit asks for is kept, without
 // thirty confirmations in a row — by the fifth, people click without reading, which is exactly
-// what asking was meant to prevent. It still asks, because agreeing that data leaves the source
-// in clear is a decision somebody will be asked about later.
-export default function AcceptPassthroughsDialog(props: Props): ReactElement {
-  const { open, onOpenChange, targets, onAccept } = props;
+// what asking was meant to prevent.
+export default function ReviewChangesDialog(props: Props): ReactElement {
+  const { open, onOpenChange, changes, onReview } = props;
   const [note, setNote] = useState('');
-  const [isAccepting, setIsAccepting] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
 
   async function onConfirm(): Promise<void> {
-    setIsAccepting(true);
+    setIsReviewing(true);
     try {
-      await onAccept(targets, note.trim() || undefined);
+      await onReview(changes, note.trim() || undefined);
       setNote('');
       onOpenChange(false);
     } catch {
       // The caller has already said what went wrong. The dialog stays open, so the note is not
       // lost and the person can try again.
     } finally {
-      setIsAccepting(false);
+      setIsReviewing(false);
     }
   }
 
@@ -57,30 +51,29 @@ export default function AcceptPassthroughsDialog(props: Props): ReactElement {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {targets.length === 1
-              ? 'Accept this passthrough'
-              : `Accept ${targets.length} passthroughs`}
+            {changes.length === 1
+              ? 'Mark this change reviewed'
+              : `Mark ${changes.length} changes reviewed`}
           </DialogTitle>
           <DialogDescription>
-            {targets.length === 1 ? 'This column' : 'These columns'} will keep
-            being copied to the destination untransformed, and will stop being
-            reported for this job. A column comes back if it changes, or if it
-            starts to read as personal data.
+            The job keeps its mappings as the runs left them, and{' '}
+            {changes.length === 1 ? 'this change stops' : 'these changes stop'}{' '}
+            being reported.
           </DialogDescription>
         </DialogHeader>
         <ul className="max-h-40 overflow-auto text-xs font-mono flex flex-col gap-1">
-          {targets.map((t) => (
-            <li key={`${t.schema}.${t.table}.${t.column}`}>
-              {t.schema}.{t.table}.{t.column}
+          {changes.map((c) => (
+            <li key={c.id}>
+              {columnName(c)} — {changeLabel(c)}
             </li>
           ))}
         </ul>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="accept-passthroughs-note">
-            Why is this acceptable? (optional)
+          <Label htmlFor="review-changes-note">
+            Why is this fine? (optional)
           </Label>
           <Textarea
-            id="accept-passthroughs-note"
+            id="review-changes-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. internal references, hold no personal data"
@@ -96,12 +89,12 @@ export default function AcceptPassthroughsDialog(props: Props): ReactElement {
           </Button>
           <Button
             type="button"
-            disabled={isAccepting}
+            disabled={isReviewing}
             onClick={() => onConfirm()}
           >
             <ButtonText
-              leftIcon={isAccepting ? <Spinner className="h-4 w-4" /> : null}
-              text="Accept"
+              leftIcon={isReviewing ? <Spinner className="h-4 w-4" /> : null}
+              text="Mark reviewed"
             />
           </Button>
         </DialogFooter>

@@ -106,27 +106,15 @@ const (
 	// JobServiceValidateJobMappingsProcedure is the fully-qualified name of the JobService's
 	// ValidateJobMappings RPC.
 	JobServiceValidateJobMappingsProcedure = "/mgmt.v1alpha1.JobService/ValidateJobMappings"
-	// JobServiceGetColumnReviewsProcedure is the fully-qualified name of the JobService's
-	// GetColumnReviews RPC.
-	JobServiceGetColumnReviewsProcedure = "/mgmt.v1alpha1.JobService/GetColumnReviews"
-	// JobServiceSetColumnReviewProcedure is the fully-qualified name of the JobService's
-	// SetColumnReview RPC.
-	JobServiceSetColumnReviewProcedure = "/mgmt.v1alpha1.JobService/SetColumnReview"
-	// JobServiceRemoveColumnReviewProcedure is the fully-qualified name of the JobService's
-	// RemoveColumnReview RPC.
-	JobServiceRemoveColumnReviewProcedure = "/mgmt.v1alpha1.JobService/RemoveColumnReview"
-	// JobServiceSetJobUnmappedPassthroughsProcedure is the fully-qualified name of the JobService's
-	// SetJobUnmappedPassthroughs RPC.
-	JobServiceSetJobUnmappedPassthroughsProcedure = "/mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs"
 	// JobServiceReconcileJobMappingsProcedure is the fully-qualified name of the JobService's
 	// ReconcileJobMappings RPC.
 	JobServiceReconcileJobMappingsProcedure = "/mgmt.v1alpha1.JobService/ReconcileJobMappings"
-	// JobServiceGetPendingColumnReviewsProcedure is the fully-qualified name of the JobService's
-	// GetPendingColumnReviews RPC.
-	JobServiceGetPendingColumnReviewsProcedure = "/mgmt.v1alpha1.JobService/GetPendingColumnReviews"
-	// JobServiceMapUnmappedColumnsProcedure is the fully-qualified name of the JobService's
-	// MapUnmappedColumns RPC.
-	JobServiceMapUnmappedColumnsProcedure = "/mgmt.v1alpha1.JobService/MapUnmappedColumns"
+	// JobServiceGetPendingMappingChangesProcedure is the fully-qualified name of the JobService's
+	// GetPendingMappingChanges RPC.
+	JobServiceGetPendingMappingChangesProcedure = "/mgmt.v1alpha1.JobService/GetPendingMappingChanges"
+	// JobServiceReviewMappingChangesProcedure is the fully-qualified name of the JobService's
+	// ReviewMappingChanges RPC.
+	JobServiceReviewMappingChangesProcedure = "/mgmt.v1alpha1.JobService/ReviewMappingChanges"
 	// JobServiceValidateSchemaProcedure is the fully-qualified name of the JobService's ValidateSchema
 	// RPC.
 	JobServiceValidateSchemaProcedure = "/mgmt.v1alpha1.JobService/ValidateSchema"
@@ -225,25 +213,15 @@ type JobServiceClient interface {
 	SetJobSyncOptions(context.Context, *connect.Request[v1alpha1.SetJobSyncOptionsRequest]) (*connect.Response[v1alpha1.SetJobSyncOptionsResponse], error)
 	// Validates that the jobmapping configured can run with table constraints
 	ValidateJobMappings(context.Context, *connect.Request[v1alpha1.ValidateJobMappingsRequest]) (*connect.Response[v1alpha1.ValidateJobMappingsResponse], error)
-	// Returns the columns whose passthrough has been reviewed and accepted for this job.
-	GetColumnReviews(context.Context, *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error)
-	// Accepts the passthrough of one unmapped column, so it stops being reported. The server
-	// records the column as the job's last run copied it — refusing a column no run has reported —
-	// and reports it again if it moves.
-	SetColumnReview(context.Context, *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error)
-	// Withdraws that acceptance, putting the column back in the list.
-	RemoveColumnReview(context.Context, *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error)
-	// Records the columns a run copied untransformed for want of a mapping. Called by the worker.
-	SetJobUnmappedPassthroughs(context.Context, *connect.Request[v1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[v1alpha1.SetJobUnmappedPassthroughsResponse], error)
 	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
 	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
 	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
-	// Returns what is waiting for a decision: the columns the last runs copied untransformed, less
-	// those whose passthrough has been accepted and still holds. For one job, or for the account.
-	GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error)
-	// Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
-	// only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
-	MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error)
+	// Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
+	// reviewed: somebody decided.
+	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
+	// Marks changes reviewed, with an optional note.
+	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -460,48 +438,23 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(jobServiceMethods.ByName("ValidateJobMappings")),
 			connect.WithClientOptions(opts...),
 		),
-		getColumnReviews: connect.NewClient[v1alpha1.GetColumnReviewsRequest, v1alpha1.GetColumnReviewsResponse](
-			httpClient,
-			baseURL+JobServiceGetColumnReviewsProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("GetColumnReviews")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		setColumnReview: connect.NewClient[v1alpha1.SetColumnReviewRequest, v1alpha1.SetColumnReviewResponse](
-			httpClient,
-			baseURL+JobServiceSetColumnReviewProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("SetColumnReview")),
-			connect.WithClientOptions(opts...),
-		),
-		removeColumnReview: connect.NewClient[v1alpha1.RemoveColumnReviewRequest, v1alpha1.RemoveColumnReviewResponse](
-			httpClient,
-			baseURL+JobServiceRemoveColumnReviewProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("RemoveColumnReview")),
-			connect.WithClientOptions(opts...),
-		),
-		setJobUnmappedPassthroughs: connect.NewClient[v1alpha1.SetJobUnmappedPassthroughsRequest, v1alpha1.SetJobUnmappedPassthroughsResponse](
-			httpClient,
-			baseURL+JobServiceSetJobUnmappedPassthroughsProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("SetJobUnmappedPassthroughs")),
-			connect.WithClientOptions(opts...),
-		),
 		reconcileJobMappings: connect.NewClient[v1alpha1.ReconcileJobMappingsRequest, v1alpha1.ReconcileJobMappingsResponse](
 			httpClient,
 			baseURL+JobServiceReconcileJobMappingsProcedure,
 			connect.WithSchema(jobServiceMethods.ByName("ReconcileJobMappings")),
 			connect.WithClientOptions(opts...),
 		),
-		getPendingColumnReviews: connect.NewClient[v1alpha1.GetPendingColumnReviewsRequest, v1alpha1.GetPendingColumnReviewsResponse](
+		getPendingMappingChanges: connect.NewClient[v1alpha1.GetPendingMappingChangesRequest, v1alpha1.GetPendingMappingChangesResponse](
 			httpClient,
-			baseURL+JobServiceGetPendingColumnReviewsProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("GetPendingColumnReviews")),
+			baseURL+JobServiceGetPendingMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("GetPendingMappingChanges")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		mapUnmappedColumns: connect.NewClient[v1alpha1.MapUnmappedColumnsRequest, v1alpha1.MapUnmappedColumnsResponse](
+		reviewMappingChanges: connect.NewClient[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse](
 			httpClient,
-			baseURL+JobServiceMapUnmappedColumnsProcedure,
-			connect.WithSchema(jobServiceMethods.ByName("MapUnmappedColumns")),
+			baseURL+JobServiceReviewMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
 			connect.WithClientOptions(opts...),
 		),
 		validateSchema: connect.NewClient[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse](
@@ -619,13 +572,9 @@ type jobServiceClient struct {
 	setJobWorkflowOptions            *connect.Client[v1alpha1.SetJobWorkflowOptionsRequest, v1alpha1.SetJobWorkflowOptionsResponse]
 	setJobSyncOptions                *connect.Client[v1alpha1.SetJobSyncOptionsRequest, v1alpha1.SetJobSyncOptionsResponse]
 	validateJobMappings              *connect.Client[v1alpha1.ValidateJobMappingsRequest, v1alpha1.ValidateJobMappingsResponse]
-	getColumnReviews                 *connect.Client[v1alpha1.GetColumnReviewsRequest, v1alpha1.GetColumnReviewsResponse]
-	setColumnReview                  *connect.Client[v1alpha1.SetColumnReviewRequest, v1alpha1.SetColumnReviewResponse]
-	removeColumnReview               *connect.Client[v1alpha1.RemoveColumnReviewRequest, v1alpha1.RemoveColumnReviewResponse]
-	setJobUnmappedPassthroughs       *connect.Client[v1alpha1.SetJobUnmappedPassthroughsRequest, v1alpha1.SetJobUnmappedPassthroughsResponse]
 	reconcileJobMappings             *connect.Client[v1alpha1.ReconcileJobMappingsRequest, v1alpha1.ReconcileJobMappingsResponse]
-	getPendingColumnReviews          *connect.Client[v1alpha1.GetPendingColumnReviewsRequest, v1alpha1.GetPendingColumnReviewsResponse]
-	mapUnmappedColumns               *connect.Client[v1alpha1.MapUnmappedColumnsRequest, v1alpha1.MapUnmappedColumnsResponse]
+	getPendingMappingChanges         *connect.Client[v1alpha1.GetPendingMappingChangesRequest, v1alpha1.GetPendingMappingChangesResponse]
+	reviewMappingChanges             *connect.Client[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse]
 	validateSchema                   *connect.Client[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse]
 	getRunContext                    *connect.Client[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse]
 	setRunContext                    *connect.Client[v1alpha1.SetRunContextRequest, v1alpha1.SetRunContextResponse]
@@ -781,39 +730,19 @@ func (c *jobServiceClient) ValidateJobMappings(ctx context.Context, req *connect
 	return c.validateJobMappings.CallUnary(ctx, req)
 }
 
-// GetColumnReviews calls mgmt.v1alpha1.JobService.GetColumnReviews.
-func (c *jobServiceClient) GetColumnReviews(ctx context.Context, req *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error) {
-	return c.getColumnReviews.CallUnary(ctx, req)
-}
-
-// SetColumnReview calls mgmt.v1alpha1.JobService.SetColumnReview.
-func (c *jobServiceClient) SetColumnReview(ctx context.Context, req *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error) {
-	return c.setColumnReview.CallUnary(ctx, req)
-}
-
-// RemoveColumnReview calls mgmt.v1alpha1.JobService.RemoveColumnReview.
-func (c *jobServiceClient) RemoveColumnReview(ctx context.Context, req *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error) {
-	return c.removeColumnReview.CallUnary(ctx, req)
-}
-
-// SetJobUnmappedPassthroughs calls mgmt.v1alpha1.JobService.SetJobUnmappedPassthroughs.
-func (c *jobServiceClient) SetJobUnmappedPassthroughs(ctx context.Context, req *connect.Request[v1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[v1alpha1.SetJobUnmappedPassthroughsResponse], error) {
-	return c.setJobUnmappedPassthroughs.CallUnary(ctx, req)
-}
-
 // ReconcileJobMappings calls mgmt.v1alpha1.JobService.ReconcileJobMappings.
 func (c *jobServiceClient) ReconcileJobMappings(ctx context.Context, req *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error) {
 	return c.reconcileJobMappings.CallUnary(ctx, req)
 }
 
-// GetPendingColumnReviews calls mgmt.v1alpha1.JobService.GetPendingColumnReviews.
-func (c *jobServiceClient) GetPendingColumnReviews(ctx context.Context, req *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error) {
-	return c.getPendingColumnReviews.CallUnary(ctx, req)
+// GetPendingMappingChanges calls mgmt.v1alpha1.JobService.GetPendingMappingChanges.
+func (c *jobServiceClient) GetPendingMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error) {
+	return c.getPendingMappingChanges.CallUnary(ctx, req)
 }
 
-// MapUnmappedColumns calls mgmt.v1alpha1.JobService.MapUnmappedColumns.
-func (c *jobServiceClient) MapUnmappedColumns(ctx context.Context, req *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error) {
-	return c.mapUnmappedColumns.CallUnary(ctx, req)
+// ReviewMappingChanges calls mgmt.v1alpha1.JobService.ReviewMappingChanges.
+func (c *jobServiceClient) ReviewMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error) {
+	return c.reviewMappingChanges.CallUnary(ctx, req)
 }
 
 // ValidateSchema calls mgmt.v1alpha1.JobService.ValidateSchema.
@@ -940,25 +869,15 @@ type JobServiceHandler interface {
 	SetJobSyncOptions(context.Context, *connect.Request[v1alpha1.SetJobSyncOptionsRequest]) (*connect.Response[v1alpha1.SetJobSyncOptionsResponse], error)
 	// Validates that the jobmapping configured can run with table constraints
 	ValidateJobMappings(context.Context, *connect.Request[v1alpha1.ValidateJobMappingsRequest]) (*connect.Response[v1alpha1.ValidateJobMappingsResponse], error)
-	// Returns the columns whose passthrough has been reviewed and accepted for this job.
-	GetColumnReviews(context.Context, *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error)
-	// Accepts the passthrough of one unmapped column, so it stops being reported. The server
-	// records the column as the job's last run copied it — refusing a column no run has reported —
-	// and reports it again if it moves.
-	SetColumnReview(context.Context, *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error)
-	// Withdraws that acceptance, putting the column back in the list.
-	RemoveColumnReview(context.Context, *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error)
-	// Records the columns a run copied untransformed for want of a mapping. Called by the worker.
-	SetJobUnmappedPassthroughs(context.Context, *connect.Request[v1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[v1alpha1.SetJobUnmappedPassthroughsResponse], error)
 	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
 	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
 	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
-	// Returns what is waiting for a decision: the columns the last runs copied untransformed, less
-	// those whose passthrough has been accepted and still holds. For one job, or for the account.
-	GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error)
-	// Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
-	// only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
-	MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error)
+	// Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
+	// reviewed: somebody decided.
+	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
+	// Marks changes reviewed, with an optional note.
+	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -1171,48 +1090,23 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(jobServiceMethods.ByName("ValidateJobMappings")),
 		connect.WithHandlerOptions(opts...),
 	)
-	jobServiceGetColumnReviewsHandler := connect.NewUnaryHandler(
-		JobServiceGetColumnReviewsProcedure,
-		svc.GetColumnReviews,
-		connect.WithSchema(jobServiceMethods.ByName("GetColumnReviews")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	jobServiceSetColumnReviewHandler := connect.NewUnaryHandler(
-		JobServiceSetColumnReviewProcedure,
-		svc.SetColumnReview,
-		connect.WithSchema(jobServiceMethods.ByName("SetColumnReview")),
-		connect.WithHandlerOptions(opts...),
-	)
-	jobServiceRemoveColumnReviewHandler := connect.NewUnaryHandler(
-		JobServiceRemoveColumnReviewProcedure,
-		svc.RemoveColumnReview,
-		connect.WithSchema(jobServiceMethods.ByName("RemoveColumnReview")),
-		connect.WithHandlerOptions(opts...),
-	)
-	jobServiceSetJobUnmappedPassthroughsHandler := connect.NewUnaryHandler(
-		JobServiceSetJobUnmappedPassthroughsProcedure,
-		svc.SetJobUnmappedPassthroughs,
-		connect.WithSchema(jobServiceMethods.ByName("SetJobUnmappedPassthroughs")),
-		connect.WithHandlerOptions(opts...),
-	)
 	jobServiceReconcileJobMappingsHandler := connect.NewUnaryHandler(
 		JobServiceReconcileJobMappingsProcedure,
 		svc.ReconcileJobMappings,
 		connect.WithSchema(jobServiceMethods.ByName("ReconcileJobMappings")),
 		connect.WithHandlerOptions(opts...),
 	)
-	jobServiceGetPendingColumnReviewsHandler := connect.NewUnaryHandler(
-		JobServiceGetPendingColumnReviewsProcedure,
-		svc.GetPendingColumnReviews,
-		connect.WithSchema(jobServiceMethods.ByName("GetPendingColumnReviews")),
+	jobServiceGetPendingMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceGetPendingMappingChangesProcedure,
+		svc.GetPendingMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("GetPendingMappingChanges")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	jobServiceMapUnmappedColumnsHandler := connect.NewUnaryHandler(
-		JobServiceMapUnmappedColumnsProcedure,
-		svc.MapUnmappedColumns,
-		connect.WithSchema(jobServiceMethods.ByName("MapUnmappedColumns")),
+	jobServiceReviewMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceReviewMappingChangesProcedure,
+		svc.ReviewMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
 		connect.WithHandlerOptions(opts...),
 	)
 	jobServiceValidateSchemaHandler := connect.NewUnaryHandler(
@@ -1355,20 +1249,12 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceSetJobSyncOptionsHandler.ServeHTTP(w, r)
 		case JobServiceValidateJobMappingsProcedure:
 			jobServiceValidateJobMappingsHandler.ServeHTTP(w, r)
-		case JobServiceGetColumnReviewsProcedure:
-			jobServiceGetColumnReviewsHandler.ServeHTTP(w, r)
-		case JobServiceSetColumnReviewProcedure:
-			jobServiceSetColumnReviewHandler.ServeHTTP(w, r)
-		case JobServiceRemoveColumnReviewProcedure:
-			jobServiceRemoveColumnReviewHandler.ServeHTTP(w, r)
-		case JobServiceSetJobUnmappedPassthroughsProcedure:
-			jobServiceSetJobUnmappedPassthroughsHandler.ServeHTTP(w, r)
 		case JobServiceReconcileJobMappingsProcedure:
 			jobServiceReconcileJobMappingsHandler.ServeHTTP(w, r)
-		case JobServiceGetPendingColumnReviewsProcedure:
-			jobServiceGetPendingColumnReviewsHandler.ServeHTTP(w, r)
-		case JobServiceMapUnmappedColumnsProcedure:
-			jobServiceMapUnmappedColumnsHandler.ServeHTTP(w, r)
+		case JobServiceGetPendingMappingChangesProcedure:
+			jobServiceGetPendingMappingChangesHandler.ServeHTTP(w, r)
+		case JobServiceReviewMappingChangesProcedure:
+			jobServiceReviewMappingChangesHandler.ServeHTTP(w, r)
 		case JobServiceValidateSchemaProcedure:
 			jobServiceValidateSchemaHandler.ServeHTTP(w, r)
 		case JobServiceGetRunContextProcedure:
@@ -1516,32 +1402,16 @@ func (UnimplementedJobServiceHandler) ValidateJobMappings(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ValidateJobMappings is not implemented"))
 }
 
-func (UnimplementedJobServiceHandler) GetColumnReviews(context.Context, *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetColumnReviews is not implemented"))
-}
-
-func (UnimplementedJobServiceHandler) SetColumnReview(context.Context, *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.SetColumnReview is not implemented"))
-}
-
-func (UnimplementedJobServiceHandler) RemoveColumnReview(context.Context, *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.RemoveColumnReview is not implemented"))
-}
-
-func (UnimplementedJobServiceHandler) SetJobUnmappedPassthroughs(context.Context, *connect.Request[v1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[v1alpha1.SetJobUnmappedPassthroughsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.SetJobUnmappedPassthroughs is not implemented"))
-}
-
 func (UnimplementedJobServiceHandler) ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ReconcileJobMappings is not implemented"))
 }
 
-func (UnimplementedJobServiceHandler) GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetPendingColumnReviews is not implemented"))
+func (UnimplementedJobServiceHandler) GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetPendingMappingChanges is not implemented"))
 }
 
-func (UnimplementedJobServiceHandler) MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.MapUnmappedColumns is not implemented"))
+func (UnimplementedJobServiceHandler) ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ReviewMappingChanges is not implemented"))
 }
 
 func (UnimplementedJobServiceHandler) ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {

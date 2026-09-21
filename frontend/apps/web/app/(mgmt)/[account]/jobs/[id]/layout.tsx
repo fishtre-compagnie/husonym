@@ -211,11 +211,11 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
     useGetSystemAppConfig();
   // The same query as the review tab and the bell, so the three agree and refresh together.
   const { data: pendingData } = useQuery(
-    JobService.method.getPendingColumnReviews,
+    JobService.method.getPendingMappingChanges,
     { accountId: account?.id, jobId: job?.id },
     { enabled: !!account?.id && !!job?.id }
   );
-  const pendingCount = pendingData?.columns.length ?? 0;
+  const pendingCount = pendingData?.changes.length ?? 0;
 
   if (!account || !job) {
     return [{ title: 'Overview', href: `` }];

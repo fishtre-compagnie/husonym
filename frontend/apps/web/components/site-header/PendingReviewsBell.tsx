@@ -7,8 +7,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { isPassthrough } from '@/util/mapping-changes';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService } from '@husonym/sdk';
+import { JobMappingChangeKind, JobService } from '@husonym/sdk';
 import { BellIcon, CheckCircledIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
 import { ReactElement, useMemo, useState } from 'react';
@@ -17,13 +18,14 @@ interface JobPending {
   jobId: string;
   jobName: string;
   count: number;
-  personalData: number;
+  // Columns that read as personal data and that a run left in clear
+  personalInClear: number;
 }
 
 // Tells whoever logs in whether something is waiting for them.
 //
 // A count of things to do, not a feed of things that happened: nothing to mark as read, and it
-// drops to zero on its own when the last column is settled. A notification marked "read" while
+// drops to zero on its own when the last change is reviewed. A notification marked "read" while
 // the column still ships in clear would be a lie; a count cannot be one, since it is only zero
 // when there is nothing left.
 //
@@ -35,7 +37,7 @@ export default function PendingReviewsBell(): ReactElement | null {
   const [open, setOpen] = useState(false);
 
   const { data: pendingData } = useQuery(
-    JobService.method.getPendingColumnReviews,
+    JobService.method.getPendingMappingChanges,
     { accountId },
     { enabled: !!accountId }
   );
@@ -50,24 +52,28 @@ export default function PendingReviewsBell(): ReactElement | null {
       (jobsData?.jobs ?? []).map((job) => [job.id, job.name])
     );
     const grouped = new Map<string, JobPending>();
-    for (const column of pendingData?.columns ?? []) {
-      const entry = grouped.get(column.jobId) ?? {
-        jobId: column.jobId,
-        jobName: names.get(column.jobId) ?? column.jobId,
+    for (const change of pendingData?.changes ?? []) {
+      const entry = grouped.get(change.jobId) ?? {
+        jobId: change.jobId,
+        jobName: names.get(change.jobId) ?? change.jobId,
         count: 0,
-        personalData: 0,
+        personalInClear: 0,
       };
       entry.count++;
-      if (column.piiCategory) {
-        entry.personalData++;
+      if (
+        change.piiCategory &&
+        change.kind === JobMappingChangeKind.ADDED &&
+        isPassthrough(change)
+      ) {
+        entry.personalInClear++;
       }
-      grouped.set(column.jobId, entry);
+      grouped.set(change.jobId, entry);
     }
-    // The job leaking the most personal data first: that is the one to open.
+    // The job shipping the most personal data in clear first: that is the one to open.
     return [...grouped.values()].sort(
-      (a, b) => b.personalData - a.personalData || b.count - a.count
+      (a, b) => b.personalInClear - a.personalInClear || b.count - a.count
     );
-  }, [pendingData?.columns, jobsData?.jobs]);
+  }, [pendingData?.changes, jobsData?.jobs]);
 
   if (!account) {
     return null;
@@ -83,7 +89,7 @@ export default function PendingReviewsBell(): ReactElement | null {
           className="relative"
           aria-label={
             total > 0
-              ? `${total} column${total === 1 ? '' : 's'} to review`
+              ? `${total} change${total === 1 ? '' : 's'} to review`
               : 'Nothing to review'
           }
         >
@@ -99,14 +105,14 @@ export default function PendingReviewsBell(): ReactElement | null {
         {total === 0 ? (
           <div className="flex flex-row items-center gap-2 text-sm">
             <CheckCircledIcon />
-            Nothing to review: every column your jobs copy is mapped or has been
+            Nothing to review: every change your jobs&apos; runs made has been
             reviewed.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">
-              {total} column{total === 1 ? '' : 's'} copied untransformed,
-              waiting for a decision
+              {total} change{total === 1 ? '' : 's'} to your jobs&apos;
+              mappings, waiting for review
             </p>
             <ul className="flex flex-col gap-1">
               {byJob.map((job) => (
@@ -119,10 +125,10 @@ export default function PendingReviewsBell(): ReactElement | null {
                     <span className="truncate">{job.jobName}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {job.count}
-                      {job.personalData > 0 && (
+                      {job.personalInClear > 0 && (
                         <span className="text-red-600 dark:text-red-400">
                           {' '}
-                          · {job.personalData} personal
+                          · {job.personalInClear} personal in clear
                         </span>
                       )}
                     </span>

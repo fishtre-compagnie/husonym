@@ -6,8 +6,9 @@ import PageHeader from '@/components/headers/PageHeader';
 import { useAccount } from '@/components/providers/account-provider';
 import SkeletonTable from '@/components/skeleton/SkeletonTable';
 import { Button } from '@/components/ui/button';
+import { isPassthrough } from '@/util/mapping-changes';
 import { useQuery } from '@connectrpc/connect-query';
-import { JobService, JobStatus } from '@husonym/sdk';
+import { JobMappingChangeKind, JobService, JobStatus } from '@husonym/sdk';
 import { PlusIcon } from '@radix-ui/react-icons';
 import NextLink from 'next/link';
 import { ReactElement, useMemo } from 'react';
@@ -50,7 +51,7 @@ function JobTable(props: JobTableProps): ReactElement {
   // The same query as the bell in the header, so the list costs nothing more and the two counts
   // cannot disagree.
   const { data: pendingData } = useQuery(
-    JobService.method.getPendingColumnReviews,
+    JobService.method.getPendingMappingChanges,
     { accountId: account?.id },
     { enabled: !!account?.id }
   );
@@ -79,13 +80,17 @@ function JobTable(props: JobTableProps): ReactElement {
     ) || {};
 
   const pendingByJob = new Map<string, { count: number; personal: number }>();
-  for (const column of pendingData?.columns ?? []) {
-    const entry = pendingByJob.get(column.jobId) ?? { count: 0, personal: 0 };
+  for (const change of pendingData?.changes ?? []) {
+    const entry = pendingByJob.get(change.jobId) ?? { count: 0, personal: 0 };
     entry.count++;
-    if (column.piiCategory) {
+    if (
+      change.piiCategory &&
+      change.kind === JobMappingChangeKind.ADDED &&
+      isPassthrough(change)
+    ) {
       entry.personal++;
     }
-    pendingByJob.set(column.jobId, entry);
+    pendingByJob.set(change.jobId, entry);
   }
 
   const jobData = jobs.map((j) => {

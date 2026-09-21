@@ -271,6 +271,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   const { mutateAsync: validateJobMappingsAsync } = useMutation(
     JobService.method.validateJobMappings
   );
+
   async function onSourceChange(value: string): Promise<void> {
     try {
       const newValues = await getUpdatedValues(
@@ -418,8 +419,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
         account?.id || '',
         formVirtualForeignKeys,
         validateJobMappingsAsync,
-        jobsource,
-        job?.id
+        jobsource
       );
       setValidateMappingsResponse(res);
     } catch (error) {
@@ -454,8 +454,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
         account?.id || '',
         vfks,
         validateJobMappingsAsync,
-        jobsource,
-        job?.id
+        jobsource
       );
       setValidateMappingsResponse(res);
     } catch (error) {
@@ -938,11 +937,6 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               )}
               isJobMappingsValidating={isValidatingMappings}
               onValidate={validateMappings}
-              reviewHref={
-                account?.name && data?.job?.id
-                  ? `/${account.name}/jobs/${data.job.id}/review`
-                  : undefined
-              }
               addVirtualForeignKey={addVirtualForeignKey}
               removeVirtualForeignKey={removeVirtualForeignKey}
               onImportMappingsClick={onImportMappingsClick}

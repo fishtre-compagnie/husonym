@@ -145,9 +145,7 @@ export function getSchemaConstraintHandler(
   };
 }
 
-// Exported for the review tab, which has a column's type and no idea which database it came
-// from: this is the one place that tries every dialect, and a second copy would drift.
-export function dbDataTypeToTransformerDataType(
+function dbDataTypeToTransformerDataType(
   dataType: string
 ): TransformerDataType {
   const dt = postgresTypeToTransformerDataType(dataType);

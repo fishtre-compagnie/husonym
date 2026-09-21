@@ -237,6 +237,20 @@ func Test_Workflow(t *testing.T) {
 			)
 		})
 
+		t.Run("anonymize_pending_review", func(t *testing.T) {
+			t.Parallel()
+			test_postgres_anonymize_pending_review(
+				t,
+				ctx,
+				postgres,
+				husonymApi,
+				dbManagers,
+				accountId,
+				sourceConn,
+				destConn,
+			)
+		})
+
 		t.Run("schema_reconciliation", func(t *testing.T) {
 			t.Parallel()
 			t.Run("truncate", func(t *testing.T) {

@@ -19,6 +19,7 @@ type TestJobOptions struct {
 	OnConflictDoNothing            bool
 	OnConflictDoUpdate             bool
 	PassthroughOnNewColumnAddition bool
+	AnonymizeNewColumns            bool
 	BatchSize                      *uint32
 	MaxInFlight                    *uint32
 }

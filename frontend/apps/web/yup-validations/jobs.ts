@@ -9,7 +9,7 @@ import {
   MssqlSourceConnectionOptions_ColumnRemovalStrategySchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-  MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema,
+  MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughSchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
   MysqlSourceConnectionOptions_ColumnRemovalStrategy,
@@ -19,7 +19,7 @@ import {
   MysqlSourceConnectionOptions_NewColumnAdditionStrategy,
   MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMapSchema,
   MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema,
+  MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema,
   MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughSchema,
   MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
   PostgresSourceConnectionOptions_ColumnRemovalStrategy,
@@ -29,7 +29,7 @@ import {
   PostgresSourceConnectionOptions_NewColumnAdditionStrategy,
   PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMapSchema,
   PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
-  PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema,
+  PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema,
   PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughSchema,
   PostgresSourceConnectionOptions_NewColumnAdditionStrategySchema,
   TransformerConfig,
@@ -118,17 +118,10 @@ export type VirtualForeignConstraintFormValues = Yup.InferType<
 >;
 
 export type NewColumnAdditionStrategy =
-  | 'continue'
-  | 'halt'
-  | 'automap'
-  | 'passthrough'
-  | 'passthrough-pending-review';
+  'continue' | 'halt' | 'automap' | 'passthrough' | 'anonymize-pending-review';
 
 type MssqlNewColumnAdditionStrategy =
-  | 'continue'
-  | 'halt'
-  | 'passthrough'
-  | 'passthrough-pending-review';
+  'continue' | 'halt' | 'passthrough' | 'anonymize-pending-review';
 
 export type ColumnRemovalStrategy = 'halt' | 'continue';
 
@@ -139,7 +132,7 @@ export const PostgresSourceOptionsFormValues = Yup.object({
       'halt',
       'automap',
       'passthrough',
-      'passthrough-pending-review',
+      'anonymize-pending-review',
     ])
     .optional()
     .default('continue'),
@@ -159,7 +152,7 @@ const MysqlSourceOptionsFormValues = Yup.object({
       'halt',
       'automap',
       'passthrough',
-      'passthrough-pending-review',
+      'anonymize-pending-review',
     ])
     .optional()
     .default('continue'),
@@ -178,7 +171,7 @@ const MssqlSourceOptionsFormValues = Yup.object({
     .optional()
     .default('continue'),
   newColumnAdditionStrategy: Yup.string<MssqlNewColumnAdditionStrategy>()
-    .oneOf(['continue', 'halt', 'passthrough', 'passthrough-pending-review'])
+    .oneOf(['continue', 'halt', 'passthrough', 'anonymize-pending-review'])
     .optional()
     .default('continue'),
 });
@@ -481,14 +474,14 @@ export function toJobSourcePostgresNewColumnAdditionStrategy(
         }
       );
     }
-    case 'passthrough-pending-review': {
+    case 'anonymize-pending-review': {
       return create(
         PostgresSourceConnectionOptions_NewColumnAdditionStrategySchema,
         {
           strategy: {
-            case: 'passthroughPendingReview',
+            case: 'anonymizePendingReview',
             value: create(
-              PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema
+              PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema
             ),
           },
         }
@@ -516,8 +509,8 @@ export function toNewColumnAdditionStrategy(
     case 'passthrough': {
       return 'passthrough';
     }
-    case 'passthroughPendingReview': {
-      return 'passthrough-pending-review';
+    case 'anonymizePendingReview': {
+      return 'anonymize-pending-review';
     }
     default: {
       return 'continue';
@@ -535,8 +528,8 @@ export function toMssqlNewColumnAdditionStrategy(
     case 'passthrough': {
       return 'passthrough';
     }
-    case 'passthroughPendingReview': {
-      return 'passthrough-pending-review';
+    case 'anonymizePendingReview': {
+      return 'anonymize-pending-review';
     }
     default: {
       return 'continue';
@@ -626,14 +619,14 @@ export function toJobSourceMysqlNewColumnAdditionStrategy(
         }
       );
     }
-    case 'passthrough-pending-review': {
+    case 'anonymize-pending-review': {
       return create(
         MysqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
         {
           strategy: {
-            case: 'passthroughPendingReview',
+            case: 'anonymizePendingReview',
             value: create(
-              MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema
+              MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema
             ),
           },
         }
@@ -725,14 +718,14 @@ export function toJobSourceMssqlNewColumnAdditionStrategy(
         }
       );
     }
-    case 'passthrough-pending-review': {
+    case 'anonymize-pending-review': {
       return create(
         MssqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
         {
           strategy: {
-            case: 'passthroughPendingReview',
+            case: 'anonymizePendingReview',
             value: create(
-              MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReviewSchema
+              MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReviewSchema
             ),
           },
         }

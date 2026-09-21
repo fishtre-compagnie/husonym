@@ -15,7 +15,6 @@ import {
   ExclamationTriangleIcon,
   ReloadIcon,
 } from '@radix-ui/react-icons';
-import Link from 'next/link';
 import { ReactElement } from 'react';
 
 export type ErrorLevel = 'error' | 'warning';
@@ -25,22 +24,16 @@ export interface FormError {
   type?: string;
   path: string;
   level: ErrorLevel;
-  // Set on the warnings about a column the job copies untransformed while it waits for a
-  // decision — the ones the job's review tab exists to settle.
-  pendingReview?: boolean;
 }
 
 interface Props {
   formErrors: FormError[];
   isValidating?: boolean;
   onValidate?(): void;
-  // Where those columns are settled. Absent while a job is being created: there is no job yet,
-  // hence no review tab to send anybody to.
-  reviewHref?: string;
 }
 
 export default function FormErrorsCard(props: Props): ReactElement {
-  const { formErrors, isValidating, onValidate, reviewHref } = props;
+  const { formErrors, isValidating, onValidate } = props;
 
   const { errors, warnings } = formErrorsToMessages(formErrors);
   return (
@@ -107,30 +100,20 @@ export default function FormErrorsCard(props: Props): ReactElement {
         ) : (
           <ScrollArea className="max-h-[177px] overflow-auto">
             <div className="flex flex-col gap-2">
-              {errors.map((entry, index) => (
+              {errors.map((message, index) => (
                 <div
-                  key={entry.message + index}
+                  key={message + index}
                   className="text-xs bg-red-200 dark:bg-red-800/70 rounded-sm p-2 text-wrap"
                 >
-                  {entry.message}
+                  {message}
                 </div>
               ))}
-              {warnings.map((entry, index) => (
+              {warnings.map((message, index) => (
                 <div
-                  key={entry.message + index}
-                  className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap flex flex-row items-start justify-between gap-2"
+                  key={message + index}
+                  className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap"
                 >
-                  <span>{entry.message}</span>
-                  {/* A link, not an action: the decision is made in one place, where
-                      anonymizing is the first choice and accepting the second. */}
-                  {entry.pendingReview && reviewHref && (
-                    <Link
-                      href={reviewHref}
-                      className="shrink-0 underline underline-offset-2"
-                    >
-                      Review
-                    </Link>
-                  )}
+                  {message}
                 </div>
               ))}
             </div>
@@ -141,39 +124,28 @@ export default function FormErrorsCard(props: Props): ReactElement {
   );
 }
 
-// A line ready to render: the sentence, plus what is needed to act on it. The message used to
-// be a bare string, which left nowhere to hang an action.
-interface FormErrorMessage {
-  message: string;
-  pendingReview?: boolean;
-}
-
 interface FormErrorMesageResponse {
-  errors: FormErrorMessage[];
-  warnings: FormErrorMessage[];
+  errors: string[];
+  warnings: string[];
 }
 
 function formErrorsToMessages(
   formErrors: FormError[]
 ): FormErrorMesageResponse {
-  const errors: FormErrorMessage[] = [];
-  const warnings: FormErrorMessage[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
   formErrors.forEach((error) => {
     const pieces: string[] = [error.path];
     if (error.type) {
       pieces.push(`[${error.type}]`);
     }
     pieces.push(error.message);
-    const entry: FormErrorMessage = {
-      message: pieces.join(' '),
-      pendingReview: error.pendingReview,
-    };
 
     if (error.level == 'warning') {
-      warnings.push(entry);
+      warnings.push(pieces.join(' '));
       return;
     }
-    errors.push(entry);
+    errors.push(pieces.join(' '));
   });
 
   return { errors, warnings };

@@ -20,6 +20,7 @@ import (
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
+	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
@@ -149,66 +150,127 @@ func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
 	return columns
 }
 
-// splitSensitiveColumns separates the unmapped columns whose name and type read as personal data
-// from the rest, naming each with the category that was recognised.
+// anonymizeNewColumns replaces, among the mappings added for new columns, each passthrough by the
+// transformer the PII detection suggests, in the config it starts with in the catalogue — the
+// mapping the UI would propose for the column.
 //
-// The verdict comes from job_util.LooksSensitive, the same call the validator makes, so the form
-// and the run cannot disagree about a column. And the split is a ranking, not a filter: the
-// others are still logged, because the heuristic recognising nothing in `champ_libre` says
-// nothing about what it holds.
-func splitSensitiveColumns(
+// The passthrough stays when nothing is suggested, and when the column carries a primary key, a
+// foreign key or a unique constraint, or is referenced by one: a transformer there could break
+// the constraint and fail the run, while the strategy never stops one. Choosing a transformer
+// that keeps a constraint is another matter. Generated columns keep their GenerateDefault.
+//
+// It returns the mappings, and the names of the columns it anonymized and of those it left in
+// passthrough, for the run's log.
+func anonymizeNewColumns(
 	mappings []*mgmtv1alpha1.JobMapping,
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
-) (sensitive, others []string) {
-	for _, column := range unmappedPassthroughColumns(mappings, columnInfo) {
-		name := fmt.Sprintf(
-			"%s.%s",
-			sqlmanager_shared.BuildTable(column.GetTableSchema(), column.GetTableName()),
-			column.GetColumnName(),
-		)
-		if category, isSensitive := job_util.LooksSensitive(column.GetColumnName(), column.GetDataType()); isSensitive {
-			sensitive = append(sensitive, fmt.Sprintf("%s (%s)", name, category))
-			continue
-		}
-		others = append(others, name)
-	}
-	slices.Sort(sensitive)
-	slices.Sort(others)
-	return sensitive, others
-}
-
-// unmappedPassthroughColumns are the columns among the added mappings that are copied as is,
-// with the type the source reports for them. The run logs them, and reports them to the
-// backend; both go through here so that what the log says and what the bell counts cannot
-// disagree.
-func unmappedPassthroughColumns(
-	mappings []*mgmtv1alpha1.JobMapping,
-	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
-) []*mgmtv1alpha1.UnmappedPassthrough {
-	columns := make([]*mgmtv1alpha1.UnmappedPassthrough, 0, len(mappings))
+	constraints *sqlmanager_shared.TableConstraints,
+) (out []*mgmtv1alpha1.JobMapping, anonymized, passedThrough []string) {
+	constrained := constrainedColumns(constraints)
+	out = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
 	for _, m := range mappings {
-		// Only the columns actually copied as is. getAdditionalPassthroughJobMappings hands a
-		// GenerateDefault to every generated column, whose value the destination recomputes and
-		// which therefore never leaves the source. Reporting those as passed through would put
-		// false entries in the one list whose whole worth is that an operator can trust it.
-		if _, ok := m.GetTransformer().GetConfig().GetConfig().(*mgmtv1alpha1.TransformerConfig_PassthroughConfig); !ok {
+		if m.GetTransformer().GetConfig().GetPassthroughConfig() == nil {
+			out = append(out, m)
 			continue
 		}
+		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
+		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
 
 		var dataType string
-		if cols, ok := columnInfo[sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())]; ok {
-			if info, ok := cols[m.GetColumn()]; ok && info != nil {
-				dataType = info.DataType
+		if info := columnInfo[table][m.GetColumn()]; info != nil {
+			dataType = info.DataType
+		}
+		source, category, suggested := job_util.SuggestedTransformer(m.GetColumn(), dataType)
+		if _, ok := constrained[table][m.GetColumn()]; ok || !suggested {
+			out = append(out, m)
+			passedThrough = append(passedThrough, name)
+			continue
+		}
+		// The base catalogue: a run has no license to check, and the suggestions are base
+		// transformers anyway.
+		config, ok := catalog.DefaultConfig(source, false)
+		if !ok {
+			out = append(out, m)
+			passedThrough = append(passedThrough, name)
+			continue
+		}
+		out = append(out, &mgmtv1alpha1.JobMapping{
+			Schema:      m.GetSchema(),
+			Table:       m.GetTable(),
+			Column:      m.GetColumn(),
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: config},
+		})
+		anonymized = append(anonymized, fmt.Sprintf("%s (%s)", name, category))
+	}
+	slices.Sort(anonymized)
+	slices.Sort(passedThrough)
+	return out, anonymized, passedThrough
+}
+
+// constrainedColumns are the columns, by schema.table, that a primary key, a foreign key or a
+// unique constraint or index covers, on either side of a foreign key.
+func constrainedColumns(constraints *sqlmanager_shared.TableConstraints) map[string]map[string]struct{} {
+	out := map[string]map[string]struct{}{}
+	add := func(table string, columns ...string) {
+		if out[table] == nil {
+			out[table] = map[string]struct{}{}
+		}
+		for _, column := range columns {
+			out[table][column] = struct{}{}
+		}
+	}
+	if constraints == nil {
+		return out
+	}
+	for table, columns := range constraints.PrimaryKeyConstraints {
+		add(table, columns...)
+	}
+	for table, fks := range constraints.ForeignKeyConstraints {
+		for _, fk := range fks {
+			add(table, fk.Columns...)
+			if fk.ForeignKey != nil {
+				add(fk.ForeignKey.Table, fk.ForeignKey.Columns...)
 			}
 		}
-		columns = append(columns, &mgmtv1alpha1.UnmappedPassthrough{
-			TableSchema: m.GetSchema(),
-			TableName:   m.GetTable(),
-			ColumnName:  m.GetColumn(),
-			DataType:    dataType,
-		})
 	}
-	return columns
+	for table, sets := range constraints.UniqueConstraints {
+		for _, columns := range sets {
+			add(table, columns...)
+		}
+	}
+	for table, sets := range constraints.UniqueIndexes {
+		for _, columns := range sets {
+			add(table, columns...)
+		}
+	}
+	return out
+}
+
+// sourceColumnsOf lists every column of the tables the mappings cover, with its type as the source
+// reports it: what the backend compares from one run to the next to tell that a column changed
+// type.
+func sourceColumnsOf(
+	mappings []*mgmtv1alpha1.JobMapping,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) []*mgmtv1alpha1.JobSourceColumn {
+	tables := map[string]struct{ schema, table string }{}
+	for _, m := range mappings {
+		tables[sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())] = struct{ schema, table string }{m.GetSchema(), m.GetTable()}
+	}
+	out := []*mgmtv1alpha1.JobSourceColumn{}
+	for key, t := range tables {
+		for column, info := range columnInfo[key] {
+			var dataType string
+			if info != nil {
+				dataType = info.DataType
+			}
+			out = append(out, &mgmtv1alpha1.JobSourceColumn{
+				Column:   &mgmtv1alpha1.JobColumn{Schema: t.schema, Table: t.table, Column: column},
+				DataType: dataType,
+			})
+		}
+	}
+	return out
 }
 
 func getMapValuesCount[K comparable, V any](m map[K][]V) int {

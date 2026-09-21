@@ -131,6 +131,14 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	}
 	params.MappingChanges.Removed = removedMappings
 
+	// The new columns belong to tables the job already maps, so these are all the schemas the
+	// run will touch; read their constraints once, before choosing how to map a new column.
+	uniqueSchemas := shared.GetUniqueSchemasFromMappings(existingSourceMappings)
+	tableConstraints, err := db.Db().GetTableConstraintsBySchema(ctx, uniqueSchemas)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve database table constraints: %w", err)
+	}
+
 	if sqlSourceOpts != nil && sqlSourceOpts.PassthroughOnNewColumnAddition {
 		extraMappings, err := getAdditionalPassthroughJobMappings(
 			groupedColumnInfo,
@@ -141,46 +149,44 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		if sqlSourceOpts.PassthroughPendingReview && len(extraMappings) > 0 {
-			// Named, and at warning level, because this is the whole point of the strategy: the
-			// run does not stop, so the log line is what tells someone that data left the source
-			// untransformed. A count alone would not let them decide anything.
-			//
-			// Handed back to the caller, which reports them to the backend: this is where the
-			// bell and the job's review tab get their list, without anything re-reading the
-			// source to rebuild it.
-			params.UnmappedPassthroughs = unmappedPassthroughColumns(extraMappings, groupedColumnInfo)
+		logger.Debug(
+			fmt.Sprintf(
+				"adding %d extra passthrough mappings due to unmapped columns",
+				len(extraMappings),
+			),
+		)
+		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
+		existingSourceMappings = append(existingSourceMappings, extraMappings...)
+	}
 
-			// The ones that read as personal data get their own line, first: on a wide table
-			// the interesting three would otherwise sit in the middle of sixty.
-			sensitive, others := splitSensitiveColumns(extraMappings, groupedColumnInfo)
-			if len(sensitive) > 0 {
-				logger.Warn(
-					fmt.Sprintf(
-						"%s look like personal data and were passed through untransformed: [%s]",
-						unmappedColumns(len(sensitive)),
-						strings.Join(sensitive, ", "),
-					),
-				)
-			}
-			if len(others) > 0 {
-				logger.Warn(
-					fmt.Sprintf(
-						"%s passed through as is, awaiting a decision: [%s]",
-						unmappedColumns(len(others)),
-						strings.Join(others, ", "),
-					),
-				)
-			}
-		} else {
-			logger.Debug(
-				fmt.Sprintf(
-					"adding %d extra passthrough mappings due to unmapped columns",
-					len(extraMappings),
-				),
-			)
-			params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
+	if sqlSourceOpts != nil && sqlSourceOpts.AnonymizeNewColumns {
+		extraMappings, err := getAdditionalPassthroughJobMappings(
+			groupedColumnInfo,
+			existingSourceMappings,
+			splitKeyToTablePieces,
+			logger,
+		)
+		if err != nil {
+			return nil, err
 		}
+		extraMappings, anonymized, passedThrough := anonymizeNewColumns(extraMappings, groupedColumnInfo, tableConstraints)
+		if len(anonymized) > 0 {
+			logger.Info(fmt.Sprintf(
+				"%s anonymized as suggested, awaiting review: [%s]",
+				unmappedColumns(len(anonymized)),
+				strings.Join(anonymized, ", "),
+			))
+		}
+		if len(passedThrough) > 0 {
+			// At warning level: this is data leaving the source untransformed, and the log line is
+			// the first place anybody looks.
+			logger.Warn(fmt.Sprintf(
+				"%s passed through as is, no transformer suggested or a key covers them, awaiting review: [%s]",
+				unmappedColumns(len(passedThrough)),
+				strings.Join(passedThrough, ", "),
+			))
+		}
+		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
 
@@ -201,7 +207,8 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
-	uniqueSchemas := shared.GetUniqueSchemasFromMappings(existingSourceMappings)
+	params.MappingChanges.Columns = sourceColumnsOf(existingSourceMappings, groupedColumnInfo)
+	params.MappingChanges.RecordChanges = sqlSourceOpts != nil && sqlSourceOpts.AnonymizeNewColumns
 
 	schemaTablesMap := shared.GetSchemaTablesMapFromMappings(existingSourceMappings)
 	tableDeferrableMap, err := getTableDeferrableMap(ctx, db, sourceConnection, schemaTablesMap)
@@ -209,11 +216,6 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		return nil, fmt.Errorf("unable to get table deferrable map: %w", err)
 	}
 	b.tableDeferrableMap = tableDeferrableMap
-
-	tableConstraints, err := db.Db().GetTableConstraintsBySchema(ctx, uniqueSchemas)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve database table constraints: %w", err)
-	}
 
 	foreignKeysMap, err := mergeVirtualForeignKeys(
 		tableConstraints.ForeignKeyConstraints,

@@ -280,8 +280,7 @@ type BenthosConfigManager struct {
 	jobRunId               string
 
 	// Filled by GenerateBenthosConfigs from what the source builder reported.
-	unmappedPassthroughs []*mgmtv1alpha1.UnmappedPassthrough
-	mappingChanges       bb_internal.MappingChanges
+	mappingChanges bb_internal.MappingChanges
 }
 
 // MappingChanges returns how the last GenerateBenthosConfigs call found the job's mappings to
@@ -289,14 +288,6 @@ type BenthosConfigManager struct {
 // brought in step.
 func (b *BenthosConfigManager) MappingChanges() bb_internal.MappingChanges {
 	return b.mappingChanges
-}
-
-// UnmappedPassthroughs returns the columns the last GenerateBenthosConfigs call set up to be
-// copied untransformed because the job does not map them. Empty unless the job's strategy is
-// passthrough_pending_review — and empty is a meaningful answer, since reporting it clears the
-// job's list.
-func (b *BenthosConfigManager) UnmappedPassthroughs() []*mgmtv1alpha1.UnmappedPassthrough {
-	return b.unmappedPassthroughs
 }
 
 // Manages all necessary configuration parameters for creating

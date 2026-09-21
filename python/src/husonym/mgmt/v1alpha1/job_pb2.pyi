@@ -68,11 +68,12 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOG_LEVEL_WARN: _ClassVar[LogLevel]
     LOG_LEVEL_ERROR: _ClassVar[LogLevel]
 
-class PendingColumnReason(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+class JobMappingChangeKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
-    PENDING_COLUMN_REASON_UNSPECIFIED: _ClassVar[PendingColumnReason]
-    PENDING_COLUMN_REASON_NEVER_REVIEWED: _ClassVar[PendingColumnReason]
-    PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED: _ClassVar[PendingColumnReason]
+    JOB_MAPPING_CHANGE_KIND_UNSPECIFIED: _ClassVar[JobMappingChangeKind]
+    JOB_MAPPING_CHANGE_KIND_ADDED: _ClassVar[JobMappingChangeKind]
+    JOB_MAPPING_CHANGE_KIND_REMOVED: _ClassVar[JobMappingChangeKind]
+    JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED: _ClassVar[JobMappingChangeKind]
 JOB_ENGINE_UNSPECIFIED: JobEngine
 JOB_ENGINE_ATHANOR: JobEngine
 JOB_ENGINE_BENTHOS: JobEngine
@@ -107,9 +108,10 @@ LOG_LEVEL_DEBUG: LogLevel
 LOG_LEVEL_INFO: LogLevel
 LOG_LEVEL_WARN: LogLevel
 LOG_LEVEL_ERROR: LogLevel
-PENDING_COLUMN_REASON_UNSPECIFIED: PendingColumnReason
-PENDING_COLUMN_REASON_NEVER_REVIEWED: PendingColumnReason
-PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED: PendingColumnReason
+JOB_MAPPING_CHANGE_KIND_UNSPECIFIED: JobMappingChangeKind
+JOB_MAPPING_CHANGE_KIND_ADDED: JobMappingChangeKind
+JOB_MAPPING_CHANGE_KIND_REMOVED: JobMappingChangeKind
+JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED: JobMappingChangeKind
 
 class GetJobsRequest(_message.Message):
     __slots__ = ("account_id",)
@@ -264,7 +266,7 @@ class DynamoDBSourceTableOption(_message.Message):
 class PostgresSourceConnectionOptions(_message.Message):
     __slots__ = ("schemas", "connection_id", "subset_by_foreign_key_constraints", "new_column_addition_strategy", "column_removal_strategy")
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough", "passthrough_pending_review")
+        __slots__ = ("halt_job", "auto_map", "passthrough", "anonymize_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -274,18 +276,18 @@ class PostgresSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class PassthroughPendingReview(_message.Message):
+        class AnonymizePendingReview(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
+        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        passthrough_pending_review: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
-        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
+        anonymize_pending_review: PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
+        def __init__(self, halt_job: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
     class ColumnRemovalStrategy(_message.Message):
         __slots__ = ("halt_job", "continue_job")
         class HaltJob(_message.Message):
@@ -343,7 +345,7 @@ class MysqlSourceConnectionOptions(_message.Message):
         continue_job: MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MysqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "auto_map", "passthrough", "passthrough_pending_review")
+        __slots__ = ("halt_job", "auto_map", "passthrough", "anonymize_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
@@ -353,18 +355,18 @@ class MysqlSourceConnectionOptions(_message.Message):
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class PassthroughPendingReview(_message.Message):
+        class AnonymizePendingReview(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         AUTO_MAP_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
+        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         auto_map: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
         passthrough: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        passthrough_pending_review: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
-        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
+        anonymize_pending_review: MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
+        def __init__(self, halt_job: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., auto_map: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap, _Mapping]] = ..., passthrough: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
@@ -409,23 +411,23 @@ class MssqlSourceConnectionOptions(_message.Message):
         continue_job: MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob
         def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.HaltJob, _Mapping]] = ..., continue_job: _Optional[_Union[MssqlSourceConnectionOptions.ColumnRemovalStrategy.ContinueJob, _Mapping]] = ...) -> None: ...
     class NewColumnAdditionStrategy(_message.Message):
-        __slots__ = ("halt_job", "passthrough", "passthrough_pending_review")
+        __slots__ = ("halt_job", "passthrough", "anonymize_pending_review")
         class HaltJob(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         class Passthrough(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
-        class PassthroughPendingReview(_message.Message):
+        class AnonymizePendingReview(_message.Message):
             __slots__ = ()
             def __init__(self) -> None: ...
         HALT_JOB_FIELD_NUMBER: _ClassVar[int]
         PASSTHROUGH_FIELD_NUMBER: _ClassVar[int]
-        PASSTHROUGH_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
+        ANONYMIZE_PENDING_REVIEW_FIELD_NUMBER: _ClassVar[int]
         halt_job: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob
         passthrough: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough
-        passthrough_pending_review: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview
-        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., passthrough_pending_review: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview, _Mapping]] = ...) -> None: ...
+        anonymize_pending_review: MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview
+        def __init__(self, halt_job: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob, _Mapping]] = ..., passthrough: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.Passthrough, _Mapping]] = ..., anonymize_pending_review: _Optional[_Union[MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview, _Mapping]] = ...) -> None: ...
     SCHEMAS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     SUBSET_BY_FOREIGN_KEY_CONSTRAINTS_FIELD_NUMBER: _ClassVar[int]
@@ -1330,208 +1332,18 @@ class SetJobSyncOptionsResponse(_message.Message):
     def __init__(self, job: _Optional[_Union[Job, _Mapping]] = ...) -> None: ...
 
 class ValidateJobMappingsRequest(_message.Message):
-    __slots__ = ("account_id", "mappings", "connection_id", "virtual_foreign_keys", "job_source", "job_id")
+    __slots__ = ("account_id", "mappings", "connection_id", "virtual_foreign_keys", "job_source")
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     MAPPINGS_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
     VIRTUAL_FOREIGN_KEYS_FIELD_NUMBER: _ClassVar[int]
     JOB_SOURCE_FIELD_NUMBER: _ClassVar[int]
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
     account_id: str
     mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
     connection_id: str
     virtual_foreign_keys: _containers.RepeatedCompositeFieldContainer[VirtualForeignConstraint]
     job_source: JobSource
-    job_id: str
-    def __init__(self, account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., connection_id: _Optional[str] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_source: _Optional[_Union[JobSource, _Mapping]] = ..., job_id: _Optional[str] = ...) -> None: ...
-
-class ColumnReview(_message.Message):
-    __slots__ = ("table_schema", "table_name", "column_name", "reviewed_data_type", "reviewed_pii_category", "note", "updated_at", "updated_by_user_id")
-    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
-    REVIEWED_DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
-    REVIEWED_PII_CATEGORY_FIELD_NUMBER: _ClassVar[int]
-    NOTE_FIELD_NUMBER: _ClassVar[int]
-    UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
-    UPDATED_BY_USER_ID_FIELD_NUMBER: _ClassVar[int]
-    table_schema: str
-    table_name: str
-    column_name: str
-    reviewed_data_type: str
-    reviewed_pii_category: str
-    note: str
-    updated_at: _timestamp_pb2.Timestamp
-    updated_by_user_id: str
-    def __init__(self, table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., reviewed_data_type: _Optional[str] = ..., reviewed_pii_category: _Optional[str] = ..., note: _Optional[str] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_by_user_id: _Optional[str] = ...) -> None: ...
-
-class GetColumnReviewsRequest(_message.Message):
-    __slots__ = ("job_id", "account_id")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ...) -> None: ...
-
-class GetColumnReviewsResponse(_message.Message):
-    __slots__ = ("reviews",)
-    REVIEWS_FIELD_NUMBER: _ClassVar[int]
-    reviews: _containers.RepeatedCompositeFieldContainer[ColumnReview]
-    def __init__(self, reviews: _Optional[_Iterable[_Union[ColumnReview, _Mapping]]] = ...) -> None: ...
-
-class SetColumnReviewRequest(_message.Message):
-    __slots__ = ("job_id", "account_id", "table_schema", "table_name", "column_name", "note")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
-    NOTE_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    table_schema: str
-    table_name: str
-    column_name: str
-    note: str
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., note: _Optional[str] = ...) -> None: ...
-
-class SetColumnReviewResponse(_message.Message):
-    __slots__ = ("review",)
-    REVIEW_FIELD_NUMBER: _ClassVar[int]
-    review: ColumnReview
-    def __init__(self, review: _Optional[_Union[ColumnReview, _Mapping]] = ...) -> None: ...
-
-class RemoveColumnReviewRequest(_message.Message):
-    __slots__ = ("job_id", "account_id", "table_schema", "table_name", "column_name")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    table_schema: str
-    table_name: str
-    column_name: str
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ...) -> None: ...
-
-class RemoveColumnReviewResponse(_message.Message):
-    __slots__ = ("removed",)
-    REMOVED_FIELD_NUMBER: _ClassVar[int]
-    removed: bool
-    def __init__(self, removed: _Optional[bool] = ...) -> None: ...
-
-class UnmappedPassthrough(_message.Message):
-    __slots__ = ("table_schema", "table_name", "column_name", "data_type")
-    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
-    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
-    table_schema: str
-    table_name: str
-    column_name: str
-    data_type: str
-    def __init__(self, table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., data_type: _Optional[str] = ...) -> None: ...
-
-class SetJobUnmappedPassthroughsRequest(_message.Message):
-    __slots__ = ("job_id", "account_id", "job_run_id", "columns")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
-    COLUMNS_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    job_run_id: str
-    columns: _containers.RepeatedCompositeFieldContainer[UnmappedPassthrough]
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., columns: _Optional[_Iterable[_Union[UnmappedPassthrough, _Mapping]]] = ...) -> None: ...
-
-class SetJobUnmappedPassthroughsResponse(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
-
-class JobColumn(_message.Message):
-    __slots__ = ("schema", "table", "column")
-    SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_FIELD_NUMBER: _ClassVar[int]
-    schema: str
-    table: str
-    column: str
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ...) -> None: ...
-
-class ReconcileJobMappingsRequest(_message.Message):
-    __slots__ = ("job_id", "account_id", "job_run_id", "added", "removed")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
-    ADDED_FIELD_NUMBER: _ClassVar[int]
-    REMOVED_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    job_run_id: str
-    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
-    removed: _containers.RepeatedCompositeFieldContainer[JobColumn]
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobColumn, _Mapping]]] = ...) -> None: ...
-
-class ReconcileJobMappingsResponse(_message.Message):
-    __slots__ = ("added", "removed")
-    ADDED_FIELD_NUMBER: _ClassVar[int]
-    REMOVED_FIELD_NUMBER: _ClassVar[int]
-    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
-    removed: _containers.RepeatedCompositeFieldContainer[JobMapping]
-    def __init__(self, added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
-
-class PendingColumnReview(_message.Message):
-    __slots__ = ("job_id", "table_schema", "table_name", "column_name", "data_type", "pii_category", "suggested_transformer_source", "reason", "first_seen_at")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
-    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
-    PII_CATEGORY_FIELD_NUMBER: _ClassVar[int]
-    SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
-    REASON_FIELD_NUMBER: _ClassVar[int]
-    FIRST_SEEN_AT_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    table_schema: str
-    table_name: str
-    column_name: str
-    data_type: str
-    pii_category: str
-    suggested_transformer_source: _transformer_pb2.TransformerSource
-    reason: PendingColumnReason
-    first_seen_at: _timestamp_pb2.Timestamp
-    def __init__(self, job_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., data_type: _Optional[str] = ..., pii_category: _Optional[str] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., reason: _Optional[_Union[PendingColumnReason, str]] = ..., first_seen_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
-
-class GetPendingColumnReviewsRequest(_message.Message):
-    __slots__ = ("account_id", "job_id")
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    account_id: str
-    job_id: str
-    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
-
-class GetPendingColumnReviewsResponse(_message.Message):
-    __slots__ = ("columns",)
-    COLUMNS_FIELD_NUMBER: _ClassVar[int]
-    columns: _containers.RepeatedCompositeFieldContainer[PendingColumnReview]
-    def __init__(self, columns: _Optional[_Iterable[_Union[PendingColumnReview, _Mapping]]] = ...) -> None: ...
-
-class MapUnmappedColumnsRequest(_message.Message):
-    __slots__ = ("job_id", "account_id", "mappings")
-    JOB_ID_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
-    MAPPINGS_FIELD_NUMBER: _ClassVar[int]
-    job_id: str
-    account_id: str
-    mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
-    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
-
-class MapUnmappedColumnsResponse(_message.Message):
-    __slots__ = ("added",)
-    ADDED_FIELD_NUMBER: _ClassVar[int]
-    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
-    def __init__(self, added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
+    def __init__(self, account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., connection_id: _Optional[str] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_source: _Optional[_Union[JobSource, _Mapping]] = ...) -> None: ...
 
 class ColumnError(_message.Message):
     __slots__ = ("schema", "table", "column", "error_reports")
@@ -1585,15 +1397,9 @@ class ColumnWarning(_message.Message):
         COLUMN_WARNING_CODE_UNSPECIFIED: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: _ClassVar[ColumnWarning.ColumnWarningCode]
         COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: _ClassVar[ColumnWarning.ColumnWarningCode]
-        COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: _ClassVar[ColumnWarning.ColumnWarningCode]
-        COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: _ClassVar[ColumnWarning.ColumnWarningCode]
-        COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED: _ClassVar[ColumnWarning.ColumnWarningCode]
     COLUMN_WARNING_CODE_UNSPECIFIED: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE: ColumnWarning.ColumnWarningCode
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING: ColumnWarning.ColumnWarningCode
-    COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW: ColumnWarning.ColumnWarningCode
-    COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH: ColumnWarning.ColumnWarningCode
-    COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED: ColumnWarning.ColumnWarningCode
     class ColumnWarningReport(_message.Message):
         __slots__ = ("code", "message")
         CODE_FIELD_NUMBER: _ClassVar[int]
@@ -2009,3 +1815,103 @@ class PiiDetectionReport(_message.Message):
     TABLES_FIELD_NUMBER: _ClassVar[int]
     tables: _containers.RepeatedCompositeFieldContainer[PiiDetectionReport.TableReport]
     def __init__(self, tables: _Optional[_Iterable[_Union[PiiDetectionReport.TableReport, _Mapping]]] = ...) -> None: ...
+
+class JobColumn(_message.Message):
+    __slots__ = ("schema", "table", "column")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    column: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ...) -> None: ...
+
+class JobSourceColumn(_message.Message):
+    __slots__ = ("column", "data_type")
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    column: JobColumn
+    data_type: str
+    def __init__(self, column: _Optional[_Union[JobColumn, _Mapping]] = ..., data_type: _Optional[str] = ...) -> None: ...
+
+class ReconcileJobMappingsRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "job_run_id", "added", "removed", "columns", "record_changes")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    ADDED_FIELD_NUMBER: _ClassVar[int]
+    REMOVED_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    RECORD_CHANGES_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    job_run_id: str
+    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    removed: _containers.RepeatedCompositeFieldContainer[JobColumn]
+    columns: _containers.RepeatedCompositeFieldContainer[JobSourceColumn]
+    record_changes: bool
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobColumn, _Mapping]]] = ..., columns: _Optional[_Iterable[_Union[JobSourceColumn, _Mapping]]] = ..., record_changes: _Optional[bool] = ...) -> None: ...
+
+class ReconcileJobMappingsResponse(_message.Message):
+    __slots__ = ("added", "removed")
+    ADDED_FIELD_NUMBER: _ClassVar[int]
+    REMOVED_FIELD_NUMBER: _ClassVar[int]
+    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    removed: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    def __init__(self, added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
+
+class JobMappingChange(_message.Message):
+    __slots__ = ("id", "job_id", "job_run_id", "created_at", "column", "kind", "transformer", "data_type", "previous_data_type", "pii_category")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    CREATED_AT_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    TRANSFORMER_FIELD_NUMBER: _ClassVar[int]
+    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    PREVIOUS_DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    PII_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    id: str
+    job_id: str
+    job_run_id: str
+    created_at: _timestamp_pb2.Timestamp
+    column: JobColumn
+    kind: JobMappingChangeKind
+    transformer: JobMappingTransformer
+    data_type: str
+    previous_data_type: str
+    pii_category: str
+    def __init__(self, id: _Optional[str] = ..., job_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., column: _Optional[_Union[JobColumn, _Mapping]] = ..., kind: _Optional[_Union[JobMappingChangeKind, str]] = ..., transformer: _Optional[_Union[JobMappingTransformer, _Mapping]] = ..., data_type: _Optional[str] = ..., previous_data_type: _Optional[str] = ..., pii_category: _Optional[str] = ...) -> None: ...
+
+class GetPendingMappingChangesRequest(_message.Message):
+    __slots__ = ("account_id", "job_id")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    job_id: str
+    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
+
+class GetPendingMappingChangesResponse(_message.Message):
+    __slots__ = ("changes",)
+    CHANGES_FIELD_NUMBER: _ClassVar[int]
+    changes: _containers.RepeatedCompositeFieldContainer[JobMappingChange]
+    def __init__(self, changes: _Optional[_Iterable[_Union[JobMappingChange, _Mapping]]] = ...) -> None: ...
+
+class ReviewMappingChangesRequest(_message.Message):
+    __slots__ = ("account_id", "job_id", "change_ids", "note")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    CHANGE_IDS_FIELD_NUMBER: _ClassVar[int]
+    NOTE_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    job_id: str
+    change_ids: _containers.RepeatedScalarFieldContainer[str]
+    note: str
+    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ..., change_ids: _Optional[_Iterable[str]] = ..., note: _Optional[str] = ...) -> None: ...
+
+class ReviewMappingChangesResponse(_message.Message):
+    __slots__ = ("change_ids",)
+    CHANGE_IDS_FIELD_NUMBER: _ClassVar[int]
+    change_ids: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, change_ids: _Optional[_Iterable[str]] = ...) -> None: ...

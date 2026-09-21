@@ -96,11 +96,98 @@ func Test_reconcileMappings(t *testing.T) {
 		require.Equal(t, columnsOf(first.mappings), columnsOf(second.mappings))
 	})
 
+	t.Run("a column removed and mapped again in the same call stays removed", func(t *testing.T) {
+		result, err := reconcileMappings(
+			storedMappings(t, passthroughMapping("users", "commentaire")),
+			[]*mgmtv1alpha1.JobMapping{passthroughMapping("users", "commentaire")},
+			[]*mgmtv1alpha1.JobColumn{{Schema: "public", Table: "users", Column: "commentaire"}},
+		)
+		require.NoError(t, err)
+		require.Empty(t, result.mappings)
+		require.Empty(t, result.added)
+	})
+
 	t.Run("an added mapping without a transformer is refused", func(t *testing.T) {
 		_, err := reconcileMappings(nil,
 			[]*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "users", Column: "telephone"}},
 			nil,
 		)
 		require.Error(t, err)
+	})
+}
+
+func sourceColumn(table, column, dataType string) *mgmtv1alpha1.JobSourceColumn {
+	return &mgmtv1alpha1.JobSourceColumn{
+		Column:   &mgmtv1alpha1.JobColumn{Schema: "public", Table: table, Column: column},
+		DataType: dataType,
+	}
+}
+
+func Test_journalEntries(t *testing.T) {
+	t.Run("records what was added, removed, and what changed type", func(t *testing.T) {
+		result, err := reconcileMappings(
+			storedMappings(t,
+				passthroughMapping("users", "id"),
+				emailMapping("users", "email"),
+				passthroughMapping("users", "commentaire"),
+			),
+			[]*mgmtv1alpha1.JobMapping{emailMapping("users", "courriel")},
+			[]*mgmtv1alpha1.JobColumn{{Schema: "public", Table: "users", Column: "commentaire"}},
+		)
+		require.NoError(t, err)
+
+		previous := map[columnRef]string{
+			{"public", "users", "id"}:          "integer",
+			{"public", "users", "email"}:       "text",
+			{"public", "users", "commentaire"}: "text",
+		}
+		entries, err := journalEntries(result, previous, []*mgmtv1alpha1.JobSourceColumn{
+			sourceColumn("users", "id", "integer"),
+			sourceColumn("users", "email", "character varying(255)"),
+			sourceColumn("users", "courriel", "text"),
+		})
+		require.NoError(t, err)
+
+		byColumn := map[string]journalEntry{}
+		for _, e := range entries {
+			byColumn[e.column.column] = e
+		}
+		require.Len(t, entries, 3)
+
+		require.Equal(t, changeAdded, byColumn["courriel"].kind)
+		require.Equal(t, "text", byColumn["courriel"].dataType)
+		require.Equal(t, "email", byColumn["courriel"].piiCategory)
+		require.NotNil(t, byColumn["courriel"].transformer)
+
+		require.Equal(t, changeRemoved, byColumn["commentaire"].kind)
+		require.Equal(t, "text", byColumn["commentaire"].dataType, "the type it had, the source no longer has it")
+
+		require.Equal(t, changeTypeChanged, byColumn["email"].kind)
+		require.Equal(t, "text", byColumn["email"].previousDataType)
+		require.Equal(t, "character varying(255)", byColumn["email"].dataType)
+	})
+
+	t.Run("a first run has nothing to compare types with", func(t *testing.T) {
+		result, err := reconcileMappings(storedMappings(t, emailMapping("users", "email")), nil, nil)
+		require.NoError(t, err)
+		entries, err := journalEntries(result, map[columnRef]string{}, []*mgmtv1alpha1.JobSourceColumn{
+			sourceColumn("users", "email", "text"),
+		})
+		require.NoError(t, err)
+		require.Empty(t, entries)
+	})
+
+	t.Run("a column mapped by hand in the meantime is not the run's change", func(t *testing.T) {
+		result, err := reconcileMappings(
+			storedMappings(t, emailMapping("users", "courriel")),
+			[]*mgmtv1alpha1.JobMapping{passthroughMapping("users", "courriel")},
+			nil,
+		)
+		require.NoError(t, err)
+		entries, err := journalEntries(result, map[columnRef]string{}, []*mgmtv1alpha1.JobSourceColumn{
+			sourceColumn("users", "courriel", "text"),
+		})
+		require.NoError(t, err)
+		require.Empty(t, entries)
 	})
 }

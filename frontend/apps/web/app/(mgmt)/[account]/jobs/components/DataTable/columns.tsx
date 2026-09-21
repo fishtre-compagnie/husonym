@@ -37,8 +37,8 @@ interface JobColumn {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   status: JobStatus;
-  // Columns the last run copied untransformed that nobody has settled, and how many of them read
-  // as personal data.
+  // Changes the runs made to the job's mappings that nobody has reviewed, and how many of them
+  // left a column that reads as personal data in clear.
   pendingReviews: number;
   pendingPersonal: number;
 }
@@ -130,7 +130,7 @@ export function getColumns(
           <NextLink href={`/${accountName}/jobs/${row.getValue('id')}/review`}>
             <Badge variant={personal > 0 ? 'destructive' : 'outline'}>
               {count}
-              {personal > 0 ? ` · ${personal} personal` : ''}
+              {personal > 0 ? ` · ${personal} personal in clear` : ''}
             </Badge>
           </NextLink>
         );

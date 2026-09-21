@@ -170,13 +170,12 @@ message PostgresSourceConnectionOptions {
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
-      // pass the new column through as is, and record it as awaiting review.
-      // The data path is the one of `passthrough`: the column is copied instead of stopping
-      // the run — the destination gains it through schema reconciliation when Husonym
-      // initializes its schema — and it counts as undecided until someone maps it or
-      // acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-      // the anonymization of the job.
-      PassthroughPendingReview passthrough_pending_review = 4;
+      // anonymize the new column with the transformer the PII detection suggests, in the config
+      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
+      // column carries a primary key, a foreign key or a unique constraint a transformer could
+      // break. The run writes the mapping to the job and records the change for review, as it
+      // records the removal of a column and the change of a column's type.
+      AnonymizePendingReview anonymize_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -184,8 +183,8 @@ message PostgresSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the PassthroughPendingReview strategy
-    message PassthroughPendingReview {}
+    // Configuration for the AnonymizePendingReview strategy
+    message AnonymizePendingReview {}
   }
 
   message ColumnRemovalStrategy {
@@ -259,13 +258,12 @@ message MysqlSourceConnectionOptions {
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
-      // pass the new column through as is, and record it as awaiting review.
-      // The data path is the one of `passthrough`: the column is copied instead of stopping
-      // the run — the destination gains it through schema reconciliation when Husonym
-      // initializes its schema — and it counts as undecided until someone maps it or
-      // acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-      // the anonymization of the job.
-      PassthroughPendingReview passthrough_pending_review = 4;
+      // anonymize the new column with the transformer the PII detection suggests, in the config
+      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
+      // column carries a primary key, a foreign key or a unique constraint a transformer could
+      // break. The run writes the mapping to the job and records the change for review, as it
+      // records the removal of a column and the change of a column's type.
+      AnonymizePendingReview anonymize_pending_review = 4;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
@@ -273,8 +271,8 @@ message MysqlSourceConnectionOptions {
     message AutoMap {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the PassthroughPendingReview strategy
-    message PassthroughPendingReview {}
+    // Configuration for the AnonymizePendingReview strategy
+    message AnonymizePendingReview {}
   }
 }
 
@@ -327,20 +325,19 @@ message MssqlSourceConnectionOptions {
       HaltJob halt_job = 1;
       // pass the new column through as is.
       Passthrough passthrough = 2;
-      // pass the new column through as is, and record it as awaiting review.
-      // The data path is the one of `passthrough`: the column is copied instead of stopping
-      // the run — the destination gains it through schema reconciliation when Husonym
-      // initializes its schema — and it counts as undecided until someone maps it or
-      // acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-      // the anonymization of the job.
-      PassthroughPendingReview passthrough_pending_review = 3;
+      // anonymize the new column with the transformer the PII detection suggests, in the config
+      // it starts with in the catalogue; pass it through when there is no suggestion, or when the
+      // column carries a primary key, a foreign key or a unique constraint a transformer could
+      // break. The run writes the mapping to the job and records the change for review, as it
+      // records the removal of a column and the change of a column's type.
+      AnonymizePendingReview anonymize_pending_review = 3;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
-    // Configuration for the PassthroughPendingReview strategy
-    message PassthroughPendingReview {}
+    // Configuration for the AnonymizePendingReview strategy
+    message AnonymizePendingReview {}
   }
 }
 
@@ -1287,201 +1284,6 @@ message ValidateJobMappingsRequest {
   repeated VirtualForeignConstraint virtual_foreign_keys = 4;
   // The source options of the job
   optional JobSource job_source = 5;
-  // The job being validated, when it exists. Absent while a job is still being created, which
-  // is why it is optional. With it, the columns whose passthrough has been reviewed and
-  // accepted for this job stop being reported — without it they all are, which is the right
-  // answer for a job that has no accepted decisions yet.
-  optional string job_id = 6;
-}
-
-// A column left out of a job's mappings whose passthrough someone has reviewed and accepted.
-message ColumnReview {
-  // The schema of the table
-  string table_schema = 1;
-  // The table the column belongs to
-  string table_name = 2;
-  // The reviewed column
-  string column_name = 3;
-  // The column's type when it was reviewed. A decision is about a column as it stood, so a
-  // column whose type has moved since is reported again.
-  string reviewed_data_type = 4;
-  // The detected personal-data category when it was reviewed, empty when nothing was detected.
-  // It is compared the same way: a column that has since started to read as personal data was
-  // not the column the reviewer accepted.
-  string reviewed_pii_category = 5;
-  // Why the passthrough is acceptable. This is what an audit asks for.
-  optional string note = 6;
-  // When the decision was last made
-  google.protobuf.Timestamp updated_at = 7;
-  // Who last made it
-  string updated_by_user_id = 8;
-}
-
-message GetColumnReviewsRequest {
-  // The job whose decisions are returned
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-}
-
-message GetColumnReviewsResponse {
-  repeated ColumnReview reviews = 1;
-}
-
-message SetColumnReviewRequest {
-  // The job the decision is made for
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-  // The schema of the table
-  string table_schema = 3 [(buf.validate.field).string.min_len = 1];
-  // The table the column belongs to
-  string table_name = 4 [(buf.validate.field).string.min_len = 1];
-  // The column whose passthrough is accepted
-  string column_name = 5 [(buf.validate.field).string.min_len = 1];
-  // Why it is acceptable
-  optional string note = 6;
-}
-
-message SetColumnReviewResponse {
-  // The stored decision, carrying the column as the server saw it at that moment.
-  ColumnReview review = 1;
-}
-
-message RemoveColumnReviewRequest {
-  // The job the decision was made for
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-  // The schema of the table
-  string table_schema = 3 [(buf.validate.field).string.min_len = 1];
-  // The table the column belongs to
-  string table_name = 4 [(buf.validate.field).string.min_len = 1];
-  // The column whose decision is withdrawn
-  string column_name = 5 [(buf.validate.field).string.min_len = 1];
-}
-
-message RemoveColumnReviewResponse {
-  // False when there was no such decision to withdraw.
-  bool removed = 1;
-}
-
-// A column a run copied untransformed because the job does not map it.
-message UnmappedPassthrough {
-  // The schema of the table
-  string table_schema = 1;
-  // The table the column belongs to
-  string table_name = 2;
-  // The column copied as is
-  string column_name = 3;
-  // The column's type as the run saw it
-  string data_type = 4;
-}
-
-message SetJobUnmappedPassthroughsRequest {
-  // The job whose run copied the columns
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-  // The run that saw them. The job's set is replaced: a column this run did not copy — because it
-  // has been mapped since — leaves the list.
-  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
-  // Every column the run copied untransformed for want of a mapping. Empty clears the job's list.
-  repeated UnmappedPassthrough columns = 4;
-}
-
-message SetJobUnmappedPassthroughsResponse {}
-
-// A column of a job's source, named without its mapping.
-message JobColumn {
-  // The database schema
-  string schema = 1 [(buf.validate.field).string.min_len = 1];
-  // The table
-  string table = 2 [(buf.validate.field).string.min_len = 1];
-  // The column
-  string column = 3 [(buf.validate.field).string.min_len = 1];
-}
-
-message ReconcileJobMappingsRequest {
-  // The job the run belongs to
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-  // The run that read the source
-  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
-  // A mapping for each column the source has and the job did not map, as the job's strategy for
-  // new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
-  // somebody decided in the meantime.
-  repeated JobMapping added = 4;
-  // The columns the source no longer has. Their mapping is removed from the job.
-  repeated JobColumn removed = 5;
-}
-
-message ReconcileJobMappingsResponse {
-  // The mappings the call added, those already mapped left out
-  repeated JobMapping added = 1;
-  // The mappings the call removed, with the transformer they had
-  repeated JobMapping removed = 2;
-}
-
-// Why a column is waiting for somebody.
-enum PendingColumnReason {
-  PENDING_COLUMN_REASON_UNSPECIFIED = 0;
-  // Nobody has decided anything about it yet.
-  PENDING_COLUMN_REASON_NEVER_REVIEWED = 1;
-  // Its passthrough was accepted, but the column has changed since, so the acceptance no longer
-  // covers it. It asks for a confirmation, not a first look.
-  PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED = 2;
-}
-
-// A column the last run copied untransformed and that nobody has settled.
-message PendingColumnReview {
-  // The job that copies it
-  string job_id = 1;
-  // The schema of the table
-  string table_schema = 2;
-  // The table the column belongs to
-  string table_name = 3;
-  // The column
-  string column_name = 4;
-  // Its type as the last run saw it
-  string data_type = 5;
-  // The personal-data category its name and type read as. Empty when nothing was recognised —
-  // which says the detector saw nothing, not that the column holds nothing.
-  string pii_category = 6;
-  // The transformer suggested for it, when it reads as personal data. It is what the review
-  // offers first: anonymizing should be easier than accepting.
-  TransformerSource suggested_transformer_source = 7;
-  // Why it is waiting
-  PendingColumnReason reason = 8;
-  // When a run first copied it untransformed
-  google.protobuf.Timestamp first_seen_at = 9;
-}
-
-message GetPendingColumnReviewsRequest {
-  // The unique identifier of the account
-  string account_id = 1 [(buf.validate.field).string.uuid = true];
-  // One job, for its review tab. Absent returns every job of the account, for the bell.
-  optional string job_id = 2;
-}
-
-message GetPendingColumnReviewsResponse {
-  repeated PendingColumnReview columns = 1;
-}
-
-message MapUnmappedColumnsRequest {
-  // The job to add the mappings to
-  string job_id = 1 [(buf.validate.field).string.uuid = true];
-  // The unique identifier of the account
-  string account_id = 2 [(buf.validate.field).string.uuid = true];
-  // The columns to map, each with the transformer that anonymizes it.
-  repeated JobMapping mappings = 3 [(buf.validate.field).repeated.min_items = 1];
-}
-
-message MapUnmappedColumnsResponse {
-  // The mappings actually added. A column somebody mapped in the meantime is left as they set
-  // it and does not appear here: this call adds, it never overwrites a choice.
-  repeated JobMapping added = 1;
 }
 
 message ColumnError {
@@ -1554,19 +1356,6 @@ message ColumnWarning {
     COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE = 1;
     // Column not found in job mapping
     COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING = 2;
-    // Column is not in the job mapping and the job passes it through while it awaits a
-    // decision (new_column_addition_strategy = passthrough_pending_review). The run copies
-    // it as is; this warning is what keeps it from being forgotten.
-    COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW = 3;
-    // Same as above, and the column name and type look like personal data. The run still
-    // copies it as is — the strategy exists so that a new column never stops a run — so this
-    // is the one to act on first: it names data leaving the source untransformed.
-    COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH = 4;
-    // The passthrough of this column was reviewed and accepted, but the column has changed
-    // since: its type or its detected category is no longer the one that was accepted. The
-    // decision does not carry over to a column that is not the one it was made about, so it
-    // is reported again — to be confirmed or withdrawn, not to be redone from nothing.
-    COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED = 5;
   }
 
   // Column warning report
@@ -1984,6 +1773,116 @@ message PiiDetectionReport {
 }
 
 // Service that handles jobs, runs, and hooks
+// A column of a job's source, named without its mapping.
+message JobColumn {
+  // The database schema
+  string schema = 1 [(buf.validate.field).string.min_len = 1];
+  // The table
+  string table = 2 [(buf.validate.field).string.min_len = 1];
+  // The column
+  string column = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// A column of a job's source with its type, as a run read it.
+message JobSourceColumn {
+  // The column
+  JobColumn column = 1 [(buf.validate.field).required = true];
+  // The column's type as the source reports it
+  string data_type = 2;
+}
+
+message ReconcileJobMappingsRequest {
+  // The job the run belongs to
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The run that read the source
+  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
+  // A mapping for each column the source has and the job did not map, as the job's strategy for
+  // new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
+  // somebody decided in the meantime.
+  repeated JobMapping added = 4;
+  // The columns the source no longer has. Their mapping is removed from the job.
+  repeated JobColumn removed = 5;
+  // Every column of the tables the job syncs, with its type: what lets the next run tell that a
+  // column changed type.
+  repeated JobSourceColumn columns = 6;
+  // Whether the job's strategy asks for the changes to be reviewed (anonymize_pending_review):
+  // they are then recorded, each with what the run chose.
+  bool record_changes = 7;
+}
+
+message ReconcileJobMappingsResponse {
+  // The mappings the call added, those already mapped left out
+  repeated JobMapping added = 1;
+  // The mappings the call removed, with the transformer they had
+  repeated JobMapping removed = 2;
+}
+
+// What a run changed in a job's mappings.
+enum JobMappingChangeKind {
+  JOB_MAPPING_CHANGE_KIND_UNSPECIFIED = 0;
+  // The source gained the column, and the run mapped it.
+  JOB_MAPPING_CHANGE_KIND_ADDED = 1;
+  // The source lost the column, and the run removed its mapping.
+  JOB_MAPPING_CHANGE_KIND_REMOVED = 2;
+  // The column's type is not the one the previous run saw.
+  JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED = 3;
+}
+
+// A change a run made to a job's mappings, waiting for somebody to review it.
+message JobMappingChange {
+  // The change
+  string id = 1;
+  // The job
+  string job_id = 2;
+  // The run that made it
+  string job_run_id = 3;
+  // When
+  google.protobuf.Timestamp created_at = 4;
+  // The column
+  JobColumn column = 5;
+  // What happened to it
+  JobMappingChangeKind kind = 6;
+  // The transformer the run chose (added), or the one the removed mapping had (removed). For a
+  // type change, the one the column is mapped with now.
+  JobMappingTransformer transformer = 7;
+  // The column's type as the run saw it
+  string data_type = 8;
+  // The type the previous run saw (type changed)
+  string previous_data_type = 9;
+  // What the column looks like to the PII detection, by name and type ("" when nothing)
+  string pii_category = 10;
+}
+
+message GetPendingMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // Only this job's changes. Every job of the account the caller can see when absent.
+  optional string job_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message GetPendingMappingChangesResponse {
+  // Oldest first
+  repeated JobMappingChange changes = 1;
+}
+
+message ReviewMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The job the changes belong to
+  string job_id = 2 [(buf.validate.field).string.uuid = true];
+  // The changes reviewed. Those of another job, or already reviewed, are left alone.
+  repeated string change_ids = 3 [(buf.validate.field).repeated.min_items = 1];
+  // Why they are fine, kept with them
+  optional string note = 4;
+}
+
+message ReviewMappingChangesResponse {
+  // The changes the call marked reviewed
+  repeated string change_ids = 1;
+}
+
 service JobService {
   // Returns a list of jobs by either account or job
   rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {
@@ -2063,29 +1962,17 @@ service JobService {
   rpc SetJobSyncOptions(SetJobSyncOptionsRequest) returns (SetJobSyncOptionsResponse) {}
   // Validates that the jobmapping configured can run with table constraints
   rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {}
-  // Returns the columns whose passthrough has been reviewed and accepted for this job.
-  rpc GetColumnReviews(GetColumnReviewsRequest) returns (GetColumnReviewsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  // Accepts the passthrough of one unmapped column, so it stops being reported. The server
-  // records the column as the job's last run copied it — refusing a column no run has reported —
-  // and reports it again if it moves.
-  rpc SetColumnReview(SetColumnReviewRequest) returns (SetColumnReviewResponse) {}
-  // Withdraws that acceptance, putting the column back in the list.
-  rpc RemoveColumnReview(RemoveColumnReviewRequest) returns (RemoveColumnReviewResponse) {}
-  // Records the columns a run copied untransformed for want of a mapping. Called by the worker.
-  rpc SetJobUnmappedPassthroughs(SetJobUnmappedPassthroughsRequest) returns (SetJobUnmappedPassthroughsResponse) {}
   // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
   // as the job's strategy chose, and removes those that disappeared. Called by the worker.
   rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {}
-  // Returns what is waiting for a decision: the columns the last runs copied untransformed, less
-  // those whose passthrough has been accepted and still holds. For one job, or for the account.
-  rpc GetPendingColumnReviews(GetPendingColumnReviewsRequest) returns (GetPendingColumnReviewsResponse) {
+  // Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+  // nobody has reviewed yet. An added column whose mapping has been changed since counts as
+  // reviewed: somebody decided.
+  rpc GetPendingMappingChanges(GetPendingMappingChangesRequest) returns (GetPendingMappingChangesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
-  // only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
-  rpc MapUnmappedColumns(MapUnmappedColumnsRequest) returns (MapUnmappedColumnsResponse) {}
+  // Marks changes reviewed, with an optional note.
+  rpc ReviewMappingChanges(ReviewMappingChangesRequest) returns (ReviewMappingChangesResponse) {}
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 

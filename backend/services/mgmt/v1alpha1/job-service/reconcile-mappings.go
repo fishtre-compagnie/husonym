@@ -12,6 +12,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ReconcileJobMappings brings a job's mappings in step with the source a run read.
@@ -68,13 +70,50 @@ func (s *Service) ReconcileJobMappings(
 		if err != nil {
 			return err
 		}
-		if len(result.added) == 0 && len(result.removed) == 0 {
+		if len(result.added) > 0 || len(result.removed) > 0 {
+			if err := s.db.Q.SetJobMappingsFromRun(ctx, dbtx, db_queries.SetJobMappingsFromRunParams{
+				Mappings: result.mappings,
+				ID:       jobUuid,
+			}); err != nil {
+				return err
+			}
+		}
+
+		previous, err := s.db.Q.GetJobSourceColumns(ctx, dbtx, jobUuid)
+		if err != nil {
+			return err
+		}
+		entries, err := journalEntries(result, previousTypes(previous), req.Msg.GetColumns())
+		if err != nil {
+			return err
+		}
+		// A run that read no columns (a source that is not SQL) leaves the last ones in place.
+		if len(req.Msg.GetColumns()) > 0 {
+			if err := s.replaceJobSourceColumns(ctx, dbtx, jobUuid, req.Msg.GetColumns()); err != nil {
+				return err
+			}
+		}
+		if !req.Msg.GetRecordChanges() {
 			return nil
 		}
-		return s.db.Q.SetJobMappingsFromRun(ctx, dbtx, db_queries.SetJobMappingsFromRunParams{
-			Mappings: result.mappings,
-			ID:       jobUuid,
-		})
+		for _, entry := range entries {
+			if err := s.db.Q.InsertJobMappingChange(ctx, dbtx, db_queries.InsertJobMappingChangeParams{
+				AccountID:        accountUuid,
+				JobID:            jobUuid,
+				JobRunID:         req.Msg.GetJobRunId(),
+				TableSchema:      entry.column.schema,
+				TableName:        entry.column.table,
+				ColumnName:       entry.column.column,
+				Kind:             entry.kind,
+				Transformer:      entry.transformer,
+				DataType:         entry.dataType,
+				PreviousDataType: entry.previousDataType,
+				PiiCategory:      entry.piiCategory,
+			}); err != nil {
+				return fmt.Errorf("unable to record a change of the job's mappings: %w", err)
+			}
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
@@ -83,6 +122,128 @@ func (s *Service) ReconcileJobMappings(
 		Added:   result.added,
 		Removed: result.removed,
 	}), nil
+}
+
+func (s *Service) replaceJobSourceColumns(
+	ctx context.Context,
+	dbtx husonymdb.BaseDBTX,
+	jobUuid pgtype.UUID,
+	columns []*mgmtv1alpha1.JobSourceColumn,
+) error {
+	if err := s.db.Q.DeleteJobSourceColumns(ctx, dbtx, jobUuid); err != nil {
+		return err
+	}
+	params := db_queries.InsertJobSourceColumnsParams{JobId: jobUuid}
+	for _, c := range columns {
+		params.Schemas = append(params.Schemas, c.GetColumn().GetSchema())
+		params.Tables = append(params.Tables, c.GetColumn().GetTable())
+		params.Columns = append(params.Columns, c.GetColumn().GetColumn())
+		params.DataTypes = append(params.DataTypes, c.GetDataType())
+	}
+	return s.db.Q.InsertJobSourceColumns(ctx, dbtx, params)
+}
+
+// columnRef names a column of a job's source.
+type columnRef struct{ schema, table, column string }
+
+func previousTypes(rows []db_queries.HusonymApiJobSourceColumn) map[columnRef]string {
+	out := make(map[columnRef]string, len(rows))
+	for i := range rows {
+		out[columnRef{rows[i].TableSchema, rows[i].TableName, rows[i].ColumnName}] = rows[i].DataType
+	}
+	return out
+}
+
+const (
+	changeAdded       = "added"
+	changeRemoved     = "removed"
+	changeTypeChanged = "type_changed"
+)
+
+// journalEntry is one change a run made to a job's mappings, as the journal records it.
+type journalEntry struct {
+	column           columnRef
+	kind             string
+	transformer      *pg_models.JobMappingTransformerModel
+	dataType         string
+	previousDataType string
+	piiCategory      string
+}
+
+// journalEntries describes what the reconciliation changed: the columns it mapped, the mappings it
+// removed, and the mapped columns whose type is not the one the previous run saw. Only what was
+// actually applied: a column mapped by hand in the meantime is not the run's change.
+func journalEntries(
+	result *reconciledMappings,
+	previous map[columnRef]string,
+	columns []*mgmtv1alpha1.JobSourceColumn,
+) ([]journalEntry, error) {
+	current := make(map[columnRef]string, len(columns))
+	for _, c := range columns {
+		current[columnRef{c.GetColumn().GetSchema(), c.GetColumn().GetTable(), c.GetColumn().GetColumn()}] = c.GetDataType()
+	}
+
+	entries := []journalEntry{}
+	added := map[columnRef]struct{}{}
+	for _, m := range result.added {
+		ref := columnRef{m.GetSchema(), m.GetTable(), m.GetColumn()}
+		added[ref] = struct{}{}
+		entry, err := newJournalEntry(ref, changeAdded, m.GetTransformer(), current[ref], "")
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	for _, m := range result.removed {
+		ref := columnRef{m.GetSchema(), m.GetTable(), m.GetColumn()}
+		entry, err := newJournalEntry(ref, changeRemoved, m.GetTransformer(), previous[ref], "")
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	for _, m := range result.mappings {
+		ref := columnRef{m.Schema, m.Table, m.Column}
+		if _, ok := added[ref]; ok {
+			continue
+		}
+		was, seen := previous[ref]
+		now, read := current[ref]
+		if !seen || !read || was == now {
+			continue
+		}
+		dto, err := m.ToDto()
+		if err != nil {
+			return nil, err
+		}
+		entry, err := newJournalEntry(ref, changeTypeChanged, dto.GetTransformer(), now, was)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
+}
+
+func newJournalEntry(
+	ref columnRef,
+	kind string,
+	transformer *mgmtv1alpha1.JobMappingTransformer,
+	dataType, previousDataType string,
+) (journalEntry, error) {
+	stored := &pg_models.JobMappingTransformerModel{}
+	if err := stored.FromTransformerDto(transformer); err != nil {
+		return journalEntry{}, err
+	}
+	category, _ := job_util.LooksSensitive(ref.column, dataType)
+	return journalEntry{
+		column:           ref,
+		kind:             kind,
+		transformer:      stored,
+		dataType:         dataType,
+		previousDataType: previousDataType,
+		piiCategory:      category,
+	}, nil
 }
 
 type reconciledMappings struct {
@@ -99,17 +260,15 @@ func reconcileMappings(
 	added []*mgmtv1alpha1.JobMapping,
 	removed []*mgmtv1alpha1.JobColumn,
 ) (*reconciledMappings, error) {
-	type key struct{ schema, table, column string }
-
-	gone := make(map[key]struct{}, len(removed))
+	gone := make(map[columnRef]struct{}, len(removed))
 	for _, column := range removed {
-		gone[key{column.GetSchema(), column.GetTable(), column.GetColumn()}] = struct{}{}
+		gone[columnRef{column.GetSchema(), column.GetTable(), column.GetColumn()}] = struct{}{}
 	}
 
 	result := &reconciledMappings{mappings: make([]*pg_models.JobMapping, 0, len(stored)+len(added))}
-	mapped := make(map[key]struct{}, len(stored))
+	mapped := make(map[columnRef]struct{}, len(stored))
 	for _, mapping := range stored {
-		k := key{mapping.Schema, mapping.Table, mapping.Column}
+		k := columnRef{mapping.Schema, mapping.Table, mapping.Column}
 		if _, ok := gone[k]; ok {
 			dto, err := mapping.ToDto()
 			if err != nil {
@@ -129,7 +288,7 @@ func reconcileMappings(
 				"no transformer given for %s.%s.%s", mapping.GetSchema(), mapping.GetTable(), mapping.GetColumn(),
 			))
 		}
-		k := key{mapping.GetSchema(), mapping.GetTable(), mapping.GetColumn()}
+		k := columnRef{mapping.GetSchema(), mapping.GetTable(), mapping.GetColumn()}
 		if _, ok := mapped[k]; ok {
 			continue
 		}

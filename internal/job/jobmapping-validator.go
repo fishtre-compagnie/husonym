@@ -17,8 +17,6 @@ type JobMappingsValidator struct {
 
 	jobSourceOptions *SqlJobSourceOpts
 	jobMappings      map[string]map[string]*mgmtv1alpha1.JobMapping // schema.table -> column -> job mapping
-	// schema.table -> column -> the decision that this column may ship untransformed
-	acceptedPassthroughs map[string]map[string]AcceptedPassthrough
 }
 
 type JobMappingsValidatorResponse struct {
@@ -33,15 +31,6 @@ type Option func(*JobMappingsValidator)
 func WithJobSourceOptions(jobSourceOptions *SqlJobSourceOpts) Option {
 	return func(jmv *JobMappingsValidator) {
 		jmv.jobSourceOptions = jobSourceOptions
-	}
-}
-
-// WithAcceptedPassthroughs hands over the columns whose passthrough somebody has already
-// accepted for this job, keyed schema.table -> column. They stop being reported, which is the
-// only way the list can ever shrink — and a list that never shrinks stops being read.
-func WithAcceptedPassthroughs(accepted map[string]map[string]AcceptedPassthrough) Option {
-	return func(jmv *JobMappingsValidator) {
-		jmv.acceptedPassthroughs = accepted
 	}
 }
 
@@ -217,79 +206,14 @@ func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 					table,
 					col,
 				)
-				switch {
-				// The passthrough is a stopgap, so the warning says what the run will actually
-				// do with the column rather than asking for a mapping that may never come. The
-				// generic message above would read as advice; this one is a statement of fact
-				// about data leaving the source untransformed.
-				// A column the database writes itself is not passed through: the builder hands it
-				// a GenerateDefault and the destination recomputes the value, so none of it
-				// leaves the source. It is simply absent from the mappings, and saying more
-				// would put a column that cannot leak in a list meant for the ones that can.
-				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview &&
-					(colMap[col].GeneratedType != nil || colMap[col].IdentityGeneration != nil):
+				if j.jobSourceOptions != nil && !j.jobSourceOptions.HaltOnNewColumnAddition {
 					j.addColumnWarning(
 						table,
 						col,
 						msg,
 						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
 					)
-				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview:
-					if accepted, ok := j.acceptedPassthroughs[table][col]; ok {
-						if accepted.StillHoldsFor(col, colMap[col].DataType) {
-							continue
-						}
-						// Reported again, under a code of its own: the reviewer is being asked
-						// to confirm or withdraw a decision they already made, not to look at
-						// a column for the first time. Conflating the two would make them
-						// re-read everything they had already settled.
-						j.addColumnWarning(
-							table,
-							col,
-							fmt.Sprintf(
-								"Column has changed since its passthrough was accepted, and is passed through as is: %s.%s",
-								table,
-								col,
-							),
-							mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED,
-						)
-						continue
-					}
-					// A column whose name and type read as personal data gets its own code, so
-					// a reviewer with sixty warnings knows which three to open. The others are
-					// not cleared by the heuristic's silence — they are only less urgent.
-					if category, sensitive := LooksSensitive(col, colMap[col].DataType); sensitive {
-						j.addColumnWarning(
-							table,
-							col,
-							fmt.Sprintf(
-								"Column is not in the job mappings and looks like personal data (%s), yet it is passed through as is: %s.%s",
-								category,
-								table,
-								col,
-							),
-							mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH,
-						)
-						continue
-					}
-					j.addColumnWarning(
-						table,
-						col,
-						fmt.Sprintf(
-							"Column is not in the job mappings and is passed through as is, awaiting a decision: %s.%s",
-							table,
-							col,
-						),
-						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW,
-					)
-				case j.jobSourceOptions != nil && !j.jobSourceOptions.HaltOnNewColumnAddition:
-					j.addColumnWarning(
-						table,
-						col,
-						msg,
-						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
-					)
-				default:
+				} else {
 					j.addColumnError(table, col, msg, mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_NOT_FOUND_IN_MAPPING)
 				}
 			}

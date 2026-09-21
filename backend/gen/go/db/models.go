@@ -83,21 +83,6 @@ type HusonymApiCasbinRule struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
-type HusonymApiColumnReview struct {
-	AccountID           pgtype.UUID
-	JobID               pgtype.UUID
-	TableSchema         string
-	TableName           string
-	ColumnName          string
-	ReviewedDataType    string
-	ReviewedPiiCategory string
-	Note                pgtype.Text
-	CreatedAt           pgtype.Timestamp
-	UpdatedAt           pgtype.Timestamp
-	CreatedByID         pgtype.UUID
-	UpdatedByID         pgtype.UUID
-}
-
 type HusonymApiConnection struct {
 	ID               pgtype.UUID
 	CreatedAt        pgtype.Timestamp
@@ -153,6 +138,33 @@ type HusonymApiJobHook struct {
 	ConnectionID    pgtype.UUID
 }
 
+type HusonymApiJobMappingChange struct {
+	ID               pgtype.UUID
+	AccountID        pgtype.UUID
+	JobID            pgtype.UUID
+	JobRunID         string
+	CreatedAt        pgtype.Timestamp
+	TableSchema      string
+	TableName        string
+	ColumnName       string
+	Kind             string
+	Transformer      *pg_models.JobMappingTransformerModel
+	DataType         string
+	PreviousDataType string
+	PiiCategory      string
+	ReviewedAt       pgtype.Timestamp
+	ReviewedByID     pgtype.UUID
+	Note             pgtype.Text
+}
+
+type HusonymApiJobSourceColumn struct {
+	JobID       pgtype.UUID
+	TableSchema string
+	TableName   string
+	ColumnName  string
+	DataType    string
+}
+
 type HusonymApiRuncontext struct {
 	WorkflowID  string
 	ExternalID  string
@@ -186,18 +198,6 @@ type HusonymApiTransformer struct {
 	CreatedByID       pgtype.UUID
 	UpdatedByID       pgtype.UUID
 	Source            int32
-}
-
-type HusonymApiUnmappedPassthrough struct {
-	AccountID        pgtype.UUID
-	JobID            pgtype.UUID
-	TableSchema      string
-	TableName        string
-	ColumnName       string
-	DataType         string
-	FirstSeenAt      pgtype.Timestamp
-	LastSeenAt       pgtype.Timestamp
-	LastSeenJobRunID string
 }
 
 type HusonymApiUser struct {

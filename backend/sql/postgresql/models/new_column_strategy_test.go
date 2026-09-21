@@ -13,7 +13,7 @@ import (
 // Every strategy the API accepts has to survive being stored and read back. Each dialect keeps
 // its own struct and its own two switches, and nothing ties them to the proto: a strategy added
 // to the proto and forgotten here is dropped on save and read back as none — "continue", which
-// ignores new columns — and nothing fails. That is how passthrough_pending_review first shipped:
+// ignores new columns — and nothing fails. That is how the first review strategy shipped:
 // choosing it in the UI silently did nothing.
 //
 // So the cases are not listed by hand. They are read off the proto's oneof, and a new strategy

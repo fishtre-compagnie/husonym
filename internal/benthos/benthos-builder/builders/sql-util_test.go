@@ -606,7 +606,7 @@ func Test_formatMappingColumns(t *testing.T) {
 	})
 }
 
-func Test_splitSensitiveColumns(t *testing.T) {
+func Test_anonymizeNewColumns(t *testing.T) {
 	passthrough := func(schema, table, column string) *mgmtv1alpha1.JobMapping {
 		return &mgmtv1alpha1.JobMapping{
 			Schema: schema, Table: table, Column: column,
@@ -635,45 +635,84 @@ func Test_splitSensitiveColumns(t *testing.T) {
 	columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
 		"public.users": {
 			"email":           {DataType: "character varying(255)"},
+			"telephone":       {DataType: "character varying(20)"},
+			"login":           {DataType: "character varying(50)"},
 			"champ_libre":     {DataType: "text"},
-			"total":           {DataType: "numeric"},
 			"email_normalise": {DataType: "character varying(255)"},
 		},
 	}
+	constraints := &sqlmanager_shared.TableConstraints{
+		UniqueConstraints: map[string][][]string{"public.users": {{"login"}}},
+	}
 
-	t.Run("names what reads as personal data, with its category", func(t *testing.T) {
-		sensitive, others := splitSensitiveColumns([]*mgmtv1alpha1.JobMapping{
-			passthrough("public", "users", "total"),
+	configOf := func(mappings []*mgmtv1alpha1.JobMapping, column string) *mgmtv1alpha1.TransformerConfig {
+		for _, m := range mappings {
+			if m.GetColumn() == column {
+				return m.GetTransformer().GetConfig()
+			}
+		}
+		t.Fatalf("no mapping for %s", column)
+		return nil
+	}
+
+	t.Run("maps a recognised column as the catalogue does, and passes the rest through", func(t *testing.T) {
+		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
 			passthrough("public", "users", "email"),
+			passthrough("public", "users", "telephone"),
 			passthrough("public", "users", "champ_libre"),
-		}, columnInfo)
+		}, columnInfo, constraints)
 
-		require.Equal(t, []string{"public.users.email (email)"}, sensitive)
-		// champ_libre is exactly the column this heuristic cannot see into. Dropping it because
-		// nothing matched would hide the one that needs a human the most.
-		require.Equal(t, []string{"public.users.champ_libre", "public.users.total"}, others)
+		require.NotNil(t, configOf(out, "email").GetGenerateEmailConfig())
+		// The catalogue's config, not an empty one: the phone keeps its format.
+		require.True(t, configOf(out, "telephone").GetTransformPhoneNumberConfig().GetPreserveFormat())
+		require.NotNil(t, configOf(out, "champ_libre").GetPassthroughConfig())
+		require.Equal(t, []string{"public.users.email (email)", "public.users.telephone (phone_number)"}, anonymized)
+		require.Equal(t, []string{"public.users.champ_libre"}, passedThrough)
 	})
 
-	t.Run("leaves out a column the destination recomputes", func(t *testing.T) {
-		// A generated column gets a GenerateDefault, not a passthrough: its value never leaves
-		// the source, so reporting it as passed through would be a false entry — and its name
-		// matches the PII heuristic, so it would have been a loud one.
-		sensitive, others := splitSensitiveColumns([]*mgmtv1alpha1.JobMapping{
+	t.Run("a unique column stays in passthrough, even when recognised", func(t *testing.T) {
+		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
+			passthrough("public", "users", "login"),
+		}, columnInfo, constraints)
+
+		require.NotNil(t, configOf(out, "login").GetPassthroughConfig())
+		require.Empty(t, anonymized)
+		require.Equal(t, []string{"public.users.login"}, passedThrough)
+	})
+
+	t.Run("a column the destination recomputes keeps its GenerateDefault", func(t *testing.T) {
+		out, anonymized, passedThrough := anonymizeNewColumns([]*mgmtv1alpha1.JobMapping{
 			generateDefault("public", "users", "email_normalise"),
-			passthrough("public", "users", "total"),
-		}, columnInfo)
+		}, columnInfo, constraints)
 
-		require.Empty(t, sensitive)
-		require.Equal(t, []string{"public.users.total"}, others)
+		require.NotNil(t, configOf(out, "email_normalise").GetGenerateDefaultConfig())
+		require.Empty(t, anonymized)
+		require.Empty(t, passedThrough)
 	})
+}
 
-	t.Run("survives a column the schema does not describe", func(t *testing.T) {
-		sensitive, others := splitSensitiveColumns(
-			[]*mgmtv1alpha1.JobMapping{passthrough("public", "ghost", "email")},
-			columnInfo,
-		)
-		// No type to go on, but the name alone is enough: it must not silently become "other".
-		require.Equal(t, []string{"public.ghost.email (email)"}, sensitive)
-		require.Empty(t, others)
+func Test_constrainedColumns(t *testing.T) {
+	constrained := constrainedColumns(&sqlmanager_shared.TableConstraints{
+		PrimaryKeyConstraints: map[string][]string{"public.users": {"id"}},
+		ForeignKeyConstraints: map[string][]*sqlmanager_shared.ForeignConstraint{
+			"public.orders": {{
+				Columns:    []string{"user_id"},
+				ForeignKey: &sqlmanager_shared.ForeignKey{Table: "public.users", Columns: []string{"code"}},
+			}},
+		},
+		UniqueIndexes: map[string][][]string{"public.users": {{"email", "tenant"}}},
 	})
+	for _, c := range []struct{ table, column string }{
+		{"public.users", "id"},
+		{"public.orders", "user_id"},
+		{"public.users", "code"},
+		{"public.users", "email"},
+		{"public.users", "tenant"},
+	} {
+		_, ok := constrained[c.table][c.column]
+		require.Truef(t, ok, "%s.%s", c.table, c.column)
+	}
+	_, ok := constrained["public.users"]["telephone"]
+	require.False(t, ok)
+	require.Empty(t, constrainedColumns(nil))
 }

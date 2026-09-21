@@ -73,6 +73,12 @@ sql:
               package: pg_models
               type: AccountOnboardingConfig
               pointer: true
+          - column: husonym_api.job_mapping_changes.transformer
+            go_type:
+              import: github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models
+              package: pg_models
+              type: JobMappingTransformerModel
+              pointer: true
 
   - engine: "mysql"
     queries: "backend/pkg/dbschemas/sql/mysql/queries"

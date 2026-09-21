@@ -218,12 +218,12 @@ func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) MarshalJSON() ([]byte, error) {
+func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) UnmarshalJSON(b []byte) error {
+func (msg *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 
@@ -358,12 +358,12 @@ func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough) U
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) MarshalJSON() ([]byte, error) {
+func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) UnmarshalJSON(b []byte) error {
+func (msg *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 
@@ -458,12 +458,12 @@ func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough) U
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) MarshalJSON() ([]byte, error) {
+func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview) UnmarshalJSON(b []byte) error {
+func (msg *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AnonymizePendingReview) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 
@@ -1548,186 +1548,6 @@ func (msg *ValidateJobMappingsRequest) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *ColumnReview) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *ColumnReview) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *GetColumnReviewsRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *GetColumnReviewsRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *GetColumnReviewsResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *GetColumnReviewsResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *SetColumnReviewRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *SetColumnReviewRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *SetColumnReviewResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *SetColumnReviewResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *RemoveColumnReviewRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *RemoveColumnReviewRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *RemoveColumnReviewResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *RemoveColumnReviewResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *UnmappedPassthrough) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *UnmappedPassthrough) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *SetJobUnmappedPassthroughsRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *SetJobUnmappedPassthroughsRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *SetJobUnmappedPassthroughsResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *SetJobUnmappedPassthroughsResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *JobColumn) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *JobColumn) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *ReconcileJobMappingsRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *ReconcileJobMappingsRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *ReconcileJobMappingsResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *ReconcileJobMappingsResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *PendingColumnReview) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *PendingColumnReview) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *GetPendingColumnReviewsRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *GetPendingColumnReviewsRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *GetPendingColumnReviewsResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *GetPendingColumnReviewsResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *MapUnmappedColumnsRequest) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *MapUnmappedColumnsRequest) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
-func (msg *MapUnmappedColumnsResponse) MarshalJSON() ([]byte, error) {
-	return protojson.MarshalOptions{}.Marshal(msg)
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (msg *MapUnmappedColumnsResponse) UnmarshalJSON(b []byte) error {
-	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
-}
-
-// MarshalJSON implements json.Marshaler
 func (msg *ColumnError) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{}.Marshal(msg)
 }
@@ -2234,5 +2054,95 @@ func (msg *PiiDetectionReport_TableReport_ColumnReport_LLM) MarshalJSON() ([]byt
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *PiiDetectionReport_TableReport_ColumnReport_LLM) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *JobColumn) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *JobColumn) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *JobSourceColumn) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *JobSourceColumn) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *ReconcileJobMappingsRequest) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *ReconcileJobMappingsRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *ReconcileJobMappingsResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *ReconcileJobMappingsResponse) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *JobMappingChange) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *JobMappingChange) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *GetPendingMappingChangesRequest) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *GetPendingMappingChangesRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *GetPendingMappingChangesResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *GetPendingMappingChangesResponse) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *ReviewMappingChangesRequest) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *ReviewMappingChangesRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *ReviewMappingChangesResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *ReviewMappingChangesResponse) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }

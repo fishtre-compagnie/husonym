@@ -52,8 +52,8 @@ export default function NewColumnAdditionStrategyOptionsForm(
           />
         )}
         <StrategyRadioItem
-          value="passthrough-pending-review"
-          label="Passthrough & Review - Pass the new column through, and report it as undecided until someone maps it"
+          value="anonymize-pending-review"
+          label="Anonymize & Review - Anonymize the new column with the suggested transformer, or pass it through when none applies; either way, report the change until someone reviews it"
           idPrefix="new-column-addition-strategy"
         />
         <StrategyRadioItem

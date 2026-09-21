@@ -6,8 +6,7 @@ from mgmt.v1alpha1 import job_pb2 as mgmt_dot_v1alpha1_dot_job__pb2
 
 
 class JobServiceStub:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -155,40 +154,20 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.FromString,
                 _registered_method=True)
-        self.GetColumnReviews = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/GetColumnReviews',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.FromString,
-                _registered_method=True)
-        self.SetColumnReview = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/SetColumnReview',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.FromString,
-                _registered_method=True)
-        self.RemoveColumnReview = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/RemoveColumnReview',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.FromString,
-                _registered_method=True)
-        self.SetJobUnmappedPassthroughs = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.FromString,
-                _registered_method=True)
         self.ReconcileJobMappings = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ReconcileJobMappings',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.FromString,
                 _registered_method=True)
-        self.GetPendingColumnReviews = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/GetPendingColumnReviews',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.FromString,
+        self.GetPendingMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/GetPendingMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.FromString,
                 _registered_method=True)
-        self.MapUnmappedColumns = channel.unary_unary(
-                '/mgmt.v1alpha1.JobService/MapUnmappedColumns',
-                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.SerializeToString,
-                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.FromString,
+        self.ReviewMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ReviewMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
                 _registered_method=True)
         self.ValidateSchema = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ValidateSchema',
@@ -258,8 +237,7 @@ class JobServiceStub:
 
 
 class JobServiceServicer:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def GetJobs(self, request, context):
         """Returns a list of jobs by either account or job
@@ -458,36 +436,6 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetColumnReviews(self, request, context):
-        """Returns the columns whose passthrough has been reviewed and accepted for this job.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SetColumnReview(self, request, context):
-        """Accepts the passthrough of one unmapped column, so it stops being reported. The server
-        records the column as the job's last run copied it — refusing a column no run has reported —
-        and reports it again if it moves.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def RemoveColumnReview(self, request, context):
-        """Withdraws that acceptance, putting the column back in the list.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SetJobUnmappedPassthroughs(self, request, context):
-        """Records the columns a run copied untransformed for want of a mapping. Called by the worker.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def ReconcileJobMappings(self, request, context):
         """Brings a job's mappings in step with the source a run read: maps the columns that appeared,
         as the job's strategy chose, and removes those that disappeared. Called by the worker.
@@ -496,17 +444,17 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetPendingColumnReviews(self, request, context):
-        """Returns what is waiting for a decision: the columns the last runs copied untransformed, less
-        those whose passthrough has been accepted and still holds. For one job, or for the account.
+    def GetPendingMappingChanges(self, request, context):
+        """Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+        nobody has reviewed yet. An added column whose mapping has been changed since counts as
+        reviewed: somebody decided.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def MapUnmappedColumns(self, request, context):
-        """Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
-        only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+    def ReviewMappingChanges(self, request, context):
+        """Marks changes reviewed, with an optional note.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -745,40 +693,20 @@ def add_JobServiceServicer_to_server(servicer, server):
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.SerializeToString,
             ),
-            'GetColumnReviews': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetColumnReviews,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.SerializeToString,
-            ),
-            'SetColumnReview': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetColumnReview,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.SerializeToString,
-            ),
-            'RemoveColumnReview': grpc.unary_unary_rpc_method_handler(
-                    servicer.RemoveColumnReview,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.SerializeToString,
-            ),
-            'SetJobUnmappedPassthroughs': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetJobUnmappedPassthroughs,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.SerializeToString,
-            ),
             'ReconcileJobMappings': grpc.unary_unary_rpc_method_handler(
                     servicer.ReconcileJobMappings,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.SerializeToString,
             ),
-            'GetPendingColumnReviews': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetPendingColumnReviews,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.SerializeToString,
+            'GetPendingMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPendingMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.SerializeToString,
             ),
-            'MapUnmappedColumns': grpc.unary_unary_rpc_method_handler(
-                    servicer.MapUnmappedColumns,
-                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.FromString,
-                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.SerializeToString,
+            'ReviewMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReviewMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.SerializeToString,
             ),
             'ValidateSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateSchema,
@@ -854,8 +782,7 @@ def add_JobServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class JobService:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     @staticmethod
     def GetJobs(request,
@@ -1614,114 +1541,6 @@ class JobService:
             _registered_method=True)
 
     @staticmethod
-    def GetColumnReviews(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/mgmt.v1alpha1.JobService/GetColumnReviews',
-            mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.GetColumnReviewsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def SetColumnReview(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/mgmt.v1alpha1.JobService/SetColumnReview',
-            mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.SetColumnReviewResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def RemoveColumnReview(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/mgmt.v1alpha1.JobService/RemoveColumnReview',
-            mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.RemoveColumnReviewResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def SetJobUnmappedPassthroughs(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs',
-            mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def ReconcileJobMappings(request,
             target,
             options=(),
@@ -1749,7 +1568,7 @@ class JobService:
             _registered_method=True)
 
     @staticmethod
-    def GetPendingColumnReviews(request,
+    def GetPendingMappingChanges(request,
             target,
             options=(),
             channel_credentials=None,
@@ -1762,9 +1581,9 @@ class JobService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/mgmt.v1alpha1.JobService/GetPendingColumnReviews',
-            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.FromString,
+            '/mgmt.v1alpha1.JobService/GetPendingMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1776,7 +1595,7 @@ class JobService:
             _registered_method=True)
 
     @staticmethod
-    def MapUnmappedColumns(request,
+    def ReviewMappingChanges(request,
             target,
             options=(),
             channel_credentials=None,
@@ -1789,9 +1608,9 @@ class JobService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/mgmt.v1alpha1.JobService/MapUnmappedColumns',
-            mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.SerializeToString,
-            mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.FromString,
+            '/mgmt.v1alpha1.JobService/ReviewMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
             options,
             channel_credentials,
             insecure,

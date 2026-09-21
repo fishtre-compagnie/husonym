@@ -371,52 +371,6 @@ components:
       title: ColumnErrorReport
       additionalProperties: false
       description: Column error report
-    mgmt.v1alpha1.ColumnReview:
-      type: object
-      properties:
-        tableSchema:
-          type: string
-          title: table_schema
-          description: The schema of the table
-        tableName:
-          type: string
-          title: table_name
-          description: The table the column belongs to
-        columnName:
-          type: string
-          title: column_name
-          description: The reviewed column
-        reviewedDataType:
-          type: string
-          title: reviewed_data_type
-          description: |-
-            The column's type when it was reviewed. A decision is about a column as it stood, so a
-             column whose type has moved since is reported again.
-        reviewedPiiCategory:
-          type: string
-          title: reviewed_pii_category
-          description: |-
-            The detected personal-data category when it was reviewed, empty when nothing was detected.
-             It is compared the same way: a column that has since started to read as personal data was
-             not the column the reviewer accepted.
-        note:
-          type:
-            - string
-            - "null"
-          title: note
-          description: Why the passthrough is acceptable. This is what an audit asks for.
-        updatedAt:
-          allOf:
-            - $ref: '#/components/schemas/google.protobuf.Timestamp'
-          title: updated_at
-          description: When the decision was last made
-        updatedByUserId:
-          type: string
-          title: updated_by_user_id
-          description: Who last made it
-      title: ColumnReview
-      additionalProperties: false
-      description: A column left out of a job's mappings whose passthrough someone has reviewed and accepted.
     mgmt.v1alpha1.ColumnWarning:
       type: object
       properties:
@@ -447,9 +401,6 @@ components:
         - COLUMN_WARNING_CODE_UNSPECIFIED
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_SOURCE
         - COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING
-        - COLUMN_WARNING_CODE_PASSTHROUGH_PENDING_REVIEW
-        - COLUMN_WARNING_CODE_SENSITIVE_COLUMN_PASSED_THROUGH
-        - COLUMN_WARNING_CODE_REVIEWED_COLUMN_CHANGED
       description: An enumeration of column warning codes
     mgmt.v1alpha1.ColumnWarning.ColumnWarningReport:
       type: object
@@ -1313,31 +1264,6 @@ components:
           description: The active job hooks
       title: GetActiveJobHooksByTimingResponse
       additionalProperties: false
-    mgmt.v1alpha1.GetColumnReviewsRequest:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job whose decisions are returned
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The unique identifier of the account
-      title: GetColumnReviewsRequest
-      additionalProperties: false
-    mgmt.v1alpha1.GetColumnReviewsResponse:
-      type: object
-      properties:
-        reviews:
-          type: array
-          items:
-            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnReview'
-          title: reviews
-      title: GetColumnReviewsResponse
-      additionalProperties: false
     mgmt.v1alpha1.GetJobHookRequest:
       type: object
       properties:
@@ -1725,7 +1651,7 @@ components:
           description: The list of jobs
       title: GetJobsResponse
       additionalProperties: false
-    mgmt.v1alpha1.GetPendingColumnReviewsRequest:
+    mgmt.v1alpha1.GetPendingMappingChangesRequest:
       type: object
       properties:
         accountId:
@@ -1738,18 +1664,20 @@ components:
             - string
             - "null"
           title: job_id
-          description: One job, for its review tab. Absent returns every job of the account, for the bell.
-      title: GetPendingColumnReviewsRequest
+          format: uuid
+          description: Only this job's changes. Every job of the account the caller can see when absent.
+      title: GetPendingMappingChangesRequest
       additionalProperties: false
-    mgmt.v1alpha1.GetPendingColumnReviewsResponse:
+    mgmt.v1alpha1.GetPendingMappingChangesResponse:
       type: object
       properties:
-        columns:
+        changes:
           type: array
           items:
-            $ref: '#/components/schemas/mgmt.v1alpha1.PendingColumnReview'
-          title: columns
-      title: GetPendingColumnReviewsResponse
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingChange'
+          title: changes
+          description: Oldest first
+      title: GetPendingMappingChangesResponse
       additionalProperties: false
     mgmt.v1alpha1.GetPiiDetectionReportRequest:
       type: object
@@ -1950,7 +1878,9 @@ components:
           description: The column
       title: JobColumn
       additionalProperties: false
-      description: A column of a job's source, named without its mapping.
+      description: |-
+        Service that handles jobs, runs, and hooks
+         A column of a job's source, named without its mapping.
     mgmt.v1alpha1.JobDestination:
       type: object
       properties:
@@ -2264,6 +2194,67 @@ components:
           description: The transformer configuration that will be applied to each cell in the column
       title: JobMapping
       additionalProperties: false
+    mgmt.v1alpha1.JobMappingChange:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The change
+        jobId:
+          type: string
+          title: job_id
+          description: The job
+        jobRunId:
+          type: string
+          title: job_run_id
+          description: The run that made it
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: created_at
+          description: When
+        column:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: column
+          description: The column
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingChangeKind'
+          title: kind
+          description: What happened to it
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingTransformer'
+          title: transformer
+          description: |-
+            The transformer the run chose (added), or the one the removed mapping had (removed). For a
+             type change, the one the column is mapped with now.
+        dataType:
+          type: string
+          title: data_type
+          description: The column's type as the run saw it
+        previousDataType:
+          type: string
+          title: previous_data_type
+          description: The type the previous run saw (type changed)
+        piiCategory:
+          type: string
+          title: pii_category
+          description: What the column looks like to the PII detection, by name and type ("" when nothing)
+      title: JobMappingChange
+      additionalProperties: false
+      description: A change a run made to a job's mappings, waiting for somebody to review it.
+    mgmt.v1alpha1.JobMappingChangeKind:
+      type: string
+      title: JobMappingChangeKind
+      enum:
+        - JOB_MAPPING_CHANGE_KIND_UNSPECIFIED
+        - JOB_MAPPING_CHANGE_KIND_ADDED
+        - JOB_MAPPING_CHANGE_KIND_REMOVED
+        - JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED
+      description: What a run changed in a job's mappings.
     mgmt.v1alpha1.JobMappingTransformer:
       type: object
       properties:
@@ -2466,6 +2457,23 @@ components:
       required:
         - options
       additionalProperties: false
+    mgmt.v1alpha1.JobSourceColumn:
+      type: object
+      properties:
+        column:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: column
+          description: The column
+        dataType:
+          type: string
+          title: data_type
+          description: The column's type as the source reports it
+      title: JobSourceColumn
+      required:
+        - column
+      additionalProperties: false
+      description: A column of a job's source with its type, as a run read it.
     mgmt.v1alpha1.JobSourceOptions:
       type: object
       allOf:
@@ -2870,41 +2878,6 @@ components:
         - LOG_WINDOW_FIFTEEN_MIN
         - LOG_WINDOW_ONE_HOUR
         - LOG_WINDOW_ONE_DAY
-    mgmt.v1alpha1.MapUnmappedColumnsRequest:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job to add the mappings to
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The unique identifier of the account
-        mappings:
-          type: array
-          items:
-            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
-          title: mappings
-          minItems: 1
-          description: The columns to map, each with the transformer that anonymizes it.
-      title: MapUnmappedColumnsRequest
-      additionalProperties: false
-    mgmt.v1alpha1.MapUnmappedColumnsResponse:
-      type: object
-      properties:
-        added:
-          type: array
-          items:
-            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
-          title: added
-          description: |-
-            The mappings actually added. A column somebody mapped in the meantime is left as they set
-             it and does not appear here: this call adds, it never overwrites a choice.
-      title: MapUnmappedColumnsResponse
-      additionalProperties: false
     mgmt.v1alpha1.MongoDBDestinationConnectionOptions:
       type: object
       title: MongoDBDestinationConnectionOptions
@@ -3043,6 +3016,19 @@ components:
       anyOf:
         - type: object
           properties:
+            anonymizePendingReview:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview'
+              title: anonymize_pending_review
+              description: |-
+                anonymize the new column with the transformer the PII detection suggests, in the config
+                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
+                 column carries a primary key, a foreign key or a unique constraint a transformer could
+                 break. The run writes the mapping to the job and records the change for review, as it
+                 records the removal of a column and the change of a column's type.
+          title: anonymize_pending_review
+        - type: object
+          properties:
             haltJob:
               allOf:
                 - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob'
@@ -3057,39 +3043,30 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
-        - type: object
-          properties:
-            passthroughPendingReview:
-              allOf:
-                - $ref: '#/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview'
-              title: passthrough_pending_review
-              description: |-
-                pass the new column through as is, and record it as awaiting review.
-                 The data path is the one of `passthrough`: the column is copied instead of stopping
-                 the run — the destination gains it through schema reconciliation when Husonym
-                 initializes its schema — and it counts as undecided until someone maps it or
-                 acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-                 the anonymization of the job.
-          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
           - anyOf:
               - required:
+                  - anonymizePendingReview
+              - required:
                   - haltJob
               - required:
                   - passthrough
-              - required:
-                  - passthroughPendingReview
           - not:
               oneOf:
+                - required:
+                    - anonymizePendingReview
                 - required:
                     - haltJob
                 - required:
                     - passthrough
-                - required:
-                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
+    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
+      type: object
+      title: AnonymizePendingReview
+      additionalProperties: false
+      description: Configuration for the AnonymizePendingReview strategy
     mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob:
       type: object
       title: HaltJob
@@ -3100,11 +3077,6 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
-    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
-      type: object
-      title: PassthroughPendingReview
-      additionalProperties: false
-      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.MssqlSourceSchemaOption:
       type: object
       properties:
@@ -3320,6 +3292,19 @@ components:
       anyOf:
         - type: object
           properties:
+            anonymizePendingReview:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview'
+              title: anonymize_pending_review
+              description: |-
+                anonymize the new column with the transformer the PII detection suggests, in the config
+                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
+                 column carries a primary key, a foreign key or a unique constraint a transformer could
+                 break. The run writes the mapping to the job and records the change for review, as it
+                 records the removal of a column and the change of a column's type.
+          title: anonymize_pending_review
+        - type: object
+          properties:
             autoMap:
               allOf:
                 - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap'
@@ -3345,43 +3330,34 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
-        - type: object
-          properties:
-            passthroughPendingReview:
-              allOf:
-                - $ref: '#/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview'
-              title: passthrough_pending_review
-              description: |-
-                pass the new column through as is, and record it as awaiting review.
-                 The data path is the one of `passthrough`: the column is copied instead of stopping
-                 the run — the destination gains it through schema reconciliation when Husonym
-                 initializes its schema — and it counts as undecided until someone maps it or
-                 acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-                 the anonymization of the job.
-          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
           - anyOf:
+              - required:
+                  - anonymizePendingReview
               - required:
                   - autoMap
               - required:
                   - haltJob
               - required:
                   - passthrough
-              - required:
-                  - passthroughPendingReview
           - not:
               oneOf:
+                - required:
+                    - anonymizePendingReview
                 - required:
                     - autoMap
                 - required:
                     - haltJob
                 - required:
                     - passthrough
-                - required:
-                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
+    mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
+      type: object
+      title: AnonymizePendingReview
+      additionalProperties: false
+      description: Configuration for the AnonymizePendingReview strategy
     mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
       title: AutoMap
@@ -3397,11 +3373,6 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
-    mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
-      type: object
-      title: PassthroughPendingReview
-      additionalProperties: false
-      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.MysqlSourceSchemaOption:
       type: object
       properties:
@@ -3547,63 +3518,6 @@ components:
           description: The last failure of the activity
       title: PendingActivity
       additionalProperties: false
-    mgmt.v1alpha1.PendingColumnReason:
-      type: string
-      title: PendingColumnReason
-      enum:
-        - PENDING_COLUMN_REASON_UNSPECIFIED
-        - PENDING_COLUMN_REASON_NEVER_REVIEWED
-        - PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED
-      description: Why a column is waiting for somebody.
-    mgmt.v1alpha1.PendingColumnReview:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          description: The job that copies it
-        tableSchema:
-          type: string
-          title: table_schema
-          description: The schema of the table
-        tableName:
-          type: string
-          title: table_name
-          description: The table the column belongs to
-        columnName:
-          type: string
-          title: column_name
-          description: The column
-        dataType:
-          type: string
-          title: data_type
-          description: Its type as the last run saw it
-        piiCategory:
-          type: string
-          title: pii_category
-          description: |-
-            The personal-data category its name and type read as. Empty when nothing was recognised —
-             which says the detector saw nothing, not that the column holds nothing.
-        suggestedTransformerSource:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
-          title: suggested_transformer_source
-          description: |-
-            The transformer suggested for it, when it reads as personal data. It is what the review
-             offers first: anonymizing should be easier than accepting.
-        reason:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.PendingColumnReason'
-          title: reason
-          description: Why it is waiting
-        firstSeenAt:
-          allOf:
-            - $ref: '#/components/schemas/google.protobuf.Timestamp'
-          title: first_seen_at
-          description: When a run first copied it untransformed
-      title: PendingColumnReview
-      additionalProperties: false
-      description: A column the last run copied untransformed and that nobody has settled.
     mgmt.v1alpha1.PiiAnonymizer:
       type: object
       anyOf:
@@ -4018,6 +3932,19 @@ components:
       anyOf:
         - type: object
           properties:
+            anonymizePendingReview:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview'
+              title: anonymize_pending_review
+              description: |-
+                anonymize the new column with the transformer the PII detection suggests, in the config
+                 it starts with in the catalogue; pass it through when there is no suggestion, or when the
+                 column carries a primary key, a foreign key or a unique constraint a transformer could
+                 break. The run writes the mapping to the job and records the change for review, as it
+                 records the removal of a column and the change of a column's type.
+          title: anonymize_pending_review
+        - type: object
+          properties:
             autoMap:
               allOf:
                 - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap'
@@ -4043,43 +3970,34 @@ components:
               title: passthrough
               description: pass the new column through as is.
           title: passthrough
-        - type: object
-          properties:
-            passthroughPendingReview:
-              allOf:
-                - $ref: '#/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview'
-              title: passthrough_pending_review
-              description: |-
-                pass the new column through as is, and record it as awaiting review.
-                 The data path is the one of `passthrough`: the column is copied instead of stopping
-                 the run — the destination gains it through schema reconciliation when Husonym
-                 initializes its schema — and it counts as undecided until someone maps it or
-                 acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
-                 the anonymization of the job.
-          title: passthrough_pending_review
       unevaluatedProperties: false
       not:
         allOf:
           - anyOf:
+              - required:
+                  - anonymizePendingReview
               - required:
                   - autoMap
               - required:
                   - haltJob
               - required:
                   - passthrough
-              - required:
-                  - passthroughPendingReview
           - not:
               oneOf:
+                - required:
+                    - anonymizePendingReview
                 - required:
                     - autoMap
                 - required:
                     - haltJob
                 - required:
                     - passthrough
-                - required:
-                    - passthroughPendingReview
       title: NewColumnAdditionStrategy
+    mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AnonymizePendingReview:
+      type: object
+      title: AnonymizePendingReview
+      additionalProperties: false
+      description: Configuration for the AnonymizePendingReview strategy
     mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
       type: object
       title: AutoMap
@@ -4095,11 +4013,6 @@ components:
       title: Passthrough
       additionalProperties: false
       description: Configuration for the Passthrough strategy
-    mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview:
-      type: object
-      title: PassthroughPendingReview
-      additionalProperties: false
-      description: Configuration for the PassthroughPendingReview strategy
     mgmt.v1alpha1.PostgresSourceSchemaOption:
       type: object
       properties:
@@ -4192,6 +4105,20 @@ components:
             $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
           title: removed
           description: The columns the source no longer has. Their mapping is removed from the job.
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobSourceColumn'
+          title: columns
+          description: |-
+            Every column of the tables the job syncs, with its type: what lets the next run tell that a
+             column changed type.
+        recordChanges:
+          type: boolean
+          title: record_changes
+          description: |-
+            Whether the job's strategy asks for the changes to be reviewed (anonymize_pending_review):
+             they are then recorded, each with what the run chose.
       title: ReconcileJobMappingsRequest
       additionalProperties: false
     mgmt.v1alpha1.ReconcileJobMappingsResponse:
@@ -4211,45 +4138,6 @@ components:
           description: The mappings the call removed, with the transformer they had
       title: ReconcileJobMappingsResponse
       additionalProperties: false
-    mgmt.v1alpha1.RemoveColumnReviewRequest:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job the decision was made for
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The unique identifier of the account
-        tableSchema:
-          type: string
-          title: table_schema
-          minLength: 1
-          description: The schema of the table
-        tableName:
-          type: string
-          title: table_name
-          minLength: 1
-          description: The table the column belongs to
-        columnName:
-          type: string
-          title: column_name
-          minLength: 1
-          description: The column whose decision is withdrawn
-      title: RemoveColumnReviewRequest
-      additionalProperties: false
-    mgmt.v1alpha1.RemoveColumnReviewResponse:
-      type: object
-      properties:
-        removed:
-          type: boolean
-          title: removed
-          description: False when there was no such decision to withdraw.
-      title: RemoveColumnReviewResponse
-      additionalProperties: false
     mgmt.v1alpha1.RetryPolicy:
       type: object
       properties:
@@ -4266,6 +4154,45 @@ components:
       title: RetryPolicy
       additionalProperties: false
       description: Defines the retry policy for an activity
+    mgmt.v1alpha1.ReviewMappingChangesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the changes belong to
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          minItems: 1
+          description: The changes reviewed. Those of another job, or already reviewed, are left alone.
+        note:
+          type:
+            - string
+            - "null"
+          title: note
+          description: Why they are fine, kept with them
+      title: ReviewMappingChangesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ReviewMappingChangesResponse:
+      type: object
+      properties:
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes the call marked reviewed
+      title: ReviewMappingChangesResponse
+      additionalProperties: false
     mgmt.v1alpha1.RunContextKey:
       type: object
       properties:
@@ -4285,52 +4212,6 @@ components:
           minLength: 1
           description: The Husonym Account ID
       title: RunContextKey
-      additionalProperties: false
-    mgmt.v1alpha1.SetColumnReviewRequest:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job the decision is made for
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The unique identifier of the account
-        tableSchema:
-          type: string
-          title: table_schema
-          minLength: 1
-          description: The schema of the table
-        tableName:
-          type: string
-          title: table_name
-          minLength: 1
-          description: The table the column belongs to
-        columnName:
-          type: string
-          title: column_name
-          minLength: 1
-          description: The column whose passthrough is accepted
-        note:
-          type:
-            - string
-            - "null"
-          title: note
-          description: Why it is acceptable
-      title: SetColumnReviewRequest
-      additionalProperties: false
-    mgmt.v1alpha1.SetColumnReviewResponse:
-      type: object
-      properties:
-        review:
-          allOf:
-            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnReview'
-          title: review
-          description: The stored decision, carrying the column as the server saw it at that moment.
-      title: SetColumnReviewResponse
       additionalProperties: false
     mgmt.v1alpha1.SetJobHookEnabledRequest:
       type: object
@@ -4409,38 +4290,6 @@ components:
           title: job
           description: The updated job
       title: SetJobSyncOptionsResponse
-      additionalProperties: false
-    mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest:
-      type: object
-      properties:
-        jobId:
-          type: string
-          title: job_id
-          format: uuid
-          description: The job whose run copied the columns
-        accountId:
-          type: string
-          title: account_id
-          format: uuid
-          description: The unique identifier of the account
-        jobRunId:
-          type: string
-          title: job_run_id
-          minLength: 1
-          description: |-
-            The run that saw them. The job's set is replaced: a column this run did not copy — because it
-             has been mapped since — leaves the list.
-        columns:
-          type: array
-          items:
-            $ref: '#/components/schemas/mgmt.v1alpha1.UnmappedPassthrough'
-          title: columns
-          description: Every column the run copied untransformed for want of a mapping. Empty clears the job's list.
-      title: SetJobUnmappedPassthroughsRequest
-      additionalProperties: false
-    mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse:
-      type: object
-      title: SetJobUnmappedPassthroughsResponse
       additionalProperties: false
     mgmt.v1alpha1.SetJobWorkflowOptionsRequest:
       type: object
@@ -5508,28 +5357,6 @@ components:
         - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
         - TRANSFORMER_SOURCE_TRANSFORM_UUID
         - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
-    mgmt.v1alpha1.UnmappedPassthrough:
-      type: object
-      properties:
-        tableSchema:
-          type: string
-          title: table_schema
-          description: The schema of the table
-        tableName:
-          type: string
-          title: table_name
-          description: The table the column belongs to
-        columnName:
-          type: string
-          title: column_name
-          description: The column copied as is
-        dataType:
-          type: string
-          title: data_type
-          description: The column's type as the run saw it
-      title: UnmappedPassthrough
-      additionalProperties: false
-      description: A column a run copied untransformed because the job does not map it.
     mgmt.v1alpha1.UpdateJobDestinationConnectionRequest:
       type: object
       properties:
@@ -5719,16 +5546,6 @@ components:
             - type: "null"
           title: job_source
           description: The source options of the job
-        jobId:
-          type:
-            - string
-            - "null"
-          title: job_id
-          description: |-
-            The job being validated, when it exists. Absent while a job is still being created, which
-             is why it is optional. With it, the columns whose passthrough has been reviewed and
-             accepted for this job stop being reported — without it they all are, which is the right
-             answer for a job that has no accepted decisions yet.
       title: ValidateJobMappingsRequest
       additionalProperties: false
     mgmt.v1alpha1.ValidateJobMappingsResponse:
@@ -6287,46 +6104,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetActiveJobHooksByTimingResponse'
-  /mgmt.v1alpha1.JobService/GetColumnReviews:
-    post:
-      tags:
-        - mgmt.v1alpha1.JobService
-      summary: GetColumnReviews
-      description: Returns the columns whose passthrough has been reviewed and accepted for this job.
-      operationId: mgmt.v1alpha1.JobService.GetColumnReviews
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          description: Define the version of the Connect protocol
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-          example: 1
-        - name: Connect-Timeout-Ms
-          in: header
-          description: Define the timeout, in ms
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-          example: 1000
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnReviewsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetColumnReviewsResponse'
   /mgmt.v1alpha1.JobService/GetJob:
     post:
       tags:
@@ -6810,15 +6587,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetJobsResponse'
-  /mgmt.v1alpha1.JobService/GetPendingColumnReviews:
+  /mgmt.v1alpha1.JobService/GetPendingMappingChanges:
     post:
       tags:
         - mgmt.v1alpha1.JobService
-      summary: GetPendingColumnReviews
+      summary: GetPendingMappingChanges
       description: |-
-        Returns what is waiting for a decision: the columns the last runs copied untransformed, less
-         those whose passthrough has been accepted and still holds. For one job, or for the account.
-      operationId: mgmt.v1alpha1.JobService.GetPendingColumnReviews
+        Returns the changes runs made to the mappings of jobs under anonymize_pending_review that
+         nobody has reviewed yet. An added column whose mapping has been changed since counts as
+         reviewed: somebody decided.
+      operationId: mgmt.v1alpha1.JobService.GetPendingMappingChanges
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -6837,7 +6615,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingColumnReviewsRequest'
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingMappingChangesRequest'
         required: true
       responses:
         default:
@@ -6851,7 +6629,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingColumnReviewsResponse'
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingMappingChangesResponse'
   /mgmt.v1alpha1.JobService/GetPiiDetectionReport:
     post:
       tags:
@@ -7011,48 +6789,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.IsJobNameAvailableResponse'
-  /mgmt.v1alpha1.JobService/MapUnmappedColumns:
-    post:
-      tags:
-        - mgmt.v1alpha1.JobService
-      summary: MapUnmappedColumns
-      description: |-
-        Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
-         only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
-      operationId: mgmt.v1alpha1.JobService.MapUnmappedColumns
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          description: Define the version of the Connect protocol
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-          example: 1
-        - name: Connect-Timeout-Ms
-          in: header
-          description: Define the timeout, in ms
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-          example: 1000
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.MapUnmappedColumnsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.MapUnmappedColumnsResponse'
   /mgmt.v1alpha1.JobService/PauseJob:
     post:
       tags:
@@ -7135,13 +6871,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.ReconcileJobMappingsResponse'
-  /mgmt.v1alpha1.JobService/RemoveColumnReview:
+  /mgmt.v1alpha1.JobService/ReviewMappingChanges:
     post:
       tags:
         - mgmt.v1alpha1.JobService
-      summary: RemoveColumnReview
-      description: Withdraws that acceptance, putting the column back in the list.
-      operationId: mgmt.v1alpha1.JobService.RemoveColumnReview
+      summary: ReviewMappingChanges
+      description: Marks changes reviewed, with an optional note.
+      operationId: mgmt.v1alpha1.JobService.ReviewMappingChanges
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -7160,7 +6896,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.RemoveColumnReviewRequest'
+              $ref: '#/components/schemas/mgmt.v1alpha1.ReviewMappingChangesRequest'
         required: true
       responses:
         default:
@@ -7174,50 +6910,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.RemoveColumnReviewResponse'
-  /mgmt.v1alpha1.JobService/SetColumnReview:
-    post:
-      tags:
-        - mgmt.v1alpha1.JobService
-      summary: SetColumnReview
-      description: |-
-        Accepts the passthrough of one unmapped column, so it stops being reported. The server
-         records the column as the job's last run copied it — refusing a column no run has reported —
-         and reports it again if it moves.
-      operationId: mgmt.v1alpha1.JobService.SetColumnReview
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          description: Define the version of the Connect protocol
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-          example: 1
-        - name: Connect-Timeout-Ms
-          in: header
-          description: Define the timeout, in ms
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-          example: 1000
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.SetColumnReviewRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.SetColumnReviewResponse'
+                $ref: '#/components/schemas/mgmt.v1alpha1.ReviewMappingChangesResponse'
   /mgmt.v1alpha1.JobService/SetJobHookEnabled:
     post:
       tags:
@@ -7338,46 +7031,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SetJobSyncOptionsResponse'
-  /mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs:
-    post:
-      tags:
-        - mgmt.v1alpha1.JobService
-      summary: SetJobUnmappedPassthroughs
-      description: Records the columns a run copied untransformed for want of a mapping. Called by the worker.
-      operationId: mgmt.v1alpha1.JobService.SetJobUnmappedPassthroughs
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          description: Define the version of the Connect protocol
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-          example: 1
-        - name: Connect-Timeout-Ms
-          in: header
-          description: Define the timeout, in ms
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-          example: 1000
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse'
   /mgmt.v1alpha1.JobService/SetJobWorkflowOptions:
     post:
       tags:
@@ -7741,4 +7394,3 @@ paths:
                 $ref: '#/components/schemas/mgmt.v1alpha1.ValidateSchemaResponse'
 tags:
   - name: mgmt.v1alpha1.JobService
-    description: Service that handles jobs, runs, and hooks

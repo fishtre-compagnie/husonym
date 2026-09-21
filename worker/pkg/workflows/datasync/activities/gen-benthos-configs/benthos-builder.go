@@ -69,51 +69,23 @@ type workflowMetadata struct {
 	RunId      string
 }
 
-// reportUnmappedPassthroughs tells the backend which columns this run copies untransformed for
-// want of a mapping — the list the bell and the job's review tab read.
+// reconcileJobMappings writes to the job what the run found in its source: the columns it mapped
+// because the job did not, the mappings whose column is gone, and the columns with their types.
 //
-// Always sent, empty included: an empty report is what clears a job whose columns have been
-// mapped since, or whose strategy no longer asks for a review. Skipping it would leave the bell
-// showing columns that no longer leak.
-//
-// A failure is logged and does not fail the run. The data is copied either way; losing the
-// report costs a stale bell until the next run, while failing would stop a sync over a
-// bookkeeping call.
-func (b *benthosBuilder) reportUnmappedPassthroughs(
-	ctx context.Context,
-	job *mgmtv1alpha1.Job,
-	columns []*mgmtv1alpha1.UnmappedPassthrough,
-	logger *slog.Logger,
-) {
-	_, err := b.jobclient.SetJobUnmappedPassthroughs(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.SetJobUnmappedPassthroughsRequest{
-			JobId:     job.GetId(),
-			AccountId: job.GetAccountId(),
-			JobRunId:  b.jobRunId,
-			Columns:   columns,
-		}),
-	)
-	if err != nil {
-		logger.Warn(fmt.Sprintf(
-			"unable to report the %d columns passed through untransformed; the review list stays as it was until the next run: %v",
-			len(columns),
-			err,
-		))
-	}
-}
-
-// reconcileJobMappings writes to the job what the run found changed in its source: the columns
-// it mapped because the job did not, and the mappings whose column is gone.
+// Sent on every run that read a SQL source, changes or not: the types are what lets the next run
+// tell that a column changed type.
 //
 // A failure fails the run. The configs already follow the source, so the data would be right;
-// but the job would not say so, and the next run would decide the same columns again.
+// but the job would not say so, the next run would decide the same columns again, and under
+// anonymize_pending_review nobody would be asked to review what this one decided.
 func (b *benthosBuilder) reconcileJobMappings(
 	ctx context.Context,
 	job *mgmtv1alpha1.Job,
 	added, removed []*mgmtv1alpha1.JobMapping,
+	columns []*mgmtv1alpha1.JobSourceColumn,
+	recordChanges bool,
 ) error {
-	if len(added) == 0 && len(removed) == 0 {
+	if len(added) == 0 && len(removed) == 0 && len(columns) == 0 {
 		return nil
 	}
 	removedColumns := make([]*mgmtv1alpha1.JobColumn, 0, len(removed))
@@ -127,11 +99,13 @@ func (b *benthosBuilder) reconcileJobMappings(
 	_, err := b.jobclient.ReconcileJobMappings(
 		ctx,
 		connect.NewRequest(&mgmtv1alpha1.ReconcileJobMappingsRequest{
-			JobId:     job.GetId(),
-			AccountId: job.GetAccountId(),
-			JobRunId:  b.jobRunId,
-			Added:     added,
-			Removed:   removedColumns,
+			JobId:         job.GetId(),
+			AccountId:     job.GetAccountId(),
+			JobRunId:      b.jobRunId,
+			Added:         added,
+			Removed:       removedColumns,
+			Columns:       columns,
+			RecordChanges: recordChanges,
 		}),
 	)
 	if err != nil {
@@ -201,10 +175,11 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	}
 
 	changes := benthosManager.MappingChanges()
-	if err := b.reconcileJobMappings(ctx, job, changes.Added, changes.Removed); err != nil {
+	if err := b.reconcileJobMappings(
+		ctx, job, changes.Added, changes.Removed, changes.Columns, changes.RecordChanges,
+	); err != nil {
 		return nil, err
 	}
-	b.reportUnmappedPassthroughs(ctx, job, benthosManager.UnmappedPassthroughs(), slogger)
 
 	err = b.setConnectionIdsRunContext(ctx, responses, job.GetAccountId())
 	if err != nil {

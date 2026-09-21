@@ -728,74 +728,6 @@ func (_c *MockJobServiceClient_GetActiveJobHooksByTiming_Call) RunAndReturn(run 
 	return _c
 }
 
-// GetColumnReviews provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) GetColumnReviews(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetColumnReviewsResponse], error) {
-	ret := _mock.Called(context1, request)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetColumnReviews")
-	}
-
-	var r0 *connect.Response[mgmtv1alpha1.GetColumnReviewsResponse]
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetColumnReviewsResponse], error)); ok {
-		return returnFunc(context1, request)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]) *connect.Response[mgmtv1alpha1.GetColumnReviewsResponse]); ok {
-		r0 = returnFunc(context1, request)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.GetColumnReviewsResponse])
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]) error); ok {
-		r1 = returnFunc(context1, request)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockJobServiceClient_GetColumnReviews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetColumnReviews'
-type MockJobServiceClient_GetColumnReviews_Call struct {
-	*mock.Call
-}
-
-// GetColumnReviews is a helper method to define mock.On call
-//   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]
-func (_e *MockJobServiceClient_Expecter) GetColumnReviews(context1 any, request any) *MockJobServiceClient_GetColumnReviews_Call {
-	return &MockJobServiceClient_GetColumnReviews_Call{Call: _e.mock.On("GetColumnReviews", context1, request)}
-}
-
-func (_c *MockJobServiceClient_GetColumnReviews_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest])) *MockJobServiceClient_GetColumnReviews_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]
-		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.GetColumnReviewsRequest])
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockJobServiceClient_GetColumnReviews_Call) Return(response *connect.Response[mgmtv1alpha1.GetColumnReviewsResponse], err error) *MockJobServiceClient_GetColumnReviews_Call {
-	_c.Call.Return(response, err)
-	return _c
-}
-
-func (_c *MockJobServiceClient_GetColumnReviews_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetColumnReviewsResponse], error)) *MockJobServiceClient_GetColumnReviews_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetJob provides a mock function for the type MockJobServiceClient
 func (_mock *MockJobServiceClient) GetJob(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetJobRequest]) (*connect.Response[mgmtv1alpha1.GetJobResponse], error) {
 	ret := _mock.Called(context1, request)
@@ -1680,27 +1612,27 @@ func (_c *MockJobServiceClient_GetJobs_Call) RunAndReturn(run func(context1 cont
 	return _c
 }
 
-// GetPendingColumnReviews provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) GetPendingColumnReviews(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse], error) {
+// GetPendingMappingChanges provides a mock function for the type MockJobServiceClient
+func (_mock *MockJobServiceClient) GetPendingMappingChanges(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse], error) {
 	ret := _mock.Called(context1, request)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetPendingColumnReviews")
+		panic("no return value specified for GetPendingMappingChanges")
 	}
 
-	var r0 *connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse]
+	var r0 *connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse], error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse], error)); ok {
 		return returnFunc(context1, request)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]) *connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse]); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]) *connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse]); ok {
 		r0 = returnFunc(context1, request)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse])
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]) error); ok {
 		r1 = returnFunc(context1, request)
 	} else {
 		r1 = ret.Error(1)
@@ -1708,27 +1640,27 @@ func (_mock *MockJobServiceClient) GetPendingColumnReviews(context1 context.Cont
 	return r0, r1
 }
 
-// MockJobServiceClient_GetPendingColumnReviews_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingColumnReviews'
-type MockJobServiceClient_GetPendingColumnReviews_Call struct {
+// MockJobServiceClient_GetPendingMappingChanges_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingMappingChanges'
+type MockJobServiceClient_GetPendingMappingChanges_Call struct {
 	*mock.Call
 }
 
-// GetPendingColumnReviews is a helper method to define mock.On call
+// GetPendingMappingChanges is a helper method to define mock.On call
 //   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]
-func (_e *MockJobServiceClient_Expecter) GetPendingColumnReviews(context1 any, request any) *MockJobServiceClient_GetPendingColumnReviews_Call {
-	return &MockJobServiceClient_GetPendingColumnReviews_Call{Call: _e.mock.On("GetPendingColumnReviews", context1, request)}
+//   - request *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]
+func (_e *MockJobServiceClient_Expecter) GetPendingMappingChanges(context1 any, request any) *MockJobServiceClient_GetPendingMappingChanges_Call {
+	return &MockJobServiceClient_GetPendingMappingChanges_Call{Call: _e.mock.On("GetPendingMappingChanges", context1, request)}
 }
 
-func (_c *MockJobServiceClient_GetPendingColumnReviews_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest])) *MockJobServiceClient_GetPendingColumnReviews_Call {
+func (_c *MockJobServiceClient_GetPendingMappingChanges_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest])) *MockJobServiceClient_GetPendingMappingChanges_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]
+		var arg1 *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]
 		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest])
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest])
 		}
 		run(
 			arg0,
@@ -1738,12 +1670,12 @@ func (_c *MockJobServiceClient_GetPendingColumnReviews_Call) Run(run func(contex
 	return _c
 }
 
-func (_c *MockJobServiceClient_GetPendingColumnReviews_Call) Return(response *connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse], err error) *MockJobServiceClient_GetPendingColumnReviews_Call {
+func (_c *MockJobServiceClient_GetPendingMappingChanges_Call) Return(response *connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse], err error) *MockJobServiceClient_GetPendingMappingChanges_Call {
 	_c.Call.Return(response, err)
 	return _c
 }
 
-func (_c *MockJobServiceClient_GetPendingColumnReviews_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[mgmtv1alpha1.GetPendingColumnReviewsResponse], error)) *MockJobServiceClient_GetPendingColumnReviews_Call {
+func (_c *MockJobServiceClient_GetPendingMappingChanges_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.GetPendingMappingChangesResponse], error)) *MockJobServiceClient_GetPendingMappingChanges_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2020,74 +1952,6 @@ func (_c *MockJobServiceClient_IsJobNameAvailable_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// MapUnmappedColumns provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) MapUnmappedColumns(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error) {
-	ret := _mock.Called(context1, request)
-
-	if len(ret) == 0 {
-		panic("no return value specified for MapUnmappedColumns")
-	}
-
-	var r0 *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse]
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error)); ok {
-		return returnFunc(context1, request)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse]); ok {
-		r0 = returnFunc(context1, request)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse])
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) error); ok {
-		r1 = returnFunc(context1, request)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockJobServiceClient_MapUnmappedColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MapUnmappedColumns'
-type MockJobServiceClient_MapUnmappedColumns_Call struct {
-	*mock.Call
-}
-
-// MapUnmappedColumns is a helper method to define mock.On call
-//   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]
-func (_e *MockJobServiceClient_Expecter) MapUnmappedColumns(context1 any, request any) *MockJobServiceClient_MapUnmappedColumns_Call {
-	return &MockJobServiceClient_MapUnmappedColumns_Call{Call: _e.mock.On("MapUnmappedColumns", context1, request)}
-}
-
-func (_c *MockJobServiceClient_MapUnmappedColumns_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest])) *MockJobServiceClient_MapUnmappedColumns_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]
-		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest])
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockJobServiceClient_MapUnmappedColumns_Call) Return(response *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], err error) *MockJobServiceClient_MapUnmappedColumns_Call {
-	_c.Call.Return(response, err)
-	return _c
-}
-
-func (_c *MockJobServiceClient_MapUnmappedColumns_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error)) *MockJobServiceClient_MapUnmappedColumns_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // PauseJob provides a mock function for the type MockJobServiceClient
 func (_mock *MockJobServiceClient) PauseJob(context1 context.Context, request *connect.Request[mgmtv1alpha1.PauseJobRequest]) (*connect.Response[mgmtv1alpha1.PauseJobResponse], error) {
 	ret := _mock.Called(context1, request)
@@ -2224,27 +2088,27 @@ func (_c *MockJobServiceClient_ReconcileJobMappings_Call) RunAndReturn(run func(
 	return _c
 }
 
-// RemoveColumnReview provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) RemoveColumnReview(context1 context.Context, request *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse], error) {
+// ReviewMappingChanges provides a mock function for the type MockJobServiceClient
+func (_mock *MockJobServiceClient) ReviewMappingChanges(context1 context.Context, request *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse], error) {
 	ret := _mock.Called(context1, request)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveColumnReview")
+		panic("no return value specified for ReviewMappingChanges")
 	}
 
-	var r0 *connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse]
+	var r0 *connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse], error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse], error)); ok {
 		return returnFunc(context1, request)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]) *connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse]); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]) *connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse]); ok {
 		r0 = returnFunc(context1, request)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse])
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]) error); ok {
 		r1 = returnFunc(context1, request)
 	} else {
 		r1 = ret.Error(1)
@@ -2252,27 +2116,27 @@ func (_mock *MockJobServiceClient) RemoveColumnReview(context1 context.Context, 
 	return r0, r1
 }
 
-// MockJobServiceClient_RemoveColumnReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveColumnReview'
-type MockJobServiceClient_RemoveColumnReview_Call struct {
+// MockJobServiceClient_ReviewMappingChanges_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReviewMappingChanges'
+type MockJobServiceClient_ReviewMappingChanges_Call struct {
 	*mock.Call
 }
 
-// RemoveColumnReview is a helper method to define mock.On call
+// ReviewMappingChanges is a helper method to define mock.On call
 //   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]
-func (_e *MockJobServiceClient_Expecter) RemoveColumnReview(context1 any, request any) *MockJobServiceClient_RemoveColumnReview_Call {
-	return &MockJobServiceClient_RemoveColumnReview_Call{Call: _e.mock.On("RemoveColumnReview", context1, request)}
+//   - request *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]
+func (_e *MockJobServiceClient_Expecter) ReviewMappingChanges(context1 any, request any) *MockJobServiceClient_ReviewMappingChanges_Call {
+	return &MockJobServiceClient_ReviewMappingChanges_Call{Call: _e.mock.On("ReviewMappingChanges", context1, request)}
 }
 
-func (_c *MockJobServiceClient_RemoveColumnReview_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest])) *MockJobServiceClient_RemoveColumnReview_Call {
+func (_c *MockJobServiceClient_ReviewMappingChanges_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest])) *MockJobServiceClient_ReviewMappingChanges_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]
+		var arg1 *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]
 		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest])
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest])
 		}
 		run(
 			arg0,
@@ -2282,80 +2146,12 @@ func (_c *MockJobServiceClient_RemoveColumnReview_Call) Run(run func(context1 co
 	return _c
 }
 
-func (_c *MockJobServiceClient_RemoveColumnReview_Call) Return(response *connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse], err error) *MockJobServiceClient_RemoveColumnReview_Call {
+func (_c *MockJobServiceClient_ReviewMappingChanges_Call) Return(response *connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse], err error) *MockJobServiceClient_ReviewMappingChanges_Call {
 	_c.Call.Return(response, err)
 	return _c
 }
 
-func (_c *MockJobServiceClient_RemoveColumnReview_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.RemoveColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.RemoveColumnReviewResponse], error)) *MockJobServiceClient_RemoveColumnReview_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetColumnReview provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) SetColumnReview(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.SetColumnReviewResponse], error) {
-	ret := _mock.Called(context1, request)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetColumnReview")
-	}
-
-	var r0 *connect.Response[mgmtv1alpha1.SetColumnReviewResponse]
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.SetColumnReviewResponse], error)); ok {
-		return returnFunc(context1, request)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]) *connect.Response[mgmtv1alpha1.SetColumnReviewResponse]); ok {
-		r0 = returnFunc(context1, request)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.SetColumnReviewResponse])
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]) error); ok {
-		r1 = returnFunc(context1, request)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockJobServiceClient_SetColumnReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetColumnReview'
-type MockJobServiceClient_SetColumnReview_Call struct {
-	*mock.Call
-}
-
-// SetColumnReview is a helper method to define mock.On call
-//   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]
-func (_e *MockJobServiceClient_Expecter) SetColumnReview(context1 any, request any) *MockJobServiceClient_SetColumnReview_Call {
-	return &MockJobServiceClient_SetColumnReview_Call{Call: _e.mock.On("SetColumnReview", context1, request)}
-}
-
-func (_c *MockJobServiceClient_SetColumnReview_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetColumnReviewRequest])) *MockJobServiceClient_SetColumnReview_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]
-		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.SetColumnReviewRequest])
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockJobServiceClient_SetColumnReview_Call) Return(response *connect.Response[mgmtv1alpha1.SetColumnReviewResponse], err error) *MockJobServiceClient_SetColumnReview_Call {
-	_c.Call.Return(response, err)
-	return _c
-}
-
-func (_c *MockJobServiceClient_SetColumnReview_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetColumnReviewRequest]) (*connect.Response[mgmtv1alpha1.SetColumnReviewResponse], error)) *MockJobServiceClient_SetColumnReview_Call {
+func (_c *MockJobServiceClient_ReviewMappingChanges_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.ReviewMappingChangesRequest]) (*connect.Response[mgmtv1alpha1.ReviewMappingChangesResponse], error)) *MockJobServiceClient_ReviewMappingChanges_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2560,74 +2356,6 @@ func (_c *MockJobServiceClient_SetJobSyncOptions_Call) Return(response *connect.
 }
 
 func (_c *MockJobServiceClient_SetJobSyncOptions_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetJobSyncOptionsRequest]) (*connect.Response[mgmtv1alpha1.SetJobSyncOptionsResponse], error)) *MockJobServiceClient_SetJobSyncOptions_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetJobUnmappedPassthroughs provides a mock function for the type MockJobServiceClient
-func (_mock *MockJobServiceClient) SetJobUnmappedPassthroughs(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse], error) {
-	ret := _mock.Called(context1, request)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetJobUnmappedPassthroughs")
-	}
-
-	var r0 *connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse]
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse], error)); ok {
-		return returnFunc(context1, request)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]) *connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse]); ok {
-		r0 = returnFunc(context1, request)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse])
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]) error); ok {
-		r1 = returnFunc(context1, request)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockJobServiceClient_SetJobUnmappedPassthroughs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetJobUnmappedPassthroughs'
-type MockJobServiceClient_SetJobUnmappedPassthroughs_Call struct {
-	*mock.Call
-}
-
-// SetJobUnmappedPassthroughs is a helper method to define mock.On call
-//   - context1 context.Context
-//   - request *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]
-func (_e *MockJobServiceClient_Expecter) SetJobUnmappedPassthroughs(context1 any, request any) *MockJobServiceClient_SetJobUnmappedPassthroughs_Call {
-	return &MockJobServiceClient_SetJobUnmappedPassthroughs_Call{Call: _e.mock.On("SetJobUnmappedPassthroughs", context1, request)}
-}
-
-func (_c *MockJobServiceClient_SetJobUnmappedPassthroughs_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest])) *MockJobServiceClient_SetJobUnmappedPassthroughs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]
-		if args[1] != nil {
-			arg1 = args[1].(*connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest])
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockJobServiceClient_SetJobUnmappedPassthroughs_Call) Return(response *connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse], err error) *MockJobServiceClient_SetJobUnmappedPassthroughs_Call {
-	_c.Call.Return(response, err)
-	return _c
-}
-
-func (_c *MockJobServiceClient_SetJobUnmappedPassthroughs_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.SetJobUnmappedPassthroughsRequest]) (*connect.Response[mgmtv1alpha1.SetJobUnmappedPassthroughsResponse], error)) *MockJobServiceClient_SetJobUnmappedPassthroughs_Call {
 	_c.Call.Return(run)
 	return _c
 }
