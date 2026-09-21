@@ -3,9 +3,7 @@ package v1alpha1_connectiondataservice
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -67,7 +65,7 @@ func (s *Service) GetJavascriptDraftPrompt(
 		Table:       req.Msg.GetTable(),
 		Column:      req.Msg.GetColumn(),
 		DataType:    column.GetDataType(),
-		MaxLength:   maxLengthOf(column.GetDataType()),
+		MaxLength:   maxLengthOf(column),
 		IsNullable:  isNullable(column.GetIsNullable()),
 		IsGenerated: column.GetGeneratedType() != "",
 		IsIdentity:  column.GetIdentityGeneration() != "",
@@ -114,25 +112,18 @@ func isNullable(value string) bool {
 	}
 }
 
-var typeLengthRe = regexp.MustCompile(`\((\d+)\)`)
-
-// maxLengthOf reads the length a character type carries, e.g. "character varying(20)". A type
-// without one bounds nothing, and saying so is better than guessing a limit the column has not.
-func maxLengthOf(dataType string) *int32 {
-	lowered := strings.ToLower(dataType)
-	if !strings.Contains(lowered, "char") && !strings.Contains(lowered, "text") {
+// maxLengthOf reads the bound the schema reports, and nothing else.
+//
+// It used to parse it out of data_type, which cannot work: MySQL reports `varchar` there and
+// keeps the length in column_type, so every MySQL column came back unbounded and the drafted
+// rule was free to overflow it — the exact failure the prompt exists to prevent. The schema now
+// carries character_maximum_length, already normalised to absent when the type bounds nothing.
+func maxLengthOf(column *mgmtv1alpha1.DatabaseColumn) *int32 {
+	length := column.GetCharacterMaximumLength()
+	if length <= 0 {
 		return nil
 	}
-	match := typeLengthRe.FindStringSubmatch(lowered)
-	if match == nil {
-		return nil
-	}
-	length, err := strconv.ParseInt(match[1], 10, 32)
-	if err != nil || length <= 0 {
-		return nil
-	}
-	bounded := int32(length)
-	return &bounded
+	return &length
 }
 
 // isUniqueAlone is true only when a key covers this column and nothing else. A composite key

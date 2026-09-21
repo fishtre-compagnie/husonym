@@ -589,34 +589,69 @@ func Test_formatMappingColumns(t *testing.T) {
 }
 
 func Test_splitSensitiveColumns(t *testing.T) {
+	passthrough := func(schema, table, column string) *mgmtv1alpha1.JobMapping {
+		return &mgmtv1alpha1.JobMapping{
+			Schema: schema, Table: table, Column: column,
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{
+				Config: &mgmtv1alpha1.TransformerConfig{
+					Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
+						PassthroughConfig: &mgmtv1alpha1.Passthrough{},
+					},
+				},
+			},
+		}
+	}
+	generateDefault := func(schema, table, column string) *mgmtv1alpha1.JobMapping {
+		return &mgmtv1alpha1.JobMapping{
+			Schema: schema, Table: table, Column: column,
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{
+				Config: &mgmtv1alpha1.TransformerConfig{
+					Config: &mgmtv1alpha1.TransformerConfig_GenerateDefaultConfig{
+						GenerateDefaultConfig: &mgmtv1alpha1.GenerateDefault{},
+					},
+				},
+			},
+		}
+	}
+
 	columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
 		"public.users": {
-			"email":       {DataType: "character varying(255)"},
-			"champ_libre": {DataType: "text"},
-			"total":       {DataType: "numeric"},
+			"email":           {DataType: "character varying(255)"},
+			"champ_libre":     {DataType: "text"},
+			"total":           {DataType: "numeric"},
+			"email_normalise": {DataType: "character varying(255)"},
 		},
 	}
-	mappings := []*mgmtv1alpha1.JobMapping{
-		{Schema: "public", Table: "users", Column: "total"},
-		{Schema: "public", Table: "users", Column: "email"},
-		{Schema: "public", Table: "users", Column: "champ_libre"},
-	}
-
-	sensitive, others := splitSensitiveColumns(mappings, columnInfo)
 
 	t.Run("names what reads as personal data, with its category", func(t *testing.T) {
+		sensitive, others := splitSensitiveColumns([]*mgmtv1alpha1.JobMapping{
+			passthrough("public", "users", "total"),
+			passthrough("public", "users", "email"),
+			passthrough("public", "users", "champ_libre"),
+		}, columnInfo)
+
 		require.Equal(t, []string{"public.users.email (email)"}, sensitive)
+		// champ_libre is exactly the column this heuristic cannot see into. Dropping it because
+		// nothing matched would hide the one that needs a human the most.
+		require.Equal(t, []string{"public.users.champ_libre", "public.users.total"}, others)
 	})
 
-	t.Run("keeps the rest, because the heuristic clears nothing", func(t *testing.T) {
-		// champ_libre is exactly the column this heuristic cannot see into. Dropping it from
-		// the log because nothing matched would hide the one that needs a human the most.
-		require.Equal(t, []string{"public.users.champ_libre", "public.users.total"}, others)
+	t.Run("leaves out a column the destination recomputes", func(t *testing.T) {
+		// A generated column gets a GenerateDefault, not a passthrough: its value never leaves
+		// the source, so reporting it as passed through would be a false entry — and its name
+		// matches the PII heuristic, so it would have been a loud one.
+		sensitive, others := splitSensitiveColumns([]*mgmtv1alpha1.JobMapping{
+			generateDefault("public", "users", "email_normalise"),
+			passthrough("public", "users", "total"),
+		}, columnInfo)
+
+		require.Empty(t, sensitive)
+		require.Equal(t, []string{"public.users.total"}, others)
 	})
 
 	t.Run("survives a column the schema does not describe", func(t *testing.T) {
 		sensitive, others := splitSensitiveColumns(
-			[]*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "ghost", Column: "email"}},
+			[]*mgmtv1alpha1.JobMapping{passthrough("public", "ghost", "email")},
 			columnInfo,
 		)
 		// No type to go on, but the name alone is enough: it must not silently become "other".

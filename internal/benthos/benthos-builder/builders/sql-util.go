@@ -145,6 +145,14 @@ func splitSensitiveColumns(
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 ) (sensitive, others []string) {
 	for _, m := range mappings {
+		// Only the columns actually copied as is. getAdditionalPassthroughJobMappings hands a
+		// GenerateDefault to every generated column, whose value the destination recomputes and
+		// which therefore never leaves the source. Reporting those as passed through would put
+		// false entries in the one list whose whole worth is that an operator can trust it.
+		if _, ok := m.GetTransformer().GetConfig().GetConfig().(*mgmtv1alpha1.TransformerConfig_PassthroughConfig); !ok {
+			continue
+		}
+
 		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
 		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
 

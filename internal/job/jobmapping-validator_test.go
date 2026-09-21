@@ -231,6 +231,51 @@ func TestValidateJobMappingsExistInSource(t *testing.T) {
 			}, warnings["public.users"]["total"])
 		},
 	)
+
+	t.Run(
+		"should not call a generated column passed through",
+		func(t *testing.T) {
+			stored := "s"
+			identity := "a"
+			mappings := []*mgmtv1alpha1.JobMapping{
+				{Schema: "public", Table: "users", Column: "name"},
+			}
+
+			sourceCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+				"public.users": {
+					"name": &sqlmanager_shared.DatabaseSchemaRow{DataType: "text"},
+					// Named so the PII heuristic would fire on it, which is what makes the
+					// mislabelling loud: the destination recomputes this value, nothing leaks.
+					"email_normalise": &sqlmanager_shared.DatabaseSchemaRow{
+						DataType:      "character varying(255)",
+						GeneratedType: &stored,
+					},
+					"id": &sqlmanager_shared.DatabaseSchemaRow{
+						DataType:           "integer",
+						IdentityGeneration: &identity,
+					},
+				},
+			}
+
+			jmv := NewJobMappingsValidator(mappings, WithJobSourceOptions(&SqlJobSourceOpts{
+				PassthroughOnNewColumnAddition: true,
+				PassthroughPendingReview:       true,
+			}))
+			jmv.ValidateJobMappingsExistInSource(sourceCols)
+
+			warnings := jmv.GetColumnWarnings()
+			// Absent from the mappings, yes. Passed through, no — and above all not reported as
+			// personal data leaving the source.
+			for _, column := range []string{"email_normalise", "id"} {
+				assert.Equal(t, []*mgmtv1alpha1.ColumnWarning_ColumnWarningReport{
+					{
+						Code:    mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
+						Message: "Column does not exist in job mappings. Add column to job mappings: public.users." + column,
+					},
+				}, warnings["public.users"][column], column)
+			}
+		},
+	)
 }
 
 func TestJobMappingsValidator_ValidateRequiredForeignKeys(t *testing.T) {

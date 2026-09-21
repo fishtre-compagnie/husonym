@@ -21,22 +21,35 @@ func Test_isNullable(t *testing.T) {
 }
 
 func Test_maxLengthOf(t *testing.T) {
-	t.Run("a character type carries its bound", func(t *testing.T) {
-		require.Equal(t, int32(20), *maxLengthOf("character varying(20)"))
-		require.Equal(t, int32(255), *maxLengthOf("varchar(255)"))
+	column := func(dataType string, length *int32) *mgmtv1alpha1.DatabaseColumn {
+		return &mgmtv1alpha1.DatabaseColumn{
+			DataType:               dataType,
+			CharacterMaximumLength: length,
+		}
+	}
+	length := func(v int32) *int32 { return &v }
+
+	t.Run("reports the bound the schema carries", func(t *testing.T) {
+		require.Equal(t, int32(20), *maxLengthOf(column("character varying", length(20))))
+	})
+
+	t.Run("mysql reports varchar with no length in the type", func(t *testing.T) {
+		// The regression this replaced: MySQL puts `varchar` in data_type and keeps the length
+		// in column_type, so parsing data_type found no bound and every MySQL column was drafted
+		// as unbounded. The bound now travels in its own field, and the type string is irrelevant.
+		require.Equal(t, int32(20), *maxLengthOf(column("varchar", length(20))))
 	})
 
 	t.Run("an unbounded type bounds nothing", func(t *testing.T) {
-		require.Nil(t, maxLengthOf("text"))
-		require.Nil(t, maxLengthOf("character varying"))
+		require.Nil(t, maxLengthOf(column("text", nil)))
+		require.Nil(t, maxLengthOf(column("integer", nil)))
 	})
 
-	t.Run("a numeric width is not a length", func(t *testing.T) {
-		// MySQL writes int(11) and numeric(10,2); neither says anything about how many
-		// characters the column accepts, and reading them as a bound would have the model
-		// truncate perfectly good numbers.
-		require.Nil(t, maxLengthOf("int(11)"))
-		require.Nil(t, maxLengthOf("numeric(10,2)"))
+	t.Run("a non positive bound is no bound", func(t *testing.T) {
+		// The drivers write -1 for "no bound"; the conversion already drops it, and this keeps a
+		// stray value from reaching a rule as "at most -1 characters".
+		require.Nil(t, maxLengthOf(column("varchar", length(-1))))
+		require.Nil(t, maxLengthOf(column("varchar", length(0))))
 	})
 }
 

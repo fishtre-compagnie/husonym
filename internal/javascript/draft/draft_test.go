@@ -116,14 +116,49 @@ func Test_BuildPrompt_Functions(t *testing.T) {
 
 func Test_BuildPrompt_CarriesNoValues(t *testing.T) {
 	// The prompt is the one place where a model asked to anonymize data could be handed the
-	// data instead. Nothing in ColumnFacts holds a value — Shape is an aggregate — and this
-	// test is here so that adding such a field has to be a deliberate act against a red bar.
+	// data instead. Nothing in ColumnFacts holds a value, and the prompt says so, so that adding
+	// such a field has to be a deliberate act against a red bar.
 	facts := column()
-	facts.Shape = "aaaa@aaaa.aa"
 	facts.PiiCategory = "contact"
 	prompt := BuildPrompt(facts)
 
-	require.Contains(t, prompt, "aaaa@aaaa.aa")
-	require.Contains(t, prompt, "never a value")
+	require.Contains(t, prompt, "You are not shown any of the column's values")
 	require.False(t, strings.Contains(prompt, "@example.com"))
+}
+
+func Test_BuildPrompt_GenerateRefusesWhatItCannotSatisfy(t *testing.T) {
+	// Generate mode receives no input, so "derive the output from the input" is not a rule it
+	// can follow. Restating it would get back a draft that says `value` and throws on row one.
+	for _, tc := range []struct {
+		name  string
+		apply func(*ColumnFacts)
+	}{
+		{"unique", func(f *ColumnFacts) { f.IsUnique = true }},
+		{"foreign key", func(f *ColumnFacts) {
+			f.ForeignKey = &ForeignKey{Schema: "public", Table: "companies", Column: "id"}
+		}},
+		{"referenced by others", func(f *ColumnFacts) { f.ReferencedBy = 3 }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			facts := column()
+			facts.Mode = ModeGenerate
+			tc.apply(&facts)
+			prompt := BuildPrompt(facts)
+
+			require.Contains(t, prompt, "needs a transform rule instead")
+			// None of the rules that assume an input may survive alongside the refusal.
+			require.NotContains(t, prompt, "Derive it from the input")
+			require.NotContains(t, prompt, "the same input must always give the same output")
+			require.NotContains(t, prompt, "the row loses its parent")
+		})
+	}
+
+	t.Run("transform mode still states them", func(t *testing.T) {
+		facts := column()
+		facts.Mode = ModeTransform
+		facts.IsUnique = true
+		prompt := BuildPrompt(facts)
+		require.Contains(t, prompt, "Derive it from the input")
+		require.NotContains(t, prompt, "needs a transform rule instead")
+	})
 }

@@ -77,10 +77,6 @@ type ColumnFacts struct {
 
 	// PiiCategory is the detected category, when a report covered the column.
 	PiiCategory string
-	// Shape is an aggregated pattern of the values, digits as 9 and letters as A/a, never a
-	// value. It is the single most useful fact for a format-preserving rule, and the one that
-	// must never carry data: a prompt leaves the column's values where they are.
-	Shape string
 
 	Mode   Mode
 	Engine Engine
@@ -159,16 +155,9 @@ func writeColumn(b *strings.Builder, facts ColumnFacts) {
 	if facts.PiiCategory != "" {
 		fmt.Fprintf(b, "- Detected as personal data, category `%s`\n", facts.PiiCategory)
 	}
-	if facts.Shape != "" {
-		fmt.Fprintf(
-			b,
-			"- Dominant shape of the values: `%s` (digits as 9, uppercase as A, lowercase as a, separators kept)\n",
-			facts.Shape,
-		)
-	}
 	// Said out loud, because a model that does not know the sample is withheld asks for it, or
 	// invents one and reasons from the invention.
-	b.WriteString("\nThis is an aggregate and never a value: you are not shown the column's data, and you do not need it. Write a rule that holds for the whole column.\n")
+	b.WriteString("\nYou are not shown any of the column's values, and you do not need them: write a rule that holds for the whole column.\n")
 }
 
 // writeRules turns the facts into imperatives. The facts alone are not enough: a model reading
@@ -183,6 +172,24 @@ func writeRules(b *strings.Builder, facts ColumnFacts) {
 			"The database writes this column itself. Do not draft a rule for it — say so instead of returning a value.",
 		)
 	}
+
+	// Uniqueness and foreign keys are satisfied by deriving the output from the input, and a
+	// generate rule is handed no input: `fn()` takes no arguments. Emitting those rules here
+	// would ask for something the contract forbids, and the draft that came back would say
+	// `value` and throw ReferenceError on the first row. So the demand is refused, once,
+	// instead of being restated in terms the mode cannot meet.
+	if facts.Mode == ModeGenerate &&
+		(facts.IsUnique || facts.ForeignKey != nil || facts.ReferencedBy > 0) {
+		rules = append(
+			rules,
+			"This column must agree with something else — it is unique, or it is part of a foreign key — which can only be done by deriving the output from the current value. A generate rule does not receive it. Do not draft one: say that this column needs a transform rule instead.",
+		)
+		for _, rule := range rules {
+			fmt.Fprintf(b, "- %s\n", rule)
+		}
+		return
+	}
+
 	if facts.IsUnique {
 		rules = append(
 			rules,
@@ -218,12 +225,10 @@ func writeRules(b *strings.Builder, facts ColumnFacts) {
 			fmt.Sprintf("The output must be at most %d characters. Bound it; do not assume the generated value is short.", *facts.MaxLength),
 		)
 	}
-	if facts.Shape != "" {
-		rules = append(
-			rules,
-			"Keep the shape shown above unless a rule here forbids it: a value the application can still parse is what makes the anonymized database usable.",
-		)
-	}
+	rules = append(
+		rules,
+		"Keep the format the column's type implies unless a rule here forbids it: a value the application can still parse is what makes the anonymized database usable.",
+	)
 	if facts.Engine == EngineBenthos {
 		rules = append(
 			rules,

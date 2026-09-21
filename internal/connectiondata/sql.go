@@ -307,16 +307,25 @@ func (s *SQLConnectionDataService) GetSchema(
 		if col.ColumnDefault != "" {
 			defaultColumn = &col.ColumnDefault
 		}
+		// The drivers write -1 when the type bounds nothing, which is why the rest of the
+		// repository tests for > 0 (see sql-util.go). Absent rather than zero, so a consumer
+		// can tell "no bound" from "a bound of nothing".
+		var charMaxLength *int32
+		if col.CharacterMaximumLength > 0 {
+			bounded := int32(col.CharacterMaximumLength)
+			charMaxLength = &bounded
+		}
 
 		schemas = append(schemas, &mgmtv1alpha1.DatabaseColumn{
-			Schema:             col.TableSchema,
-			Table:              col.TableName,
-			Column:             col.ColumnName,
-			DataType:           col.DataType,
-			IsNullable:         col.NullableString(),
-			ColumnDefault:      defaultColumn,
-			GeneratedType:      col.GeneratedType,
-			IdentityGeneration: col.IdentityGeneration,
+			Schema:                 col.TableSchema,
+			Table:                  col.TableName,
+			Column:                 col.ColumnName,
+			DataType:               col.DataType,
+			IsNullable:             col.NullableString(),
+			ColumnDefault:          defaultColumn,
+			GeneratedType:          col.GeneratedType,
+			IdentityGeneration:     col.IdentityGeneration,
+			CharacterMaximumLength: charMaxLength,
 		})
 	}
 	return schemas, nil

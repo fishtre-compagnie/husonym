@@ -9066,6 +9066,18 @@
               "defaultValue": ""
             },
             {
+              "name": "character_maximum_length",
+              "description": "How many characters the column accepts, when its type bounds them. Absent for types that\nbound nothing. It cannot be read back from data_type: MySQL reports `varchar` there and\nkeeps the length in column_type, so anything parsing data_type finds no bound on MySQL.",
+              "label": "optional",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_character_maximum_length",
+              "defaultValue": ""
+            },
+            {
               "name": "data_category",
               "description": "Nature sémantique détectée pour cette colonne (heuristique nom+type SQL). Ex: \"email\", \"phone_number\", \"person_full_name\". Vide si rien de détecté.",
               "label": "",
@@ -10518,7 +10530,7 @@
             },
             {
               "name": "engine",
-              "description": "The engine that will run it. Defaults to athanor.",
+              "description": "The engine that will run it. Unspecified means athanor — a product choice, not the\ndeployment's state: ENABLE_ATHANOR_ENGINE is off by default and only the worker reads it,\nso the server cannot observe which engine a job will get. Athanor is where the product is\ngoing and Benthos is on its way out, so a caller on a Benthos deployment says so.",
               "label": "",
               "type": "JavascriptDraftEngine",
               "longType": "JavascriptDraftEngine",

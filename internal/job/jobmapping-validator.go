@@ -211,6 +211,18 @@ func (j *JobMappingsValidator) ValidateJobMappingsExistInSource(
 				// do with the column rather than asking for a mapping that may never come. The
 				// generic message above would read as advice; this one is a statement of fact
 				// about data leaving the source untransformed.
+				// A column the database writes itself is not passed through: the builder hands it
+				// a GenerateDefault and the destination recomputes the value, so none of it
+				// leaves the source. It is simply absent from the mappings, and saying more
+				// would put a column that cannot leak in a list meant for the ones that can.
+				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview &&
+					(colMap[col].GeneratedType != nil || colMap[col].IdentityGeneration != nil):
+					j.addColumnWarning(
+						table,
+						col,
+						msg,
+						mgmtv1alpha1.ColumnWarning_COLUMN_WARNING_CODE_NOT_FOUND_IN_MAPPING,
+					)
 				case j.jobSourceOptions != nil && j.jobSourceOptions.PassthroughPendingReview:
 					// A column whose name and type read as personal data gets its own code, so
 					// a reviewer with sixty warnings knows which three to open. The others are
