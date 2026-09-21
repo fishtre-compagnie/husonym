@@ -48,6 +48,7 @@ func Test_pendingColumns(t *testing.T) {
 				copiedColumn(t, demoJobId, "commentaire", "text"),
 			},
 			nil,
+			nil,
 		)
 		require.Len(t, pending, 1)
 		require.Equal(t, "commentaire", pending[0].GetColumnName())
@@ -71,6 +72,7 @@ func Test_pendingColumns(t *testing.T) {
 				copiedColumn(t, demoJobId, "email", "character varying(255)"),
 			},
 			nil,
+			nil,
 		)
 		require.Len(t, pending, 1)
 		require.Equal(t, "email", pending[0].GetPiiCategory())
@@ -85,6 +87,7 @@ func Test_pendingColumns(t *testing.T) {
 			[]db_queries.HusonymApiUnmappedPassthrough{
 				copiedColumn(t, demoJobId, "commentaire", "text"),
 			},
+			nil,
 			[]db_queries.HusonymApiColumnReview{
 				acceptedColumn(t, demoJobId, "commentaire", "text", ""),
 			},
@@ -97,6 +100,7 @@ func Test_pendingColumns(t *testing.T) {
 			[]db_queries.HusonymApiUnmappedPassthrough{
 				copiedColumn(t, demoJobId, "commentaire", "character varying(255)"),
 			},
+			nil,
 			[]db_queries.HusonymApiColumnReview{
 				acceptedColumn(t, demoJobId, "commentaire", "text", ""),
 			},
@@ -108,6 +112,23 @@ func Test_pendingColumns(t *testing.T) {
 		)
 	})
 
+	t.Run("a column mapped since leaves the list at once", func(t *testing.T) {
+		// The last run copied it in clear, but the next one will not. Waiting for that run to
+		// drop it would leave the bell counting what somebody has just fixed.
+		pending := pendingColumns(
+			[]db_queries.HusonymApiUnmappedPassthrough{
+				copiedColumn(t, demoJobId, "email", "character varying(255)"),
+				copiedColumn(t, demoJobId, "commentaire", "text"),
+			},
+			map[columnKey]struct{}{
+				{demoJobId, "public", "users", "email"}: {},
+			},
+			nil,
+		)
+		require.Len(t, pending, 1)
+		require.Equal(t, "commentaire", pending[0].GetColumnName())
+	})
+
 	t.Run("an acceptance covers its own job only", func(t *testing.T) {
 		// The same column may be fine to copy for the demo and not for the sampling: accepting
 		// it for one must leave it pending for the other. This is the scoping that makes the
@@ -117,6 +138,7 @@ func Test_pendingColumns(t *testing.T) {
 				copiedColumn(t, demoJobId, "commentaire", "text"),
 				copiedColumn(t, samplingJobId, "commentaire", "text"),
 			},
+			nil,
 			[]db_queries.HusonymApiColumnReview{
 				acceptedColumn(t, demoJobId, "commentaire", "text", ""),
 			},

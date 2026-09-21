@@ -1485,6 +1485,22 @@ class GetPendingColumnReviewsResponse(_message.Message):
     columns: _containers.RepeatedCompositeFieldContainer[PendingColumnReview]
     def __init__(self, columns: _Optional[_Iterable[_Union[PendingColumnReview, _Mapping]]] = ...) -> None: ...
 
+class MapUnmappedColumnsRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "mappings")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    MAPPINGS_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
+
+class MapUnmappedColumnsResponse(_message.Message):
+    __slots__ = ("added",)
+    ADDED_FIELD_NUMBER: _ClassVar[int]
+    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    def __init__(self, added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
+
 class ColumnError(_message.Message):
     __slots__ = ("schema", "table", "column", "error_reports")
     class ColumnErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):

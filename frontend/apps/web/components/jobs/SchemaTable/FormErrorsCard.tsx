@@ -15,10 +15,8 @@ import {
   ExclamationTriangleIcon,
   ReloadIcon,
 } from '@radix-ui/react-icons';
+import Link from 'next/link';
 import { ReactElement } from 'react';
-import AcceptPassthroughButton, {
-  PassthroughTarget,
-} from './AcceptPassthroughButton';
 
 export type ErrorLevel = 'error' | 'warning';
 
@@ -28,21 +26,21 @@ export interface FormError {
   path: string;
   level: ErrorLevel;
   // Set on the warnings about a column the job copies untransformed while it waits for a
-  // decision. Carries the column in pieces because the decision is written against it, and
-  // splitting `path` back apart would break on any name holding a dot.
-  acceptable?: PassthroughTarget;
+  // decision — the ones the job's review tab exists to settle.
+  pendingReview?: boolean;
 }
 
 interface Props {
   formErrors: FormError[];
   isValidating?: boolean;
   onValidate?(): void;
-  // Absent while a job is being created: there is no job yet to record a decision against.
-  onAcceptPassthrough?(target: PassthroughTarget, note?: string): Promise<void>;
+  // Where those columns are settled. Absent while a job is being created: there is no job yet,
+  // hence no review tab to send anybody to.
+  reviewHref?: string;
 }
 
 export default function FormErrorsCard(props: Props): ReactElement {
-  const { formErrors, isValidating, onValidate, onAcceptPassthrough } = props;
+  const { formErrors, isValidating, onValidate, reviewHref } = props;
 
   const { errors, warnings } = formErrorsToMessages(formErrors);
   return (
@@ -123,11 +121,15 @@ export default function FormErrorsCard(props: Props): ReactElement {
                   className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap flex flex-row items-start justify-between gap-2"
                 >
                   <span>{entry.message}</span>
-                  {entry.acceptable && onAcceptPassthrough && (
-                    <AcceptPassthroughButton
-                      target={entry.acceptable}
-                      onAccept={onAcceptPassthrough}
-                    />
+                  {/* A link, not an action: the decision is made in one place, where
+                      anonymizing is the first choice and accepting the second. */}
+                  {entry.pendingReview && reviewHref && (
+                    <Link
+                      href={reviewHref}
+                      className="shrink-0 underline underline-offset-2"
+                    >
+                      Review
+                    </Link>
                   )}
                 </div>
               ))}
@@ -143,7 +145,7 @@ export default function FormErrorsCard(props: Props): ReactElement {
 // be a bare string, which left nowhere to hang an action.
 interface FormErrorMessage {
   message: string;
-  acceptable?: PassthroughTarget;
+  pendingReview?: boolean;
 }
 
 interface FormErrorMesageResponse {
@@ -164,7 +166,7 @@ function formErrorsToMessages(
     pieces.push(error.message);
     const entry: FormErrorMessage = {
       message: pieces.join(' '),
-      acceptable: error.acceptable,
+      pendingReview: error.pendingReview,
     };
 
     if (error.level == 'warning') {

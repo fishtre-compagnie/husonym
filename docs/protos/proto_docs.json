@@ -16152,6 +16152,78 @@
           "fields": []
         },
         {
+          "name": "MapUnmappedColumnsRequest",
+          "longName": "MapUnmappedColumnsRequest",
+          "fullName": "mgmt.v1alpha1.MapUnmappedColumnsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job to add the mappings to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mappings",
+              "description": "The columns to map, each with the transformer that anonymizes it.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "MapUnmappedColumnsResponse",
+          "longName": "MapUnmappedColumnsResponse",
+          "fullName": "mgmt.v1alpha1.MapUnmappedColumnsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "added",
+              "description": "The mappings actually added. A column somebody mapped in the meantime is left as they set\nit and does not appear here: this call adds, it never overwrites a choice.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "MongoDBDestinationConnectionOptions",
           "longName": "MongoDBDestinationConnectionOptions",
           "fullName": "mgmt.v1alpha1.MongoDBDestinationConnectionOptions",
@@ -20224,6 +20296,18 @@
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
               }
+            },
+            {
+              "name": "MapUnmappedColumns",
+              "description": "Adds mappings for columns the job does not map yet — the \"anonymize\" of the review tab. It\nonly adds: a column mapped in the meantime keeps the mapping somebody chose for it.",
+              "requestType": "MapUnmappedColumnsRequest",
+              "requestLongType": "MapUnmappedColumnsRequest",
+              "requestFullType": "mgmt.v1alpha1.MapUnmappedColumnsRequest",
+              "requestStreaming": false,
+              "responseType": "MapUnmappedColumnsResponse",
+              "responseLongType": "MapUnmappedColumnsResponse",
+              "responseFullType": "mgmt.v1alpha1.MapUnmappedColumnsResponse",
+              "responseStreaming": false
             },
             {
               "name": "ValidateSchema",

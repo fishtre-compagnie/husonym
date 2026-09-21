@@ -180,6 +180,11 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.FromString,
                 _registered_method=True)
+        self.MapUnmappedColumns = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/MapUnmappedColumns',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.FromString,
+                _registered_method=True)
         self.ValidateSchema = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ValidateSchema',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
@@ -485,6 +490,14 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def MapUnmappedColumns(self, request, context):
+        """Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
+        only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ValidateSchema(self, request, context):
         """Validates that the schema is compatible with the job mappings
         """
@@ -742,6 +755,11 @@ def add_JobServiceServicer_to_server(servicer, server):
                     servicer.GetPendingColumnReviews,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.SerializeToString,
+            ),
+            'MapUnmappedColumns': grpc.unary_unary_rpc_method_handler(
+                    servicer.MapUnmappedColumns,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.SerializeToString,
             ),
             'ValidateSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateSchema,
@@ -1701,6 +1719,33 @@ class JobService:
             '/mgmt.v1alpha1.JobService/GetPendingColumnReviews',
             mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def MapUnmappedColumns(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/MapUnmappedColumns',
+            mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.MapUnmappedColumnsResponse.FromString,
             options,
             channel_credentials,
             insecure,

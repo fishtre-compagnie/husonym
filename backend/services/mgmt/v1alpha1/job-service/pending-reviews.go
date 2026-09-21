@@ -9,6 +9,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
+	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -103,6 +104,7 @@ func (s *Service) GetPendingColumnReviews(
 
 	var copied []db_queries.HusonymApiUnmappedPassthrough
 	var accepted []db_queries.HusonymApiColumnReview
+	var jobs []db_queries.HusonymApiJob
 	if req.Msg.JobId != nil {
 		jobUuid, err := husonymdb.ToUuid(req.Msg.GetJobId())
 		if err != nil {
@@ -129,12 +131,21 @@ func (s *Service) GetPendingColumnReviews(
 		if err != nil {
 			return nil, err
 		}
+		job, err := s.db.Q.GetJobById(ctx, s.db.Db, jobUuid)
+		if err != nil {
+			return nil, err
+		}
+		jobs = []db_queries.HusonymApiJob{job}
 	} else {
 		copied, err = s.db.Q.GetUnmappedPassthroughsByAccount(ctx, s.db.Db, accountUuid)
 		if err != nil {
 			return nil, err
 		}
 		accepted, err = s.db.Q.GetColumnReviewsByAccount(ctx, s.db.Db, accountUuid)
+		if err != nil {
+			return nil, err
+		}
+		jobs, err = s.db.Q.GetJobsByAccount(ctx, s.db.Db, accountUuid)
 		if err != nil {
 			return nil, err
 		}
@@ -146,8 +157,91 @@ func (s *Service) GetPendingColumnReviews(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.GetPendingColumnReviewsResponse{
-		Columns: pendingColumns(copied, accepted),
+		Columns: pendingColumns(copied, mappedColumns(jobs), accepted),
 	}), nil
+}
+
+// MapUnmappedColumns adds mappings for columns the job does not map yet: the "anonymize" of the
+// review tab.
+//
+// It only adds. The tab is a snapshot, and between the moment it was loaded and the click
+// somebody may have mapped one of these columns from the source page; overwriting their choice
+// with a suggestion would undo a decision in the name of making one. Such a column is skipped
+// and left out of the response, so the caller can tell.
+func (s *Service) MapUnmappedColumns(
+	ctx context.Context,
+	req *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest],
+) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error) {
+	jobResp, err := s.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{
+		Id: req.Msg.GetJobId(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+	jobDto := jobResp.Msg.GetJob()
+	user, err := s.userdataclient.GetUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// The same checks as saving the whole source: this writes the job's mappings too.
+	if err := user.EnforceJob(ctx, jobDto, rbac.JobAction_Edit); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
+
+	mappingKey := func(m *mgmtv1alpha1.JobMapping) string {
+		return fmt.Sprintf("%s.%s.%s", m.GetSchema(), m.GetTable(), m.GetColumn())
+	}
+
+	existing := map[string]struct{}{}
+	mappings := make([]*pg_models.JobMapping, 0, len(jobDto.GetMappings())+len(req.Msg.GetMappings()))
+	for _, mapping := range jobDto.GetMappings() {
+		stored := &pg_models.JobMapping{}
+		if err := stored.FromDto(mapping); err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, stored)
+		existing[mappingKey(mapping)] = struct{}{}
+	}
+
+	added := []*mgmtv1alpha1.JobMapping{}
+	for _, mapping := range req.Msg.GetMappings() {
+		// A mapping with no transformer would be written as a column the job maps and does
+		// nothing to — a passthrough under another name, from a button labelled "anonymize".
+		if mapping.GetTransformer().GetConfig().GetConfig() == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(
+				"no transformer given for %s", mappingKey(mapping),
+			))
+		}
+		if _, ok := existing[mappingKey(mapping)]; ok {
+			continue
+		}
+		stored := &pg_models.JobMapping{}
+		if err := stored.FromDto(mapping); err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, stored)
+		existing[mappingKey(mapping)] = struct{}{}
+		added = append(added, mapping)
+	}
+
+	if len(added) > 0 {
+		jobUuid, err := husonymdb.ToUuid(jobDto.GetId())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := s.db.Q.UpdateJobMappings(ctx, s.db.Db, db_queries.UpdateJobMappingsParams{
+			ID:          jobUuid,
+			Mappings:    mappings,
+			UpdatedByID: user.PgId(),
+		}); err != nil {
+			return nil, fmt.Errorf("unable to update job mappings: %w", err)
+		}
+	}
+
+	return connect.NewResponse(&mgmtv1alpha1.MapUnmappedColumnsResponse{Added: added}), nil
 }
 
 func (s *Service) keepViewableJobs(
@@ -176,19 +270,38 @@ func (s *Service) keepViewableJobs(
 	return kept
 }
 
-// pendingColumns derives what is waiting from what the runs copied and what was accepted.
+// columnKey names one column of one job.
+type columnKey struct{ job, schema, table, column string }
+
+// mappedColumns are the columns the jobs map now. The last run copied them in clear, but the
+// next one will not, so they are settled — and they have to leave the list the moment they are
+// mapped, not at the next run, or the bell would still count what somebody has just fixed.
+func mappedColumns(jobs []db_queries.HusonymApiJob) map[columnKey]struct{} {
+	mapped := map[columnKey]struct{}{}
+	for _, job := range jobs {
+		jobId := husonymdb.UUIDString(job.ID)
+		for _, mapping := range job.Mappings {
+			mapped[columnKey{jobId, mapping.Schema, mapping.Table, mapping.Column}] = struct{}{}
+		}
+	}
+	return mapped
+}
+
+// pendingColumns derives what is waiting from what the runs copied, what is mapped now, and what
+// was accepted.
 //
-// A copied column is pending unless an acceptance covers it and still holds — that is, unless the
-// column is the one that was accepted. One that was accepted and has changed since is pending
-// again, with its own reason: its reviewer is asked to confirm, not to look for the first time.
+// A copied column is pending unless it has been mapped since, or an acceptance covers it and
+// still holds — that is, unless the column is the one that was accepted. One that was accepted
+// and has changed since is pending again, with its own reason: its reviewer is asked to confirm,
+// not to look for the first time.
 func pendingColumns(
 	copied []db_queries.HusonymApiUnmappedPassthrough,
+	mapped map[columnKey]struct{},
 	accepted []db_queries.HusonymApiColumnReview,
 ) []*mgmtv1alpha1.PendingColumnReview {
-	type key struct{ job, schema, table, column string }
-	decisions := make(map[key]job_util.AcceptedPassthrough, len(accepted))
+	decisions := make(map[columnKey]job_util.AcceptedPassthrough, len(accepted))
 	for _, review := range accepted {
-		decisions[key{
+		decisions[columnKey{
 			husonymdb.UUIDString(review.JobID),
 			review.TableSchema,
 			review.TableName,
@@ -202,8 +315,12 @@ func pendingColumns(
 	pending := make([]*mgmtv1alpha1.PendingColumnReview, 0, len(copied))
 	for _, row := range copied {
 		jobId := husonymdb.UUIDString(row.JobID)
+		key := columnKey{jobId, row.TableSchema, row.TableName, row.ColumnName}
+		if _, ok := mapped[key]; ok {
+			continue
+		}
 		reason := mgmtv1alpha1.PendingColumnReason_PENDING_COLUMN_REASON_NEVER_REVIEWED
-		if decision, ok := decisions[key{jobId, row.TableSchema, row.TableName, row.ColumnName}]; ok {
+		if decision, ok := decisions[key]; ok {
 			if decision.StillHoldsFor(row.ColumnName, row.DataType) {
 				continue
 			}

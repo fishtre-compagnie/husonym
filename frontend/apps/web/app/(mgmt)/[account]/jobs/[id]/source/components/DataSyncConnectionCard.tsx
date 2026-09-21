@@ -7,7 +7,6 @@ import {
   SchemaTable,
   getAllFormErrors,
 } from '@/components/jobs/SchemaTable/SchemaTable';
-import { PassthroughTarget } from '@/components/jobs/SchemaTable/AcceptPassthroughButton';
 import { getSchemaConstraintHandler } from '@/components/jobs/SchemaTable/schema-constraint-handler';
 import { TransformerResult } from '@/components/jobs/SchemaTable/transformer-handler';
 import {
@@ -272,43 +271,6 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   const { mutateAsync: validateJobMappingsAsync } = useMutation(
     JobService.method.validateJobMappings
   );
-  const { mutateAsync: setColumnReviewAsync } = useMutation(
-    JobService.method.setColumnReview
-  );
-
-  // Records that an unmapped column may ship untransformed, then revalidates so the warning it
-  // answers disappears from the list. Revalidating rather than removing the line locally: the
-  // server decides what is still reported, and a column it hands back — because it has changed
-  // since, or because the write failed — has to stay visible.
-  async function onAcceptPassthrough(
-    target: PassthroughTarget,
-    note?: string
-  ): Promise<void> {
-    const jobId = data?.job?.id;
-    if (!account?.id || !jobId) {
-      return;
-    }
-    try {
-      await setColumnReviewAsync({
-        jobId,
-        accountId: account.id,
-        tableSchema: target.schema,
-        tableName: target.table,
-        columnName: target.column,
-        note,
-      });
-      toast.success('Passthrough accepted', {
-        description: `${target.schema}.${target.table}.${target.column} will no longer be reported`,
-      });
-      await validateMappings();
-    } catch (error) {
-      console.error('Failed to accept the passthrough:', error);
-      toast.error('Unable to accept the passthrough', {
-        description: getErrorMessage(error),
-      });
-    }
-  }
-
   async function onSourceChange(value: string): Promise<void> {
     try {
       const newValues = await getUpdatedValues(
@@ -976,7 +938,11 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
               )}
               isJobMappingsValidating={isValidatingMappings}
               onValidate={validateMappings}
-              onAcceptPassthrough={onAcceptPassthrough}
+              reviewHref={
+                account?.name && data?.job?.id
+                  ? `/${account.name}/jobs/${data.job.id}/review`
+                  : undefined
+              }
               addVirtualForeignKey={addVirtualForeignKey}
               removeVirtualForeignKey={removeVirtualForeignKey}
               onImportMappingsClick={onImportMappingsClick}

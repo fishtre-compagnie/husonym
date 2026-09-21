@@ -1434,6 +1434,21 @@ message GetPendingColumnReviewsResponse {
   repeated PendingColumnReview columns = 1;
 }
 
+message MapUnmappedColumnsRequest {
+  // The job to add the mappings to
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The columns to map, each with the transformer that anonymizes it.
+  repeated JobMapping mappings = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message MapUnmappedColumnsResponse {
+  // The mappings actually added. A column somebody mapped in the meantime is left as they set
+  // it and does not appear here: this call adds, it never overwrites a choice.
+  repeated JobMapping added = 1;
+}
+
 message ColumnError {
   // The schema of the table
   string schema = 1;
@@ -2029,6 +2044,9 @@ service JobService {
   rpc GetPendingColumnReviews(GetPendingColumnReviewsRequest) returns (GetPendingColumnReviewsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
+  // only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+  rpc MapUnmappedColumns(MapUnmappedColumnsRequest) returns (MapUnmappedColumnsResponse) {}
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 

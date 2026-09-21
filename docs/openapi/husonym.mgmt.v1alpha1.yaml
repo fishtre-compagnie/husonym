@@ -3282,6 +3282,51 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.JobService/MapUnmappedColumns:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: MapUnmappedColumns
+      description: >-
+        Adds mappings for columns the job does not map yet — the "anonymize" of
+        the review tab. It
+         only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+      operationId: mgmt.v1alpha1.JobService.MapUnmappedColumns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.MapUnmappedColumnsRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.MapUnmappedColumnsResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/PauseJob:
     post:
       tags:
@@ -13230,6 +13275,42 @@ components:
         - LOG_WINDOW_FIFTEEN_MIN
         - LOG_WINDOW_ONE_HOUR
         - LOG_WINDOW_ONE_DAY
+    mgmt.v1alpha1.MapUnmappedColumnsRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job to add the mappings to
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: mappings
+          minItems: 1
+          description: The columns to map, each with the transformer that anonymizes it.
+      title: MapUnmappedColumnsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.MapUnmappedColumnsResponse:
+      type: object
+      properties:
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: added
+          description: >-
+            The mappings actually added. A column somebody mapped in the
+            meantime is left as they set
+             it and does not appear here: this call adds, it never overwrites a choice.
+      title: MapUnmappedColumnsResponse
+      additionalProperties: false
     mgmt.v1alpha1.MongoDBDestinationConnectionOptions:
       type: object
       title: MongoDBDestinationConnectionOptions

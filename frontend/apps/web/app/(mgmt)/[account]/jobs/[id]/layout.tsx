@@ -226,6 +226,8 @@ function useGetSidebarNavItems(job?: Job): SidebarNav[] {
         { title: 'Overview', href: basePath },
         { title: 'Source', href: `${basePath}/source` },
         { title: 'Destinations', href: `${basePath}/destinations` },
+        // Only sync jobs copy columns from a source, so only they can copy one in clear.
+        { title: 'Review', href: `${basePath}/review` },
       ];
       if (isJobSubsettable(job)) {
         nav.push({

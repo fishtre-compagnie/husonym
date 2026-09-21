@@ -121,6 +121,9 @@ const (
 	// JobServiceGetPendingColumnReviewsProcedure is the fully-qualified name of the JobService's
 	// GetPendingColumnReviews RPC.
 	JobServiceGetPendingColumnReviewsProcedure = "/mgmt.v1alpha1.JobService/GetPendingColumnReviews"
+	// JobServiceMapUnmappedColumnsProcedure is the fully-qualified name of the JobService's
+	// MapUnmappedColumns RPC.
+	JobServiceMapUnmappedColumnsProcedure = "/mgmt.v1alpha1.JobService/MapUnmappedColumns"
 	// JobServiceValidateSchemaProcedure is the fully-qualified name of the JobService's ValidateSchema
 	// RPC.
 	JobServiceValidateSchemaProcedure = "/mgmt.v1alpha1.JobService/ValidateSchema"
@@ -231,6 +234,9 @@ type JobServiceClient interface {
 	// Returns what is waiting for a decision: the columns the last runs copied untransformed, less
 	// those whose passthrough has been accepted and still holds. For one job, or for the account.
 	GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error)
+	// Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
+	// only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+	MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -479,6 +485,12 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		mapUnmappedColumns: connect.NewClient[v1alpha1.MapUnmappedColumnsRequest, v1alpha1.MapUnmappedColumnsResponse](
+			httpClient,
+			baseURL+JobServiceMapUnmappedColumnsProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("MapUnmappedColumns")),
+			connect.WithClientOptions(opts...),
+		),
 		validateSchema: connect.NewClient[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse](
 			httpClient,
 			baseURL+JobServiceValidateSchemaProcedure,
@@ -599,6 +611,7 @@ type jobServiceClient struct {
 	removeColumnReview               *connect.Client[v1alpha1.RemoveColumnReviewRequest, v1alpha1.RemoveColumnReviewResponse]
 	setJobUnmappedPassthroughs       *connect.Client[v1alpha1.SetJobUnmappedPassthroughsRequest, v1alpha1.SetJobUnmappedPassthroughsResponse]
 	getPendingColumnReviews          *connect.Client[v1alpha1.GetPendingColumnReviewsRequest, v1alpha1.GetPendingColumnReviewsResponse]
+	mapUnmappedColumns               *connect.Client[v1alpha1.MapUnmappedColumnsRequest, v1alpha1.MapUnmappedColumnsResponse]
 	validateSchema                   *connect.Client[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse]
 	getRunContext                    *connect.Client[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse]
 	setRunContext                    *connect.Client[v1alpha1.SetRunContextRequest, v1alpha1.SetRunContextResponse]
@@ -779,6 +792,11 @@ func (c *jobServiceClient) GetPendingColumnReviews(ctx context.Context, req *con
 	return c.getPendingColumnReviews.CallUnary(ctx, req)
 }
 
+// MapUnmappedColumns calls mgmt.v1alpha1.JobService.MapUnmappedColumns.
+func (c *jobServiceClient) MapUnmappedColumns(ctx context.Context, req *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error) {
+	return c.mapUnmappedColumns.CallUnary(ctx, req)
+}
+
 // ValidateSchema calls mgmt.v1alpha1.JobService.ValidateSchema.
 func (c *jobServiceClient) ValidateSchema(ctx context.Context, req *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {
 	return c.validateSchema.CallUnary(ctx, req)
@@ -915,6 +933,9 @@ type JobServiceHandler interface {
 	// Returns what is waiting for a decision: the columns the last runs copied untransformed, less
 	// those whose passthrough has been accepted and still holds. For one job, or for the account.
 	GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error)
+	// Adds mappings for columns the job does not map yet — the "anonymize" of the review tab. It
+	// only adds: a column mapped in the meantime keeps the mapping somebody chose for it.
+	MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -1159,6 +1180,12 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServiceMapUnmappedColumnsHandler := connect.NewUnaryHandler(
+		JobServiceMapUnmappedColumnsProcedure,
+		svc.MapUnmappedColumns,
+		connect.WithSchema(jobServiceMethods.ByName("MapUnmappedColumns")),
+		connect.WithHandlerOptions(opts...),
+	)
 	jobServiceValidateSchemaHandler := connect.NewUnaryHandler(
 		JobServiceValidateSchemaProcedure,
 		svc.ValidateSchema,
@@ -1309,6 +1336,8 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceSetJobUnmappedPassthroughsHandler.ServeHTTP(w, r)
 		case JobServiceGetPendingColumnReviewsProcedure:
 			jobServiceGetPendingColumnReviewsHandler.ServeHTTP(w, r)
+		case JobServiceMapUnmappedColumnsProcedure:
+			jobServiceMapUnmappedColumnsHandler.ServeHTTP(w, r)
 		case JobServiceValidateSchemaProcedure:
 			jobServiceValidateSchemaHandler.ServeHTTP(w, r)
 		case JobServiceGetRunContextProcedure:
@@ -1474,6 +1503,10 @@ func (UnimplementedJobServiceHandler) SetJobUnmappedPassthroughs(context.Context
 
 func (UnimplementedJobServiceHandler) GetPendingColumnReviews(context.Context, *connect.Request[v1alpha1.GetPendingColumnReviewsRequest]) (*connect.Response[v1alpha1.GetPendingColumnReviewsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetPendingColumnReviews is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) MapUnmappedColumns(context.Context, *connect.Request[v1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[v1alpha1.MapUnmappedColumnsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.MapUnmappedColumns is not implemented"))
 }
 
 func (UnimplementedJobServiceHandler) ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {
