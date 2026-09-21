@@ -1,8 +1,5 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
-import EditTransformerOptions from '@/app/(mgmt)/[account]/transformers/EditTransformerOptions';
-import ColumnPreviewDialog from '@/components/jobs/JobMappingTable/ColumnPreviewDialog';
-import { dbDataTypeToTransformerDataType } from '@/components/jobs/SchemaTable/schema-constraint-handler';
-import TransformerSelect from '@/components/jobs/SchemaTable/TransformerSelect';
+import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
 import { useAccount } from '@/components/providers/account-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,19 +21,16 @@ import {
 } from '@/components/ui/table';
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
 import {
-  formatDateTime,
-  getErrorMessage,
-  getFilterdTransformersByType,
-  getTransformerFromField,
-  getTransformerSelectButtonText,
-  isInvalidTransformer,
-} from '@/util/util';
-import {
   changeLabel,
   columnName,
   isPassthrough,
   urgency,
 } from '@/util/mapping-changes';
+import {
+  formatDateTime,
+  getErrorMessage,
+  getTransformerFromField,
+} from '@/util/util';
 import {
   convertJobMappingTransformerFormToJobMappingTransformer,
   convertJobMappingTransformerToForm,
@@ -55,31 +49,25 @@ import {
   JobMappingSchema,
   JobService,
 } from '@husonym/sdk';
-import { CheckCircledIcon, EyeOpenIcon } from '@radix-ui/react-icons';
+import { CheckCircledIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import ReviewChangesDialog, { ReviewAction } from './ReviewChangesDialog';
+import ChangeDecisionPanel from './ChangeDecisionPanel';
+import ReviewChangesDialog from './ReviewChangesDialog';
 
 interface Props {
   jobId: string;
 }
 
-// A change whose column is still mapped: its transformer can be corrected from here.
-function isCorrectable(c: JobMappingChange): boolean {
-  return c.kind !== JobMappingChangeKind.REMOVED;
-}
-
-const NO_TRANSFORMER: JobMappingTransformerForm = {
-  config: { case: '', value: {} },
-};
-
 // What the job's runs changed in its mappings and nobody has reviewed yet: the columns they
 // mapped — with the transformer they chose, or in clear when none applied — the mappings they
 // removed with their column, and the columns whose type moved.
 //
-// The decision is taken here, without going elsewhere: keep what the run chose, or pick another
-// transformer and apply it. Either way the change is marked reviewed, with an optional note.
+// Each row says what the run decided, options included, without opening anything. A click opens
+// the change in a panel where the transformer, its options and their effect on the column's
+// values sit together, to keep the run's choice or replace it. The selection is for confirming
+// several changes at once.
 export default function MappingChangesCard(props: Props): ReactElement {
   const { jobId } = props;
   const { account } = useAccount();
@@ -131,31 +119,17 @@ export default function MappingChangesCard(props: Props): ReactElement {
     [data?.changes]
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // The transformer picked for a change. Absent means the one the run chose.
-  const [chosen, setChosen] = useState<
-    Record<string, JobMappingTransformerForm>
-  >({});
-  const [dialog, setDialog] = useState<{
-    action: ReviewAction;
-    changes: JobMappingChange[];
-  } | null>(null);
-  const [previewing, setPreviewing] = useState<JobMappingChange | null>(null);
-
-  function transformerFor(c: JobMappingChange): JobMappingTransformerForm {
-    if (chosen[c.id]) {
-      return chosen[c.id];
-    }
-    return c.transformer
-      ? convertJobMappingTransformerToForm(c.transformer)
-      : NO_TRANSFORMER;
-  }
+  const [reviewing, setReviewing] = useState<JobMappingChange[]>([]);
+  const [opened, setOpened] = useState<JobMappingChange | null>(null);
 
   function transformerName(c: JobMappingChange): string {
-    const transformer = transformerFor(c);
-    if (!transformer.config.case) {
+    if (!c.transformer?.config?.config.case) {
       return '—';
     }
-    return getTransformerFromField(handler, transformer).name;
+    return getTransformerFromField(
+      handler,
+      convertJobMappingTransformerToForm(c.transformer)
+    ).name;
   }
 
   function toggle(id: string): void {
@@ -190,47 +164,38 @@ export default function MappingChangesCard(props: Props): ReactElement {
       toast.error('Unable to mark these changes reviewed', {
         description: getErrorMessage(error),
       });
-      // Rethrown so the dialog stays open and keeps the note.
+      // Rethrown so the dialog or the panel stays open, and keeps the note.
       throw error;
     }
   }
 
   async function apply(
-    changes: JobMappingChange[],
+    change: JobMappingChange,
+    transformer: JobMappingTransformerForm,
     note?: string
   ): Promise<void> {
     try {
-      const resp = await applyChanges({
+      await applyChanges({
         accountId,
         jobId,
-        mappings: changes.map((c) =>
+        mappings: [
           create(JobMappingSchema, {
-            schema: c.column?.schema,
-            table: c.column?.table,
-            column: c.column?.column,
+            schema: change.column?.schema,
+            table: change.column?.table,
+            column: change.column?.column,
             transformer:
               convertJobMappingTransformerFormToJobMappingTransformer(
-                transformerFor(c)
+                transformer
               ),
-          })
-        ),
-        changeIds: changes.map((c) => c.id),
+          }),
+        ],
+        changeIds: [change.id],
         note,
       });
-      toast.success(
-        `${resp.mappings.length} column${resp.mappings.length === 1 ? '' : 's'} mapped from the next run`
-      );
-      setSelected(new Set());
-      setChosen((prev) => {
-        const next = { ...prev };
-        for (const c of changes) {
-          delete next[c.id];
-        }
-        return next;
-      });
+      toast.success(`${columnName(change)} mapped from the next run`);
       await refresh();
     } catch (error) {
-      toast.error('Unable to apply these transformers', {
+      toast.error('Unable to apply this transformer', {
         description: getErrorMessage(error),
       });
       throw error;
@@ -242,9 +207,6 @@ export default function MappingChangesCard(props: Props): ReactElement {
   }
 
   const selectedChanges = pending.filter((c) => selected.has(c.id));
-  const selectedCorrectable = selectedChanges.filter(
-    (c) => isCorrectable(c) && !!transformerFor(c).config.case
-  );
 
   return (
     <Card>
@@ -252,8 +214,8 @@ export default function MappingChangesCard(props: Props): ReactElement {
         <CardTitle>Changes to review</CardTitle>
         <CardDescription>
           What this job&apos;s runs changed in its mappings as its source
-          evolved. Keep what they chose, or pick another transformer and apply
-          it.
+          evolved. Open a change to keep what the run chose or pick another
+          transformer; select several to confirm them at once.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -267,20 +229,9 @@ export default function MappingChangesCard(props: Props): ReactElement {
             <div className="flex flex-row items-center gap-2">
               <Button
                 type="button"
-                disabled={selectedCorrectable.length === 0}
-                onClick={() =>
-                  setDialog({ action: 'apply', changes: selectedCorrectable })
-                }
-              >
-                Apply selection… ({selectedCorrectable.length})
-              </Button>
-              <Button
-                type="button"
                 variant="outline"
                 disabled={selectedChanges.length === 0}
-                onClick={() =>
-                  setDialog({ action: 'review', changes: selectedChanges })
-                }
+                onClick={() => setReviewing(selectedChanges)}
               >
                 Mark reviewed… ({selectedChanges.length})
               </Button>
@@ -310,10 +261,14 @@ export default function MappingChangesCard(props: Props): ReactElement {
               </TableHeader>
               <TableBody>
                 {pending.map((c) => {
-                  const transformer = transformerFor(c);
+                  const options = summarizeOptions(c.transformer?.config);
                   return (
-                    <TableRow key={c.id}>
-                      <TableCell>
+                    <TableRow
+                      key={c.id}
+                      className="cursor-pointer"
+                      onClick={() => setOpened(c)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           aria-label={`Select ${columnName(c)}`}
@@ -322,7 +277,17 @@ export default function MappingChangesCard(props: Props): ReactElement {
                         />
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {columnName(c)}
+                        {/* A button, so the change opens from the keyboard too. */}
+                        <button
+                          type="button"
+                          className="text-left hover:underline underline-offset-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpened(c);
+                          }}
+                        >
+                          {columnName(c)}
+                        </button>
                         <div className="text-muted-foreground">
                           {c.dataType}
                         </div>
@@ -342,72 +307,22 @@ export default function MappingChangesCard(props: Props): ReactElement {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {isCorrectable(c) ? (
-                          <div className="flex flex-row items-center gap-2">
-                            <TransformerSelect
-                              getTransformers={() =>
-                                getFilterdTransformersByType(
-                                  handler,
-                                  dbDataTypeToTransformerDataType(c.dataType)
-                                )
-                              }
-                              value={transformer}
-                              buttonText={getTransformerSelectButtonText(
-                                getTransformerFromField(handler, transformer),
-                                'Choose a transformer'
-                              )}
-                              onSelect={(value) =>
-                                setChosen((prev) => ({
-                                  ...prev,
-                                  [c.id]: value,
-                                }))
-                              }
-                              disabled={false}
-                            />
-                            {/* The options of the transformer, as on the source page. */}
-                            <EditTransformerOptions
-                              transformer={getTransformerFromField(
-                                handler,
-                                transformer
-                              )}
-                              value={transformer}
-                              onSubmit={(value) =>
-                                setChosen((prev) => ({
-                                  ...prev,
-                                  [c.id]: value,
-                                }))
-                              }
-                              disabled={isInvalidTransformer(
-                                getTransformerFromField(handler, transformer)
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              aria-label={`Preview ${columnName(c)}`}
-                              title="Preview the values, and what the transformer makes of them"
-                              disabled={!sourceConnectionId}
-                              onClick={() => setPreviewing(c)}
-                            >
-                              <EyeOpenIcon />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={!transformer.config.case}
-                              onClick={() =>
-                                setDialog({ action: 'apply', changes: [c] })
-                              }
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs">
+                        {c.kind === JobMappingChangeKind.REMOVED ? (
+                          <span className="text-muted-foreground">
                             was {transformerName(c)}
                           </span>
+                        ) : isPassthrough(c) ? (
+                          <span className="font-medium">
+                            Passthrough — copied in clear
+                          </span>
+                        ) : (
+                          <span>{transformerName(c)}</span>
+                        )}
+                        {options.length > 0 && (
+                          <div className="text-muted-foreground">
+                            {options.join(' · ')}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">
@@ -423,47 +338,27 @@ export default function MappingChangesCard(props: Props): ReactElement {
           </>
         )}
       </CardContent>
-      {previewing && sourceConnectionId && (
-        <ColumnPreviewDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setPreviewing(null);
-            }
-          }}
-          connectionId={sourceConnectionId}
-          schema={previewing.column?.schema ?? ''}
-          table={previewing.column?.table ?? ''}
-          column={previewing.column?.column ?? ''}
-          dataType={previewing.dataType}
-          transformer={previewTransformer(transformerFor(previewing))}
-          transformerName={transformerName(previewing)}
+      {opened && (
+        <ChangeDecisionPanel
+          key={opened.id}
+          change={opened}
+          onClose={() => setOpened(null)}
+          handler={handler}
+          sourceConnectionId={sourceConnectionId}
+          onReview={(change, note) => review([change], note)}
+          onApply={apply}
         />
       )}
       <ReviewChangesDialog
-        open={!!dialog}
+        open={reviewing.length > 0}
         onOpenChange={(open) => {
           if (!open) {
-            setDialog(null);
+            setReviewing([]);
           }
         }}
-        action={dialog?.action ?? 'review'}
-        changes={dialog?.changes ?? []}
-        transformerNameOf={transformerName}
-        onConfirm={dialog?.action === 'apply' ? apply : review}
+        changes={reviewing}
+        onConfirm={review}
       />
     </Card>
   );
-}
-
-// The transformer the preview applies: none for a passthrough, whose output is its input.
-function previewTransformer(transformer: JobMappingTransformerForm) {
-  if (
-    !transformer.config.case ||
-    transformer.config.case === 'passthroughConfig'
-  ) {
-    return undefined;
-  }
-  return convertJobMappingTransformerFormToJobMappingTransformer(transformer)
-    .config;
 }

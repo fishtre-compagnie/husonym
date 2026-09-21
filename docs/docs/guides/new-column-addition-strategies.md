@@ -62,7 +62,7 @@ The detection reads names and types, never the data. A column it does not recogn
 
 - the run records each change it makes to the job: the columns it mapped, with the transformer it chose; the mappings it removed with their column; and the mapped columns whose type changed since the previous run;
 - a bell in the header shows, as soon as you log in, how many changes are waiting across your jobs, and the jobs list and the job's **Review** tab show them per job — columns that read as personal data and were left in clear come first;
-- from the **Review** tab you keep what the run chose or pick another transformer, preview the column before and after it, and apply — one column or a selection. Applying, like marking a change reviewed as it is, records who decided, when, and an optional note saying why. A mapping changed on the job's source page settles its change too.
+- in the **Review** tab, each change shows the transformer the run chose and its options. Opening it brings the transformer, its options and a preview of the column before and after them together: keep the run's choice, or change it and apply. Either way, who decided, when, and an optional note saying why are recorded. Several changes can be confirmed at once, and a mapping changed on the job's source page settles its change too.
 
 ## Passthrough
 

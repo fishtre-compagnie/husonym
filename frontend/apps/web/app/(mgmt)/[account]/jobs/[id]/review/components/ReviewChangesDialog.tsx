@@ -15,28 +15,20 @@ import { changeLabel, columnName } from '@/util/mapping-changes';
 import { JobMappingChange } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
 
-// What confirming does: mark the changes reviewed as they are, or apply the transformer chosen for
-// each column first.
-export type ReviewAction = 'review' | 'apply';
-
 interface Props {
   open: boolean;
   onOpenChange(open: boolean): void;
-  action: ReviewAction;
   changes: JobMappingChange[];
-  // The transformer name shown beside each change when applying
-  transformerNameOf?(change: JobMappingChange): string;
   onConfirm(changes: JobMappingChange[], note?: string): Promise<void>;
 }
 
-// Confirms a selection of changes, with one note for all of them.
+// Marks a selection of changes reviewed as the runs left them, with one note for all of them.
 //
 // One dialog and one note for the whole selection: the trace an audit asks for is kept, without
 // thirty confirmations in a row — by the fifth, people click without reading, which is exactly
 // what asking was meant to prevent.
 export default function ReviewChangesDialog(props: Props): ReactElement {
-  const { open, onOpenChange, action, changes, transformerNameOf, onConfirm } =
-    props;
+  const { open, onOpenChange, changes, onConfirm } = props;
   const [note, setNote] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -55,33 +47,25 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
   }
 
   const many = changes.length !== 1;
-  const title =
-    action === 'apply'
-      ? many
-        ? `Apply ${changes.length} transformers`
-        : 'Apply this transformer'
-      : many
-        ? `Mark ${changes.length} changes reviewed`
-        : 'Mark this change reviewed';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>
+            {many
+              ? `Mark ${changes.length} changes reviewed`
+              : 'Mark this change reviewed'}
+          </DialogTitle>
           <DialogDescription>
-            {action === 'apply'
-              ? `The job maps ${many ? 'these columns' : 'this column'} with the chosen transformer from its next run, and ${many ? 'these changes stop' : 'this change stops'} being reported.`
-              : `The job keeps its mappings as the runs left them, and ${many ? 'these changes stop' : 'this change stops'} being reported.`}
+            The job keeps its mappings as the runs left them, and{' '}
+            {many ? 'these changes stop' : 'this change stops'} being reported.
           </DialogDescription>
         </DialogHeader>
         <ul className="max-h-40 overflow-auto text-xs font-mono flex flex-col gap-1">
           {changes.map((c) => (
             <li key={c.id}>
-              {columnName(c)} —{' '}
-              {action === 'apply' && transformerNameOf
-                ? transformerNameOf(c)
-                : changeLabel(c)}
+              {columnName(c)} — {changeLabel(c)}
             </li>
           ))}
         </ul>
@@ -111,7 +95,7 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
           >
             <ButtonText
               leftIcon={isConfirming ? <Spinner className="h-4 w-4" /> : null}
-              text={action === 'apply' ? 'Apply' : 'Mark reviewed'}
+              text="Mark reviewed"
             />
           </Button>
         </DialogFooter>

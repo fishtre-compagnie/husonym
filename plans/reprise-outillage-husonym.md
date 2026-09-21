@@ -42,7 +42,11 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
 - `e54ddb1b` Onglet Review sur le journal (marquer revu avec note, aperçu), cloche et colonne de la
   liste des jobs. `e70d0ec5` : le transformer se **corrige dans l'onglet** (sélecteur prérempli,
   aperçu, « Apply » par colonne ou en lot, RPC `ApplyMappingChanges` qui marque revu dans la même
-  transaction et refuse une colonne que le job ne mappe pas).
+  transaction et refuse une colonne que le job ne mappe pas). Puis **panneau de décision** par
+  changement (transformer, options, aperçu qui se relit, note ; « Keep the run's choice » ou
+  « Apply »), la ligne résumant les options. Les options des transformers sont déclarées **une
+  fois** dans `TransformerForms/options/registry.ts` (23 formulaires supprimés) ; `summarizeOptions`
+  en tire le résumé. À étendre à la page Source si le modèle convient (décision de l'utilisateur).
 - `0956d6df` Catalogue système sorti en paquet partagé (`internal/transformers/catalog`).
 
 **Téléphones et formulaires d'options**
