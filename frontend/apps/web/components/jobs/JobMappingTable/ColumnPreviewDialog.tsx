@@ -146,8 +146,12 @@ export default function ColumnPreviewDialog({
   const nulls = inputs.filter((v) => v.isNull).length;
   const empties = inputs.filter((v) => !v.isNull && v.value === '').length;
   const failures = rows?.filter((r) => r.error).length ?? 0;
+  // Une valeur en échec ne produit rien, ce qui fait baisser le compte d'après sans
+  // que le transformer ait rien confondu : l'alerte ne vaut que si tout a abouti.
   const collapses =
-    distinct?.outputs !== undefined && distinct.outputs < distinct.inputs;
+    failures === 0 &&
+    distinct?.outputs !== undefined &&
+    distinct.outputs < distinct.inputs;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

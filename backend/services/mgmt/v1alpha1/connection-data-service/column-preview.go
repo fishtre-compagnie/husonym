@@ -3,7 +3,9 @@ package v1alpha1_connectiondataservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -26,30 +28,47 @@ const (
 // column of a connection the caller can already open, capped like the plain sample, keeps it what
 // it is for: a look at a real column.
 //
-// The transformer runs through the same anonymizer AnonymizeMany uses, so what the preview shows
-// is what that transformer does, user-defined transformers and Presidio-backed ones included.
+// It runs the transformer the way it would run for real: a javascript rule through the rule
+// trial, which uses the engine's runner, and any other transformer through the anonymizer
+// AnonymizeMany uses, Presidio-backed ones included. A user-defined transformer is resolved first,
+// so it takes the path of what it actually is.
 func (s *Service) PreviewColumnTransformer(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.PreviewColumnTransformerRequest],
 ) (*connect.Response[mgmtv1alpha1.PreviewColumnTransformerResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
-	raws, err := s.sampleColumn(
+	sampled, err := s.sampleRows(
 		ctx,
 		req.Msg.GetConnectionId(),
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
-		req.Msg.GetColumn(),
 		clampLimit(req.Msg.GetLimit(), defaultPreviewLimit, maxPreviewLimit),
 	)
 	if err != nil {
 		return nil, err
 	}
+	raws, err := columnValues(sampled.rows, req.Msg.GetSchema(), req.Msg.GetTable(), req.Msg.GetColumn())
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := s.resolveTransformer(ctx, req.Msg.GetTransformer())
+	if err != nil {
+		return nil, err
+	}
+	// A javascript rule goes through the trial a rule's author uses, which runs it with the
+	// engine's own runner. The anonymizer below would hand it Benthos' structured values, where
+	// a number arrives as a string-like object: `value + 1` would read "281" here and 29 in the
+	// run, and a preview that shows something else than the run is worse than none.
+	if isJavascriptRule(config) {
+		return connect.NewResponse(s.previewJavascript(ctx, sampled, req.Msg.GetColumn(), raws, config)), nil
+	}
 
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
 		jsonanonymizer.WithTransformerMappings([]*mgmtv1alpha1.TransformerMapping{{
 			Expression:  ".value",
-			Transformer: req.Msg.GetTransformer(),
+			Transformer: config,
 		}}),
 		jsonanonymizer.WithConditionalAnonymizeConfig(
 			s.transformers.IsPresidioEnabled,
@@ -127,4 +146,85 @@ func previewValues(
 	resp.DistinctInputs = uint32(len(inputs))
 	resp.DistinctOutputs = uint32(len(outputs))
 	return resp
+}
+
+// resolveTransformer replaces a reference to a user-defined transformer by its configuration, so
+// the preview can tell what kind of transformer it is actually running.
+func (s *Service) resolveTransformer(
+	ctx context.Context,
+	config *mgmtv1alpha1.TransformerConfig,
+) (*mgmtv1alpha1.TransformerConfig, error) {
+	userDefined := config.GetUserDefinedTransformerConfig()
+	if userDefined == nil {
+		return config, nil
+	}
+	resp, err := s.transformers.Client.GetUserDefinedTransformerById(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.GetUserDefinedTransformerByIdRequest{
+			TransformerId: userDefined.GetId(),
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Msg.GetTransformer().GetConfig(), nil
+}
+
+func isJavascriptRule(config *mgmtv1alpha1.TransformerConfig) bool {
+	return config.GetTransformJavascriptConfig() != nil || config.GetGenerateJavascriptConfig() != nil
+}
+
+// previewJavascript tries the rule on each sampled row, one row per trial.
+//
+// One row at a time is not a shortcut: a rule's state lives for one row and is gone at the
+// next, so a trial of one row means exactly what a trial of twenty does. It is what lets each
+// value get its own result — a trial stops at its first failure and hands back nothing else.
+// The whole row goes in, since a rule may read the row's other columns; only the column under
+// review comes out.
+func (s *Service) previewJavascript(
+	ctx context.Context,
+	sampled *sampledTable,
+	column string,
+	raws []any,
+	config *mgmtv1alpha1.TransformerConfig,
+) *mgmtv1alpha1.PreviewColumnTransformerResponse {
+	rules := []*mgmtv1alpha1.JavascriptRule{{Column: column, Transformer: config}}
+	index := 0
+	return previewValues(raws, func(any) (any, error) {
+		row := sampled.rows[index]
+		index++
+		bits, err := json.Marshal(row)
+		if err != nil {
+			return nil, fmt.Errorf("unable to hand the row to the rule: %w", err)
+		}
+		resp, err := s.transformers.Client.TryJavascriptRules(
+			ctx,
+			connect.NewRequest(&mgmtv1alpha1.TryJavascriptRulesRequest{
+				AccountId: sampled.accountId,
+				Rules:     rules,
+				Rows:      []string{string(bits)},
+			}),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if failure := resp.Msg.GetFailure(); failure != nil {
+			return nil, errors.New(failure.GetMessage())
+		}
+		if len(resp.Msg.GetRows()) != 1 {
+			return nil, fmt.Errorf("the rule returned %d rows for one", len(resp.Msg.GetRows()))
+		}
+		return columnOf(resp.Msg.GetRows()[0], column)
+	})
+}
+
+// columnOf reads one column of a row the trial returned, integers kept exact.
+func columnOf(rowJson, column string) (any, error) {
+	decoder := json.NewDecoder(strings.NewReader(rowJson))
+	decoder.UseNumber()
+	var row map[string]any
+	if err := decoder.Decode(&row); err != nil {
+		return nil, fmt.Errorf("unable to read the rule's output: %w", err)
+	}
+	return row[column], nil
 }

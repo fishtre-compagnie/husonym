@@ -28,14 +28,17 @@ func (s *Service) GetColumnSampleValues(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetColumnSampleValuesRequest],
 ) (*connect.Response[mgmtv1alpha1.GetColumnSampleValuesResponse], error) {
-	raws, err := s.sampleColumn(
+	sampled, err := s.sampleRows(
 		ctx,
 		req.Msg.GetConnectionId(),
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
-		req.Msg.GetColumn(),
 		clampLimit(req.Msg.GetLimit(), defaultSampleLimit, maxSampleLimit),
 	)
+	if err != nil {
+		return nil, err
+	}
+	raws, err := columnValues(sampled.rows, req.Msg.GetSchema(), req.Msg.GetTable(), req.Msg.GetColumn())
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +52,21 @@ func (s *Service) GetColumnSampleValues(
 	}), nil
 }
 
-// sampleColumn reads the first rows of a table and returns one column's values as the driver
-// gave them, nil standing for NULL. The raw values are kept, rather than their text, because a
-// transformer has to be handed a value of the column's own type.
-func (s *Service) sampleColumn(
+// sampledTable is the first rows of a table, as the driver gave them, with the account the
+// connection belongs to.
+type sampledTable struct {
+	accountId string
+	rows      []map[string]any
+}
+
+// sampleRows reads the first rows of a table. The raw values are kept, rather than their text,
+// because a transformer has to be handed a value of the column's own type — and whole rows are
+// kept because a javascript rule may read the row's other columns.
+func (s *Service) sampleRows(
 	ctx context.Context,
-	connectionId, schema, table, column string,
+	connectionId, schema, table string,
 	limit uint32,
-) ([]any, error) {
+) (*sampledTable, error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
 	connResp, err := s.connectionService.GetConnection(
@@ -76,13 +86,25 @@ func (s *Service) sampleColumn(
 		return nil, fmt.Errorf("unable to sample column data: %w", err)
 	}
 
-	raws := make([]any, 0, len(collector.rows))
+	sampled := &sampledTable{
+		accountId: connResp.Msg.GetConnection().GetAccountId(),
+		rows:      make([]map[string]any, 0, len(collector.rows)),
+	}
 	for _, rowbytes := range collector.rows {
 		row := map[string]any{}
 		if err := gob.NewDecoder(bytes.NewReader(rowbytes)).Decode(&row); err != nil {
 			logger.Warn(fmt.Sprintf("skipping undecodable sampled row: %v", err))
 			continue
 		}
+		sampled.rows = append(sampled.rows, row)
+	}
+	return sampled, nil
+}
+
+// columnValues takes one column out of sampled rows, nil standing for NULL.
+func columnValues(rows []map[string]any, schema, table, column string) ([]any, error) {
+	values := make([]any, 0, len(rows))
+	for _, row := range rows {
 		raw, ok := row[column]
 		if !ok {
 			// The column is absent from the table: say so plainly rather than return
@@ -92,9 +114,9 @@ func (s *Service) sampleColumn(
 				fmt.Errorf("colonne %q absente de %s.%s", column, schema, table),
 			)
 		}
-		raws = append(raws, raw)
+		values = append(values, raw)
 	}
-	return raws, nil
+	return values, nil
 }
 
 // toSampleValue renders a raw value for display.
