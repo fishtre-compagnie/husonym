@@ -24,6 +24,7 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { useMutation } from '@connectrpc/connect-query';
 import {
+  ColumnWarning_ColumnWarningCode,
   ConnectionDataService,
   GetConnectionSchemaResponse,
   JobMapping,
@@ -45,6 +46,7 @@ import {
 } from '../JobMappingTable/AttributesCell';
 import { JobMappingRow, SQL_COLUMNS } from '../JobMappingTable/Columns';
 import JobMappingTable from '../JobMappingTable/JobMappingTable';
+import { PassthroughTarget } from './AcceptPassthroughButton';
 import FormErrorsCard, { ErrorLevel, FormError } from './FormErrorsCard';
 import { ImportMappingsConfig } from './ImportJobMappingsButton';
 import { getVirtualForeignKeysColumns } from './VirtualFkColumns';
@@ -69,6 +71,9 @@ interface Props {
   isJobMappingsValidating?: boolean;
 
   onValidate?(): void;
+  // Records that a column may ship untransformed, so it stops being reported. Absent while a
+  // job is being created: there is no job yet to record the decision against.
+  onAcceptPassthrough?(target: PassthroughTarget, note?: string): Promise<void>;
 
   formErrors: FormError[];
   onImportMappingsClick(
@@ -132,6 +137,7 @@ export function SchemaTable(props: Props): ReactElement {
     formErrors,
     isJobMappingsValidating,
     onValidate,
+    onAcceptPassthrough,
     onImportMappingsClick,
     onTransformerUpdate,
     getAvailableTransformers,
@@ -619,6 +625,7 @@ export function SchemaTable(props: Props): ReactElement {
           formErrors={formErrors}
           isValidating={isJobMappingsValidating}
           onValidate={onValidate}
+          onAcceptPassthrough={onAcceptPassthrough}
         />
       </div>
 
@@ -760,6 +767,14 @@ function extractAllFormErrors(
   return messages;
 }
 
+// The warning codes that say a column is being copied untransformed while nobody has decided
+// what to do with it — the only ones a person can answer by accepting.
+const ACCEPTABLE_WARNINGS = new Set<ColumnWarning_ColumnWarningCode>([
+  ColumnWarning_ColumnWarningCode.PASSTHROUGH_PENDING_REVIEW,
+  ColumnWarning_ColumnWarningCode.SENSITIVE_COLUMN_PASSED_THROUGH,
+  ColumnWarning_ColumnWarningCode.REVIEWED_COLUMN_CHANGED,
+]);
+
 export function getAllFormErrors(
   formErrors: FieldErrors<SchemaFormValues | SingleTableSchemaFormValues>,
   values: JobMappingFormValues[],
@@ -782,6 +797,12 @@ export function getAllFormErrors(
       path: `${e.schema}.${e.table}.${e.column}`,
       message: e.warningReports.map((w) => w.message).join('. '),
       level: 'warning' as ErrorLevel,
+      // Only the warnings about a column the job copies while it waits for a decision can be
+      // accepted. The others — a column gone from the source, one simply missing from the
+      // mappings — are not decisions to make, they are things to fix.
+      acceptable: e.warningReports.some((w) => ACCEPTABLE_WARNINGS.has(w.code))
+        ? { schema: e.schema, table: e.table, column: e.column }
+        : undefined,
     };
   });
   const dbErr = validationErrors.databaseErrors?.errorReports.map((e) => {

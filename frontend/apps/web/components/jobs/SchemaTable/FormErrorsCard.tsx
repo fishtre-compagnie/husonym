@@ -16,6 +16,9 @@ import {
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { ReactElement } from 'react';
+import AcceptPassthroughButton, {
+  PassthroughTarget,
+} from './AcceptPassthroughButton';
 
 export type ErrorLevel = 'error' | 'warning';
 
@@ -24,16 +27,22 @@ export interface FormError {
   type?: string;
   path: string;
   level: ErrorLevel;
+  // Set on the warnings about a column the job copies untransformed while it waits for a
+  // decision. Carries the column in pieces because the decision is written against it, and
+  // splitting `path` back apart would break on any name holding a dot.
+  acceptable?: PassthroughTarget;
 }
 
 interface Props {
   formErrors: FormError[];
   isValidating?: boolean;
   onValidate?(): void;
+  // Absent while a job is being created: there is no job yet to record a decision against.
+  onAcceptPassthrough?(target: PassthroughTarget, note?: string): Promise<void>;
 }
 
 export default function FormErrorsCard(props: Props): ReactElement {
-  const { formErrors, isValidating, onValidate } = props;
+  const { formErrors, isValidating, onValidate, onAcceptPassthrough } = props;
 
   const { errors, warnings } = formErrorsToMessages(formErrors);
   return (
@@ -100,20 +109,26 @@ export default function FormErrorsCard(props: Props): ReactElement {
         ) : (
           <ScrollArea className="max-h-[177px] overflow-auto">
             <div className="flex flex-col gap-2">
-              {errors.map((message, index) => (
+              {errors.map((entry, index) => (
                 <div
-                  key={message + index}
+                  key={entry.message + index}
                   className="text-xs bg-red-200 dark:bg-red-800/70 rounded-sm p-2 text-wrap"
                 >
-                  {message}
+                  {entry.message}
                 </div>
               ))}
-              {warnings.map((message, index) => (
+              {warnings.map((entry, index) => (
                 <div
-                  key={message + index}
-                  className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap"
+                  key={entry.message + index}
+                  className="text-xs bg-yellow-200 dark:bg-yellow-800/70 rounded-sm p-2 text-wrap flex flex-row items-start justify-between gap-2"
                 >
-                  {message}
+                  <span>{entry.message}</span>
+                  {entry.acceptable && onAcceptPassthrough && (
+                    <AcceptPassthroughButton
+                      target={entry.acceptable}
+                      onAccept={onAcceptPassthrough}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -124,28 +139,39 @@ export default function FormErrorsCard(props: Props): ReactElement {
   );
 }
 
+// A line ready to render: the sentence, plus what is needed to act on it. The message used to
+// be a bare string, which left nowhere to hang an action.
+interface FormErrorMessage {
+  message: string;
+  acceptable?: PassthroughTarget;
+}
+
 interface FormErrorMesageResponse {
-  errors: string[];
-  warnings: string[];
+  errors: FormErrorMessage[];
+  warnings: FormErrorMessage[];
 }
 
 function formErrorsToMessages(
   formErrors: FormError[]
 ): FormErrorMesageResponse {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+  const errors: FormErrorMessage[] = [];
+  const warnings: FormErrorMessage[] = [];
   formErrors.forEach((error) => {
     const pieces: string[] = [error.path];
     if (error.type) {
       pieces.push(`[${error.type}]`);
     }
     pieces.push(error.message);
+    const entry: FormErrorMessage = {
+      message: pieces.join(' '),
+      acceptable: error.acceptable,
+    };
 
     if (error.level == 'warning') {
-      warnings.push(pieces.join(' '));
+      warnings.push(entry);
       return;
     }
-    errors.push(pieces.join(' '));
+    errors.push(entry);
   });
 
   return { errors, warnings };
