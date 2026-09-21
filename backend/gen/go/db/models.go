@@ -188,6 +188,18 @@ type HusonymApiTransformer struct {
 	Source            int32
 }
 
+type HusonymApiUnmappedPassthrough struct {
+	AccountID        pgtype.UUID
+	JobID            pgtype.UUID
+	TableSchema      string
+	TableName        string
+	ColumnName       string
+	DataType         string
+	FirstSeenAt      pgtype.Timestamp
+	LastSeenAt       pgtype.Timestamp
+	LastSeenJobRunID string
+}
+
 type HusonymApiUser struct {
 	ID        pgtype.UUID
 	CreatedAt pgtype.Timestamp

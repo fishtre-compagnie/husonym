@@ -1449,6 +1449,69 @@ func (_c *MockQuerier_DeleteSlackOAuthConnection_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// DeleteUnmappedPassthroughsNotSeenInRun provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) DeleteUnmappedPassthroughsNotSeenInRun(ctx context.Context, db DBTX, arg DeleteUnmappedPassthroughsNotSeenInRunParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUnmappedPassthroughsNotSeenInRun")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, DeleteUnmappedPassthroughsNotSeenInRunParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUnmappedPassthroughsNotSeenInRun'
+type MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call struct {
+	*mock.Call
+}
+
+// DeleteUnmappedPassthroughsNotSeenInRun is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg DeleteUnmappedPassthroughsNotSeenInRunParams
+func (_e *MockQuerier_Expecter) DeleteUnmappedPassthroughsNotSeenInRun(ctx any, db any, arg any) *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call {
+	return &MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call{Call: _e.mock.On("DeleteUnmappedPassthroughsNotSeenInRun", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call) Run(run func(ctx context.Context, db DBTX, arg DeleteUnmappedPassthroughsNotSeenInRunParams)) *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 DeleteUnmappedPassthroughsNotSeenInRunParams
+		if args[2] != nil {
+			arg2 = args[2].(DeleteUnmappedPassthroughsNotSeenInRunParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call) Return(err error) *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg DeleteUnmappedPassthroughsNotSeenInRunParams) error) *MockQuerier_DeleteUnmappedPassthroughsNotSeenInRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteUserDefinedTransformerById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) DeleteUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) error {
 	ret := _mock.Called(ctx, db, id)
@@ -3108,6 +3171,80 @@ func (_c *MockQuerier_GetBilledAccounts_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// GetColumnReviewsByAccount provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetColumnReviewsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiColumnReview, error) {
+	ret := _mock.Called(ctx, db, accountid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetColumnReviewsByAccount")
+	}
+
+	var r0 []HusonymApiColumnReview
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiColumnReview, error)); ok {
+		return returnFunc(ctx, db, accountid)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiColumnReview); ok {
+		r0 = returnFunc(ctx, db, accountid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiColumnReview)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountid)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetColumnReviewsByAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetColumnReviewsByAccount'
+type MockQuerier_GetColumnReviewsByAccount_Call struct {
+	*mock.Call
+}
+
+// GetColumnReviewsByAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountid pgtype.UUID
+func (_e *MockQuerier_Expecter) GetColumnReviewsByAccount(ctx any, db any, accountid any) *MockQuerier_GetColumnReviewsByAccount_Call {
+	return &MockQuerier_GetColumnReviewsByAccount_Call{Call: _e.mock.On("GetColumnReviewsByAccount", ctx, db, accountid)}
+}
+
+func (_c *MockQuerier_GetColumnReviewsByAccount_Call) Run(run func(ctx context.Context, db DBTX, accountid pgtype.UUID)) *MockQuerier_GetColumnReviewsByAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetColumnReviewsByAccount_Call) Return(husonymApiColumnReviews []HusonymApiColumnReview, err error) *MockQuerier_GetColumnReviewsByAccount_Call {
+	_c.Call.Return(husonymApiColumnReviews, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetColumnReviewsByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiColumnReview, error)) *MockQuerier_GetColumnReviewsByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetColumnReviewsByJob provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetColumnReviewsByJob(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -4566,6 +4703,154 @@ func (_c *MockQuerier_GetTemporalConfigByUserAccount_Call) Return(temporalConfig
 }
 
 func (_c *MockQuerier_GetTemporalConfigByUserAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)) *MockQuerier_GetTemporalConfigByUserAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUnmappedPassthroughsByAccount provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetUnmappedPassthroughsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUnmappedPassthrough, error) {
+	ret := _mock.Called(ctx, db, accountid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUnmappedPassthroughsByAccount")
+	}
+
+	var r0 []HusonymApiUnmappedPassthrough
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiUnmappedPassthrough, error)); ok {
+		return returnFunc(ctx, db, accountid)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiUnmappedPassthrough); ok {
+		r0 = returnFunc(ctx, db, accountid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiUnmappedPassthrough)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountid)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetUnmappedPassthroughsByAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUnmappedPassthroughsByAccount'
+type MockQuerier_GetUnmappedPassthroughsByAccount_Call struct {
+	*mock.Call
+}
+
+// GetUnmappedPassthroughsByAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountid pgtype.UUID
+func (_e *MockQuerier_Expecter) GetUnmappedPassthroughsByAccount(ctx any, db any, accountid any) *MockQuerier_GetUnmappedPassthroughsByAccount_Call {
+	return &MockQuerier_GetUnmappedPassthroughsByAccount_Call{Call: _e.mock.On("GetUnmappedPassthroughsByAccount", ctx, db, accountid)}
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByAccount_Call) Run(run func(ctx context.Context, db DBTX, accountid pgtype.UUID)) *MockQuerier_GetUnmappedPassthroughsByAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByAccount_Call) Return(husonymApiUnmappedPassthroughs []HusonymApiUnmappedPassthrough, err error) *MockQuerier_GetUnmappedPassthroughsByAccount_Call {
+	_c.Call.Return(husonymApiUnmappedPassthroughs, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUnmappedPassthrough, error)) *MockQuerier_GetUnmappedPassthroughsByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUnmappedPassthroughsByJob provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetUnmappedPassthroughsByJob(ctx context.Context, db DBTX, arg GetUnmappedPassthroughsByJobParams) ([]HusonymApiUnmappedPassthrough, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUnmappedPassthroughsByJob")
+	}
+
+	var r0 []HusonymApiUnmappedPassthrough
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetUnmappedPassthroughsByJobParams) ([]HusonymApiUnmappedPassthrough, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetUnmappedPassthroughsByJobParams) []HusonymApiUnmappedPassthrough); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiUnmappedPassthrough)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetUnmappedPassthroughsByJobParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetUnmappedPassthroughsByJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUnmappedPassthroughsByJob'
+type MockQuerier_GetUnmappedPassthroughsByJob_Call struct {
+	*mock.Call
+}
+
+// GetUnmappedPassthroughsByJob is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetUnmappedPassthroughsByJobParams
+func (_e *MockQuerier_Expecter) GetUnmappedPassthroughsByJob(ctx any, db any, arg any) *MockQuerier_GetUnmappedPassthroughsByJob_Call {
+	return &MockQuerier_GetUnmappedPassthroughsByJob_Call{Call: _e.mock.On("GetUnmappedPassthroughsByJob", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByJob_Call) Run(run func(ctx context.Context, db DBTX, arg GetUnmappedPassthroughsByJobParams)) *MockQuerier_GetUnmappedPassthroughsByJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetUnmappedPassthroughsByJobParams
+		if args[2] != nil {
+			arg2 = args[2].(GetUnmappedPassthroughsByJobParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByJob_Call) Return(husonymApiUnmappedPassthroughs []HusonymApiUnmappedPassthrough, err error) *MockQuerier_GetUnmappedPassthroughsByJob_Call {
+	_c.Call.Return(husonymApiUnmappedPassthroughs, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetUnmappedPassthroughsByJob_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetUnmappedPassthroughsByJobParams) ([]HusonymApiUnmappedPassthrough, error)) *MockQuerier_GetUnmappedPassthroughsByJob_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8139,6 +8424,69 @@ func (_c *MockQuerier_UpdateUserDefinedTransformer_Call) Return(husonymApiTransf
 }
 
 func (_c *MockQuerier_UpdateUserDefinedTransformer_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (HusonymApiTransformer, error)) *MockQuerier_UpdateUserDefinedTransformer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertUnmappedPassthrough provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) UpsertUnmappedPassthrough(ctx context.Context, db DBTX, arg UpsertUnmappedPassthroughParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertUnmappedPassthrough")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertUnmappedPassthroughParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_UpsertUnmappedPassthrough_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertUnmappedPassthrough'
+type MockQuerier_UpsertUnmappedPassthrough_Call struct {
+	*mock.Call
+}
+
+// UpsertUnmappedPassthrough is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg UpsertUnmappedPassthroughParams
+func (_e *MockQuerier_Expecter) UpsertUnmappedPassthrough(ctx any, db any, arg any) *MockQuerier_UpsertUnmappedPassthrough_Call {
+	return &MockQuerier_UpsertUnmappedPassthrough_Call{Call: _e.mock.On("UpsertUnmappedPassthrough", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_UpsertUnmappedPassthrough_Call) Run(run func(ctx context.Context, db DBTX, arg UpsertUnmappedPassthroughParams)) *MockQuerier_UpsertUnmappedPassthrough_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 UpsertUnmappedPassthroughParams
+		if args[2] != nil {
+			arg2 = args[2].(UpsertUnmappedPassthroughParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertUnmappedPassthrough_Call) Return(err error) *MockQuerier_UpsertUnmappedPassthrough_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertUnmappedPassthrough_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertUnmappedPassthroughParams) error) *MockQuerier_UpsertUnmappedPassthrough_Call {
 	_c.Call.Return(run)
 	return _c
 }

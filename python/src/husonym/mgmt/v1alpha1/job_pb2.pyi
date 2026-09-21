@@ -67,6 +67,12 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOG_LEVEL_INFO: _ClassVar[LogLevel]
     LOG_LEVEL_WARN: _ClassVar[LogLevel]
     LOG_LEVEL_ERROR: _ClassVar[LogLevel]
+
+class PendingColumnReason(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    PENDING_COLUMN_REASON_UNSPECIFIED: _ClassVar[PendingColumnReason]
+    PENDING_COLUMN_REASON_NEVER_REVIEWED: _ClassVar[PendingColumnReason]
+    PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED: _ClassVar[PendingColumnReason]
 JOB_ENGINE_UNSPECIFIED: JobEngine
 JOB_ENGINE_ATHANOR: JobEngine
 JOB_ENGINE_BENTHOS: JobEngine
@@ -101,6 +107,9 @@ LOG_LEVEL_DEBUG: LogLevel
 LOG_LEVEL_INFO: LogLevel
 LOG_LEVEL_WARN: LogLevel
 LOG_LEVEL_ERROR: LogLevel
+PENDING_COLUMN_REASON_UNSPECIFIED: PendingColumnReason
+PENDING_COLUMN_REASON_NEVER_REVIEWED: PendingColumnReason
+PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED: PendingColumnReason
 
 class GetJobsRequest(_message.Message):
     __slots__ = ("account_id",)
@@ -1411,6 +1420,70 @@ class RemoveColumnReviewResponse(_message.Message):
     REMOVED_FIELD_NUMBER: _ClassVar[int]
     removed: bool
     def __init__(self, removed: _Optional[bool] = ...) -> None: ...
+
+class UnmappedPassthrough(_message.Message):
+    __slots__ = ("table_schema", "table_name", "column_name", "data_type")
+    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    table_schema: str
+    table_name: str
+    column_name: str
+    data_type: str
+    def __init__(self, table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., data_type: _Optional[str] = ...) -> None: ...
+
+class SetJobUnmappedPassthroughsRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "job_run_id", "columns")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    job_run_id: str
+    columns: _containers.RepeatedCompositeFieldContainer[UnmappedPassthrough]
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., columns: _Optional[_Iterable[_Union[UnmappedPassthrough, _Mapping]]] = ...) -> None: ...
+
+class SetJobUnmappedPassthroughsResponse(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class PendingColumnReview(_message.Message):
+    __slots__ = ("job_id", "table_schema", "table_name", "column_name", "data_type", "pii_category", "suggested_transformer_source", "reason", "first_seen_at")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_NAME_FIELD_NUMBER: _ClassVar[int]
+    DATA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    PII_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    REASON_FIELD_NUMBER: _ClassVar[int]
+    FIRST_SEEN_AT_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    table_schema: str
+    table_name: str
+    column_name: str
+    data_type: str
+    pii_category: str
+    suggested_transformer_source: _transformer_pb2.TransformerSource
+    reason: PendingColumnReason
+    first_seen_at: _timestamp_pb2.Timestamp
+    def __init__(self, job_id: _Optional[str] = ..., table_schema: _Optional[str] = ..., table_name: _Optional[str] = ..., column_name: _Optional[str] = ..., data_type: _Optional[str] = ..., pii_category: _Optional[str] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., reason: _Optional[_Union[PendingColumnReason, str]] = ..., first_seen_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class GetPendingColumnReviewsRequest(_message.Message):
+    __slots__ = ("account_id", "job_id")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    job_id: str
+    def __init__(self, account_id: _Optional[str] = ..., job_id: _Optional[str] = ...) -> None: ...
+
+class GetPendingColumnReviewsResponse(_message.Message):
+    __slots__ = ("columns",)
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    columns: _containers.RepeatedCompositeFieldContainer[PendingColumnReview]
+    def __init__(self, columns: _Optional[_Iterable[_Union[PendingColumnReview, _Mapping]]] = ...) -> None: ...
 
 class ColumnError(_message.Message):
     __slots__ = ("schema", "table", "column", "error_reports")

@@ -4,6 +4,11 @@ WHERE job_id = sqlc.arg('jobId')
   AND account_id = sqlc.arg('accountId')
 ORDER BY table_schema, table_name, column_name;
 
+-- name: GetColumnReviewsByAccount :many
+SELECT * from husonym_api.column_reviews
+WHERE account_id = sqlc.arg('accountId')
+ORDER BY job_id, table_schema, table_name, column_name;
+
 -- name: SetColumnReview :one
 INSERT INTO husonym_api.column_reviews (
     account_id,

@@ -77,6 +77,14 @@ type SourceParams struct {
 	JobRunId         string
 	SourceConnection *mgmtv1alpha1.Connection
 	Logger           *slog.Logger
+
+	// UnmappedPassthroughs is an output, filled by the SQL builder when the job's strategy is
+	// passthrough_pending_review: the columns it copies untransformed because the job does not
+	// map them. The caller reads it after BuildSourceConfigs and hands it to the backend, which
+	// is what lets the product show what a run shipped in clear without re-reading the source.
+	// It lives here rather than in the return value because every other builder would have to
+	// return an empty one.
+	UnmappedPassthroughs []*mgmtv1alpha1.UnmappedPassthrough
 }
 
 type ReferenceKey struct {

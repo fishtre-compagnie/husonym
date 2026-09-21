@@ -135,6 +135,11 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 			// run does not stop, so the log line is what tells someone that data left the source
 			// untransformed. A count alone would not let them decide anything.
 			//
+			// Handed back to the caller, which reports them to the backend: this is where the
+			// bell and the job's review tab get their list, without anything re-reading the
+			// source to rebuild it.
+			params.UnmappedPassthroughs = unmappedPassthroughColumns(extraMappings, groupedColumnInfo)
+
 			// The ones that read as personal data get their own line, first: on a wide table
 			// the interesting three would otherwise sit in the middle of sixty.
 			sensitive, others := splitSensitiveColumns(extraMappings, groupedColumnInfo)

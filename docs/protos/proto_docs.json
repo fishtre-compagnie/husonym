@@ -11527,6 +11527,29 @@
           ]
         },
         {
+          "name": "PendingColumnReason",
+          "longName": "PendingColumnReason",
+          "fullName": "mgmt.v1alpha1.PendingColumnReason",
+          "description": "Why a column is waiting for somebody.",
+          "values": [
+            {
+              "name": "PENDING_COLUMN_REASON_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PENDING_COLUMN_REASON_NEVER_REVIEWED",
+              "number": "1",
+              "description": "Nobody has decided anything about it yet."
+            },
+            {
+              "name": "PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED",
+              "number": "2",
+              "description": "Its passthrough was accepted, but the column has changed since, so the acceptance no longer\ncovers it. It asks for a confirmation, not a first look."
+            }
+          ]
+        },
+        {
           "name": "TableErrorCode",
           "longName": "TableError.TableErrorCode",
           "fullName": "mgmt.v1alpha1.TableError.TableErrorCode",
@@ -14229,6 +14252,66 @@
               "type": "Job",
               "longType": "Job",
               "fullType": "mgmt.v1alpha1.Job",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetPendingColumnReviewsRequest",
+          "longName": "GetPendingColumnReviewsRequest",
+          "fullName": "mgmt.v1alpha1.GetPendingColumnReviewsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "One job, for its review tab. Absent returns every job of the account, for the bell.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_job_id",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetPendingColumnReviewsResponse",
+          "longName": "GetPendingColumnReviewsResponse",
+          "fullName": "mgmt.v1alpha1.GetPendingColumnReviewsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "columns",
+              "description": "",
+              "label": "repeated",
+              "type": "PendingColumnReview",
+              "longType": "PendingColumnReview",
+              "fullType": "mgmt.v1alpha1.PendingColumnReview",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -17231,6 +17314,126 @@
           ]
         },
         {
+          "name": "PendingColumnReview",
+          "longName": "PendingColumnReview",
+          "fullName": "mgmt.v1alpha1.PendingColumnReview",
+          "description": "A column the last run copied untransformed and that nobody has settled.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job that copies it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table_schema",
+              "description": "The schema of the table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table_name",
+              "description": "The table the column belongs to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column_name",
+              "description": "The column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_type",
+              "description": "Its type as the last run saw it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_category",
+              "description": "The personal-data category its name and type read as. Empty when nothing was recognised —\nwhich says the detector saw nothing, not that the column holds nothing.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "The transformer suggested for it, when it reads as personal data. It is what the review\noffers first: anonymizing should be easier than accepting.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "reason",
+              "description": "Why it is waiting",
+              "label": "",
+              "type": "PendingColumnReason",
+              "longType": "PendingColumnReason",
+              "fullType": "mgmt.v1alpha1.PendingColumnReason",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "first_seen_at",
+              "description": "When a run first copied it untransformed",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "PiiDetectionReport",
           "longName": "PiiDetectionReport",
           "fullName": "mgmt.v1alpha1.PiiDetectionReport",
@@ -18387,6 +18590,77 @@
           ]
         },
         {
+          "name": "SetJobUnmappedPassthroughsRequest",
+          "longName": "SetJobUnmappedPassthroughsRequest",
+          "fullName": "mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job whose run copied the columns",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_run_id",
+              "description": "The run that saw them. The job's set is replaced: a column this run did not copy — because it\nhas been mapped since — leaves the list.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "columns",
+              "description": "Every column the run copied untransformed for want of a mapping. Empty clears the job's list.",
+              "label": "repeated",
+              "type": "UnmappedPassthrough",
+              "longType": "UnmappedPassthrough",
+              "fullType": "mgmt.v1alpha1.UnmappedPassthrough",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SetJobUnmappedPassthroughsResponse",
+          "longName": "SetJobUnmappedPassthroughsResponse",
+          "fullName": "mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
           "name": "SetJobWorkflowOptionsRequest",
           "longName": "SetJobWorkflowOptionsRequest",
           "fullName": "mgmt.v1alpha1.SetJobWorkflowOptionsRequest",
@@ -18670,6 +18944,66 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": []
+        },
+        {
+          "name": "UnmappedPassthrough",
+          "longName": "UnmappedPassthrough",
+          "fullName": "mgmt.v1alpha1.UnmappedPassthrough",
+          "description": "A column a run copied untransformed because the job does not map it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "table_schema",
+              "description": "The schema of the table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table_name",
+              "description": "The table the column belongs to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column_name",
+              "description": "The column copied as is",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_type",
+              "description": "The column's type as the run saw it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         },
         {
           "name": "UpdateJobDestinationConnectionRequest",
@@ -19863,6 +20197,33 @@
               "responseLongType": "RemoveColumnReviewResponse",
               "responseFullType": "mgmt.v1alpha1.RemoveColumnReviewResponse",
               "responseStreaming": false
+            },
+            {
+              "name": "SetJobUnmappedPassthroughs",
+              "description": "Records the columns a run copied untransformed for want of a mapping. Called by the worker.",
+              "requestType": "SetJobUnmappedPassthroughsRequest",
+              "requestLongType": "SetJobUnmappedPassthroughsRequest",
+              "requestFullType": "mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest",
+              "requestStreaming": false,
+              "responseType": "SetJobUnmappedPassthroughsResponse",
+              "responseLongType": "SetJobUnmappedPassthroughsResponse",
+              "responseFullType": "mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "GetPendingColumnReviews",
+              "description": "Returns what is waiting for a decision: the columns the last runs copied untransformed, less\nthose whose passthrough has been accepted and still holds. For one job, or for the account.",
+              "requestType": "GetPendingColumnReviewsRequest",
+              "requestLongType": "GetPendingColumnReviewsRequest",
+              "requestFullType": "mgmt.v1alpha1.GetPendingColumnReviewsRequest",
+              "requestStreaming": false,
+              "responseType": "GetPendingColumnReviewsResponse",
+              "responseLongType": "GetPendingColumnReviewsResponse",
+              "responseFullType": "mgmt.v1alpha1.GetPendingColumnReviewsResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
             },
             {
               "name": "ValidateSchema",

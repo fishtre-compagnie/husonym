@@ -144,6 +144,32 @@ func splitSensitiveColumns(
 	mappings []*mgmtv1alpha1.JobMapping,
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 ) (sensitive, others []string) {
+	for _, column := range unmappedPassthroughColumns(mappings, columnInfo) {
+		name := fmt.Sprintf(
+			"%s.%s",
+			sqlmanager_shared.BuildTable(column.GetTableSchema(), column.GetTableName()),
+			column.GetColumnName(),
+		)
+		if category, isSensitive := job_util.LooksSensitive(column.GetColumnName(), column.GetDataType()); isSensitive {
+			sensitive = append(sensitive, fmt.Sprintf("%s (%s)", name, category))
+			continue
+		}
+		others = append(others, name)
+	}
+	slices.Sort(sensitive)
+	slices.Sort(others)
+	return sensitive, others
+}
+
+// unmappedPassthroughColumns are the columns among the added mappings that are copied as is,
+// with the type the source reports for them. The run logs them, and reports them to the
+// backend; both go through here so that what the log says and what the bell counts cannot
+// disagree.
+func unmappedPassthroughColumns(
+	mappings []*mgmtv1alpha1.JobMapping,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) []*mgmtv1alpha1.UnmappedPassthrough {
+	columns := make([]*mgmtv1alpha1.UnmappedPassthrough, 0, len(mappings))
 	for _, m := range mappings {
 		// Only the columns actually copied as is. getAdditionalPassthroughJobMappings hands a
 		// GenerateDefault to every generated column, whose value the destination recomputes and
@@ -153,24 +179,20 @@ func splitSensitiveColumns(
 			continue
 		}
 
-		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
-		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
-
 		var dataType string
-		if cols, ok := columnInfo[table]; ok {
+		if cols, ok := columnInfo[sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())]; ok {
 			if info, ok := cols[m.GetColumn()]; ok && info != nil {
 				dataType = info.DataType
 			}
 		}
-		if category, isSensitive := job_util.LooksSensitive(m.GetColumn(), dataType); isSensitive {
-			sensitive = append(sensitive, fmt.Sprintf("%s (%s)", name, category))
-			continue
-		}
-		others = append(others, name)
+		columns = append(columns, &mgmtv1alpha1.UnmappedPassthrough{
+			TableSchema: m.GetSchema(),
+			TableName:   m.GetTable(),
+			ColumnName:  m.GetColumn(),
+			DataType:    dataType,
+		})
 	}
-	slices.Sort(sensitive)
-	slices.Sort(others)
-	return sensitive, others
+	return columns
 }
 
 func getMapValuesCount[K comparable, V any](m map[K][]V) int {

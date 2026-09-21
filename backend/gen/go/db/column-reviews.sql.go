@@ -11,6 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getColumnReviewsByAccount = `-- name: GetColumnReviewsByAccount :many
+SELECT account_id, job_id, table_schema, table_name, column_name, reviewed_data_type, reviewed_pii_category, note, created_at, updated_at, created_by_id, updated_by_id from husonym_api.column_reviews
+WHERE account_id = $1
+ORDER BY job_id, table_schema, table_name, column_name
+`
+
+func (q *Queries) GetColumnReviewsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiColumnReview, error) {
+	rows, err := db.Query(ctx, getColumnReviewsByAccount, accountid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HusonymApiColumnReview
+	for rows.Next() {
+		var i HusonymApiColumnReview
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.JobID,
+			&i.TableSchema,
+			&i.TableName,
+			&i.ColumnName,
+			&i.ReviewedDataType,
+			&i.ReviewedPiiCategory,
+			&i.Note,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatedByID,
+			&i.UpdatedByID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getColumnReviewsByJob = `-- name: GetColumnReviewsByJob :many
 SELECT account_id, job_id, table_schema, table_name, column_name, reviewed_data_type, reviewed_pii_category, note, created_at, updated_at, created_by_id, updated_by_id from husonym_api.column_reviews
 WHERE job_id = $1

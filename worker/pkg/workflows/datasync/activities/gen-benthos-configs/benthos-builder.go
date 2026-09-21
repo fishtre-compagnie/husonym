@@ -69,6 +69,40 @@ type workflowMetadata struct {
 	RunId      string
 }
 
+// reportUnmappedPassthroughs tells the backend which columns this run copies untransformed for
+// want of a mapping — the list the bell and the job's review tab read.
+//
+// Always sent, empty included: an empty report is what clears a job whose columns have been
+// mapped since, or whose strategy no longer asks for a review. Skipping it would leave the bell
+// showing columns that no longer leak.
+//
+// A failure is logged and does not fail the run. The data is copied either way; losing the
+// report costs a stale bell until the next run, while failing would stop a sync over a
+// bookkeeping call.
+func (b *benthosBuilder) reportUnmappedPassthroughs(
+	ctx context.Context,
+	job *mgmtv1alpha1.Job,
+	columns []*mgmtv1alpha1.UnmappedPassthrough,
+	logger *slog.Logger,
+) {
+	_, err := b.jobclient.SetJobUnmappedPassthroughs(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.SetJobUnmappedPassthroughsRequest{
+			JobId:     job.GetId(),
+			AccountId: job.GetAccountId(),
+			JobRunId:  b.jobRunId,
+			Columns:   columns,
+		}),
+	)
+	if err != nil {
+		logger.Warn(fmt.Sprintf(
+			"unable to report the %d columns passed through untransformed; the review list stays as it was until the next run: %v",
+			len(columns),
+			err,
+		))
+	}
+}
+
 func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	ctx context.Context,
 	req *GenerateBenthosConfigsRequest,
@@ -128,6 +162,8 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	if err != nil {
 		return nil, err
 	}
+
+	b.reportUnmappedPassthroughs(ctx, job, benthosManager.UnmappedPassthroughs(), slogger)
 
 	err = b.setConnectionIdsRunContext(ctx, responses, job.GetAccountId())
 	if err != nil {

@@ -1725,6 +1725,32 @@ components:
           description: The list of jobs
       title: GetJobsResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetPendingColumnReviewsRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type:
+            - string
+            - "null"
+          title: job_id
+          description: One job, for its review tab. Absent returns every job of the account, for the bell.
+      title: GetPendingColumnReviewsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetPendingColumnReviewsResponse:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.PendingColumnReview'
+          title: columns
+      title: GetPendingColumnReviewsResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetPiiDetectionReportRequest:
       type: object
       properties:
@@ -3463,6 +3489,63 @@ components:
           description: The last failure of the activity
       title: PendingActivity
       additionalProperties: false
+    mgmt.v1alpha1.PendingColumnReason:
+      type: string
+      title: PendingColumnReason
+      enum:
+        - PENDING_COLUMN_REASON_UNSPECIFIED
+        - PENDING_COLUMN_REASON_NEVER_REVIEWED
+        - PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED
+      description: Why a column is waiting for somebody.
+    mgmt.v1alpha1.PendingColumnReview:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          description: The job that copies it
+        tableSchema:
+          type: string
+          title: table_schema
+          description: The schema of the table
+        tableName:
+          type: string
+          title: table_name
+          description: The table the column belongs to
+        columnName:
+          type: string
+          title: column_name
+          description: The column
+        dataType:
+          type: string
+          title: data_type
+          description: Its type as the last run saw it
+        piiCategory:
+          type: string
+          title: pii_category
+          description: |-
+            The personal-data category its name and type read as. Empty when nothing was recognised —
+             which says the detector saw nothing, not that the column holds nothing.
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: |-
+            The transformer suggested for it, when it reads as personal data. It is what the review
+             offers first: anonymizing should be easier than accepting.
+        reason:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PendingColumnReason'
+          title: reason
+          description: Why it is waiting
+        firstSeenAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: first_seen_at
+          description: When a run first copied it untransformed
+      title: PendingColumnReview
+      additionalProperties: false
+      description: A column the last run copied untransformed and that nobody has settled.
     mgmt.v1alpha1.PiiAnonymizer:
       type: object
       anyOf:
@@ -4215,6 +4298,38 @@ components:
           title: job
           description: The updated job
       title: SetJobSyncOptionsResponse
+      additionalProperties: false
+    mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job whose run copied the columns
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobRunId:
+          type: string
+          title: job_run_id
+          minLength: 1
+          description: |-
+            The run that saw them. The job's set is replaced: a column this run did not copy — because it
+             has been mapped since — leaves the list.
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.UnmappedPassthrough'
+          title: columns
+          description: Every column the run copied untransformed for want of a mapping. Empty clears the job's list.
+      title: SetJobUnmappedPassthroughsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse:
+      type: object
+      title: SetJobUnmappedPassthroughsResponse
       additionalProperties: false
     mgmt.v1alpha1.SetJobWorkflowOptionsRequest:
       type: object
@@ -5276,6 +5391,28 @@ components:
         - TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS
         - TRANSFORMER_SOURCE_TRANSFORM_UUID
         - TRANSFORMER_SOURCE_TRANSFORM_SCRAMBLE_IDENTITY
+    mgmt.v1alpha1.UnmappedPassthrough:
+      type: object
+      properties:
+        tableSchema:
+          type: string
+          title: table_schema
+          description: The schema of the table
+        tableName:
+          type: string
+          title: table_name
+          description: The table the column belongs to
+        columnName:
+          type: string
+          title: column_name
+          description: The column copied as is
+        dataType:
+          type: string
+          title: data_type
+          description: The column's type as the run saw it
+      title: UnmappedPassthrough
+      additionalProperties: false
+      description: A column a run copied untransformed because the job does not map it.
     mgmt.v1alpha1.UpdateJobDestinationConnectionRequest:
       type: object
       properties:
@@ -6556,6 +6693,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetJobsResponse'
+  /mgmt.v1alpha1.JobService/GetPendingColumnReviews:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: GetPendingColumnReviews
+      description: |-
+        Returns what is waiting for a decision: the columns the last runs copied untransformed, less
+         those whose passthrough has been accepted and still holds. For one job, or for the account.
+      operationId: mgmt.v1alpha1.JobService.GetPendingColumnReviews
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingColumnReviewsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetPendingColumnReviewsResponse'
   /mgmt.v1alpha1.JobService/GetPiiDetectionReport:
     post:
       tags:
@@ -6957,6 +7136,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SetJobSyncOptionsResponse'
+  /mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: SetJobUnmappedPassthroughs
+      description: Records the columns a run copied untransformed for want of a mapping. Called by the worker.
+      operationId: mgmt.v1alpha1.JobService.SetJobUnmappedPassthroughs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetJobUnmappedPassthroughsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse'
   /mgmt.v1alpha1.JobService/SetJobWorkflowOptions:
     post:
       tags:

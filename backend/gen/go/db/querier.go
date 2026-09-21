@@ -32,6 +32,7 @@ type Querier interface {
 	CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error)
 	DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DeleteSlackOAuthConnection(ctx context.Context, db DBTX, accountID pgtype.UUID) error
+	DeleteUnmappedPassthroughsNotSeenInRun(ctx context.Context, db DBTX, arg DeleteUnmappedPassthroughsNotSeenInRunParams) error
 	DeleteUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DoesJobHaveConnectionId(ctx context.Context, db DBTX, arg DoesJobHaveConnectionIdParams) (bool, error)
 	GetAccount(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccount, error)
@@ -55,6 +56,7 @@ type Querier interface {
 	GetActivePreSyncJobHooks(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
 	GetBilledAccounts(ctx context.Context, db DBTX, accountids []pgtype.UUID) ([]HusonymApiAccount, error)
+	GetColumnReviewsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiColumnReview, error)
 	GetColumnReviewsByJob(ctx context.Context, db DBTX, arg GetColumnReviewsByJobParams) ([]HusonymApiColumnReview, error)
 	GetConnectionById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiConnection, error)
 	GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error)
@@ -75,6 +77,8 @@ type Querier interface {
 	GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]HusonymApiAccount, error)
 	GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.TemporalConfig, error)
 	GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)
+	GetUnmappedPassthroughsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUnmappedPassthrough, error)
+	GetUnmappedPassthroughsByJob(ctx context.Context, db DBTX, arg GetUnmappedPassthroughsByJobParams) ([]HusonymApiUnmappedPassthrough, error)
 	GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)
 	GetUserAssociationByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUserIdentityProviderAssociation, error)
 	GetUserByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUser, error)
@@ -126,6 +130,7 @@ type Querier interface {
 	UpdateJobVirtualForeignKeys(ctx context.Context, db DBTX, arg UpdateJobVirtualForeignKeysParams) (HusonymApiJob, error)
 	UpdateTemporalConfigByAccount(ctx context.Context, db DBTX, arg UpdateTemporalConfigByAccountParams) (HusonymApiAccount, error)
 	UpdateUserDefinedTransformer(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (HusonymApiTransformer, error)
+	UpsertUnmappedPassthrough(ctx context.Context, db DBTX, arg UpsertUnmappedPassthroughParams) error
 }
 
 var _ Querier = (*Queries)(nil)

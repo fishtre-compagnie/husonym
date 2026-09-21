@@ -1363,6 +1363,77 @@ message RemoveColumnReviewResponse {
   bool removed = 1;
 }
 
+// A column a run copied untransformed because the job does not map it.
+message UnmappedPassthrough {
+  // The schema of the table
+  string table_schema = 1;
+  // The table the column belongs to
+  string table_name = 2;
+  // The column copied as is
+  string column_name = 3;
+  // The column's type as the run saw it
+  string data_type = 4;
+}
+
+message SetJobUnmappedPassthroughsRequest {
+  // The job whose run copied the columns
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The run that saw them. The job's set is replaced: a column this run did not copy — because it
+  // has been mapped since — leaves the list.
+  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
+  // Every column the run copied untransformed for want of a mapping. Empty clears the job's list.
+  repeated UnmappedPassthrough columns = 4;
+}
+
+message SetJobUnmappedPassthroughsResponse {}
+
+// Why a column is waiting for somebody.
+enum PendingColumnReason {
+  PENDING_COLUMN_REASON_UNSPECIFIED = 0;
+  // Nobody has decided anything about it yet.
+  PENDING_COLUMN_REASON_NEVER_REVIEWED = 1;
+  // Its passthrough was accepted, but the column has changed since, so the acceptance no longer
+  // covers it. It asks for a confirmation, not a first look.
+  PENDING_COLUMN_REASON_CHANGED_SINCE_ACCEPTED = 2;
+}
+
+// A column the last run copied untransformed and that nobody has settled.
+message PendingColumnReview {
+  // The job that copies it
+  string job_id = 1;
+  // The schema of the table
+  string table_schema = 2;
+  // The table the column belongs to
+  string table_name = 3;
+  // The column
+  string column_name = 4;
+  // Its type as the last run saw it
+  string data_type = 5;
+  // The personal-data category its name and type read as. Empty when nothing was recognised —
+  // which says the detector saw nothing, not that the column holds nothing.
+  string pii_category = 6;
+  // The transformer suggested for it, when it reads as personal data. It is what the review
+  // offers first: anonymizing should be easier than accepting.
+  TransformerSource suggested_transformer_source = 7;
+  // Why it is waiting
+  PendingColumnReason reason = 8;
+  // When a run first copied it untransformed
+  google.protobuf.Timestamp first_seen_at = 9;
+}
+
+message GetPendingColumnReviewsRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // One job, for its review tab. Absent returns every job of the account, for the bell.
+  optional string job_id = 2;
+}
+
+message GetPendingColumnReviewsResponse {
+  repeated PendingColumnReview columns = 1;
+}
+
 message ColumnError {
   // The schema of the table
   string schema = 1;
@@ -1951,6 +2022,13 @@ service JobService {
   rpc SetColumnReview(SetColumnReviewRequest) returns (SetColumnReviewResponse) {}
   // Withdraws that acceptance, putting the column back in the list.
   rpc RemoveColumnReview(RemoveColumnReviewRequest) returns (RemoveColumnReviewResponse) {}
+  // Records the columns a run copied untransformed for want of a mapping. Called by the worker.
+  rpc SetJobUnmappedPassthroughs(SetJobUnmappedPassthroughsRequest) returns (SetJobUnmappedPassthroughsResponse) {}
+  // Returns what is waiting for a decision: the columns the last runs copied untransformed, less
+  // those whose passthrough has been accepted and still holds. For one job, or for the account.
+  rpc GetPendingColumnReviews(GetPendingColumnReviewsRequest) returns (GetPendingColumnReviewsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 
