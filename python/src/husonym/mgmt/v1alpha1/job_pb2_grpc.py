@@ -462,7 +462,8 @@ class JobServiceServicer:
 
     def SetColumnReview(self, request, context):
         """Accepts the passthrough of one unmapped column, so it stops being reported. The server
-        records the column as it stands at that moment, and reports it again if it moves.
+        records the column as the job's last run copied it — refusing a column no run has reported —
+        and reports it again if it moves.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

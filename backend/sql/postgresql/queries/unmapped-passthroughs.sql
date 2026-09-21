@@ -29,6 +29,14 @@ WHERE job_id = sqlc.arg('jobId')
   AND account_id = sqlc.arg('accountId')
   AND last_seen_job_run_id <> sqlc.arg('jobRunId')::text;
 
+-- name: GetUnmappedPassthrough :one
+SELECT * FROM husonym_api.unmapped_passthroughs
+WHERE job_id = sqlc.arg('jobId')
+  AND account_id = sqlc.arg('accountId')
+  AND table_schema = sqlc.arg('tableSchema')
+  AND table_name = sqlc.arg('tableName')
+  AND column_name = sqlc.arg('columnName');
+
 -- name: GetUnmappedPassthroughsByJob :many
 SELECT * FROM husonym_api.unmapped_passthroughs
 WHERE job_id = sqlc.arg('jobId')

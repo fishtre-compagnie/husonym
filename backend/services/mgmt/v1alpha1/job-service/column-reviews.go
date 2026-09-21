@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -49,7 +48,7 @@ func (s *Service) GetColumnReviews(
 
 // SetColumnReview accepts the passthrough of one unmapped column.
 //
-// The column's type and detected category are read from the source rather than taken from the
+// The column's type and detected category come from what the last run recorded, not from the
 // request: they are the record of what was accepted, and a caller cannot be the one to describe
 // what it is asking to have forgiven.
 func (s *Service) SetColumnReview(
@@ -72,17 +71,6 @@ func (s *Service) SetColumnReview(
 		return nil, err
 	}
 
-	dataType, piiCategory, err := s.describeSourceColumn(
-		ctx,
-		jobResp.Msg.GetJob(),
-		req.Msg.GetTableSchema(),
-		req.Msg.GetTableName(),
-		req.Msg.GetColumnName(),
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	jobUuid, err := husonymdb.ToUuid(req.Msg.GetJobId())
 	if err != nil {
 		return nil, err
@@ -91,6 +79,35 @@ func (s *Service) SetColumnReview(
 	if err != nil {
 		return nil, err
 	}
+
+	// The column as the run copied it, not as a second read of the source describes it. The two
+	// disagree: under MySQL the run reads information_schema's data_type ("varchar") while the
+	// single-table reader returns column_type ("varchar(255)"), so an acceptance recorded from the
+	// latter never matched what the run saw, and every accepted MySQL column came back as changed,
+	// forever. Recording what the run reported is consistent by construction, for every dialect,
+	// and it is what an acceptance is about: a column the job copies in clear.
+	copied, err := s.db.Q.GetUnmappedPassthrough(ctx, s.db.Db, db_queries.GetUnmappedPassthroughParams{
+		JobId:       jobUuid,
+		AccountId:   accountUuid,
+		TableSchema: req.Msg.GetTableSchema(),
+		TableName:   req.Msg.GetTableName(),
+		ColumnName:  req.Msg.GetColumnName(),
+	})
+	if err != nil {
+		if husonymdb.IsNoRows(err) {
+			// Refused rather than recorded blind: there is nothing to accept until a run has
+			// copied the column, and a decision about a column no run reported would match
+			// nothing and forgive nothing.
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf(
+				"no run of this job has copied %s.%s.%s untransformed: there is no passthrough to accept",
+				req.Msg.GetTableSchema(), req.Msg.GetTableName(), req.Msg.GetColumnName(),
+			))
+		}
+		return nil, err
+	}
+	dataType := copied.DataType
+	// The same verdict the validator and the run use, so what is accepted is what was reported.
+	piiCategory, _ := job_util.LooksSensitive(copied.ColumnName, dataType)
 
 	var note pgtype.Text
 	if req.Msg.Note != nil {
@@ -211,58 +228,6 @@ func (s *Service) acceptedPassthroughsByTable(
 		}
 	}
 	return accepted, nil
-}
-
-// describeSourceColumn reads the column as it stands right now, which is what the decision is
-// recorded against.
-func (s *Service) describeSourceColumn(
-	ctx context.Context,
-	job *mgmtv1alpha1.Job,
-	schema, table, column string,
-) (dataType, piiCategory string, err error) {
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-
-	connectionId, err := getJobSourceConnectionId(job.GetSource())
-	if err != nil {
-		return "", "", err
-	}
-	if connectionId == nil {
-		return "", "", connect.NewError(
-			connect.CodeInvalidArgument,
-			fmt.Errorf("job %q has no source connection to read the column from", job.GetId()),
-		)
-	}
-
-	connResp, err := s.connectionService.GetConnection(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: *connectionId}),
-	)
-	if err != nil {
-		return "", "", err
-	}
-	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connResp.Msg.GetConnection())
-	if err != nil {
-		return "", "", err
-	}
-	columns, err := dataconn.GetTableSchema(ctx, schema, table)
-	if err != nil {
-		return "", "", err
-	}
-	for _, candidate := range columns {
-		if candidate.GetColumn() != column {
-			continue
-		}
-		// The same verdict the validator and the run use, so what is accepted here is what was
-		// reported there.
-		category, _ := job_util.LooksSensitive(column, candidate.GetDataType())
-		return candidate.GetDataType(), category, nil
-	}
-
-	// Refused rather than recorded blind: a decision about a column that is not in the source
-	// would sit in the table forever, matching nothing and forgiving nothing.
-	return "", "", connect.NewError(connect.CodeNotFound, fmt.Errorf(
-		"no column %q in %s.%s of the job's source", column, schema, table,
-	))
 }
 
 func toColumnReviewDto(record db_queries.HusonymApiColumnReview) *mgmtv1alpha1.ColumnReview {

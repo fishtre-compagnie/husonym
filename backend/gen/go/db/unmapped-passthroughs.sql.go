@@ -29,6 +29,46 @@ func (q *Queries) DeleteUnmappedPassthroughsNotSeenInRun(ctx context.Context, db
 	return err
 }
 
+const getUnmappedPassthrough = `-- name: GetUnmappedPassthrough :one
+SELECT account_id, job_id, table_schema, table_name, column_name, data_type, first_seen_at, last_seen_at, last_seen_job_run_id FROM husonym_api.unmapped_passthroughs
+WHERE job_id = $1
+  AND account_id = $2
+  AND table_schema = $3
+  AND table_name = $4
+  AND column_name = $5
+`
+
+type GetUnmappedPassthroughParams struct {
+	JobId       pgtype.UUID
+	AccountId   pgtype.UUID
+	TableSchema string
+	TableName   string
+	ColumnName  string
+}
+
+func (q *Queries) GetUnmappedPassthrough(ctx context.Context, db DBTX, arg GetUnmappedPassthroughParams) (HusonymApiUnmappedPassthrough, error) {
+	row := db.QueryRow(ctx, getUnmappedPassthrough,
+		arg.JobId,
+		arg.AccountId,
+		arg.TableSchema,
+		arg.TableName,
+		arg.ColumnName,
+	)
+	var i HusonymApiUnmappedPassthrough
+	err := row.Scan(
+		&i.AccountID,
+		&i.JobID,
+		&i.TableSchema,
+		&i.TableName,
+		&i.ColumnName,
+		&i.DataType,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.LastSeenJobRunID,
+	)
+	return i, err
+}
+
 const getUnmappedPassthroughsByAccount = `-- name: GetUnmappedPassthroughsByAccount :many
 SELECT account_id, job_id, table_schema, table_name, column_name, data_type, first_seen_at, last_seen_at, last_seen_job_run_id FROM husonym_api.unmapped_passthroughs
 WHERE account_id = $1

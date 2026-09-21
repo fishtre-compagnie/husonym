@@ -2015,6 +2015,74 @@ func (_c *MockJobServiceHandler_IsJobNameAvailable_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// MapUnmappedColumns provides a mock function for the type MockJobServiceHandler
+func (_mock *MockJobServiceHandler) MapUnmappedColumns(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MapUnmappedColumns")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockJobServiceHandler_MapUnmappedColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MapUnmappedColumns'
+type MockJobServiceHandler_MapUnmappedColumns_Call struct {
+	*mock.Call
+}
+
+// MapUnmappedColumns is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]
+func (_e *MockJobServiceHandler_Expecter) MapUnmappedColumns(context1 any, request any) *MockJobServiceHandler_MapUnmappedColumns_Call {
+	return &MockJobServiceHandler_MapUnmappedColumns_Call{Call: _e.mock.On("MapUnmappedColumns", context1, request)}
+}
+
+func (_c *MockJobServiceHandler_MapUnmappedColumns_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest])) *MockJobServiceHandler_MapUnmappedColumns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockJobServiceHandler_MapUnmappedColumns_Call) Return(response *connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], err error) *MockJobServiceHandler_MapUnmappedColumns_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockJobServiceHandler_MapUnmappedColumns_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.MapUnmappedColumnsRequest]) (*connect.Response[mgmtv1alpha1.MapUnmappedColumnsResponse], error)) *MockJobServiceHandler_MapUnmappedColumns_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PauseJob provides a mock function for the type MockJobServiceHandler
 func (_mock *MockJobServiceHandler) PauseJob(context1 context.Context, request *connect.Request[mgmtv1alpha1.PauseJobRequest]) (*connect.Response[mgmtv1alpha1.PauseJobResponse], error) {
 	ret := _mock.Called(context1, request)

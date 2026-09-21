@@ -225,7 +225,8 @@ type JobServiceClient interface {
 	// Returns the columns whose passthrough has been reviewed and accepted for this job.
 	GetColumnReviews(context.Context, *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error)
 	// Accepts the passthrough of one unmapped column, so it stops being reported. The server
-	// records the column as it stands at that moment, and reports it again if it moves.
+	// records the column as the job's last run copied it — refusing a column no run has reported —
+	// and reports it again if it moves.
 	SetColumnReview(context.Context, *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error)
 	// Withdraws that acceptance, putting the column back in the list.
 	RemoveColumnReview(context.Context, *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error)
@@ -924,7 +925,8 @@ type JobServiceHandler interface {
 	// Returns the columns whose passthrough has been reviewed and accepted for this job.
 	GetColumnReviews(context.Context, *connect.Request[v1alpha1.GetColumnReviewsRequest]) (*connect.Response[v1alpha1.GetColumnReviewsResponse], error)
 	// Accepts the passthrough of one unmapped column, so it stops being reported. The server
-	// records the column as it stands at that moment, and reports it again if it moves.
+	// records the column as the job's last run copied it — refusing a column no run has reported —
+	// and reports it again if it moves.
 	SetColumnReview(context.Context, *connect.Request[v1alpha1.SetColumnReviewRequest]) (*connect.Response[v1alpha1.SetColumnReviewResponse], error)
 	// Withdraws that acceptance, putting the column back in the list.
 	RemoveColumnReview(context.Context, *connect.Request[v1alpha1.RemoveColumnReviewRequest]) (*connect.Response[v1alpha1.RemoveColumnReviewResponse], error)

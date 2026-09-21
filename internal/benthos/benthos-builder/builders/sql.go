@@ -146,8 +146,8 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 			if len(sensitive) > 0 {
 				logger.Warn(
 					fmt.Sprintf(
-						"%d unmapped columns look like personal data and were passed through untransformed: [%s]",
-						len(sensitive),
+						"%s look like personal data and were passed through untransformed: [%s]",
+						unmappedColumns(len(sensitive)),
 						strings.Join(sensitive, ", "),
 					),
 				)
@@ -155,8 +155,8 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 			if len(others) > 0 {
 				logger.Warn(
 					fmt.Sprintf(
-						"%d unmapped columns passed through as is, awaiting a decision: [%s]",
-						len(others),
+						"%s passed through as is, awaiting a decision: [%s]",
+						unmappedColumns(len(others)),
 						strings.Join(others, ", "),
 					),
 				)

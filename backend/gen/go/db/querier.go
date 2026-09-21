@@ -77,6 +77,7 @@ type Querier interface {
 	GetTeamAccountsByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) ([]HusonymApiAccount, error)
 	GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.TemporalConfig, error)
 	GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)
+	GetUnmappedPassthrough(ctx context.Context, db DBTX, arg GetUnmappedPassthroughParams) (HusonymApiUnmappedPassthrough, error)
 	GetUnmappedPassthroughsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUnmappedPassthrough, error)
 	GetUnmappedPassthroughsByJob(ctx context.Context, db DBTX, arg GetUnmappedPassthroughsByJobParams) ([]HusonymApiUnmappedPassthrough, error)
 	GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)

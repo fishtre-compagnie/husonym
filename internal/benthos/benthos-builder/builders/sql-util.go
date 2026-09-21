@@ -1887,3 +1887,11 @@ func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) [
 	slices.Sort(generated)
 	return generated
 }
+
+// unmappedColumns counts columns in a sentence, singular or plural.
+func unmappedColumns(n int) string {
+	if n == 1 {
+		return "1 unmapped column"
+	}
+	return fmt.Sprintf("%d unmapped columns", n)
+}
