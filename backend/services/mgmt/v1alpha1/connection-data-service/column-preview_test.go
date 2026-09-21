@@ -99,27 +99,26 @@ func Test_previewJavascript(t *testing.T) {
 		},
 	}
 
-	t.Run("hands the rule the whole row with its numbers as numbers", func(t *testing.T) {
+	t.Run("one trial for the whole sample, numbers as numbers", func(t *testing.T) {
 		client := mgmtv1alpha1connect.NewMockTransformersServiceClient(t)
 		client.EXPECT().
 			TryJavascriptRules(mock.Anything, mock.MatchedBy(
 				func(req *connect.Request[mgmtv1alpha1.TryJavascriptRulesRequest]) bool {
-					// A number, not "28": this is the whole reason for this path. And the other
-					// columns ride along, since a rule may read them through `input`.
-					return len(req.Msg.GetRows()) == 1 &&
-						unquotedNumber.MatchString(req.Msg.GetRows()[0]) &&
-						strings.Contains(req.Msg.GetRows()[0], `"name":`) &&
+					// Every row in the same trial: one consistency key, so a deterministic rule
+					// gives the same value the same output across the preview, as in a run. And
+					// each row whole, with its numbers unquoted.
+					rows := req.Msg.GetRows()
+					return len(rows) == 2 &&
+						unquotedNumber.MatchString(rows[0]) &&
+						strings.Contains(rows[1], `"name":"Bruno"`) &&
 						req.Msg.GetAccountId() == sampled.accountId
 				},
 			)).
-			RunAndReturn(func(
-				_ context.Context,
-				req *connect.Request[mgmtv1alpha1.TryJavascriptRulesRequest],
-			) (*connect.Response[mgmtv1alpha1.TryJavascriptRulesResponse], error) {
-				out := strings.Replace(req.Msg.GetRows()[0], `"age":28`, `"age":29`, 1)
-				out = strings.Replace(out, `"age":31`, `"age":32`, 1)
-				return connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{Rows: []string{out}}), nil
-			})
+			Return(connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{Rows: []string{
+				`{"age":29,"name":"Alice"}`,
+				`{"age":32,"name":"Bruno"}`,
+			}}), nil).
+			Once()
 
 		s := &Service{transformers: Transformers{Client: client}}
 		resp := s.previewJavascript(context.Background(), sampled, "age", []any{int64(28), int64(31)}, config)
@@ -130,29 +129,47 @@ func Test_previewJavascript(t *testing.T) {
 		require.Equal(t, "32", resp.GetValues()[1].GetOutput().GetValue())
 	})
 
-	t.Run("a failing row keeps its message and the others still run", func(t *testing.T) {
+	t.Run("a failure stops the trial, and the others say so instead of guessing", func(t *testing.T) {
 		client := mgmtv1alpha1connect.NewMockTransformersServiceClient(t)
 		client.EXPECT().
 			TryJavascriptRules(mock.Anything, mock.Anything).
-			RunAndReturn(func(
-				_ context.Context,
-				req *connect.Request[mgmtv1alpha1.TryJavascriptRulesRequest],
-			) (*connect.Response[mgmtv1alpha1.TryJavascriptRulesResponse], error) {
-				if strings.Contains(req.Msg.GetRows()[0], "Alice") {
-					return connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{
-						Failure: &mgmtv1alpha1.JavascriptRuleFailure{Message: "TypeError: boom"},
-					}), nil
-				}
-				return connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{
-					Rows: []string{`{"age":32,"name":"Bruno"}`},
-				}), nil
-			})
+			Return(connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{
+				Failure: &mgmtv1alpha1.JavascriptRuleFailure{Row: 0, Column: "age", Message: "TypeError: boom"},
+			}), nil).
+			Once()
 
 		s := &Service{transformers: Transformers{Client: client}}
 		resp := s.previewJavascript(context.Background(), sampled, "age", []any{int64(28), int64(31)}, config)
 
-		// The message the trial carries, unlike the anonymizer's, which comes out empty.
 		require.Equal(t, "TypeError: boom", resp.GetValues()[0].GetError())
-		require.Equal(t, "32", resp.GetValues()[1].GetOutput().GetValue())
+		require.Contains(t, resp.GetValues()[1].GetError(), "not tried")
+		require.Nil(t, resp.GetValues()[1].GetOutput())
+	})
+
+	t.Run("never more rows than one trial takes", func(t *testing.T) {
+		many := &sampledTable{accountId: sampled.accountId}
+		raws := make([]any, 0, 30)
+		for i := range 30 {
+			many.rows = append(many.rows, map[string]any{"age": int64(i)})
+			raws = append(raws, int64(i))
+		}
+		client := mgmtv1alpha1connect.NewMockTransformersServiceClient(t)
+		client.EXPECT().
+			TryJavascriptRules(mock.Anything, mock.MatchedBy(
+				func(req *connect.Request[mgmtv1alpha1.TryJavascriptRulesRequest]) bool {
+					return len(req.Msg.GetRows()) == maxJavascriptTrialRows
+				},
+			)).
+			RunAndReturn(func(
+				_ context.Context,
+				req *connect.Request[mgmtv1alpha1.TryJavascriptRulesRequest],
+			) (*connect.Response[mgmtv1alpha1.TryJavascriptRulesResponse], error) {
+				return connect.NewResponse(&mgmtv1alpha1.TryJavascriptRulesResponse{Rows: req.Msg.GetRows()}), nil
+			}).
+			Once()
+
+		s := &Service{transformers: Transformers{Client: client}}
+		resp := s.previewJavascript(context.Background(), many, "age", raws, config)
+		require.Len(t, resp.GetValues(), maxJavascriptTrialRows)
 	})
 }

@@ -174,13 +174,23 @@ func isJavascriptRule(config *mgmtv1alpha1.TransformerConfig) bool {
 	return config.GetTransformJavascriptConfig() != nil || config.GetGenerateJavascriptConfig() != nil
 }
 
-// previewJavascript tries the rule on each sampled row, one row per trial.
+// maxJavascriptTrialRows is the most rows TryJavascriptRules takes in one trial.
+const maxJavascriptTrialRows = 20
+
+// previewJavascript tries the rule on the sampled rows, all in one trial.
 //
-// One row at a time is not a shortcut: a rule's state lives for one row and is gone at the
-// next, so a trial of one row means exactly what a trial of twenty does. It is what lets each
-// value get its own result — a trial stops at its first failure and hands back nothing else.
-// The whole row goes in, since a rule may read the row's other columns; only the column under
-// review comes out.
+// One trial, never several: each trial draws its own consistency key, so the deterministic
+// pseudo functions agree within a trial and not across two. Split over several trials, the same
+// value could come out two different ways in the same preview, and the one property that keeps a
+// foreign key on its parent — same input, same output — could not be seen. That is also why the
+// sample is capped at what one trial takes.
+//
+// The price is the run's own: a trial stops at the first row a rule fails on and hands back
+// nothing else. The failing value gets the message; the others say they were not tried, rather
+// than the preview inventing what they would have been.
+//
+// The whole row goes in, since a rule may read the row's other columns; only the reviewed column
+// comes out.
 func (s *Service) previewJavascript(
 	ctx context.Context,
 	sampled *sampledTable,
@@ -188,34 +198,54 @@ func (s *Service) previewJavascript(
 	raws []any,
 	config *mgmtv1alpha1.TransformerConfig,
 ) *mgmtv1alpha1.PreviewColumnTransformerResponse {
-	rules := []*mgmtv1alpha1.JavascriptRule{{Column: column, Transformer: config}}
-	index := 0
-	return previewValues(raws, func(any) (any, error) {
-		row := sampled.rows[index]
-		index++
+	if len(raws) > maxJavascriptTrialRows {
+		raws = raws[:maxJavascriptTrialRows]
+	}
+	rows := make([]string, 0, len(raws))
+	for _, row := range sampled.rows[:len(raws)] {
 		bits, err := json.Marshal(row)
 		if err != nil {
-			return nil, fmt.Errorf("unable to hand the row to the rule: %w", err)
+			return failAll(raws, fmt.Errorf("unable to hand the row to the rule: %w", err))
 		}
-		resp, err := s.transformers.Client.TryJavascriptRules(
-			ctx,
-			connect.NewRequest(&mgmtv1alpha1.TryJavascriptRulesRequest{
-				AccountId: sampled.accountId,
-				Rules:     rules,
-				Rows:      []string{string(bits)},
-			}),
-		)
-		if err != nil {
-			return nil, err
+		rows = append(rows, string(bits))
+	}
+	if len(rows) == 0 {
+		return previewValues(raws, func(any) (any, error) { return nil, nil })
+	}
+
+	resp, err := s.transformers.Client.TryJavascriptRules(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.TryJavascriptRulesRequest{
+			AccountId: sampled.accountId,
+			Rules:     []*mgmtv1alpha1.JavascriptRule{{Column: column, Transformer: config}},
+			Rows:      rows,
+		}),
+	)
+	if err != nil {
+		return failAll(raws, err)
+	}
+
+	failure := resp.Msg.GetFailure()
+	index := 0
+	return previewValues(raws, func(any) (any, error) {
+		i := index
+		index++
+		if failure != nil {
+			if uint32(i) == failure.GetRow() { //nolint:gosec // an index among at most 20 rows
+				return nil, errors.New(failure.GetMessage())
+			}
+			return nil, errors.New("not tried: the rule stopped at the first row it failed on, as a run does")
 		}
-		if failure := resp.Msg.GetFailure(); failure != nil {
-			return nil, errors.New(failure.GetMessage())
+		if i >= len(resp.Msg.GetRows()) {
+			return nil, fmt.Errorf("the rule returned %d rows for %d", len(resp.Msg.GetRows()), len(rows))
 		}
-		if len(resp.Msg.GetRows()) != 1 {
-			return nil, fmt.Errorf("the rule returned %d rows for one", len(resp.Msg.GetRows()))
-		}
-		return columnOf(resp.Msg.GetRows()[0], column)
+		return columnOf(resp.Msg.GetRows()[i], column)
 	})
+}
+
+// failAll reports the same error against every value.
+func failAll(raws []any, err error) *mgmtv1alpha1.PreviewColumnTransformerResponse {
+	return previewValues(raws, func(any) (any, error) { return nil, err })
 }
 
 // columnOf reads one column of a row the trial returned, integers kept exact.
