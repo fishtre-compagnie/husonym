@@ -175,6 +175,11 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.FromString,
                 _registered_method=True)
+        self.ReconcileJobMappings = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ReconcileJobMappings',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.FromString,
+                _registered_method=True)
         self.GetPendingColumnReviews = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/GetPendingColumnReviews',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingColumnReviewsRequest.SerializeToString,
@@ -483,6 +488,14 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ReconcileJobMappings(self, request, context):
+        """Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+        as the job's strategy chose, and removes those that disappeared. Called by the worker.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetPendingColumnReviews(self, request, context):
         """Returns what is waiting for a decision: the columns the last runs copied untransformed, less
         those whose passthrough has been accepted and still holds. For one job, or for the account.
@@ -751,6 +764,11 @@ def add_JobServiceServicer_to_server(servicer, server):
                     servicer.SetJobUnmappedPassthroughs,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.SerializeToString,
+            ),
+            'ReconcileJobMappings': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReconcileJobMappings,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.SerializeToString,
             ),
             'GetPendingColumnReviews': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPendingColumnReviews,
@@ -1693,6 +1711,33 @@ class JobService:
             '/mgmt.v1alpha1.JobService/SetJobUnmappedPassthroughs',
             mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.SetJobUnmappedPassthroughsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReconcileJobMappings(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/ReconcileJobMappings',
+            mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.FromString,
             options,
             channel_credentials,
             insecure,

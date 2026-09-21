@@ -306,12 +306,13 @@ func Test_removeMappingsNotFoundInSource(t *testing.T) {
 			},
 		}
 
-		result := removeMappingsNotFoundInSource(mappings, groupedSchemas)
+		result, removed := removeMappingsNotFoundInSource(mappings, groupedSchemas)
 
 		require.Len(t, result, 1)
 		require.Equal(t, "public", result[0].Schema)
 		require.Equal(t, "users", result[0].Table)
 		require.Equal(t, "id", result[0].Column)
+		require.Equal(t, []*mgmtv1alpha1.JobMapping{mappings[1]}, removed)
 	})
 
 	t.Run("removes mappings for non-existent columns", func(t *testing.T) {
@@ -334,12 +335,13 @@ func Test_removeMappingsNotFoundInSource(t *testing.T) {
 			},
 		}
 
-		result := removeMappingsNotFoundInSource(mappings, groupedSchemas)
+		result, removed := removeMappingsNotFoundInSource(mappings, groupedSchemas)
 
 		require.Len(t, result, 1)
 		require.Equal(t, "public", result[0].Schema)
 		require.Equal(t, "users", result[0].Table)
 		require.Equal(t, "id", result[0].Column)
+		require.Equal(t, []*mgmtv1alpha1.JobMapping{mappings[1]}, removed)
 	})
 
 	t.Run("keeps all mappings when everything exists", func(t *testing.T) {
@@ -363,10 +365,11 @@ func Test_removeMappingsNotFoundInSource(t *testing.T) {
 			},
 		}
 
-		result := removeMappingsNotFoundInSource(mappings, groupedSchemas)
+		result, removed := removeMappingsNotFoundInSource(mappings, groupedSchemas)
 
 		require.Len(t, result, 2)
 		require.Equal(t, mappings, result)
+		require.Empty(t, removed)
 	})
 
 	t.Run("returns empty slice when no mappings exist in schema", func(t *testing.T) {
@@ -384,10 +387,25 @@ func Test_removeMappingsNotFoundInSource(t *testing.T) {
 			},
 		}
 
-		result := removeMappingsNotFoundInSource(mappings, groupedSchemas)
+		result, removed := removeMappingsNotFoundInSource(mappings, groupedSchemas)
 
 		require.Empty(t, result)
+		require.Equal(t, mappings, removed)
 	})
+}
+
+func Test_checkSourceShowsTheJob(t *testing.T) {
+	mapping := &mgmtv1alpha1.JobMapping{Schema: "public", Table: "users", Column: "id"}
+
+	require.NoError(t, checkSourceShowsTheJob(nil, nil), "a job that maps nothing yet")
+	require.NoError(t, checkSourceShowsTheJob(
+		[]*mgmtv1alpha1.JobMapping{mapping, {Schema: "public", Table: "users", Column: "gone"}},
+		[]*mgmtv1alpha1.JobMapping{mapping},
+	), "a source that lost a column")
+	require.ErrorIs(t, checkSourceShowsTheJob(
+		[]*mgmtv1alpha1.JobMapping{mapping},
+		nil,
+	), errSourceShowsNoMappedColumn, "a source that shows none of the job")
 }
 
 func Test_cleanMysqlType(t *testing.T) {

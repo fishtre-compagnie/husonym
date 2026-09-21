@@ -14947,6 +14947,54 @@
           ]
         },
         {
+          "name": "JobColumn",
+          "longName": "JobColumn",
+          "fullName": "mgmt.v1alpha1.JobColumn",
+          "description": "A column of a job's source, named without its mapping.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "The database schema",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "JobDestination",
           "longName": "JobDestination",
           "fullName": "mgmt.v1alpha1.JobDestination",
@@ -18401,6 +18449,114 @@
           ]
         },
         {
+          "name": "ReconcileJobMappingsRequest",
+          "longName": "ReconcileJobMappingsRequest",
+          "fullName": "mgmt.v1alpha1.ReconcileJobMappingsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job the run belongs to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_run_id",
+              "description": "The run that read the source",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "added",
+              "description": "A mapping for each column the source has and the job did not map, as the job's strategy for\nnew columns chose it. A column the job maps by the time the call arrives keeps its mapping:\nsomebody decided in the meantime.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "removed",
+              "description": "The columns the source no longer has. Their mapping is removed from the job.",
+              "label": "repeated",
+              "type": "JobColumn",
+              "longType": "JobColumn",
+              "fullType": "mgmt.v1alpha1.JobColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ReconcileJobMappingsResponse",
+          "longName": "ReconcileJobMappingsResponse",
+          "fullName": "mgmt.v1alpha1.ReconcileJobMappingsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "added",
+              "description": "The mappings the call added, those already mapped left out",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "removed",
+              "description": "The mappings the call removed, with the transformer they had",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "RemoveColumnReviewRequest",
           "longName": "RemoveColumnReviewRequest",
           "fullName": "mgmt.v1alpha1.RemoveColumnReviewRequest",
@@ -20487,6 +20643,18 @@
               "responseType": "SetJobUnmappedPassthroughsResponse",
               "responseLongType": "SetJobUnmappedPassthroughsResponse",
               "responseFullType": "mgmt.v1alpha1.SetJobUnmappedPassthroughsResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ReconcileJobMappings",
+              "description": "Brings a job's mappings in step with the source a run read: maps the columns that appeared,\nas the job's strategy chose, and removes those that disappeared. Called by the worker.",
+              "requestType": "ReconcileJobMappingsRequest",
+              "requestLongType": "ReconcileJobMappingsRequest",
+              "requestFullType": "mgmt.v1alpha1.ReconcileJobMappingsRequest",
+              "requestStreaming": false,
+              "responseType": "ReconcileJobMappingsResponse",
+              "responseLongType": "ReconcileJobMappingsResponse",
+              "responseFullType": "mgmt.v1alpha1.ReconcileJobMappingsResponse",
               "responseStreaming": false
             },
             {

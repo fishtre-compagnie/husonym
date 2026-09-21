@@ -281,6 +281,14 @@ type BenthosConfigManager struct {
 
 	// Filled by GenerateBenthosConfigs from what the source builder reported.
 	unmappedPassthroughs []*mgmtv1alpha1.UnmappedPassthrough
+	mappingChanges       bb_internal.MappingChanges
+}
+
+// MappingChanges returns how the last GenerateBenthosConfigs call found the job's mappings to
+// differ from its source: the configs it built already follow them, and the job is to be
+// brought in step.
+func (b *BenthosConfigManager) MappingChanges() bb_internal.MappingChanges {
+	return b.mappingChanges
 }
 
 // UnmappedPassthroughs returns the columns the last GenerateBenthosConfigs call set up to be

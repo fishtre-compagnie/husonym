@@ -1449,6 +1449,38 @@ class SetJobUnmappedPassthroughsResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
+class JobColumn(_message.Message):
+    __slots__ = ("schema", "table", "column")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    column: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ...) -> None: ...
+
+class ReconcileJobMappingsRequest(_message.Message):
+    __slots__ = ("job_id", "account_id", "job_run_id", "added", "removed")
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    JOB_RUN_ID_FIELD_NUMBER: _ClassVar[int]
+    ADDED_FIELD_NUMBER: _ClassVar[int]
+    REMOVED_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    account_id: str
+    job_run_id: str
+    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    removed: _containers.RepeatedCompositeFieldContainer[JobColumn]
+    def __init__(self, job_id: _Optional[str] = ..., account_id: _Optional[str] = ..., job_run_id: _Optional[str] = ..., added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobColumn, _Mapping]]] = ...) -> None: ...
+
+class ReconcileJobMappingsResponse(_message.Message):
+    __slots__ = ("added", "removed")
+    ADDED_FIELD_NUMBER: _ClassVar[int]
+    REMOVED_FIELD_NUMBER: _ClassVar[int]
+    added: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    removed: _containers.RepeatedCompositeFieldContainer[JobMapping]
+    def __init__(self, added: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., removed: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ...) -> None: ...
+
 class PendingColumnReview(_message.Message):
     __slots__ = ("job_id", "table_schema", "table_name", "column_name", "data_type", "pii_category", "suggested_transformer_source", "reason", "first_seen_at")
     JOB_ID_FIELD_NUMBER: _ClassVar[int]

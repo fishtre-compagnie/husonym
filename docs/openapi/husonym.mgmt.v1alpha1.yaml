@@ -3417,6 +3417,52 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.JobService/ReconcileJobMappings:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: ReconcileJobMappings
+      description: >-
+        Brings a job's mappings in step with the source a run read: maps the
+        columns that appeared,
+         as the job's strategy chose, and removes those that disappeared. Called by the worker.
+      operationId: mgmt.v1alpha1.JobService.ReconcileJobMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.ReconcileJobMappingsRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.ReconcileJobMappingsResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/RemoveColumnReview:
     post:
       tags:
@@ -12451,6 +12497,27 @@ components:
           description: The type of job
       title: Job
       additionalProperties: false
+    mgmt.v1alpha1.JobColumn:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The database schema
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column
+      title: JobColumn
+      additionalProperties: false
+      description: A column of a job's source, named without its mapping.
     mgmt.v1alpha1.JobDestination:
       type: object
       properties:
@@ -14607,6 +14674,61 @@ components:
           title: cascade
           description: Whether to cascade the truncate to child tables
       title: PostgresTruncateTableConfig
+      additionalProperties: false
+    mgmt.v1alpha1.ReconcileJobMappingsRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the run belongs to
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobRunId:
+          type: string
+          title: job_run_id
+          minLength: 1
+          description: The run that read the source
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: added
+          description: >-
+            A mapping for each column the source has and the job did not map, as
+            the job's strategy for
+             new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
+             somebody decided in the meantime.
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: removed
+          description: >-
+            The columns the source no longer has. Their mapping is removed from
+            the job.
+      title: ReconcileJobMappingsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ReconcileJobMappingsResponse:
+      type: object
+      properties:
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: added
+          description: The mappings the call added, those already mapped left out
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: removed
+          description: The mappings the call removed, with the transformer they had
+      title: ReconcileJobMappingsResponse
       additionalProperties: false
     mgmt.v1alpha1.RemoveColumnReviewRequest:
       type: object

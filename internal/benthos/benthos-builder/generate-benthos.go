@@ -34,6 +34,7 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		return nil, err
 	}
 	b.unmappedPassthroughs = sourceParams.UnmappedPassthroughs
+	b.mappingChanges = sourceParams.MappingChanges
 	b.logger.Debug(fmt.Sprintf("built %d source configs", len(sourceConfigs)))
 
 	destinationOpts := buildDestinationOptionsMap(b.job.GetDestinations())

@@ -103,6 +103,43 @@ func (b *benthosBuilder) reportUnmappedPassthroughs(
 	}
 }
 
+// reconcileJobMappings writes to the job what the run found changed in its source: the columns
+// it mapped because the job did not, and the mappings whose column is gone.
+//
+// A failure fails the run. The configs already follow the source, so the data would be right;
+// but the job would not say so, and the next run would decide the same columns again.
+func (b *benthosBuilder) reconcileJobMappings(
+	ctx context.Context,
+	job *mgmtv1alpha1.Job,
+	added, removed []*mgmtv1alpha1.JobMapping,
+) error {
+	if len(added) == 0 && len(removed) == 0 {
+		return nil
+	}
+	removedColumns := make([]*mgmtv1alpha1.JobColumn, 0, len(removed))
+	for _, mapping := range removed {
+		removedColumns = append(removedColumns, &mgmtv1alpha1.JobColumn{
+			Schema: mapping.GetSchema(),
+			Table:  mapping.GetTable(),
+			Column: mapping.GetColumn(),
+		})
+	}
+	_, err := b.jobclient.ReconcileJobMappings(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.ReconcileJobMappingsRequest{
+			JobId:     job.GetId(),
+			AccountId: job.GetAccountId(),
+			JobRunId:  b.jobRunId,
+			Added:     added,
+			Removed:   removedColumns,
+		}),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to bring the job's mappings in step with its source: %w", err)
+	}
+	return nil
+}
+
 func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	ctx context.Context,
 	req *GenerateBenthosConfigsRequest,
@@ -163,6 +200,10 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 		return nil, err
 	}
 
+	changes := benthosManager.MappingChanges()
+	if err := b.reconcileJobMappings(ctx, job, changes.Added, changes.Removed); err != nil {
+		return nil, err
+	}
 	b.reportUnmappedPassthroughs(ctx, job, benthosManager.UnmappedPassthroughs(), slogger)
 
 	err = b.setConnectionIdsRunContext(ctx, responses, job.GetAccountId())

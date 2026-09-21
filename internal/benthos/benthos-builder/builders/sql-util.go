@@ -41,20 +41,36 @@ type tableMapping struct {
 	Mappings []*mgmtv1alpha1.JobMapping
 }
 
+var errSourceShowsNoMappedColumn = errors.New(
+	"the source shows none of the columns the job maps: check that the connection points to the right database and can read its tables",
+)
+
+// checkSourceShowsTheJob refuses a source in which none of the job's mapped columns remain. That
+// is not a source that lost columns but the wrong database, or a user without the rights to see
+// its tables: removing the mappings of the missing columns would empty the job.
+func checkSourceShowsTheJob(mappings, found []*mgmtv1alpha1.JobMapping) error {
+	if len(mappings) > 0 && len(found) == 0 {
+		return errSourceShowsNoMappedColumn
+	}
+	return nil
+}
+
+// removeMappingsNotFoundInSource splits the mappings between those whose column the source still
+// has and those whose column it no longer has.
 func removeMappingsNotFoundInSource(
 	mappings []*mgmtv1alpha1.JobMapping,
 	groupedSchemas map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
-) []*mgmtv1alpha1.JobMapping {
-	newMappings := make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
+) (kept, removed []*mgmtv1alpha1.JobMapping) {
+	kept = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
 	for _, mapping := range mappings {
 		key := sqlmanager_shared.BuildTable(mapping.Schema, mapping.Table)
-		if _, ok := groupedSchemas[key]; ok {
-			if _, ok := groupedSchemas[key][mapping.Column]; ok {
-				newMappings = append(newMappings, mapping)
-			}
+		if _, ok := groupedSchemas[key][mapping.Column]; ok {
+			kept = append(kept, mapping)
+			continue
 		}
+		removed = append(removed, mapping)
 	}
-	return newMappings
+	return kept, removed
 }
 
 // checks that the source database has all the columns that are mapped in the job mappings

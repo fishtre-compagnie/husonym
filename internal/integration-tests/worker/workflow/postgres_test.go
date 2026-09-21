@@ -345,6 +345,19 @@ func test_postgres_passthrough_on_new_column_addition(
 			},
 		})
 	}
+	// A column the source does not have, as after it was dropped there.
+	mappings = append(mappings, &mgmtv1alpha1.JobMapping{
+		Schema: alltypesSchema,
+		Table:  "all_data_types",
+		Column: "column_gone",
+		Transformer: &mgmtv1alpha1.JobMappingTransformer{
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
+					PassthroughConfig: &mgmtv1alpha1.Passthrough{},
+				},
+			},
+		},
+	})
 
 	job := createPostgresSyncJob(t, ctx, jobclient, &createJobConfig{
 		AccountId:   accountId,
@@ -440,6 +453,32 @@ func test_postgres_passthrough_on_new_column_addition(
 		"postgres",
 		[]string{"id"},
 	)
+
+	// The run wrote to the job what it found in the source: every column of the synced tables
+	// is mapped now, and the mapping of the column the source does not have is gone.
+	jobResp, err := jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: job.GetId()}))
+	require.NoError(t, err)
+	mapped := map[string]bool{}
+	for _, m := range jobResp.Msg.GetJob().GetMappings() {
+		mapped[m.GetTable()+"."+m.GetColumn()] = true
+	}
+	require.False(t, mapped["all_data_types.column_gone"], "a mapping whose column the source lost stays in the job")
+	rows, err := source.QueryContext(
+		ctx,
+		"SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = $1",
+		alltypesSchema,
+	)
+	require.NoError(t, err)
+	defer rows.Close()
+	sourceColumns := 0
+	for rows.Next() {
+		var table, column string
+		require.NoError(t, rows.Scan(&table, &column))
+		require.Truef(t, mapped[table+"."+column], "the run left %s.%s out of the job", table, column)
+		sourceColumns++
+	}
+	require.NoError(t, rows.Err())
+	require.Len(t, mapped, sourceColumns)
 
 	// tear down
 	err = cleanupPostgresSchemas(ctx, postgres, []string{alltypesSchema})

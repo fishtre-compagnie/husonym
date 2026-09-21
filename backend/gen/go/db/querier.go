@@ -67,6 +67,9 @@ type Querier interface {
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
 	GetJobConnectionDestinations(ctx context.Context, db DBTX, id pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error)
 	GetJobConnectionDestinationsByJobIds(ctx context.Context, db DBTX, jobids []pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error)
+	// Locks the job's row until the transaction ends, so that reading its mappings, changing them
+	// and writing them back cannot interleave with another writer.
+	GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error)
 	GetJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobHook, error)
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
@@ -112,6 +115,9 @@ type Querier interface {
 	SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
 	SetColumnReview(ctx context.Context, db DBTX, arg SetColumnReviewParams) (HusonymApiColumnReview, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
+	// The run's write: no user to record in updated_by_id (the worker's key has none), and the
+	// journal of the run says who changed what.
+	SetJobMappingsFromRun(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams) error
 	SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSyncOptionsParams) (HusonymApiJob, error)
 	SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error)
 	SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (HusonymApiAccount, error)

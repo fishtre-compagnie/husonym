@@ -117,8 +117,19 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		}
 	}
 
-	// remove mappings that are not found in the source
-	existingSourceMappings := removeMappingsNotFoundInSource(job.Mappings, groupedColumnInfo)
+	// The mappings whose column the source no longer has leave the job: it mirrors its source.
+	existingSourceMappings, removedMappings := removeMappingsNotFoundInSource(job.Mappings, groupedColumnInfo)
+	if err := checkSourceShowsTheJob(job.Mappings, existingSourceMappings); err != nil {
+		return nil, err
+	}
+	if len(removedMappings) > 0 {
+		logger.Info(fmt.Sprintf(
+			"%d mapped columns no longer in the source, removed from the job: [%s]",
+			len(removedMappings),
+			strings.Join(formatMappingColumns(removedMappings), ", "),
+		))
+	}
+	params.MappingChanges.Removed = removedMappings
 
 	if sqlSourceOpts != nil && sqlSourceOpts.PassthroughOnNewColumnAddition {
 		extraMappings, err := getAdditionalPassthroughJobMappings(
@@ -168,6 +179,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 					len(extraMappings),
 				),
 			)
+			params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		}
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
@@ -186,6 +198,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		logger.Debug(
 			fmt.Sprintf("adding %d extra mappings due to unmapped columns", len(extraMappings)),
 		)
+		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
 	uniqueSchemas := shared.GetUniqueSchemasFromMappings(existingSourceMappings)

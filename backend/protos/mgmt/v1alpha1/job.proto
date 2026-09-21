@@ -1392,6 +1392,38 @@ message SetJobUnmappedPassthroughsRequest {
 
 message SetJobUnmappedPassthroughsResponse {}
 
+// A column of a job's source, named without its mapping.
+message JobColumn {
+  // The database schema
+  string schema = 1 [(buf.validate.field).string.min_len = 1];
+  // The table
+  string table = 2 [(buf.validate.field).string.min_len = 1];
+  // The column
+  string column = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message ReconcileJobMappingsRequest {
+  // The job the run belongs to
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The run that read the source
+  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
+  // A mapping for each column the source has and the job did not map, as the job's strategy for
+  // new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
+  // somebody decided in the meantime.
+  repeated JobMapping added = 4;
+  // The columns the source no longer has. Their mapping is removed from the job.
+  repeated JobColumn removed = 5;
+}
+
+message ReconcileJobMappingsResponse {
+  // The mappings the call added, those already mapped left out
+  repeated JobMapping added = 1;
+  // The mappings the call removed, with the transformer they had
+  repeated JobMapping removed = 2;
+}
+
 // Why a column is waiting for somebody.
 enum PendingColumnReason {
   PENDING_COLUMN_REASON_UNSPECIFIED = 0;
@@ -2043,6 +2075,9 @@ service JobService {
   rpc RemoveColumnReview(RemoveColumnReviewRequest) returns (RemoveColumnReviewResponse) {}
   // Records the columns a run copied untransformed for want of a mapping. Called by the worker.
   rpc SetJobUnmappedPassthroughs(SetJobUnmappedPassthroughsRequest) returns (SetJobUnmappedPassthroughsResponse) {}
+  // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+  // as the job's strategy chose, and removes those that disappeared. Called by the worker.
+  rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {}
   // Returns what is waiting for a decision: the columns the last runs copied untransformed, less
   // those whose passthrough has been accepted and still holds. For one job, or for the account.
   rpc GetPendingColumnReviews(GetPendingColumnReviewsRequest) returns (GetPendingColumnReviewsResponse) {

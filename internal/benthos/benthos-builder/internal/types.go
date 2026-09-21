@@ -85,6 +85,20 @@ type SourceParams struct {
 	// It lives here rather than in the return value because every other builder would have to
 	// return an empty one.
 	UnmappedPassthroughs []*mgmtv1alpha1.UnmappedPassthrough
+
+	// MappingChanges is an output, filled by the SQL builder: how the job's mappings differ from
+	// the source it read. The caller writes them to the job, so that the job keeps mirroring its
+	// source instead of each run re-deciding the same columns.
+	MappingChanges MappingChanges
+}
+
+// MappingChanges is what a run changes in its job's mappings.
+type MappingChanges struct {
+	// Mappings for the columns the source has and the job did not map, as the job's strategy
+	// for new columns chose them
+	Added []*mgmtv1alpha1.JobMapping
+	// The job's mappings whose column the source no longer has
+	Removed []*mgmtv1alpha1.JobMapping
 }
 
 type ReferenceKey struct {

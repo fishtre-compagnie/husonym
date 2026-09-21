@@ -337,6 +337,40 @@ func (q *Queries) GetJobConnectionDestinationsByJobIds(ctx context.Context, db D
 	return items, nil
 }
 
+const getJobForUpdate = `-- name: GetJobForUpdate :one
+SELECT id, created_at, updated_at, name, account_id, status, connection_options, mappings, cron_schedule, created_by_id, updated_by_id, workflow_options, sync_options, virtual_foreign_keys, jobtype_config from husonym_api.jobs WHERE id = $1 AND account_id = $2 FOR UPDATE
+`
+
+type GetJobForUpdateParams struct {
+	ID        pgtype.UUID
+	AccountID pgtype.UUID
+}
+
+// Locks the job's row until the transaction ends, so that reading its mappings, changing them
+// and writing them back cannot interleave with another writer.
+func (q *Queries) GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error) {
+	row := db.QueryRow(ctx, getJobForUpdate, arg.ID, arg.AccountID)
+	var i HusonymApiJob
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.AccountID,
+		&i.Status,
+		&i.ConnectionOptions,
+		&i.Mappings,
+		&i.CronSchedule,
+		&i.CreatedByID,
+		&i.UpdatedByID,
+		&i.WorkflowOptions,
+		&i.SyncOptions,
+		&i.VirtualForeignKeys,
+		&i.JobtypeConfig,
+	)
+	return i, err
+}
+
 const getJobsByAccount = `-- name: GetJobsByAccount :many
 SELECT j.id, j.created_at, j.updated_at, j.name, j.account_id, j.status, j.connection_options, j.mappings, j.cron_schedule, j.created_by_id, j.updated_by_id, j.workflow_options, j.sync_options, j.virtual_foreign_keys, j.jobtype_config from husonym_api.jobs j
 INNER JOIN husonym_api.accounts a ON a.id = j.account_id
@@ -423,6 +457,25 @@ WHERE id = ANY($1::uuid[])
 
 func (q *Queries) RemoveJobConnectionDestinations(ctx context.Context, db DBTX, jobids []pgtype.UUID) error {
 	_, err := db.Exec(ctx, removeJobConnectionDestinations, jobids)
+	return err
+}
+
+const setJobMappingsFromRun = `-- name: SetJobMappingsFromRun :exec
+UPDATE husonym_api.jobs
+SET mappings = $1,
+updated_at = CURRENT_TIMESTAMP
+WHERE id = $2
+`
+
+type SetJobMappingsFromRunParams struct {
+	Mappings []*pg_models.JobMapping
+	ID       pgtype.UUID
+}
+
+// The run's write: no user to record in updated_by_id (the worker's key has none), and the
+// journal of the run says who changed what.
+func (q *Queries) SetJobMappingsFromRun(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams) error {
+	_, err := db.Exec(ctx, setJobMappingsFromRun, arg.Mappings, arg.ID)
 	return err
 }
 
