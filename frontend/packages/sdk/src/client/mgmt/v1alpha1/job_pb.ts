@@ -601,10 +601,10 @@ export type PostgresSourceConnectionOptions_NewColumnAdditionStrategy = Message<
     /**
      * pass the new column through as is, and record it as awaiting review.
      * The data path is the one of `passthrough`: the column is copied instead of stopping
-     * the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-     * has to have it already, as with `passthrough` — and it counts as undecided until
-     * someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-     * cannot quietly erode the anonymization of the job.
+     * the run — the destination gains it through schema reconciliation when Husonym
+     * initializes its schema — and it counts as undecided until someone maps it or
+     * acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+     * the anonymization of the job.
      *
      * @generated from field: mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview passthrough_pending_review = 4;
      */
@@ -943,10 +943,10 @@ export type MysqlSourceConnectionOptions_NewColumnAdditionStrategy = Message<"mg
     /**
      * pass the new column through as is, and record it as awaiting review.
      * The data path is the one of `passthrough`: the column is copied instead of stopping
-     * the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-     * has to have it already, as with `passthrough` — and it counts as undecided until
-     * someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-     * cannot quietly erode the anonymization of the job.
+     * the run — the destination gains it through schema reconciliation when Husonym
+     * initializes its schema — and it counts as undecided until someone maps it or
+     * acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+     * the anonymization of the job.
      *
      * @generated from field: mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview passthrough_pending_review = 4;
      */
@@ -1212,10 +1212,10 @@ export type MssqlSourceConnectionOptions_NewColumnAdditionStrategy = Message<"mg
     /**
      * pass the new column through as is, and record it as awaiting review.
      * The data path is the one of `passthrough`: the column is copied instead of stopping
-     * the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-     * has to have it already, as with `passthrough` — and it counts as undecided until
-     * someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-     * cannot quietly erode the anonymization of the job.
+     * the run — the destination gains it through schema reconciliation when Husonym
+     * initializes its schema — and it counts as undecided until someone maps it or
+     * acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+     * the anonymization of the job.
      *
      * @generated from field: mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview passthrough_pending_review = 3;
      */

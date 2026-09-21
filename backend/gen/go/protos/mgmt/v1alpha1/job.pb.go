@@ -11281,10 +11281,10 @@ type PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_ stru
 type PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_ struct {
 	// pass the new column through as is, and record it as awaiting review.
 	// The data path is the one of `passthrough`: the column is copied instead of stopping
-	// the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-	// has to have it already, as with `passthrough` — and it counts as undecided until
-	// someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-	// cannot quietly erode the anonymization of the job.
+	// the run — the destination gains it through schema reconciliation when Husonym
+	// initializes its schema — and it counts as undecided until someone maps it or
+	// acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+	// the anonymization of the job.
 	PassthroughPendingReview *PostgresSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview `protobuf:"bytes,4,opt,name=passthrough_pending_review,json=passthroughPendingReview,proto3,oneof"`
 }
 
@@ -11805,10 +11805,10 @@ type MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_ struct 
 type MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_ struct {
 	// pass the new column through as is, and record it as awaiting review.
 	// The data path is the one of `passthrough`: the column is copied instead of stopping
-	// the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-	// has to have it already, as with `passthrough` — and it counts as undecided until
-	// someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-	// cannot quietly erode the anonymization of the job.
+	// the run — the destination gains it through schema reconciliation when Husonym
+	// initializes its schema — and it counts as undecided until someone maps it or
+	// acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+	// the anonymization of the job.
 	PassthroughPendingReview *MysqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview `protobuf:"bytes,4,opt,name=passthrough_pending_review,json=passthroughPendingReview,proto3,oneof"`
 }
 
@@ -12226,10 +12226,10 @@ type MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_ struct 
 type MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview_ struct {
 	// pass the new column through as is, and record it as awaiting review.
 	// The data path is the one of `passthrough`: the column is copied instead of stopping
-	// the run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one
-	// has to have it already, as with `passthrough` — and it counts as undecided until
-	// someone maps it or acknowledges the passthrough, so a schema that keeps evolving
-	// cannot quietly erode the anonymization of the job.
+	// the run — the destination gains it through schema reconciliation when Husonym
+	// initializes its schema — and it counts as undecided until someone maps it or
+	// acknowledges the passthrough, so a schema that keeps evolving cannot quietly erode
+	// the anonymization of the job.
 	PassthroughPendingReview *MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughPendingReview `protobuf:"bytes,3,opt,name=passthrough_pending_review,json=passthroughPendingReview,proto3,oneof"`
 }
 

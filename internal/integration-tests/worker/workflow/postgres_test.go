@@ -2234,7 +2234,6 @@ func test_postgres_schema_reconciliation(
 		t,
 		husonymApi,
 		dbManagers,
-		WithPostgresSchemaDrift(),
 		WithMaxIterations(100),
 		WithPageLimit(10000),
 	)
@@ -2307,7 +2306,6 @@ func test_postgres_schema_reconciliation(
 		t,
 		husonymApi,
 		dbManagers,
-		WithPostgresSchemaDrift(),
 		WithMaxIterations(100),
 		WithPageLimit(1000),
 	)

@@ -33,3 +33,5 @@ This strategy tells Husonym to ignore any difference in job mappings from the so
 
 Husonym is able to detect that columns were removed in the source, and will leave them off of the insert statement.
 This may result in failures if any unmapped columns do not have a column default in the destination connection.
+
+With the **init schema** destination option enabled, this cannot happen: every run reconciles the destination with the source, on PostgreSQL and MySQL alike, and a column the source no longer has is dropped from the destination too. See [keeping the destination schema in step](/guides/new-column-addition-strategies#keeping-the-destination-schema-in-step).

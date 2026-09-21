@@ -217,7 +217,6 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 		req.JobId,
 		info.WorkflowExecution.ID,
 		actOptResp.Destinations,
-		actOptResp.PostgresSchemaDrift,
 	)
 	if err != nil {
 		return nil, err
@@ -589,7 +588,6 @@ func runSchemaInitWorkflowByDestination(
 	logger log.Logger,
 	accountId, jobId, jobRunId string,
 	destinations []*mgmtv1alpha1.JobDestination,
-	postgresSchemaDrift bool,
 ) error {
 	initSchemaActivityOptions := &workflow.ActivityOptions{
 		StartToCloseTimeout: 5 * time.Minute,
@@ -600,7 +598,7 @@ func runSchemaInitWorkflowByDestination(
 	}
 	for _, destination := range destinations {
 		// right now only mysql supports schema drift
-		schemaDrift := shouldUseSchemaDrift(destination, postgresSchemaDrift)
+		schemaDrift := shouldUseSchemaDrift(destination)
 		logger.Info(
 			"scheduling Schema Initialization workflow for execution.",
 			"destinationId",
@@ -636,11 +634,20 @@ func runSchemaInitWorkflowByDestination(
 	return nil
 }
 
-func shouldUseSchemaDrift(destination *mgmtv1alpha1.JobDestination, postgresSchemaDrift bool) bool {
-	if destination.GetOptions().GetPostgresOptions() != nil && postgresSchemaDrift {
-		return true
-	}
-	return destination.GetOptions().GetMysqlOptions() != nil
+// shouldUseSchemaDrift tells whether a destination is reconciled with the source — columns,
+// constraints and triggers added, changed and dropped until it matches — rather than only
+// having its missing tables created.
+//
+// Husonym keeps a destination in step with its source, with sampling and anonymization on top:
+// when the source changes, the destination follows, and that includes what the source no longer
+// has. PostgreSQL was left out behind a switch hard-coded to false since the work landed
+// upstream (NEOS-1790, spring 2025) and never flipped, although it was complete and tested; a
+// new column then failed the write on any table the destination already had, where MySQL has
+// always taken it in. Reconciliation still only touches a destination whose schema Husonym is
+// asked to initialize: the schema managers return early when init_table_schema is off.
+func shouldUseSchemaDrift(destination *mgmtv1alpha1.JobDestination) bool {
+	return destination.GetOptions().GetPostgresOptions() != nil ||
+		destination.GetOptions().GetMysqlOptions() != nil
 }
 
 func retrieveActivityOptions(

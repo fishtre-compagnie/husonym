@@ -427,14 +427,12 @@ func serve(ctx context.Context) error {
 		cascadelicense,
 	)
 
-	postgresSchemaDrift := false
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
 		sqlmanager, sqlconnmanager, athanorConfig.Policy, cascadelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
-		postgresSchemaDrift,
 	)
 
 	if cascadelicense.IsValid() {

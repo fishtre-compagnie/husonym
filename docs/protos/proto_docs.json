@@ -16532,7 +16532,7 @@
             },
             {
               "name": "passthrough_pending_review",
-              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one\nhas to have it already, as with `passthrough` — and it counts as undecided until\nsomeone maps it or acknowledges the passthrough, so a schema that keeps evolving\ncannot quietly erode the anonymization of the job.",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — the destination gains it through schema reconciliation when Husonym\ninitializes its schema — and it counts as undecided until someone maps it or\nacknowledges the passthrough, so a schema that keeps evolving cannot quietly erode\nthe anonymization of the job.",
               "label": "",
               "type": "PassthroughPendingReview",
               "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
@@ -17017,7 +17017,7 @@
             },
             {
               "name": "passthrough_pending_review",
-              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one\nhas to have it already, as with `passthrough` — and it counts as undecided until\nsomeone maps it or acknowledges the passthrough, so a schema that keeps evolving\ncannot quietly erode the anonymization of the job.",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — the destination gains it through schema reconciliation when Husonym\ninitializes its schema — and it counts as undecided until someone maps it or\nacknowledges the passthrough, so a schema that keeps evolving cannot quietly erode\nthe anonymization of the job.",
               "label": "",
               "type": "PassthroughPendingReview",
               "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
@@ -18005,7 +18005,7 @@
             },
             {
               "name": "passthrough_pending_review",
-              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — a MySQL destination gains it through schema reconciliation, a PostgreSQL one\nhas to have it already, as with `passthrough` — and it counts as undecided until\nsomeone maps it or acknowledges the passthrough, so a schema that keeps evolving\ncannot quietly erode the anonymization of the job.",
+              "description": "pass the new column through as is, and record it as awaiting review.\nThe data path is the one of `passthrough`: the column is copied instead of stopping\nthe run — the destination gains it through schema reconciliation when Husonym\ninitializes its schema — and it counts as undecided until someone maps it or\nacknowledges the passthrough, so a schema that keeps evolving cannot quietly erode\nthe anonymization of the job.",
               "label": "",
               "type": "PassthroughPendingReview",
               "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.PassthroughPendingReview",
