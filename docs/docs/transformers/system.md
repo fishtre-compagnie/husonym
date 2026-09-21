@@ -708,16 +708,24 @@ Anonymizes and transforms an existing phone number that is typed as a string.
 
 **Configurations**
 
-| Name           | Description                                                                                            | Default | Example Input   | Example Output  |
-| -------------- | ------------------------------------------------------------------------------------------------------ | ------- | --------------- | --------------- |
-| PreserveLength | Preserve Length will ensure that the output phone number is the same length as the input phone number. | false   | 892387243786243 | 290374867526392 |
+| Name           | Description                                                                                                                                                                      | Default | Example Input     | Example Output    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ----------------- | ----------------- |
+| PreserveFormat | Keeps the prefix (`0` and the next digit, or `+`/`00`, the country code and the next digit), every separator and the length; replaces the other digits with a keyed permutation. | true    | +33 6 12 34 56 78 | +33 6 48 34 17 66 |
+| PreserveLength | Preserve Length will ensure that the output phone number is the same length as the input phone number. Implied by PreserveFormat.                                                | false   | 892387243786243   | 290374867526392   |
+
+With PreserveFormat, two distinct numbers never give the same output, so a unique column stays unique, and a number written nationally or internationally keeps the same digits. Under the Athanor engine, the key is derived from the job's consistency scope: the same number gives the same output across tables and runs. Under Benthos, the key is drawn when the worker starts.
+
+The default applies to mappings created from now on. A mapping saved before PreserveFormat existed keeps its behavior.
 
 **Examples**
 
-| PreserveLength | Example Input | Example Output |
-| -------------- | ------------- | -------------- |
-| false          | 2890923784    | 520927323239   |
-| true           | 2890923784    | 5209223539     |
+| PreserveFormat | PreserveLength | Example Input     | Example Output    |
+| -------------- | -------------- | ----------------- | ----------------- |
+| true           | -              | 06 12 34 56 78    | 06 48 34 17 66    |
+| true           | -              | +33 6 12 34 56 78 | +33 6 48 34 17 66 |
+| true           | -              | +1 (555) 123-4567 | +1 (556) 887-3834 |
+| false          | false          | 2890923784        | 520927323239      |
+| false          | true           | 2890923784        | 5209223539        |
 
 ### Transform String\{#transform-string}
 

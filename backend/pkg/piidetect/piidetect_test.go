@@ -42,7 +42,7 @@ func TestClassify(t *testing.T) {
 			true,
 			"phone_number",
 			true,
-			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER,
+			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		},
 		{
 			"phone numérique",
@@ -60,7 +60,7 @@ func TestClassify(t *testing.T) {
 			true,
 			"phone_number",
 			true,
-			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER,
+			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		},
 		{
 			"prénom -> first_name (pas last_name via 'nom')",

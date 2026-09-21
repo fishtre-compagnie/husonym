@@ -4191,6 +4191,8 @@ type TransformPhoneNumber struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether or not to preserve the original length of the phone number. This causes the transformed phone number to retain the original length.
 	PreserveLength *bool `protobuf:"varint,1,opt,name=preserve_length,json=preserveLength,proto3,oneof" json:"preserve_length,omitempty"`
+	// Keeps the prefix (0 and the next digit, or + with the country code and the next digit), every separator and the length, and replaces the other digits with a keyed permutation: two distinct numbers never give the same output, and a number written in two formats (06…, +33 6…) gets the same digits. Implies preserve_length.
+	PreserveFormat *bool `protobuf:"varint,2,opt,name=preserve_format,json=preserveFormat,proto3,oneof" json:"preserve_format,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -4228,6 +4230,13 @@ func (*TransformPhoneNumber) Descriptor() ([]byte, []int) {
 func (x *TransformPhoneNumber) GetPreserveLength() bool {
 	if x != nil && x.PreserveLength != nil {
 		return *x.PreserveLength
+	}
+	return false
+}
+
+func (x *TransformPhoneNumber) GetPreserveFormat() bool {
+	if x != nil && x.PreserveFormat != nil {
+		return *x.PreserveFormat
 	}
 	return false
 }
@@ -5756,10 +5765,12 @@ const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"\x18_randomization_range_max\"U\n" +
 	"\x11TransformLastName\x12,\n" +
 	"\x0fpreserve_length\x18\x01 \x01(\bH\x00R\x0epreserveLength\x88\x01\x01B\x12\n" +
-	"\x10_preserve_length\"X\n" +
+	"\x10_preserve_length\"\x9a\x01\n" +
 	"\x14TransformPhoneNumber\x12,\n" +
-	"\x0fpreserve_length\x18\x01 \x01(\bH\x00R\x0epreserveLength\x88\x01\x01B\x12\n" +
-	"\x10_preserve_length\"S\n" +
+	"\x0fpreserve_length\x18\x01 \x01(\bH\x00R\x0epreserveLength\x88\x01\x01\x12,\n" +
+	"\x0fpreserve_format\x18\x02 \x01(\bH\x01R\x0epreserveFormat\x88\x01\x01B\x12\n" +
+	"\x10_preserve_lengthB\x12\n" +
+	"\x10_preserve_format\"S\n" +
 	"\x0fTransformString\x12,\n" +
 	"\x0fpreserve_length\x18\x01 \x01(\bH\x00R\x0epreserveLength\x88\x01\x01B\x12\n" +
 	"\x10_preserve_length\"\r\n" +

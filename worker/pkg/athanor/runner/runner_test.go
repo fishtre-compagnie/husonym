@@ -199,3 +199,44 @@ func TestDeterministicEmail_PreservesCaseDistinction(t *testing.T) {
 		t.Fatalf("emails de casse différente fusionnés en %v", a)
 	}
 }
+
+// preserve_format keeps the format and follows the consistency scope; without it, the
+// phone keeps the historical PhoneFaker, so existing mappings give the same data.
+func TestDeterministicPhone_PreserveFormat(t *testing.T) {
+	preserve := true
+	withFormat := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
+		TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{PreserveFormat: &preserve},
+	}}
+	ctx := transform.Background()
+	transformWith := func(scope string, cfg *mgmtv1alpha1.TransformerConfig) any {
+		t.Helper()
+		vt, ok := deterministicValueTransformer(consistency.New([]byte("clé-test"), scope), cfg)
+		if !ok {
+			t.Fatal("TransformPhoneNumber doit passer par le chemin déterministe")
+		}
+		out, err := vt.TransformValue(ctx, "+33 6 12 34 56 78")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+
+	a := transformWith("job:a", withFormat)
+	if s, _ := a.(string); len(s) != len("+33 6 12 34 56 78") || s[:6] != "+33 6 " || s == "+33 6 12 34 56 78" {
+		t.Fatalf("format non préservé : %v", a)
+	}
+	if again := transformWith("job:a", withFormat); again != a {
+		t.Fatalf("même scope, sorties différentes : %v puis %v", a, again)
+	}
+	if other := transformWith("job:b", withFormat); other == a {
+		t.Fatalf("deux scopes donnent la même sortie %v", a)
+	}
+
+	legacy := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
+		TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{},
+	}}
+	vt, _ := deterministicValueTransformer(consistency.New([]byte("clé-test"), "job:a"), legacy)
+	if _, isFaker := vt.(*native.PhoneFaker); !isFaker {
+		t.Fatalf("sans preserve_format, attendu PhoneFaker, obtenu %T", vt)
+	}
+}

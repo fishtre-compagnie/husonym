@@ -784,6 +784,9 @@ func computeMutationFunction(
 		}
 		return opts.BuildBloblangString(formattedColPath), nil
 	case *mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig:
+		if cfg.TransformPhoneNumberConfig.GetPreserveFormat() {
+			return transformers.BuildPhoneNumberPreserveFormatBloblang(formattedColPath), nil
+		}
 		opts, err := transformers.NewTransformStringPhoneNumberOptsFromConfig(cfg.TransformPhoneNumberConfig, &maxLen)
 		if err != nil {
 			return "", err

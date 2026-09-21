@@ -661,7 +661,7 @@ var (
 		},
 		{
 			Name:        "Transform String Phone Number",
-			Description: "Transforms an existing phone number that is typed as a string.",
+			Description: "Transforms an existing phone number that is typed as a string. By default, keeps its prefix, separators and length, and replaces the other digits so that two distinct numbers never give the same output.",
 			DataTypes: []mgmtv1alpha1.TransformerDataType{
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
 				mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
@@ -674,6 +674,7 @@ var (
 				Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
 					TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{
 						PreserveLength: gotypeutil.ToPtr(false),
+						PreserveFormat: gotypeutil.ToPtr(true),
 					},
 				},
 			},

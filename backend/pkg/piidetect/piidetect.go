@@ -87,9 +87,11 @@ var rules = []rule{
 		keywords:  []string{"email", "mail", "courriel"},
 	},
 	{
+		// Transform, not Generate: its default keeps the prefix, separators and length of
+		// the source number (06…, +33 6…) and gives distinct numbers distinct outputs.
 		category:         "phone_number",
 		sensitive:        true,
-		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER,
+		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		suggestIfNumeric: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		keywords:         []string{"phone", "telephone", "mobile", "cellphone"},
 		tokenOnly:        []string{"tel", "gsm", "fax"},

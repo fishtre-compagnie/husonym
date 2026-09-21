@@ -676,6 +676,23 @@ func InitializeTransformerByConfigType(
 
 	case *mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig:
 		config := transformerConfig.GetTransformPhoneNumberConfig()
+		if config.GetPreserveFormat() {
+			// One key per executor: consistent over the values it transforms, never
+			// the key of a run.
+			pseudonymizer, err := transformers.NewPhoneFormatPseudonymizer()
+			if err != nil {
+				return nil, err
+			}
+			return &TransformerExecutor{
+				Mutate: func(value any, _ any) (any, error) {
+					s, ok := value.(string)
+					if !ok {
+						return nil, fmt.Errorf("transform phone number: value is not a string: %T", value)
+					}
+					return pseudonymizer.Pseudonymize(s)
+				},
+			}, nil
+		}
 		opts, err := transformers.NewTransformStringPhoneNumberOptsFromConfig(config, &maxLength)
 		if err != nil {
 			return nil, err

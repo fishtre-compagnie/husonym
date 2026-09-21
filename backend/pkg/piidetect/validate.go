@@ -106,7 +106,7 @@ var validators = []validator{
 	{
 		category:         "phone_number",
 		label:            "téléphone français",
-		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STRING_PHONE_NUMBER,
+		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		numericSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		fn:               IsFrenchPhone,
 	},

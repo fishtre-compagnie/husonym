@@ -18,6 +18,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/transform"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/phoneformat"
 )
 
 // EmailFaker produit un email déterministe : partie locale dérivée de la graine
@@ -70,6 +71,28 @@ func (f *PhoneFaker) TransformValue(_ transform.Ctx, in any) (any, error) {
 }
 
 var _ transform.ValueTransformer = (*PhoneFaker)(nil)
+
+// PhoneFormatPreserver keeps the prefix, separators and length of a phone number and
+// permutes its subscriber digits (FF1, see phoneformat): unlike PhoneFaker, two
+// distinct numbers never give the same output, so a unique column stays unique.
+type PhoneFormatPreserver struct {
+	pseudonymizer *phoneformat.Pseudonymizer
+}
+
+// NewPhoneFormatPreserver builds the transformer on the cipher key of a consistency
+// scope.
+func NewPhoneFormatPreserver(key [32]byte) *PhoneFormatPreserver {
+	return &PhoneFormatPreserver{pseudonymizer: phoneformat.New(key)}
+}
+
+func (f *PhoneFormatPreserver) TransformValue(_ transform.Ctx, in any) (any, error) {
+	if in == nil {
+		return nil, nil
+	}
+	return f.pseudonymizer.Pseudonymize(fmt.Sprint(in))
+}
+
+var _ transform.ValueTransformer = (*PhoneFormatPreserver)(nil)
 
 // FullNameFaker composes a deterministic "First Last" name from two dictionaries.
 // Both indices are derived from distinct halves of the seed, so that first and last

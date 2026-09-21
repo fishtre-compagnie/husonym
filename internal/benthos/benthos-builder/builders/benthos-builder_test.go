@@ -1022,6 +1022,16 @@ func Test_computeMutationFunction_Validate_Bloblang_Output(t *testing.T) {
 			},
 		},
 		{
+			Source: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
+			Config: &mgmtv1alpha1.TransformerConfig{
+				Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
+					TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{
+						PreserveFormat: gotypeutil.ToPtr(true),
+					},
+				},
+			},
+		},
+		{
 			Source: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_STRING,
 			Config: &mgmtv1alpha1.TransformerConfig{
 				Config: &mgmtv1alpha1.TransformerConfig_TransformStringConfig{

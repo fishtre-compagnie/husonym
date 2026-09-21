@@ -180,6 +180,7 @@ type TransformLastNameConfig struct {
 
 type TransformPhoneNumberConfig struct {
 	PreserveLength *bool `json:"preserveLength,omitempty"`
+	PreserveFormat *bool `json:"preserveFormat,omitempty"`
 }
 
 type TransformStringConfig struct {
@@ -361,6 +362,7 @@ func (t *TransformerConfig) FromTransformerConfigDto(tr *mgmtv1alpha1.Transforme
 	case *mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig:
 		t.TransformPhoneNumber = &TransformPhoneNumberConfig{
 			PreserveLength: tr.GetTransformPhoneNumberConfig().PreserveLength,
+			PreserveFormat: tr.GetTransformPhoneNumberConfig().PreserveFormat,
 		}
 	case *mgmtv1alpha1.TransformerConfig_TransformStringConfig:
 		t.TransformString = &TransformStringConfig{
@@ -687,6 +689,7 @@ func (t *TransformerConfig) ToTransformerConfigDto() (*mgmtv1alpha1.TransformerC
 			Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
 				TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{
 					PreserveLength: t.TransformPhoneNumber.PreserveLength,
+					PreserveFormat: t.TransformPhoneNumber.PreserveFormat,
 				},
 			},
 		}, nil

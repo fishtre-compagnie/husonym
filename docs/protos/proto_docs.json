@@ -3553,6 +3553,18 @@
               "isoneof": true,
               "oneofdecl": "_preserve_length",
               "defaultValue": ""
+            },
+            {
+              "name": "preserve_format",
+              "description": "Keeps the prefix (0 and the next digit, or + with the country code and the next digit), every separator and the length, and replaces the other digits with a keyed permutation: two distinct numbers never give the same output, and a number written in two formats (06…, +33 6…) gets the same digits. Implies preserve_length.",
+              "label": "optional",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_preserve_format",
+              "defaultValue": ""
             }
           ]
         },

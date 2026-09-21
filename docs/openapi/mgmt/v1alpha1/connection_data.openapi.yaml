@@ -1962,6 +1962,12 @@ components:
             - "null"
           title: preserve_length
           description: Whether or not to preserve the original length of the phone number. This causes the transformed phone number to retain the original length.
+        preserveFormat:
+          type:
+            - boolean
+            - "null"
+          title: preserve_format
+          description: 'Keeps the prefix (0 and the next digit, or + with the country code and the next digit), every separator and the length, and replaces the other digits with a keyed permutation: two distinct numbers never give the same output, and a number written in two formats (06…, +33 6…) gets the same digits. Implies preserve_length.'
       title: TransformPhoneNumber
       additionalProperties: false
     mgmt.v1alpha1.TransformPiiText:

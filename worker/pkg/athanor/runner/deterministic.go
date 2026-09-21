@@ -63,6 +63,8 @@ func deterministicValueTransformer(
 		// Casse conservée : une colonne email unique et sensible à la casse peut
 		// contenir "Bob@x.com" et "bob@x.com" ; les fusionner casserait l'unicité.
 		return native.NewEmailFaker(d.Domain("person.email").WithCanonicalizer(consistency.PreserveCase), ds.EmailDomains), true
+	case cfg.GetTransformPhoneNumberConfig().GetPreserveFormat():
+		return native.NewPhoneFormatPreserver(d.CipherKey("person.phone")), true
 	case cfg.GetTransformPhoneNumberConfig() != nil ||
 		cfg.GetTransformE164PhoneNumberConfig() != nil ||
 		cfg.GetGenerateE164PhoneNumberConfig() != nil:
