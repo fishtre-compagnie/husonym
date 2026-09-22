@@ -74,7 +74,11 @@ export default function TransformerSelect(props: Props): ReactElement {
   }, [open]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // `modal` : la liste est portée hors du panneau de décision, et le verrou de
+    // défilement de celui-ci (react-remove-scroll) avale les événements de molette
+    // qui ne viennent pas de son sous-arbre — la liste ne défilait qu'à l'ascenseur.
+    // Le popover pose alors son propre verrou, qui laisse défiler son contenu.
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
