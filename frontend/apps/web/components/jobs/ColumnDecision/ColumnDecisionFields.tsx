@@ -1,4 +1,3 @@
-import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
 import TransformerForm from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/TransformerForm';
 import ColumnPreview from '@/components/jobs/JobMappingTable/ColumnPreview';
 import { TransformerResult } from '@/components/jobs/SchemaTable/transformer-handler';
@@ -118,7 +117,6 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     },
   });
 
-  const key = configKey(value);
   const { isValid } = form.formState;
   useEffect(() => {
     onValidChange?.(isValid);
@@ -135,7 +133,6 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     );
   }
 
-  const summary = summarizeOptions(config);
   // L'aperçu suit les options une fois qu'elles se posent, pas à chaque frappe.
   const previewed = useDebouncedValue(value, 400);
   const previewConfig = toConfig(previewed);
@@ -160,12 +157,16 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
           }}
           disabled={disabled}
         />
-        {summary.length > 0 && (
-          <p className="text-xs text-muted-foreground">{summary.join(' · ')}</p>
-        )}
+        {/* Pas de résumé des options ici : elles sont juste en dessous, avec leur
+            libellé. Une ligne qui apparaît et disparaît au premier interrupteur
+            décalait tout le panneau pour redire ce qui est déjà lisible. Le résumé
+            sert la ligne du tableau, où les options ne sont pas visibles. */}
         <Form {...form}>
+          {/* Remonté quand on change de transformer, pas quand on touche à ses
+              options : une clé qui suivrait la config entière remonterait le
+              formulaire à chaque frappe, et le champ perdrait le focus. */}
           <TransformerForm
-            key={key}
+            key={config?.config.case ?? 'none'}
             value={config ?? create(TransformerConfigSchema, {})}
             setValue={update}
             disabled={disabled}

@@ -145,10 +145,15 @@ export default function ColumnPreview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, requestKey]);
 
+  // Le résultat précédent reste affiché pendant la relecture, estompé. Le remplacer
+  // par des squelettes changeait la hauteur du bloc à chaque option touchée, et
+  // décalait tout ce qui suit dans le panneau — au moment précis où l'on compare.
   const current = result?.key === requestKey ? result : null;
-  const rows = current?.rows ?? null;
-  const distinct = current?.distinct ?? null;
-  const error = current?.error ?? null;
+  const shown = current ?? result;
+  const isReloading = current === null && result !== null;
+  const rows = shown?.rows ?? null;
+  const distinct = shown?.distinct ?? null;
+  const error = shown?.error ?? null;
 
   const inputs = rows?.map((r) => r.input) ?? [];
   const filled = inputs.filter((v) => !v.isNull && v.value !== '').length;
@@ -181,7 +186,14 @@ export default function ColumnPreview({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className={cn(
+        'flex flex-col gap-3',
+        // Relecture en cours : le tableau garde sa place et ses valeurs, estompées.
+        isReloading && 'opacity-50 transition-opacity'
+      )}
+      aria-busy={isReloading}
+    >
       {/* Compteurs : ils portent souvent la réponse à eux seuls (une colonne
           entièrement nulle, ou à valeur unique, se juge sans lire le détail). */}
       <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
