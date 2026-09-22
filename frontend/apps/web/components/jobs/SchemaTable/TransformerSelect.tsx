@@ -40,6 +40,10 @@ interface Props {
   value: JobMappingTransformerForm;
   buttonText: string;
   buttonClassName?: string;
+  // Largeur du libellé. Par défaut il tient dans une cellule de tableau ; dans le
+  // panneau de décision, où le bouton fait toute la largeur, le nom du transformer
+  // doit se lire en entier.
+  buttonTextClassName?: string;
   onSelect(value: JobMappingTransformerForm): void;
   side?: Side;
   disabled: boolean;
@@ -55,6 +59,7 @@ export default function TransformerSelect(props: Props): ReactElement {
     side,
     disabled,
     buttonClassName,
+    buttonTextClassName = 'lg:w-[200px]',
     notFoundText = 'No transformers found.',
   } = props;
   const [open, setOpen] = useState(false);
@@ -79,7 +84,12 @@ export default function TransformerSelect(props: Props): ReactElement {
           disabled={disabled}
           className={cn('justify-between', buttonClassName)}
         >
-          <div className="whitespace-nowrap truncate lg:w-[200px] text-left">
+          <div
+            className={cn(
+              'whitespace-nowrap truncate text-left',
+              buttonTextClassName
+            )}
+          >
             {buttonText}
           </div>
           <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />

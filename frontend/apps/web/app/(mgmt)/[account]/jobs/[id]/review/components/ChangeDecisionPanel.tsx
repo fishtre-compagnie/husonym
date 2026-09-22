@@ -7,6 +7,7 @@ import ColumnDecisionFields, {
 import ColumnDecisionPanel, {
   PanelNavigation,
 } from '@/components/jobs/ColumnDecision/ColumnDecisionPanel';
+import { dbDataTypeToTransformerDataType } from '@/components/jobs/SchemaTable/schema-constraint-handler';
 import { TransformerHandler } from '@/components/jobs/SchemaTable/transformer-handler';
 import Spinner from '@/components/Spinner';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { changeLabel, columnName, isPassthrough } from '@/util/mapping-changes';
-import { getTransformerFromField } from '@/util/util';
+import {
+  getFilterdTransformersByType,
+  getTransformerFromField,
+} from '@/util/util';
 import {
   convertJobMappingTransformerToForm,
   JobMappingTransformerForm,
@@ -155,8 +159,13 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
         <ColumnDecisionFields
           value={draft}
           onChange={setDraft}
-          handler={handler}
-          dataType={change.dataType}
+          getTransformers={() =>
+            getFilterdTransformersByType(
+              handler,
+              dbDataTypeToTransformerDataType(change.dataType)
+            )
+          }
+          selected={getTransformerFromField(handler, draft)}
           disabled={pending !== null}
           onValidChange={onValidChange}
           origin={

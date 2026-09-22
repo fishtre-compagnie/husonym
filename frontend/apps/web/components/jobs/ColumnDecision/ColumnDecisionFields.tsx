@@ -1,18 +1,14 @@
 import { summarizeOptions } from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/options/summary';
 import TransformerForm from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/TransformerForm';
 import ColumnPreview from '@/components/jobs/JobMappingTable/ColumnPreview';
-import { dbDataTypeToTransformerDataType } from '@/components/jobs/SchemaTable/schema-constraint-handler';
-import { TransformerHandler } from '@/components/jobs/SchemaTable/transformer-handler';
+import { TransformerResult } from '@/components/jobs/SchemaTable/transformer-handler';
 import TransformerSelect from '@/components/jobs/SchemaTable/TransformerSelect';
 import { useAccount } from '@/components/providers/account-provider';
+import { Transformer } from '@/shared/transformers';
 import { Form } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
 import { useDebouncedValue } from '@/libs/hooks/useDebouncedValue';
-import {
-  getFilterdTransformersByType,
-  getTransformerFromField,
-  getTransformerSelectButtonText,
-} from '@/util/util';
+import { getTransformerSelectButtonText } from '@/util/util';
 import { yupResolver } from '@/util/yup-form-resolver';
 import {
   EditJobMappingTransformerConfigFormContext,
@@ -47,9 +43,11 @@ export interface PreviewTarget {
 interface Props {
   value: JobMappingTransformerForm;
   onChange(value: JobMappingTransformerForm): void;
-  handler: TransformerHandler;
-  // Type de la colonne : il restreint la liste aux transformers qui l'acceptent.
-  dataType?: string;
+  // Les transformers offerts pour cette colonne : l'appelant les filtre par type,
+  // et sur la page Source par contraintes (clé, colonne générée, nullable).
+  getTransformers(): TransformerResult;
+  // Le transformer choisi, pour le libellé du sélecteur.
+  selected: Transformer;
   disabled?: boolean;
   preview?: PreviewTarget;
   // Validité des options saisies, pour que le parent désactive son action.
@@ -86,8 +84,8 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
   const {
     value,
     onChange,
-    handler,
-    dataType,
+    getTransformers,
+    selected,
     disabled = false,
     preview,
     onValidChange,
@@ -137,7 +135,6 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     );
   }
 
-  const selected = getTransformerFromField(handler, value);
   const summary = summarizeOptions(config);
   // L'aperçu suit les options une fois qu'elles se posent, pas à chaque frappe.
   const previewed = useDebouncedValue(value, 400);
@@ -152,17 +149,11 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
           {origin}
         </div>
         <TransformerSelect
-          getTransformers={() =>
-            dataType
-              ? getFilterdTransformersByType(
-                  handler,
-                  dbDataTypeToTransformerDataType(dataType)
-                )
-              : handler.getTransformers()
-          }
+          getTransformers={getTransformers}
           value={value}
           buttonText={getTransformerSelectButtonText(selected, placeholder)}
           buttonClassName="w-full"
+          buttonTextClassName="grow"
           onSelect={(next) => {
             const nextConfig = toConfig(next);
             update(nextConfig ?? create(TransformerConfigSchema));

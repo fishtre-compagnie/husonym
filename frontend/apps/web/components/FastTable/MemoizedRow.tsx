@@ -24,6 +24,10 @@ interface Props<TData extends RowData> {
   /** Ids des colonnes qui ne s'étirent pas. Doit être identique à l'en-tête,
    *  sinon les deux se décalent. */
   noGrowColumnIds?: string[];
+  /** Ouvre la ligne. Doit être stable : `shouldReRender` ne la compare pas, une
+   *  nouvelle référence à chaque rendu ne parviendrait donc pas aux lignes déjà
+   *  montées. */
+  onRowClick?(index: number): void;
 }
 
 function InnerRow<TData extends RowData>(props: Props<TData>): ReactNode {
@@ -34,6 +38,7 @@ function InnerRow<TData extends RowData>(props: Props<TData>): ReactNode {
     disableTdWidth,
     useColumnSizes,
     noGrowColumnIds,
+    onRowClick,
   } = props;
   return (
     <TableRow
@@ -46,8 +51,10 @@ function InnerRow<TData extends RowData>(props: Props<TData>): ReactNode {
         'items-center flex absolute w-full px-2 gap-0 space-x-0',
         // Largeurs fixes : les cellules se suivent, sans espace réparti entre elles.
         useColumnSizes ? 'justify-start' : 'justify-between',
+        onRowClick && 'cursor-pointer',
         tableRowClassName
       )}
+      onClick={onRowClick ? () => onRowClick(row.index) : undefined}
     >
       {row.getVisibleCells().map((cell) => (
         <td

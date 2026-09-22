@@ -44,6 +44,7 @@ import {
   getIdentityStatement,
 } from '../JobMappingTable/AttributesCell';
 import { JobMappingRow, SQL_COLUMNS } from '../JobMappingTable/Columns';
+import { ColumnDecisionTarget } from '../JobMappingTable/MappingDecisionPanel';
 import JobMappingTable from '../JobMappingTable/JobMappingTable';
 import FormErrorsCard, { ErrorLevel, FormError } from './FormErrorsCard';
 import { ImportMappingsConfig } from './ImportJobMappingsButton';
@@ -570,6 +571,29 @@ export function SchemaTable(props: Props): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, constraintHandler, contentPii]);
 
+  // Ce que le panneau de décision doit savoir d'une colonne : son identité, son
+  // type, ses contraintes et ce que la détection en dit.
+  function getColumnDecision(index: number): ColumnDecisionTarget | undefined {
+    const row = tableData[index];
+    if (!row) {
+      return undefined;
+    }
+    const constraints = row.constraints.value
+      .split('\n')
+      .filter(Boolean)
+      .join(' · ');
+    return {
+      schema: row.schema,
+      table: row.table,
+      column: row.column,
+      dataType: row.dataType,
+      transformer: row.transformer,
+      isSensitive: row.isSensitive,
+      dataCategory: row.dataCategory,
+      constraints: constraints || undefined,
+    };
+  }
+
   const virtualForeignKeyColumns = useMemo(() => {
     return getVirtualForeignKeysColumns({ removeVirtualForeignKey });
   }, [removeVirtualForeignKey]);
@@ -661,6 +685,7 @@ export function SchemaTable(props: Props): ReactElement {
               onRemoveMissingSourceColumnMappings={
                 onRemoveMissingSourceColumnMappings
               }
+              getColumnDecision={getColumnDecision}
               {...piiScanProps}
             />
           </TabsContent>
@@ -708,6 +733,7 @@ export function SchemaTable(props: Props): ReactElement {
           onRemoveMissingSourceColumnMappings={
             onRemoveMissingSourceColumnMappings
           }
+          getColumnDecision={getColumnDecision}
           {...piiScanProps}
         />
       )}

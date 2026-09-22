@@ -6,6 +6,7 @@ import {
   getTransformerSelectButtonText,
   isInvalidTransformer,
 } from '@/util/util';
+import MappingCell, { OpenDecisionButton } from './MappingCell';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
 import {
@@ -15,7 +16,6 @@ import {
   TransformerSource,
 } from '@husonym/sdk';
 import { createColumnHelper, Row } from '@tanstack/react-table';
-import ColumnPreviewButton from './ColumnPreviewButton';
 import RgpdCell from './RgpdCell';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
@@ -93,7 +93,9 @@ function getJobMappingColumns() {
     },
     cell({ row }) {
       return (
-        <div>
+        // La case coche la ligne ; le clic ne doit pas remonter à la ligne, qui
+        // ouvrirait la décision de cette colonne.
+        <div onClick={(e) => e.stopPropagation()}>
           <IndeterminateCheckbox
             {...{
               checked: row.getIsSelected(),
@@ -206,51 +208,43 @@ function getJobMappingColumns() {
         const transformer =
           table.options.meta?.jmTable?.getTransformerFromField(row.index) ??
           create(SystemTransformerSchema);
-        const transformerForm = row.original.transformer;
         return (
-          <div className="flex flex-row gap-2">
-            <div>
-              <TransformerSelect
-                getTransformers={() =>
-                  table.options.meta?.jmTable?.getAvailableTransformers(
-                    row.index
-                  ) ?? {
-                    system: [],
-                    userDefined: [],
-                  }
-                }
-                buttonText={getTransformerSelectButtonText(transformer)}
-                buttonClassName="w-[195px]"
-                value={transformerForm}
-                onSelect={(updatedValue) =>
-                  table.options.meta?.jmTable?.onTransformerUpdate(
-                    row.index,
-                    updatedValue
-                  )
-                }
-                disabled={false}
-              />
-            </div>
-            <div>
-              <EditTransformerOptions
-                transformer={transformer}
-                value={transformerForm}
-                onSubmit={(updatedValue) => {
-                  table.options.meta?.jmTable?.onTransformerUpdate(
-                    row.index,
-                    updatedValue
-                  );
-                }}
-                disabled={isInvalidTransformer(transformer)}
-              />
-            </div>
-          </div>
+          <MappingCell
+            column={row.original.column}
+            transformer={row.original.transformer}
+            name={
+              isInvalidTransformer(transformer) ? '' : (transformer.name ?? '')
+            }
+            isSensitive={row.original.isSensitive}
+            onOpen={() =>
+              table.options.meta?.jmTable?.onOpenDecision?.(row.index)
+            }
+          />
         );
       },
       filterFn: transformerFilterFn,
       sortFn: transformerSortingFn,
     }
   );
+
+  // La même entrée sur chaque ligne, à sa droite : elle dit qu'un panneau s'ouvre.
+  const openDecisionColumn = columnHelper.display({
+    id: 'openDecision',
+    size: 44,
+    header() {
+      return <span className="sr-only">Decide</span>;
+    },
+    cell({ row, table }) {
+      return (
+        <OpenDecisionButton
+          column={row.original.column}
+          onOpen={() =>
+            table.options.meta?.jmTable?.onOpenDecision?.(row.index)
+          }
+        />
+      );
+    },
+  });
 
   // accessor et NON display : une colonne `display` n'a pas de valeur dérivée des
   // données, donc TanStack réutilise sa cellule mémoïsée. Résultat observé : après
@@ -321,30 +315,9 @@ function getJobMappingColumns() {
     }
   );
 
-  const previewColumn = columnHelper.display({
-    id: 'preview',
-    size: 44,
-    header() {
-      return <span className="sr-only">Aperçu des données</span>;
-    },
-    cell({ row, table }) {
-      const connectionId = table.options.meta?.jmTable?.sourceConnectionId;
-      // Job generate : aucune donnée source à lire, le bouton n'aurait rien à montrer.
-      if (!connectionId) {
-        return null;
-      }
-      return (
-        <ColumnPreviewButton
-          connectionId={connectionId}
-          schema={row.original.schema}
-          table={row.original.table}
-          column={row.original.column}
-          dataType={row.original.dataType}
-        />
-      );
-    },
-  });
-
+  // L'œil qui ouvrait les valeurs d'une colonne a disparu : le panneau de décision
+  // montre les mêmes valeurs, avant et après le transformer, et une seule entrée
+  // par colonne vaut mieux que trois.
   return columnHelper.columns([
     checkboxColumn,
     schemaColumn,
@@ -354,8 +327,8 @@ function getJobMappingColumns() {
     isNullableColumn,
     constraintColumn,
     rgpdColumn,
-    previewColumn,
     transformerColumn,
+    openDecisionColumn,
   ]);
 }
 
