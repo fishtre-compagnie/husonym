@@ -11,7 +11,6 @@ import { Transformer } from '@/shared/transformers';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { ReactElement, useCallback, useState } from 'react';
 
-// La colonne dont on décide, telle que la table la connaît.
 export interface ColumnDecisionTarget {
   schema: string;
   table: string;
@@ -21,7 +20,6 @@ export interface ColumnDecisionTarget {
   // Détection RGPD : la colonne porte-t-elle une donnée personnelle, et laquelle.
   isSensitive: boolean;
   dataCategory?: string;
-  // Les contraintes qui pèsent sur la colonne, en quelques mots.
   constraints?: string;
 }
 
@@ -29,17 +27,13 @@ interface Props {
   target: ColumnDecisionTarget;
   getTransformers(): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
-  // L'aperçu lit la colonne sur cette connexion. Absent pour un job generate.
   sourceConnectionId?: string;
   navigation?: PanelNavigation;
   onClose(): void;
   onApply(transformer: JobMappingTransformerForm): void;
 }
 
-// La décision d'une colonne de la page Source : le transformer, ses options et ce
-// qu'ils font des valeurs, dans le panneau que l'onglet Review utilise aussi.
-// « Apply » écrit dans le formulaire de la page ; le job, lui, est enregistré par
-// son bouton Update.
+// « Apply » écrit dans le formulaire de la page ; Update enregistre le job.
 export default function MappingDecisionPanel(props: Props): ReactElement {
   const {
     target,

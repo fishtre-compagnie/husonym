@@ -10,8 +10,6 @@ import {
 import { ChevronDownIcon, ChevronUpIcon } from '@radix-ui/react-icons';
 import { ReactElement, ReactNode } from 'react';
 
-// De quoi passer à la colonne suivante sans refermer : une décision se prend
-// rarement seule, et rouvrir le panneau à chaque ligne coûtait un aller-retour.
 export interface PanelNavigation {
   position: number;
   total: number;
@@ -20,12 +18,9 @@ export interface PanelNavigation {
 }
 
 interface Props {
-  // Le nom de la colonne, en tête du panneau.
   title: string;
-  // Où elle vit : schema.table, ou la collection.
   location?: string;
   badges?: ReactNode;
-  // Une ligne sous l'en-tête : d'où vient cette colonne, quel run l'a ajoutée.
   meta?: ReactNode;
   navigation?: PanelNavigation;
   onClose(): void;
@@ -33,8 +28,7 @@ interface Props {
   footer: ReactNode;
 }
 
-// Le panneau accosté où se décide une colonne. Même cadre sur la page Source et
-// dans l'onglet Review : seuls son contenu et ses actions changent.
+// Le cadre commun à la page Source et à l'onglet Review.
 export default function ColumnDecisionPanel(props: Props): ReactElement {
   const {
     title,

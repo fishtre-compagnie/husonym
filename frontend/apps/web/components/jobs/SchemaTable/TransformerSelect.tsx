@@ -40,9 +40,7 @@ interface Props {
   value: JobMappingTransformerForm;
   buttonText: string;
   buttonClassName?: string;
-  // Largeur du libellé. Par défaut il tient dans une cellule de tableau ; dans le
-  // panneau de décision, où le bouton fait toute la largeur, le nom du transformer
-  // doit se lire en entier.
+  // Par défaut dimensionné pour une cellule de tableau.
   buttonTextClassName?: string;
   onSelect(value: JobMappingTransformerForm): void;
   side?: Side;
@@ -74,10 +72,8 @@ export default function TransformerSelect(props: Props): ReactElement {
   }, [open]);
 
   return (
-    // `modal` : la liste est portée hors du panneau de décision, et le verrou de
-    // défilement de celui-ci (react-remove-scroll) avale les événements de molette
-    // qui ne viennent pas de son sous-arbre — la liste ne défilait qu'à l'ascenseur.
-    // Le popover pose alors son propre verrou, qui laisse défiler son contenu.
+    // `modal` : sinon le verrou de défilement du panneau (react-remove-scroll)
+    // avale la molette sur cette liste, portée hors de son sous-arbre.
     <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button

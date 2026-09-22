@@ -54,12 +54,9 @@ export function CommandInput({
         )}
         onKeyDown={(e) => {
           onKeyDown?.(e);
-          // Home et Fin appartiennent au champ de saisie : elles déplacent le
-          // curseur, et avec Maj elles sélectionnent jusqu'au bout du texte. La
-          // racine de cmdk les intercepte pour aller au premier ou au dernier
-          // élément de la liste, avec un preventDefault inconditionnel (cmdk
-          // 1.1.1) : l'événement ne doit donc pas lui parvenir. Les flèches
-          // restent le moyen de parcourir la liste.
+          // La racine de cmdk prend Home et Fin pour la liste, avec un
+          // preventDefault inconditionnel (1.1.1) : Maj+Home ne sélectionnait
+          // rien. Elles reviennent au champ, les flèches gardent la liste.
           if (e.key === 'Home' || e.key === 'End') {
             e.stopPropagation();
           }

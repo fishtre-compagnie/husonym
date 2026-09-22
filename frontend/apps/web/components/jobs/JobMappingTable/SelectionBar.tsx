@@ -18,7 +18,7 @@ import { ReactElement, useCallback, useState } from 'react';
 
 interface Props {
   count: number;
-  // Les transformers que TOUTES les lignes choisies acceptent.
+  // Ceux que TOUTES les lignes choisies acceptent.
   getAllowedTransformers(): TransformerResult;
   getTransformerFromFieldValue(value: JobMappingTransformerForm): Transformer;
   onApply(value: JobMappingTransformerForm): void;
@@ -28,9 +28,6 @@ interface Props {
 const NONE = (): JobMappingTransformerForm =>
   convertJobMappingTransformerToForm(create(JobMappingTransformerSchema));
 
-// Ce qu'on peut faire d'une sélection, là où la sélection se fait : une barre qui
-// vient avec elle, plutôt qu'un sélecteur toujours affiché en tête de tableau, où
-// il se lisait comme un filtre.
 export default function SelectionBar(props: Props): ReactElement | null {
   const {
     count,
@@ -54,9 +51,8 @@ export default function SelectionBar(props: Props): ReactElement | null {
 
   const allowed = getAllowedTransformers();
   const selected = getTransformerFromFieldValue(draft);
-  // Un transformer qu'une des lignes choisies n'accepte pas ne peut pas leur être
-  // appliqué à toutes : la liste offerte est déjà l'intersection, mais le choix
-  // courant peut dater d'une sélection précédente.
+  // La liste offerte est déjà l'intersection, mais le choix courant peut dater
+  // d'une sélection précédente.
   const applicable = isTransformerAllowed(allowed, selected);
 
   return (

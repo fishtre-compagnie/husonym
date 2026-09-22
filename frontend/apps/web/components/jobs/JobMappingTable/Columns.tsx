@@ -93,8 +93,7 @@ function getJobMappingColumns() {
     },
     cell({ row }) {
       return (
-        // La case coche la ligne ; le clic ne doit pas remonter à la ligne, qui
-        // ouvrirait la décision de cette colonne.
+        // Sans quoi le clic remonterait à la ligne, qui ouvre la décision.
         <div onClick={(e) => e.stopPropagation()}>
           <IndeterminateCheckbox
             {...{
@@ -227,7 +226,6 @@ function getJobMappingColumns() {
     }
   );
 
-  // La même entrée sur chaque ligne, à sa droite : elle dit qu'un panneau s'ouvre.
   const openDecisionColumn = columnHelper.display({
     id: 'openDecision',
     size: 44,
@@ -315,9 +313,6 @@ function getJobMappingColumns() {
     }
   );
 
-  // L'œil qui ouvrait les valeurs d'une colonne a disparu : le panneau de décision
-  // montre les mêmes valeurs, avant et après le transformer, et une seule entrée
-  // par colonne vaut mieux que trois.
   return columnHelper.columns([
     checkboxColumn,
     schemaColumn,

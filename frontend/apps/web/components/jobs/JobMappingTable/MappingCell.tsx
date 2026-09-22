@@ -11,16 +11,12 @@ import { LuPanelRight } from 'react-icons/lu';
 interface Props {
   column: string;
   transformer: JobMappingTransformerForm;
-  // Nom du transformer choisi, résolu par la table (système ou personnalisé).
   name: string;
-  // La colonne porte-t-elle une donnée personnelle, d'après la détection ?
   isSensitive: boolean;
   onOpen(): void;
 }
 
-// Ce qui sortira de la colonne, lisible sans rien ouvrir : le transformer et le
-// résumé de ses options. Le sélecteur tronquait le nom et cachait les options
-// derrière un crayon ; ici la ligne se lit, et le clic ouvre la décision.
+// Ce qui sortira de la colonne, lisible sans rien ouvrir.
 export default function MappingCell(props: Props): ReactElement {
   const { column, transformer, name, isSensitive, onOpen } = props;
 
@@ -40,7 +36,7 @@ export default function MappingCell(props: Props): ReactElement {
       aria-label={`Decide what leaves ${column}`}
       className="flex flex-row items-center gap-2 text-left w-full group"
     >
-      {/* La seule alerte du tableau : une donnée personnelle laissée telle quelle. */}
+      {/* Ambre : une donnée personnelle laissée telle quelle. */}
       <span
         className={cn(
           'h-2 w-2 rounded-full shrink-0',
@@ -75,7 +71,6 @@ interface OpenProps {
   onOpen(): void;
 }
 
-// Le même repère sur chaque ligne : un panneau s'ouvre sur la droite.
 export function OpenDecisionButton(props: OpenProps): ReactElement {
   const { column, onOpen } = props;
   return (

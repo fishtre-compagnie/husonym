@@ -571,8 +571,6 @@ export function SchemaTable(props: Props): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, constraintHandler, contentPii]);
 
-  // Ce que le panneau de décision doit savoir d'une colonne : son identité, son
-  // type, ses contraintes et ce que la détection en dit.
   function getColumnDecision(index: number): ColumnDecisionTarget | undefined {
     const row = tableData[index];
     if (!row) {

@@ -30,8 +30,6 @@ import {
 import { ReactElement, ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-// La colonne dont l'aperçu lit les valeurs. Sans elle — job generate, ou édition
-// de plusieurs colonnes à la fois — la décision se prend sans aperçu.
 export interface PreviewTarget {
   connectionId: string;
   schema: string;
@@ -42,17 +40,14 @@ export interface PreviewTarget {
 interface Props {
   value: JobMappingTransformerForm;
   onChange(value: JobMappingTransformerForm): void;
-  // Les transformers offerts pour cette colonne : l'appelant les filtre par type,
-  // et sur la page Source par contraintes (clé, colonne générée, nullable).
+  // Filtrés par type, et sur la page Source par contraintes de colonne.
   getTransformers(): TransformerResult;
-  // Le transformer choisi, pour le libellé du sélecteur.
   selected: Transformer;
   disabled?: boolean;
+  // Absent pour un job generate : il n'y a aucune donnée à lire.
   preview?: PreviewTarget;
-  // Validité des options saisies, pour que le parent désactive son action.
   onValidChange?(valid: boolean): void;
   placeholder?: string;
-  // Affiché à droite du libellé « Transformer » : d'où vient ce choix.
   origin?: ReactNode;
 }
 
@@ -66,19 +61,13 @@ export function toConfig(
     .config;
 }
 
-// Clé stable d'un choix : deux configs identiques la partagent, ce qui évite de
-// relancer l'aperçu ou la validation quand seul l'objet a changé.
+// Deux configs identiques partagent la clé, même si les objets diffèrent.
 export function configKey(transformer: JobMappingTransformerForm): string {
   const config = toConfig(transformer);
   return config ? toJsonString(TransformerConfigSchema, config) : '';
 }
 
-// Le cœur d'une décision de colonne : le transformer, ses options et ce qu'ils font
-// des valeurs. Les trois vont ensemble — choisir sans voir le résultat était le
-// défaut du sélecteur et du crayon qu'il remplace.
-//
-// Les options sont validées comme sur la page d'un transformer (le code JS compris) :
-// le parent en est averti par `onValidChange` et refuse d'enregistrer ce qui ne passe pas.
+// Le transformer, ses options et ce qu'ils font des valeurs de la colonne.
 export default function ColumnDecisionFields(props: Props): ReactElement {
   const {
     value,
@@ -98,8 +87,7 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
   );
 
   const config = toConfig(value);
-  // Le formulaire ne porte pas la valeur — le parent en est la source — mais il valide
-  // les options et donne aux champs le contexte que leurs libellés lisent.
+  // Le parent porte la valeur ; ce formulaire ne sert qu'à valider les options.
   const form = useForm<
     EditJobMappingTransformerConfigFormValues,
     EditJobMappingTransformerConfigFormContext
@@ -133,7 +121,6 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
     );
   }
 
-  // L'aperçu suit les options une fois qu'elles se posent, pas à chaque frappe.
   const previewed = useDebouncedValue(value, 400);
   const previewConfig = toConfig(previewed);
 
@@ -157,13 +144,8 @@ export default function ColumnDecisionFields(props: Props): ReactElement {
           }}
           disabled={disabled}
         />
-        {/* Pas de résumé des options ici : elles sont juste en dessous, avec leur
-            libellé. Une ligne qui apparaît et disparaît au premier interrupteur
-            décalait tout le panneau pour redire ce qui est déjà lisible. Le résumé
-            sert la ligne du tableau, où les options ne sont pas visibles. */}
         <Form {...form}>
-          {/* Remonté quand on change de transformer, pas quand on touche à ses
-              options : une clé qui suivrait la config entière remonterait le
+          {/* Clé sur le seul transformer : suivre la config remonterait le
               formulaire à chaque frappe, et le champ perdrait le focus. */}
           <TransformerForm
             key={config?.config.case ?? 'none'}

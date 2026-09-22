@@ -58,11 +58,8 @@ interface Props {
 // mapped — with the transformer they chose, or in clear when none applied — the mappings they
 // removed with their column, and the columns whose type moved.
 //
-// The changes are grouped by table and read like a diff: each row says what happened and what
-// the run decided, options included, without opening anything. A click opens the change in the
-// panel the source page uses too, where the transformer, its options and their effect on the
-// column's values sit together, to keep the run's choice or replace it — and to walk to the
-// next change without closing. The selection confirms several changes at once.
+// Grouped by table, read like a diff. A click opens the change in the panel the source page
+// uses too, to keep the run's choice or replace it; the selection confirms several at once.
 export default function MappingChangesCard(props: Props): ReactElement {
   const { jobId } = props;
   const { account } = useAccount();
@@ -113,8 +110,6 @@ export default function MappingChangesCard(props: Props): ReactElement {
     () => [...(data?.changes ?? [])].sort((a, b) => urgency(a) - urgency(b)),
     [data?.changes]
   );
-  // Les changements d'une même table se lisent ensemble : c'est la table qu'on
-  // rouvre ensuite, pas la colonne isolée.
   const groups = useMemo(() => {
     const byTable = new Map<string, JobMappingChange[]>();
     pending.forEach((c) => {
@@ -348,9 +343,6 @@ interface RowProps {
   transformerName: string;
 }
 
-// Une ligne de la revue : ce qui est arrivé à la colonne, ce que le run en a fait,
-// quand. Toutes les lignes ont la même structure, quelle que soit la nature du
-// changement — deux lignes de texte à gauche, deux au milieu, une date à droite.
 function ChangeRow(props: RowProps): ReactElement {
   const { change, isOpened, isSelected, onSelect, onOpen, transformerName } =
     props;
@@ -383,7 +375,6 @@ function ChangeRow(props: RowProps): ReactElement {
           onChange={onSelect}
         />
       </span>
-      {/* Ce qui est arrivé à la colonne, d'un signe : ajoutée, retirée, ou son type a bougé. */}
       <span
         aria-hidden
         className={cn(

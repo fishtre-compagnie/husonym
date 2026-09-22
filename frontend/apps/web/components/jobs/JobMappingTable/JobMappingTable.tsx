@@ -61,11 +61,9 @@ interface Props<TData extends RowData> {
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
 
-  // Id de la connexion source : l'aperçu du panneau y lit la colonne.
   sourceConnectionId?: string;
 
-  // La colonne d'une ligne, telle que le panneau de décision l'attend. Absente —
-  // les tables NoSQL, qui n'ont ni type ni contraintes — aucun panneau ne s'ouvre.
+  // Absente pour les tables NoSQL, sans type ni contraintes : pas de panneau.
   getColumnDecision?(index: number): ColumnDecisionTarget | undefined;
 
   // Scan de contenu PII (Presidio) — actif uniquement pour les jobs sync.
@@ -91,10 +89,8 @@ declare module '@tanstack/react-table' {
       onRowUpdate(rowIndex: number, newValue: TData): void;
       // Returns the available schema.table list
       getAvailableCollectionsByRow(rowIndex: number): string[];
-      // Id de la connexion source. Absent pour les jobs generate : il n'y a
-      // alors aucune donnée à échantillonner, le panneau se passe d'aperçu.
+      // Absent pour les jobs generate : le panneau se passe alors d'aperçu.
       sourceConnectionId?: string;
-      // Ouvre la décision de la ligne dans le panneau latéral.
       onOpenDecision?(rowIndex: number): void;
     };
   }
@@ -131,8 +127,7 @@ export default function JobMappingTable<TData extends RowData>(
     isScanningPii,
   } = props;
 
-  // La ligne dont la décision est ouverte. Stable d'un rendu à l'autre : les lignes
-  // sont mémoïsées et ne reliraient pas une nouvelle fonction.
+  // Stables : les lignes sont mémoïsées et ne reliraient pas une nouvelle fonction.
   const [opened, setOpened] = useState<number | null>(null);
   const onOpenDecision = useCallback((index: number) => setOpened(index), []);
   const closeDecision = useCallback(() => setOpened(null), []);
@@ -157,8 +152,7 @@ export default function JobMappingTable<TData extends RowData>(
     },
   });
 
-  // La navigation du panneau suit l'ordre affiché, filtres et tri compris, et non
-  // l'ordre des données.
+  // Ordre affiché, filtres et tri compris : celui que suit la navigation.
   const visible = table.getRowModel().rows;
   const selectedRows = table.getSelectedRowModel().rows;
   const position =

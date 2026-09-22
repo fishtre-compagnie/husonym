@@ -24,9 +24,7 @@ interface Props<TData extends RowData> {
   /** Ids des colonnes qui ne s'étirent pas. Doit être identique à l'en-tête,
    *  sinon les deux se décalent. */
   noGrowColumnIds?: string[];
-  /** Ouvre la ligne. Doit être stable : `shouldReRender` ne la compare pas, une
-   *  nouvelle référence à chaque rendu ne parviendrait donc pas aux lignes déjà
-   *  montées. */
+  /** Doit être stable : `shouldReRender` ne la compare pas. */
   onRowClick?(index: number): void;
 }
 

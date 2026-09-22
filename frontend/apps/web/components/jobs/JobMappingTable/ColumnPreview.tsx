@@ -145,9 +145,8 @@ export default function ColumnPreview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, requestKey]);
 
-  // Le résultat précédent reste affiché pendant la relecture, estompé. Le remplacer
-  // par des squelettes changeait la hauteur du bloc à chaque option touchée, et
-  // décalait tout ce qui suit dans le panneau — au moment précis où l'on compare.
+  // Le résultat précédent reste affiché pendant la relecture : le remplacer par
+  // des squelettes décalait tout le panneau à chaque option touchée.
   const current = result?.key === requestKey ? result : null;
   const shown = current ?? result;
   const isReloading = current === null && result !== null;
@@ -189,7 +188,6 @@ export default function ColumnPreview({
     <div
       className={cn(
         'flex flex-col gap-3',
-        // Relecture en cours : le tableau garde sa place et ses valeurs, estompées.
         isReloading && 'opacity-50 transition-opacity'
       )}
       aria-busy={isReloading}
