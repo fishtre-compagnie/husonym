@@ -1,7 +1,7 @@
 # Le run met le job à jour — refonte de la revue des colonnes
 
 Statut : **réalisé le 2026-09-21** (`0956d6df` catalogue partagé, `664300ff` réconciliation,
-`c7d3dcfd` Anonymize & Review et journal, `e54ddb1b` front, `9563e42f` guides). Réponses de
+`c41c1fa5` Anonymize & Review, journal et front, `bd0ee3ae` guides). Réponses de
 l'utilisateur aux questions de la §5 : journaliser les changements de type, passthrough pour les
 colonnes à contrainte, libellé « Anonymize & Review », écrasement par la page Source accepté, run
 réel de `review-e2e` autorisé. Et **une seule migration** (`20260921100000`) au lieu d'en empiler :

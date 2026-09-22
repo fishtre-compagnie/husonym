@@ -1,7 +1,7 @@
 # Reprise du chantier « outillage des décisions » — état, décisions, suite
 
 > Document d'entrée pour toute session qui reprend la branche `docs/plan-outillage-husonym` sans
-> contexte. Mis à jour le 2026-09-21 au soir. Lire ensuite [outillage-husonym.md](outillage-husonym.md)
+> contexte. Mis à jour le 2026-09-22. Lire ensuite [outillage-husonym.md](outillage-husonym.md)
 > (les sept axes et leurs objections), [reconciliation-job-par-le-run.md](reconciliation-job-par-le-run.md)
 > (le modèle de revue actuel), puis la note mémoire `outillage-husonym-axes`.
 
@@ -9,7 +9,8 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **34 commits au-dessus de `main`, rien n'est poussé.** Le nom de
+`docs/plan-outillage-husonym` porte **35 commits au-dessus de `main`, rien n'est poussé** (compte
+exact : `git rev-list --count main..HEAD`). Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
 Gate vert au dernier commit de code : `go build ./...`, `go test ./internal/... ./backend/... ./worker/...`
@@ -18,8 +19,10 @@ web, et les tests d'intégration **PostgreSQL + MySQL (29)** et **MSSQL (6)**
 (`WORKER_INTEGRATION_TESTS_ENABLED=1 go test ./internal/integration-tests/worker/workflow/ -run
 'Test_Workflow/(postgres|mysql|mssql)'`).
 
-Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les anciennes RPC) : à
-écraser en un commit si on veut chaque commit vert.
+Le commit du journal et celui de l'onglet Review ont été fusionnés le 2026-09-22 (`c41c1fa5`) : le
+typecheck du web y passe, alors qu'il échouait entre les deux. Les hashes postérieurs ont changé ;
+l'état d'avant est gardé sur la branche locale `backup/avant-squash-c7d3dcfd`, à supprimer une fois
+la PR ouverte.
 
 ---
 
@@ -30,7 +33,7 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   idempotent) : les colonnes nouvelles mappées par Passthrough et AutoMap, et la **suppression
   systématique** des mappings dont la colonne a disparu (sauf `ColumnRemovalStrategy = Halt`). Une
   source qui ne montre **aucune** colonne du job fait échouer le run au lieu de le vider.
-- `c7d3dcfd` **Anonymize & Review** remplace Passthrough & Review : suggestion de `piidetect` avec la
+- `c41c1fa5` **Anonymize & Review** remplace Passthrough & Review : suggestion de `piidetect` avec la
   config du catalogue, passthrough si rien n'est suggéré ou si une clé/contrainte d'unicité couvre la
   colonne. **Fusionnée ensuite dans AutoMap** (commit suivant les guides) : l'AutoMap hérité (choix
   par le type : défaut, `NULL`, générateur) disparaît, `auto_map` porte ce comportement sous le nom
@@ -39,8 +42,8 @@ Entre `c7d3dcfd` et `e54ddb1b`, le typecheck du web échoue (le SDK n'a plus les
   **instantané des types** `job_source_columns`, écrit par tout run. `GetPendingMappingChanges`,
   `ReviewMappingChanges`. Anciens `unmapped_passthroughs`, `column_reviews`, acceptations par
   empreinte et codes de validation retirés ; **une seule migration** `20260921100000`.
-- `e54ddb1b` Onglet Review sur le journal (marquer revu avec note, aperçu), cloche et colonne de la
-  liste des jobs. `e70d0ec5` : le transformer se **corrige dans l'onglet** (sélecteur prérempli,
+- Même commit : onglet Review sur le journal (marquer revu avec note, aperçu), cloche et colonne de
+  la liste des jobs. `6e34d49b` : le transformer se **corrige dans l'onglet** (sélecteur prérempli,
   aperçu, « Apply » par colonne ou en lot, RPC `ApplyMappingChanges` qui marque revu dans la même
   transaction et refuse une colonne que le job ne mappe pas). Puis **panneau de décision** par
   changement (transformer, options, aperçu qui se relit, note ; « Keep the run's choice » ou
