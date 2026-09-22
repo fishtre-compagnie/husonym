@@ -11,15 +11,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandler';
+import { cn } from '@/libs/utils';
 import {
   changeLabel,
   columnName,
@@ -52,6 +45,7 @@ import {
 import { CheckCircledIcon } from '@radix-ui/react-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactElement, useMemo, useState } from 'react';
+import { LuPanelRight } from 'react-icons/lu';
 import { toast } from 'sonner';
 import ChangeDecisionPanel from './ChangeDecisionPanel';
 import ReviewChangesDialog from './ReviewChangesDialog';
@@ -64,10 +58,11 @@ interface Props {
 // mapped — with the transformer they chose, or in clear when none applied — the mappings they
 // removed with their column, and the columns whose type moved.
 //
-// Each row says what the run decided, options included, without opening anything. A click opens
-// the change in a panel where the transformer, its options and their effect on the column's
-// values sit together, to keep the run's choice or replace it. The selection is for confirming
-// several changes at once.
+// The changes are grouped by table and read like a diff: each row says what happened and what
+// the run decided, options included, without opening anything. A click opens the change in the
+// panel the source page uses too, where the transformer, its options and their effect on the
+// column's values sit together, to keep the run's choice or replace it — and to walk to the
+// next change without closing. The selection confirms several changes at once.
 export default function MappingChangesCard(props: Props): ReactElement {
   const { jobId } = props;
   const { account } = useAccount();
@@ -118,9 +113,20 @@ export default function MappingChangesCard(props: Props): ReactElement {
     () => [...(data?.changes ?? [])].sort((a, b) => urgency(a) - urgency(b)),
     [data?.changes]
   );
+  // Les changements d'une même table se lisent ensemble : c'est la table qu'on
+  // rouvre ensuite, pas la colonne isolée.
+  const groups = useMemo(() => {
+    const byTable = new Map<string, JobMappingChange[]>();
+    pending.forEach((c) => {
+      const key = `${c.column?.schema ?? ''}.${c.column?.table ?? ''}`;
+      byTable.set(key, [...(byTable.get(key) ?? []), c]);
+    });
+    return [...byTable.entries()];
+  }, [pending]);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reviewing, setReviewing] = useState<JobMappingChange[]>([]);
-  const [opened, setOpened] = useState<JobMappingChange | null>(null);
+  const [openedId, setOpenedId] = useState<string | null>(null);
 
   function transformerName(c: JobMappingChange): string {
     if (!c.transformer?.config?.config.case) {
@@ -207,6 +213,8 @@ export default function MappingChangesCard(props: Props): ReactElement {
   }
 
   const selectedChanges = pending.filter((c) => selected.has(c.id));
+  const position = pending.findIndex((c) => c.id === openedId);
+  const opened = position >= 0 ? pending[position] : null;
 
   return (
     <Card>
@@ -225,126 +233,94 @@ export default function MappingChangesCard(props: Props): ReactElement {
             Nothing waiting: every change the runs made has been reviewed.
           </div>
         ) : (
-          <>
-            <div className="flex flex-row items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={selectedChanges.length === 0}
-                onClick={() => setReviewing(selectedChanges)}
-              >
-                Mark reviewed… ({selectedChanges.length})
-              </Button>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8">
-                    <input
-                      type="checkbox"
-                      aria-label="Select all"
-                      checked={selected.size === pending.length}
-                      onChange={(e) =>
-                        setSelected(
-                          e.target.checked
-                            ? new Set(pending.map((c) => c.id))
-                            : new Set()
-                        )
-                      }
-                    />
-                  </TableHead>
-                  <TableHead>Column</TableHead>
-                  <TableHead>Change</TableHead>
-                  <TableHead>Transformer</TableHead>
-                  <TableHead>When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pending.map((c) => {
-                  const options = summarizeOptions(c.transformer?.config);
-                  return (
-                    <TableRow
-                      key={c.id}
-                      className="cursor-pointer"
-                      onClick={() => setOpened(c)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${columnName(c)}`}
-                          checked={selected.has(c.id)}
-                          onChange={() => toggle(c.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {/* A button, so the change opens from the keyboard too. */}
-                        <button
-                          type="button"
-                          className="text-left hover:underline underline-offset-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpened(c);
-                          }}
-                        >
-                          {columnName(c)}
-                        </button>
-                        <div className="text-muted-foreground">
-                          {c.dataType}
-                        </div>
-                      </TableCell>
-                      <TableCell className="flex flex-col gap-1 items-start">
-                        <Badge variant="outline">{changeLabel(c)}</Badge>
-                        {c.piiCategory && (
-                          <Badge
-                            variant={
-                              c.kind === JobMappingChangeKind.ADDED &&
-                              isPassthrough(c)
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            Personal data: {c.piiCategory}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {c.kind === JobMappingChangeKind.REMOVED ? (
-                          <span className="text-muted-foreground">
-                            was {transformerName(c)}
-                          </span>
-                        ) : isPassthrough(c) ? (
-                          <span className="font-medium">
-                            Passthrough — copied in clear
-                          </span>
-                        ) : (
-                          <span>{transformerName(c)}</span>
-                        )}
-                        {options.length > 0 && (
-                          <div className="text-muted-foreground">
-                            {options.join(' · ')}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {c.createdAt
-                          ? formatDateTime(timestampDate(c.createdAt))
-                          : '—'}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </>
+          <div className="flex flex-col rounded-xl border overflow-hidden">
+            {groups.map(([table, changes]) => (
+              <div key={table} className="flex flex-col">
+                <div className="flex flex-row items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select every change of ${table}`}
+                    checked={changes.every((c) => selected.has(c.id))}
+                    onChange={(e) =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        changes.forEach((c) =>
+                          e.target.checked ? next.add(c.id) : next.delete(c.id)
+                        );
+                        return next;
+                      })
+                    }
+                  />
+                  <span className="font-mono text-xs">{table}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {changes.length} change{changes.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                {changes.map((c) => (
+                  <ChangeRow
+                    key={c.id}
+                    change={c}
+                    isOpened={c.id === openedId}
+                    isSelected={selected.has(c.id)}
+                    onSelect={() => toggle(c.id)}
+                    onOpen={() => setOpenedId(c.id)}
+                    transformerName={transformerName(c)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
+
+      {selectedChanges.length > 0 && (
+        <div className="sticky bottom-4 z-20 flex justify-center pointer-events-none">
+          <div className="pointer-events-auto flex flex-row items-center gap-3 rounded-xl bg-gray-900 dark:bg-gray-800 text-gray-50 px-4 py-2 shadow-lg">
+            <span className="text-sm font-medium">
+              {selectedChanges.length} change
+              {selectedChanges.length === 1 ? '' : 's'} selected
+            </span>
+            <span className="h-5 w-px bg-gray-600" />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setReviewing(selectedChanges)}
+            >
+              Mark reviewed…
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-gray-300 hover:text-gray-50 hover:bg-gray-700"
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {opened && (
         <ChangeDecisionPanel
           key={opened.id}
           change={opened}
-          onClose={() => setOpened(null)}
+          onClose={() => setOpenedId(null)}
           handler={handler}
           sourceConnectionId={sourceConnectionId}
+          navigation={{
+            position: position + 1,
+            total: pending.length,
+            onPrevious:
+              position > 0
+                ? () => setOpenedId(pending[position - 1].id)
+                : undefined,
+            onNext:
+              position < pending.length - 1
+                ? () => setOpenedId(pending[position + 1].id)
+                : undefined,
+          }}
           onReview={(change, note) => review([change], note)}
           onApply={apply}
         />
@@ -360,5 +336,107 @@ export default function MappingChangesCard(props: Props): ReactElement {
         onConfirm={review}
       />
     </Card>
+  );
+}
+
+interface RowProps {
+  change: JobMappingChange;
+  isOpened: boolean;
+  isSelected: boolean;
+  onSelect(): void;
+  onOpen(): void;
+  transformerName: string;
+}
+
+// Une ligne de la revue : ce qui est arrivé à la colonne, ce que le run en a fait,
+// quand. Toutes les lignes ont la même structure, quelle que soit la nature du
+// changement — deux lignes de texte à gauche, deux au milieu, une date à droite.
+function ChangeRow(props: RowProps): ReactElement {
+  const { change, isOpened, isSelected, onSelect, onOpen, transformerName } =
+    props;
+  const options = summarizeOptions(change.transformer?.config);
+  const removed = change.kind === JobMappingChangeKind.REMOVED;
+  const inClear =
+    change.kind === JobMappingChangeKind.ADDED && isPassthrough(change);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className={cn(
+        'flex flex-row items-center gap-3 px-4 h-16 border-b last:border-b-0 cursor-pointer text-left',
+        isOpened ? 'bg-gray-100 dark:bg-gray-800' : 'hover:bg-gray-50'
+      )}
+    >
+      <span onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          aria-label={`Select ${columnName(change)}`}
+          checked={isSelected}
+          onChange={onSelect}
+        />
+      </span>
+      {/* Ce qui est arrivé à la colonne, d'un signe : ajoutée, retirée, ou son type a bougé. */}
+      <span
+        aria-hidden
+        className={cn(
+          'flex items-center justify-center h-6 w-6 rounded-md text-sm font-semibold shrink-0',
+          removed
+            ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+            : change.kind === JobMappingChangeKind.ADDED
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+        )}
+      >
+        {removed ? '−' : change.kind === JobMappingChangeKind.ADDED ? '+' : '~'}
+      </span>
+      <span className="flex flex-col w-56 shrink-0">
+        <span className="font-mono text-xs truncate">
+          {change.column?.column}
+        </span>
+        <span className="text-xs text-muted-foreground truncate">
+          {changeLabel(change)}
+        </span>
+      </span>
+      <span className="flex flex-col w-64 shrink-0">
+        <span className={cn('text-sm truncate', inClear && 'text-amber-700')}>
+          {removed
+            ? `was ${transformerName}`
+            : inClear
+              ? 'Passthrough — copied in clear'
+              : transformerName}
+        </span>
+        <span className="text-xs text-muted-foreground truncate">
+          {options.length > 0
+            ? options.join(' · ')
+            : removed
+              ? 'Mapping removed from the job'
+              : ''}
+        </span>
+      </span>
+      <span className="grow text-xs text-muted-foreground">
+        {change.piiCategory && (
+          <Badge variant={inClear ? 'destructive' : 'secondary'}>
+            Personal data: {change.piiCategory}
+          </Badge>
+        )}
+      </span>
+      <span className="text-xs text-muted-foreground w-40 shrink-0">
+        {change.createdAt
+          ? formatDateTime(timestampDate(change.createdAt))
+          : ''}
+      </span>
+      <LuPanelRight
+        aria-hidden
+        className="h-4 w-4 text-muted-foreground shrink-0"
+      />
+    </div>
   );
 }
