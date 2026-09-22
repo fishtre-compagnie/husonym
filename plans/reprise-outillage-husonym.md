@@ -1,7 +1,7 @@
 # Reprise du chantier « outillage des décisions » — état, décisions, suite
 
 > Document d'entrée pour toute session qui reprend la branche `docs/plan-outillage-husonym` sans
-> contexte. Mis à jour le 2026-09-22. Lire ensuite [outillage-husonym.md](outillage-husonym.md)
+> contexte. Mis à jour le 2026-09-23. Lire ensuite [outillage-husonym.md](outillage-husonym.md)
 > (les sept axes et leurs objections), [reconciliation-job-par-le-run.md](reconciliation-job-par-le-run.md)
 > (le modèle de revue actuel), puis la note mémoire `outillage-husonym-axes`.
 
@@ -9,7 +9,7 @@
 
 ## 1. Où en est la branche
 
-`docs/plan-outillage-husonym` porte **35 commits au-dessus de `main`, rien n'est poussé** (compte
+`docs/plan-outillage-husonym` porte **40 commits au-dessus de `main`, rien n'est poussé** (compte
 exact : `git rev-list --count main..HEAD`). Le nom de
 branche est historique (elle a commencé par le seul document d'axes) : elle porte désormais du code.
 
@@ -49,8 +49,31 @@ la PR ouverte.
   changement (transformer, options, aperçu qui se relit, note ; « Keep the run's choice » ou
   « Apply »), la ligne résumant les options. Les options des transformers sont déclarées **une
   fois** dans `TransformerForms/options/registry.ts` (23 formulaires supprimés) ; `summarizeOptions`
-  en tire le résumé. À étendre à la page Source si le modèle convient (décision de l'utilisateur).
+  en tire le résumé.
 - `0956d6df` Catalogue système sorti en paquet partagé (`internal/transformers/catalog`).
+
+**Une décision par colonne, au même endroit (2026-09-23)** — maquette validée par l'utilisateur
+(canevas Artifact « Décision par colonne — husonym »), puis livrée :
+- `5794af4c` Le cœur de la décision devient un composant partagé,
+  `components/jobs/ColumnDecision/` : `ColumnDecisionFields` (transformer, options **validées comme
+  sur la page d'un transformer**, y compris le code JS — ce que le panneau de la revue ne faisait
+  pas — et aperçu avant/après qui suit les options) et `ColumnDecisionPanel` (le cadre, avec la
+  navigation d'une colonne à l'autre sans refermer).
+- `4052f631` **Page Source** : la cellule Transformer n'est plus un sélecteur tronqué plus un
+  crayon ; elle affiche une pastille (vert anonymisé, ambre donnée personnelle en clair, gris
+  technique), le nom du transformer et le résumé de ses options. La ligne entière ouvre le panneau
+  (`onRowClick` ajouté à `FastTable` — la fonction doit être **stable**, les lignes sont mémoïsées),
+  avec la même icône de panneau à droite de chaque ligne. **La colonne œil est supprimée** : le
+  panneau montre les mêmes valeurs. L'édition en lot quitte la barre d'outils pour une **barre
+  flottante** qui vient avec la sélection et ouvre le même panneau, sans aperçu.
+- `5b503f34` **Onglet Review** : les changements sont **groupés par table**, toutes les lignes ont la
+  même structure (signe `+` / `−` / `~`, colonne, transformer et options, date), la barre de
+  sélection remplace le bouton « Mark reviewed… » posé au-dessus d'une liste vide, et le panneau
+  passe d'un changement au suivant.
+- `0d4a1a1c` La liste des transformers **défile à la molette** dans le panneau (`Popover modal` :
+  le verrou de défilement du Sheet avalait les événements d'un contenu porté hors de son sous-arbre).
+- Éprouvé dans Chrome sur `review-e2e` : ouverture du panneau, changement de transformer, « Apply »
+  qui écrit dans la ligne, et rien de persisté tant qu'on ne presse pas Update.
 
 **Téléphones et formulaires d'options**
 - `91c425ff` Option **`preserve_format`** sur `TransformPhoneNumber` : préfixe (`06`, `+33 6`),
@@ -88,6 +111,8 @@ la PR ouverte.
 - Réconciliation PostgreSQL : **drapeau supprimé**, pas rendu configurable.
 - La destination est **le miroir de la source, suppressions comprises**.
 - Le brouillon JS est **rédigé par un agent** ; le produit lui fournit le prompt.
+- **Une seule entrée par colonne** (2026-09-23) : la ligne se lit, le panneau décide. L'œil et le
+  crayon sont retirés, l'édition en lot vient avec la sélection. Maquette validée avant de coder.
 
 ---
 
@@ -111,9 +136,12 @@ la PR ouverte.
 3. **Message d'erreur vide** des transformers système qui échouent (mise en forme de `jsonanonymizer`,
    préexistant).
 4. **Hook Slack** (optionnel) sur l'apparition de changements à revoir.
-5. Les **cinq questions** encore ouvertes de [outillage-husonym.md](outillage-husonym.md) §6.
-6. **Pousser / ouvrir la PR** — rien de poussé ; attendre la validation de l'utilisateur.
-7. Nettoyer les données de test (§6).
+5. **Avancement de la revue** : la maquette montrait « 1 sur 3 revues » et un filtre
+   « Reviewed ». `GetPendingMappingChanges` ne rend que ce qui reste à revoir : le dénominateur
+   demande d'étendre la RPC aux changements déjà revus. Non fait, décision de l'utilisateur.
+6. Les **cinq questions** encore ouvertes de [outillage-husonym.md](outillage-husonym.md) §6.
+7. **Pousser / ouvrir la PR** — rien de poussé ; attendre la validation de l'utilisateur.
+8. Nettoyer les données de test (§6).
 
 ---
 
