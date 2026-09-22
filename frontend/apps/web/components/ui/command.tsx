@@ -41,6 +41,7 @@ export function CommandDialog({ children, ...props }: CommandDialogProps) {
 
 export function CommandInput({
   className,
+  onKeyDown,
   ...props
 }: React.ComponentPropsWithRef<typeof CommandPrimitive.Input>) {
   return (
@@ -51,6 +52,18 @@ export function CommandInput({
           'flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
+        onKeyDown={(e) => {
+          onKeyDown?.(e);
+          // Home et Fin appartiennent au champ de saisie : elles déplacent le
+          // curseur, et avec Maj elles sélectionnent jusqu'au bout du texte. La
+          // racine de cmdk les intercepte pour aller au premier ou au dernier
+          // élément de la liste, avec un preventDefault inconditionnel (cmdk
+          // 1.1.1) : l'événement ne doit donc pas lui parvenir. Les flèches
+          // restent le moyen de parcourir la liste.
+          if (e.key === 'Home' || e.key === 'End') {
+            e.stopPropagation();
+          }
+        }}
         {...props}
       />
     </div>
