@@ -53,6 +53,23 @@ INSERT INTO husonym_api.user_identity_provider_associations (
 )
 RETURNING *;
 
+-- Refreshes the display identity the provider presents for this subject. Called at every
+-- sign-in, because a name or an address changes on the provider's side and nothing else
+-- would tell us.
+--
+-- A claim the provider did not send leaves the stored value alone: an empty argument is
+-- absence, not erasure. email_verified is the exception -- it is always written, since
+-- losing the assertion has to lower it back to false.
+-- name: SetIdentityProviderProfile :one
+UPDATE husonym_api.user_identity_provider_associations
+SET name = COALESCE(sqlc.narg('name'), name),
+    email = COALESCE(sqlc.narg('email'), email),
+    email_verified = sqlc.arg('emailVerified'),
+    picture = COALESCE(sqlc.narg('picture'), picture),
+    updated_at = CURRENT_TIMESTAMP
+WHERE provider_sub = sqlc.arg('providerSub')
+RETURNING *;
+
 -- name: GetUserIdentityAssociationsByUserIds :many
 SELECT * from husonym_api.user_identity_provider_associations
 WHERE user_id = ANY($1::uuid[]);

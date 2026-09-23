@@ -131,7 +131,11 @@ func (s *Service) SetUser(
 			return nil, husonymerrors.New(err)
 		}
 
-		user, err := s.db.SetUserByAuthSub(ctx, tokenCtxData.AuthUserId)
+		user, err := s.db.SetUserByAuthSub(
+			ctx,
+			tokenCtxData.AuthUserId,
+			s.resolveIdentityProfile(ctx, tokenCtxData),
+		)
 		if err != nil {
 			return nil, husonymerrors.New(err)
 		}
@@ -595,9 +599,9 @@ func (s *Service) GetTeamAccountMembers(
 		return nil, err
 	}
 
-	rbacUsers := []rbac.EntityString{}
-	for _, user := range userIdentities {
-		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(user.UserID))
+	rbacUsers := make([]rbac.EntityString, 0, len(userIdentities))
+	for i := range userIdentities {
+		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(userIdentities[i].UserID))
 	}
 
 	userRoles := s.rbacClient.GetUserRoles(
@@ -630,6 +634,18 @@ func (s *Service) GetTeamAccountMembers(
 			} else {
 				dtoUsers[i].Role = mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED
 			}
+			// What the provider said at sign-in, stored on the association. This is the
+			// nominal path, and it is the same for every OIDC provider.
+			if user.Email.Valid || user.Name.Valid || user.Picture.Valid {
+				dtoUsers[i].Email = user.Email.String
+				dtoUsers[i].Name = user.Name.String
+				dtoUsers[i].Image = user.Picture.String
+				return nil
+			}
+
+			// Nothing stored yet: a user who has not signed in since the profile columns
+			// exist, or a provider that sends no profile at all. Fall back on the
+			// deployment's administration API, which only Auth0 and Keycloak have.
 			if user.ProviderSub == "" {
 				logger.Warn(
 					fmt.Sprintf(
@@ -638,16 +654,15 @@ func (s *Service) GetTeamAccountMembers(
 					),
 				)
 				return nil
-			} else {
-				authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub)
-				if err != nil {
-					logger.Warn(fmt.Sprintf("unable to retrieve user by sub: %s", err.Error()))
-				} else {
-					dtoUsers[i].Email = authuser.Email
-					dtoUsers[i].Name = authuser.Name
-					dtoUsers[i].Image = authuser.Picture
-				}
 			}
+			authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub)
+			if err != nil {
+				logger.Warn(fmt.Sprintf("unable to retrieve user by sub: %s", err.Error()))
+				return nil
+			}
+			dtoUsers[i].Email = authuser.Email
+			dtoUsers[i].Name = authuser.Name
+			dtoUsers[i].Image = authuser.Picture
 			return nil
 		})
 	}

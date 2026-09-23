@@ -10,14 +10,22 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// SetUserByAuthSub finds or creates the user behind an identity provider subject, and
+// refreshes the display identity the provider presents for it.
+//
+// profile may be nil: a deployment whose provider sends no profile claims and exposes no
+// userinfo endpoint still gets its user. The stored values are then left as they are --
+// absence is not erasure.
 func (d *HusonymDb) SetUserByAuthSub(
 	ctx context.Context,
 	authSub string,
+	profile *authmgmt.User,
 ) (*db_queries.HusonymApiUser, error) {
 	var userResp *db_queries.HusonymApiUser
 	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.Serializable}, func(dbtx BaseDBTX) error {
@@ -54,14 +62,43 @@ func (d *HusonymDb) SetUserByAuthSub(
 				}
 				userResp = &user
 			}
-			return nil
+			// The association exists from here on, whichever branch got us here.
+			return setIdentityProviderProfile(ctx, d.Q, dbtx, authSub, profile)
 		}
 		userResp = &user
-		return nil
+		return setIdentityProviderProfile(ctx, d.Q, dbtx, authSub, profile)
 	}); err != nil {
 		return nil, err
 	}
 	return userResp, nil
+}
+
+// setIdentityProviderProfile writes what the provider says of a subject onto its
+// association. It runs in the caller's transaction, so a provider that answers half a
+// profile never leaves a user without one.
+func setIdentityProviderProfile(
+	ctx context.Context,
+	q db_queries.Querier,
+	dbtx BaseDBTX,
+	authSub string,
+	profile *authmgmt.User,
+) error {
+	if profile == nil {
+		return nil
+	}
+	_, err := q.SetIdentityProviderProfile(ctx, dbtx, db_queries.SetIdentityProviderProfileParams{
+		ProviderSub: authSub,
+		Name:        ToNullableText(profile.Name),
+		Email:       ToNullableText(profile.Email),
+		// Always written, never coalesced: an assertion that disappears has to lower the
+		// stored value back to false.
+		EmailVerified: profile.EmailVerified,
+		Picture:       ToNullableText(profile.Picture),
+	})
+	if err != nil && !IsNoRows(err) {
+		return err
+	}
+	return nil
 }
 
 func (d *HusonymDb) SetPersonalAccount(

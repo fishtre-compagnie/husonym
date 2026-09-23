@@ -109,7 +109,7 @@ INSERT INTO husonym_api.user_identity_provider_associations (
 ) VALUES (
   $1, $2
 )
-RETURNING id, user_id, provider_sub, created_at, updated_at
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture
 `
 
 type CreateIdentityProviderAssociationParams struct {
@@ -126,6 +126,10 @@ func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX
 		&i.ProviderSub,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
 	)
 	return i, err
 }
@@ -634,7 +638,7 @@ func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (Husonym
 }
 
 const getUserAssociationByProviderSub = `-- name: GetUserAssociationByProviderSub :one
-SELECT id, user_id, provider_sub, created_at, updated_at from husonym_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture from husonym_api.user_identity_provider_associations
 WHERE provider_sub = $1
 `
 
@@ -647,6 +651,10 @@ func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, 
 		&i.ProviderSub,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
 	)
 	return i, err
 }
@@ -670,7 +678,7 @@ func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub
 }
 
 const getUserIdentitiesByTeamAccount = `-- name: GetUserIdentitiesByTeamAccount :many
-SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at
+SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture
 FROM husonym_api.user_identity_provider_associations aipa
 INNER JOIN husonym_api.account_user_associations aua ON aua.user_id = aipa.user_id
 INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
@@ -692,6 +700,10 @@ func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, a
 			&i.ProviderSub,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
+			&i.Email,
+			&i.EmailVerified,
+			&i.Picture,
 		); err != nil {
 			return nil, err
 		}
@@ -704,7 +716,7 @@ func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, a
 }
 
 const getUserIdentityAssociationsByUserIds = `-- name: GetUserIdentityAssociationsByUserIds :many
-SELECT id, user_id, provider_sub, created_at, updated_at from husonym_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture from husonym_api.user_identity_provider_associations
 WHERE user_id = ANY($1::uuid[])
 `
 
@@ -723,6 +735,10 @@ func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db D
 			&i.ProviderSub,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
+			&i.Email,
+			&i.EmailVerified,
+			&i.Picture,
 		); err != nil {
 			return nil, err
 		}
@@ -735,7 +751,7 @@ func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db D
 }
 
 const getUserIdentityByUserId = `-- name: GetUserIdentityByUserId :one
-SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at FROM husonym_api.user_identity_provider_associations aipa
+SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture FROM husonym_api.user_identity_provider_associations aipa
 WHERE aipa.user_id = $1
 `
 
@@ -748,6 +764,10 @@ func (q *Queries) GetUserIdentityByUserId(ctx context.Context, db DBTX, userID p
 		&i.ProviderSub,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
 	)
 	return i, err
 }
@@ -845,6 +865,55 @@ func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserType,
+	)
+	return i, err
+}
+
+const setIdentityProviderProfile = `-- name: SetIdentityProviderProfile :one
+UPDATE husonym_api.user_identity_provider_associations
+SET name = COALESCE($1, name),
+    email = COALESCE($2, email),
+    email_verified = $3,
+    picture = COALESCE($4, picture),
+    updated_at = CURRENT_TIMESTAMP
+WHERE provider_sub = $5
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture
+`
+
+type SetIdentityProviderProfileParams struct {
+	Name          pgtype.Text
+	Email         pgtype.Text
+	EmailVerified bool
+	Picture       pgtype.Text
+	ProviderSub   string
+}
+
+// Refreshes the display identity the provider presents for this subject. Called at every
+// sign-in, because a name or an address changes on the provider's side and nothing else
+// would tell us.
+//
+// A claim the provider did not send leaves the stored value alone: an empty argument is
+// absence, not erasure. email_verified is the exception -- it is always written, since
+// losing the assertion has to lower it back to false.
+func (q *Queries) SetIdentityProviderProfile(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	row := db.QueryRow(ctx, setIdentityProviderProfile,
+		arg.Name,
+		arg.Email,
+		arg.EmailVerified,
+		arg.Picture,
+		arg.ProviderSub,
+	)
+	var i HusonymApiUserIdentityProviderAssociation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProviderSub,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
 	)
 	return i, err
 }

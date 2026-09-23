@@ -100,8 +100,9 @@ func (c *AdminClient) GetUserBySub(ctx context.Context, sub string) (*authmgmt.U
 		return nil, fmt.Errorf("unable to unmarshal keycloak user data: %w", err)
 	}
 	return &authmgmt.User{
-		Name:    kcuser.Name(),
-		Email:   kcuser.Email,
-		Picture: "",
+		Name:          kcuser.Name(),
+		Email:         kcuser.Email,
+		EmailVerified: kcuser.EmailVerified,
+		Picture:       "",
 	}, nil
 }

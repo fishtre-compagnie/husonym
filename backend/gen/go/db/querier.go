@@ -122,6 +122,14 @@ type Querier interface {
 	SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error)
 	SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error)
 	SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
+	// Refreshes the display identity the provider presents for this subject. Called at every
+	// sign-in, because a name or an address changes on the provider's side and nothing else
+	// would tell us.
+	//
+	// A claim the provider did not send leaves the stored value alone: an empty argument is
+	// absence, not erasure. email_verified is the exception -- it is always written, since
+	// losing the assertion has to lower it back to false.
+	SetIdentityProviderProfile(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
 	// The run's write: no user to record in updated_by_id (the worker's key has none), and the
 	// journal of the run says who changed what.

@@ -118,6 +118,16 @@ func ToNullableString(text pgtype.Text) *string {
 	return nil
 }
 
+// ToNullableText turns a string into a nullable column value, reading the empty string as
+// NULL. It is what tells a query that says COALESCE($1, col) to keep what the column
+// holds: a claim an identity provider did not send is an absence, not an erasure.
+func ToNullableText(value string) pgtype.Text {
+	if value == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: value, Valid: true}
+}
+
 func Int16ToBool(val int16) bool {
 	return val > 0
 }

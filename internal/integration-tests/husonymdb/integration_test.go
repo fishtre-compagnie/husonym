@@ -8,6 +8,7 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
@@ -87,16 +88,16 @@ func (s *IntegrationTestSuite) Test_SetUserByAuth0Id() {
 	t := s.T()
 
 	t.Run("new user", func(t *testing.T) {
-		resp, err := s.db.SetUserByAuthSub(s.ctx, "foo")
+		resp, err := s.db.SetUserByAuthSub(s.ctx, "foo", nil)
 		requireNoErrResp(t, resp, err)
 		require.NotNil(t, resp.ID)
 	})
 
 	t.Run("idempotent", func(t *testing.T) {
-		resp, err := s.db.SetUserByAuthSub(s.ctx, "myid")
+		resp, err := s.db.SetUserByAuthSub(s.ctx, "myid", nil)
 		requireNoErrResp(t, resp, err)
 
-		resp2, err := s.db.SetUserByAuthSub(s.ctx, "myid")
+		resp2, err := s.db.SetUserByAuthSub(s.ctx, "myid", nil)
 		requireNoErrResp(t, resp2, err)
 
 		uid1 := husonymdb.UUIDString(resp.ID)
@@ -105,12 +106,106 @@ func (s *IntegrationTestSuite) Test_SetUserByAuth0Id() {
 	})
 }
 
+func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
+	t := s.T()
+
+	t.Run("stores what the provider sent, on the first sign-in", func(t *testing.T) {
+		sub := "profile-first-signin"
+		resp, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Name:          "Ada Lovelace",
+			Email:         "ada@example.com",
+			EmailVerified: true,
+			Picture:       "https://example.com/ada.png",
+		})
+		requireNoErrResp(t, resp, err)
+
+		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+		require.Equal(t, "Ada Lovelace", association.Name.String)
+		require.Equal(t, "ada@example.com", association.Email.String)
+		require.True(t, association.EmailVerified)
+		require.Equal(t, "https://example.com/ada.png", association.Picture.String)
+	})
+
+	t.Run("refreshes it on the next sign-in", func(t *testing.T) {
+		sub := "profile-refresh"
+		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Name:          "Ada Lovelace",
+			Email:         "ada@example.com",
+			EmailVerified: true,
+		})
+		require.NoError(t, err)
+
+		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Name:          "Ada King",
+			Email:         "ada.king@example.com",
+			EmailVerified: true,
+		})
+		require.NoError(t, err)
+
+		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+		require.Equal(t, "Ada King", association.Name.String)
+		require.Equal(t, "ada.king@example.com", association.Email.String)
+	})
+
+	t.Run("an assertion that disappears lowers email_verified back to false", func(t *testing.T) {
+		sub := "profile-unverified"
+		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Email:         "ada@example.com",
+			EmailVerified: true,
+		})
+		require.NoError(t, err)
+
+		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Email:         "ada@example.com",
+			EmailVerified: false,
+		})
+		require.NoError(t, err)
+
+		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+		require.False(t, association.EmailVerified)
+	})
+
+	t.Run("a claim the provider did not send is an absence, not an erasure", func(t *testing.T) {
+		sub := "profile-partial"
+		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Name:    "Ada Lovelace",
+			Email:   "ada@example.com",
+			Picture: "https://example.com/ada.png",
+		})
+		require.NoError(t, err)
+
+		// A provider that answers only the address this time.
+		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+			Email: "ada@example.com",
+		})
+		require.NoError(t, err)
+
+		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+		require.Equal(t, "Ada Lovelace", association.Name.String)
+		require.Equal(t, "https://example.com/ada.png", association.Picture.String)
+	})
+
+	t.Run("no profile at all still signs the user in", func(t *testing.T) {
+		resp, err := s.db.SetUserByAuthSub(s.ctx, "profile-absent", nil)
+		requireNoErrResp(t, resp, err)
+
+		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, "profile-absent")
+		require.NoError(t, err)
+		require.False(t, association.Name.Valid)
+		require.False(t, association.EmailVerified)
+	})
+}
+
 func (s *IntegrationTestSuite) setUser(
 	t testing.TB,
 	ctx context.Context,
 	sub string,
 ) *db_queries.HusonymApiUser {
-	resp, err := s.db.SetUserByAuthSub(ctx, sub)
+	resp, err := s.db.SetUserByAuthSub(ctx, sub, nil)
 	requireNoErrResp(t, resp, err)
 	return resp
 }

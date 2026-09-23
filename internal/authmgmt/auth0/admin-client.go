@@ -34,8 +34,9 @@ func (c *Auth0MgmtClient) GetUserBySub(ctx context.Context, id string) (*authmgm
 		return nil, err
 	}
 	return &authmgmt.User{
-		Name:    user.GetName(),
-		Email:   user.GetEmail(),
-		Picture: user.GetPicture(),
+		Name:          user.GetName(),
+		Email:         user.GetEmail(),
+		EmailVerified: user.GetEmailVerified(),
+		Picture:       user.GetPicture(),
 	}, nil
 }
