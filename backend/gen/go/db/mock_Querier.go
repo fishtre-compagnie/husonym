@@ -408,6 +408,78 @@ func (_c *MockQuerier_CreateAccountInvite_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// CreateAccountSettingIfAbsent provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CreateAccountSettingIfAbsent(ctx context.Context, db DBTX, arg CreateAccountSettingIfAbsentParams) (HusonymApiAccountSetting, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateAccountSettingIfAbsent")
+	}
+
+	var r0 HusonymApiAccountSetting
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CreateAccountSettingIfAbsentParams) (HusonymApiAccountSetting, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CreateAccountSettingIfAbsentParams) HusonymApiAccountSetting); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiAccountSetting)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, CreateAccountSettingIfAbsentParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CreateAccountSettingIfAbsent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateAccountSettingIfAbsent'
+type MockQuerier_CreateAccountSettingIfAbsent_Call struct {
+	*mock.Call
+}
+
+// CreateAccountSettingIfAbsent is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg CreateAccountSettingIfAbsentParams
+func (_e *MockQuerier_Expecter) CreateAccountSettingIfAbsent(ctx any, db any, arg any) *MockQuerier_CreateAccountSettingIfAbsent_Call {
+	return &MockQuerier_CreateAccountSettingIfAbsent_Call{Call: _e.mock.On("CreateAccountSettingIfAbsent", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_CreateAccountSettingIfAbsent_Call) Run(run func(ctx context.Context, db DBTX, arg CreateAccountSettingIfAbsentParams)) *MockQuerier_CreateAccountSettingIfAbsent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 CreateAccountSettingIfAbsentParams
+		if args[2] != nil {
+			arg2 = args[2].(CreateAccountSettingIfAbsentParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CreateAccountSettingIfAbsent_Call) Return(husonymApiAccountSetting HusonymApiAccountSetting, err error) *MockQuerier_CreateAccountSettingIfAbsent_Call {
+	_c.Call.Return(husonymApiAccountSetting, err)
+	return _c
+}
+
+func (_c *MockQuerier_CreateAccountSettingIfAbsent_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CreateAccountSettingIfAbsentParams) (HusonymApiAccountSetting, error)) *MockQuerier_CreateAccountSettingIfAbsent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateAccountUserAssociation provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) CreateAccountUserAssociation(ctx context.Context, db DBTX, arg CreateAccountUserAssociationParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -2437,6 +2509,152 @@ func (_c *MockQuerier_GetAccountOnboardingConfig_Call) Return(accountOnboardingC
 }
 
 func (_c *MockQuerier_GetAccountOnboardingConfig_Call) RunAndReturn(run func(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.AccountOnboardingConfig, error)) *MockQuerier_GetAccountOnboardingConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountSettingByType provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetAccountSettingByType(ctx context.Context, db DBTX, arg GetAccountSettingByTypeParams) (HusonymApiAccountSetting, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountSettingByType")
+	}
+
+	var r0 HusonymApiAccountSetting
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetAccountSettingByTypeParams) (HusonymApiAccountSetting, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetAccountSettingByTypeParams) HusonymApiAccountSetting); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiAccountSetting)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetAccountSettingByTypeParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetAccountSettingByType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountSettingByType'
+type MockQuerier_GetAccountSettingByType_Call struct {
+	*mock.Call
+}
+
+// GetAccountSettingByType is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetAccountSettingByTypeParams
+func (_e *MockQuerier_Expecter) GetAccountSettingByType(ctx any, db any, arg any) *MockQuerier_GetAccountSettingByType_Call {
+	return &MockQuerier_GetAccountSettingByType_Call{Call: _e.mock.On("GetAccountSettingByType", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetAccountSettingByType_Call) Run(run func(ctx context.Context, db DBTX, arg GetAccountSettingByTypeParams)) *MockQuerier_GetAccountSettingByType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetAccountSettingByTypeParams
+		if args[2] != nil {
+			arg2 = args[2].(GetAccountSettingByTypeParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountSettingByType_Call) Return(husonymApiAccountSetting HusonymApiAccountSetting, err error) *MockQuerier_GetAccountSettingByType_Call {
+	_c.Call.Return(husonymApiAccountSetting, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountSettingByType_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetAccountSettingByTypeParams) (HusonymApiAccountSetting, error)) *MockQuerier_GetAccountSettingByType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountSettings provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetAccountSettings(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountSetting, error) {
+	ret := _mock.Called(ctx, db, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountSettings")
+	}
+
+	var r0 []HusonymApiAccountSetting
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiAccountSetting, error)); ok {
+		return returnFunc(ctx, db, accountID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiAccountSetting); ok {
+		r0 = returnFunc(ctx, db, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiAccountSetting)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetAccountSettings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountSettings'
+type MockQuerier_GetAccountSettings_Call struct {
+	*mock.Call
+}
+
+// GetAccountSettings is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountID pgtype.UUID
+func (_e *MockQuerier_Expecter) GetAccountSettings(ctx any, db any, accountID any) *MockQuerier_GetAccountSettings_Call {
+	return &MockQuerier_GetAccountSettings_Call{Call: _e.mock.On("GetAccountSettings", ctx, db, accountID)}
+}
+
+func (_c *MockQuerier_GetAccountSettings_Call) Run(run func(ctx context.Context, db DBTX, accountID pgtype.UUID)) *MockQuerier_GetAccountSettings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountSettings_Call) Return(husonymApiAccountSettings []HusonymApiAccountSetting, err error) *MockQuerier_GetAccountSettings_Call {
+	_c.Call.Return(husonymApiAccountSettings, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountSettings_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountSetting, error)) *MockQuerier_GetAccountSettings_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8541,6 +8759,78 @@ func (_c *MockQuerier_UpdateUserDefinedTransformer_Call) Return(husonymApiTransf
 }
 
 func (_c *MockQuerier_UpdateUserDefinedTransformer_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (HusonymApiTransformer, error)) *MockQuerier_UpdateUserDefinedTransformer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertAccountSetting provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertAccountSetting")
+	}
+
+	var r0 HusonymApiAccountSetting
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertAccountSettingParams) (HusonymApiAccountSetting, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertAccountSettingParams) HusonymApiAccountSetting); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiAccountSetting)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, UpsertAccountSettingParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_UpsertAccountSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertAccountSetting'
+type MockQuerier_UpsertAccountSetting_Call struct {
+	*mock.Call
+}
+
+// UpsertAccountSetting is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg UpsertAccountSettingParams
+func (_e *MockQuerier_Expecter) UpsertAccountSetting(ctx any, db any, arg any) *MockQuerier_UpsertAccountSetting_Call {
+	return &MockQuerier_UpsertAccountSetting_Call{Call: _e.mock.On("UpsertAccountSetting", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_UpsertAccountSetting_Call) Run(run func(ctx context.Context, db DBTX, arg UpsertAccountSettingParams)) *MockQuerier_UpsertAccountSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 UpsertAccountSettingParams
+		if args[2] != nil {
+			arg2 = args[2].(UpsertAccountSettingParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertAccountSetting_Call) Return(husonymApiAccountSetting HusonymApiAccountSetting, err error) *MockQuerier_UpsertAccountSetting_Call {
+	_c.Call.Return(husonymApiAccountSetting, err)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertAccountSetting_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)) *MockQuerier_UpsertAccountSetting_Call {
 	_c.Call.Return(run)
 	return _c
 }

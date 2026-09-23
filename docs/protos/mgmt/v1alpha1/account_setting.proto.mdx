@@ -1,0 +1,83 @@
+---
+title: account_setting.proto
+hide_title: true
+---
+
+import { ProtoMessage, ProtoServiceMethod, ProtoEnum } from '@theme/ProtoFile';
+
+# `account_setting.proto`
+_**path** mgmt/v1alpha1/account_setting.proto_
+
+_**package** mgmt.v1alpha1_
+
+
+
+---
+
+## Messages
+
+
+### `AccountSetting`
+<ProtoMessage key={0} message={{"name":"AccountSetting","longName":"AccountSetting","fullName":"mgmt.v1alpha1.AccountSetting","description":"A setting of an account: a value that varies by account, part of which may be a secret,\nand that a human sets once.\n\nDeployment settings — what holds for everybody, such as the Temporal url or the limits —\nstay in environment variables: they are infrastructure, not product.","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The account this setting belongs to.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"config","description":"The setting itself. An account holds at most one of each variant.","label":"","type":"AccountSettingConfig","longType":"AccountSettingConfig","fullType":"mgmt.v1alpha1.AccountSettingConfig","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#accountsettingconfig"},{"name":"secret_fingerprints","description":"The fingerprint of each secret the setting carries, by the path of its field\n(\"anonymization_consistency.derivation_key\").\n\nA response carries these instead of the secrets, which are absent from it: a\nfingerprint answers the only real need — telling whether two deployments share a\nsecret, or whether the one just written really replaced the one that was there —\nwhile showing the last characters of a secret would only make it easier to guess.","label":"repeated","type":"SecretFingerprintsEntry","longType":"AccountSetting.SecretFingerprintsEntry","fullType":"mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry","ismap":true,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#accountsettingsecretfingerprintsentry"},{"name":"created_at","description":"The time this setting was created.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"updated_at","description":"The last time this setting was updated.","label":"","type":"Timestamp","longType":"google.protobuf.Timestamp","fullType":"google.protobuf.Timestamp","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"created_by_user_id","description":"The user that created this setting. Empty when a run generated it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"updated_by_user_id","description":"The user that last updated this setting. Empty when a run generated it.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `AccountSetting.SecretFingerprintsEntry`
+<ProtoMessage key={1} message={{"name":"SecretFingerprintsEntry","longName":"AccountSetting.SecretFingerprintsEntry","fullName":"mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"key","description":"","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"value","description":"","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `AccountSettingConfig`
+<ProtoMessage key={2} message={{"name":"AccountSettingConfig","longName":"AccountSettingConfig","fullName":"mgmt.v1alpha1.AccountSettingConfig","description":"The setting itself, one variant per kind of setting.\n\nAdding a setting is adding a variant: neither the table, nor the RPCs, nor the access\nrules move.","hasExtensions":false,"hasFields":true,"hasOneofs":true,"extensions":[],"fields":[{"name":"anonymization_consistency","description":"What the account's deterministic anonymization derives from.","label":"","type":"AnonymizationConsistency","longType":"AnonymizationConsistency","fullType":"mgmt.v1alpha1.AnonymizationConsistency","ismap":false,"isoneof":true,"oneofdecl":"config","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#anonymizationconsistency"}]}} />
+
+
+### `AnonymizationConsistency`
+<ProtoMessage key={3} message={{"name":"AnonymizationConsistency","longName":"AnonymizationConsistency","fullName":"mgmt.v1alpha1.AnonymizationConsistency","description":"What an account's deterministic anonymization derives from.","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"derivation_key","description":"The key both engines derive their deterministic outputs from: Athanor for all of its\ntransformers, Benthos for the permutation of TransformPhoneNumber in preserve_format.\n\nIt is generated rather than typed. It is given only for a reason: taking over the key\nof a deployment being replaced, or replaying outputs produced elsewhere. Replacing it\nchanges every output of the account, so the destinations already filled no longer\nmatch what a new run writes.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetAccountConsistencyKeyRequest`
+<ProtoMessage key={4} message={{"name":"GetAccountConsistencyKeyRequest","longName":"GetAccountConsistencyKeyRequest","fullName":"mgmt.v1alpha1.GetAccountConsistencyKeyRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The account to read the key of.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"generate_if_absent","description":"Whether to generate a key for the account when it has none.\n\nA run asks for one only when nothing else gives it a key: the deployment variable\nstill wins over an account with no setting, so a deployment that carries one keeps\nproducing the outputs it produced. Where no variable is set, every account gets its\nown key on its first run.","label":"","type":"bool","longType":"bool","fullType":"bool","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetAccountConsistencyKeyResponse`
+<ProtoMessage key={5} message={{"name":"GetAccountConsistencyKeyResponse","longName":"GetAccountConsistencyKeyResponse","fullName":"mgmt.v1alpha1.GetAccountConsistencyKeyResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":true,"extensions":[],"fields":[{"name":"key","description":"The key, in clear. Absent when the account has none — and, when one was asked for,\nwhen the deployment has no way to keep a secret.","label":"optional","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":true,"oneofdecl":"_key","defaultValue":""}]}} />
+
+
+### `GetAccountSettingsRequest`
+<ProtoMessage key={6} message={{"name":"GetAccountSettingsRequest","longName":"GetAccountSettingsRequest","fullName":"mgmt.v1alpha1.GetAccountSettingsRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The account to read the settings of.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+
+### `GetAccountSettingsResponse`
+<ProtoMessage key={7} message={{"name":"GetAccountSettingsResponse","longName":"GetAccountSettingsResponse","fullName":"mgmt.v1alpha1.GetAccountSettingsResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"settings","description":"The settings of the account, without their secrets.","label":"repeated","type":"AccountSetting","longType":"AccountSetting","fullType":"mgmt.v1alpha1.AccountSetting","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#accountsetting"}]}} />
+
+
+### `SetAccountSettingRequest`
+<ProtoMessage key={8} message={{"name":"SetAccountSettingRequest","longName":"SetAccountSettingRequest","fullName":"mgmt.v1alpha1.SetAccountSettingRequest","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"account_id","description":"The account to write the setting for.","label":"","type":"string","longType":"string","fullType":"string","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""},{"name":"config","description":"The setting to write. It replaces the one the account holds of that kind, if any.","label":"","type":"AccountSettingConfig","longType":"AccountSettingConfig","fullType":"mgmt.v1alpha1.AccountSettingConfig","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#accountsettingconfig"}]}} />
+
+
+### `SetAccountSettingResponse`
+<ProtoMessage key={9} message={{"name":"SetAccountSettingResponse","longName":"SetAccountSettingResponse","fullName":"mgmt.v1alpha1.SetAccountSettingResponse","description":"","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"setting","description":"The setting as it now stands, without its secrets.","label":"","type":"AccountSetting","longType":"AccountSetting","fullType":"mgmt.v1alpha1.AccountSetting","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/account_setting.proto#accountsetting"}]}} />
+
+---
+## Services
+
+
+### `AccountSettingService`
+
+Holds the settings of an account.
+
+
+#### `GetAccountSettings`
+<ProtoServiceMethod key={'GetAccountSettings-0'} method={{"name":"GetAccountSettings","description":"Retrieves the settings of an account, without their secrets.","requestType":"GetAccountSettingsRequest","requestLongType":"GetAccountSettingsRequest","requestFullType":"mgmt.v1alpha1.GetAccountSettingsRequest","requestStreaming":false,"responseType":"GetAccountSettingsResponse","responseLongType":"GetAccountSettingsResponse","responseFullType":"mgmt.v1alpha1.GetAccountSettingsResponse","responseStreaming":false,"options":{"idempotency_level":"NO_SIDE_EFFECTS"},"requestTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#getaccountsettingsrequest","responseTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#getaccountsettingsresponse"}} />
+
+
+#### `SetAccountSetting`
+<ProtoServiceMethod key={'SetAccountSetting-1'} method={{"name":"SetAccountSetting","description":"Writes a setting of an account, replacing the one it holds of that kind.","requestType":"SetAccountSettingRequest","requestLongType":"SetAccountSettingRequest","requestFullType":"mgmt.v1alpha1.SetAccountSettingRequest","requestStreaming":false,"responseType":"SetAccountSettingResponse","responseLongType":"SetAccountSettingResponse","responseFullType":"mgmt.v1alpha1.SetAccountSettingResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#setaccountsettingrequest","responseTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#setaccountsettingresponse"}} />
+
+
+#### `GetAccountConsistencyKey`
+<ProtoServiceMethod key={'GetAccountConsistencyKey-2'} method={{"name":"GetAccountConsistencyKey","description":"Retrieves the key an account's deterministic anonymization derives from, in clear, and\ngenerates one when asked and the account has none.\n\nFor the worker of a run: it already reads the passwords of the databases it\nsynchronizes, so the key of the account it runs for adds no surface.","requestType":"GetAccountConsistencyKeyRequest","requestLongType":"GetAccountConsistencyKeyRequest","requestFullType":"mgmt.v1alpha1.GetAccountConsistencyKeyRequest","requestStreaming":false,"responseType":"GetAccountConsistencyKeyResponse","responseLongType":"GetAccountConsistencyKeyResponse","responseFullType":"mgmt.v1alpha1.GetAccountConsistencyKeyResponse","responseStreaming":false,"requestTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#getaccountconsistencykeyrequest","responseTypeLink":"/api/mgmt/v1alpha1/account_setting.proto#getaccountconsistencykeyresponse"}} />
+
+
+---
+
+
+  

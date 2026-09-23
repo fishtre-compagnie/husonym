@@ -8,6 +8,7 @@ import (
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
@@ -32,10 +33,11 @@ type Activity struct {
 
 	pageLimit int
 
-	// hasConsistencyKey says whether the deployment can derive a key for deterministic
-	// pseudonymization. AutoMap reads it: it does not map a column with an option that needs
-	// one when there is none.
-	hasConsistencyKey bool
+	// keys resolves the key an account derives deterministic pseudonymization from. AutoMap
+	// reads whether there is one: it does not map a column with an option that needs a key
+	// when the account has none. Asking here is also what gives an account its own key on
+	// its first run, before any mapping is decided.
+	keys *consistencykey.Resolver
 }
 
 func New(
@@ -45,7 +47,7 @@ func New(
 	sqlmanager sql_manager.SqlManagerClient,
 	metricsEnabled bool,
 	pageLimit int,
-	hasConsistencyKey bool,
+	keys *consistencykey.Resolver,
 ) *Activity {
 	return &Activity{
 		jobclient:         jobclient,
@@ -54,7 +56,7 @@ func New(
 		sqlmanager:        sqlmanager,
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
-		hasConsistencyKey: hasConsistencyKey,
+		keys:              keys,
 	}
 }
 
@@ -93,7 +95,7 @@ func (a *Activity) GenerateBenthosConfigs(
 		info.WorkflowExecution.RunID,
 		a.metricsEnabled,
 		a.pageLimit,
-		a.hasConsistencyKey,
+		a.keys,
 	)
 	slogger := temporallogger.NewSlogger(logger)
 	return bbuilder.GenerateBenthosConfigsNew(

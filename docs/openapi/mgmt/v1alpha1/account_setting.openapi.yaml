@@ -1,0 +1,403 @@
+openapi: 3.1.0
+info:
+  summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
+  version: "0.5"
+  termsOfService: "https://husonym.com/terms-of-service"
+  contact:
+    name: Husonym Support
+    email: support@husonym.com
+  license:
+    name: MIT
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
+  title: mgmt.v1alpha1
+externalDocs:
+  description: API and SDK Documentation
+  url: https://docs.husonym.com/api
+servers:
+  - url: https://husonym-api.svcs.husonym.com
+    description: Husonym Cloud
+  - url: http://localhost:{port}
+    description: Development
+    variables:
+      port:
+        default: "8080"
+        description: The port to use for the development server
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      examples:
+        - 1
+      title: Connect-Protocol-Version
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      examples:
+        - 1000
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          type: object
+          title: Debug
+          additionalProperties: true
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: A point in time in RFC 3339 format, with up to nanosecond precision. Output uses UTC (`Z`); input may use an offset from UTC.
+    mgmt.v1alpha1.AccountSetting:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          description: The account this setting belongs to.
+        config:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountSettingConfig'
+          title: config
+          description: The setting itself. An account holds at most one of each variant.
+        secretFingerprints:
+          type: object
+          title: secret_fingerprints
+          additionalProperties:
+            type: string
+            title: value
+          description: |-
+            The fingerprint of each secret the setting carries, by the path of its field
+             ("anonymization_consistency.derivation_key").
+
+             A response carries these instead of the secrets, which are absent from it: a
+             fingerprint answers the only real need — telling whether two deployments share a
+             secret, or whether the one just written really replaced the one that was there —
+             while showing the last characters of a secret would only make it easier to guess.
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: created_at
+          description: The time this setting was created.
+        updatedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: updated_at
+          description: The last time this setting was updated.
+        createdByUserId:
+          type: string
+          title: created_by_user_id
+          description: The user that created this setting. Empty when a run generated it.
+        updatedByUserId:
+          type: string
+          title: updated_by_user_id
+          description: The user that last updated this setting. Empty when a run generated it.
+      title: AccountSetting
+      additionalProperties: false
+      description: |-
+        A setting of an account: a value that varies by account, part of which may be a secret,
+         and that a human sets once.
+
+         Deployment settings — what holds for everybody, such as the Temporal url or the limits —
+         stay in environment variables: they are infrastructure, not product.
+    mgmt.v1alpha1.AccountSettingConfig:
+      type: object
+      allOf:
+        - oneOf:
+            - required:
+                - anonymizationConsistency
+      anyOf:
+        - type: object
+          properties:
+            anonymizationConsistency:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.AnonymizationConsistency'
+              title: anonymization_consistency
+              description: What the account's deterministic anonymization derives from.
+          title: anonymization_consistency
+      unevaluatedProperties: false
+      title: AccountSettingConfig
+      description: |-
+        The setting itself, one variant per kind of setting.
+
+         Adding a setting is adding a variant: neither the table, nor the RPCs, nor the access
+         rules move.
+    mgmt.v1alpha1.AnonymizationConsistency:
+      type: object
+      properties:
+        derivationKey:
+          type: string
+          title: derivation_key
+          minLength: 1
+          description: |-
+            The key both engines derive their deterministic outputs from: Athanor for all of its
+             transformers, Benthos for the permutation of TransformPhoneNumber in preserve_format.
+
+             It is generated rather than typed. It is given only for a reason: taking over the key
+             of a deployment being replaced, or replaying outputs produced elsewhere. Replacing it
+             changes every output of the account, so the destinations already filled no longer
+             match what a new run writes.
+      title: AnonymizationConsistency
+      additionalProperties: false
+      description: What an account's deterministic anonymization derives from.
+    mgmt.v1alpha1.GetAccountConsistencyKeyRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account to read the key of.
+        generateIfAbsent:
+          type: boolean
+          title: generate_if_absent
+          description: |-
+            Whether to generate a key for the account when it has none.
+
+             A run asks for one only when nothing else gives it a key: the deployment variable
+             still wins over an account with no setting, so a deployment that carries one keeps
+             producing the outputs it produced. Where no variable is set, every account gets its
+             own key on its first run.
+      title: GetAccountConsistencyKeyRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetAccountConsistencyKeyResponse:
+      type: object
+      properties:
+        key:
+          type:
+            - string
+            - "null"
+          title: key
+          description: |-
+            The key, in clear. Absent when the account has none — and, when one was asked for,
+             when the deployment has no way to keep a secret.
+      title: GetAccountConsistencyKeyResponse
+      additionalProperties: false
+    mgmt.v1alpha1.GetAccountSettingsRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account to read the settings of.
+      title: GetAccountSettingsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetAccountSettingsResponse:
+      type: object
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.AccountSetting'
+          title: settings
+          description: The settings of the account, without their secrets.
+      title: GetAccountSettingsResponse
+      additionalProperties: false
+    mgmt.v1alpha1.SetAccountSettingRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account to write the setting for.
+        config:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountSettingConfig'
+          title: config
+          description: The setting to write. It replaces the one the account holds of that kind, if any.
+      title: SetAccountSettingRequest
+      required:
+        - config
+      additionalProperties: false
+    mgmt.v1alpha1.SetAccountSettingResponse:
+      type: object
+      properties:
+        setting:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountSetting'
+          title: setting
+          description: The setting as it now stands, without its secrets.
+      title: SetAccountSettingResponse
+      additionalProperties: false
+security:
+  - BearerAuth: []
+paths:
+  /mgmt.v1alpha1.AccountSettingService/GetAccountConsistencyKey:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountSettingService
+      summary: |-
+        Retrieves the key an account's deterministic anonymization derives from, in clear, and
+         generates one when asked and the account has none.
+      description: |-
+        For the worker of a run: it already reads the passwords of the databases it
+         synchronizes, so the key of the account it runs for adds no surface.
+      operationId: mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountConsistencyKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountConsistencyKeyResponse'
+  /mgmt.v1alpha1.AccountSettingService/GetAccountSettings:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountSettingService
+      summary: GetAccountSettings
+      description: Retrieves the settings of an account, without their secrets.
+      operationId: mgmt.v1alpha1.AccountSettingService.GetAccountSettings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountSettingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountSettingsResponse'
+  /mgmt.v1alpha1.AccountSettingService/SetAccountSetting:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountSettingService
+      summary: SetAccountSetting
+      description: Writes a setting of an account, replacing the one it holds of that kind.
+      operationId: mgmt.v1alpha1.AccountSettingService.SetAccountSetting
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountSettingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountSettingResponse'
+tags:
+  - name: mgmt.v1alpha1.AccountSettingService
+    description: Holds the settings of an account.

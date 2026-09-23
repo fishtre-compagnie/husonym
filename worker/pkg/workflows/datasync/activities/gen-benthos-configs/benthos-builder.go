@@ -16,6 +16,7 @@ import (
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	selectquerybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 
@@ -37,7 +38,7 @@ type benthosBuilder struct {
 
 	pageLimit int
 
-	hasConsistencyKey bool
+	keys *consistencykey.Resolver
 }
 
 func newBenthosBuilder(
@@ -53,7 +54,7 @@ func newBenthosBuilder(
 
 	pageLimit int,
 
-	hasConsistencyKey bool,
+	keys *consistencykey.Resolver,
 ) *benthosBuilder {
 	return &benthosBuilder{
 		sqlmanagerclient:  sqlmanagerclient,
@@ -65,7 +66,7 @@ func newBenthosBuilder(
 		runId:             runId,
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
-		hasConsistencyKey: hasConsistencyKey,
+		keys:              keys,
 	}
 }
 
@@ -129,6 +130,15 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	if err != nil {
 		return nil, fmt.Errorf("unable to get job by id: %w", err)
 	}
+
+	// Whether this account has anything to derive from — and, on a deployment where no
+	// variable carries a key, what gives it one. Asked here, before AutoMap decides
+	// anything: a mapping written to the job is one the runs after this one will keep.
+	consistencyKey, err := b.keys.ForAccount(ctx, job.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+
 	sourceConnection, err := shared.GetJobSourceConnection(ctx, job.GetSource(), b.connclient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get connection by id: %w", err)
@@ -169,7 +179,7 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 			metrics.TemporalRunId: bb_shared.WithEnvInterpolation(metrics.TemporalRunIdEnvKey),
 		},
 		PageLimit:         &b.pageLimit,
-		HasConsistencyKey: b.hasConsistencyKey,
+		HasConsistencyKey: consistencyKey != "",
 	}
 	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
 	if err != nil {

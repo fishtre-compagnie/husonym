@@ -36,6 +36,7 @@ import (
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
@@ -364,6 +365,11 @@ func serve(ctx context.Context) error {
 		husonymurl,
 		connectInterceptorOption,
 	)
+	accountsettingclient := mgmtv1alpha1connect.NewAccountSettingServiceClient(
+		httpclient,
+		husonymurl,
+		connectInterceptorOption,
+	)
 
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
 	sqlconnmanager := connectionmanager.NewConnectionManager(sqlprovider.NewProvider(sqlConnector))
@@ -389,22 +395,25 @@ func serve(ctx context.Context) error {
 	}
 	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
 	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
+	// The key a run derives its deterministic outputs from is the account's, resolved per
+	// run: its own setting first, then this variable, then a key drawn for it on its first
+	// run where no variable carries one.
+	deploymentConsistencyKey := consistencyKey(logger)
+	consistencyKeys := consistencykey.NewResolver(accountsettingclient, deploymentConsistencyKey)
+	if deploymentConsistencyKey == "" {
+		logger.Info("ANONYMIZATION_CONSISTENCY_KEY is not set: each account derives from a key " +
+			"of its own, drawn on its first run. Where the API cannot keep a secret " +
+			"(HUSONYM_SYM_ENCRYPTION_PASSWORD) there is no key at all: jobs running on the " +
+			"Athanor engine fail, and a phone number mapped under Benthos keeps neither its " +
+			"format nor its consistency")
+	}
 	engineConfig := sync_activity.EngineConfig{
 		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
 			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
 			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
 		),
-		ConsistencyKey: consistencyKey(logger),
-	}
-	if engineConfig.ConsistencyKey == "" {
-		// A job may pick Athanor in the UI whatever the default of the deployment: warn
-		// at startup rather than on its first run. Benthos derives from the same key the
-		// permutation of TransformPhoneNumber with preserve_format, and AutoMap leaves that
-		// option off while there is no key rather than mapping a column it cannot anonymize.
-		logger.Warn("ANONYMIZATION_CONSISTENCY_KEY is not set: jobs running on the Athanor " +
-			"engine will fail, and a phone number mapped under Benthos keeps neither its " +
-			"format nor its consistency")
+		Keys: consistencyKeys,
 	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
@@ -437,7 +446,7 @@ func serve(ctx context.Context) error {
 		sqlmanager, sqlconnmanager, engineConfig.Policy, cascadelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
-		engineConfig.ConsistencyKey != "",
+		consistencyKeys,
 	)
 
 	if cascadelicense.IsValid() {
