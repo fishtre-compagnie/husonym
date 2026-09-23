@@ -3,6 +3,7 @@ package v1alpha1_useraccountservice
 import (
 	"testing"
 
+	authjwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/stretchr/testify/require"
 )
@@ -87,5 +88,37 @@ func Test_completeDisplayIdentity(t *testing.T) {
 		)
 
 		require.False(t, got.EmailVerified)
+	})
+}
+
+func Test_identityOf(t *testing.T) {
+	const deploymentIssuer = "https://idp.example.com/"
+
+	newService := func(configured string) *Service {
+		return &Service{cfg: &Config{DeploymentIssuer: configured}}
+	}
+	token := func(issuer string) *authjwt.TokenContextData {
+		return &authjwt.TokenContextData{AuthIssuer: issuer, AuthUserId: "sub-1"}
+	}
+
+	t.Run("carries the pair the token was validated with", func(t *testing.T) {
+		got := newService(deploymentIssuer).identityOf(token(deploymentIssuer))
+
+		require.Equal(t, deploymentIssuer, got.Issuer)
+		require.Equal(t, "sub-1", got.Subject)
+	})
+
+	// Identities recorded before issuers were belong to whoever the deployment was
+	// pointed at then. Letting any other issuer claim one hands it the users it names.
+	t.Run("only the deployment's own issuer may adopt a legacy identity", func(t *testing.T) {
+		require.True(t, newService(deploymentIssuer).identityOf(token(deploymentIssuer)).MayAdoptLegacy)
+		require.False(t, newService(deploymentIssuer).identityOf(token("https://other.example.com/")).MayAdoptLegacy)
+	})
+
+	t.Run("a deployment with no issuer configured adopts nothing", func(t *testing.T) {
+		// Otherwise an empty configured issuer would match an empty token issuer, and
+		// "no issuer" would adopt everything.
+		require.False(t, newService("").identityOf(token("")).MayAdoptLegacy)
+		require.False(t, newService("").identityOf(token(deploymentIssuer)).MayAdoptLegacy)
 	})
 }

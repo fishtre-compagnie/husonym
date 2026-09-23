@@ -102,8 +102,18 @@ type TokenContextData struct {
 
 	Claims *CustomClaims
 
+	// AuthUserId is the sub claim: who the provider says this is, in ITS OWN namespace.
+	// It identifies nobody on its own -- whoever declares a provider chooses the subjects
+	// it issues -- so it is only ever used together with AuthIssuer.
 	AuthUserId string
+	// AuthIssuer is the validated iss claim: which provider vouches for AuthUserId.
+	AuthIssuer string
 	Scopes     []string // Contains Scopes & Permissions
+}
+
+// Identity returns the pair that identifies a user. Neither half means anything alone.
+func (t *TokenContextData) Identity() (issuer, subject string) {
+	return t.AuthIssuer, t.AuthUserId
 }
 
 func (t *TokenContextData) HasScope(scope string) bool {
@@ -143,7 +153,6 @@ func (j *Client) InjectTokenCtx(
 	}
 
 	scopes := getCombinedScopesAndPermissions(claims.Scope, claims.Permissions)
-	userId := parsedToken.RegisteredClaims.Subject
 
 	return SetTokenData(ctx, &TokenContextData{
 		ParsedToken: parsedToken,
@@ -151,7 +160,10 @@ func (j *Client) InjectTokenCtx(
 
 		Claims: claims,
 
-		AuthUserId: userId,
+		AuthUserId: parsedToken.RegisteredClaims.Subject,
+		// The validator has already checked this against what the deployment accepts, so
+		// it is the issuer the token was verified against and not merely what it claimed.
+		AuthIssuer: parsedToken.RegisteredClaims.Issuer,
 		Scopes:     scopes,
 	}), nil
 }

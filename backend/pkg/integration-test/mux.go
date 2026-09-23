@@ -47,7 +47,12 @@ import (
 )
 
 var (
-	validAuthUser = &authmgmt.User{Name: "foo", Email: "bar", Picture: "baz"}
+	// TestIssuer is the issuer the fake tokens below carry, and what the services are
+	// configured to expect. A token with no issuer is refused now, as a real one would
+	// be: an identity is a pair, and the tests have to exercise the real shape.
+	TestIssuer = "https://idp.test.husonym.dev/"
+
+	validAuthUser = &authmgmt.User{Name: "foo", Email: "bar", EmailVerified: true, Picture: "baz"}
 
 	authinterceptor = auth_interceptor.NewInterceptor(
 		func(ctx context.Context, header http.Header, spec connect.Spec) (context.Context, error) {
@@ -65,7 +70,11 @@ var (
 			}
 			return auth_jwt.SetTokenData(ctx, &auth_jwt.TokenContextData{
 				AuthUserId: authuserid,
-				Claims:     &auth_jwt.CustomClaims{Email: &validAuthUser.Email},
+				AuthIssuer: TestIssuer,
+				Claims: &auth_jwt.CustomClaims{
+					Email:         &validAuthUser.Email,
+					EmailVerified: utils.LenientBool(validAuthUser.EmailVerified),
+				},
 			}), nil
 		},
 	)
@@ -237,6 +246,7 @@ func (s *HusonymApiTestClient) setupMux(
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
 			IsAuthEnabled:            isAuthEnabled,
+			DeploymentIssuer:         TestIssuer,
 			IsHusonymCloud:           isHusonymCloud,
 			DefaultMaxAllowedRecords: &maxAllowed,
 		},

@@ -545,6 +545,7 @@ func serve(ctx context.Context) error {
 		IsAuthEnabled:            isAuthEnabled,
 		IsHusonymCloud:           ncloudlicense.IsValid(),
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
+		DeploymentIssuer:         getDeploymentIssuer(),
 	}, db, temporalConfigProvider, authclient, authadminclient, billingClient, rbacclient, cascadelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
@@ -1121,6 +1122,16 @@ func getAuthExpectedIssUrl() *string {
 		return nil
 	}
 	return &iss
+}
+
+// getDeploymentIssuer returns the issuer tokens of this deployment are expected to carry:
+// what the validator is configured with, which is AUTH_EXPECTED_ISS where it is set and
+// AUTH_BASEURL otherwise -- the same fallback auth_jwt.New applies.
+func getDeploymentIssuer() string {
+	if iss := getAuthExpectedIssUrl(); iss != nil {
+		return *iss
+	}
+	return getAuthBaseUrl()
 }
 
 func getAuthClientIdSecretMap() map[string]string {

@@ -80,10 +80,19 @@ func (s *Service) GetUser(
 			),
 		)
 	} else if tokenctxResp.JwtContextData != nil {
-		user, err := s.db.Q.GetUserAssociationByProviderSub(ctx, s.db.Db, tokenctxResp.JwtContextData.AuthUserId)
+		identity := s.identityOf(tokenctxResp.JwtContextData)
+		user, err := s.db.Q.GetUserAssociationByIdentity(ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: identity.Subject,
+			ProviderIss: identity.Issuer,
+		})
 		if err != nil && !husonymdb.IsNoRows(err) {
 			return nil, husonymerrors.New(err)
 		} else if err != nil && husonymdb.IsNoRows(err) {
+			return nil, husonymerrors.NewNotFound("unable to find user")
+		}
+		// A row recorded before issuers were is only this user's if the deployment's own
+		// issuer is the one presenting it. Adopting it is SetUser's job, not this one's.
+		if user.ProviderIss == "" && !identity.MayAdoptLegacy {
 			return nil, husonymerrors.NewNotFound("unable to find user")
 		}
 
@@ -132,9 +141,13 @@ func (s *Service) SetUser(
 			return nil, husonymerrors.New(err)
 		}
 
-		user, err := s.db.SetUserByAuthSub(
+		if err := s.refuseApplicationToken(tokenCtxData); err != nil {
+			return nil, err
+		}
+
+		user, err := s.db.SetUserByIdentity(
 			ctx,
-			tokenCtxData.AuthUserId,
+			s.identityOf(tokenCtxData),
 			s.resolveIdentityProfile(ctx, tokenCtxData),
 		)
 		if err != nil {
@@ -762,6 +775,11 @@ func (s *Service) InviteUserToTeamAccount(
 		req.Msg.GetEmail(),
 		expiresAt,
 		role,
+		// The issuer the invitation may be accepted from. It is a property of the
+		// account, not of whoever sends the invitation -- which is why it is the
+		// deployment's issuer and not the sender's, and why it will become the account's
+		// own the day an account declares one.
+		s.cfg.DeploymentIssuer,
 	)
 	if err != nil {
 		return nil, err
@@ -876,28 +894,30 @@ func (s *Service) AcceptTeamAccountInvite(
 		)
 	}
 
-	var email *string
-	if tokenctxResp.JwtContextData.Claims != nil &&
-		tokenctxResp.JwtContextData.Claims.Email != nil {
-		email = tokenctxResp.JwtContextData.Claims.Email
-	} else {
-		userinfo, err := s.authclient.GetUserInfo(ctx, tokenctxResp.JwtContextData.RawToken)
-		if err != nil {
-			return nil, err
-		}
-		// should we check if email is verified here? maybe in the future
-		if userinfo.Email == "" {
-			return nil, husonymerrors.NewInternalError("retrieved user info but email was not present")
-		}
-		email = &userinfo.Email
-	}
-	if email == nil {
+	// An invitation is matched on an email address, and an address is only worth matching
+	// on if the provider vouched for it. Without that, an account that declares its own
+	// provider mints a token carrying somebody else's address and walks into an account it
+	// was never invited to. The provider that vouches has to be the right one too, which
+	// is what the issuer on the invitation is for.
+	profile := s.resolveIdentityProfile(ctx, tokenctxResp.JwtContextData)
+	if profile == nil || profile.Email == "" {
 		return nil, husonymerrors.NewUnauthenticated(
-			"unable to find email to valid to add user to account",
+			"unable to find the email address this invitation would be accepted for",
+		)
+	}
+	if !profile.EmailVerified {
+		return nil, husonymerrors.NewForbidden(
+			"the identity provider does not assert that this email address is verified, so it cannot be used to accept an invitation",
 		)
 	}
 
-	validateResp, err := s.db.ValidateInviteAddUserToAccount(ctx, userUuid, req.Msg.Token, *email)
+	validateResp, err := s.db.ValidateInviteAddUserToAccount(
+		ctx,
+		userUuid,
+		req.Msg.Token,
+		profile.Email,
+		s.identityOf(tokenctxResp.JwtContextData),
+	)
 	if err != nil {
 		return nil, err
 	}

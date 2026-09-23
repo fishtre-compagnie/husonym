@@ -6,6 +6,8 @@ import (
 	authjwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 // isDisplayIdentityComplete reports whether every field a members list shows is filled,
@@ -88,4 +90,38 @@ func (s *Service) resolveIdentityProfile(
 		EmailVerified: bool(userinfo.EmailVerified),
 		Picture:       userinfo.Picture,
 	}
+}
+
+// identityOf turns a validated token into the pair that identifies its bearer.
+//
+// MayAdoptLegacy is true only for the deployment's own issuer. Identities recorded before
+// issuers were belong to whoever the deployment was pointed at then; letting any other
+// issuer claim one would hand it the users it names.
+func (s *Service) identityOf(tokenCtxData *authjwt.TokenContextData) husonymdb.Identity {
+	issuer, subject := tokenCtxData.Identity()
+	return husonymdb.Identity{
+		Issuer:  issuer,
+		Subject: subject,
+		// An empty deployment issuer adopts nothing: it means the deployment has no
+		// issuer configured, so there is no "own" issuer to be.
+		MayAdoptLegacy: s.cfg.DeploymentIssuer != "" && issuer == s.cfg.DeploymentIssuer,
+	}
+}
+
+// refuseApplicationToken rejects a token that has no human behind it, before it can bring
+// a user into existence.
+//
+// A daemon holding client credentials for this API gets a token whose subject is the
+// service principal, not a person. Signing that in would mint a Husonym user -- and a
+// personal account with it -- for every such application in the tenant. The claim is
+// Entra's; elsewhere it is absent, which is why this reads as "refuse what says it is an
+// application" and not "require what says it is a person": a provider that says nothing
+// must keep working.
+func (s *Service) refuseApplicationToken(tokenCtxData *authjwt.TokenContextData) error {
+	if tokenCtxData.Claims.IsApplicationToken() {
+		return husonymerrors.NewForbidden(
+			"this token was issued to an application rather than to a person, and cannot be used to create a user",
+		)
+	}
+	return nil
 }

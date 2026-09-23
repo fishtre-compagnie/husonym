@@ -118,6 +118,26 @@ Today, this client only requires minimal access to the API to read users.
 For Auth0, the service account should have the `read:users` scope under the `Auth0 Management API` audience.
 For Keycloak, the `view-users` scope should be added to the service account roles, which can be found under the `realm-management` client scopes.
 
+## What Husonym requires of a token
+
+Two things, beyond a valid signature, an expected issuer and an expected audience.
+
+**A token must carry an issuer.** A user is identified by the pair (issuer, subject), not
+by the subject alone: whoever operates an identity provider chooses the subjects it
+issues, so a subject only means something under the provider that minted it. Tokens
+predating this requirement are adopted at their owner's next sign-in, and only by the
+issuer the deployment is configured with.
+
+**Accepting an invitation requires a verified address.** An invitation is matched on an
+email address, and an address is only worth matching on if the provider asserts it
+verified it — `email_verified`, in the token or at the `userinfo` endpoint. A provider
+that never asserts it will have its users refused at that step; the rest of the product is
+unaffected. The invitation also records the issuer it may be accepted from, so a token
+from another provider carrying the same address does not open the account.
+
+A token that states it was issued to an application rather than to a person (`idtyp`) is
+refused before it can create a user. A provider that does not state it is unaffected.
+
 ## Starting Husonym in Auth Mode
 
 > **NB:** This requires a valid Husonym Enterprise license to be present in the API container. If you would like to try this out, please contact us.

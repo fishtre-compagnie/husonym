@@ -84,20 +84,28 @@ func TestIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
+const testIssuer = "https://idp.example.com/"
+
+// testIdentity is what every existing case means: the deployment's own issuer, which is
+// the only one that may adopt a row recorded before issuers were.
+func testIdentity(subject string) husonymdb.Identity {
+	return husonymdb.Identity{Issuer: testIssuer, Subject: subject, MayAdoptLegacy: true}
+}
+
 func (s *IntegrationTestSuite) Test_SetUserByAuth0Id() {
 	t := s.T()
 
 	t.Run("new user", func(t *testing.T) {
-		resp, err := s.db.SetUserByAuthSub(s.ctx, "foo", nil)
+		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("foo"), nil)
 		requireNoErrResp(t, resp, err)
 		require.NotNil(t, resp.ID)
 	})
 
 	t.Run("idempotent", func(t *testing.T) {
-		resp, err := s.db.SetUserByAuthSub(s.ctx, "myid", nil)
+		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("myid"), nil)
 		requireNoErrResp(t, resp, err)
 
-		resp2, err := s.db.SetUserByAuthSub(s.ctx, "myid", nil)
+		resp2, err := s.db.SetUserByIdentity(s.ctx, testIdentity("myid"), nil)
 		requireNoErrResp(t, resp2, err)
 
 		uid1 := husonymdb.UUIDString(resp.ID)
@@ -106,12 +114,12 @@ func (s *IntegrationTestSuite) Test_SetUserByAuth0Id() {
 	})
 }
 
-func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
+func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 	t := s.T()
 
 	t.Run("stores what the provider sent, on the first sign-in", func(t *testing.T) {
 		sub := "profile-first-signin"
-		resp, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Name:          "Ada Lovelace",
 			Email:         "ada@example.com",
 			EmailVerified: true,
@@ -119,7 +127,7 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 		})
 		requireNoErrResp(t, resp, err)
 
-		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.Equal(t, "Ada Lovelace", association.Name.String)
 		require.Equal(t, "ada@example.com", association.Email.String)
@@ -129,21 +137,21 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 
 	t.Run("refreshes it on the next sign-in", func(t *testing.T) {
 		sub := "profile-refresh"
-		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Name:          "Ada Lovelace",
 			Email:         "ada@example.com",
 			EmailVerified: true,
 		})
 		require.NoError(t, err)
 
-		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err = s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Name:          "Ada King",
 			Email:         "ada.king@example.com",
 			EmailVerified: true,
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.Equal(t, "Ada King", association.Name.String)
 		require.Equal(t, "ada.king@example.com", association.Email.String)
@@ -151,26 +159,26 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 
 	t.Run("an assertion that disappears lowers email_verified back to false", func(t *testing.T) {
 		sub := "profile-unverified"
-		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Email:         "ada@example.com",
 			EmailVerified: true,
 		})
 		require.NoError(t, err)
 
-		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err = s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Email:         "ada@example.com",
 			EmailVerified: false,
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.False(t, association.EmailVerified)
 	})
 
 	t.Run("a claim the provider did not send is an absence, not an erasure", func(t *testing.T) {
 		sub := "profile-partial"
-		_, err := s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Name:    "Ada Lovelace",
 			Email:   "ada@example.com",
 			Picture: "https://example.com/ada.png",
@@ -178,12 +186,12 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 		require.NoError(t, err)
 
 		// A provider that answers only the address this time.
-		_, err = s.db.SetUserByAuthSub(s.ctx, sub, &authmgmt.User{
+		_, err = s.db.SetUserByIdentity(s.ctx, testIdentity(sub), &authmgmt.User{
 			Email: "ada@example.com",
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.Equal(t, "Ada Lovelace", association.Name.String)
 		require.Equal(t, "https://example.com/ada.png", association.Picture.String)
@@ -199,16 +207,16 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 			EmailVerified: true,
 			Picture:       "https://example.com/ada.png",
 		}
-		_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 		require.NoError(t, err)
 
-		before, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		before, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 
-		_, err = s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		_, err = s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 		require.NoError(t, err)
 
-		after, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		after, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.Equal(
 			t,
@@ -221,13 +229,13 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 	t.Run("concurrent sign-ins of the same user do not collide", func(t *testing.T) {
 		sub := "profile-concurrent"
 		profile := &authmgmt.User{Name: "Ada Lovelace", Email: "ada@example.com"}
-		_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 		require.NoError(t, err)
 
 		group := new(errgroup.Group)
 		for range 8 {
 			group.Go(func() error {
-				_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+				_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 				return err
 			})
 		}
@@ -235,10 +243,10 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 	})
 
 	t.Run("no profile at all still signs the user in", func(t *testing.T) {
-		resp, err := s.db.SetUserByAuthSub(s.ctx, "profile-absent", nil)
+		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("profile-absent"), nil)
 		requireNoErrResp(t, resp, err)
 
-		association, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, "profile-absent")
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: "profile-absent", ProviderIss: testIssuer})
 		require.NoError(t, err)
 		require.False(t, association.Name.Valid)
 		require.False(t, association.EmailVerified)
@@ -250,7 +258,7 @@ func (s *IntegrationTestSuite) setUser(
 	ctx context.Context,
 	sub string,
 ) *db_queries.HusonymApiUser {
-	resp, err := s.db.SetUserByAuthSub(ctx, sub, nil)
+	resp, err := s.db.SetUserByIdentity(ctx, testIdentity(sub), nil)
 	requireNoErrResp(t, resp, err)
 	return resp
 }
@@ -496,6 +504,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccountInvite() {
 			"foo2@example.com",
 			getFutureTs(t, 1*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite, err)
 	})
@@ -508,6 +517,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccountInvite() {
 			"foo2@example.com",
 			getFutureTs(t, 48*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite, err)
 
@@ -518,6 +528,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccountInvite() {
 			"foo2@example.com",
 			getFutureTs(t, 48*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite2, err)
 		// Add time here as the expired invites as updated to CURRENT_TIMESTAMP, so this reduces flakiness
@@ -539,6 +550,7 @@ func (s *IntegrationTestSuite) Test_CreateTeamAccountInvite() {
 			"foo@example.com",
 			getFutureTs(t, 1*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireErrResp(t, invite, err)
 		forbiddin := husonymerrors.NewForbidden("")
@@ -561,6 +573,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			"foo2@example.com",
 			getFutureTs(t, 24*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite, err)
 
@@ -571,6 +584,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			user2.ID,
 			invite.Token,
 			"foo2@example.com",
+			testIdentity(""),
 		)
 		requireNoErrResp(t, accountId, err)
 	})
@@ -583,6 +597,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			"foo3@example.com",
 			getFutureTs(t, -1*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite, err)
 
@@ -593,6 +608,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			user3.ID,
 			invite.Token,
 			"foo3@example.com",
+			testIdentity(""),
 		)
 		require.Error(t, err)
 		require.Nil(t, verifyResp)
@@ -608,6 +624,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			"foo4@example.com",
 			getFutureTs(t, -1*time.Hour),
 			dbViewerRole,
+			testIssuer,
 		)
 		requireNoErrResp(t, invite, err)
 
@@ -618,6 +635,7 @@ func (s *IntegrationTestSuite) Test_ValidateInviteAddUserToAccount() {
 			user4.ID,
 			invite.Token,
 			"blah@example.com",
+			testIdentity(""),
 		)
 		require.Error(t, err)
 		require.Nil(t, verifyResp)
@@ -776,5 +794,204 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 			},
 		}, false, user.ID)
 		require.NoError(t, err)
+	})
+}
+
+// The property this whole change exists for: whoever declares a provider controls the
+// subjects it issues, so the same subject from two providers must be two people.
+func (s *IntegrationTestSuite) Test_SetUserByIdentity_IssuerIsPartOfTheKey() {
+	t := s.T()
+	const sharedSub = "1234567890"
+
+	t.Run("the same subject from two issuers is two users", func(t *testing.T) {
+		first, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: "https://first.example.com/", Subject: sharedSub,
+		}, nil)
+		requireNoErrResp(t, first, err)
+
+		second, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: "https://second.example.com/", Subject: sharedSub,
+		}, nil)
+		requireNoErrResp(t, second, err)
+
+		require.NotEqual(
+			t,
+			husonymdb.UUIDString(first.ID),
+			husonymdb.UUIDString(second.ID),
+			"a hostile provider minting an existing subject must not be handed that user",
+		)
+	})
+
+	t.Run("the same identity twice is one user", func(t *testing.T) {
+		identity := husonymdb.Identity{Issuer: "https://first.example.com/", Subject: "stable"}
+
+		first, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+		requireNoErrResp(t, first, err)
+		second, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+		requireNoErrResp(t, second, err)
+
+		require.Equal(t, husonymdb.UUIDString(first.ID), husonymdb.UUIDString(second.ID))
+	})
+}
+
+// A row written before this migration names no issuer. It belongs to whoever the
+// deployment was pointed at then, and to nobody else.
+func (s *IntegrationTestSuite) Test_SetUserByIdentity_LegacyAdoption() {
+	t := s.T()
+
+	legacyUser := func(t *testing.T, sub string) pgtype.UUID {
+		t.Helper()
+		user, err := s.db.Q.CreateNonMachineUser(s.ctx, s.db.Db)
+		require.NoError(t, err)
+		_, err = s.db.Q.CreateIdentityProviderAssociation(s.ctx, s.db.Db, db_queries.CreateIdentityProviderAssociationParams{
+			UserID:      user.ID,
+			ProviderSub: sub,
+			ProviderIss: "",
+		})
+		require.NoError(t, err)
+		return user.ID
+	}
+
+	t.Run("the deployment's own issuer adopts it, keeping the user", func(t *testing.T) {
+		sub := "legacy-adopted"
+		existing := legacyUser(t, sub)
+
+		got, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: testIssuer, Subject: sub, MayAdoptLegacy: true,
+		}, nil)
+		requireNoErrResp(t, got, err)
+		require.Equal(
+			t,
+			husonymdb.UUIDString(existing),
+			husonymdb.UUIDString(got.ID),
+			"adoption must keep the user, not make a second one",
+		)
+
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: sub, ProviderIss: testIssuer,
+		})
+		require.NoError(t, err)
+		require.Equal(t, testIssuer, association.ProviderIss, "adoption must be recorded")
+	})
+
+	t.Run("any other issuer is refused", func(t *testing.T) {
+		sub := "legacy-refused"
+		existing := legacyUser(t, sub)
+
+		_, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: "https://hostile.example.com/", Subject: sub, MayAdoptLegacy: false,
+		}, nil)
+		require.ErrorIs(t, err, husonymdb.ErrIdentityNotAdoptable)
+
+		// And it changed nothing.
+		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: sub, ProviderIss: "",
+		})
+		require.NoError(t, err)
+		require.Empty(t, association.ProviderIss)
+		require.Equal(t, husonymdb.UUIDString(existing), husonymdb.UUIDString(association.UserID))
+	})
+
+	t.Run("adoption happens once, and the second issuer gets its own user", func(t *testing.T) {
+		sub := "legacy-then-other"
+		legacyUser(t, sub)
+
+		adopted, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: testIssuer, Subject: sub, MayAdoptLegacy: true,
+		}, nil)
+		requireNoErrResp(t, adopted, err)
+
+		other, err := s.db.SetUserByIdentity(s.ctx, husonymdb.Identity{
+			Issuer: "https://other.example.com/", Subject: sub,
+		}, nil)
+		requireNoErrResp(t, other, err)
+
+		require.NotEqual(t, husonymdb.UUIDString(adopted.ID), husonymdb.UUIDString(other.ID))
+	})
+}
+
+// The review of PR #76 named this one: the association kept pointing at a user that no
+// longer existed, so every sign-in made another orphan.
+func (s *IntegrationTestSuite) Test_SetUserByIdentity_ReplacesAMissingUser() {
+	t := s.T()
+	identity := husonymdb.Identity{Issuer: testIssuer, Subject: "user-vanished"}
+
+	first, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+	requireNoErrResp(t, first, err)
+
+	_, err = s.db.Db.Exec(s.ctx, "DELETE FROM husonym_api.users WHERE id = $1", first.ID)
+	require.NoError(t, err)
+
+	second, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+	requireNoErrResp(t, second, err)
+	require.NotEqual(t, husonymdb.UUIDString(first.ID), husonymdb.UUIDString(second.ID))
+
+	third, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+	requireNoErrResp(t, third, err)
+	require.Equal(
+		t,
+		husonymdb.UUIDString(second.ID),
+		husonymdb.UUIDString(third.ID),
+		"the association must follow the replacement, or every sign-in makes another orphan",
+	)
+}
+
+// An invitation says which person; the issuer says whose word we take for it.
+func (s *IntegrationTestSuite) Test_ValidateInvite_BoundToItsIssuer() {
+	t := s.T()
+
+	newInvite := func(t *testing.T, email, issuer string) (string, pgtype.UUID) {
+		t.Helper()
+		sender := s.setUser(t, s.ctx, "invite-sender-"+email)
+		account, err := s.db.CreateTeamAccount(s.ctx, sender.ID, "team-"+email, testutil.GetTestLogger(t))
+		requireNoErrResp(t, account, err)
+		invite, err := s.db.CreateTeamAccountInvite(
+			s.ctx, account.ID, sender.ID, email, getFutureTs(t, time.Hour), dbViewerRole, issuer,
+		)
+		requireNoErrResp(t, invite, err)
+		return invite.Token, account.ID
+	}
+
+	t.Run("the issuer it was created for accepts it", func(t *testing.T) {
+		token, accountId := newInvite(t, "a@example.com", testIssuer)
+		guest := s.setUser(t, s.ctx, "guest-a")
+
+		resp, err := s.db.ValidateInviteAddUserToAccount(
+			s.ctx, guest.ID, token, "a@example.com",
+			husonymdb.Identity{Issuer: testIssuer, Subject: "guest-a"},
+		)
+		requireNoErrResp(t, resp, err)
+		require.Equal(t, husonymdb.UUIDString(accountId), husonymdb.UUIDString(resp.AccountId))
+	})
+
+	// The takeover the review found: another provider vouching for the same address.
+	t.Run("another issuer is refused, same address", func(t *testing.T) {
+		token, _ := newInvite(t, "b@example.com", testIssuer)
+		guest := s.setUser(t, s.ctx, "guest-b")
+
+		_, err := s.db.ValidateInviteAddUserToAccount(
+			s.ctx, guest.ID, token, "b@example.com",
+			husonymdb.Identity{Issuer: "https://hostile.example.com/", Subject: "guest-b"},
+		)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "identity provider it was issued for")
+	})
+
+	t.Run("an invitation naming no issuer is accepted only by the deployment's own", func(t *testing.T) {
+		token, _ := newInvite(t, "c@example.com", "")
+		guest := s.setUser(t, s.ctx, "guest-c")
+
+		_, err := s.db.ValidateInviteAddUserToAccount(
+			s.ctx, guest.ID, token, "c@example.com",
+			husonymdb.Identity{Issuer: "https://hostile.example.com/", Subject: "guest-c", MayAdoptLegacy: false},
+		)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "predates issuer recording")
+
+		resp, err := s.db.ValidateInviteAddUserToAccount(
+			s.ctx, guest.ID, token, "c@example.com",
+			husonymdb.Identity{Issuer: testIssuer, Subject: "guest-c", MayAdoptLegacy: true},
+		)
+		requireNoErrResp(t, resp, err)
 	})
 }

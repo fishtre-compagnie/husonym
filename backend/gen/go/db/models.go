@@ -61,6 +61,8 @@ type HusonymApiAccountInvite struct {
 	UpdatedAt    pgtype.Timestamp
 	ExpiresAt    pgtype.Timestamp
 	Role         pgtype.Int4
+	// The issuer a token must carry to accept this invitation. Empty for an invitation created before issuers were recorded, which any issuer of the deployment may still accept.
+	ProviderIss string
 }
 
 // Stores the settings of an account: a value that varies by account, part of which may be a secret, and that a human sets once
@@ -230,4 +232,6 @@ type HusonymApiUserIdentityProviderAssociation struct {
 	// Whether the provider asserts it verified this address. False means no proof, including for rows written before the column existed.
 	EmailVerified bool
 	Picture       pgtype.Text
+	// The iss claim of the token this identity was seen in. Empty for a row recorded before issuers were, adopted at the next sign-in by the deployment issuer only.
+	ProviderIss string
 }
