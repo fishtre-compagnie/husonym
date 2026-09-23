@@ -9,24 +9,24 @@ import { ReactElement } from 'react';
 // Libellés lisibles des catégories détectées (backend pkg/piidetect + entités Presidio).
 const CATEGORY_LABELS: Record<string, string> = {
   email: 'Email',
-  phone_number: 'Téléphone',
-  person_first_name: 'Prénom',
-  person_last_name: 'Nom',
-  person_full_name: 'Nom',
-  username: 'Identifiant',
-  street_address: 'Adresse',
-  city: 'Ville',
-  state: 'Région',
-  postal_code: 'Code postal',
-  country: 'Pays',
-  ssn: 'N° sécurité sociale',
-  nir: 'N° sécurité sociale',
+  phone_number: 'Phone number',
+  person_first_name: 'First name',
+  person_last_name: 'Last name',
+  person_full_name: 'Full name',
+  username: 'Username',
+  street_address: 'Street address',
+  city: 'City',
+  state: 'State',
+  postal_code: 'Postal code',
+  country: 'Country',
+  ssn: 'Social security number',
+  nir: 'Social security number',
   iban: 'IBAN',
   siret: 'SIRET',
-  credit_card: 'Carte bancaire',
-  ip_address: 'Adresse IP',
-  gender: 'Genre',
-  birth_date: 'Date de naissance',
+  credit_card: 'Credit card',
+  ip_address: 'IP address',
+  gender: 'Gender',
+  birth_date: 'Date of birth',
   date: 'Date',
 };
 
@@ -34,10 +34,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 // l'utilisateur : ce qui compte pour lui est de savoir à quel point le résultat
 // est fiable, pas le détail de l'implémentation.
 const ENGINE_LABELS: Record<number, string> = {
-  [PiiDetectionMethod.COLUMN_NAME]: 'dictionnaire',
-  [PiiDetectionMethod.CHECKSUM]: 'clé de contrôle',
-  [PiiDetectionMethod.CONTENT]: 'IA',
-  [PiiDetectionMethod.FORMAT]: 'analyse de format',
+  [PiiDetectionMethod.COLUMN_NAME]: 'the dictionary',
+  [PiiDetectionMethod.CHECKSUM]: 'a checksum',
+  [PiiDetectionMethod.CONTENT]: 'AI',
+  [PiiDetectionMethod.FORMAT]: 'format analysis',
 };
 
 interface Props {
@@ -90,14 +90,16 @@ export default function RgpdCell({
   // Une phrase, trois variantes. Le détail de la preuve (nombre de valeurs
   // vérifiées, formats candidats...) est volontairement omis : l'utilisateur a
   // besoin de savoir quoi faire, pas comment le calcul a été mené.
-  const source = engine ? ` Reconnue par ${engine}` : '';
+  // Le point est porté par le fragment, pas par la phrase : autrement, un moteur
+  // absent laissait un point suivi d'une virgule au milieu de l'infobulle.
+  const source = engine ? ` Recognized by ${engine}.` : '';
   const tooltip = needsReview
-    ? `Donnée RGPD.${source}, mais ambiguïté.`
+    ? `GDPR data, but ambiguous.${source}`
     : nonTraite
       ? hasSuggestion
-        ? `Donnée RGPD.${source}, mais non anonymisée.`
-        : `Donnée RGPD.${source}, mais aucun transformer compatible.`
-      : `Donnée RGPD.${source}.`;
+        ? `GDPR data, but not anonymized.${source}`
+        : `GDPR data, but no compatible transformer.${source}`
+      : `GDPR data.${source}`;
 
   return (
     <span
@@ -126,7 +128,7 @@ export default function RgpdCell({
       ) : (
         <CheckCircledIcon className="h-3.5 w-3.5" />
       )}
-      {needsReview ? 'À vérifier' : nonTraite ? 'Non traité' : 'RGPD'}
+      {needsReview ? 'Review' : nonTraite ? 'Not anonymized' : 'GDPR'}
     </span>
   );
 }

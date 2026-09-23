@@ -88,7 +88,7 @@ export function SchemaTableToolbar<TData extends RowData>({
               type="button"
               disabled={isScanningPii}
               onClick={() => onScanContent?.()}
-              title="Analyse le contenu échantillonné des colonnes (Presidio) pour détecter des données personnelles, y compris dans des colonnes mal nommées. Les transformers suggérés sont appliqués automatiquement."
+              title="Scans the sampled content of the columns (Presidio) to find personal data, including in columns whose name says nothing. The suggested transformers are applied automatically."
             >
               <ButtonText
                 leftIcon={
@@ -98,9 +98,7 @@ export function SchemaTableToolbar<TData extends RowData>({
                     <MagnifyingGlassIcon className="h-3 w-3" />
                   )
                 }
-                text={
-                  isScanningPii ? 'Scan en cours…' : 'Scan de contenu (RGPD)'
-                }
+                text={isScanningPii ? 'Scanning…' : 'Content scan (GDPR)'}
               />
             </Button>
           )}

@@ -396,7 +396,7 @@ export function SchemaTable(props: Props): ReactElement {
       // de donnée personnelle.
       if (failed.length > 0) {
         toast.warning(
-          `${failed.length} table(s) non analysée(s) : ${failed.slice(0, 3).join(', ')}` +
+          `${failed.length} table(s) not scanned: ${failed.slice(0, 3).join(', ')}` +
             (failed.length > 3 ? '…' : '')
         );
       }
@@ -420,25 +420,23 @@ export function SchemaTable(props: Props): ReactElement {
         return;
       }
       if (confirmed === 0 && toReview === 0) {
-        toast.success(
-          'Aucune donnée personnelle détectée dans le contenu échantillonné.'
-        );
+        toast.success('No personal data found in the sampled content.');
       } else {
         const parts: string[] = [];
         if (confirmed > 0) {
           parts.push(
-            `${confirmed} colonne(s) confirmée(s) par clé de contrôle` +
-              (applied > 0 ? ` (${applied} transformer(s) appliqué(s))` : '')
+            `${confirmed} column(s) confirmed by checksum` +
+              (applied > 0 ? ` (${applied} transformer(s) applied)` : '')
           );
         }
         if (toReview > 0) {
-          parts.push(`${toReview} à vérifier`);
+          parts.push(`${toReview} to review`);
         }
         toast.success(parts.join(' · '));
       }
     } catch (e) {
       toast.error(
-        `Échec du scan de contenu : ${e instanceof Error ? e.message : 'erreur inconnue'}`
+        `Content scan failed: ${e instanceof Error ? e.message : 'unknown error'}`
       );
     } finally {
       setIsScanningPii(false);

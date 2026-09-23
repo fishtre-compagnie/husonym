@@ -30,11 +30,11 @@ interface Props {
   kind: 'transform' | 'generate';
 }
 
-const defaultColumn = 'valeur';
+const defaultColumn = 'value';
 const defaultRows = `[
-  { "id": 1, "valeur": "Jean Dupont" },
-  { "id": 2, "valeur": "Jean Dupont" },
-  { "id": 3, "valeur": "Marie Curie" }
+  { "id": 1, "value": "Jane Doe" },
+  { "id": 2, "value": "Jane Doe" },
+  { "id": 3, "value": "John Smith" }
 ]`;
 
 interface TrialRow {
@@ -70,7 +70,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
     try {
       parsed = JSON.parse(rowsText);
     } catch (err) {
-      setInputError(`Les lignes ne sont pas du JSON valide : ${err}`);
+      setInputError(`The rows are not valid JSON: ${err}`);
       return;
     }
     if (
@@ -78,7 +78,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       parsed.length === 0 ||
       parsed.some((row) => typeof row !== 'object' || row === null)
     ) {
-      setInputError('Les lignes doivent être un tableau d’objets JSON.');
+      setInputError('The rows must be an array of JSON objects.');
       return;
     }
     const sources = parsed as Record<string, unknown>[];
@@ -110,23 +110,23 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
         }))
       );
     } catch (err) {
-      setInputError(`L’essai n’a pas pu s’exécuter : ${err}`);
+      setInputError(`The trial could not run: ${err}`);
     }
   }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border dark:border-gray-700 p-3 mt-4">
       <div className="space-y-0.5">
-        <Label>Essayer la règle</Label>
+        <Label>Try the rule</Label>
         <div className="text-sm text-muted-foreground">
-          La règle s’exécute sur les lignes ci-dessous comme dans un job Athanor
-          : son état ne passe pas d’une ligne à la suivante. Les fonctions
-          pseudo.* dérivent ici d’une clé tirée pour l’essai : leurs sorties ont
-          la forme de celles d’un run, pas leurs valeurs.
+          The rule runs on the rows below as it would in an Athanor job: its
+          state does not carry from one row to the next. The pseudo.* functions
+          derive here from a key drawn for the trial, so their outputs have the
+          shape of a run&apos;s, not its values.
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <Label htmlFor="rule-trial-column">Colonne transformée</Label>
+        <Label htmlFor="rule-trial-column">Transformed column</Label>
         <Input
           id="rule-trial-column"
           value={column}
@@ -136,7 +136,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor="rule-trial-rows">
-          Lignes d’essai (tableau JSON, 20 au plus)
+          Trial rows (JSON array, 20 at most)
         </Label>
         <Textarea
           id="rule-trial-rows"
@@ -153,10 +153,7 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
           onClick={handleTry}
           disabled={!code || !column || isPending}
         >
-          <ButtonText
-            leftIcon={isPending ? <Spinner /> : null}
-            text="Essayer"
-          />
+          <ButtonText leftIcon={isPending ? <Spinner /> : null} text="Try" />
         </Button>
       </div>
       {inputError && (
@@ -167,8 +164,8 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
       {failure && (
         <Alert variant="destructive">
           <AlertTitle>
-            Échec à la ligne {failure.row + 1}
-            {failure.column ? `, colonne « ${failure.column} »` : ''}
+            Failed on row {failure.row + 1}
+            {failure.column ? `, column "${failure.column}"` : ''}
           </AlertTitle>
           <AlertDescription className="font-mono whitespace-pre-wrap">
             {failure.message}
@@ -179,9 +176,9 @@ export default function JavascriptRuleTrial(props: Props): ReactElement {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ligne</TableHead>
-              {kind === 'transform' && <TableHead>Avant</TableHead>}
-              <TableHead>Après</TableHead>
+              <TableHead>Row</TableHead>
+              {kind === 'transform' && <TableHead>Before</TableHead>}
+              <TableHead>After</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

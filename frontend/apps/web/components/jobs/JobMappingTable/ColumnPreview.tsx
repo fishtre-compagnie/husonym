@@ -169,7 +169,7 @@ export default function ColumnPreview({
   if (error) {
     return (
       <p className="rounded-md border border-red-600/40 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-400">
-        Lecture impossible : {error}
+        Could not read the column: {error}
       </p>
     );
   }
@@ -196,32 +196,32 @@ export default function ColumnPreview({
           entièrement nulle, ou à valeur unique, se juge sans lire le détail). */}
       <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <span>
-          <strong className="text-foreground">{rows.length}</strong> ligne(s)
+          <strong className="text-foreground">{rows.length}</strong> row(s)
         </span>
         <span>
           <strong className="text-foreground">{distinct?.inputs}</strong>{' '}
-          valeur(s) distincte(s)
+          distinct value(s)
           {distinct?.outputs !== undefined && (
             <>
               {' '}
-              avant,{' '}
+              before,{' '}
               <strong className="text-foreground">
                 {distinct.outputs}
               </strong>{' '}
-              après
+              after
             </>
           )}
         </span>
         {nulls > 0 && <span>{nulls} NULL</span>}
-        {empties > 0 && <span>{empties} vide(s)</span>}
+        {empties > 0 && <span>{empties} empty</span>}
         {failures > 0 && (
           <span className="text-red-600 dark:text-red-400">
-            {failures} en échec
+            {failures} failed
           </span>
         )}
         {filled === 0 && rows.length > 0 && (
           <span className="text-amber-600 dark:text-amber-400">
-            aucune valeur exploitable
+            no usable value
           </span>
         )}
       </div>
@@ -230,9 +230,9 @@ export default function ColumnPreview({
         // Le seul signal qui vaille avant un run : des valeurs différentes
         // deviennent la même. Sur une colonne unique, l'écriture échouerait.
         <p className="rounded-md border border-amber-600/40 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-300">
-          Le transformer ramène {distinct?.inputs} valeurs distinctes à{' '}
-          {distinct?.outputs} : sur une colonne soumise à une contrainte
-          d&apos;unicité, l&apos;écriture échouerait.
+          The transformer turns {distinct?.inputs} distinct values into{' '}
+          {distinct?.outputs}: on a column under a unique constraint, the write
+          would fail.
         </p>
       )}
 
@@ -246,11 +246,11 @@ export default function ColumnPreview({
                 #
               </th>
               <th className="text-muted-foreground px-3 py-2 text-left text-xs font-medium">
-                {transformer ? 'Avant' : 'Valeur'}
+                {transformer ? 'Before' : 'Value'}
               </th>
               {transformer && (
                 <th className="text-muted-foreground px-3 py-2 text-left text-xs font-medium">
-                  Après
+                  After
                 </th>
               )}
             </tr>
@@ -262,7 +262,7 @@ export default function ColumnPreview({
                   colSpan={transformer ? 3 : 2}
                   className="text-muted-foreground px-3 py-6 text-center text-sm"
                 >
-                  La table ne contient aucune ligne.
+                  The table holds no rows.
                 </td>
               </tr>
             )}
@@ -298,9 +298,9 @@ export default function ColumnPreview({
         </table>
       </div>
       <p className="text-muted-foreground text-xs">
-        Échantillon en lecture seule des {limit} premières lignes
+        Read-only sample of the first {limit} rows
         {transformer &&
-          ' : il montre ce que fait le transformer, il ne prouve rien sur la table entière'}
+          ': it shows what the transformer does, it proves nothing about the whole table'}
         .
       </p>
     </div>
@@ -313,7 +313,7 @@ function SampleValue({ value }: { value: ColumnSampleValue }): ReactElement {
   }
   if (value.value === '') {
     return (
-      <span className="text-muted-foreground/60 italic">(chaîne vide)</span>
+      <span className="text-muted-foreground/60 italic">(empty string)</span>
     );
   }
   return <>{value.value}</>;
