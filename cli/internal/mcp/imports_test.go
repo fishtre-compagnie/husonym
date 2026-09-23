@@ -4,7 +4,9 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,25 +14,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The MCP surface reads connections through maskedconn and through nothing else: secrets are
-// write-only there (plans/mcp-husonym.md §6.1). A rule in prose would not hold — the reader in
-// clear, the Connect client, is one import away — so this test holds it instead.
+// The MCP surface reaches the API through its readers and through nothing else. maskedconn reads
+// connections with their secrets masked, which keeps secrets write-only there
+// (plans/mcp-husonym.md §6.1); novalues reads the structure of the data and never a row. A rule
+// in prose would not hold — a Connect client is one import away — so this test holds it instead.
 //
 // It is an allowlist, not a denylist: a way of reading that does not exist yet is refused until
 // someone adds it here, with the reason it cannot hand back a secret.
 
-// maskedReaderDir is the one package under this tree allowed to hold a Connect client.
-const maskedReaderDir = "maskedconn"
+// readers are the packages under this tree allowed to hold a Connect client, each for the
+// reason given. Each one narrows its client to an interface whose method set its own test pins.
+var readers = map[string]string{
+	"maskedconn": "reads connections, and asks for every one with its secrets masked",
+	"novalues":   "reads schemas and PII detections, never a value from a row",
+}
 
 const mcpTree = "github.com/fishtre-compagnie/husonym/cli/internal/mcp/"
 
 var allowedImports = map[string]string{
-	"cmp":      "standard library, no I/O",
-	"context":  "standard library, no I/O",
-	"fmt":      "standard library, no I/O",
-	"log/slog": "standard library, writes logs only",
-	"slices":   "standard library, no I/O",
-	"time":     "standard library, no I/O",
+	"cmp":           "standard library, no I/O",
+	"context":       "standard library, no I/O",
+	"encoding/json": "standard library, no I/O",
+	"fmt":           "standard library, no I/O",
+	"log/slog":      "standard library, writes logs only",
+	"maps":          "standard library, no I/O",
+	"slices":        "standard library, no I/O",
+	"strings":       "standard library, no I/O",
+	"time":          "standard library, no I/O",
+
+	"google.golang.org/protobuf/encoding/protojson": "encodes a message already read, no I/O",
 
 	"github.com/modelcontextprotocol/go-sdk/mcp": "the protocol itself",
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1": "message types only; " +
@@ -43,15 +55,15 @@ func Test_Imports_OnlyTheMaskedReaderReachesTheApi(t *testing.T) {
 	t.Parallel()
 
 	fset := token.NewFileSet()
-	sawMaskedReader := false
+	sawReaders := map[string]bool{}
 	checked := 0
 	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() {
-			if path == maskedReaderDir {
-				sawMaskedReader = true
+			if _, ok := readers[path]; ok {
+				sawReaders[path] = true
 				return filepath.SkipDir
 			}
 			return nil
@@ -78,9 +90,10 @@ func Test_Imports_OnlyTheMaskedReaderReachesTheApi(t *testing.T) {
 			_, ok := allowedImports[imported]
 			require.Truef(t, ok,
 				"%s imports %q, which is not on the allowlist of the MCP surface. "+
-					"Connections are read through %s only, so that no secret is ever read back; "+
-					"if this import cannot hand one back, add it to allowedImports with the reason why.",
-				path, imported, maskedReaderDir,
+					"The API is reached through the readers only (%v), so that no secret and no row "+
+					"is ever read back; if this import cannot hand one back, add it to allowedImports "+
+					"with the reason why.",
+				path, imported, slices.Sorted(maps.Keys(readers)),
 			)
 		}
 		return nil
@@ -88,6 +101,8 @@ func Test_Imports_OnlyTheMaskedReaderReachesTheApi(t *testing.T) {
 	require.NoError(t, err)
 
 	// A test that walked nothing would pass forever.
-	require.True(t, sawMaskedReader, "%s is gone: the exemption above no longer names anything", maskedReaderDir)
+	for reader := range readers {
+		require.True(t, sawReaders[reader], "%s is gone: its exemption no longer names anything", reader)
+	}
 	require.NotZero(t, checked, "no file of the MCP surface was checked")
 }

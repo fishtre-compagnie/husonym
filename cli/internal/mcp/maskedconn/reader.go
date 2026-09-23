@@ -18,9 +18,23 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 )
 
+// connectionClient is the part of the connection service this package may call. Each
+// method here must be sent with exclude_sensitive; reader_test.go pins the list, so that
+// widening it is a decision someone takes, not an accident.
+type connectionClient interface {
+	GetConnections(
+		context.Context,
+		*connect.Request[mgmtv1alpha1.GetConnectionsRequest],
+	) (*connect.Response[mgmtv1alpha1.GetConnectionsResponse], error)
+	GetConnection(
+		context.Context,
+		*connect.Request[mgmtv1alpha1.GetConnectionRequest],
+	) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error)
+}
+
 // Reader reads the connections of an account, with their secrets masked by the API.
 type Reader struct {
-	client mgmtv1alpha1connect.ConnectionServiceClient
+	client connectionClient
 }
 
 // New builds a Reader on its own connection client, which is never handed out.
@@ -38,4 +52,16 @@ func (r *Reader) List(ctx context.Context, accountId string) ([]*mgmtv1alpha1.Co
 		return nil, err
 	}
 	return res.Msg.GetConnections(), nil
+}
+
+// Get returns one connection, secrets masked.
+func (r *Reader) Get(ctx context.Context, connectionId string) (*mgmtv1alpha1.Connection, error) {
+	res, err := r.client.GetConnection(ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{
+		Id:               connectionId,
+		ExcludeSensitive: true,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.GetConnection(), nil
 }
