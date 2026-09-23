@@ -39,11 +39,16 @@ A client is usually configured with the command and its environment, for instanc
 
 ## Tools
 
-| Tool               | Description                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `list_connections` | Lists the connections of the account: id, name and category. Never returns their credentials. |
+| Tool                  | Description                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `list_connections`    | Lists the connections of the account: id, name and category.                                                                 |
+| `describe_connection` | Describes one connection: host, port, database, user, tunnel, TLS and options, with every secret masked.                     |
+| `introspect_schema`   | Lists the tables of a SQL connection, or gives the columns, types and keys of up to 20 of them, foreign keys in both directions. |
+| `suggest_mappings`    | Says which columns hold personal data and which transformer fits each, with how sure the detection is and why. Key columns are flagged. |
 
-Connection credentials are write-only through this server: none of its tools reads them back.
+Every tool reads; none writes.
+
+Connection credentials are write-only through this server: none of its tools reads them back. No tool returns a value read from a row either: `suggest_mappings` can have the API scan a sample of a table (`scan_content`), and reports what it found as counts and labels, never the values themselves.
 
 ## Environment Variables
 
