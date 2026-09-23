@@ -190,13 +190,14 @@ function getJobMappingColumns() {
   );
 
   const transformerColumn = columnHelper.accessor(
-    (row) => {
-      if (row.transformer.config.case) {
-        // this needs to be the full transformer object so that memoization works correctly
-        return row.transformer;
-      }
-      return 'transformer';
-    },
+    // Clé de mémoïsation : TanStack compare cette valeur avec === et saute la cellule
+    // quand elle n'a pas bougé. L'identité de l'objet transformer suffisait tant que la
+    // cellule ne montrait que le transformer ; elle montre aussi le point ambre « donnée
+    // personnelle laissée en clair », qui vient de la détection de contenu et non du
+    // transformer. Sans `isSensitive` dans la clé, un scan de contenu reconstruisait la
+    // ligne sans réveiller la cellule, et le point n'apparaissait jamais — même piège
+    // que la colonne RGPD plus bas.
+    (row) => `${transformerRevision(row.transformer)}|${row.isSensitive}`,
     {
       id: 'transformer',
       size: 244,
@@ -351,18 +352,31 @@ function transformerFilterFn(
   row:
     | Row<AppTableFeatures, JobMappingRow>
     | Row<AppTableFeatures, NosqlJobMappingRow>,
-  columnId: string,
+  _columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {
-  const value = row.getValue<JobMappingTransformerForm | string>(columnId);
+  // Lu sur la ligne, pas sur la valeur de l'accesseur : celle de la colonne Transformer
+  // est une clé de mémoïsation, pas un libellé.
+  const configCase = row.original.transformer.config.case;
   const loweredFilterValue = filterValue.toLowerCase();
-  if (typeof value === 'string') {
-    return value.includes(loweredFilterValue);
+  if (!configCase) {
+    return 'transformer'.includes(loweredFilterValue);
   }
-  const searchableFields = [value?.config.case].filter(Boolean);
-  return searchableFields.some((field) =>
-    field.toLowerCase().includes(loweredFilterValue)
-  );
+  return configCase.toLowerCase().includes(loweredFilterValue);
+}
+
+// Numéro de révision d'un transformer, stable tant que l'objet l'est. React Hook Form en
+// pose un nouveau à chaque édition : le numéro change alors et la cellule se redessine —
+// ce que faisait la comparaison d'identité, mais composable avec le reste de la clé.
+const transformerRevisions = new WeakMap<object, number>();
+let lastTransformerRevision = 0;
+function transformerRevision(transformer: JobMappingTransformerForm): number {
+  let revision = transformerRevisions.get(transformer);
+  if (revision === undefined) {
+    revision = ++lastTransformerRevision;
+    transformerRevisions.set(transformer, revision);
+  }
+  return revision;
 }
 
 function getNosqlJobMappingColumns() {

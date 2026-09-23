@@ -113,17 +113,13 @@ function OptionControl(props: ControlProps): ReactElement {
     case 'integer':
     case 'float':
       return (
-        <Input
+        <NumberOption
           className={width}
-          type="number"
-          value={formatNumber(current)}
-          onChange={(e) => {
-            const n = e.target.valueAsNumber;
-            if (!isNaN(n)) {
-              set(kind === 'integer' ? toFieldInteger(field, n) : n);
-            }
-          }}
-          disabled={isDisabled}
+          field={field}
+          isInteger={kind === 'integer'}
+          current={current}
+          set={set}
+          isDisabled={isDisabled}
         />
       );
     case 'string':
@@ -169,6 +165,55 @@ function OptionControl(props: ControlProps): ReactElement {
         />
       );
   }
+}
+
+interface NumberOptionProps {
+  className: string;
+  field: DescField;
+  isInteger: boolean;
+  current: unknown;
+  set(fieldValue: unknown): void;
+  isDisabled?: boolean;
+}
+
+// A number, kept as typed while it is being typed. Emptying the box is a legitimate step
+// between two values, and writing nothing to the config there left the box and the config
+// saying different things: the config kept its old value, and since it had not changed,
+// nothing redrew the box either — it stayed blank, Apply stayed disabled (it compares the
+// draft to the stored config), and the old value came back at the next render from elsewhere.
+// The box goes back to what the config holds as soon as it loses focus.
+function NumberOption(props: NumberOptionProps): ReactElement {
+  const { className, field, isInteger, current, set, isDisabled } = props;
+  const value = formatNumber(current);
+
+  // null : la case montre la config. Une chaîne : ce qui est tapé, pas encore un nombre.
+  const [typed, setTyped] = useState<string | null>(null);
+  const [syncedWith, setSyncedWith] = useState(value);
+  if (syncedWith !== value) {
+    // La config a changé d'ailleurs (un autre transformer, une remise à zéro).
+    setSyncedWith(value);
+    setTyped(null);
+  }
+
+  return (
+    <Input
+      className={className}
+      type="number"
+      value={typed ?? value}
+      onChange={(e) => {
+        setTyped(e.target.value);
+        const n = e.target.valueAsNumber;
+        if (isNaN(n)) {
+          return;
+        }
+        const next = isInteger ? toFieldInteger(field, n) : n;
+        setSyncedWith(formatNumber(next));
+        set(next);
+      }}
+      onBlur={() => setTyped(null)}
+      disabled={isDisabled}
+    />
+  );
 }
 
 interface StringListInputProps {

@@ -32,12 +32,21 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
   const [note, setNote] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
 
+  // The note is the trace an audit reads: it belongs to the changes it was typed for. The
+  // component stays mounted for the page's lifetime, so a note left behind by a Cancel, an
+  // Escape or a click outside would be attached, silently, to the next selection confirmed.
+  function close(open: boolean): void {
+    if (!open) {
+      setNote('');
+    }
+    onOpenChange(open);
+  }
+
   async function confirm(): Promise<void> {
     setIsConfirming(true);
     try {
       await onConfirm(changes, note.trim() || undefined);
-      setNote('');
-      onOpenChange(false);
+      close(false);
     } catch {
       // The caller has already said what went wrong. The dialog stays open, so the note is not
       // lost and the person can try again.
@@ -49,7 +58,7 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
   const many = changes.length !== 1;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -81,11 +90,7 @@ export default function ReviewChangesDialog(props: Props): ReactElement {
           />
         </div>
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="outline" onClick={() => close(false)}>
             Cancel
           </Button>
           <Button

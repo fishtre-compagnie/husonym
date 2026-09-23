@@ -208,8 +208,12 @@ export default function MappingChangesCard(props: Props): ReactElement {
   }
 
   const selectedChanges = pending.filter((c) => selected.has(c.id));
-  const position = pending.findIndex((c) => c.id === openedId);
-  const opened = position >= 0 ? pending[position] : null;
+  // Naviguer dans l'ordre de la liste, pas dans celui de `pending` : la liste groupe par
+  // table, `pending` trie par urgence. Dès qu'une table mêlait deux urgences, « suivant »
+  // sautait à une autre table que celle qu'on lisait.
+  const ordered = groups.flatMap(([, changes]) => changes);
+  const position = ordered.findIndex((c) => c.id === openedId);
+  const opened = position >= 0 ? ordered[position] : null;
 
   return (
     <Card>
@@ -306,14 +310,14 @@ export default function MappingChangesCard(props: Props): ReactElement {
           sourceConnectionId={sourceConnectionId}
           navigation={{
             position: position + 1,
-            total: pending.length,
+            total: ordered.length,
             onPrevious:
               position > 0
-                ? () => setOpenedId(pending[position - 1].id)
+                ? () => setOpenedId(ordered[position - 1].id)
                 : undefined,
             onNext:
-              position < pending.length - 1
-                ? () => setOpenedId(pending[position + 1].id)
+              position < ordered.length - 1
+                ? () => setOpenedId(ordered[position + 1].id)
                 : undefined,
           }}
           onReview={(change, note) => review([change], note)}
@@ -357,6 +361,13 @@ function ChangeRow(props: RowProps): ReactElement {
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => {
+        // Seulement quand la ligne elle-même a le focus : la case à cocher est dedans,
+        // et Espace dessus remontait jusqu'ici, où preventDefault annulait la coche et
+        // ouvrait le panneau à la place. La sélection multiple devenait inatteignable
+        // au clavier. Le clic est protégé de la même façon, par stopPropagation.
+        if (e.target !== e.currentTarget) {
+          return;
+        }
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onOpen();
