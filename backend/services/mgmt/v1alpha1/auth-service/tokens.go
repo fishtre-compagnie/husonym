@@ -107,6 +107,19 @@ func (s *Service) GetAuthorizeUrl(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAuthorizeUrlRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAuthorizeUrlResponse], error) {
+	// Always the deployment's own provider, including for an account that declares one.
+	//
+	// Sending the browser to the account's provider is only half a flow: the code that
+	// comes back has to be exchanged at that provider's token endpoint, with that
+	// account's client and its secret, and LoginCli and RefreshCli both speak to the
+	// deployment's. Starting the flow elsewhere would fail at the exchange, after the
+	// person has already signed in. Finishing that half is its own piece of work -- see
+	// plans/oidc-par-compte.md.
+	authorizeUrl, err := s.authclient.GetAuthorizationEndpoint(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	params := url.Values{}
 	params.Add("client_id", s.cfg.CliClientId)
 	params.Add("audience", s.cfg.CliAudience)
@@ -114,11 +127,6 @@ func (s *Service) GetAuthorizeUrl(
 	params.Add("redirect_uri", req.Msg.RedirectUri)
 	params.Add("state", req.Msg.State)
 	params.Add("response_type", "code")
-
-	authorizeUrl, err := s.authclient.GetAuthorizationEndpoint(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	return connect.NewResponse(&mgmtv1alpha1.GetAuthorizeUrlResponse{
 		Url: fmt.Sprintf("%s?%s", authorizeUrl, params.Encode()),

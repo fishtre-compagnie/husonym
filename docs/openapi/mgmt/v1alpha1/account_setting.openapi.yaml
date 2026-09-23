@@ -156,6 +156,8 @@ components:
         - oneOf:
             - required:
                 - anonymizationConsistency
+            - required:
+                - oidcProvider
       anyOf:
         - type: object
           properties:
@@ -165,7 +167,28 @@ components:
               title: anonymization_consistency
               description: What the account's deterministic anonymization derives from.
           title: anonymization_consistency
+        - type: object
+          properties:
+            oidcProvider:
+              allOf:
+                - $ref: '#/components/schemas/mgmt.v1alpha1.OidcProvider'
+              title: oidc_provider
+              description: The identity provider the account's members sign in with.
+          title: oidc_provider
       unevaluatedProperties: false
+      not:
+        allOf:
+          - anyOf:
+              - required:
+                  - anonymizationConsistency
+              - required:
+                  - oidcProvider
+          - not:
+              oneOf:
+                - required:
+                    - anonymizationConsistency
+                - required:
+                    - oidcProvider
       title: AccountSettingConfig
       description: |-
         The setting itself, one variant per kind of setting.
@@ -244,6 +267,43 @@ components:
           description: The settings of the account, without their secrets.
       title: GetAccountSettingsResponse
       additionalProperties: false
+    mgmt.v1alpha1.OidcProvider:
+      type: object
+      properties:
+        issuer:
+          type: string
+          title: issuer
+          minLength: 1
+          format: uri
+          description: |-
+            The issuer, exactly as its tokens spell it in their iss claim.
+
+             It is compared by exact string equality, so it is the issuer and not the URL a human
+             would type: a discovery document that answers under one name and calls itself another
+             is rejected by the test below rather than accepted and puzzled over later.
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+          description: |-
+            The client the frontend authorizes as. Public information: the browser carries it in
+             the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
+        clientSecret:
+          type: string
+          title: client_secret
+          description: |-
+            The secret of that client, for providers that require a confidential one.
+
+             It plays no part in validating a token -- that needs only the public JWKS -- and is
+             used solely in the authorization flow. Empty for a public client.
+      title: OidcProvider
+      additionalProperties: false
+      description: |-
+        The identity provider an account's members sign in with.
+
+         Nothing here names a product. What an account declares is what the standard defines:
+         an issuer to discover, a client to authorize as, and the audience its tokens carry.
+         A provider that needs more than this is a provider Husonym does not claim to support.
     mgmt.v1alpha1.SetAccountSettingRequest:
       type: object
       properties:
@@ -270,6 +330,75 @@ components:
           title: setting
           description: The setting as it now stands, without its secrets.
       title: SetAccountSettingResponse
+      additionalProperties: false
+    mgmt.v1alpha1.SettingCheck:
+      type: object
+      properties:
+        check:
+          type: string
+          title: check
+          description: What was checked, as a stable identifier a screen can translate.
+        level:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.SettingCheckLevel'
+          title: level
+          description: How much the finding weighs.
+        detail:
+          type: string
+          title: detail
+          description: What was found, in one sentence.
+        remedy:
+          type: string
+          title: remedy
+          description: What to do about it. Empty when there is nothing to do.
+      title: SettingCheck
+      additionalProperties: false
+      description: |-
+        One finding of a setting test.
+
+         A finding, not a sentence: what was checked, how much it weighs, what is missing and
+         what to do about it. The same shape the connection checks use, for the same reason --
+         a human fixes a provider from a remedy, never from a stack trace.
+    mgmt.v1alpha1.SettingCheckLevel:
+      type: string
+      title: SettingCheckLevel
+      enum:
+        - SETTING_CHECK_LEVEL_UNSPECIFIED
+        - SETTING_CHECK_LEVEL_BLOCKING
+        - SETTING_CHECK_LEVEL_WARNING
+        - SETTING_CHECK_LEVEL_INFO
+      description: How much a finding of a setting test weighs.
+    mgmt.v1alpha1.TestAccountSettingRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The account the setting would belong to.
+        config:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.AccountSettingConfig'
+          title: config
+          description: The setting to try. It is not written, whatever the findings say.
+      title: TestAccountSettingRequest
+      required:
+        - config
+      additionalProperties: false
+    mgmt.v1alpha1.TestAccountSettingResponse:
+      type: object
+      properties:
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.SettingCheck'
+          title: checks
+          description: What the test found, in the order it found it.
+        ok:
+          type: boolean
+          title: ok
+          description: Whether nothing blocking was found. A caller that reads only this is still correct.
+      title: TestAccountSettingResponse
       additionalProperties: false
 security:
   - BearerAuth: []
@@ -398,6 +527,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.SetAccountSettingResponse'
+  /mgmt.v1alpha1.AccountSettingService/TestAccountSetting:
+    post:
+      tags:
+        - mgmt.v1alpha1.AccountSettingService
+      summary: Tries a setting without writing it, and returns what it found.
+      description: |-
+        For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+         it performs the discovery, checks that the document calls itself what it was asked
+         under, and reads the keys -- so a provider is refused with a reason instead of
+         locking an account out after it is saved.
+      operationId: mgmt.v1alpha1.AccountSettingService.TestAccountSetting
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.TestAccountSettingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.TestAccountSettingResponse'
 tags:
   - name: mgmt.v1alpha1.AccountSettingService
     description: Holds the settings of an account.

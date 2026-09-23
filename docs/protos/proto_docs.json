@@ -1310,11 +1310,40 @@
       "name": "mgmt/v1alpha1/account_setting.proto",
       "description": "",
       "package": "mgmt.v1alpha1",
-      "hasEnums": false,
+      "hasEnums": true,
       "hasExtensions": false,
       "hasMessages": true,
       "hasServices": true,
-      "enums": [],
+      "enums": [
+        {
+          "name": "SettingCheckLevel",
+          "longName": "SettingCheckLevel",
+          "fullName": "mgmt.v1alpha1.SettingCheckLevel",
+          "description": "How much a finding of a setting test weighs.",
+          "values": [
+            {
+              "name": "SETTING_CHECK_LEVEL_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "SETTING_CHECK_LEVEL_BLOCKING",
+              "number": "1",
+              "description": "The setting cannot work. Saving it would lock the account out."
+            },
+            {
+              "name": "SETTING_CHECK_LEVEL_WARNING",
+              "number": "2",
+              "description": "The setting works, but not the way its author probably meant."
+            },
+            {
+              "name": "SETTING_CHECK_LEVEL_INFO",
+              "number": "3",
+              "description": "Worth knowing, nothing to do."
+            }
+          ]
+        }
+      ],
       "extensions": [],
       "messages": [
         {
@@ -1470,6 +1499,18 @@
               "isoneof": true,
               "oneofdecl": "config",
               "defaultValue": ""
+            },
+            {
+              "name": "oidc_provider",
+              "description": "The identity provider the account's members sign in with.",
+              "label": "",
+              "type": "OidcProvider",
+              "longType": "OidcProvider",
+              "fullType": "mgmt.v1alpha1.OidcProvider",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "config",
+              "defaultValue": ""
             }
           ]
         },
@@ -1606,6 +1647,54 @@
           ]
         },
         {
+          "name": "OidcProvider",
+          "longName": "OidcProvider",
+          "fullName": "mgmt.v1alpha1.OidcProvider",
+          "description": "The identity provider an account's members sign in with.\n\nNothing here names a product. What an account declares is what the standard defines:\nan issuer to discover, a client to authorize as, and the audience its tokens carry.\nA provider that needs more than this is a provider Husonym does not claim to support.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "issuer",
+              "description": "The issuer, exactly as its tokens spell it in their iss claim.\n\nIt is compared by exact string equality, so it is the issuer and not the URL a human\nwould type: a discovery document that answers under one name and calls itself another\nis rejected by the test below rather than accepted and puzzled over later.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "client_id",
+              "description": "The client the frontend authorizes as. Public information: the browser carries it in\nthe authorization URL, and the tenant discovery endpoint serves it unauthenticated.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "client_secret",
+              "description": "The secret of that client, for providers that require a confidential one.\n\nIt plays no part in validating a token -- that needs only the public JWKS -- and is\nused solely in the authorization flow. Empty for a public client.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "SetAccountSettingRequest",
           "longName": "SetAccountSettingRequest",
           "fullName": "mgmt.v1alpha1.SetAccountSettingRequest",
@@ -1664,6 +1753,138 @@
               "defaultValue": ""
             }
           ]
+        },
+        {
+          "name": "SettingCheck",
+          "longName": "SettingCheck",
+          "fullName": "mgmt.v1alpha1.SettingCheck",
+          "description": "One finding of a setting test.\n\nA finding, not a sentence: what was checked, how much it weighs, what is missing and\nwhat to do about it. The same shape the connection checks use, for the same reason --\na human fixes a provider from a remedy, never from a stack trace.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "check",
+              "description": "What was checked, as a stable identifier a screen can translate.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "level",
+              "description": "How much the finding weighs.",
+              "label": "",
+              "type": "SettingCheckLevel",
+              "longType": "SettingCheckLevel",
+              "fullType": "mgmt.v1alpha1.SettingCheckLevel",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "detail",
+              "description": "What was found, in one sentence.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "remedy",
+              "description": "What to do about it. Empty when there is nothing to do.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TestAccountSettingRequest",
+          "longName": "TestAccountSettingRequest",
+          "fullName": "mgmt.v1alpha1.TestAccountSettingRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The account the setting would belong to.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "config",
+              "description": "The setting to try. It is not written, whatever the findings say.",
+              "label": "",
+              "type": "AccountSettingConfig",
+              "longType": "AccountSettingConfig",
+              "fullType": "mgmt.v1alpha1.AccountSettingConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TestAccountSettingResponse",
+          "longName": "TestAccountSettingResponse",
+          "fullName": "mgmt.v1alpha1.TestAccountSettingResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "checks",
+              "description": "What the test found, in the order it found it.",
+              "label": "repeated",
+              "type": "SettingCheck",
+              "longType": "SettingCheck",
+              "fullType": "mgmt.v1alpha1.SettingCheck",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "ok",
+              "description": "Whether nothing blocking was found. A caller that reads only this is still correct.",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         }
       ],
       "services": [
@@ -1699,6 +1920,21 @@
               "responseLongType": "SetAccountSettingResponse",
               "responseFullType": "mgmt.v1alpha1.SetAccountSettingResponse",
               "responseStreaming": false
+            },
+            {
+              "name": "TestAccountSetting",
+              "description": "Tries a setting without writing it, and returns what it found.\n\nFor OIDC this is what makes \"any compliant provider\" true rather than merely claimed:\nit performs the discovery, checks that the document calls itself what it was asked\nunder, and reads the keys -- so a provider is refused with a reason instead of\nlocking an account out after it is saved.",
+              "requestType": "TestAccountSettingRequest",
+              "requestLongType": "TestAccountSettingRequest",
+              "requestFullType": "mgmt.v1alpha1.TestAccountSettingRequest",
+              "requestStreaming": false,
+              "responseType": "TestAccountSettingResponse",
+              "responseLongType": "TestAccountSettingResponse",
+              "responseFullType": "mgmt.v1alpha1.TestAccountSettingResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
             },
             {
               "name": "GetAccountConsistencyKey",
@@ -6325,6 +6561,66 @@
           "fields": []
         },
         {
+          "name": "GetAccountLoginMethodRequest",
+          "longName": "GetAccountLoginMethodRequest",
+          "fullName": "mgmt.v1alpha1.GetAccountLoginMethodRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_slug",
+              "description": "The slug of the account somebody is signing in to. It comes from the URL they\nfollowed, because nothing is known about them yet.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetAccountLoginMethodResponse",
+          "longName": "GetAccountLoginMethodResponse",
+          "fullName": "mgmt.v1alpha1.GetAccountLoginMethodResponse",
+          "description": "Where to send somebody who is signing in to a given account.\n\nUnauthenticated by necessity: the provider has to be known before anybody can prove who\nthey are. What it gives away is which accounts have declared a provider -- impersonal,\nand a fact an attacker who already knows the account could observe anyway. What it must\nnever give away is whether a person has an account, so the shape of the answer does not\ndepend on any person, and an unknown slug answers like a known one with no provider.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "issuer",
+              "description": "The issuer to start the flow against. Empty when the account has declared none, which\nmeans the deployment's own provider.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "client_id",
+              "description": "The client to authorize as. Empty alongside an empty issuer.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetAuthStatusRequest",
           "longName": "GetAuthStatusRequest",
           "fullName": "mgmt.v1alpha1.GetAuthStatusRequest",
@@ -6599,8 +6895,23 @@
               }
             },
             {
+              "name": "GetAccountLoginMethod",
+              "description": "Returns the auth status of the API server. Whether or not the backend has authentication enabled.\nThis is used by clients to make decisions on whether or not they should send access tokens to the API.\nTells an unauthenticated caller which identity provider an account signs in with.\n\nThe tenant has to be known before the flow starts -- an OIDC flow begins with the\nclient id of the right connector -- and the caller has not authenticated yet, by\ndefinition. The account is designated by the link that was followed.",
+              "requestType": "GetAccountLoginMethodRequest",
+              "requestLongType": "GetAccountLoginMethodRequest",
+              "requestFullType": "mgmt.v1alpha1.GetAccountLoginMethodRequest",
+              "requestStreaming": false,
+              "responseType": "GetAccountLoginMethodResponse",
+              "responseLongType": "GetAccountLoginMethodResponse",
+              "responseFullType": "mgmt.v1alpha1.GetAccountLoginMethodResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
               "name": "GetAuthStatus",
-              "description": "Returns the auth status of the API server. Whether or not the backend has authentication enabled.\nThis is used by clients to make decisions on whether or not they should send access tokens to the API.",
+              "description": "",
               "requestType": "GetAuthStatusRequest",
               "requestLongType": "GetAuthStatusRequest",
               "requestFullType": "mgmt.v1alpha1.GetAuthStatusRequest",

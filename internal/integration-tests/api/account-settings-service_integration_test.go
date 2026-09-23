@@ -175,3 +175,104 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 		require.Len(t, keys, 2)
 	})
 }
+
+func oidcSetting(issuer, clientId string) *mgmtv1alpha1.AccountSettingConfig {
+	return &mgmtv1alpha1.AccountSettingConfig{
+		Config: &mgmtv1alpha1.AccountSettingConfig_OidcProvider{
+			OidcProvider: &mgmtv1alpha1.OidcProvider{Issuer: issuer, ClientId: clientId},
+		},
+	}
+}
+
+// Identities are keyed by (issuer, subject), so two accounts trusting one issuer share the
+// subject space it mints: whoever administers sign-ins there could hand themselves the
+// identity of a member of the other account. That is the thing keying on the issuer
+// prevents, reintroduced one level up.
+func (s *IntegrationTestSuite) Test_AccountSettingsService_OidcProvider() {
+	t := s.T()
+	ctx := s.ctx
+
+	client := s.OSSAuthenticatedLicensedClients.AccountSettings(
+		integrationtests_test.WithUserId(testAuthUserId),
+	)
+	userclient := s.OSSAuthenticatedLicensedClients.Users(
+		integrationtests_test.WithUserId(testAuthUserId),
+	)
+	s.setUser(ctx, userclient)
+	s.createPersonalAccount(ctx, userclient)
+
+	newAccount := func() string {
+		return s.createTeamAccount(ctx, userclient, uuid.NewString())
+	}
+
+	t.Run("an account declares its provider, and the generated column knows the kind", func(t *testing.T) {
+		accountId := newAccount()
+		issuer := "https://" + uuid.NewString() + ".example.com/"
+
+		_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
+			AccountId: accountId,
+			Config:    oidcSetting(issuer, "a-client"),
+		}))
+		require.NoError(t, err, "the migration must recognize the variant, or the constraint refuses the row")
+
+		got, err := client.GetAccountSettings(ctx, connect.NewRequest(&mgmtv1alpha1.GetAccountSettingsRequest{
+			AccountId: accountId,
+		}))
+		require.NoError(t, err)
+		require.Len(t, got.Msg.GetSettings(), 1)
+		require.Equal(t, issuer, got.Msg.GetSettings()[0].GetConfig().GetOidcProvider().GetIssuer())
+	})
+
+	t.Run("a second account cannot claim the same issuer", func(t *testing.T) {
+		issuer := "https://" + uuid.NewString() + ".example.com/"
+
+		first := newAccount()
+		_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
+			AccountId: first,
+			Config:    oidcSetting(issuer, "a-client"),
+		}))
+		require.NoError(t, err)
+
+		second := newAccount()
+		_, err = client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
+			AccountId: second,
+			Config:    oidcSetting(issuer, "another-client"),
+		}))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "already declared by another account")
+	})
+
+	t.Run("an account may replace its own declaration with the same issuer", func(t *testing.T) {
+		accountId := newAccount()
+		issuer := "https://" + uuid.NewString() + ".example.com/"
+
+		for _, clientId := range []string{"first-client", "second-client"} {
+			_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
+				AccountId: accountId,
+				Config:    oidcSetting(issuer, clientId),
+			}))
+			require.NoError(t, err, "the guard is about other accounts, not about this one")
+		}
+	})
+
+	// The probe reaches the public internet, which a test must not depend on. What is
+	// checked here is that the endpoint refuses what it can judge without leaving the
+	// process, and that it never writes.
+	t.Run("trying a setting reports findings and writes nothing", func(t *testing.T) {
+		accountId := newAccount()
+
+		got, err := client.TestAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.TestAccountSettingRequest{
+			AccountId: accountId,
+			Config:    oidcSetting("not-an-https-url", ""),
+		}))
+		require.NoError(t, err, "a provider that cannot work is findings, not an error")
+		require.False(t, got.Msg.GetOk())
+		require.NotEmpty(t, got.Msg.GetChecks())
+
+		settings, err := client.GetAccountSettings(ctx, connect.NewRequest(&mgmtv1alpha1.GetAccountSettingsRequest{
+			AccountId: accountId,
+		}))
+		require.NoError(t, err)
+		require.Empty(t, settings.Msg.GetSettings(), "trying must never write")
+	})
+}

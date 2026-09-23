@@ -42,6 +42,9 @@ const (
 	// AuthServiceGetAuthorizeUrlProcedure is the fully-qualified name of the AuthService's
 	// GetAuthorizeUrl RPC.
 	AuthServiceGetAuthorizeUrlProcedure = "/mgmt.v1alpha1.AuthService/GetAuthorizeUrl"
+	// AuthServiceGetAccountLoginMethodProcedure is the fully-qualified name of the AuthService's
+	// GetAccountLoginMethod RPC.
+	AuthServiceGetAccountLoginMethodProcedure = "/mgmt.v1alpha1.AuthService/GetAccountLoginMethod"
 	// AuthServiceGetAuthStatusProcedure is the fully-qualified name of the AuthService's GetAuthStatus
 	// RPC.
 	AuthServiceGetAuthStatusProcedure = "/mgmt.v1alpha1.AuthService/GetAuthStatus"
@@ -60,6 +63,12 @@ type AuthServiceClient interface {
 	GetAuthorizeUrl(context.Context, *connect.Request[v1alpha1.GetAuthorizeUrlRequest]) (*connect.Response[v1alpha1.GetAuthorizeUrlResponse], error)
 	// Returns the auth status of the API server. Whether or not the backend has authentication enabled.
 	// This is used by clients to make decisions on whether or not they should send access tokens to the API.
+	// Tells an unauthenticated caller which identity provider an account signs in with.
+	//
+	// The tenant has to be known before the flow starts -- an OIDC flow begins with the
+	// client id of the right connector -- and the caller has not authenticated yet, by
+	// definition. The account is designated by the link that was followed.
+	GetAccountLoginMethod(context.Context, *connect.Request[v1alpha1.GetAccountLoginMethodRequest]) (*connect.Response[v1alpha1.GetAccountLoginMethodResponse], error)
 	GetAuthStatus(context.Context, *connect.Request[v1alpha1.GetAuthStatusRequest]) (*connect.Response[v1alpha1.GetAuthStatusResponse], error)
 }
 
@@ -99,6 +108,13 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getAccountLoginMethod: connect.NewClient[v1alpha1.GetAccountLoginMethodRequest, v1alpha1.GetAccountLoginMethodResponse](
+			httpClient,
+			baseURL+AuthServiceGetAccountLoginMethodProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetAccountLoginMethod")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getAuthStatus: connect.NewClient[v1alpha1.GetAuthStatusRequest, v1alpha1.GetAuthStatusResponse](
 			httpClient,
 			baseURL+AuthServiceGetAuthStatusProcedure,
@@ -111,11 +127,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	loginCli        *connect.Client[v1alpha1.LoginCliRequest, v1alpha1.LoginCliResponse]
-	refreshCli      *connect.Client[v1alpha1.RefreshCliRequest, v1alpha1.RefreshCliResponse]
-	checkToken      *connect.Client[v1alpha1.CheckTokenRequest, v1alpha1.CheckTokenResponse]
-	getAuthorizeUrl *connect.Client[v1alpha1.GetAuthorizeUrlRequest, v1alpha1.GetAuthorizeUrlResponse]
-	getAuthStatus   *connect.Client[v1alpha1.GetAuthStatusRequest, v1alpha1.GetAuthStatusResponse]
+	loginCli              *connect.Client[v1alpha1.LoginCliRequest, v1alpha1.LoginCliResponse]
+	refreshCli            *connect.Client[v1alpha1.RefreshCliRequest, v1alpha1.RefreshCliResponse]
+	checkToken            *connect.Client[v1alpha1.CheckTokenRequest, v1alpha1.CheckTokenResponse]
+	getAuthorizeUrl       *connect.Client[v1alpha1.GetAuthorizeUrlRequest, v1alpha1.GetAuthorizeUrlResponse]
+	getAccountLoginMethod *connect.Client[v1alpha1.GetAccountLoginMethodRequest, v1alpha1.GetAccountLoginMethodResponse]
+	getAuthStatus         *connect.Client[v1alpha1.GetAuthStatusRequest, v1alpha1.GetAuthStatusResponse]
 }
 
 // LoginCli calls mgmt.v1alpha1.AuthService.LoginCli.
@@ -138,6 +155,11 @@ func (c *authServiceClient) GetAuthorizeUrl(ctx context.Context, req *connect.Re
 	return c.getAuthorizeUrl.CallUnary(ctx, req)
 }
 
+// GetAccountLoginMethod calls mgmt.v1alpha1.AuthService.GetAccountLoginMethod.
+func (c *authServiceClient) GetAccountLoginMethod(ctx context.Context, req *connect.Request[v1alpha1.GetAccountLoginMethodRequest]) (*connect.Response[v1alpha1.GetAccountLoginMethodResponse], error) {
+	return c.getAccountLoginMethod.CallUnary(ctx, req)
+}
+
 // GetAuthStatus calls mgmt.v1alpha1.AuthService.GetAuthStatus.
 func (c *authServiceClient) GetAuthStatus(ctx context.Context, req *connect.Request[v1alpha1.GetAuthStatusRequest]) (*connect.Response[v1alpha1.GetAuthStatusResponse], error) {
 	return c.getAuthStatus.CallUnary(ctx, req)
@@ -156,6 +178,12 @@ type AuthServiceHandler interface {
 	GetAuthorizeUrl(context.Context, *connect.Request[v1alpha1.GetAuthorizeUrlRequest]) (*connect.Response[v1alpha1.GetAuthorizeUrlResponse], error)
 	// Returns the auth status of the API server. Whether or not the backend has authentication enabled.
 	// This is used by clients to make decisions on whether or not they should send access tokens to the API.
+	// Tells an unauthenticated caller which identity provider an account signs in with.
+	//
+	// The tenant has to be known before the flow starts -- an OIDC flow begins with the
+	// client id of the right connector -- and the caller has not authenticated yet, by
+	// definition. The account is designated by the link that was followed.
+	GetAccountLoginMethod(context.Context, *connect.Request[v1alpha1.GetAccountLoginMethodRequest]) (*connect.Response[v1alpha1.GetAccountLoginMethodResponse], error)
 	GetAuthStatus(context.Context, *connect.Request[v1alpha1.GetAuthStatusRequest]) (*connect.Response[v1alpha1.GetAuthStatusResponse], error)
 }
 
@@ -191,6 +219,13 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetAccountLoginMethodHandler := connect.NewUnaryHandler(
+		AuthServiceGetAccountLoginMethodProcedure,
+		svc.GetAccountLoginMethod,
+		connect.WithSchema(authServiceMethods.ByName("GetAccountLoginMethod")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceGetAuthStatusHandler := connect.NewUnaryHandler(
 		AuthServiceGetAuthStatusProcedure,
 		svc.GetAuthStatus,
@@ -208,6 +243,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceCheckTokenHandler.ServeHTTP(w, r)
 		case AuthServiceGetAuthorizeUrlProcedure:
 			authServiceGetAuthorizeUrlHandler.ServeHTTP(w, r)
+		case AuthServiceGetAccountLoginMethodProcedure:
+			authServiceGetAccountLoginMethodHandler.ServeHTTP(w, r)
 		case AuthServiceGetAuthStatusProcedure:
 			authServiceGetAuthStatusHandler.ServeHTTP(w, r)
 		default:
@@ -233,6 +270,10 @@ func (UnimplementedAuthServiceHandler) CheckToken(context.Context, *connect.Requ
 
 func (UnimplementedAuthServiceHandler) GetAuthorizeUrl(context.Context, *connect.Request[v1alpha1.GetAuthorizeUrlRequest]) (*connect.Response[v1alpha1.GetAuthorizeUrlResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.AuthService.GetAuthorizeUrl is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetAccountLoginMethod(context.Context, *connect.Request[v1alpha1.GetAccountLoginMethodRequest]) (*connect.Response[v1alpha1.GetAccountLoginMethodResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.AuthService.GetAccountLoginMethod is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) GetAuthStatus(context.Context, *connect.Request[v1alpha1.GetAuthStatusRequest]) (*connect.Response[v1alpha1.GetAuthStatusResponse], error) {

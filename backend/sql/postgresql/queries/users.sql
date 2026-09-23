@@ -2,6 +2,16 @@
 SELECT * FROM husonym_api.users
 WHERE id = $1;
 
+-- Looks an identity up by the pair that identifies it. The empty issuer is accepted in
+-- the same breath because a row recorded before issuers were has not been adopted yet:
+-- the caller decides whether the token's issuer is allowed to adopt it.
+-- name: GetUserAssociationByIdentity :one
+SELECT * from husonym_api.user_identity_provider_associations
+WHERE provider_sub = sqlc.arg('providerSub')
+  AND provider_iss IN (sqlc.arg('providerIss'), '')
+ORDER BY provider_iss DESC
+LIMIT 1;
+
 -- name: GetUserAssociationByProviderSub :one
 SELECT * from husonym_api.user_identity_provider_associations
 WHERE provider_sub = $1;
@@ -10,6 +20,16 @@ WHERE provider_sub = $1;
 SELECT u.* from husonym_api.users u
 INNER JOIN husonym_api.user_identity_provider_associations uipa ON uipa.user_id = u.id
 WHERE uipa.provider_sub = $1 and u.user_type = 0;
+
+-- Adopts a row recorded before issuers were, and only such a row: the WHERE clause on the
+-- empty string is what stops one issuer from claiming another's identity. No row updated
+-- means somebody got there first, which the caller reads as "look again".
+-- name: AdoptIdentityProviderIssuer :one
+UPDATE husonym_api.user_identity_provider_associations
+SET provider_iss = sqlc.arg('providerIss'),
+    updated_at = CURRENT_TIMESTAMP
+WHERE provider_sub = sqlc.arg('providerSub') AND provider_iss = ''
+RETURNING *;
 
 -- name: CreateNonMachineUser :one
 INSERT INTO husonym_api.users (
@@ -47,9 +67,9 @@ WHERE aipa.user_id = $1;
 
 -- name: CreateIdentityProviderAssociation :one
 INSERT INTO husonym_api.user_identity_provider_associations (
-  user_id, provider_sub
+  user_id, provider_sub, provider_iss
 ) VALUES (
-  $1, $2
+  $1, $2, $3
 )
 RETURNING *;
 
@@ -74,12 +94,23 @@ SET name = COALESCE(sqlc.narg('name'), name),
     picture = COALESCE(sqlc.narg('picture'), picture),
     updated_at = CURRENT_TIMESTAMP
 WHERE provider_sub = sqlc.arg('providerSub')
+  AND provider_iss = sqlc.arg('providerIss')
   AND (
     name IS DISTINCT FROM COALESCE(sqlc.narg('name'), name)
     OR email IS DISTINCT FROM COALESCE(sqlc.narg('email'), email)
     OR email_verified IS DISTINCT FROM sqlc.arg('emailVerified')
     OR picture IS DISTINCT FROM COALESCE(sqlc.narg('picture'), picture)
   )
+RETURNING *;
+
+-- Repoints an association at a replacement user, for the case where the user row an
+-- association names has disappeared. Without it, creating the replacement leaves the
+-- association pointing at nothing and the next sign-in creates yet another user.
+-- name: SetIdentityProviderAssociationUser :one
+UPDATE husonym_api.user_identity_provider_associations
+SET user_id = sqlc.arg('userId'),
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: GetUserIdentityAssociationsByUserIds :many
@@ -193,9 +224,9 @@ WHERE account_id = sqlc.arg('accountId') AND user_id = sqlc.arg('userId');
 
 -- name: CreateAccountInvite :one
 INSERT INTO husonym_api.account_invites (
-  account_id, sender_user_id, email, expires_at, role
+  account_id, sender_user_id, email, expires_at, role, provider_iss
 ) VALUES (
-  $1, $2, $3, $4, $5
+  $1, $2, $3, $4, $5, $6
 )
 RETURNING *;
 

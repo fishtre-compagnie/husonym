@@ -93,7 +93,8 @@
     "uuidv",
     "Luhn",
     "lastname",
-    "jackc"
+    "jackc",
+    "idtyp"
   ],
   "flagWords": ["hte"],
   "files": ["blog/**/*.md*", "docs/**/*.md*"],

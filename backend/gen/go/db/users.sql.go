@@ -12,6 +12,40 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adoptIdentityProviderIssuer = `-- name: AdoptIdentityProviderIssuer :one
+UPDATE husonym_api.user_identity_provider_associations
+SET provider_iss = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE provider_sub = $2 AND provider_iss = ''
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss
+`
+
+type AdoptIdentityProviderIssuerParams struct {
+	ProviderIss string
+	ProviderSub string
+}
+
+// Adopts a row recorded before issuers were, and only such a row: the WHERE clause on the
+// empty string is what stops one issuer from claiming another's identity. No row updated
+// means somebody got there first, which the caller reads as "look again".
+func (q *Queries) AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	row := db.QueryRow(ctx, adoptIdentityProviderIssuer, arg.ProviderIss, arg.ProviderSub)
+	var i HusonymApiUserIdentityProviderAssociation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProviderSub,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
+		&i.ProviderIss,
+	)
+	return i, err
+}
+
 const convertPersonalAccountToTeam = `-- name: ConvertPersonalAccountToTeam :one
 UPDATE husonym_api.accounts
 SET account_slug = $1,
@@ -45,11 +79,11 @@ func (q *Queries) ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg
 
 const createAccountInvite = `-- name: CreateAccountInvite :one
 INSERT INTO husonym_api.account_invites (
-  account_id, sender_user_id, email, expires_at, role
+  account_id, sender_user_id, email, expires_at, role, provider_iss
 ) VALUES (
-  $1, $2, $3, $4, $5
+  $1, $2, $3, $4, $5, $6
 )
-RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role
+RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss
 `
 
 type CreateAccountInviteParams struct {
@@ -58,6 +92,7 @@ type CreateAccountInviteParams struct {
 	Email        string
 	ExpiresAt    pgtype.Timestamp
 	Role         pgtype.Int4
+	ProviderIss  string
 }
 
 func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error) {
@@ -67,6 +102,7 @@ func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAc
 		arg.Email,
 		arg.ExpiresAt,
 		arg.Role,
+		arg.ProviderIss,
 	)
 	var i HusonymApiAccountInvite
 	err := row.Scan(
@@ -80,6 +116,7 @@ func (q *Queries) CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAc
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.Role,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -105,20 +142,21 @@ func (q *Queries) CreateAccountUserAssociation(ctx context.Context, db DBTX, arg
 
 const createIdentityProviderAssociation = `-- name: CreateIdentityProviderAssociation :one
 INSERT INTO husonym_api.user_identity_provider_associations (
-  user_id, provider_sub
+  user_id, provider_sub, provider_iss
 ) VALUES (
-  $1, $2
+  $1, $2, $3
 )
-RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss
 `
 
 type CreateIdentityProviderAssociationParams struct {
 	UserID      pgtype.UUID
 	ProviderSub string
+	ProviderIss string
 }
 
 func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX, arg CreateIdentityProviderAssociationParams) (HusonymApiUserIdentityProviderAssociation, error) {
-	row := db.QueryRow(ctx, createIdentityProviderAssociation, arg.UserID, arg.ProviderSub)
+	row := db.QueryRow(ctx, createIdentityProviderAssociation, arg.UserID, arg.ProviderSub, arg.ProviderIss)
 	var i HusonymApiUserIdentityProviderAssociation
 	err := row.Scan(
 		&i.ID,
@@ -130,6 +168,7 @@ func (q *Queries) CreateIdentityProviderAssociation(ctx context.Context, db DBTX
 		&i.Email,
 		&i.EmailVerified,
 		&i.Picture,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -280,7 +319,7 @@ func (q *Queries) GetAccountIds(ctx context.Context, db DBTX) ([]pgtype.UUID, er
 }
 
 const getAccountInvite = `-- name: GetAccountInvite :one
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss FROM husonym_api.account_invites
 WHERE id = $1
 `
 
@@ -298,12 +337,13 @@ func (q *Queries) GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID)
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.Role,
+		&i.ProviderIss,
 	)
 	return i, err
 }
 
 const getAccountInviteByToken = `-- name: GetAccountInviteByToken :one
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss FROM husonym_api.account_invites
 WHERE token = $1
 `
 
@@ -321,6 +361,7 @@ func (q *Queries) GetAccountInviteByToken(ctx context.Context, db DBTX, token st
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.Role,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -438,7 +479,7 @@ func (q *Queries) GetAccountsByUser(ctx context.Context, db DBTX, id pgtype.UUID
 }
 
 const getActiveAccountInvites = `-- name: GetActiveAccountInvites :many
-SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role FROM husonym_api.account_invites
+SELECT id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss FROM husonym_api.account_invites
 WHERE account_id = $1 AND expires_at > CURRENT_TIMESTAMP AND accepted = false
 `
 
@@ -462,6 +503,7 @@ func (q *Queries) GetActiveAccountInvites(ctx context.Context, db DBTX, accounti
 			&i.UpdatedAt,
 			&i.ExpiresAt,
 			&i.Role,
+			&i.ProviderIss,
 		); err != nil {
 			return nil, err
 		}
@@ -637,8 +679,42 @@ func (q *Queries) GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (Husonym
 	return i, err
 }
 
+const getUserAssociationByIdentity = `-- name: GetUserAssociationByIdentity :one
+SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss from husonym_api.user_identity_provider_associations
+WHERE provider_sub = $1
+  AND provider_iss IN ($2, '')
+ORDER BY provider_iss DESC
+LIMIT 1
+`
+
+type GetUserAssociationByIdentityParams struct {
+	ProviderSub string
+	ProviderIss string
+}
+
+// Looks an identity up by the pair that identifies it. The empty issuer is accepted in
+// the same breath because a row recorded before issuers were has not been adopted yet:
+// the caller decides whether the token's issuer is allowed to adopt it.
+func (q *Queries) GetUserAssociationByIdentity(ctx context.Context, db DBTX, arg GetUserAssociationByIdentityParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	row := db.QueryRow(ctx, getUserAssociationByIdentity, arg.ProviderSub, arg.ProviderIss)
+	var i HusonymApiUserIdentityProviderAssociation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProviderSub,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
+		&i.ProviderIss,
+	)
+	return i, err
+}
+
 const getUserAssociationByProviderSub = `-- name: GetUserAssociationByProviderSub :one
-SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture from husonym_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss from husonym_api.user_identity_provider_associations
 WHERE provider_sub = $1
 `
 
@@ -655,6 +731,7 @@ func (q *Queries) GetUserAssociationByProviderSub(ctx context.Context, db DBTX, 
 		&i.Email,
 		&i.EmailVerified,
 		&i.Picture,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -678,7 +755,7 @@ func (q *Queries) GetUserByProviderSub(ctx context.Context, db DBTX, providerSub
 }
 
 const getUserIdentitiesByTeamAccount = `-- name: GetUserIdentitiesByTeamAccount :many
-SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture
+SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture, aipa.provider_iss
 FROM husonym_api.user_identity_provider_associations aipa
 INNER JOIN husonym_api.account_user_associations aua ON aua.user_id = aipa.user_id
 INNER JOIN husonym_api.accounts a ON a.id = aua.account_id
@@ -704,6 +781,7 @@ func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, a
 			&i.Email,
 			&i.EmailVerified,
 			&i.Picture,
+			&i.ProviderIss,
 		); err != nil {
 			return nil, err
 		}
@@ -716,7 +794,7 @@ func (q *Queries) GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, a
 }
 
 const getUserIdentityAssociationsByUserIds = `-- name: GetUserIdentityAssociationsByUserIds :many
-SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture from husonym_api.user_identity_provider_associations
+SELECT id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss from husonym_api.user_identity_provider_associations
 WHERE user_id = ANY($1::uuid[])
 `
 
@@ -739,6 +817,7 @@ func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db D
 			&i.Email,
 			&i.EmailVerified,
 			&i.Picture,
+			&i.ProviderIss,
 		); err != nil {
 			return nil, err
 		}
@@ -751,7 +830,7 @@ func (q *Queries) GetUserIdentityAssociationsByUserIds(ctx context.Context, db D
 }
 
 const getUserIdentityByUserId = `-- name: GetUserIdentityByUserId :one
-SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture FROM husonym_api.user_identity_provider_associations aipa
+SELECT aipa.id, aipa.user_id, aipa.provider_sub, aipa.created_at, aipa.updated_at, aipa.name, aipa.email, aipa.email_verified, aipa.picture, aipa.provider_iss FROM husonym_api.user_identity_provider_associations aipa
 WHERE aipa.user_id = $1
 `
 
@@ -768,6 +847,7 @@ func (q *Queries) GetUserIdentityByUserId(ctx context.Context, db DBTX, userID p
 		&i.Email,
 		&i.EmailVerified,
 		&i.Picture,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -869,6 +949,40 @@ func (q *Queries) SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser
 	return i, err
 }
 
+const setIdentityProviderAssociationUser = `-- name: SetIdentityProviderAssociationUser :one
+UPDATE husonym_api.user_identity_provider_associations
+SET user_id = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $2
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss
+`
+
+type SetIdentityProviderAssociationUserParams struct {
+	UserId pgtype.UUID
+	ID     pgtype.UUID
+}
+
+// Repoints an association at a replacement user, for the case where the user row an
+// association names has disappeared. Without it, creating the replacement leaves the
+// association pointing at nothing and the next sign-in creates yet another user.
+func (q *Queries) SetIdentityProviderAssociationUser(ctx context.Context, db DBTX, arg SetIdentityProviderAssociationUserParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	row := db.QueryRow(ctx, setIdentityProviderAssociationUser, arg.UserId, arg.ID)
+	var i HusonymApiUserIdentityProviderAssociation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ProviderSub,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Email,
+		&i.EmailVerified,
+		&i.Picture,
+		&i.ProviderIss,
+	)
+	return i, err
+}
+
 const setIdentityProviderProfile = `-- name: SetIdentityProviderProfile :one
 UPDATE husonym_api.user_identity_provider_associations
 SET name = COALESCE($1, name),
@@ -877,13 +991,14 @@ SET name = COALESCE($1, name),
     picture = COALESCE($4, picture),
     updated_at = CURRENT_TIMESTAMP
 WHERE provider_sub = $5
+  AND provider_iss = $6
   AND (
     name IS DISTINCT FROM COALESCE($1, name)
     OR email IS DISTINCT FROM COALESCE($2, email)
     OR email_verified IS DISTINCT FROM $3
     OR picture IS DISTINCT FROM COALESCE($4, picture)
   )
-RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture
+RETURNING id, user_id, provider_sub, created_at, updated_at, name, email, email_verified, picture, provider_iss
 `
 
 type SetIdentityProviderProfileParams struct {
@@ -892,6 +1007,7 @@ type SetIdentityProviderProfileParams struct {
 	EmailVerified bool
 	Picture       pgtype.Text
 	ProviderSub   string
+	ProviderIss   string
 }
 
 // Refreshes the display identity the provider presents for this subject. Called at every
@@ -914,6 +1030,7 @@ func (q *Queries) SetIdentityProviderProfile(ctx context.Context, db DBTX, arg S
 		arg.EmailVerified,
 		arg.Picture,
 		arg.ProviderSub,
+		arg.ProviderIss,
 	)
 	var i HusonymApiUserIdentityProviderAssociation
 	err := row.Scan(
@@ -926,6 +1043,7 @@ func (q *Queries) SetIdentityProviderProfile(ctx context.Context, db DBTX, arg S
 		&i.Email,
 		&i.EmailVerified,
 		&i.Picture,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -963,7 +1081,7 @@ const updateAccountInviteToAccepted = `-- name: UpdateAccountInviteToAccepted :o
 UPDATE husonym_api.account_invites
 SET accepted = true
 WHERE id = $1
-RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role
+RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss
 `
 
 func (q *Queries) UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error) {
@@ -980,6 +1098,7 @@ func (q *Queries) UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.Role,
+		&i.ProviderIss,
 	)
 	return i, err
 }
@@ -1017,7 +1136,7 @@ const updateActiveAccountInvitesToExpired = `-- name: UpdateActiveAccountInvites
 UPDATE husonym_api.account_invites
 SET expires_at = CURRENT_TIMESTAMP
 WHERE account_id = $1 AND email = $2 AND expires_at > CURRENT_TIMESTAMP
-RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role
+RETURNING id, account_id, sender_user_id, email, token, accepted, created_at, updated_at, expires_at, role, provider_iss
 `
 
 type UpdateActiveAccountInvitesToExpiredParams struct {
@@ -1039,6 +1158,7 @@ func (q *Queries) UpdateActiveAccountInvitesToExpired(ctx context.Context, db DB
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 		&i.Role,
+		&i.ProviderIss,
 	)
 	return i, err
 }

@@ -40,6 +40,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/authmw"
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
 	clientcredtokenprovider "github.com/fishtre-compagnie/husonym/backend/internal/auth/clientcred_token_provider"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/issuers"
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	accountid_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/accountid"
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
@@ -398,7 +399,18 @@ func serve(ctx context.Context) error {
 		if !cascadelicense.IsValid() {
 			return errors.New("auth is enabled but no license is present")
 		}
-		jwtcfg, err := getJwtClientConfig()
+		// The issuers to accept: the deployment's own, always, plus whatever the accounts
+		// have declared. Resolved per request behind a short cache -- see the package.
+		issuerResolver := issuers.NewResolver(
+			getDeploymentIssuer(),
+			func(ctx context.Context) ([]string, error) {
+				return db.Q.GetDeclaredIssuers(ctx, db.Db)
+			},
+			issuers.DefaultTTL,
+			slogger,
+		)
+
+		jwtcfg, err := getJwtClientConfig(issuerResolver.Resolve)
 		if err != nil {
 			return err
 		}
@@ -457,6 +469,10 @@ func serve(ctx context.Context) error {
 					mgmtv1alpha1connect.AuthServiceGetAuthorizeUrlProcedure,
 					mgmtv1alpha1connect.AuthServiceLoginCliProcedure,
 					mgmtv1alpha1connect.AuthServiceRefreshCliProcedure,
+					// Unauthenticated of necessity: which provider to sign in against has
+					// to be known before anybody can sign in. It answers about an account,
+					// never about a person -- see the handler.
+					mgmtv1alpha1connect.AuthServiceGetAccountLoginMethodProcedure,
 				},
 			),
 			authlogging_interceptor.NewInterceptor(db),
@@ -485,7 +501,7 @@ func serve(ctx context.Context) error {
 		CliClientId:   viper.GetString("AUTH_CLI_CLIENT_ID"),
 		CliAudience:   getAuthCliAudience(),
 		IssuerUrl:     issuerStr,
-	}, authclient)
+	}, authclient, db)
 	api.Handle(
 		mgmtv1alpha1connect.NewAuthServiceHandler(
 			authService,
@@ -545,6 +561,7 @@ func serve(ctx context.Context) error {
 		IsAuthEnabled:            isAuthEnabled,
 		IsHusonymCloud:           ncloudlicense.IsValid(),
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
+		DeploymentIssuer:         getDeploymentIssuer(),
 	}, db, temporalConfigProvider, authclient, authadminclient, billingClient, rbacclient, cascadelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
@@ -560,7 +577,10 @@ func serve(ctx context.Context) error {
 	var accountSettingHandler mgmtv1alpha1connect.AccountSettingServiceHandler = mgmtv1alpha1connect.UnimplementedAccountSettingServiceHandler{}
 	if settingsEncryptor != nil {
 		accountSettingHandler = v1alpha1_accountsettingservice.New(
-			&v1alpha1_accountsettingservice.Config{IsHusonymCloud: ncloudlicense.IsValid()},
+			&v1alpha1_accountsettingservice.Config{
+				IsHusonymCloud:              ncloudlicense.IsValid(),
+				AcceptedSignatureAlgorithms: getAcceptedSignatureAlgorithms(),
+			},
 			db,
 			userdataclient,
 			settingsEncryptor,
@@ -1050,21 +1070,36 @@ func getDefaultTemporalSyncJobQueue() string {
 	return name
 }
 
-func getJwtClientConfig() (*auth_jwt.ClientConfig, error) {
-	authBaseUrl := getAuthBaseUrl()
-	authAudiences := getAuthAudiences()
-
-	sigAlgo, err := getAuthSignatureAlgorithm()
+func getJwtClientConfig(
+	resolver func(ctx context.Context) ([]string, error),
+) (*auth_jwt.ClientConfig, error) {
+	algorithms, err := getAuthSignatureAlgorithms()
 	if err != nil {
 		return nil, err
 	}
 
 	return &auth_jwt.ClientConfig{
-		BackendIssuerUrl:   authBaseUrl,
-		FrontendIssuerUrl:  getAuthExpectedIssUrl(),
-		ApiAudiences:       authAudiences,
-		SignatureAlgorithm: *sigAlgo,
+		BackendIssuerUrl:  getAuthBaseUrl(),
+		FrontendIssuerUrl: getAuthExpectedIssUrl(),
+		ApiAudiences:      getAuthAudiences(),
+		Algorithms:        algorithms,
+		IssuerResolver:    resolver,
 	}, nil
+}
+
+// getAuthSignatureAlgorithms returns what signatures may be validated with: the one the
+// deployment names, or every asymmetric one when it names none. A deployment whose
+// accounts bring their own providers cannot name a single algorithm for all of them.
+func getAuthSignatureAlgorithms() ([]validator.SignatureAlgorithm, error) {
+	named := viper.GetString("AUTH_SIGNATURE_ALGORITHM")
+	if named == "" {
+		return auth_jwt.DefaultAsymmetricAlgorithms, nil
+	}
+	algorithm := validator.SignatureAlgorithm(named)
+	if !allowedSigningAlgorithms[algorithm] {
+		return nil, errors.New("unsupported signature algorithm")
+	}
+	return []validator.SignatureAlgorithm{algorithm}, nil
 }
 
 var allowedSigningAlgorithms = map[validator.SignatureAlgorithm]bool{
@@ -1081,18 +1116,6 @@ var allowedSigningAlgorithms = map[validator.SignatureAlgorithm]bool{
 	validator.PS256: true,
 	validator.PS384: true,
 	validator.PS512: true,
-}
-
-func getAuthSignatureAlgorithm() (*validator.SignatureAlgorithm, error) {
-	algoStr := viper.GetString("AUTH_SIGNATURE_ALGORITHM")
-	if algoStr == "" {
-		rs256 := validator.RS256
-		return &rs256, nil
-	}
-	if _, ok := allowedSigningAlgorithms[validator.SignatureAlgorithm(algoStr)]; !ok {
-		return nil, errors.New("unsupported signature algorithm")
-	}
-	return (*validator.SignatureAlgorithm)(&algoStr), nil
 }
 
 func getAuthCliAudience() string {
@@ -1121,6 +1144,31 @@ func getAuthExpectedIssUrl() *string {
 		return nil
 	}
 	return &iss
+}
+
+// getDeploymentIssuer returns the issuer tokens of this deployment are expected to carry:
+// what the validator is configured with, which is AUTH_EXPECTED_ISS where it is set and
+// AUTH_BASEURL otherwise -- the same fallback auth_jwt.New applies.
+// getAcceptedSignatureAlgorithms returns the algorithms token signatures are validated
+// with. A deployment that names one accepts that one; a deployment that names none
+// accepts the asymmetric set, which is what "any compliant provider" needs -- and never
+// a symmetric one, which would be a signing key both parties hold.
+func getAcceptedSignatureAlgorithms() []string {
+	if named := viper.GetString("AUTH_SIGNATURE_ALGORITHM"); named != "" {
+		return []string{named}
+	}
+	algorithms := make([]string, 0, len(auth_jwt.DefaultAsymmetricAlgorithms))
+	for _, algorithm := range auth_jwt.DefaultAsymmetricAlgorithms {
+		algorithms = append(algorithms, string(algorithm))
+	}
+	return algorithms
+}
+
+func getDeploymentIssuer() string {
+	if iss := getAuthExpectedIssUrl(); iss != nil {
+		return *iss
+	}
+	return getAuthBaseUrl()
 }
 
 func getAuthClientIdSecretMap() map[string]string {

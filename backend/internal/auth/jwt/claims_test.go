@@ -62,3 +62,44 @@ func Test_CustomClaims_ProfileClaims(t *testing.T) {
 		require.False(t, bool(claims.EmailVerified))
 	})
 }
+
+// A token issued to a daemon carries the subject of a service principal, not a person.
+// Signing one in would mint a user, and a personal account with it, for every such
+// application in the tenant.
+func Test_CustomClaims_IsApplicationToken(t *testing.T) {
+	cases := []struct {
+		name  string
+		claim string
+		want  bool
+	}{
+		{"an application token says so", `{"idtyp": "app"}`, true},
+		{"whatever the case", `{"idtyp": "App"}`, true},
+		{"a user token says so too", `{"idtyp": "user"}`, false},
+		// The claim is one provider's. Everywhere else it is absent, and a provider that
+		// says nothing must keep working: inferring an application from a sparse token
+		// would lock out real people.
+		{"a provider that says nothing", `{"scope": "read:jobs"}`, false},
+		{"an empty value", `{"idtyp": ""}`, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var claims CustomClaims
+			require.NoError(t, json.Unmarshal([]byte(tc.claim), &claims))
+			require.Equal(t, tc.want, claims.IsApplicationToken())
+		})
+	}
+
+	t.Run("nil claims are not an application token", func(t *testing.T) {
+		var claims *CustomClaims
+		require.False(t, claims.IsApplicationToken())
+	})
+}
+
+func Test_TokenContextData_Identity(t *testing.T) {
+	data := &TokenContextData{AuthUserId: "sub-1", AuthIssuer: "https://idp.example.com/"}
+	issuer, subject := data.Identity()
+
+	require.Equal(t, "https://idp.example.com/", issuer)
+	require.Equal(t, "sub-1", subject)
+}

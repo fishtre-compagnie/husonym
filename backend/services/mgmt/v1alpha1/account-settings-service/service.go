@@ -22,6 +22,11 @@ type Service struct {
 
 type Config struct {
 	IsHusonymCloud bool
+
+	// AcceptedSignatureAlgorithms is what this deployment validates token signatures
+	// with. A provider that signs with none of them is refused when it is tried, rather
+	// than after it is saved.
+	AcceptedSignatureAlgorithms []string
 }
 
 var _ mgmtv1alpha1connect.AccountSettingServiceHandler = (*Service)(nil)

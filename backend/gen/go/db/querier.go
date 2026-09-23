@@ -12,8 +12,16 @@ import (
 )
 
 type Querier interface {
+	// Adopts a row recorded before issuers were, and only such a row: the WHERE clause on the
+	// empty string is what stops one issuer from claiming another's identity. No row updated
+	// means somebody got there first, which the caller reads as "look again".
+	AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)
 	AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error)
 	ConvertPersonalAccountToTeam(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)
+	// Whether an issuer is declared by an account other than the one given. Two accounts
+	// sharing an issuer share the subject space it mints, so the second one to claim it would
+	// be able to name the members of the first.
+	CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error)
 	CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error)
 	CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (HusonymApiAccountHook, error)
 	CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error)
@@ -49,6 +57,16 @@ type Querier interface {
 	GetAccountIds(ctx context.Context, db DBTX) ([]pgtype.UUID, error)
 	GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)
 	GetAccountInviteByToken(ctx context.Context, db DBTX, token string) (HusonymApiAccountInvite, error)
+	// What an unauthenticated caller may learn about an account's provider, to start a sign-in.
+	//
+	// Two columns, named one by one, and that is the point: the row also holds the client
+	// secret, and this path serves anybody who can guess a slug. Selecting the whole config
+	// and picking fields in Go would put the secret one careless line away from a response.
+	// Here it never leaves the database.
+	GetAccountLoginMethodBySlug(ctx context.Context, db DBTX, accountslug string) (GetAccountLoginMethodBySlugRow, error)
+	// The provider an account has declared, without its secrets being decrypted. The caller
+	// reads the issuer, the client id and the audiences; the client secret stays as stored.
+	GetAccountOidcProvider(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]byte, error)
 	GetAccountOnboardingConfig(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.AccountOnboardingConfig, error)
 	GetAccountSettingByType(ctx context.Context, db DBTX, arg GetAccountSettingByTypeParams) (HusonymApiAccountSetting, error)
 	GetAccountSettings(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountSetting, error)
@@ -66,6 +84,15 @@ type Querier interface {
 	GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error)
 	GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiConnection, error)
 	GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiConnection, error)
+	// Every issuer an account has declared, for the resolver the token validator calls.
+	//
+	// The issuer is read straight out of the jsonb and never decrypted, because it is not a
+	// secret: it is the name a provider calls itself by, and it travels in every token. Only
+	// the client secret of that setting is encrypted, and nothing here touches it.
+	//
+	// Distinct, because two accounts pointing at the same provider is a list of one issuer,
+	// not two -- the list says which tokens are authentic, never which account they open.
+	GetDeclaredIssuers(ctx context.Context, db DBTX) ([]string, error)
 	GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error)
 	GetJobByNameAndAccount(ctx context.Context, db DBTX, arg GetJobByNameAndAccountParams) (HusonymApiJob, error)
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
@@ -88,6 +115,10 @@ type Querier interface {
 	GetTemporalConfigByAccount(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.TemporalConfig, error)
 	GetTemporalConfigByUserAccount(ctx context.Context, db DBTX, arg GetTemporalConfigByUserAccountParams) (*pg_models.TemporalConfig, error)
 	GetUser(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)
+	// Looks an identity up by the pair that identifies it. The empty issuer is accepted in
+	// the same breath because a row recorded before issuers were has not been adopted yet:
+	// the caller decides whether the token's issuer is allowed to adopt it.
+	GetUserAssociationByIdentity(ctx context.Context, db DBTX, arg GetUserAssociationByIdentityParams) (HusonymApiUserIdentityProviderAssociation, error)
 	GetUserAssociationByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUserIdentityProviderAssociation, error)
 	GetUserByProviderSub(ctx context.Context, db DBTX, providerSub string) (HusonymApiUser, error)
 	GetUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiTransformer, error)
@@ -122,6 +153,10 @@ type Querier interface {
 	SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error)
 	SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error)
 	SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
+	// Repoints an association at a replacement user, for the case where the user row an
+	// association names has disappeared. Without it, creating the replacement leaves the
+	// association pointing at nothing and the next sign-in creates yet another user.
+	SetIdentityProviderAssociationUser(ctx context.Context, db DBTX, arg SetIdentityProviderAssociationUserParams) (HusonymApiUserIdentityProviderAssociation, error)
 	// Refreshes the display identity the provider presents for this subject. Called at every
 	// sign-in, because a name or an address changes on the provider's side and nothing else
 	// would tell us.

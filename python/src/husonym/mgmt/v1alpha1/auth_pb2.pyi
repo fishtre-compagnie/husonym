@@ -30,6 +30,20 @@ class GetAuthStatusResponse(_message.Message):
     is_enabled: bool
     def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
 
+class GetAccountLoginMethodRequest(_message.Message):
+    __slots__ = ("account_slug",)
+    ACCOUNT_SLUG_FIELD_NUMBER: _ClassVar[int]
+    account_slug: str
+    def __init__(self, account_slug: _Optional[str] = ...) -> None: ...
+
+class GetAccountLoginMethodResponse(_message.Message):
+    __slots__ = ("issuer", "client_id")
+    ISSUER_FIELD_NUMBER: _ClassVar[int]
+    CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    issuer: str
+    client_id: str
+    def __init__(self, issuer: _Optional[str] = ..., client_id: _Optional[str] = ...) -> None: ...
+
 class AccessToken(_message.Message):
     __slots__ = ("access_token", "refresh_token", "expires_in", "scope", "id_token", "token_type")
     ACCESS_TOKEN_FIELD_NUMBER: _ClassVar[int]

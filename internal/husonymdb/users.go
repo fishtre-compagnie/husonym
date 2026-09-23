@@ -16,53 +16,107 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// SetUserByAuthSub finds or creates the user behind an identity provider subject, and
-// refreshes the display identity the provider presents for it.
+// Identity is the pair an identity provider vouches for. Neither half identifies anyone
+// alone: whoever declares a provider chooses the subjects it issues, so a subject only
+// means something under the issuer that minted it.
+type Identity struct {
+	Issuer  string
+	Subject string
+
+	// MayAdoptLegacy says whether this issuer is the deployment's own, and so may take
+	// over an identity recorded before issuers were (provider_iss = ''). Only the
+	// deployment issuer may: any other would be claiming an identity it never issued.
+	//
+	// The caller decides, because it is the one that knows what the deployment is
+	// configured with. This package must not have an opinion about it.
+	MayAdoptLegacy bool
+}
+
+// ErrIdentityNotAdoptable is returned when an identity recorded before issuers were is
+// presented by an issuer that is not the deployment's own.
+var ErrIdentityNotAdoptable = errors.New(
+	"this identity predates issuer recording and can only be claimed by the deployment's own issuer",
+)
+
+// ErrIdentityWithoutIssuer is returned for an identity that names no issuer.
+//
+// The empty issuer is reserved: it is what rows written before the column existed carry,
+// and what makes them adoptable. Writing a new one would make an identity nobody vouches
+// for, indistinguishable from a legacy row and adoptable by the deployment issuer -- so
+// this refuses instead, which is also what a token with no iss deserves.
+var ErrIdentityWithoutIssuer = errors.New("an identity must name the issuer that vouches for it")
+
+// SetUserByIdentity finds or creates the user behind an identity, and refreshes the
+// display identity the provider presents for it.
 //
 // profile may be nil: a deployment whose provider sends no profile claims and exposes no
 // userinfo endpoint still gets its user. The stored values are then left as they are --
 // absence is not erasure.
-func (d *HusonymDb) SetUserByAuthSub(
+func (d *HusonymDb) SetUserByIdentity(
 	ctx context.Context,
-	authSub string,
+	identity Identity,
 	profile *authmgmt.User,
 ) (*db_queries.HusonymApiUser, error) {
+	if identity.Issuer == "" {
+		return nil, ErrIdentityWithoutIssuer
+	}
+
 	var userResp *db_queries.HusonymApiUser
 	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.Serializable}, func(dbtx BaseDBTX) error {
-		user, err := d.Q.GetUserByProviderSub(ctx, dbtx, authSub)
+		association, err := d.Q.GetUserAssociationByIdentity(ctx, dbtx, db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: identity.Subject,
+			ProviderIss: identity.Issuer,
+		})
 		if err != nil && !IsNoRows(err) {
 			return err
 		} else if err != nil && IsNoRows(err) {
-			association, err := d.Q.GetUserAssociationByProviderSub(ctx, dbtx, authSub)
-			if err != nil && !IsNoRows(err) {
+			user, err := d.Q.CreateNonMachineUser(ctx, dbtx)
+			if err != nil {
 				return err
-			} else if err != nil && IsNoRows(err) {
-				// create user, create association
-				user, err = d.Q.CreateNonMachineUser(ctx, dbtx)
-				if err != nil {
-					return err
-				}
-				userResp = &user
-				association, err = d.Q.CreateIdentityProviderAssociation(ctx, dbtx, db_queries.CreateIdentityProviderAssociationParams{
-					UserID:      user.ID,
-					ProviderSub: authSub,
-				})
-				if err != nil {
-					return err
-				}
-			} else {
-				user, err = d.Q.GetUser(ctx, dbtx, association.UserID)
-				if err != nil && !IsNoRows(err) {
-					return err
-				} else if err != nil && IsNoRows(err) {
-					user, err = d.Q.CreateNonMachineUser(ctx, dbtx)
-					if err != nil {
-						return err
-					}
-				}
-				userResp = &user
 			}
+			if _, err := d.Q.CreateIdentityProviderAssociation(ctx, dbtx, db_queries.CreateIdentityProviderAssociationParams{
+				UserID:      user.ID,
+				ProviderSub: identity.Subject,
+				ProviderIss: identity.Issuer,
+			}); err != nil {
+				return err
+			}
+			userResp = &user
 			return nil
+		}
+
+		// A row recorded before issuers were. It belongs to whoever the deployment was
+		// pointed at then, which is the only issuer allowed to take it over.
+		if association.ProviderIss == "" {
+			if !identity.MayAdoptLegacy {
+				return ErrIdentityNotAdoptable
+			}
+			association, err = d.Q.AdoptIdentityProviderIssuer(ctx, dbtx, db_queries.AdoptIdentityProviderIssuerParams{
+				ProviderSub: identity.Subject,
+				ProviderIss: identity.Issuer,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		user, err := d.Q.GetUser(ctx, dbtx, association.UserID)
+		if err != nil && !IsNoRows(err) {
+			return err
+		} else if err != nil && IsNoRows(err) {
+			// The user the association names is gone. Creating a replacement is not
+			// enough: the association has to follow it, or it keeps naming nothing and
+			// every sign-in makes another orphan.
+			user, err = d.Q.CreateNonMachineUser(ctx, dbtx)
+			if err != nil {
+				return err
+			}
+			if _, err := d.Q.SetIdentityProviderAssociationUser(ctx, dbtx, db_queries.SetIdentityProviderAssociationUserParams{
+				ID:     association.ID,
+				UserId: user.ID,
+			}); err != nil {
+				return err
+			}
 		}
 		userResp = &user
 		return nil
@@ -70,7 +124,7 @@ func (d *HusonymDb) SetUserByAuthSub(
 		return nil, err
 	}
 
-	d.refreshIdentityProviderProfile(ctx, authSub, profile)
+	d.refreshIdentityProviderProfile(ctx, identity, profile)
 	return userResp, nil
 }
 
@@ -88,14 +142,15 @@ func (d *HusonymDb) SetUserByAuthSub(
 //     reason to refuse the user. Same rule as reading the profile in the first place.
 func (d *HusonymDb) refreshIdentityProviderProfile(
 	ctx context.Context,
-	authSub string,
+	identity Identity,
 	profile *authmgmt.User,
 ) {
 	if profile == nil {
 		return
 	}
 	_, err := d.Q.SetIdentityProviderProfile(ctx, d.Db, db_queries.SetIdentityProviderProfileParams{
-		ProviderSub: authSub,
+		ProviderSub: identity.Subject,
+		ProviderIss: identity.Issuer,
 		Name:        ToNullableText(profile.Name),
 		Email:       ToNullableText(profile.Email),
 		// Always written, never coalesced: an assertion that disappears has to lower the
@@ -379,6 +434,7 @@ func (d *HusonymDb) CreateTeamAccountInvite(
 	email string,
 	expiresAt pgtype.Timestamp,
 	role pgtype.Int4,
+	providerIss string,
 ) (*db_queries.HusonymApiAccountInvite, error) {
 	var accountInvite *db_queries.HusonymApiAccountInvite
 	if err := d.WithTx(ctx, nil, func(dbtx BaseDBTX) error {
@@ -406,6 +462,7 @@ func (d *HusonymDb) CreateTeamAccountInvite(
 			Email:        email,
 			ExpiresAt:    expiresAt,
 			Role:         role,
+			ProviderIss:  providerIss,
 		})
 		if err != nil {
 			return err
@@ -424,11 +481,39 @@ type ValidateInviteAddUserToAccountResponse struct {
 	Role      mgmtv1alpha1.AccountRole
 }
 
+// invitationAcceptableFrom checks that the token accepting an invitation comes from the
+// provider the invitation was meant for.
+//
+// The address alone cannot carry this: an address is whatever the provider that minted the
+// token says it is, so the address of an invitation says which person, and the issuer says
+// whose word we are taking for it.
+//
+// An invitation created before issuers were recorded names none, and is then acceptable
+// only from the deployment's own issuer -- the same rule, and for the same reason, as
+// adopting an identity recorded before issuers were.
+func invitationAcceptableFrom(inviteIssuer string, identity Identity) error {
+	if inviteIssuer == "" {
+		if !identity.MayAdoptLegacy {
+			return husonymerrors.NewForbidden(
+				"this invitation predates issuer recording and can only be accepted from the deployment's own identity provider",
+			)
+		}
+		return nil
+	}
+	if inviteIssuer != identity.Issuer {
+		return husonymerrors.NewForbidden(
+			"this invitation can only be accepted from the identity provider it was issued for",
+		)
+	}
+	return nil
+}
+
 func (d *HusonymDb) ValidateInviteAddUserToAccount(
 	ctx context.Context,
 	userId pgtype.UUID,
 	token string,
 	userEmail string,
+	identity Identity,
 ) (*ValidateInviteAddUserToAccountResponse, error) {
 	resp := &ValidateInviteAddUserToAccountResponse{}
 
@@ -441,6 +526,9 @@ func (d *HusonymDb) ValidateInviteAddUserToAccount(
 		}
 		if invite.Email != userEmail {
 			return husonymerrors.NewBadRequest("invalid invite email. unable to accept invite")
+		}
+		if err := invitationAcceptableFrom(invite.ProviderIss, identity); err != nil {
+			return err
 		}
 		if !invite.Accepted.Bool {
 			_, err = d.Q.UpdateAccountInviteToAccepted(ctx, dbtx, invite.ID)

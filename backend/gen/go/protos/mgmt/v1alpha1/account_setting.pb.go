@@ -23,6 +23,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// How much a finding of a setting test weighs.
+type SettingCheckLevel int32
+
+const (
+	SettingCheckLevel_SETTING_CHECK_LEVEL_UNSPECIFIED SettingCheckLevel = 0
+	// The setting cannot work. Saving it would lock the account out.
+	SettingCheckLevel_SETTING_CHECK_LEVEL_BLOCKING SettingCheckLevel = 1
+	// The setting works, but not the way its author probably meant.
+	SettingCheckLevel_SETTING_CHECK_LEVEL_WARNING SettingCheckLevel = 2
+	// Worth knowing, nothing to do.
+	SettingCheckLevel_SETTING_CHECK_LEVEL_INFO SettingCheckLevel = 3
+)
+
+// Enum value maps for SettingCheckLevel.
+var (
+	SettingCheckLevel_name = map[int32]string{
+		0: "SETTING_CHECK_LEVEL_UNSPECIFIED",
+		1: "SETTING_CHECK_LEVEL_BLOCKING",
+		2: "SETTING_CHECK_LEVEL_WARNING",
+		3: "SETTING_CHECK_LEVEL_INFO",
+	}
+	SettingCheckLevel_value = map[string]int32{
+		"SETTING_CHECK_LEVEL_UNSPECIFIED": 0,
+		"SETTING_CHECK_LEVEL_BLOCKING":    1,
+		"SETTING_CHECK_LEVEL_WARNING":     2,
+		"SETTING_CHECK_LEVEL_INFO":        3,
+	}
+)
+
+func (x SettingCheckLevel) Enum() *SettingCheckLevel {
+	p := new(SettingCheckLevel)
+	*p = x
+	return p
+}
+
+func (x SettingCheckLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SettingCheckLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_account_setting_proto_enumTypes[0].Descriptor()
+}
+
+func (SettingCheckLevel) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_account_setting_proto_enumTypes[0]
+}
+
+func (x SettingCheckLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SettingCheckLevel.Descriptor instead.
+func (SettingCheckLevel) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{0}
+}
+
 // A setting of an account: a value that varies by account, part of which may be a secret,
 // and that a human sets once.
 //
@@ -142,6 +198,7 @@ type AccountSettingConfig struct {
 	// Types that are valid to be assigned to Config:
 	//
 	//	*AccountSettingConfig_AnonymizationConsistency
+	//	*AccountSettingConfig_OidcProvider
 	Config        isAccountSettingConfig_Config `protobuf_oneof:"config"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -193,6 +250,15 @@ func (x *AccountSettingConfig) GetAnonymizationConsistency() *AnonymizationConsi
 	return nil
 }
 
+func (x *AccountSettingConfig) GetOidcProvider() *OidcProvider {
+	if x != nil {
+		if x, ok := x.Config.(*AccountSettingConfig_OidcProvider); ok {
+			return x.OidcProvider
+		}
+	}
+	return nil
+}
+
 type isAccountSettingConfig_Config interface {
 	isAccountSettingConfig_Config()
 }
@@ -202,7 +268,14 @@ type AccountSettingConfig_AnonymizationConsistency struct {
 	AnonymizationConsistency *AnonymizationConsistency `protobuf:"bytes,1,opt,name=anonymization_consistency,json=anonymizationConsistency,proto3,oneof"`
 }
 
+type AccountSettingConfig_OidcProvider struct {
+	// The identity provider the account's members sign in with.
+	OidcProvider *OidcProvider `protobuf:"bytes,2,opt,name=oidc_provider,json=oidcProvider,proto3,oneof"`
+}
+
 func (*AccountSettingConfig_AnonymizationConsistency) isAccountSettingConfig_Config() {}
+
+func (*AccountSettingConfig_OidcProvider) isAccountSettingConfig_Config() {}
 
 // What an account's deterministic anonymization derives from.
 type AnonymizationConsistency struct {
@@ -256,6 +329,267 @@ func (x *AnonymizationConsistency) GetDerivationKey() string {
 	return ""
 }
 
+// The identity provider an account's members sign in with.
+//
+// Nothing here names a product. What an account declares is what the standard defines:
+// an issuer to discover, a client to authorize as, and the audience its tokens carry.
+// A provider that needs more than this is a provider Husonym does not claim to support.
+type OidcProvider struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The issuer, exactly as its tokens spell it in their iss claim.
+	//
+	// It is compared by exact string equality, so it is the issuer and not the URL a human
+	// would type: a discovery document that answers under one name and calls itself another
+	// is rejected by the test below rather than accepted and puzzled over later.
+	Issuer string `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	// The client the frontend authorizes as. Public information: the browser carries it in
+	// the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
+	ClientId string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// The secret of that client, for providers that require a confidential one.
+	//
+	// It plays no part in validating a token -- that needs only the public JWKS -- and is
+	// used solely in the authorization flow. Empty for a public client.
+	ClientSecret  string `protobuf:"bytes,3,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OidcProvider) Reset() {
+	*x = OidcProvider{}
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OidcProvider) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OidcProvider) ProtoMessage() {}
+
+func (x *OidcProvider) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OidcProvider.ProtoReflect.Descriptor instead.
+func (*OidcProvider) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *OidcProvider) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *OidcProvider) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *OidcProvider) GetClientSecret() string {
+	if x != nil {
+		return x.ClientSecret
+	}
+	return ""
+}
+
+// One finding of a setting test.
+//
+// A finding, not a sentence: what was checked, how much it weighs, what is missing and
+// what to do about it. The same shape the connection checks use, for the same reason --
+// a human fixes a provider from a remedy, never from a stack trace.
+type SettingCheck struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What was checked, as a stable identifier a screen can translate.
+	Check string `protobuf:"bytes,1,opt,name=check,proto3" json:"check,omitempty"`
+	// How much the finding weighs.
+	Level SettingCheckLevel `protobuf:"varint,2,opt,name=level,proto3,enum=mgmt.v1alpha1.SettingCheckLevel" json:"level,omitempty"`
+	// What was found, in one sentence.
+	Detail string `protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
+	// What to do about it. Empty when there is nothing to do.
+	Remedy        string `protobuf:"bytes,4,opt,name=remedy,proto3" json:"remedy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SettingCheck) Reset() {
+	*x = SettingCheck{}
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SettingCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SettingCheck) ProtoMessage() {}
+
+func (x *SettingCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SettingCheck.ProtoReflect.Descriptor instead.
+func (*SettingCheck) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SettingCheck) GetCheck() string {
+	if x != nil {
+		return x.Check
+	}
+	return ""
+}
+
+func (x *SettingCheck) GetLevel() SettingCheckLevel {
+	if x != nil {
+		return x.Level
+	}
+	return SettingCheckLevel_SETTING_CHECK_LEVEL_UNSPECIFIED
+}
+
+func (x *SettingCheck) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
+func (x *SettingCheck) GetRemedy() string {
+	if x != nil {
+		return x.Remedy
+	}
+	return ""
+}
+
+type TestAccountSettingRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The account the setting would belong to.
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The setting to try. It is not written, whatever the findings say.
+	Config        *AccountSettingConfig `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestAccountSettingRequest) Reset() {
+	*x = TestAccountSettingRequest{}
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestAccountSettingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestAccountSettingRequest) ProtoMessage() {}
+
+func (x *TestAccountSettingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestAccountSettingRequest.ProtoReflect.Descriptor instead.
+func (*TestAccountSettingRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TestAccountSettingRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *TestAccountSettingRequest) GetConfig() *AccountSettingConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type TestAccountSettingResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the test found, in the order it found it.
+	Checks []*SettingCheck `protobuf:"bytes,1,rep,name=checks,proto3" json:"checks,omitempty"`
+	// Whether nothing blocking was found. A caller that reads only this is still correct.
+	Ok            bool `protobuf:"varint,2,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestAccountSettingResponse) Reset() {
+	*x = TestAccountSettingResponse{}
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestAccountSettingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestAccountSettingResponse) ProtoMessage() {}
+
+func (x *TestAccountSettingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestAccountSettingResponse.ProtoReflect.Descriptor instead.
+func (*TestAccountSettingResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TestAccountSettingResponse) GetChecks() []*SettingCheck {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
+func (x *TestAccountSettingResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
 type GetAccountSettingsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The account to read the settings of.
@@ -266,7 +600,7 @@ type GetAccountSettingsRequest struct {
 
 func (x *GetAccountSettingsRequest) Reset() {
 	*x = GetAccountSettingsRequest{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[3]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -278,7 +612,7 @@ func (x *GetAccountSettingsRequest) String() string {
 func (*GetAccountSettingsRequest) ProtoMessage() {}
 
 func (x *GetAccountSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[3]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -291,7 +625,7 @@ func (x *GetAccountSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{3}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetAccountSettingsRequest) GetAccountId() string {
@@ -311,7 +645,7 @@ type GetAccountSettingsResponse struct {
 
 func (x *GetAccountSettingsResponse) Reset() {
 	*x = GetAccountSettingsResponse{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[4]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -323,7 +657,7 @@ func (x *GetAccountSettingsResponse) String() string {
 func (*GetAccountSettingsResponse) ProtoMessage() {}
 
 func (x *GetAccountSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[4]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -336,7 +670,7 @@ func (x *GetAccountSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{4}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetAccountSettingsResponse) GetSettings() []*AccountSetting {
@@ -358,7 +692,7 @@ type SetAccountSettingRequest struct {
 
 func (x *SetAccountSettingRequest) Reset() {
 	*x = SetAccountSettingRequest{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[5]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +704,7 @@ func (x *SetAccountSettingRequest) String() string {
 func (*SetAccountSettingRequest) ProtoMessage() {}
 
 func (x *SetAccountSettingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[5]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +717,7 @@ func (x *SetAccountSettingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAccountSettingRequest.ProtoReflect.Descriptor instead.
 func (*SetAccountSettingRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{5}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SetAccountSettingRequest) GetAccountId() string {
@@ -410,7 +744,7 @@ type SetAccountSettingResponse struct {
 
 func (x *SetAccountSettingResponse) Reset() {
 	*x = SetAccountSettingResponse{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[6]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -422,7 +756,7 @@ func (x *SetAccountSettingResponse) String() string {
 func (*SetAccountSettingResponse) ProtoMessage() {}
 
 func (x *SetAccountSettingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[6]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +769,7 @@ func (x *SetAccountSettingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAccountSettingResponse.ProtoReflect.Descriptor instead.
 func (*SetAccountSettingResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{6}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SetAccountSettingResponse) GetSetting() *AccountSetting {
@@ -462,7 +796,7 @@ type GetAccountConsistencyKeyRequest struct {
 
 func (x *GetAccountConsistencyKeyRequest) Reset() {
 	*x = GetAccountConsistencyKeyRequest{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[7]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +808,7 @@ func (x *GetAccountConsistencyKeyRequest) String() string {
 func (*GetAccountConsistencyKeyRequest) ProtoMessage() {}
 
 func (x *GetAccountConsistencyKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[7]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +821,7 @@ func (x *GetAccountConsistencyKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountConsistencyKeyRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountConsistencyKeyRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{7}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetAccountConsistencyKeyRequest) GetAccountId() string {
@@ -515,7 +849,7 @@ type GetAccountConsistencyKeyResponse struct {
 
 func (x *GetAccountConsistencyKeyResponse) Reset() {
 	*x = GetAccountConsistencyKeyResponse{}
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[8]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -527,7 +861,7 @@ func (x *GetAccountConsistencyKeyResponse) String() string {
 func (*GetAccountConsistencyKeyResponse) ProtoMessage() {}
 
 func (x *GetAccountConsistencyKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[8]
+	mi := &file_mgmt_v1alpha1_account_setting_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -540,7 +874,7 @@ func (x *GetAccountConsistencyKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountConsistencyKeyResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountConsistencyKeyResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{8}
+	return file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetAccountConsistencyKeyResponse) GetKey() string {
@@ -568,12 +902,30 @@ const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\x12updated_by_user_id\x18\a \x01(\tR\x0fupdatedByUserId\x1aE\n" +
 	"\x17SecretFingerprintsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8f\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd3\x01\n" +
 	"\x14AccountSettingConfig\x12f\n" +
-	"\x19anonymization_consistency\x18\x01 \x01(\v2'.mgmt.v1alpha1.AnonymizationConsistencyH\x00R\x18anonymizationConsistencyB\x0f\n" +
+	"\x19anonymization_consistency\x18\x01 \x01(\v2'.mgmt.v1alpha1.AnonymizationConsistencyH\x00R\x18anonymizationConsistency\x12B\n" +
+	"\roidc_provider\x18\x02 \x01(\v2\x1b.mgmt.v1alpha1.OidcProviderH\x00R\foidcProviderB\x0f\n" +
 	"\x06config\x12\x05\xbaH\x02\b\x01\"N\n" +
 	"\x18AnonymizationConsistency\x122\n" +
-	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"D\n" +
+	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"\x83\x01\n" +
+	"\fOidcProvider\x12\"\n" +
+	"\x06issuer\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x88\x01\x01R\x06issuer\x12$\n" +
+	"\tclient_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bclientId\x12)\n" +
+	"\rclient_secret\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\fclientSecret\"\x8c\x01\n" +
+	"\fSettingCheck\x12\x14\n" +
+	"\x05check\x18\x01 \x01(\tR\x05check\x126\n" +
+	"\x05level\x18\x02 \x01(\x0e2 .mgmt.v1alpha1.SettingCheckLevelR\x05level\x12\x16\n" +
+	"\x06detail\x18\x03 \x01(\tR\x06detail\x12\x16\n" +
+	"\x06remedy\x18\x04 \x01(\tR\x06remedy\"\x89\x01\n" +
+	"\x19TestAccountSettingRequest\x12'\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12C\n" +
+	"\x06config\x18\x02 \x01(\v2#.mgmt.v1alpha1.AccountSettingConfigB\x06\xbaH\x03\xc8\x01\x01R\x06config\"a\n" +
+	"\x1aTestAccountSettingResponse\x123\n" +
+	"\x06checks\x18\x01 \x03(\v2\x1b.mgmt.v1alpha1.SettingCheckR\x06checks\x12\x0e\n" +
+	"\x02ok\x18\x02 \x01(\bR\x02ok\"D\n" +
 	"\x19GetAccountSettingsRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"W\n" +
@@ -591,10 +943,16 @@ const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\x12generate_if_absent\x18\x02 \x01(\bR\x10generateIfAbsent\"A\n" +
 	" GetAccountConsistencyKeyResponse\x12\x15\n" +
 	"\x03key\x18\x01 \x01(\tH\x00R\x03key\x88\x01\x01B\x06\n" +
-	"\x04_key2\xf0\x02\n" +
+	"\x04_key*\x99\x01\n" +
+	"\x11SettingCheckLevel\x12#\n" +
+	"\x1fSETTING_CHECK_LEVEL_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cSETTING_CHECK_LEVEL_BLOCKING\x10\x01\x12\x1f\n" +
+	"\x1bSETTING_CHECK_LEVEL_WARNING\x10\x02\x12\x1c\n" +
+	"\x18SETTING_CHECK_LEVEL_INFO\x10\x032\xe0\x03\n" +
 	"\x15AccountSettingService\x12n\n" +
 	"\x12GetAccountSettings\x12(.mgmt.v1alpha1.GetAccountSettingsRequest\x1a).mgmt.v1alpha1.GetAccountSettingsResponse\"\x03\x90\x02\x01\x12h\n" +
-	"\x11SetAccountSetting\x12'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\x00\x12}\n" +
+	"\x11SetAccountSetting\x12'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\x00\x12n\n" +
+	"\x12TestAccountSetting\x12(.mgmt.v1alpha1.TestAccountSettingRequest\x1a).mgmt.v1alpha1.TestAccountSettingResponse\"\x03\x90\x02\x01\x12}\n" +
 	"\x18GetAccountConsistencyKey\x12..mgmt.v1alpha1.GetAccountConsistencyKeyRequest\x1a/.mgmt.v1alpha1.GetAccountConsistencyKeyResponse\"\x00B\xd4\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x13AccountSettingProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
@@ -610,40 +968,52 @@ func file_mgmt_v1alpha1_account_setting_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_account_setting_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_account_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_mgmt_v1alpha1_account_setting_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_mgmt_v1alpha1_account_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_mgmt_v1alpha1_account_setting_proto_goTypes = []any{
-	(*AccountSetting)(nil),                   // 0: mgmt.v1alpha1.AccountSetting
-	(*AccountSettingConfig)(nil),             // 1: mgmt.v1alpha1.AccountSettingConfig
-	(*AnonymizationConsistency)(nil),         // 2: mgmt.v1alpha1.AnonymizationConsistency
-	(*GetAccountSettingsRequest)(nil),        // 3: mgmt.v1alpha1.GetAccountSettingsRequest
-	(*GetAccountSettingsResponse)(nil),       // 4: mgmt.v1alpha1.GetAccountSettingsResponse
-	(*SetAccountSettingRequest)(nil),         // 5: mgmt.v1alpha1.SetAccountSettingRequest
-	(*SetAccountSettingResponse)(nil),        // 6: mgmt.v1alpha1.SetAccountSettingResponse
-	(*GetAccountConsistencyKeyRequest)(nil),  // 7: mgmt.v1alpha1.GetAccountConsistencyKeyRequest
-	(*GetAccountConsistencyKeyResponse)(nil), // 8: mgmt.v1alpha1.GetAccountConsistencyKeyResponse
-	nil,                                      // 9: mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry
-	(*timestamppb.Timestamp)(nil),            // 10: google.protobuf.Timestamp
+	(SettingCheckLevel)(0),                   // 0: mgmt.v1alpha1.SettingCheckLevel
+	(*AccountSetting)(nil),                   // 1: mgmt.v1alpha1.AccountSetting
+	(*AccountSettingConfig)(nil),             // 2: mgmt.v1alpha1.AccountSettingConfig
+	(*AnonymizationConsistency)(nil),         // 3: mgmt.v1alpha1.AnonymizationConsistency
+	(*OidcProvider)(nil),                     // 4: mgmt.v1alpha1.OidcProvider
+	(*SettingCheck)(nil),                     // 5: mgmt.v1alpha1.SettingCheck
+	(*TestAccountSettingRequest)(nil),        // 6: mgmt.v1alpha1.TestAccountSettingRequest
+	(*TestAccountSettingResponse)(nil),       // 7: mgmt.v1alpha1.TestAccountSettingResponse
+	(*GetAccountSettingsRequest)(nil),        // 8: mgmt.v1alpha1.GetAccountSettingsRequest
+	(*GetAccountSettingsResponse)(nil),       // 9: mgmt.v1alpha1.GetAccountSettingsResponse
+	(*SetAccountSettingRequest)(nil),         // 10: mgmt.v1alpha1.SetAccountSettingRequest
+	(*SetAccountSettingResponse)(nil),        // 11: mgmt.v1alpha1.SetAccountSettingResponse
+	(*GetAccountConsistencyKeyRequest)(nil),  // 12: mgmt.v1alpha1.GetAccountConsistencyKeyRequest
+	(*GetAccountConsistencyKeyResponse)(nil), // 13: mgmt.v1alpha1.GetAccountConsistencyKeyResponse
+	nil,                                      // 14: mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry
+	(*timestamppb.Timestamp)(nil),            // 15: google.protobuf.Timestamp
 }
 var file_mgmt_v1alpha1_account_setting_proto_depIdxs = []int32{
-	1,  // 0: mgmt.v1alpha1.AccountSetting.config:type_name -> mgmt.v1alpha1.AccountSettingConfig
-	9,  // 1: mgmt.v1alpha1.AccountSetting.secret_fingerprints:type_name -> mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry
-	10, // 2: mgmt.v1alpha1.AccountSetting.created_at:type_name -> google.protobuf.Timestamp
-	10, // 3: mgmt.v1alpha1.AccountSetting.updated_at:type_name -> google.protobuf.Timestamp
-	2,  // 4: mgmt.v1alpha1.AccountSettingConfig.anonymization_consistency:type_name -> mgmt.v1alpha1.AnonymizationConsistency
-	0,  // 5: mgmt.v1alpha1.GetAccountSettingsResponse.settings:type_name -> mgmt.v1alpha1.AccountSetting
-	1,  // 6: mgmt.v1alpha1.SetAccountSettingRequest.config:type_name -> mgmt.v1alpha1.AccountSettingConfig
-	0,  // 7: mgmt.v1alpha1.SetAccountSettingResponse.setting:type_name -> mgmt.v1alpha1.AccountSetting
-	3,  // 8: mgmt.v1alpha1.AccountSettingService.GetAccountSettings:input_type -> mgmt.v1alpha1.GetAccountSettingsRequest
-	5,  // 9: mgmt.v1alpha1.AccountSettingService.SetAccountSetting:input_type -> mgmt.v1alpha1.SetAccountSettingRequest
-	7,  // 10: mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey:input_type -> mgmt.v1alpha1.GetAccountConsistencyKeyRequest
-	4,  // 11: mgmt.v1alpha1.AccountSettingService.GetAccountSettings:output_type -> mgmt.v1alpha1.GetAccountSettingsResponse
-	6,  // 12: mgmt.v1alpha1.AccountSettingService.SetAccountSetting:output_type -> mgmt.v1alpha1.SetAccountSettingResponse
-	8,  // 13: mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey:output_type -> mgmt.v1alpha1.GetAccountConsistencyKeyResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 0: mgmt.v1alpha1.AccountSetting.config:type_name -> mgmt.v1alpha1.AccountSettingConfig
+	14, // 1: mgmt.v1alpha1.AccountSetting.secret_fingerprints:type_name -> mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntry
+	15, // 2: mgmt.v1alpha1.AccountSetting.created_at:type_name -> google.protobuf.Timestamp
+	15, // 3: mgmt.v1alpha1.AccountSetting.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 4: mgmt.v1alpha1.AccountSettingConfig.anonymization_consistency:type_name -> mgmt.v1alpha1.AnonymizationConsistency
+	4,  // 5: mgmt.v1alpha1.AccountSettingConfig.oidc_provider:type_name -> mgmt.v1alpha1.OidcProvider
+	0,  // 6: mgmt.v1alpha1.SettingCheck.level:type_name -> mgmt.v1alpha1.SettingCheckLevel
+	2,  // 7: mgmt.v1alpha1.TestAccountSettingRequest.config:type_name -> mgmt.v1alpha1.AccountSettingConfig
+	5,  // 8: mgmt.v1alpha1.TestAccountSettingResponse.checks:type_name -> mgmt.v1alpha1.SettingCheck
+	1,  // 9: mgmt.v1alpha1.GetAccountSettingsResponse.settings:type_name -> mgmt.v1alpha1.AccountSetting
+	2,  // 10: mgmt.v1alpha1.SetAccountSettingRequest.config:type_name -> mgmt.v1alpha1.AccountSettingConfig
+	1,  // 11: mgmt.v1alpha1.SetAccountSettingResponse.setting:type_name -> mgmt.v1alpha1.AccountSetting
+	8,  // 12: mgmt.v1alpha1.AccountSettingService.GetAccountSettings:input_type -> mgmt.v1alpha1.GetAccountSettingsRequest
+	10, // 13: mgmt.v1alpha1.AccountSettingService.SetAccountSetting:input_type -> mgmt.v1alpha1.SetAccountSettingRequest
+	6,  // 14: mgmt.v1alpha1.AccountSettingService.TestAccountSetting:input_type -> mgmt.v1alpha1.TestAccountSettingRequest
+	12, // 15: mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey:input_type -> mgmt.v1alpha1.GetAccountConsistencyKeyRequest
+	9,  // 16: mgmt.v1alpha1.AccountSettingService.GetAccountSettings:output_type -> mgmt.v1alpha1.GetAccountSettingsResponse
+	11, // 17: mgmt.v1alpha1.AccountSettingService.SetAccountSetting:output_type -> mgmt.v1alpha1.SetAccountSettingResponse
+	7,  // 18: mgmt.v1alpha1.AccountSettingService.TestAccountSetting:output_type -> mgmt.v1alpha1.TestAccountSettingResponse
+	13, // 19: mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey:output_type -> mgmt.v1alpha1.GetAccountConsistencyKeyResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_account_setting_proto_init() }
@@ -654,20 +1024,22 @@ func file_mgmt_v1alpha1_account_setting_proto_init() {
 	file_mgmt_v1alpha1_secret_proto_init()
 	file_mgmt_v1alpha1_account_setting_proto_msgTypes[1].OneofWrappers = []any{
 		(*AccountSettingConfig_AnonymizationConsistency)(nil),
+		(*AccountSettingConfig_OidcProvider)(nil),
 	}
-	file_mgmt_v1alpha1_account_setting_proto_msgTypes[8].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_account_setting_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_account_setting_proto_rawDesc), len(file_mgmt_v1alpha1_account_setting_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   10,
+			NumEnums:      1,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_mgmt_v1alpha1_account_setting_proto_goTypes,
 		DependencyIndexes: file_mgmt_v1alpha1_account_setting_proto_depIdxs,
+		EnumInfos:         file_mgmt_v1alpha1_account_setting_proto_enumTypes,
 		MessageInfos:      file_mgmt_v1alpha1_account_setting_proto_msgTypes,
 	}.Build()
 	File_mgmt_v1alpha1_account_setting_proto = out.File

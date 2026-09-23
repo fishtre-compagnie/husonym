@@ -22,6 +22,30 @@ message GetAuthStatusResponse {
   bool is_enabled = 1;
 }
 
+message GetAccountLoginMethodRequest {
+  // The slug of the account somebody is signing in to. It comes from the URL they
+  // followed, because nothing is known about them yet.
+  string account_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 100
+  ];
+}
+
+// Where to send somebody who is signing in to a given account.
+//
+// Unauthenticated by necessity: the provider has to be known before anybody can prove who
+// they are. What it gives away is which accounts have declared a provider -- impersonal,
+// and a fact an attacker who already knows the account could observe anyway. What it must
+// never give away is whether a person has an account, so the shape of the answer does not
+// depend on any person, and an unknown slug answers like a known one with no provider.
+message GetAccountLoginMethodResponse {
+  // The issuer to start the flow against. Empty when the account has declared none, which
+  // means the deployment's own provider.
+  string issuer = 1;
+  // The client to authorize as. Empty alongside an empty issuer.
+  string client_id = 2;
+}
+
 // A decoded representation of an Access token from the backing auth server
 message AccessToken {
   // The access token that will be provided in subsequent requests to provide authenticated access to the Api
@@ -82,6 +106,15 @@ service AuthService {
 
   // Returns the auth status of the API server. Whether or not the backend has authentication enabled.
   // This is used by clients to make decisions on whether or not they should send access tokens to the API.
+  // Tells an unauthenticated caller which identity provider an account signs in with.
+  //
+  // The tenant has to be known before the flow starts -- an OIDC flow begins with the
+  // client id of the right connector -- and the caller has not authenticated yet, by
+  // definition. The account is designated by the link that was followed.
+  rpc GetAccountLoginMethod(GetAccountLoginMethodRequest) returns (GetAccountLoginMethodResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   rpc GetAuthStatus(GetAuthStatusRequest) returns (GetAuthStatusResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

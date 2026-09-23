@@ -48,6 +48,78 @@ func (_m *MockQuerier) EXPECT() *MockQuerier_Expecter {
 	return &MockQuerier_Expecter{mock: &_m.Mock}
 }
 
+// AdoptIdentityProviderIssuer provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) AdoptIdentityProviderIssuer(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AdoptIdentityProviderIssuer")
+	}
+
+	var r0 HusonymApiUserIdentityProviderAssociation
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, AdoptIdentityProviderIssuerParams) HusonymApiUserIdentityProviderAssociation); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiUserIdentityProviderAssociation)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, AdoptIdentityProviderIssuerParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_AdoptIdentityProviderIssuer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AdoptIdentityProviderIssuer'
+type MockQuerier_AdoptIdentityProviderIssuer_Call struct {
+	*mock.Call
+}
+
+// AdoptIdentityProviderIssuer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg AdoptIdentityProviderIssuerParams
+func (_e *MockQuerier_Expecter) AdoptIdentityProviderIssuer(ctx any, db any, arg any) *MockQuerier_AdoptIdentityProviderIssuer_Call {
+	return &MockQuerier_AdoptIdentityProviderIssuer_Call{Call: _e.mock.On("AdoptIdentityProviderIssuer", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_AdoptIdentityProviderIssuer_Call) Run(run func(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams)) *MockQuerier_AdoptIdentityProviderIssuer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 AdoptIdentityProviderIssuerParams
+		if args[2] != nil {
+			arg2 = args[2].(AdoptIdentityProviderIssuerParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_AdoptIdentityProviderIssuer_Call) Return(husonymApiUserIdentityProviderAssociation HusonymApiUserIdentityProviderAssociation, err error) *MockQuerier_AdoptIdentityProviderIssuer_Call {
+	_c.Call.Return(husonymApiUserIdentityProviderAssociation, err)
+	return _c
+}
+
+func (_c *MockQuerier_AdoptIdentityProviderIssuer_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg AdoptIdentityProviderIssuerParams) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_AdoptIdentityProviderIssuer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AreConnectionsInAccount provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) AreConnectionsInAccount(ctx context.Context, db DBTX, arg AreConnectionsInAccountParams) (int64, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -188,6 +260,78 @@ func (_c *MockQuerier_ConvertPersonalAccountToTeam_Call) Return(husonymApiAccoun
 }
 
 func (_c *MockQuerier_ConvertPersonalAccountToTeam_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ConvertPersonalAccountToTeamParams) (HusonymApiAccount, error)) *MockQuerier_ConvertPersonalAccountToTeam_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CountOtherAccountsDeclaringIssuer provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountOtherAccountsDeclaringIssuer")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CountOtherAccountsDeclaringIssuerParams) (int64, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, CountOtherAccountsDeclaringIssuerParams) int64); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, CountOtherAccountsDeclaringIssuerParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_CountOtherAccountsDeclaringIssuer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountOtherAccountsDeclaringIssuer'
+type MockQuerier_CountOtherAccountsDeclaringIssuer_Call struct {
+	*mock.Call
+}
+
+// CountOtherAccountsDeclaringIssuer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg CountOtherAccountsDeclaringIssuerParams
+func (_e *MockQuerier_Expecter) CountOtherAccountsDeclaringIssuer(ctx any, db any, arg any) *MockQuerier_CountOtherAccountsDeclaringIssuer_Call {
+	return &MockQuerier_CountOtherAccountsDeclaringIssuer_Call{Call: _e.mock.On("CountOtherAccountsDeclaringIssuer", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_CountOtherAccountsDeclaringIssuer_Call) Run(run func(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams)) *MockQuerier_CountOtherAccountsDeclaringIssuer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 CountOtherAccountsDeclaringIssuerParams
+		if args[2] != nil {
+			arg2 = args[2].(CountOtherAccountsDeclaringIssuerParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_CountOtherAccountsDeclaringIssuer_Call) Return(n int64, err error) *MockQuerier_CountOtherAccountsDeclaringIssuer_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockQuerier_CountOtherAccountsDeclaringIssuer_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error)) *MockQuerier_CountOtherAccountsDeclaringIssuer_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2439,6 +2583,152 @@ func (_c *MockQuerier_GetAccountInviteByToken_Call) RunAndReturn(run func(ctx co
 	return _c
 }
 
+// GetAccountLoginMethodBySlug provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetAccountLoginMethodBySlug(ctx context.Context, db DBTX, accountslug string) (GetAccountLoginMethodBySlugRow, error) {
+	ret := _mock.Called(ctx, db, accountslug)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountLoginMethodBySlug")
+	}
+
+	var r0 GetAccountLoginMethodBySlugRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, string) (GetAccountLoginMethodBySlugRow, error)); ok {
+		return returnFunc(ctx, db, accountslug)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, string) GetAccountLoginMethodBySlugRow); ok {
+		r0 = returnFunc(ctx, db, accountslug)
+	} else {
+		r0 = ret.Get(0).(GetAccountLoginMethodBySlugRow)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, string) error); ok {
+		r1 = returnFunc(ctx, db, accountslug)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetAccountLoginMethodBySlug_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountLoginMethodBySlug'
+type MockQuerier_GetAccountLoginMethodBySlug_Call struct {
+	*mock.Call
+}
+
+// GetAccountLoginMethodBySlug is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountslug string
+func (_e *MockQuerier_Expecter) GetAccountLoginMethodBySlug(ctx any, db any, accountslug any) *MockQuerier_GetAccountLoginMethodBySlug_Call {
+	return &MockQuerier_GetAccountLoginMethodBySlug_Call{Call: _e.mock.On("GetAccountLoginMethodBySlug", ctx, db, accountslug)}
+}
+
+func (_c *MockQuerier_GetAccountLoginMethodBySlug_Call) Run(run func(ctx context.Context, db DBTX, accountslug string)) *MockQuerier_GetAccountLoginMethodBySlug_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountLoginMethodBySlug_Call) Return(getAccountLoginMethodBySlugRow GetAccountLoginMethodBySlugRow, err error) *MockQuerier_GetAccountLoginMethodBySlug_Call {
+	_c.Call.Return(getAccountLoginMethodBySlugRow, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountLoginMethodBySlug_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountslug string) (GetAccountLoginMethodBySlugRow, error)) *MockQuerier_GetAccountLoginMethodBySlug_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountOidcProvider provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetAccountOidcProvider(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]byte, error) {
+	ret := _mock.Called(ctx, db, accountid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountOidcProvider")
+	}
+
+	var r0 []byte
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]byte, error)); ok {
+		return returnFunc(ctx, db, accountid)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []byte); ok {
+		r0 = returnFunc(ctx, db, accountid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountid)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetAccountOidcProvider_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountOidcProvider'
+type MockQuerier_GetAccountOidcProvider_Call struct {
+	*mock.Call
+}
+
+// GetAccountOidcProvider is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountid pgtype.UUID
+func (_e *MockQuerier_Expecter) GetAccountOidcProvider(ctx any, db any, accountid any) *MockQuerier_GetAccountOidcProvider_Call {
+	return &MockQuerier_GetAccountOidcProvider_Call{Call: _e.mock.On("GetAccountOidcProvider", ctx, db, accountid)}
+}
+
+func (_c *MockQuerier_GetAccountOidcProvider_Call) Run(run func(ctx context.Context, db DBTX, accountid pgtype.UUID)) *MockQuerier_GetAccountOidcProvider_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountOidcProvider_Call) Return(bytes []byte, err error) *MockQuerier_GetAccountOidcProvider_Call {
+	_c.Call.Return(bytes, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetAccountOidcProvider_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]byte, error)) *MockQuerier_GetAccountOidcProvider_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAccountOnboardingConfig provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetAccountOnboardingConfig(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.AccountOnboardingConfig, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -3677,6 +3967,74 @@ func (_c *MockQuerier_GetConnectionsByIds_Call) Return(husonymApiConnections []H
 }
 
 func (_c *MockQuerier_GetConnectionsByIds_Call) RunAndReturn(run func(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiConnection, error)) *MockQuerier_GetConnectionsByIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDeclaredIssuers provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetDeclaredIssuers(ctx context.Context, db DBTX) ([]string, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDeclaredIssuers")
+	}
+
+	var r0 []string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) ([]string, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) []string); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetDeclaredIssuers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDeclaredIssuers'
+type MockQuerier_GetDeclaredIssuers_Call struct {
+	*mock.Call
+}
+
+// GetDeclaredIssuers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetDeclaredIssuers(ctx any, db any) *MockQuerier_GetDeclaredIssuers_Call {
+	return &MockQuerier_GetDeclaredIssuers_Call{Call: _e.mock.On("GetDeclaredIssuers", ctx, db)}
+}
+
+func (_c *MockQuerier_GetDeclaredIssuers_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetDeclaredIssuers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetDeclaredIssuers_Call) Return(strings []string, err error) *MockQuerier_GetDeclaredIssuers_Call {
+	_c.Call.Return(strings, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetDeclaredIssuers_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]string, error)) *MockQuerier_GetDeclaredIssuers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5139,6 +5497,78 @@ func (_c *MockQuerier_GetUser_Call) Return(husonymApiUser HusonymApiUser, err er
 }
 
 func (_c *MockQuerier_GetUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiUser, error)) *MockQuerier_GetUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserAssociationByIdentity provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetUserAssociationByIdentity(ctx context.Context, db DBTX, arg GetUserAssociationByIdentityParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserAssociationByIdentity")
+	}
+
+	var r0 HusonymApiUserIdentityProviderAssociation
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetUserAssociationByIdentityParams) (HusonymApiUserIdentityProviderAssociation, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetUserAssociationByIdentityParams) HusonymApiUserIdentityProviderAssociation); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiUserIdentityProviderAssociation)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetUserAssociationByIdentityParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetUserAssociationByIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserAssociationByIdentity'
+type MockQuerier_GetUserAssociationByIdentity_Call struct {
+	*mock.Call
+}
+
+// GetUserAssociationByIdentity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetUserAssociationByIdentityParams
+func (_e *MockQuerier_Expecter) GetUserAssociationByIdentity(ctx any, db any, arg any) *MockQuerier_GetUserAssociationByIdentity_Call {
+	return &MockQuerier_GetUserAssociationByIdentity_Call{Call: _e.mock.On("GetUserAssociationByIdentity", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetUserAssociationByIdentity_Call) Run(run func(ctx context.Context, db DBTX, arg GetUserAssociationByIdentityParams)) *MockQuerier_GetUserAssociationByIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetUserAssociationByIdentityParams
+		if args[2] != nil {
+			arg2 = args[2].(GetUserAssociationByIdentityParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetUserAssociationByIdentity_Call) Return(husonymApiUserIdentityProviderAssociation HusonymApiUserIdentityProviderAssociation, err error) *MockQuerier_GetUserAssociationByIdentity_Call {
+	_c.Call.Return(husonymApiUserIdentityProviderAssociation, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetUserAssociationByIdentity_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetUserAssociationByIdentityParams) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_GetUserAssociationByIdentity_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7265,6 +7695,78 @@ func (_c *MockQuerier_SetAnonymousUser_Call) Return(husonymApiUser HusonymApiUse
 }
 
 func (_c *MockQuerier_SetAnonymousUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (HusonymApiUser, error)) *MockQuerier_SetAnonymousUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetIdentityProviderAssociationUser provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetIdentityProviderAssociationUser(ctx context.Context, db DBTX, arg SetIdentityProviderAssociationUserParams) (HusonymApiUserIdentityProviderAssociation, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetIdentityProviderAssociationUser")
+	}
+
+	var r0 HusonymApiUserIdentityProviderAssociation
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetIdentityProviderAssociationUserParams) (HusonymApiUserIdentityProviderAssociation, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetIdentityProviderAssociationUserParams) HusonymApiUserIdentityProviderAssociation); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiUserIdentityProviderAssociation)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, SetIdentityProviderAssociationUserParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_SetIdentityProviderAssociationUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetIdentityProviderAssociationUser'
+type MockQuerier_SetIdentityProviderAssociationUser_Call struct {
+	*mock.Call
+}
+
+// SetIdentityProviderAssociationUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg SetIdentityProviderAssociationUserParams
+func (_e *MockQuerier_Expecter) SetIdentityProviderAssociationUser(ctx any, db any, arg any) *MockQuerier_SetIdentityProviderAssociationUser_Call {
+	return &MockQuerier_SetIdentityProviderAssociationUser_Call{Call: _e.mock.On("SetIdentityProviderAssociationUser", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_SetIdentityProviderAssociationUser_Call) Run(run func(ctx context.Context, db DBTX, arg SetIdentityProviderAssociationUserParams)) *MockQuerier_SetIdentityProviderAssociationUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 SetIdentityProviderAssociationUserParams
+		if args[2] != nil {
+			arg2 = args[2].(SetIdentityProviderAssociationUserParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetIdentityProviderAssociationUser_Call) Return(husonymApiUserIdentityProviderAssociation HusonymApiUserIdentityProviderAssociation, err error) *MockQuerier_SetIdentityProviderAssociationUser_Call {
+	_c.Call.Return(husonymApiUserIdentityProviderAssociation, err)
+	return _c
+}
+
+func (_c *MockQuerier_SetIdentityProviderAssociationUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetIdentityProviderAssociationUserParams) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_SetIdentityProviderAssociationUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
