@@ -12,6 +12,7 @@ import (
 	connections_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/connections"
 	jobs_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/jobs"
 	login_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/login"
+	mcp_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/mcp"
 	sync_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/sync"
 	version_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/version"
 	whoami_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/whoami"
@@ -76,6 +77,7 @@ func Execute() {
 	rootCmd.AddCommand(sync_cmd.NewCmd())
 	rootCmd.AddCommand(accounts_cmd.NewCmd())
 	rootCmd.AddCommand(connections_cmd.NewCmd())
+	rootCmd.AddCommand(mcp_cmd.NewCmd())
 
 	cobra.CheckErr(rootCmd.Execute())
 }
