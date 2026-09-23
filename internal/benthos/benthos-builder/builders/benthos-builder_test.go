@@ -1120,6 +1120,9 @@ func Test_computeMutationFunction_Validate_Bloblang_Output(t *testing.T) {
 	blobenv := bloblang.NewEnvironment()
 	husonym_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
 	husonym_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
+	phonePseudonymizer, err := husonym_benthos_transformers.NewPhoneFormatPseudonymizer()
+	require.NoError(t, err)
+	husonym_benthos_transformers.RegisterTransformPhoneNumberPreserveFormat(blobenv, phonePseudonymizer)
 
 	for _, transformer := range transformers {
 		t.Run(fmt.Sprintf("%s_%T_lint", t.Name(), transformer.Config.Config), func(t *testing.T) {
@@ -1368,6 +1371,9 @@ func Test_computeMutationFunction_Validate_Bloblang_Output_EmptyConfigs(t *testi
 	blobenv := bloblang.NewEnvironment()
 	husonym_benthos_transformers.RegisterTransformIdentityScramble(blobenv, nil)
 	husonym_benthos_transformers.RegisterTransformPiiText(blobenv, nil)
+	phonePseudonymizer, err := husonym_benthos_transformers.NewPhoneFormatPseudonymizer()
+	require.NoError(t, err)
+	husonym_benthos_transformers.RegisterTransformPhoneNumberPreserveFormat(blobenv, phonePseudonymizer)
 
 	for _, transformer := range transformers {
 		t.Run(fmt.Sprintf("%s_%T_lint", t.Name(), transformer.Config.Config), func(t *testing.T) {

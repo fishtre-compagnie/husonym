@@ -24,6 +24,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/phoneformat"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/google/uuid"
 )
@@ -54,16 +55,44 @@ func jobIDFromRunID(runID string) (string, error) {
 // valeurs anonymisées différentes, donc une seule table passée sur l'autre moteur
 // — le temps d'un timeout, ou entre deux tentatives d'une même activité — casse
 // les clés étrangères entre les tables du run. Mieux vaut refaire la tentative.
-func (a *Activity) useAthanorForJob(ctx context.Context, jobRunID string) (bool, error) {
+// Le job lu est renvoyé avec la décision : le chemin Benthos en a besoin lui aussi, pour la
+// portée de cohérence du run, et une seule lecture sert aux deux. Il est nil quand le JobRunId
+// ne porte pas de jobId — seule la policy de déploiement décide alors.
+func (a *Activity) useAthanorForJob(
+	ctx context.Context,
+	jobRunID string,
+) (bool, *mgmtv1alpha1.Job, error) {
 	jobID, _ := jobIDFromRunID(jobRunID)
 	if jobID == "" {
-		return a.athanor.Policy.EnabledFor(jobID), nil
+		return a.athanor.Policy.EnabledFor(jobID), nil, nil
 	}
 	resp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
 	if err != nil {
-		return false, fmt.Errorf("athanor: lecture du moteur du job %s: %w", jobID, err)
+		return false, nil, fmt.Errorf("athanor: lecture du moteur du job %s: %w", jobID, err)
 	}
-	return a.athanor.Policy.UsesAthanor(resp.Msg.GetJob()), nil
+	job := resp.Msg.GetJob()
+	return a.athanor.Policy.UsesAthanor(job), job, nil
+}
+
+// phoneFormatPseudonymizer builds the permutation TransformPhoneNumber with preserve_format uses
+// on the Benthos path, on the key of the run's consistency scope — the very key Athanor derives
+// for the same job (native.NewPhoneFormatPreserver), under the same semantic type.
+//
+// It returns nil, and no error, when the deployment has no key: only a job that maps a column
+// with preserve_format then fails, on the first value it reads, and the failure says what to set.
+func (a *Activity) phoneFormatPseudonymizer(
+	job *mgmtv1alpha1.Job,
+	jobRunID string,
+) (*phoneformat.Pseudonymizer, error) {
+	if a.athanor.ConsistencyKey == "" || job == nil {
+		return nil, nil
+	}
+	scope, err := consistencyScope(job, jobRunID)
+	if err != nil {
+		return nil, err
+	}
+	key := consistency.New([]byte(a.athanor.ConsistencyKey), scope).CipherKey(runner.SemanticTypePhone)
+	return phoneformat.New(key), nil
 }
 
 // getTablePlan loads the engine-neutral plan of this table sync. It returns nil, and no
@@ -89,23 +118,17 @@ func (a *Activity) runAthanor(
 	ctx context.Context,
 	req *SyncTableRequest,
 	plan *tableplan.TablePlan,
+	job *mgmtv1alpha1.Job,
 	attempt int32,
 	session connectionmanager.SessionInterface,
 	getConnectionById func(connectionId string) (connectionmanager.ConnectionInput, error),
 	logger *slog.Logger,
 ) (*SyncTableResponse, error) {
-	// 1) Job + mappings. Le JobRunId a la forme "<jobId>-<timestamp>" ; on en
-	// extrait le jobId et on lit le job directement (GetJob = lecture en base),
-	// sans passer par GetJobRun (qui interroge Temporal et échoue en cours de run).
-	jobID, err := jobIDFromRunID(req.JobRunId)
-	if err != nil {
-		return nil, err
+	// 1) Job + mappings : celui que la décision de moteur a déjà lu. Il manque quand le
+	// JobRunId ne porte pas de jobId lisible, et Athanor ne peut alors rien exécuter.
+	if job == nil {
+		return nil, fmt.Errorf("athanor: impossible d'extraire le jobId de %q", req.JobRunId)
 	}
-	jobResp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
-	if err != nil {
-		return nil, fmt.Errorf("athanor: récupération du job %q: %w", jobID, err)
-	}
-	job := jobResp.Msg.GetJob()
 
 	// 2) Source/destination connections, derived from the job (not the RunContext).
 	srcConnID, err := sourceConnectionID(job.GetSource())
@@ -301,19 +324,28 @@ func consistencyDeriver(key string, job *mgmtv1alpha1.Job, jobRunID string) (*co
 	if key == "" {
 		return nil, fmt.Errorf("athanor: ATHANOR_CONSISTENCY_KEY n'est pas défini ; la clé de dérivation est obligatoire")
 	}
-	var scope string
+	scope, err := consistencyScope(job, jobRunID)
+	if err != nil {
+		return nil, err
+	}
+	return consistency.New([]byte(key), scope), nil
+}
+
+// consistencyScope reads the job's consistency scope as the string a Deriver takes. Both engines
+// call it: a job anonymized by Benthos and the same job anonymized by Athanor derive under the
+// same scope, so they turn a value into the same one.
+func consistencyScope(job *mgmtv1alpha1.Job, jobRunID string) (string, error) {
 	switch s := job.GetWorkflowOptions().GetConsistencyScope(); s {
 	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_UNSPECIFIED,
 		mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_RUN:
-		scope = "run:" + jobRunID
+		return "run:" + jobRunID, nil
 	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_JOB:
-		scope = "job:" + job.GetId()
+		return "job:" + job.GetId(), nil
 	case mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_ACCOUNT:
-		scope = "account:" + job.GetAccountId()
+		return "account:" + job.GetAccountId(), nil
 	default:
-		return nil, fmt.Errorf("athanor: portée de cohérence inconnue %v", s)
+		return "", fmt.Errorf("athanor: portée de cohérence inconnue %v", s)
 	}
-	return consistency.New([]byte(key), scope), nil
 }
 
 // writeConfigForDest dérive la politique d'écriture (gestion des conflits de clé)

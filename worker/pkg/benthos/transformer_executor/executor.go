@@ -677,9 +677,15 @@ func InitializeTransformerByConfigType(
 	case *mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig:
 		config := transformerConfig.GetTransformPhoneNumberConfig()
 		if config.GetPreserveFormat() {
-			// One key per executor: consistent over the values it transforms, never
-			// the key of a run.
-			pseudonymizer, err := transformers.NewPhoneFormatPseudonymizer()
+			// The process's key, never a fresh one: an executor is built per value on this
+			// path (the anonymization API builds one for each value it is handed, and
+			// TransformPiiText one for each phone number it finds in a text), so a key of
+			// its own would give the same number two pseudonyms — and two numbers drawn
+			// under two keys are no longer one permutation, so they could even collide.
+			//
+			// A mapped column does not come through here: it goes through the run's own key
+			// (RegisterTransformPhoneNumberPreserveFormat, or the Athanor native one).
+			pseudonymizer, err := transformers.ProcessPhoneFormatPseudonymizer()
 			if err != nil {
 				return nil, err
 			}

@@ -399,8 +399,10 @@ func serve(ctx context.Context) error {
 	}
 	if athanorConfig.ConsistencyKey == "" {
 		// A job may pick Athanor in the UI whatever the default of the deployment: warn
-		// at startup rather than on its first run.
-		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine will fail")
+		// at startup rather than on its first run. Benthos derives from the same key the
+		// permutation of TransformPhoneNumber with preserve_format, and nothing else.
+		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine " +
+			"will fail, and so will a job mapping a column with preserve_format")
 	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
