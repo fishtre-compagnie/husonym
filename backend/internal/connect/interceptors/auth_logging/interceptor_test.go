@@ -29,8 +29,12 @@ func Test_Interceptor_WrapUnary_JwtContextData_ValidUser(t *testing.T) {
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	genuuid, _ := husonymdb.ToUuid(uuid.NewString())
-	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.HusonymApiUser{ID: genuuid}, nil)
+	mockQuerier.On("GetUserAssociationByIdentity", mock.Anything, mock.Anything,
+		db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: "auth-user-id",
+			ProviderIss: testIssuer,
+		}).
+		Return(db_queries.HusonymApiUserIdentityProviderAssociation{UserID: genuuid}, nil)
 
 	mux := http.NewServeMux()
 	mux.Handle(mgmtv1alpha1connect.UserAccountServiceGetUserProcedure, connect.NewUnaryHandler(
@@ -40,7 +44,7 @@ func Test_Interceptor_WrapUnary_JwtContextData_ValidUser(t *testing.T) {
 		},
 		connect.WithInterceptors(
 			logger_interceptor.NewInterceptor(logger),
-			&mockAuthInterceptor{data: &auth_jwt.TokenContextData{AuthUserId: "auth-user-id"}},
+			&mockAuthInterceptor{data: &auth_jwt.TokenContextData{AuthUserId: "auth-user-id", AuthIssuer: testIssuer}},
 			NewInterceptor(husonymdb.New(mockDbtx, mockQuerier)),
 		),
 	))
@@ -121,20 +125,29 @@ func Test_getAuthValues_NoTokenCtx(t *testing.T) {
 	require.Empty(t, vals)
 }
 
+// An identity is a pair, so the lookup that attributes a log line has to be one too: the
+// same subject from two providers is two people.
+const testIssuer = "https://idp.example.com/"
+
 func Test_getAuthValues_Valid_Jwt(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
 	uuidstr := uuid.NewString()
 	genuuid, _ := husonymdb.ToUuid(uuidstr)
-	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.HusonymApiUser{ID: genuuid}, nil)
+	mockQuerier.On("GetUserAssociationByIdentity", mock.Anything, mock.Anything,
+		db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: "auth-user-id",
+			ProviderIss: testIssuer,
+		}).
+		Return(db_queries.HusonymApiUserIdentityProviderAssociation{UserID: genuuid}, nil)
 
 	ctx := context.WithValue(
 		context.Background(),
 		auth_jwt.TokenContextKey{},
 		&auth_jwt.TokenContextData{
 			AuthUserId: "auth-user-id",
+			AuthIssuer: testIssuer,
 		},
 	)
 
@@ -150,14 +163,19 @@ func Test_getAuthValues_Valid_Jwt_No_User(t *testing.T) {
 	mockDbtx := husonymdb.NewMockDBTX(t)
 	mockQuerier := db_queries.NewMockQuerier(t)
 
-	mockQuerier.On("GetUserByProviderSub", mock.Anything, mock.Anything, "auth-user-id").
-		Return(db_queries.HusonymApiUser{}, errors.New("test err"))
+	mockQuerier.On("GetUserAssociationByIdentity", mock.Anything, mock.Anything,
+		db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: "auth-user-id",
+			ProviderIss: testIssuer,
+		}).
+		Return(db_queries.HusonymApiUserIdentityProviderAssociation{}, errors.New("test err"))
 
 	ctx := context.WithValue(
 		context.Background(),
 		auth_jwt.TokenContextKey{},
 		&auth_jwt.TokenContextData{
 			AuthUserId: "auth-user-id",
+			AuthIssuer: testIssuer,
 		},
 	)
 

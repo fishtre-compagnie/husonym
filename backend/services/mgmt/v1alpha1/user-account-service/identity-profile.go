@@ -104,8 +104,25 @@ func (s *Service) identityOf(tokenCtxData *authjwt.TokenContextData) husonymdb.I
 		Subject: subject,
 		// An empty deployment issuer adopts nothing: it means the deployment has no
 		// issuer configured, so there is no "own" issuer to be.
-		MayAdoptLegacy: s.cfg.DeploymentIssuer != "" && issuer == s.cfg.DeploymentIssuer,
+		MayAdoptLegacy: s.isDeploymentIssuer(issuer),
 	}
+}
+
+// isDeploymentIssuer reports whether an identity was issued by the provider this
+// deployment is configured with, which is the only one its administration API speaks for.
+func (s *Service) isDeploymentIssuer(issuer string) bool {
+	return s.cfg.DeploymentIssuer != "" && issuer == s.cfg.DeploymentIssuer
+}
+
+// isDeploymentIssuerOrLegacy also accepts an identity recorded before issuers were.
+//
+// Such a row can only have come from the deployment's own provider: it predates the
+// column, and writing an identity without an issuer is refused now. It is exactly the
+// population the administration API is still there for -- somebody who has not signed in
+// since these columns existed -- so excluding it would turn the fallback off for the only
+// people who need it.
+func (s *Service) isDeploymentIssuerOrLegacy(issuer string) bool {
+	return issuer == "" || s.isDeploymentIssuer(issuer)
 }
 
 // refuseApplicationToken rejects a token that has no human behind it, before it can bring

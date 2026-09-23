@@ -5,8 +5,6 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/internal/oidcprobe"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
@@ -52,36 +50,4 @@ func (s *Service) GetAccountLoginMethod(
 		Issuer:   method.Issuer,
 		ClientId: method.ClientID,
 	}), nil
-}
-
-// accountAuthorizationEndpoint returns the client and the authorization endpoint of the
-// provider an account declared, or empty strings when it declared none.
-//
-// The endpoint is discovered rather than stored: an account names an issuer, and the
-// standard says where the rest lives. Storing endpoints would be storing a copy of
-// something the provider is entitled to change.
-func (s *Service) accountAuthorizationEndpoint(
-	ctx context.Context,
-	accountSlug string,
-) (clientId, authorizeUrl string, err error) {
-	if s.db == nil {
-		return "", "", nil
-	}
-	method, err := s.db.Q.GetAccountLoginMethodBySlug(ctx, s.db.Db, accountSlug)
-	if err != nil && !husonymdb.IsNoRows(err) {
-		return "", "", err
-	} else if err != nil && husonymdb.IsNoRows(err) {
-		return "", "", nil
-	}
-	if method.Issuer == "" || method.ClientID == "" {
-		return "", "", nil
-	}
-
-	endpoint, err := oidcprobe.New().AuthorizationEndpoint(ctx, method.Issuer)
-	if err != nil {
-		return "", "", husonymerrors.NewBadRequest(
-			"the identity provider of this account did not answer its discovery document: " + err.Error(),
-		)
-	}
-	return method.ClientID, endpoint, nil
 }

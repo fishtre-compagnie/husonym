@@ -8,6 +8,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // DefaultTTL is how long a resolved list is reused.
@@ -44,6 +46,14 @@ type Resolver struct {
 	cached   []string
 	cachedAt time.Time
 	warm     bool
+
+	// refresh collapses the refreshes that the expiry of the window sets off at once.
+	//
+	// Without it, every request that arrives after the window closes reads the database,
+	// because none of them has written the answer back yet. On a busy deployment that is
+	// a burst of identical queries every thirty seconds, for a list that is the same for
+	// all of them.
+	refresh singleflight.Group
 }
 
 func NewResolver(deploymentIssuer string, load Load, ttl time.Duration, logger *slog.Logger) *Resolver {
@@ -76,7 +86,17 @@ func (r *Resolver) Resolve(ctx context.Context) ([]string, error) {
 		return cached, nil
 	}
 
-	declared, err := r.load(ctx)
+	fresh, err, _ := r.refresh.Do("issuers", func() (any, error) {
+		declared, err := r.load(ctx)
+		if err != nil {
+			return nil, err
+		}
+		combined := r.combine(declared)
+		r.mu.Lock()
+		r.cached, r.cachedAt, r.warm = combined, r.now(), true
+		r.mu.Unlock()
+		return combined, nil
+	})
 	if err != nil {
 		r.logger.Warn("unable to read the issuers declared by accounts", "error", err.Error())
 		if warm {
@@ -84,12 +104,7 @@ func (r *Resolver) Resolve(ctx context.Context) ([]string, error) {
 		}
 		return r.baseline(), nil
 	}
-
-	fresh := r.combine(declared)
-	r.mu.Lock()
-	r.cached, r.cachedAt, r.warm = fresh, r.now(), true
-	r.mu.Unlock()
-	return fresh, nil
+	return fresh.([]string), nil
 }
 
 // Invalidate drops the cache, so that a setting just written takes effect at once rather

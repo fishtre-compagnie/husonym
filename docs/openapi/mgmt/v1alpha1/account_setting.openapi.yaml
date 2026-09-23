@@ -296,14 +296,6 @@ components:
 
              It plays no part in validating a token -- that needs only the public JWKS -- and is
              used solely in the authorization flow. Empty for a public client.
-        audiences:
-          type: array
-          items:
-            type: string
-          title: audiences
-          description: |-
-            What the aud claim of a token must carry for this account. Empty falls back to the
-             deployment's audiences.
       title: OidcProvider
       additionalProperties: false
       description: |-

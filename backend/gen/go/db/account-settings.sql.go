@@ -15,12 +15,12 @@ const countOtherAccountsDeclaringIssuer = `-- name: CountOtherAccountsDeclaringI
 SELECT count(*)
 FROM husonym_api.account_settings
 WHERE setting_type = 'oidc_provider'
-  AND config->'oidcProvider'->>'issuer' = $1
+  AND config->'oidcProvider'->>'issuer' = $1::text
   AND account_id <> $2
 `
 
 type CountOtherAccountsDeclaringIssuerParams struct {
-	Issuer    []byte
+	Issuer    string
 	AccountId pgtype.UUID
 }
 

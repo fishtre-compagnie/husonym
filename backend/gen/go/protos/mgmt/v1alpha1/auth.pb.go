@@ -410,13 +410,7 @@ type GetAuthorizeUrlRequest struct {
 	// The redirect uri that the client will be redirected back to during the auth request
 	RedirectUri string `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
 	// The scopes the client is requesting as a part of the oauth login request
-	Scope string `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
-	// The account being signed in to, when it declares its own identity provider.
-	//
-	// Same necessity as the browser's: the flow starts with the client id of the right
-	// connector, and nothing is known about the caller yet. Empty uses the deployment's
-	// provider, which is what an account with no setting uses too.
-	AccountSlug   string `protobuf:"bytes,4,opt,name=account_slug,json=accountSlug,proto3" json:"account_slug,omitempty"`
+	Scope         string `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -468,13 +462,6 @@ func (x *GetAuthorizeUrlRequest) GetRedirectUri() string {
 func (x *GetAuthorizeUrlRequest) GetScope() string {
 	if x != nil {
 		return x.Scope
-	}
-	return ""
-}
-
-func (x *GetAuthorizeUrlRequest) GetAccountSlug() string {
-	if x != nil {
-		return x.AccountSlug
 	}
 	return ""
 }
@@ -715,12 +702,11 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\n" +
 	"token_type\x18\x06 \x01(\tR\ttokenTypeB\x10\n" +
 	"\x0e_refresh_tokenB\v\n" +
-	"\t_id_token\"\xae\x01\n" +
+	"\t_id_token\"\x82\x01\n" +
 	"\x16GetAuthorizeUrlRequest\x12\x1d\n" +
 	"\x05state\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05state\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12\x1d\n" +
-	"\x05scope\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05scope\x12*\n" +
-	"\faccount_slug\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18dR\vaccountSlug\"+\n" +
+	"\x05scope\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05scope\"+\n" +
 	"\x17GetAuthorizeUrlResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\"A\n" +
 	"\x11RefreshCliRequest\x12,\n" +

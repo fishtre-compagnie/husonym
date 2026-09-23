@@ -205,16 +205,6 @@ components:
           title: scope
           minLength: 1
           description: The scopes the client is requesting as a part of the oauth login request
-        accountSlug:
-          type: string
-          title: account_slug
-          maxLength: 100
-          description: |-
-            The account being signed in to, when it declares its own identity provider.
-
-             Same necessity as the browser's: the flow starts with the client id of the right
-             connector, and nothing is known about the caller yet. Empty uses the deployment's
-             provider, which is what an account with no setting uses too.
       title: GetAuthorizeUrlRequest
       additionalProperties: false
     mgmt.v1alpha1.GetAuthorizeUrlResponse:

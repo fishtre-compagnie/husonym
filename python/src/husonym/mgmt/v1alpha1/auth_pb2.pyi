@@ -61,16 +61,14 @@ class AccessToken(_message.Message):
     def __init__(self, access_token: _Optional[str] = ..., refresh_token: _Optional[str] = ..., expires_in: _Optional[int] = ..., scope: _Optional[str] = ..., id_token: _Optional[str] = ..., token_type: _Optional[str] = ...) -> None: ...
 
 class GetAuthorizeUrlRequest(_message.Message):
-    __slots__ = ("state", "redirect_uri", "scope", "account_slug")
+    __slots__ = ("state", "redirect_uri", "scope")
     STATE_FIELD_NUMBER: _ClassVar[int]
     REDIRECT_URI_FIELD_NUMBER: _ClassVar[int]
     SCOPE_FIELD_NUMBER: _ClassVar[int]
-    ACCOUNT_SLUG_FIELD_NUMBER: _ClassVar[int]
     state: str
     redirect_uri: str
     scope: str
-    account_slug: str
-    def __init__(self, state: _Optional[str] = ..., redirect_uri: _Optional[str] = ..., scope: _Optional[str] = ..., account_slug: _Optional[str] = ...) -> None: ...
+    def __init__(self, state: _Optional[str] = ..., redirect_uri: _Optional[str] = ..., scope: _Optional[str] = ...) -> None: ...
 
 class GetAuthorizeUrlResponse(_message.Message):
     __slots__ = ("url",)

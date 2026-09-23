@@ -94,10 +94,6 @@ message OidcProvider {
   // It plays no part in validating a token -- that needs only the public JWKS -- and is
   // used solely in the authorization flow. Empty for a public client.
   string client_secret = 3 [(mgmt.v1alpha1.secret) = true];
-
-  // What the aud claim of a token must carry for this account. Empty falls back to the
-  // deployment's audiences.
-  repeated string audiences = 4;
 }
 
 // How much a finding of a setting test weighs.

@@ -122,3 +122,24 @@ func Test_identityOf(t *testing.T) {
 		require.False(t, newService("").identityOf(token(deploymentIssuer)).MayAdoptLegacy)
 	})
 }
+
+// The administration API speaks for one provider and knows subjects in its namespace
+// alone. Asking it about a subject another provider minted would answer about whoever
+// carries that subject there, and show one person's name in another's place.
+func Test_isDeploymentIssuerOrLegacy(t *testing.T) {
+	const deploymentIssuer = "https://idp.example.com/"
+	s := &Service{cfg: &Config{DeploymentIssuer: deploymentIssuer}}
+
+	require.True(t, s.isDeploymentIssuerOrLegacy(deploymentIssuer))
+	require.False(t, s.isDeploymentIssuerOrLegacy("https://account.example.com/"))
+
+	// A row recorded before issuers were can only have come from the deployment's own
+	// provider, and it is the population the fallback exists for.
+	require.True(t, s.isDeploymentIssuerOrLegacy(""))
+
+	t.Run("a deployment with no issuer vouches for no account provider", func(t *testing.T) {
+		none := &Service{cfg: &Config{DeploymentIssuer: ""}}
+		require.False(t, none.isDeploymentIssuerOrLegacy("https://account.example.com/"))
+		require.True(t, none.isDeploymentIssuerOrLegacy(""))
+	})
+}

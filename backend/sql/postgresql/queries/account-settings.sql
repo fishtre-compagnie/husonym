@@ -55,7 +55,7 @@ WHERE setting_type = 'oidc_provider'
 SELECT count(*)
 FROM husonym_api.account_settings
 WHERE setting_type = 'oidc_provider'
-  AND config->'oidcProvider'->>'issuer' = sqlc.arg('issuer')
+  AND config->'oidcProvider'->>'issuer' = sqlc.arg('issuer')::text
   AND account_id <> sqlc.arg('accountId');
 
 -- The provider an account has declared, without its secrets being decrypted. The caller

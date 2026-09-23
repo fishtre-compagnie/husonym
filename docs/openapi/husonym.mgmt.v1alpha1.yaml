@@ -6782,15 +6782,6 @@ components:
 
              It plays no part in validating a token -- that needs only the public JWKS -- and is
              used solely in the authorization flow. Empty for a public client.
-        audiences:
-          type: array
-          items:
-            type: string
-          title: audiences
-          description: >-
-            What the aud claim of a token must carry for this account. Empty
-            falls back to the
-             deployment's audiences.
       title: OidcProvider
       additionalProperties: false
       description: |-
@@ -8795,17 +8786,6 @@ components:
           description: >-
             The scopes the client is requesting as a part of the oauth login
             request
-        accountSlug:
-          type: string
-          title: account_slug
-          maxLength: 100
-          description: >-
-            The account being signed in to, when it declares its own identity
-            provider.
-
-             Same necessity as the browser's: the flow starts with the client id of the right
-             connector, and nothing is known about the caller yet. Empty uses the deployment's
-             provider, which is what an account with no setting uses too.
       title: GetAuthorizeUrlRequest
       additionalProperties: false
     mgmt.v1alpha1.GetAuthorizeUrlResponse:

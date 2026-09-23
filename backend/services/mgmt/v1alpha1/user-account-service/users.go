@@ -659,7 +659,13 @@ func (s *Service) GetTeamAccountMembers(
 			// A blank field is completed from the deployment's administration API, which
 			// only Auth0 and Keycloak have. It may only ever add -- see
 			// completeDisplayIdentity.
-			if !isDisplayIdentityComplete(identity) {
+			//
+			// Only for an identity the deployment's own provider issued. That API speaks
+			// for one provider and knows subjects in its namespace alone, so asking it
+			// about a subject another provider minted would answer about whoever happens
+			// to carry that subject there -- and show one person's name and address in
+			// another's place. The same reason identities carry their issuer at all.
+			if !isDisplayIdentityComplete(identity) && s.isDeploymentIssuerOrLegacy(user.ProviderIss) {
 				if user.ProviderSub == "" {
 					logger.Warn(
 						fmt.Sprintf(

@@ -70,12 +70,6 @@ message GetAuthorizeUrlRequest {
   string redirect_uri = 2 [(buf.validate.field).string.min_len = 1];
   // The scopes the client is requesting as a part of the oauth login request
   string scope = 3 [(buf.validate.field).string.min_len = 1];
-  // The account being signed in to, when it declares its own identity provider.
-  //
-  // Same necessity as the browser's: the flow starts with the client id of the right
-  // connector, and nothing is known about the caller yet. Empty uses the deployment's
-  // provider, which is what an account with no setting uses too.
-  string account_slug = 4 [(buf.validate.field).string.max_len = 100];
 }
 message GetAuthorizeUrlResponse {
   // The generated url that is the client will be redirected to during the Oauth flow

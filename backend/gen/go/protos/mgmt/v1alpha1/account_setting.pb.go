@@ -349,10 +349,7 @@ type OidcProvider struct {
 	//
 	// It plays no part in validating a token -- that needs only the public JWKS -- and is
 	// used solely in the authorization flow. Empty for a public client.
-	ClientSecret string `protobuf:"bytes,3,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
-	// What the aud claim of a token must carry for this account. Empty falls back to the
-	// deployment's audiences.
-	Audiences     []string `protobuf:"bytes,4,rep,name=audiences,proto3" json:"audiences,omitempty"`
+	ClientSecret  string `protobuf:"bytes,3,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -406,13 +403,6 @@ func (x *OidcProvider) GetClientSecret() string {
 		return x.ClientSecret
 	}
 	return ""
-}
-
-func (x *OidcProvider) GetAudiences() []string {
-	if x != nil {
-		return x.Audiences
-	}
-	return nil
 }
 
 // One finding of a setting test.
@@ -918,13 +908,12 @@ const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\roidc_provider\x18\x02 \x01(\v2\x1b.mgmt.v1alpha1.OidcProviderH\x00R\foidcProviderB\x0f\n" +
 	"\x06config\x12\x05\xbaH\x02\b\x01\"N\n" +
 	"\x18AnonymizationConsistency\x122\n" +
-	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"\xa1\x01\n" +
+	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"\x83\x01\n" +
 	"\fOidcProvider\x12\"\n" +
 	"\x06issuer\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x88\x01\x01R\x06issuer\x12$\n" +
 	"\tclient_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bclientId\x12)\n" +
-	"\rclient_secret\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\fclientSecret\x12\x1c\n" +
-	"\taudiences\x18\x04 \x03(\tR\taudiences\"\x8c\x01\n" +
+	"\rclient_secret\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\fclientSecret\"\x8c\x01\n" +
 	"\fSettingCheck\x12\x14\n" +
 	"\x05check\x18\x01 \x01(\tR\x05check\x126\n" +
 	"\x05level\x18\x02 \x01(\x0e2 .mgmt.v1alpha1.SettingCheckLevelR\x05level\x12\x16\n" +

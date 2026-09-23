@@ -1691,18 +1691,6 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
-            },
-            {
-              "name": "audiences",
-              "description": "What the aud claim of a token must carry for this account. Empty falls back to the\ndeployment's audiences.",
-              "label": "repeated",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
             }
           ]
         },
@@ -6704,18 +6692,6 @@
             {
               "name": "scope",
               "description": "The scopes the client is requesting as a part of the oauth login request",
-              "label": "",
-              "type": "string",
-              "longType": "string",
-              "fullType": "string",
-              "ismap": false,
-              "isoneof": false,
-              "oneofdecl": "",
-              "defaultValue": ""
-            },
-            {
-              "name": "account_slug",
-              "description": "The account being signed in to, when it declares its own identity provider.\n\nSame necessity as the browser's: the flow starts with the client id of the right\nconnector, and nothing is known about the caller yet. Empty uses the deployment's\nprovider, which is what an account with no setting uses too.",
               "label": "",
               "type": "string",
               "longType": "string",

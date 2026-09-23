@@ -161,3 +161,40 @@ func Test_Resolver_IsSafeUnderConcurrency(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// The expiry of the window sets every in-flight request refreshing at once, and none of
+// them has written the answer back yet. Without coalescing that is a burst of identical
+// queries every thirty seconds.
+func Test_Resolver_CoalescesConcurrentRefreshes(t *testing.T) {
+	var mu sync.Mutex
+	calls := 0
+	release := make(chan struct{})
+
+	r := NewResolver(deploymentIssuer, func(context.Context) ([]string, error) {
+		mu.Lock()
+		calls++
+		mu.Unlock()
+		<-release // hold the first load open so the others pile up behind it
+		return []string{"https://a.example.com/"}, nil
+	}, time.Minute, nil)
+
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			got, err := r.Resolve(context.Background())
+			require.NoError(t, err)
+			require.Len(t, got, 2)
+		}()
+	}
+
+	// Let them all reach the load before any returns.
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	wg.Wait()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Equal(t, 1, calls, "twenty requests on a cold cache must be one query, not twenty")
+}

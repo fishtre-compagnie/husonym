@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/tokenctx"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -55,9 +56,15 @@ func getAuthValues(ctx context.Context, db *husonymdb.HusonymDb) []any {
 	if tokenCtxResp.JwtContextData != nil {
 		output = append(output, "authUserId", tokenCtxResp.JwtContextData.AuthUserId)
 
-		user, err := db.Q.GetUserByProviderSub(ctx, db.Db, tokenCtxResp.JwtContextData.AuthUserId)
+		// By the pair, not by the subject: since identities carry their issuer, the same
+		// subject can belong to two people, and a lookup on it alone would attribute a
+		// line to whichever of them the database happened to return first.
+		association, err := db.Q.GetUserAssociationByIdentity(ctx, db.Db, db_queries.GetUserAssociationByIdentityParams{
+			ProviderSub: tokenCtxResp.JwtContextData.AuthUserId,
+			ProviderIss: tokenCtxResp.JwtContextData.AuthIssuer,
+		})
 		if err == nil {
-			output = append(output, "userId", husonymdb.UUIDString(user.ID))
+			output = append(output, "userId", husonymdb.UUIDString(association.UserID))
 		}
 	} else if tokenCtxResp.ApiKeyContextData != nil {
 		output = append(output, "apiKeyType", tokenCtxResp.ApiKeyContextData.ApiKeyType)

@@ -4,9 +4,12 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/oidcprobe"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // TestAccountSetting tries a setting without writing it.
@@ -67,4 +70,45 @@ func toCheckLevelDto(level oidcprobe.Level) mgmtv1alpha1.SettingCheckLevel {
 		return mgmtv1alpha1.SettingCheckLevel_SETTING_CHECK_LEVEL_INFO
 	}
 	return mgmtv1alpha1.SettingCheckLevel_SETTING_CHECK_LEVEL_UNSPECIFIED
+}
+
+// refuseIssuerClaimedElsewhere stops an account from declaring a provider another account
+// has already declared.
+//
+// Identities are keyed by (issuer, subject), which means two accounts trusting the same
+// issuer share the subject space it mints. Whoever administers sign-ins at that provider
+// could then hand themselves the identity of a member of the other account -- the very
+// thing keying on the issuer is there to prevent, reintroduced one level up.
+//
+// It is a refusal and not a finding, because unlike everything the probe reports this one
+// cannot be judged by whoever is configuring: the other account is none of their business,
+// and the message says nothing about it beyond that it exists.
+func (s *Service) refuseIssuerClaimedElsewhere(
+	ctx context.Context,
+	accountUuid pgtype.UUID,
+	config *mgmtv1alpha1.AccountSettingConfig,
+) error {
+	provider, ok := config.GetConfig().(*mgmtv1alpha1.AccountSettingConfig_OidcProvider)
+	if !ok {
+		return nil
+	}
+	issuer := provider.OidcProvider.GetIssuer()
+	if issuer == "" {
+		return nil
+	}
+
+	claimed, err := s.db.Q.CountOtherAccountsDeclaringIssuer(
+		ctx,
+		s.db.Db,
+		db_queries.CountOtherAccountsDeclaringIssuerParams{Issuer: issuer, AccountId: accountUuid},
+	)
+	if err != nil {
+		return err
+	}
+	if claimed > 0 {
+		return husonymerrors.NewBadRequest(
+			"this identity provider is already declared by another account. Two accounts cannot share one, because they would share the identities it issues",
+		)
+	}
+	return nil
 }

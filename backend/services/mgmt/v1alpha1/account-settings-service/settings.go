@@ -66,6 +66,10 @@ func (s *Service) SetAccountSetting(
 		return nil, err
 	}
 
+	if err := s.refuseIssuerClaimedElsewhere(ctx, accountUuid, req.Msg.GetConfig()); err != nil {
+		return nil, err
+	}
+
 	config, err := s.encryptedConfig(req.Msg.GetConfig())
 	if err != nil {
 		return nil, err
