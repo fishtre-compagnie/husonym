@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -38,12 +39,26 @@ func (s *Service) PreviewColumnTransformer(
 ) (*connect.Response[mgmtv1alpha1.PreviewColumnTransformerResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
+	// The transformer is resolved before the source is read: what it turns out to be decides how
+	// many rows the preview may show.
+	config, err := s.resolveTransformer(ctx, req.Msg.GetTransformer())
+	if err != nil {
+		return nil, err
+	}
+	// A javascript rule is shown over one trial, and a trial takes at most maxJavascriptTrialRows
+	// rows. Reading more would leave the extra rows out of the answer and count the distinct
+	// values over a sample the caller never sees.
+	var maxRows uint32 = maxPreviewLimit
+	if isJavascriptRule(config) {
+		maxRows = maxJavascriptTrialRows
+	}
+
 	sampled, err := s.sampleRows(
 		ctx,
 		req.Msg.GetConnectionId(),
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
-		clampLimit(req.Msg.GetLimit(), defaultPreviewLimit, maxPreviewLimit),
+		clampLimit(req.Msg.GetLimit(), defaultPreviewLimit, maxRows),
 	)
 	if err != nil {
 		return nil, err
@@ -53,10 +68,6 @@ func (s *Service) PreviewColumnTransformer(
 		return nil, err
 	}
 
-	config, err := s.resolveTransformer(ctx, req.Msg.GetTransformer())
-	if err != nil {
-		return nil, err
-	}
 	// A javascript rule goes through the trial a rule's author uses, which runs it with the
 	// engine's own runner. The anonymizer below would hand it Benthos' structured values, where
 	// a number arrives as a string-like object: `value + 1` would read "281" here and 29 in the
@@ -143,8 +154,10 @@ func previewValues(
 		resp.Values = append(resp.Values, row)
 	}
 
-	resp.DistinctInputs = uint32(len(inputs))
-	resp.DistinctOutputs = uint32(len(outputs))
+	// Both counts are at most the number of sampled rows, which clampLimit holds under
+	// maxPreviewLimit.
+	resp.DistinctInputs = uint32(len(inputs))   //nolint:gosec // at most maxPreviewLimit
+	resp.DistinctOutputs = uint32(len(outputs)) //nolint:gosec // at most maxPreviewLimit
 	return resp
 }
 
@@ -176,6 +189,14 @@ func isJavascriptRule(config *mgmtv1alpha1.TransformerConfig) bool {
 
 // maxJavascriptTrialRows is the most rows TryJavascriptRules takes in one trial.
 const maxJavascriptTrialRows = 20
+
+// previewTrialBudget is all the time a preview may spend at the rule trial: five seconds waiting
+// for its turn, then the ten a trial may take (tryTimeLimit, in the transformers service).
+//
+// Trials run one at a time in the API process and nothing bounds the queue. A preview is a
+// passive look at a column, opened by anybody scrolling a review, where a trial is somebody
+// writing a rule: the preview gives up its place rather than making that person wait behind it.
+const previewTrialBudget = 15 * time.Second
 
 // previewJavascript tries the rule on the sampled rows, all in one trial.
 //
@@ -213,8 +234,10 @@ func (s *Service) previewJavascript(
 		return previewValues(raws, func(any) (any, error) { return nil, nil })
 	}
 
+	trialCtx, cancel := context.WithTimeout(ctx, previewTrialBudget)
+	defer cancel()
 	resp, err := s.transformers.Client.TryJavascriptRules(
-		ctx,
+		trialCtx,
 		connect.NewRequest(&mgmtv1alpha1.TryJavascriptRulesRequest{
 			AccountId: sampled.accountId,
 			Rules:     []*mgmtv1alpha1.JavascriptRule{{Column: column, Transformer: config}},
@@ -222,6 +245,11 @@ func (s *Service) previewJavascript(
 		}),
 	)
 	if err != nil {
+		if ctx.Err() == nil && trialCtx.Err() != nil {
+			return failAll(raws, errors.New(
+				"the rule trial is busy with other rules: open the preview again in a moment",
+			))
+		}
 		return failAll(raws, err)
 	}
 
