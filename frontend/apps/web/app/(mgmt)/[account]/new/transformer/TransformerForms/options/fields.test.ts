@@ -4,6 +4,8 @@ import {
   GenerateEmailSchema,
   GenerateEmailType,
   GenerateFloat64Schema,
+  GenerateIpAddressSchema,
+  GenerateIpAddressType,
   GenerateStringPhoneNumberSchema,
   TransformEmailSchema,
   TransformPhoneNumberSchema,
@@ -14,7 +16,6 @@ import {
   getEnumChoices,
   getOptionField,
   getOptionKind,
-  humanizeEnumName,
   parseStringList,
   readOptionValue,
   toFieldInteger,
@@ -104,7 +105,12 @@ describe('getEnumChoices', () => {
   });
 
   it('humanizes a screaming-case name', () => {
-    expect(humanizeEnumName('V4_PRIVATE_A')).toBe('V4 private a');
+    expect(
+      getEnumChoices(getOptionField(GenerateIpAddressSchema, 'ipType'))
+    ).toContainEqual({
+      number: GenerateIpAddressType.V4_PRIVATE_A,
+      label: 'V4 private a',
+    });
   });
 });
 

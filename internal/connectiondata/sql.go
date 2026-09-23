@@ -530,6 +530,7 @@ func toDatabaseColumn(col *sqlmanager_shared.DatabaseSchemaRow) *mgmtv1alpha1.Da
 	// from "a bound of nothing".
 	var charMaxLength *int32
 	if col.CharacterMaximumLength > 0 {
+		//nolint:gosec // a column length reported by information_schema, orders below 2^31
 		bounded := int32(col.CharacterMaximumLength)
 		charMaxLength = &bounded
 	}

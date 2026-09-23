@@ -85,7 +85,7 @@ type ColumnFacts struct {
 // BuildPrompt renders the prompt. It is deterministic: the same facts give the same text, so a
 // draft can be reproduced and a change in the prompt shows up in a diff rather than in a
 // model's mood.
-func BuildPrompt(facts ColumnFacts) string {
+func BuildPrompt(facts *ColumnFacts) string {
 	var b strings.Builder
 
 	b.WriteString("Write the body of a JavaScript function that anonymizes one database column.\n\n")
@@ -108,19 +108,25 @@ func BuildPrompt(facts ColumnFacts) string {
 	return b.String()
 }
 
-func writeContract(b *strings.Builder, facts ColumnFacts) {
+func writeContract(b *strings.Builder, facts *ColumnFacts) {
 	if facts.Mode == ModeGenerate {
 		b.WriteString("Your code is the body of `function fn(){ ... }`. It takes no arguments and must `return` the value to write.\n")
 	} else {
 		b.WriteString("Your code is the body of `function fn(value, input){ ... }` and must `return` the value to write.\n")
-		b.WriteString("`value` is the column's current value. `input` is the whole source row, keyed by column name, so a rule may read its siblings — that is how a value is derived from a key rather than invented.\n")
+		b.WriteString(
+			"`value` is the column's current value. `input` is the whole source row, keyed by column name, so a rule may read its siblings — that is how a value is derived from a key rather than invented.\n",
+		)
 	}
-	b.WriteString("\nIt runs in goja, an embedded ECMAScript 5.1+ engine. There is no Node, no browser, no `require`, no `import`, no network, no filesystem, no `crypto`, no `Buffer`, no timers. Only the standard library and the functions listed below exist.\n")
-	b.WriteString("\nAssigning to an undeclared variable, or to a property of `husonym`, `globalThis` or `this`, shares state with the other columns of the same row and is cleared at the next row. Use it only when columns must agree with each other; never to carry state from one row to the next, which would make the job's output depend on the order rows are read.\n")
+	b.WriteString(
+		"\nIt runs in goja, an embedded ECMAScript 5.1+ engine. There is no Node, no browser, no `require`, no `import`, no network, no filesystem, no `crypto`, no `Buffer`, no timers. Only the standard library and the functions listed below exist.\n",
+	)
+	b.WriteString(
+		"\nAssigning to an undeclared variable, or to a property of `husonym`, `globalThis` or `this`, shares state with the other columns of the same row and is cleared at the next row. Use it only when columns must agree with each other; never to carry state from one row to the next, which would make the job's output depend on the order rows are read.\n",
+	)
 	b.WriteString("\nIntegers beyond 2^53 arrive as BigInt, so arithmetic on an id may need BigInt literals.\n")
 }
 
-func writeColumn(b *strings.Builder, facts ColumnFacts) {
+func writeColumn(b *strings.Builder, facts *ColumnFacts) {
 	fmt.Fprintf(b, "- Column: `%s.%s.%s`\n", facts.Schema, facts.Table, facts.Column)
 	if facts.DataType != "" {
 		fmt.Fprintf(b, "- Type: `%s`\n", facts.DataType)
@@ -157,13 +163,15 @@ func writeColumn(b *strings.Builder, facts ColumnFacts) {
 	}
 	// Said out loud, because a model that does not know the sample is withheld asks for it, or
 	// invents one and reasons from the invention.
-	b.WriteString("\nYou are not shown any of the column's values, and you do not need them: write a rule that holds for the whole column.\n")
+	b.WriteString(
+		"\nYou are not shown any of the column's values, and you do not need them: write a rule that holds for the whole column.\n",
+	)
 }
 
 // writeRules turns the facts into imperatives. The facts alone are not enough: a model reading
 // "under a uniqueness constraint" still has to work out that a constant breaks on the second
 // row, and the whole point of the exercise is that it should not have to.
-func writeRules(b *strings.Builder, facts ColumnFacts) {
+func writeRules(b *strings.Builder, facts *ColumnFacts) {
 	rules := []string{}
 
 	if facts.IsGenerated || facts.IsIdentity {
@@ -201,7 +209,9 @@ func writeRules(b *strings.Builder, facts ColumnFacts) {
 			rules,
 			fmt.Sprintf(
 				"This column points at `%s.%s.%s`. Its output must be the same as the output of that parent column for the same original value, or the row loses its parent. Only a deterministic function of the input can do this.",
-				facts.ForeignKey.Schema, facts.ForeignKey.Table, facts.ForeignKey.Column,
+				facts.ForeignKey.Schema,
+				facts.ForeignKey.Table,
+				facts.ForeignKey.Column,
 			),
 		)
 	}
@@ -222,7 +232,10 @@ func writeRules(b *strings.Builder, facts ColumnFacts) {
 	if facts.MaxLength != nil {
 		rules = append(
 			rules,
-			fmt.Sprintf("The output must be at most %d characters. Bound it; do not assume the generated value is short.", *facts.MaxLength),
+			fmt.Sprintf(
+				"The output must be at most %d characters. Bound it; do not assume the generated value is short.",
+				*facts.MaxLength,
+			),
 		)
 	}
 	rules = append(
@@ -249,13 +262,15 @@ func writeRules(b *strings.Builder, facts ColumnFacts) {
 // writeFunctions derives the catalogue from the package that defines it. Copying the list here
 // would leave the prompt describing a namespace that has moved on, silently, and a model cannot
 // tell a function that never existed from one that was removed.
-func writeFunctions(b *strings.Builder, facts ColumnFacts) {
+func writeFunctions(b *strings.Builder, facts *ColumnFacts) {
 	if facts.Engine != EngineAthanor {
 		b.WriteString("Standard ECMAScript only. The `pseudo` namespace is not available on this engine.\n")
 		return
 	}
 
-	b.WriteString("The `pseudo` namespace is deterministic: the same input gives the same output on every row, table and run of the job's consistency scope. This is what keeps foreign keys pointing at their parents.\n\n")
+	b.WriteString(
+		"The `pseudo` namespace is deterministic: the same input gives the same output on every row, table and run of the job's consistency scope. This is what keeps foreign keys pointing at their parents.\n\n",
+	)
 	fmt.Fprintf(
 		b,
 		"- `pseudo.<kind>(value)` returns a fake of that kind, for: %s.\n",
@@ -264,6 +279,8 @@ func writeFunctions(b *strings.Builder, facts ColumnFacts) {
 	b.WriteString("- `pseudo.hash(value, domain)` returns a hexadecimal digest of the value.\n")
 	b.WriteString("- `pseudo.int(value, domain, min, max)` returns an integer within the range.\n")
 	b.WriteString("- `pseudo.pick(list, value, domain)` returns one element of the list.\n")
-	b.WriteString("\n`domain` is a label of your choosing. Two calls with the same domain and the same value agree; two different domains give unrelated results for the same value. Use one domain per meaning — the same one on a foreign key and on the parent it points at, a different one for unrelated columns.\n")
+	b.WriteString(
+		"\n`domain` is a label of your choosing. Two calls with the same domain and the same value agree; two different domains give unrelated results for the same value. Use one domain per meaning — the same one on a foreign key and on the parent it points at, a different one for unrelated columns.\n",
+	)
 	b.WriteString("\nA null value returns null from every one of these, so a null input needs no special case.\n")
 }

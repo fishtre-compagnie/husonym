@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func column() ColumnFacts {
-	return ColumnFacts{
+func column() *ColumnFacts {
+	return &ColumnFacts{
 		Schema: "public",
 		Table:  "users",
 		Column: "email",
@@ -142,7 +142,7 @@ func Test_BuildPrompt_GenerateRefusesWhatItCannotSatisfy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			facts := column()
 			facts.Mode = ModeGenerate
-			tc.apply(&facts)
+			tc.apply(facts)
 			prompt := BuildPrompt(facts)
 
 			require.Contains(t, prompt, "needs a transform rule instead")

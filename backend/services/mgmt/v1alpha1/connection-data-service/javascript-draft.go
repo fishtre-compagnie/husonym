@@ -100,7 +100,7 @@ func (s *Service) GetJavascriptDraftPrompt(
 	facts.ReferencedBy = countReferencesTo(constraintsResp.Msg, table, req.Msg.GetColumn())
 
 	return connect.NewResponse(&mgmtv1alpha1.GetJavascriptDraftPromptResponse{
-		Prompt: javascript_draft.BuildPrompt(facts),
+		Prompt: javascript_draft.BuildPrompt(&facts),
 	}), nil
 }
 

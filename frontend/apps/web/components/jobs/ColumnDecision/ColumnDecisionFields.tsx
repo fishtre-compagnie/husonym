@@ -30,7 +30,7 @@ import {
 import { ReactElement, ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-export interface PreviewTarget {
+interface PreviewTarget {
   connectionId: string;
   schema: string;
   table: string;

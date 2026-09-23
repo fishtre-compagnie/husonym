@@ -128,7 +128,7 @@ export function getEnumChoices(
 }
 
 // UUID_V4 → "Uuid v4"
-export function humanizeEnumName(localName: string): string {
+function humanizeEnumName(localName: string): string {
   const words = localName.toLowerCase().split('_').filter(Boolean);
   const sentence = words.join(' ');
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
