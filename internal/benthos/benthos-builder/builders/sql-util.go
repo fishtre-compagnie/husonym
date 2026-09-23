@@ -1,6 +1,7 @@
 package benthosbuilder_builders
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -267,6 +268,15 @@ func sourceColumnsOf(
 			})
 		}
 	}
+	// Read out of maps, so in no order: these rows replace the job's source columns on every
+	// run, and an order that changes for nothing makes two runs look different.
+	slices.SortFunc(out, func(a, b *mgmtv1alpha1.JobSourceColumn) int {
+		return cmp.Or(
+			cmp.Compare(a.GetColumn().GetSchema(), b.GetColumn().GetSchema()),
+			cmp.Compare(a.GetColumn().GetTable(), b.GetColumn().GetTable()),
+			cmp.Compare(a.GetColumn().GetColumn(), b.GetColumn().GetColumn()),
+		)
+	})
 	return out
 }
 
@@ -817,7 +827,22 @@ func getAdditionalPassthroughJobMappings(
 		}
 	}
 
+	// Map iteration gives a different order every time, and these mappings are written to the
+	// job: without this, two runs that find the same new columns leave the job's mappings in a
+	// different order, and its history reads as a change where nothing changed.
+	sortMappings(output)
 	return output, nil
+}
+
+// sortMappings orders mappings by schema, table then column.
+func sortMappings(mappings []*mgmtv1alpha1.JobMapping) {
+	slices.SortFunc(mappings, func(a, b *mgmtv1alpha1.JobMapping) int {
+		return cmp.Or(
+			cmp.Compare(a.GetSchema(), b.GetSchema()),
+			cmp.Compare(a.GetTable(), b.GetTable()),
+			cmp.Compare(a.GetColumn(), b.GetColumn()),
+		)
+	})
 }
 
 func shouldOverrideColumnDefault(
