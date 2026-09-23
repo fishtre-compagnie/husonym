@@ -277,7 +277,7 @@ function getJobMappingColumns() {
       id: 'rgpd',
       size: 112,
       header({ column }) {
-        return <SchemaColumnHeader column={column} title="RGPD" />;
+        return <SchemaColumnHeader column={column} title="GDPR" />;
       },
       cell({ row, table }) {
         return (
