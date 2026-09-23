@@ -9,8 +9,16 @@
 //
 // The next digit is also the tweak of the permutation, and the subscriber digits
 // are its input. So the same number written nationally and internationally keeps
-// the same subscriber digits, and two distinct numbers never meet: the permutation
-// is a bijection for a given prefix.
+// the same subscriber digits.
+//
+// Two distinct numbers never give the same pseudonym, which is what lets a unique
+// column stay unique. The permutation is a bijection for a given prefix, and the
+// prefix a value was read with can be read back from its pseudonym: every digit the
+// prefix rule looks at is kept, so applying the rule to the output finds the same
+// prefix. That is why a number whose prefix the rule does not recognize keeps its
+// first digit — which is never "0", or the rule would have recognized it — instead
+// of having all of its digits replaced: a pseudonym starting with "0" would then be
+// both the pseudonym of a national number and that of a number with no prefix.
 package phoneformat
 
 import (
@@ -19,10 +27,6 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/fpe"
 )
-
-// minSubscriberDigits is the fewest digits worth hiding behind a kept prefix. Below
-// it, a number is too short for its prefix to be kept: all its digits are replaced.
-const minSubscriberDigits = 6
 
 // Pseudonymizer replaces the subscriber digits of phone numbers under one key.
 type Pseudonymizer struct {
@@ -40,8 +44,9 @@ func New(key [32]byte) *Pseudonymizer {
 	return &Pseudonymizer{ff1: ff1}
 }
 
-// Pseudonymize returns value with its subscriber digits replaced. A value with fewer
-// than two digits identifies no one and is returned as it is.
+// Pseudonymize returns value with its subscriber digits replaced. A value left with
+// fewer than two digits once its prefix is kept identifies no one, and is returned as
+// it is.
 func (p *Pseudonymizer) Pseudonymize(value string) (string, error) {
 	out := []byte(value)
 	var positions []int
@@ -52,18 +57,19 @@ func (p *Pseudonymizer) Pseudonymize(value string) (string, error) {
 			digits = append(digits, out[i]-'0')
 		}
 	}
-	if len(digits) < fpe.MinLength {
+	if len(digits) == 0 {
 		return value, nil
 	}
 
-	kept := keptDigits(value, digits)
-	if len(digits)-kept < minSubscriberDigits {
-		kept = 0
+	// At least the first digit is kept, prefix or not: it is what tells a pseudonym of a
+	// national number from a pseudonym of a number with no recognized prefix.
+	kept := max(keptDigits(value, digits), 1)
+	// Nothing to hide once the prefix is kept: a value this short identifies nobody, and
+	// replacing what is left would not be a permutation of anything.
+	if len(digits)-kept < fpe.MinLength {
+		return value, nil
 	}
-	var tweak []byte
-	if kept > 0 {
-		tweak = []byte{'0' + digits[kept-1]}
-	}
+	tweak := []byte{'0' + digits[kept-1]}
 
 	subscriber, err := p.ff1.Encrypt(digits[kept:], tweak)
 	if err != nil {

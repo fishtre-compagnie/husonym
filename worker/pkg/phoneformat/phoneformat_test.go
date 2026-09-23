@@ -99,6 +99,41 @@ func Test_Pseudonymize_NoCollision(t *testing.T) {
 	}
 }
 
+// What makes two distinct numbers unable to meet is that a pseudonym is read back into the same
+// prefix as the number it comes from: the permutation is a bijection within one prefix, so two
+// numbers can only collide across two prefixes. Sampling would not show it — a collision is one
+// in ten billion — so the invariant is checked directly.
+//
+// It failed for a number with no recognized prefix, whose digits were all replaced: the
+// pseudonym of "1612345678" could start with "06" and read back as a national number, which is
+// also what the pseudonym of "0612345678" looks like.
+func Test_Pseudonymize_KeepsTheKindOfPrefix(t *testing.T) {
+	p := newTestPseudonymizer(t, 5)
+	digitsOf := func(s string) []byte {
+		var out []byte
+		for _, r := range s {
+			if r >= '0' && r <= '9' {
+				out = append(out, byte(r)-'0')
+			}
+		}
+		return out
+	}
+	for _, in := range []string{
+		"0612345678", "07 12 34 56 78", "1612345678", "9 876 543 210",
+		"+33 6 12 34 56 78", "0033612345678", "+1 (555) 123-4567", "0612345",
+	} {
+		t.Run(in, func(t *testing.T) {
+			got, err := p.Pseudonymize(in)
+			require.NoError(t, err)
+			require.Equal(t,
+				keptDigits(in, digitsOf(in)),
+				keptDigits(got, digitsOf(got)),
+				"%q reads back as another kind of number than %q", got, in,
+			)
+		})
+	}
+}
+
 func Test_Pseudonymize_ShortOrDigitlessValues(t *testing.T) {
 	p := newTestPseudonymizer(t, 1)
 
@@ -108,8 +143,17 @@ func Test_Pseudonymize_ShortOrDigitlessValues(t *testing.T) {
 		require.Equal(t, in, got, "nothing to hide in %q", in)
 	}
 
-	// Too short to keep a prefix and still hide something: every digit is replaced.
+	// Short, but there is still something to hide behind the prefix: the prefix stays, and
+	// what follows is permuted. Dropping the prefix here is what used to let the pseudonym of
+	// a short national number land on the pseudonym of a longer one.
 	got, err := p.Pseudonymize("06 12")
 	require.NoError(t, err)
 	require.Equal(t, shape("06 12"), shape(got))
+	require.Equal(t, "06 ", got[:3])
+	require.NotEqual(t, "06 12", got)
+
+	// Nothing left to permute once the prefix is kept.
+	got, err = p.Pseudonymize("061")
+	require.NoError(t, err)
+	require.Equal(t, "061", got)
 }
