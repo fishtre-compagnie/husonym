@@ -15,6 +15,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ApiKeyEnvVarName is the environment variable the CLI takes its API key from.
+const ApiKeyEnvVarName = "HUSONYM_API_KEY" //nolint:gosec
+
 // Light wrapper for GetAuthEnabled that instantiates an auth client
 func IsAuthEnabled(ctx context.Context) (bool, error) {
 	httpclient := http_client.NewWithHeaders(version.Get().Headers())
