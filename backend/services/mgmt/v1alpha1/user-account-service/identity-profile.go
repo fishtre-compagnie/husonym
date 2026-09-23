@@ -8,6 +8,43 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 )
 
+// isDisplayIdentityComplete reports whether every field a members list shows is filled,
+// which is what decides that no second source has to be asked.
+func isDisplayIdentityComplete(u *authmgmt.User) bool {
+	return u != nil && u.Name != "" && u.Email != "" && u.Picture != ""
+}
+
+// completeDisplayIdentity fills the blanks of a stored display identity from a fallback
+// source, and only the blanks.
+//
+// The three fields are written independently at sign-in -- a token that carries an
+// address but no name leaves exactly that -- so the question is never "was a profile
+// stored" but "which fields are still blank". The fallback may only ever add: what the
+// provider asserted at sign-in is the fresher statement and wins.
+func completeDisplayIdentity(stored, fallback *authmgmt.User) *authmgmt.User {
+	if fallback == nil {
+		return stored
+	}
+	if stored == nil {
+		return fallback
+	}
+	return &authmgmt.User{
+		Name:          firstNonEmpty(stored.Name, fallback.Name),
+		Email:         firstNonEmpty(stored.Email, fallback.Email),
+		EmailVerified: stored.EmailVerified,
+		Picture:       firstNonEmpty(stored.Picture, fallback.Picture),
+	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
 // resolveIdentityProfile returns the display identity the provider presents for the
 // signed-in subject, taken from the standard OIDC claims.
 //

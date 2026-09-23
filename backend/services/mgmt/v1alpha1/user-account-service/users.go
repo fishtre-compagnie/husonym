@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -636,43 +637,34 @@ func (s *Service) GetTeamAccountMembers(
 			}
 			// What the provider said at sign-in, stored on the association. This is the
 			// nominal path, and it is the same for every OIDC provider.
-			//
-			// The address is what decides whether a profile was stored, exactly as it
-			// decides whether a token carries one (CustomClaims.HasProfileClaims): the
-			// columns are written independently, so a provider that answered a name but
-			// no address leaves a row that looks filled and identifies nobody.
-			dtoUsers[i].Email = user.Email.String
-			dtoUsers[i].Name = user.Name.String
-			dtoUsers[i].Image = user.Picture.String
-			if user.Email.Valid {
-				return nil
+			identity := &authmgmt.User{
+				Name:    user.Name.String,
+				Email:   user.Email.String,
+				Picture: user.Picture.String,
 			}
 
-			// No address stored: a user who has not signed in since the profile columns
-			// exist, or a provider that did not answer one. Fall back on the deployment's
-			// administration API, which only Auth0 and Keycloak have -- and keep whatever
-			// was stored if it cannot answer either.
-			if user.ProviderSub == "" {
-				logger.Warn(
-					fmt.Sprintf(
-						"unable to find provider sub associated with user id: %q",
-						husonymdb.UUIDString(user.UserID),
-					),
-				)
-				return nil
+			// A blank field is completed from the deployment's administration API, which
+			// only Auth0 and Keycloak have. It may only ever add -- see
+			// completeDisplayIdentity.
+			if !isDisplayIdentityComplete(identity) {
+				if user.ProviderSub == "" {
+					logger.Warn(
+						fmt.Sprintf(
+							"unable to find provider sub associated with user id: %q",
+							husonymdb.UUIDString(user.UserID),
+						),
+					)
+				} else if authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub); err != nil {
+					// Not fatal: what was stored is still shown.
+					logger.Warn(fmt.Sprintf("unable to retrieve user by sub: %s", err.Error()))
+				} else {
+					identity = completeDisplayIdentity(identity, authuser)
+				}
 			}
-			authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub)
-			if err != nil {
-				logger.Warn(fmt.Sprintf("unable to retrieve user by sub: %s", err.Error()))
-				return nil
-			}
-			dtoUsers[i].Email = authuser.Email
-			if authuser.Name != "" {
-				dtoUsers[i].Name = authuser.Name
-			}
-			if authuser.Picture != "" {
-				dtoUsers[i].Image = authuser.Picture
-			}
+
+			dtoUsers[i].Email = identity.Email
+			dtoUsers[i].Name = identity.Name
+			dtoUsers[i].Image = identity.Picture
 			return nil
 		})
 	}
