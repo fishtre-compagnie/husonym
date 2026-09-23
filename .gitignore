@@ -69,3 +69,7 @@ bench/out/
 # Claude Code: git worktrees of agents, local settings
 .claude/worktrees/
 .claude/settings.local.json
+
+# Plans de chantier : notes de travail, locales à une machine. Elles guident une session
+# et vieillissent vite ; le dépôt garde ce qui est décidé dans le code et les commits.
+plans/
