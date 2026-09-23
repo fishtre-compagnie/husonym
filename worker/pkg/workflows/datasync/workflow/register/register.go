@@ -39,6 +39,7 @@ func Register(
 	redisclient redis.UniversalClient,
 	isOtelEnabled bool,
 	pageLimit int,
+	hasConsistencyKey bool,
 ) {
 	genbenthosActivity := genbenthosconfigs_activity.New(
 		jobclient,
@@ -47,6 +48,7 @@ func Register(
 		sqlmanager,
 		isOtelEnabled,
 		pageLimit,
+		hasConsistencyKey,
 	)
 
 	retrieveActivityOpts := syncactivityopts_activity.New(jobclient)

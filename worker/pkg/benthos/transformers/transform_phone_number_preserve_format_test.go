@@ -66,7 +66,7 @@ func Test_TransformPhoneNumberPreserveFormat_NoKey(t *testing.T) {
 	ex, err := env.Parse("root = " + BuildPhoneNumberPreserveFormatBloblang("phone"))
 	require.NoError(t, err)
 	_, err = ex.Query(map[string]any{"phone": "0612345678"})
-	require.ErrorContains(t, err, "ATHANOR_CONSISTENCY_KEY")
+	require.ErrorContains(t, err, "ANONYMIZATION_CONSISTENCY_KEY")
 
 	// The column of another mapping is not held back by it.
 	other, err := env.Parse("root = this.phone")

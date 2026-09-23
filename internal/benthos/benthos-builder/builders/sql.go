@@ -169,7 +169,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		extraMappings, anonymized, passedThrough := autoMapNewColumns(extraMappings, groupedColumnInfo, tableConstraints)
+		extraMappings, anonymized, passedThrough := autoMapNewColumns(
+			extraMappings, groupedColumnInfo, tableConstraints, params.HasConsistencyKey,
+		)
 		if len(anonymized) > 0 {
 			logger.Info(fmt.Sprintf(
 				"%s mapped as suggested, awaiting review: [%s]",

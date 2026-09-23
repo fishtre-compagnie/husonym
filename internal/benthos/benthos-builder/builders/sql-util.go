@@ -16,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -157,12 +158,16 @@ func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
 // the constraint and fail the run, while the strategy never stops one. Choosing a transformer
 // that keeps a constraint is another matter. Generated columns keep their GenerateDefault.
 //
+// An option the run could not honor is turned off rather than written to the job: see
+// withinReach.
+//
 // It returns the mappings, and the names of the columns it anonymized and of those it left in
 // passthrough, for the run's log.
 func autoMapNewColumns(
 	mappings []*mgmtv1alpha1.JobMapping,
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	constraints *sqlmanager_shared.TableConstraints,
+	hasConsistencyKey bool,
 ) (out []*mgmtv1alpha1.JobMapping, anonymized, passedThrough []string) {
 	constrained := constrainedColumns(constraints)
 	out = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
@@ -196,13 +201,35 @@ func autoMapNewColumns(
 			Schema:      m.GetSchema(),
 			Table:       m.GetTable(),
 			Column:      m.GetColumn(),
-			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: config},
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: withinReach(config, hasConsistencyKey)},
 		})
 		anonymized = append(anonymized, fmt.Sprintf("%s (%s)", name, category))
 	}
 	slices.Sort(anonymized)
 	slices.Sort(passedThrough)
 	return out, anonymized, passedThrough
+}
+
+// withinReach turns off the options of a config that need something the deployment does not
+// have. It is the strategy's own rule applied to the options: a mapping written to the job is a
+// mapping the runs after this one will keep, so it must be one they can carry out.
+//
+// TransformPhoneNumber keeps the format of a number by permuting its digits under a derived key
+// (preserve_format), which the catalogue turns on by default. Without a key the run would stop
+// on the very column AutoMap had just mapped, and every run after it, until somebody edited the
+// mapping by hand. The number is anonymized without keeping its format instead — the column does
+// not leave in clear, and turning the option back on is a click once the key is set.
+func withinReach(
+	config *mgmtv1alpha1.TransformerConfig,
+	hasConsistencyKey bool,
+) *mgmtv1alpha1.TransformerConfig {
+	if hasConsistencyKey {
+		return config
+	}
+	if phone := config.GetTransformPhoneNumberConfig(); phone.GetPreserveFormat() {
+		phone.PreserveFormat = gotypeutil.ToPtr(false)
+	}
+	return config
 }
 
 // constrainedColumns are the columns, by schema.table, that a primary key, a foreign key or a

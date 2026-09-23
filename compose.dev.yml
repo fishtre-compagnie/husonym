@@ -149,7 +149,7 @@ services:
       - LOG_LEVEL=DEBUG
       - DB_LOG_LEVEL=ERROR
       # Clé de développement uniquement : en production, fournir un secret propre.
-      - ATHANOR_CONSISTENCY_KEY=husonym-dev-only-consistency-key
+      - ANONYMIZATION_CONSISTENCY_KEY=husonym-dev-only-consistency-key
     env_file:
       - path: ./.env.worker.local
         required: false

@@ -36,6 +36,8 @@ type benthosBuilder struct {
 	metricsEnabled bool
 
 	pageLimit int
+
+	hasConsistencyKey bool
 }
 
 func newBenthosBuilder(
@@ -50,6 +52,8 @@ func newBenthosBuilder(
 	metricsEnabled bool,
 
 	pageLimit int,
+
+	hasConsistencyKey bool,
 ) *benthosBuilder {
 	return &benthosBuilder{
 		sqlmanagerclient:  sqlmanagerclient,
@@ -61,6 +65,7 @@ func newBenthosBuilder(
 		runId:             runId,
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
+		hasConsistencyKey: hasConsistencyKey,
 	}
 }
 
@@ -163,7 +168,8 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 			),
 			metrics.TemporalRunId: bb_shared.WithEnvInterpolation(metrics.TemporalRunIdEnvKey),
 		},
-		PageLimit: &b.pageLimit,
+		PageLimit:         &b.pageLimit,
+		HasConsistencyKey: b.hasConsistencyKey,
 	}
 	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
 	if err != nil {

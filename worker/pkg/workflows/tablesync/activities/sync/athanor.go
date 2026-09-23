@@ -47,7 +47,7 @@ func jobIDFromRunID(runID string) (string, error) {
 
 // useAthanorForJob décide, PAR JOB, si Athanor doit traiter ce run. Priorité au
 // champ `engine` du job (réglé dans l'UI, WorkflowOptions) ; à défaut
-// (UNSPECIFIED) on retombe sur la policy de déploiement (AthanorConfig.Policy,
+// (UNSPECIFIED) on retombe sur la policy de déploiement (EngineConfig.Policy,
 // variables d'env).
 //
 // Une lecture du job qui échoue est une erreur, jamais un repli : le moteur doit
@@ -64,14 +64,14 @@ func (a *Activity) useAthanorForJob(
 ) (bool, *mgmtv1alpha1.Job, error) {
 	jobID, _ := jobIDFromRunID(jobRunID)
 	if jobID == "" {
-		return a.athanor.Policy.EnabledFor(jobID), nil, nil
+		return a.engines.Policy.EnabledFor(jobID), nil, nil
 	}
 	resp, err := a.jobclient.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
 	if err != nil {
 		return false, nil, fmt.Errorf("athanor: lecture du moteur du job %s: %w", jobID, err)
 	}
 	job := resp.Msg.GetJob()
-	return a.athanor.Policy.UsesAthanor(job), job, nil
+	return a.engines.Policy.UsesAthanor(job), job, nil
 }
 
 // phoneFormatPseudonymizer builds the permutation TransformPhoneNumber with preserve_format uses
@@ -84,14 +84,14 @@ func (a *Activity) phoneFormatPseudonymizer(
 	job *mgmtv1alpha1.Job,
 	jobRunID string,
 ) (*phoneformat.Pseudonymizer, error) {
-	if a.athanor.ConsistencyKey == "" || job == nil {
+	if a.engines.ConsistencyKey == "" || job == nil {
 		return nil, nil
 	}
 	scope, err := consistencyScope(job, jobRunID)
 	if err != nil {
 		return nil, err
 	}
-	key := consistency.New([]byte(a.athanor.ConsistencyKey), scope).CipherKey(runner.SemanticTypePhone)
+	key := consistency.New([]byte(a.engines.ConsistencyKey), scope).CipherKey(runner.SemanticTypePhone)
 	return phoneformat.New(key), nil
 }
 
@@ -207,7 +207,7 @@ func (a *Activity) runAthanor(
 
 	// Cohérence déterministe (RFC §8) : la même valeur d'entrée produit la même
 	// sortie partout dans la portée choisie pour le job (run par défaut).
-	deriver, err := consistencyDeriver(a.athanor.ConsistencyKey, job, req.JobRunId)
+	deriver, err := consistencyDeriver(a.engines.ConsistencyKey, job, req.JobRunId)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func dialectFor(conn connectionmanager.ConnectionInput) (sqlio.Dialect, error) {
 // two runs (run), two jobs (job) or two accounts (account).
 func consistencyDeriver(key string, job *mgmtv1alpha1.Job, jobRunID string) (*consistency.Deriver, error) {
 	if key == "" {
-		return nil, fmt.Errorf("athanor: ATHANOR_CONSISTENCY_KEY n'est pas défini ; la clé de dérivation est obligatoire")
+		return nil, fmt.Errorf("athanor: ANONYMIZATION_CONSISTENCY_KEY n'est pas défini ; la clé de dérivation est obligatoire")
 	}
 	scope, err := consistencyScope(job, jobRunID)
 	if err != nil {

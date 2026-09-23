@@ -27,6 +27,8 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		JobRunId:         b.jobRunId,
 		SourceConnection: b.sourceConnection,
 		Logger:           b.logger,
+
+		HasConsistencyKey: b.hasConsistencyKey,
 	}
 
 	sourceConfigs, err := dbBuilder.BuildSourceConfigs(ctx, sourceParams)

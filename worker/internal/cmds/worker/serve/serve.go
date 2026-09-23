@@ -389,20 +389,22 @@ func serve(ctx context.Context) error {
 	}
 	// Opt-in par job : défaut global (ENABLE_ATHANOR_ENGINE) surchargeable par des
 	// listes d'IDs de jobs (ATHANOR_ENABLED_JOB_IDS / ATHANOR_DISABLED_JOB_IDS).
-	athanorConfig := sync_activity.AthanorConfig{
+	engineConfig := sync_activity.EngineConfig{
 		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
 			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
 			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
 		),
-		ConsistencyKey: viper.GetString("ATHANOR_CONSISTENCY_KEY"),
+		ConsistencyKey: consistencyKey(logger),
 	}
-	if athanorConfig.ConsistencyKey == "" {
+	if engineConfig.ConsistencyKey == "" {
 		// A job may pick Athanor in the UI whatever the default of the deployment: warn
 		// at startup rather than on its first run. Benthos derives from the same key the
-		// permutation of TransformPhoneNumber with preserve_format, and nothing else.
-		logger.Warn("ATHANOR_CONSISTENCY_KEY is not set: jobs running on the Athanor engine " +
-			"will fail, and so will a job mapping a column with preserve_format")
+		// permutation of TransformPhoneNumber with preserve_format, and AutoMap leaves that
+		// option off while there is no key rather than mapping a column it cannot anonymize.
+		logger.Warn("ANONYMIZATION_CONSISTENCY_KEY is not set: jobs running on the Athanor " +
+			"engine will fail, and a phone number mapped under Benthos keeps neither its " +
+			"format nor its consistency")
 	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
@@ -418,7 +420,7 @@ func serve(ctx context.Context) error {
 		anonymizationclient,
 		transformerclient,
 		redisclient,
-		athanorConfig,
+		engineConfig,
 	)
 
 	schemainit_workflow_register.Register(
@@ -432,9 +434,10 @@ func serve(ctx context.Context) error {
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
-		sqlmanager, sqlconnmanager, athanorConfig.Policy, cascadelicense, redisclient,
+		sqlmanager, sqlconnmanager, engineConfig.Policy, cascadelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
+		engineConfig.ConsistencyKey != "",
 	)
 
 	if cascadelicense.IsValid() {
@@ -577,4 +580,20 @@ func getTemporalAuthCertificate() ([]tls.Certificate, error) {
 		return []tls.Certificate{cert}, nil
 	}
 	return []tls.Certificate{}, nil
+}
+
+// consistencyKey reads the secret deterministic consistency derives from. Both engines use it,
+// so it is no longer named after Athanor; the old name is still read, with a warning, so that a
+// deployment that sets it keeps working until it is renamed.
+func consistencyKey(logger *slog.Logger) string {
+	if key := viper.GetString("ANONYMIZATION_CONSISTENCY_KEY"); key != "" {
+		return key
+	}
+	key := viper.GetString("ATHANOR_CONSISTENCY_KEY")
+	if key != "" {
+		logger.Warn("ATHANOR_CONSISTENCY_KEY is deprecated and will be dropped: " +
+			"the key is not Athanor's, both engines derive from it — rename it to " +
+			"ANONYMIZATION_CONSISTENCY_KEY")
+	}
+	return key
 }

@@ -83,6 +83,11 @@ type SourceParams struct {
 	// source instead of each run re-deciding the same columns. It lives here rather than in the
 	// return value because every other builder would have to return an empty one.
 	MappingChanges MappingChanges
+
+	// HasConsistencyKey says whether the deployment can derive a key for deterministic
+	// pseudonymization. The strategy for new columns reads it: it does not choose for a
+	// column an option that needs a key the run will not have.
+	HasConsistencyKey bool
 }
 
 // MappingChanges is what a run changes in its job's mappings.

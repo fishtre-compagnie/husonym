@@ -304,7 +304,7 @@ func Test_autoMapNewColumns(t *testing.T) {
 			passthrough("public", "users", "email"),
 			passthrough("public", "users", "telephone"),
 			passthrough("public", "users", "champ_libre"),
-		}, columnInfo, constraints)
+		}, columnInfo, constraints, true)
 
 		require.NotNil(t, configOf(out, "email").GetGenerateEmailConfig())
 		// The catalogue's config, not an empty one: the phone keeps its format.
@@ -317,17 +317,30 @@ func Test_autoMapNewColumns(t *testing.T) {
 	t.Run("a unique column stays in passthrough, even when recognised", func(t *testing.T) {
 		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			passthrough("public", "users", "login"),
-		}, columnInfo, constraints)
+		}, columnInfo, constraints, true)
 
 		require.NotNil(t, configOf(out, "login").GetPassthroughConfig())
 		require.Empty(t, anonymized)
 		require.Equal(t, []string{"public.users.login"}, passedThrough)
 	})
 
+	t.Run("without a derivation key, the phone is anonymized without keeping its format", func(t *testing.T) {
+		// The option needs a key the run would not have: writing it to the job would fail
+		// that run and every one after it on the column AutoMap had just mapped.
+		out, anonymized, _ := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
+			passthrough("public", "users", "telephone"),
+		}, columnInfo, constraints, false)
+
+		phone := configOf(out, "telephone").GetTransformPhoneNumberConfig()
+		require.NotNil(t, phone, "the column is still anonymized")
+		require.False(t, phone.GetPreserveFormat())
+		require.Equal(t, []string{"public.users.telephone (phone_number)"}, anonymized)
+	})
+
 	t.Run("a column the destination recomputes keeps its GenerateDefault", func(t *testing.T) {
 		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			generateDefault("public", "users", "email_normalise"),
-		}, columnInfo, constraints)
+		}, columnInfo, constraints, true)
 
 		require.NotNil(t, configOf(out, "email_normalise").GetGenerateDefaultConfig())
 		require.Empty(t, anonymized)

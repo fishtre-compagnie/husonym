@@ -14,7 +14,7 @@ import (
 // permutation from. It stops the run of a job that maps a column this way, on its first value,
 // and no other job: nothing else in the stream asks for the function.
 var errNoConsistencyKey = errors.New(
-	"transform_phone_number_preserve_format: ATHANOR_CONSISTENCY_KEY is not set, and the " +
+	"transform_phone_number_preserve_format: ANONYMIZATION_CONSISTENCY_KEY is not set, and the " +
 		"permutation is derived from it — set it on the worker, or turn preserve_format off",
 )
 

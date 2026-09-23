@@ -131,6 +131,7 @@ func NewTestDataSyncWorkflowEnv(
 		workflowEnv.Redisclient,
 		false,
 		workflowEnv.pageLimit,
+		true,
 	)
 
 	schemainit_workflow_register.Register(
@@ -157,7 +158,7 @@ func NewTestDataSyncWorkflowEnv(
 		// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
 		// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
 		// preserve_format, que le catalogue pose par défaut sur une colonne téléphone.
-		sync_activity.AthanorConfig{
+		sync_activity.EngineConfig{
 			Policy:         datasync_shared.NewAthanorPolicy(false, "", ""),
 			ConsistencyKey: "husonym-integration-tests-consistency-key",
 		},
