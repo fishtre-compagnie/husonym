@@ -676,6 +676,29 @@ func InitializeTransformerByConfigType(
 
 	case *mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig:
 		config := transformerConfig.GetTransformPhoneNumberConfig()
+		if config.GetPreserveFormat() {
+			// The process's key, never a fresh one: an executor is built per value on this
+			// path (the anonymization API builds one for each value it is handed, and
+			// TransformPiiText one for each phone number it finds in a text), so a key of
+			// its own would give the same number two pseudonyms — and two numbers drawn
+			// under two keys are no longer one permutation, so they could even collide.
+			//
+			// A mapped column does not come through here: it goes through the run's own key
+			// (RegisterTransformPhoneNumberPreserveFormat, or the Athanor native one).
+			pseudonymizer, err := transformers.ProcessPhoneFormatPseudonymizer()
+			if err != nil {
+				return nil, err
+			}
+			return &TransformerExecutor{
+				Mutate: func(value any, _ any) (any, error) {
+					s, ok := value.(string)
+					if !ok {
+						return nil, fmt.Errorf("transform phone number: value is not a string: %T", value)
+					}
+					return pseudonymizer.Pseudonymize(s)
+				},
+			}, nil
+		}
 		opts, err := transformers.NewTransformStringPhoneNumberOptsFromConfig(config, &maxLength)
 		if err != nil {
 			return nil, err

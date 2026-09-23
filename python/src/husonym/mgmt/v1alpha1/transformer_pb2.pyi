@@ -720,10 +720,12 @@ class TransformLastName(_message.Message):
     def __init__(self, preserve_length: _Optional[bool] = ...) -> None: ...
 
 class TransformPhoneNumber(_message.Message):
-    __slots__ = ("preserve_length",)
+    __slots__ = ("preserve_length", "preserve_format")
     PRESERVE_LENGTH_FIELD_NUMBER: _ClassVar[int]
+    PRESERVE_FORMAT_FIELD_NUMBER: _ClassVar[int]
     preserve_length: bool
-    def __init__(self, preserve_length: _Optional[bool] = ...) -> None: ...
+    preserve_format: bool
+    def __init__(self, preserve_length: _Optional[bool] = ..., preserve_format: _Optional[bool] = ...) -> None: ...
 
 class TransformString(_message.Message):
     __slots__ = ("preserve_length",)

@@ -66,6 +66,12 @@ const (
 	// ConnectionDataServiceGetColumnSampleValuesProcedure is the fully-qualified name of the
 	// ConnectionDataService's GetColumnSampleValues RPC.
 	ConnectionDataServiceGetColumnSampleValuesProcedure = "/mgmt.v1alpha1.ConnectionDataService/GetColumnSampleValues"
+	// ConnectionDataServiceGetJavascriptDraftPromptProcedure is the fully-qualified name of the
+	// ConnectionDataService's GetJavascriptDraftPrompt RPC.
+	ConnectionDataServiceGetJavascriptDraftPromptProcedure = "/mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt"
+	// ConnectionDataServicePreviewColumnTransformerProcedure is the fully-qualified name of the
+	// ConnectionDataService's PreviewColumnTransformer RPC.
+	ConnectionDataServicePreviewColumnTransformerProcedure = "/mgmt.v1alpha1.ConnectionDataService/PreviewColumnTransformer"
 )
 
 // ConnectionDataServiceClient is a client for the mgmt.v1alpha1.ConnectionDataService service.
@@ -96,6 +102,15 @@ type ConnectionDataServiceClient interface {
 	// Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
 	// une détection RGPD en consultant les données réelles.
 	GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error)
+	// Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a
+	// model. The server fills it from what it knows and the caller does not: the execution
+	// contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+	// the deterministic functions in scope. It reads the schema, never the column's data.
+	GetJavascriptDraftPrompt(context.Context, *connect.Request[v1alpha1.GetJavascriptDraftPromptRequest]) (*connect.Response[v1alpha1.GetJavascriptDraftPromptResponse], error)
+	// Reads a sample of one column and shows what a transformer would make of each value, before
+	// anyone commits to it. The server reads the values itself: this previews a real column, and
+	// cannot be turned into an unmetered way to anonymize arbitrary data.
+	PreviewColumnTransformer(context.Context, *connect.Request[v1alpha1.PreviewColumnTransformerRequest]) (*connect.Response[v1alpha1.PreviewColumnTransformerResponse], error)
 }
 
 // NewConnectionDataServiceClient constructs a client for the mgmt.v1alpha1.ConnectionDataService
@@ -179,6 +194,20 @@ func NewConnectionDataServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getJavascriptDraftPrompt: connect.NewClient[v1alpha1.GetJavascriptDraftPromptRequest, v1alpha1.GetJavascriptDraftPromptResponse](
+			httpClient,
+			baseURL+ConnectionDataServiceGetJavascriptDraftPromptProcedure,
+			connect.WithSchema(connectionDataServiceMethods.ByName("GetJavascriptDraftPrompt")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		previewColumnTransformer: connect.NewClient[v1alpha1.PreviewColumnTransformerRequest, v1alpha1.PreviewColumnTransformerResponse](
+			httpClient,
+			baseURL+ConnectionDataServicePreviewColumnTransformerProcedure,
+			connect.WithSchema(connectionDataServiceMethods.ByName("PreviewColumnTransformer")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -195,6 +224,8 @@ type connectionDataServiceClient struct {
 	getAllSchemasAndTables        *connect.Client[v1alpha1.GetAllSchemasAndTablesRequest, v1alpha1.GetAllSchemasAndTablesResponse]
 	detectPiiInConnectionData     *connect.Client[v1alpha1.DetectPiiInConnectionDataRequest, v1alpha1.DetectPiiInConnectionDataResponse]
 	getColumnSampleValues         *connect.Client[v1alpha1.GetColumnSampleValuesRequest, v1alpha1.GetColumnSampleValuesResponse]
+	getJavascriptDraftPrompt      *connect.Client[v1alpha1.GetJavascriptDraftPromptRequest, v1alpha1.GetJavascriptDraftPromptResponse]
+	previewColumnTransformer      *connect.Client[v1alpha1.PreviewColumnTransformerRequest, v1alpha1.PreviewColumnTransformerResponse]
 }
 
 // GetConnectionDataStream calls mgmt.v1alpha1.ConnectionDataService.GetConnectionDataStream.
@@ -254,6 +285,16 @@ func (c *connectionDataServiceClient) GetColumnSampleValues(ctx context.Context,
 	return c.getColumnSampleValues.CallUnary(ctx, req)
 }
 
+// GetJavascriptDraftPrompt calls mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt.
+func (c *connectionDataServiceClient) GetJavascriptDraftPrompt(ctx context.Context, req *connect.Request[v1alpha1.GetJavascriptDraftPromptRequest]) (*connect.Response[v1alpha1.GetJavascriptDraftPromptResponse], error) {
+	return c.getJavascriptDraftPrompt.CallUnary(ctx, req)
+}
+
+// PreviewColumnTransformer calls mgmt.v1alpha1.ConnectionDataService.PreviewColumnTransformer.
+func (c *connectionDataServiceClient) PreviewColumnTransformer(ctx context.Context, req *connect.Request[v1alpha1.PreviewColumnTransformerRequest]) (*connect.Response[v1alpha1.PreviewColumnTransformerResponse], error) {
+	return c.previewColumnTransformer.CallUnary(ctx, req)
+}
+
 // ConnectionDataServiceHandler is an implementation of the mgmt.v1alpha1.ConnectionDataService
 // service.
 type ConnectionDataServiceHandler interface {
@@ -283,6 +324,15 @@ type ConnectionDataServiceHandler interface {
 	// Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
 	// une détection RGPD en consultant les données réelles.
 	GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error)
+	// Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a
+	// model. The server fills it from what it knows and the caller does not: the execution
+	// contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+	// the deterministic functions in scope. It reads the schema, never the column's data.
+	GetJavascriptDraftPrompt(context.Context, *connect.Request[v1alpha1.GetJavascriptDraftPromptRequest]) (*connect.Response[v1alpha1.GetJavascriptDraftPromptResponse], error)
+	// Reads a sample of one column and shows what a transformer would make of each value, before
+	// anyone commits to it. The server reads the values itself: this previews a real column, and
+	// cannot be turned into an unmetered way to anonymize arbitrary data.
+	PreviewColumnTransformer(context.Context, *connect.Request[v1alpha1.PreviewColumnTransformerRequest]) (*connect.Response[v1alpha1.PreviewColumnTransformerResponse], error)
 }
 
 // NewConnectionDataServiceHandler builds an HTTP handler from the service implementation. It
@@ -362,6 +412,20 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	connectionDataServiceGetJavascriptDraftPromptHandler := connect.NewUnaryHandler(
+		ConnectionDataServiceGetJavascriptDraftPromptProcedure,
+		svc.GetJavascriptDraftPrompt,
+		connect.WithSchema(connectionDataServiceMethods.ByName("GetJavascriptDraftPrompt")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	connectionDataServicePreviewColumnTransformerHandler := connect.NewUnaryHandler(
+		ConnectionDataServicePreviewColumnTransformerProcedure,
+		svc.PreviewColumnTransformer,
+		connect.WithSchema(connectionDataServiceMethods.ByName("PreviewColumnTransformer")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/mgmt.v1alpha1.ConnectionDataService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConnectionDataServiceGetConnectionDataStreamProcedure:
@@ -386,6 +450,10 @@ func NewConnectionDataServiceHandler(svc ConnectionDataServiceHandler, opts ...c
 			connectionDataServiceDetectPiiInConnectionDataHandler.ServeHTTP(w, r)
 		case ConnectionDataServiceGetColumnSampleValuesProcedure:
 			connectionDataServiceGetColumnSampleValuesHandler.ServeHTTP(w, r)
+		case ConnectionDataServiceGetJavascriptDraftPromptProcedure:
+			connectionDataServiceGetJavascriptDraftPromptHandler.ServeHTTP(w, r)
+		case ConnectionDataServicePreviewColumnTransformerProcedure:
+			connectionDataServicePreviewColumnTransformerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -437,4 +505,12 @@ func (UnimplementedConnectionDataServiceHandler) DetectPiiInConnectionData(conte
 
 func (UnimplementedConnectionDataServiceHandler) GetColumnSampleValues(context.Context, *connect.Request[v1alpha1.GetColumnSampleValuesRequest]) (*connect.Response[v1alpha1.GetColumnSampleValuesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.GetColumnSampleValues is not implemented"))
+}
+
+func (UnimplementedConnectionDataServiceHandler) GetJavascriptDraftPrompt(context.Context, *connect.Request[v1alpha1.GetJavascriptDraftPromptRequest]) (*connect.Response[v1alpha1.GetJavascriptDraftPromptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt is not implemented"))
+}
+
+func (UnimplementedConnectionDataServiceHandler) PreviewColumnTransformer(context.Context, *connect.Request[v1alpha1.PreviewColumnTransformerRequest]) (*connect.Response[v1alpha1.PreviewColumnTransformerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.ConnectionDataService.PreviewColumnTransformer is not implemented"))
 }

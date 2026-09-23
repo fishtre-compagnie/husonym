@@ -6,8 +6,7 @@ from mgmt.v1alpha1 import job_pb2 as mgmt_dot_v1alpha1_dot_job__pb2
 
 
 class JobServiceStub:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -155,6 +154,26 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.FromString,
                 _registered_method=True)
+        self.ReconcileJobMappings = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ReconcileJobMappings',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.FromString,
+                _registered_method=True)
+        self.GetPendingMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/GetPendingMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.FromString,
+                _registered_method=True)
+        self.ReviewMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ReviewMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
+                _registered_method=True)
+        self.ApplyMappingChanges = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/ApplyMappingChanges',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.FromString,
+                _registered_method=True)
         self.ValidateSchema = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/ValidateSchema',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
@@ -223,8 +242,7 @@ class JobServiceStub:
 
 
 class JobServiceServicer:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def GetJobs(self, request, context):
         """Returns a list of jobs by either account or job
@@ -418,6 +436,38 @@ class JobServiceServicer:
 
     def ValidateJobMappings(self, request, context):
         """Validates that the jobmapping configured can run with table constraints
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReconcileJobMappings(self, request, context):
+        """Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+        as the job's strategy chose, and removes those that disappeared. Called by the worker.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetPendingMappingChanges(self, request, context):
+        """Returns the changes runs made to the mappings of jobs under auto_map that
+        nobody has reviewed yet. An added column whose mapping has been changed since counts as
+        reviewed: somebody decided.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReviewMappingChanges(self, request, context):
+        """Marks changes reviewed, with an optional note.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ApplyMappingChanges(self, request, context):
+        """Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+        settles reviewed: correcting what a run chose is done where the change is read.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -656,6 +706,26 @@ def add_JobServiceServicer_to_server(servicer, server):
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.SerializeToString,
             ),
+            'ReconcileJobMappings': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReconcileJobMappings,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.SerializeToString,
+            ),
+            'GetPendingMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPendingMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.SerializeToString,
+            ),
+            'ReviewMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReviewMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.SerializeToString,
+            ),
+            'ApplyMappingChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.ApplyMappingChanges,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.SerializeToString,
+            ),
             'ValidateSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateSchema,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.FromString,
@@ -730,8 +800,7 @@ def add_JobServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class JobService:
-    """Service that handles jobs, runs, and hooks
-    """
+    """Missing associated documentation comment in .proto file."""
 
     @staticmethod
     def GetJobs(request,
@@ -1479,6 +1548,114 @@ class JobService:
             '/mgmt.v1alpha1.JobService/ValidateJobMappings',
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateJobMappingsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReconcileJobMappings(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/ReconcileJobMappings',
+            mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ReconcileJobMappingsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetPendingMappingChanges(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/GetPendingMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.GetPendingMappingChangesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReviewMappingChanges(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/ReviewMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ReviewMappingChangesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ApplyMappingChanges(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/ApplyMappingChanges',
+            mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.ApplyMappingChangesResponse.FromString,
             options,
             channel_credentials,
             insecure,

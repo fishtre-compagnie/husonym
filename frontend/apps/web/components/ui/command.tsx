@@ -41,6 +41,7 @@ export function CommandDialog({ children, ...props }: CommandDialogProps) {
 
 export function CommandInput({
   className,
+  onKeyDown,
   ...props
 }: React.ComponentPropsWithRef<typeof CommandPrimitive.Input>) {
   return (
@@ -51,6 +52,15 @@ export function CommandInput({
           'flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
+        onKeyDown={(e) => {
+          onKeyDown?.(e);
+          // La racine de cmdk prend Home et Fin pour la liste, avec un
+          // preventDefault inconditionnel (1.1.1) : Maj+Home ne sélectionnait
+          // rien. Elles reviennent au champ, les flèches gardent la liste.
+          if (e.key === 'Home' || e.key === 'End') {
+            e.stopPropagation();
+          }
+        }}
         {...props}
       />
     </div>

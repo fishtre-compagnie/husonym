@@ -40,6 +40,8 @@ interface Props {
   value: JobMappingTransformerForm;
   buttonText: string;
   buttonClassName?: string;
+  // Par défaut dimensionné pour une cellule de tableau.
+  buttonTextClassName?: string;
   onSelect(value: JobMappingTransformerForm): void;
   side?: Side;
   disabled: boolean;
@@ -55,6 +57,7 @@ export default function TransformerSelect(props: Props): ReactElement {
     side,
     disabled,
     buttonClassName,
+    buttonTextClassName = 'lg:w-[200px]',
     notFoundText = 'No transformers found.',
   } = props;
   const [open, setOpen] = useState(false);
@@ -69,7 +72,9 @@ export default function TransformerSelect(props: Props): ReactElement {
   }, [open]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // `modal` : sinon le verrou de défilement du panneau (react-remove-scroll)
+    // avale la molette sur cette liste, portée hors de son sous-arbre.
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -79,7 +84,12 @@ export default function TransformerSelect(props: Props): ReactElement {
           disabled={disabled}
           className={cn('justify-between', buttonClassName)}
         >
-          <div className="whitespace-nowrap truncate lg:w-[200px] text-left">
+          <div
+            className={cn(
+              'whitespace-nowrap truncate text-left',
+              buttonTextClassName
+            )}
+          >
             {buttonText}
           </div>
           <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />

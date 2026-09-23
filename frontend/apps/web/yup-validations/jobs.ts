@@ -8,6 +8,7 @@ import {
   MssqlSourceConnectionOptions_ColumnRemovalStrategy_HaltJobSchema,
   MssqlSourceConnectionOptions_ColumnRemovalStrategySchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy,
+  MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMapSchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJobSchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughSchema,
   MssqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
@@ -117,8 +118,6 @@ export type VirtualForeignConstraintFormValues = Yup.InferType<
 export type NewColumnAdditionStrategy =
   'continue' | 'halt' | 'automap' | 'passthrough';
 
-type MssqlNewColumnAdditionStrategy = 'continue' | 'halt' | 'passthrough';
-
 export type ColumnRemovalStrategy = 'halt' | 'continue';
 
 export const PostgresSourceOptionsFormValues = Yup.object({
@@ -154,8 +153,8 @@ const MssqlSourceOptionsFormValues = Yup.object({
     .oneOf(['halt', 'continue'])
     .optional()
     .default('continue'),
-  newColumnAdditionStrategy: Yup.string<MssqlNewColumnAdditionStrategy>()
-    .oneOf(['continue', 'halt', 'passthrough'])
+  newColumnAdditionStrategy: Yup.string<NewColumnAdditionStrategy>()
+    .oneOf(['continue', 'halt', 'automap', 'passthrough'])
     .optional()
     .default('continue'),
 });
@@ -488,13 +487,16 @@ export function toNewColumnAdditionStrategy(
 
 export function toMssqlNewColumnAdditionStrategy(
   input: MssqlSourceConnectionOptions_NewColumnAdditionStrategy | undefined
-): MssqlNewColumnAdditionStrategy {
+): NewColumnAdditionStrategy {
   switch (input?.strategy.case) {
     case 'haltJob': {
       return 'halt';
     }
     case 'passthrough': {
       return 'passthrough';
+    }
+    case 'autoMap': {
+      return 'automap';
     }
     default: {
       return 'continue';
@@ -678,6 +680,19 @@ export function toJobSourceMssqlNewColumnAdditionStrategy(
             case: 'passthrough',
             value: create(
               MssqlSourceConnectionOptions_NewColumnAdditionStrategy_PassthroughSchema
+            ),
+          },
+        }
+      );
+    }
+    case 'automap': {
+      return create(
+        MssqlSourceConnectionOptions_NewColumnAdditionStrategySchema,
+        {
+          strategy: {
+            case: 'autoMap',
+            value: create(
+              MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMapSchema
             ),
           },
         }

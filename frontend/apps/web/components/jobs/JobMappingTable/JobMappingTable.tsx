@@ -14,11 +14,15 @@ import {
   TableFeatures,
   useTable,
 } from '@tanstack/react-table';
-import { ReactElement } from 'react';
+import { ReactElement, useCallback, useState } from 'react';
 import { GoWorkflow } from 'react-icons/go';
 import { ImportMappingsConfig } from '../SchemaTable/ImportJobMappingsButton';
 import { SchemaTableToolbar } from '../SchemaTable/SchemaTableToolBar';
 import { TransformerResult } from '../SchemaTable/transformer-handler';
+import MappingDecisionPanel, {
+  ColumnDecisionTarget,
+} from './MappingDecisionPanel';
+import SelectionBar from './SelectionBar';
 
 interface Props<TData extends RowData> {
   data: TData[];
@@ -57,8 +61,10 @@ interface Props<TData extends RowData> {
   hasMissingSourceColumnMappings: boolean;
   onRemoveMissingSourceColumnMappings(): void;
 
-  // Id de la connexion source, propagé aux cellules via meta pour l'aperçu.
   sourceConnectionId?: string;
+
+  // Absente pour les tables NoSQL, sans type ni contraintes : pas de panneau.
+  getColumnDecision?(index: number): ColumnDecisionTarget | undefined;
 
   // Scan de contenu PII (Presidio) — actif uniquement pour les jobs sync.
   showPiiScan?: boolean;
@@ -83,9 +89,9 @@ declare module '@tanstack/react-table' {
       onRowUpdate(rowIndex: number, newValue: TData): void;
       // Returns the available schema.table list
       getAvailableCollectionsByRow(rowIndex: number): string[];
-      // Id de la connexion source. Absent pour les jobs generate : il n'y a
-      // alors aucune donnée à échantillonner, le bouton d'aperçu est masqué.
+      // Absent pour les jobs generate : le panneau se passe alors d'aperçu.
       sourceConnectionId?: string;
+      onOpenDecision?(rowIndex: number): void;
     };
   }
 }
@@ -115,10 +121,16 @@ export default function JobMappingTable<TData extends RowData>(
     hasMissingSourceColumnMappings,
     onRemoveMissingSourceColumnMappings,
     sourceConnectionId,
+    getColumnDecision,
     showPiiScan,
     onScanContent,
     isScanningPii,
   } = props;
+
+  // Stables : les lignes sont mémoïsées et ne reliraient pas une nouvelle fonction.
+  const [opened, setOpened] = useState<number | null>(null);
+  const onOpenDecision = useCallback((index: number) => setOpened(index), []);
+  const closeDecision = useCallback(() => setOpened(null), []);
 
   const table = useTable({
     features: unpaginatedTableFeatures,
@@ -135,9 +147,17 @@ export default function JobMappingTable<TData extends RowData>(
         onRowUpdate,
         getAvailableCollectionsByRow,
         sourceConnectionId,
+        onOpenDecision: getColumnDecision ? onOpenDecision : undefined,
       },
     },
   });
+
+  // Ordre affiché, filtres et tri compris : celui que suit la navigation.
+  const visible = table.getRowModel().rows;
+  const selectedRows = table.getSelectedRowModel().rows;
+  const position =
+    opened === null ? -1 : visible.findIndex((r) => r.index === opened);
+  const target = opened === null ? undefined : getColumnDecision?.(opened);
 
   return (
     <div>
@@ -157,10 +177,7 @@ export default function JobMappingTable<TData extends RowData>(
             displayApplyDefaultTransformersButton
           }
           isApplyDefaultButtonDisabled={isApplyDefaultTransformerButtonDisabled}
-          getAllowedTransformers={getAvalableTransformersForBulk}
-          getTransformerFromField={getTransformerFromFieldValue}
           onApplyDefaultClick={onApplyDefaultClick}
-          onBulkUpdate={onTransformerBulkUpdate}
           onExportMappingsClick={(shouldFormat) =>
             onExportMappingsClick(
               table.getSelectedRowModel().rows,
@@ -191,7 +208,48 @@ export default function JobMappingTable<TData extends RowData>(
         // `size`. Seules la case à cocher et le bouton d'aperçu gardent une
         // largeur fixe : ce sont des icônes, les étirer ne servirait à rien.
         noGrowColumnIds={NO_GROW_COLUMNS}
+        onRowClick={getColumnDecision ? onOpenDecision : undefined}
       />
+
+      <SelectionBar
+        count={selectedRows.length}
+        getAllowedTransformers={() =>
+          getAvalableTransformersForBulk(selectedRows)
+        }
+        getTransformerFromFieldValue={getTransformerFromFieldValue}
+        onApply={(value) => {
+          onTransformerBulkUpdate(
+            selectedRows.map((r) => r.index),
+            value
+          );
+          table.resetRowSelection(true);
+        }}
+        onClear={() => table.resetRowSelection(true)}
+      />
+
+      {target && opened !== null && (
+        <MappingDecisionPanel
+          key={opened}
+          target={target}
+          getTransformers={() => getAvailableTransformers(opened)}
+          getTransformerFromFieldValue={getTransformerFromFieldValue}
+          sourceConnectionId={sourceConnectionId}
+          navigation={{
+            position: position + 1,
+            total: visible.length,
+            onPrevious:
+              position > 0
+                ? () => setOpened(visible[position - 1].index)
+                : undefined,
+            onNext:
+              position >= 0 && position < visible.length - 1
+                ? () => setOpened(visible[position + 1].index)
+                : undefined,
+          }}
+          onClose={closeDecision}
+          onApply={(transformer) => onTransformerUpdate(opened, transformer)}
+        />
+      )}
 
       <div className="text-xs text-gray-600 dark:text-gray-400 pt-4">
         Total rows: ({getFormattedCount(data.length)}) Rows visible: (
@@ -203,7 +261,7 @@ export default function JobMappingTable<TData extends RowData>(
 
 // Défini hors du composant : une nouvelle référence à chaque rendu invaliderait
 // la mémoïsation des lignes (cf. shouldReRender dans MemoizedRow).
-const NO_GROW_COLUMNS = ['isSelected', 'preview'];
+const NO_GROW_COLUMNS = ['isSelected', 'openDecision'];
 
 const US_NUMBER_FORMAT = new Intl.NumberFormat('en-US');
 function getFormattedCount(count: number): string {

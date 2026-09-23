@@ -49,6 +49,19 @@ updated_by_id = $2
 WHERE id = $3
 RETURNING *;
 
+-- Locks the job's row until the transaction ends, so that reading its mappings, changing them
+-- and writing them back cannot interleave with another writer.
+-- name: GetJobForUpdate :one
+SELECT * from husonym_api.jobs WHERE id = $1 AND account_id = $2 FOR UPDATE;
+
+-- The run's write: no user to record in updated_by_id (the worker's key has none), and the
+-- journal of the run says who changed what.
+-- name: SetJobMappingsFromRun :exec
+UPDATE husonym_api.jobs
+SET mappings = $1,
+updated_at = CURRENT_TIMESTAMP
+WHERE id = $2;
+
 -- name: UpdateJobMappings :one
 UPDATE husonym_api.jobs
 SET mappings = $1,

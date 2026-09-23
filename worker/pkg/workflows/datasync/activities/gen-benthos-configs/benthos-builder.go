@@ -36,6 +36,8 @@ type benthosBuilder struct {
 	metricsEnabled bool
 
 	pageLimit int
+
+	hasConsistencyKey bool
 }
 
 func newBenthosBuilder(
@@ -50,6 +52,8 @@ func newBenthosBuilder(
 	metricsEnabled bool,
 
 	pageLimit int,
+
+	hasConsistencyKey bool,
 ) *benthosBuilder {
 	return &benthosBuilder{
 		sqlmanagerclient:  sqlmanagerclient,
@@ -61,12 +65,58 @@ func newBenthosBuilder(
 		runId:             runId,
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
+		hasConsistencyKey: hasConsistencyKey,
 	}
 }
 
 type workflowMetadata struct {
 	WorkflowId string
 	RunId      string
+}
+
+// reconcileJobMappings writes to the job what the run found in its source: the columns it mapped
+// because the job did not, the mappings whose column is gone, and the columns with their types.
+//
+// Sent on every run that read a SQL source, changes or not: the types are what lets the next run
+// tell that a column changed type.
+//
+// A failure fails the run. The configs already follow the source, so the data would be right;
+// but the job would not say so, the next run would decide the same columns again, and under
+// AutoMap & Review nobody would be asked to review what this one decided.
+func (b *benthosBuilder) reconcileJobMappings(
+	ctx context.Context,
+	job *mgmtv1alpha1.Job,
+	added, removed []*mgmtv1alpha1.JobMapping,
+	columns []*mgmtv1alpha1.JobSourceColumn,
+	recordChanges bool,
+) error {
+	if len(added) == 0 && len(removed) == 0 && len(columns) == 0 {
+		return nil
+	}
+	removedColumns := make([]*mgmtv1alpha1.JobColumn, 0, len(removed))
+	for _, mapping := range removed {
+		removedColumns = append(removedColumns, &mgmtv1alpha1.JobColumn{
+			Schema: mapping.GetSchema(),
+			Table:  mapping.GetTable(),
+			Column: mapping.GetColumn(),
+		})
+	}
+	_, err := b.jobclient.ReconcileJobMappings(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.ReconcileJobMappingsRequest{
+			JobId:         job.GetId(),
+			AccountId:     job.GetAccountId(),
+			JobRunId:      b.jobRunId,
+			Added:         added,
+			Removed:       removedColumns,
+			Columns:       columns,
+			RecordChanges: recordChanges,
+		}),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to bring the job's mappings in step with its source: %w", err)
+	}
+	return nil
 }
 
 func (b *benthosBuilder) GenerateBenthosConfigsNew(
@@ -118,7 +168,8 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 			),
 			metrics.TemporalRunId: bb_shared.WithEnvInterpolation(metrics.TemporalRunIdEnvKey),
 		},
-		PageLimit: &b.pageLimit,
+		PageLimit:         &b.pageLimit,
+		HasConsistencyKey: b.hasConsistencyKey,
 	}
 	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
 	if err != nil {
@@ -126,6 +177,13 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	}
 	responses, err := benthosManager.GenerateBenthosConfigs(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	changes := benthosManager.MappingChanges()
+	if err := b.reconcileJobMappings(
+		ctx, job, changes.Added, changes.Removed, changes.Columns, changes.RecordChanges,
+	); err != nil {
 		return nil, err
 	}
 

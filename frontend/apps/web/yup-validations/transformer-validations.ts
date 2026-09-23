@@ -287,6 +287,8 @@ const transformStringPhoneNumberConfig = Yup.object().shape({
   preserveLength: Yup.boolean()
     .default(false)
     .required('This field is required.'),
+  // Absent from the configs saved before it existed: absent reads as false.
+  preserveFormat: Yup.boolean().default(false),
 });
 
 const transformStringConfig = Yup.object().shape({

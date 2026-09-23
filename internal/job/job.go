@@ -11,12 +11,13 @@ type SqlJobSourceOpts struct {
 	HaltOnNewColumnAddition bool
 	// Determines if the job should halt if a column is removed from the source database
 	HaltOnColumnRemoval bool
-	// Newly detected columns are automatically transformed
-	GenerateNewColumnTransformers bool
 	// Newly detected columns are set to passthrough to the destination
 	PassthroughOnNewColumnAddition bool
-	SubsetByForeignKeyConstraints  bool
-	SchemaOpt                      []*SchemaOptions
+	// AutoMap & Review: newly detected columns are mapped as the PII detection suggests, or passed
+	// through when it suggests nothing; the run records each change to the job's mappings for review.
+	AutoMapNewColumns             bool
+	SubsetByForeignKeyConstraints bool
+	SchemaOpt                     []*SchemaOptions
 }
 
 type SchemaOptions struct {
@@ -51,13 +52,13 @@ func GetSqlJobSourceOpts(
 			})
 		}
 		shouldHalt := false
-		shouldGenerateNewColTransforms := false
 		shouldPassthrough := false
+		autoMapNewColumns := false
 		switch jobSourceConfig.Postgres.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHalt = true
 		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_:
-			shouldGenerateNewColTransforms = true
+			autoMapNewColumns = true
 		case *mgmtv1alpha1.PostgresSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
 		}
@@ -70,8 +71,8 @@ func GetSqlJobSourceOpts(
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHalt,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			AutoMapNewColumns:              autoMapNewColumns,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
-			GenerateNewColumnTransformers:  shouldGenerateNewColTransforms,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Postgres.SubsetByForeignKeyConstraints,
 			SchemaOpt:                      schemaOpt,
 		}, nil
@@ -94,13 +95,13 @@ func GetSqlJobSourceOpts(
 			})
 		}
 		shouldHalt := false
-		shouldGenerateNewColTransforms := false
 		shouldPassthrough := false
+		autoMapNewColumns := false
 		switch jobSourceConfig.Mysql.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHalt = true
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_:
-			shouldGenerateNewColTransforms = true
+			autoMapNewColumns = true
 		case *mgmtv1alpha1.MysqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
 		}
@@ -111,8 +112,8 @@ func GetSqlJobSourceOpts(
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHalt,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			AutoMapNewColumns:              autoMapNewColumns,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
-			GenerateNewColumnTransformers:  shouldGenerateNewColTransforms,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Mysql.SubsetByForeignKeyConstraints,
 			SchemaOpt:                      schemaOpt,
 		}, nil
@@ -141,15 +142,19 @@ func GetSqlJobSourceOpts(
 
 		shouldHaltNewColumnAddition := false
 		shouldPassthrough := false
+		autoMapNewColumns := false
 		switch jobSourceConfig.Mssql.GetNewColumnAdditionStrategy().GetStrategy().(type) {
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_HaltJob_:
 			shouldHaltNewColumnAddition = true
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			shouldPassthrough = true
+		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_:
+			autoMapNewColumns = true
 		}
 		return &SqlJobSourceOpts{
 			HaltOnNewColumnAddition:        shouldHaltNewColumnAddition,
 			PassthroughOnNewColumnAddition: shouldPassthrough,
+			AutoMapNewColumns:              autoMapNewColumns,
 			HaltOnColumnRemoval:            shouldHaltOnColumnRemoval,
 			SubsetByForeignKeyConstraints:  jobSourceConfig.Mssql.SubsetByForeignKeyConstraints,
 			SchemaOpt:                      schemaOpt,

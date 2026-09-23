@@ -117,8 +117,27 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		}
 	}
 
-	// remove mappings that are not found in the source
-	existingSourceMappings := removeMappingsNotFoundInSource(job.Mappings, groupedColumnInfo)
+	// The mappings whose column the source no longer has leave the job: it mirrors its source.
+	existingSourceMappings, removedMappings := removeMappingsNotFoundInSource(job.Mappings, groupedColumnInfo)
+	if err := checkSourceShowsTheJob(job.Mappings, existingSourceMappings); err != nil {
+		return nil, err
+	}
+	if len(removedMappings) > 0 {
+		logger.Info(fmt.Sprintf(
+			"%d mapped columns no longer in the source, removed from the job: [%s]",
+			len(removedMappings),
+			strings.Join(formatMappingColumns(removedMappings), ", "),
+		))
+	}
+	params.MappingChanges.Removed = removedMappings
+
+	// The new columns belong to tables the job already maps, so these are all the schemas the
+	// run will touch; read their constraints once, before choosing how to map a new column.
+	uniqueSchemas := shared.GetUniqueSchemasFromMappings(existingSourceMappings)
+	tableConstraints, err := db.Db().GetTableConstraintsBySchema(ctx, uniqueSchemas)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve database table constraints: %w", err)
+	}
 
 	if sqlSourceOpts != nil && sqlSourceOpts.PassthroughOnNewColumnAddition {
 		extraMappings, err := getAdditionalPassthroughJobMappings(
@@ -136,12 +155,12 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 				len(extraMappings),
 			),
 		)
+		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
 
-	if sqlSourceOpts != nil && sqlSourceOpts.GenerateNewColumnTransformers {
-		extraMappings, err := getAdditionalJobMappings(
-			b.driver,
+	if sqlSourceOpts != nil && sqlSourceOpts.AutoMapNewColumns {
+		extraMappings, err := getAdditionalPassthroughJobMappings(
 			groupedColumnInfo,
 			existingSourceMappings,
 			splitKeyToTablePieces,
@@ -150,12 +169,30 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		if err != nil {
 			return nil, err
 		}
-		logger.Debug(
-			fmt.Sprintf("adding %d extra mappings due to unmapped columns", len(extraMappings)),
+		extraMappings, anonymized, passedThrough := autoMapNewColumns(
+			extraMappings, groupedColumnInfo, tableConstraints, params.HasConsistencyKey,
 		)
+		if len(anonymized) > 0 {
+			logger.Info(fmt.Sprintf(
+				"%s mapped as suggested, awaiting review: [%s]",
+				unmappedColumns(len(anonymized)),
+				strings.Join(anonymized, ", "),
+			))
+		}
+		if len(passedThrough) > 0 {
+			// At warning level: this is data leaving the source untransformed, and the log line is
+			// the first place anybody looks.
+			logger.Warn(fmt.Sprintf(
+				"%s passed through as is, no transformer suggested or a key covers them, awaiting review: [%s]",
+				unmappedColumns(len(passedThrough)),
+				strings.Join(passedThrough, ", "),
+			))
+		}
+		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)
 	}
-	uniqueSchemas := shared.GetUniqueSchemasFromMappings(existingSourceMappings)
+	params.MappingChanges.Columns = sourceColumnsOf(existingSourceMappings, groupedColumnInfo)
+	params.MappingChanges.RecordChanges = sqlSourceOpts != nil && sqlSourceOpts.AutoMapNewColumns
 
 	schemaTablesMap := shared.GetSchemaTablesMapFromMappings(existingSourceMappings)
 	tableDeferrableMap, err := getTableDeferrableMap(ctx, db, sourceConnection, schemaTablesMap)
@@ -163,11 +200,6 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		return nil, fmt.Errorf("unable to get table deferrable map: %w", err)
 	}
 	b.tableDeferrableMap = tableDeferrableMap
-
-	tableConstraints, err := db.Db().GetTableConstraintsBySchema(ctx, uniqueSchemas)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve database table constraints: %w", err)
-	}
 
 	foreignKeysMap, err := mergeVirtualForeignKeys(
 		tableConstraints.ForeignKeyConstraints,

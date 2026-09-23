@@ -16,7 +16,6 @@ import {
   UserDefinedTransformer,
 } from '@husonym/sdk';
 import { format } from 'date-fns';
-import { useMemo } from 'react';
 
 export function formatDateTime(
   dateStr?: string | Date | number,
@@ -175,16 +174,6 @@ export function getTransformerFromField(
 // Checks to see if the config is unspecified
 export function isInvalidTransformer(transformer: Transformer): boolean {
   return transformer.config == null;
-}
-
-export function useTransformerSelectButtonText(
-  transformer: Transformer,
-  defaultText: string = 'Select Transformer'
-): string {
-  return useMemo(
-    () => getTransformerSelectButtonText(transformer, defaultText),
-    [transformer.name, defaultText, transformer.config]
-  );
 }
 
 export function getTransformerSelectButtonText(

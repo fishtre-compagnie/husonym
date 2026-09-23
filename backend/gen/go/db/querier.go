@@ -31,6 +31,7 @@ type Querier interface {
 	CreateTeamAccount(ctx context.Context, db DBTX, accountSlug string) (HusonymApiAccount, error)
 	CreateUserDefinedTransformer(ctx context.Context, db DBTX, arg CreateUserDefinedTransformerParams) (HusonymApiTransformer, error)
 	DeleteJob(ctx context.Context, db DBTX, id pgtype.UUID) error
+	DeleteJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) error
 	DeleteSlackOAuthConnection(ctx context.Context, db DBTX, accountID pgtype.UUID) error
 	DeleteUserDefinedTransformerById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	DoesJobHaveConnectionId(ctx context.Context, db DBTX, arg DoesJobHaveConnectionIdParams) (bool, error)
@@ -64,9 +65,15 @@ type Querier interface {
 	GetJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobDestinationConnectionAssociation, error)
 	GetJobConnectionDestinations(ctx context.Context, db DBTX, id pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error)
 	GetJobConnectionDestinationsByJobIds(ctx context.Context, db DBTX, jobids []pgtype.UUID) ([]HusonymApiJobDestinationConnectionAssociation, error)
+	// Locks the job's row until the transaction ends, so that reading its mappings, changing them
+	// and writing them back cannot interleave with another writer.
+	GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error)
 	GetJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobHook, error)
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
+	GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
+	GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error)
+	GetPendingJobMappingChangesByJob(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)
 	GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error)
 	GetRunContextByKey(ctx context.Context, db DBTX, arg GetRunContextByKeyParams) (HusonymApiRuncontext, error)
 	GetRunContextsByExternalIdSuffix(ctx context.Context, db DBTX, arg GetRunContextsByExternalIdSuffixParams) ([]HusonymApiRuncontext, error)
@@ -82,6 +89,8 @@ type Querier interface {
 	GetUserIdentitiesByTeamAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityAssociationsByUserIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiUserIdentityProviderAssociation, error)
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
+	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
+	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
 	IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error)
 	IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConnectionInAccountParams) (int64, error)
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
@@ -100,10 +109,17 @@ type Querier interface {
 	RemoveJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveJobConnectionDestinations(ctx context.Context, db DBTX, jobids []pgtype.UUID) error
 	RemoveJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
+	// Only pending changes of the job, in the caller's account: an id of another job or of another
+	// account, or a change already reviewed, is left alone. The account is what makes a job id the
+	// caller passes harmless — the id alone is enough to find the row.
+	ReviewJobMappingChanges(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams) ([]pgtype.UUID, error)
 	SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error)
 	SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error)
 	SetAnonymousUser(ctx context.Context, db DBTX) (HusonymApiUser, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
+	// The run's write: no user to record in updated_by_id (the worker's key has none), and the
+	// journal of the run says who changed what.
+	SetJobMappingsFromRun(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams) error
 	SetJobSyncOptions(ctx context.Context, db DBTX, arg SetJobSyncOptionsParams) (HusonymApiJob, error)
 	SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error)
 	SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (HusonymApiAccount, error)

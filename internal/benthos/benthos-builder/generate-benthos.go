@@ -27,12 +27,15 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		JobRunId:         b.jobRunId,
 		SourceConnection: b.sourceConnection,
 		Logger:           b.logger,
+
+		HasConsistencyKey: b.hasConsistencyKey,
 	}
 
 	sourceConfigs, err := dbBuilder.BuildSourceConfigs(ctx, sourceParams)
 	if err != nil {
 		return nil, err
 	}
+	b.mappingChanges = sourceParams.MappingChanges
 	b.logger.Debug(fmt.Sprintf("built %d source configs", len(sourceConfigs)))
 
 	destinationOpts := buildDestinationOptionsMap(b.job.GetDestinations())

@@ -3553,6 +3553,18 @@
               "isoneof": true,
               "oneofdecl": "_preserve_length",
               "defaultValue": ""
+            },
+            {
+              "name": "preserve_format",
+              "description": "Keeps the prefix (0 and the next digit, or + with the country code and the next digit), every separator and the length, and replaces the other digits with a keyed permutation: two distinct numbers never give the same output, and a number written in two formats (06…, +33 6…) gets the same digits. Implies preserve_length.",
+              "label": "optional",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_preserve_format",
+              "defaultValue": ""
             }
           ]
         },
@@ -8400,6 +8412,52 @@
       "hasServices": true,
       "enums": [
         {
+          "name": "JavascriptDraftEngine",
+          "longName": "JavascriptDraftEngine",
+          "fullName": "mgmt.v1alpha1.JavascriptDraftEngine",
+          "description": "The engine that will run the drafted rule. It decides what the rule may call: the\ndeterministic pseudo functions exist under Athanor only, and calling one under Benthos fails\nat runtime, so a draft written for the wrong engine is a run that breaks.",
+          "values": [
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defaults to athanor, the default engine."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_ATHANOR",
+              "number": "1",
+              "description": ""
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_ENGINE_BENTHOS",
+              "number": "2",
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "JavascriptDraftMode",
+          "longName": "JavascriptDraftMode",
+          "fullName": "mgmt.v1alpha1.JavascriptDraftMode",
+          "description": "What a drafted rule derives its output from.",
+          "values": [
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_UNSPECIFIED",
+              "number": "0",
+              "description": "Defaults to transform."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_TRANSFORM",
+              "number": "1",
+              "description": "The rule receives the current value and derives the new one from it."
+            },
+            {
+              "name": "JAVASCRIPT_DRAFT_MODE_GENERATE",
+              "number": "2",
+              "description": "The rule ignores the current value and produces a new one."
+            }
+          ]
+        },
+        {
           "name": "PiiConfidence",
           "longName": "PiiConfidence",
           "fullName": "mgmt.v1alpha1.PiiConfidence",
@@ -8746,6 +8804,54 @@
           ]
         },
         {
+          "name": "ColumnTransformerPreview",
+          "longName": "ColumnTransformerPreview",
+          "fullName": "mgmt.v1alpha1.ColumnTransformerPreview",
+          "description": "One sampled value and what the transformer made of it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "input",
+              "description": "The value as read from the source.",
+              "label": "",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "output",
+              "description": "What the transformer produced. Unset when it failed on this value.",
+              "label": "optional",
+              "type": "ColumnSampleValue",
+              "longType": "ColumnSampleValue",
+              "fullType": "mgmt.v1alpha1.ColumnSampleValue",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_output",
+              "defaultValue": ""
+            },
+            {
+              "name": "error",
+              "description": "Why the transformer failed on this value, when it did.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_error",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "ConnectionSchemaConfig",
           "longName": "ConnectionSchemaConfig",
           "fullName": "mgmt.v1alpha1.ConnectionSchemaConfig",
@@ -9017,6 +9123,18 @@
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "_identity_generation",
+              "defaultValue": ""
+            },
+            {
+              "name": "character_maximum_length",
+              "description": "How many characters the column accepts, when its type bounds them. Absent for types that\nbound nothing. It cannot be read back from data_type: MySQL reports `varchar` there and\nkeeps the length in column_type, so anything parsing data_type finds no bound on MySQL.",
+              "label": "optional",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_character_maximum_length",
               "defaultValue": ""
             },
             {
@@ -10401,6 +10519,114 @@
           ]
         },
         {
+          "name": "GetJavascriptDraftPromptRequest",
+          "longName": "GetJavascriptDraftPromptRequest",
+          "fullName": "mgmt.v1alpha1.GetJavascriptDraftPromptRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The connection whose schema describes the column.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table the column belongs to.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column a rule is being drafted for.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mode",
+              "description": "What the rule derives its output from. Defaults to transform.",
+              "label": "",
+              "type": "JavascriptDraftMode",
+              "longType": "JavascriptDraftMode",
+              "fullType": "mgmt.v1alpha1.JavascriptDraftMode",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "engine",
+              "description": "The engine that will run it. Unspecified means athanor — a product choice, not the\ndeployment's state: ENABLE_ATHANOR_ENGINE is off by default and only the worker reads it,\nso the server cannot observe which engine a job will get. Athanor is where the product is\ngoing and Benthos is on its way out, so a caller on a Benthos deployment says so.",
+              "label": "",
+              "type": "JavascriptDraftEngine",
+              "longType": "JavascriptDraftEngine",
+              "fullType": "mgmt.v1alpha1.JavascriptDraftEngine",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetJavascriptDraftPromptResponse",
+          "longName": "GetJavascriptDraftPromptResponse",
+          "fullName": "mgmt.v1alpha1.GetJavascriptDraftPromptResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "prompt",
+              "description": "The prompt, ready to send to a model. It carries the execution contract, the column's\nconstraints and the functions in scope — never any of the column's values.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetTableRowCountRequest",
           "longName": "GetTableRowCountRequest",
           "fullName": "mgmt.v1alpha1.GetTableRowCountRequest",
@@ -10597,6 +10823,138 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": []
+        },
+        {
+          "name": "PreviewColumnTransformerRequest",
+          "longName": "PreviewColumnTransformerRequest",
+          "fullName": "mgmt.v1alpha1.PreviewColumnTransformerRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The connection to read the column from.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "schema",
+              "description": "The schema of the table.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table to read.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column whose values are transformed.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transformer",
+              "description": "The transformer to try on them.",
+              "label": "",
+              "type": "TransformerConfig",
+              "longType": "TransformerConfig",
+              "fullType": "mgmt.v1alpha1.TransformerConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "limit",
+              "description": "Number of rows to read (default 20, max 50).",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "PreviewColumnTransformerResponse",
+          "longName": "PreviewColumnTransformerResponse",
+          "fullName": "mgmt.v1alpha1.PreviewColumnTransformerResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "values",
+              "description": "",
+              "label": "repeated",
+              "type": "ColumnTransformerPreview",
+              "longType": "ColumnTransformerPreview",
+              "fullType": "mgmt.v1alpha1.ColumnTransformerPreview",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "distinct_inputs",
+              "description": "Distinct non-null values in the sample, before and after. Fewer after than before means the\ntransformer sends different values to the same one — which a column under a uniqueness\nconstraint cannot take. It is a sign, never a proof: a sample this small says nothing\ncertain about the whole table.",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "distinct_outputs",
+              "description": "",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         },
         {
           "name": "PrimaryConstraint",
@@ -10905,6 +11263,36 @@
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"
               }
+            },
+            {
+              "name": "GetJavascriptDraftPrompt",
+              "description": "Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a\nmodel. The server fills it from what it knows and the caller does not: the execution\ncontract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and\nthe deterministic functions in scope. It reads the schema, never the column's data.",
+              "requestType": "GetJavascriptDraftPromptRequest",
+              "requestLongType": "GetJavascriptDraftPromptRequest",
+              "requestFullType": "mgmt.v1alpha1.GetJavascriptDraftPromptRequest",
+              "requestStreaming": false,
+              "responseType": "GetJavascriptDraftPromptResponse",
+              "responseLongType": "GetJavascriptDraftPromptResponse",
+              "responseFullType": "mgmt.v1alpha1.GetJavascriptDraftPromptResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "PreviewColumnTransformer",
+              "description": "Reads a sample of one column and shows what a transformer would make of each value, before\nanyone commits to it. The server reads the values itself: this previews a real column, and\ncannot be turned into an unmetered way to anonymize arbitrary data.",
+              "requestType": "PreviewColumnTransformerRequest",
+              "requestLongType": "PreviewColumnTransformerRequest",
+              "requestFullType": "mgmt.v1alpha1.PreviewColumnTransformerRequest",
+              "requestStreaming": false,
+              "responseType": "PreviewColumnTransformerResponse",
+              "responseLongType": "PreviewColumnTransformerResponse",
+              "responseFullType": "mgmt.v1alpha1.PreviewColumnTransformerResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
             }
           ]
         }
@@ -11185,6 +11573,34 @@
               "name": "JOB_ENGINE_BENTHOS",
               "number": "2",
               "description": "Original row-by-row streaming engine (Benthos/redpanda-connect)."
+            }
+          ]
+        },
+        {
+          "name": "JobMappingChangeKind",
+          "longName": "JobMappingChangeKind",
+          "fullName": "mgmt.v1alpha1.JobMappingChangeKind",
+          "description": "What a run changed in a job's mappings.",
+          "values": [
+            {
+              "name": "JOB_MAPPING_CHANGE_KIND_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "JOB_MAPPING_CHANGE_KIND_ADDED",
+              "number": "1",
+              "description": "The source gained the column, and the run mapped it."
+            },
+            {
+              "name": "JOB_MAPPING_CHANGE_KIND_REMOVED",
+              "number": "2",
+              "description": "The source lost the column, and the run removed its mapping."
+            },
+            {
+              "name": "JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED",
+              "number": "3",
+              "description": "The column's type is not the one the previous run saw."
             }
           ]
         },
@@ -11592,6 +12008,114 @@
               "type": "int64",
               "longType": "int64",
               "fullType": "int64",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ApplyMappingChangesRequest",
+          "longName": "ApplyMappingChangesRequest",
+          "fullName": "mgmt.v1alpha1.ApplyMappingChangesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The job the columns belong to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "mappings",
+              "description": "The transformer each column is to be mapped with from now on. Only columns the job maps:\na column a run has removed is not brought back.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "change_ids",
+              "description": "The changes this settles, marked reviewed in the same transaction",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "note",
+              "description": "Why, kept with the reviewed changes",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_note",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ApplyMappingChangesResponse",
+          "longName": "ApplyMappingChangesResponse",
+          "fullName": "mgmt.v1alpha1.ApplyMappingChangesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "mappings",
+              "description": "The mappings as the job now has them",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "change_ids",
+              "description": "The changes the call marked reviewed",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -13873,6 +14397,66 @@
           ]
         },
         {
+          "name": "GetPendingMappingChangesRequest",
+          "longName": "GetPendingMappingChangesRequest",
+          "fullName": "mgmt.v1alpha1.GetPendingMappingChangesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "Only this job's changes. Every job of the account the caller can see when absent.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_job_id",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetPendingMappingChangesResponse",
+          "longName": "GetPendingMappingChangesResponse",
+          "fullName": "mgmt.v1alpha1.GetPendingMappingChangesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "changes",
+              "description": "Oldest first",
+              "label": "repeated",
+              "type": "JobMappingChange",
+              "longType": "JobMappingChange",
+              "fullType": "mgmt.v1alpha1.JobMappingChange",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetPiiDetectionReportRequest",
           "longName": "GetPiiDetectionReportRequest",
           "fullName": "mgmt.v1alpha1.GetPiiDetectionReportRequest",
@@ -14285,6 +14869,54 @@
               "type": "JobTypeConfig",
               "longType": "JobTypeConfig",
               "fullType": "mgmt.v1alpha1.JobTypeConfig",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "JobColumn",
+          "longName": "JobColumn",
+          "fullName": "mgmt.v1alpha1.JobColumn",
+          "description": "Service that handles jobs, runs, and hooks\nA column of a job's source, named without its mapping.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "The database schema",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "The table",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -14771,6 +15403,138 @@
           ]
         },
         {
+          "name": "JobMappingChange",
+          "longName": "JobMappingChange",
+          "fullName": "mgmt.v1alpha1.JobMappingChange",
+          "description": "A change a run made to a job's mappings, waiting for somebody to review it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "id",
+              "description": "The change",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The job",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_run_id",
+              "description": "The run that made it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "created_at",
+              "description": "When",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "The column",
+              "label": "",
+              "type": "JobColumn",
+              "longType": "JobColumn",
+              "fullType": "mgmt.v1alpha1.JobColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "kind",
+              "description": "What happened to it",
+              "label": "",
+              "type": "JobMappingChangeKind",
+              "longType": "JobMappingChangeKind",
+              "fullType": "mgmt.v1alpha1.JobMappingChangeKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transformer",
+              "description": "The transformer the run chose (added), or the one the removed mapping had (removed). For a\ntype change, the one the column is mapped with now.",
+              "label": "",
+              "type": "JobMappingTransformer",
+              "longType": "JobMappingTransformer",
+              "fullType": "mgmt.v1alpha1.JobMappingTransformer",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_type",
+              "description": "The column's type as the run saw it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "previous_data_type",
+              "description": "The type the previous run saw (type changed)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_category",
+              "description": "What the column looks like to the PII detection, by name and type (\"\" when nothing)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "JobMappingTransformer",
           "longName": "JobMappingTransformer",
           "fullName": "mgmt.v1alpha1.JobMappingTransformer",
@@ -15207,6 +15971,42 @@
               "type": "JobSourceOptions",
               "longType": "JobSourceOptions",
               "fullType": "mgmt.v1alpha1.JobSourceOptions",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "JobSourceColumn",
+          "longName": "JobSourceColumn",
+          "fullName": "mgmt.v1alpha1.JobSourceColumn",
+          "description": "A column of a job's source with its type, as a run read it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "column",
+              "description": "The column",
+              "label": "",
+              "type": "JobColumn",
+              "longType": "JobColumn",
+              "fullType": "mgmt.v1alpha1.JobColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_type",
+              "description": "The column's type as the source reports it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -16010,8 +16810,31 @@
               "isoneof": true,
               "oneofdecl": "strategy",
               "defaultValue": ""
+            },
+            {
+              "name": "auto_map",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
+              "label": "",
+              "type": "AutoMap",
+              "longType": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+              "fullType": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "strategy",
+              "defaultValue": ""
             }
           ]
+        },
+        {
+          "name": "AutoMap",
+          "longName": "MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+          "fullName": "mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
+          "description": "Configuration for the AutoMap strategy",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
         },
         {
           "name": "HaltJob",
@@ -16451,7 +17274,7 @@
             },
             {
               "name": "auto_map",
-              "description": "automatically handle unmapped columns. It handles this by using the DBs default/nullable values.\nIf this doesn't exist, will fall back to configuring generators for supported datatypes.\nIf none of the criteria above can be met, the job run will fail to prevent leaking of PII.",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
               "label": "",
               "type": "AutoMap",
               "longType": "MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
@@ -17296,7 +18119,7 @@
             },
             {
               "name": "auto_map",
-              "description": "automatically handle unmapped columns. It handles this by using the DBs default/nullable values.\nIf this doesn't exist, will fall back to configuring generators for supported datatypes.\nIf none of the criteria above can be met, the job run will fail to prevent leaking of PII.",
+              "description": "AutoMap \u0026 Review: map the new column with the transformer the PII detection suggests, in\nthe config it starts with in the catalogue; pass it through when there is no suggestion,\nor when the column carries a primary key, a foreign key or a unique constraint a\ntransformer could break. The run writes the mapping to the job and records the change for\nreview, as it records the removal of a column and the change of a column's type.",
               "label": "",
               "type": "AutoMap",
               "longType": "PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap",
@@ -17486,6 +18309,138 @@
           ]
         },
         {
+          "name": "ReconcileJobMappingsRequest",
+          "longName": "ReconcileJobMappingsRequest",
+          "fullName": "mgmt.v1alpha1.ReconcileJobMappingsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job the run belongs to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_run_id",
+              "description": "The run that read the source",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "added",
+              "description": "A mapping for each column the source has and the job did not map, as the job's strategy for\nnew columns chose it. A column the job maps by the time the call arrives keeps its mapping:\nsomebody decided in the meantime.",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "removed",
+              "description": "The columns the source no longer has. Their mapping is removed from the job.",
+              "label": "repeated",
+              "type": "JobColumn",
+              "longType": "JobColumn",
+              "fullType": "mgmt.v1alpha1.JobColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "columns",
+              "description": "Every column of the tables the job syncs, with its type: what lets the next run tell that a\ncolumn changed type.",
+              "label": "repeated",
+              "type": "JobSourceColumn",
+              "longType": "JobSourceColumn",
+              "fullType": "mgmt.v1alpha1.JobSourceColumn",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "record_changes",
+              "description": "Whether the job's strategy asks for the changes to be reviewed (auto_map):\nthey are then recorded, each with what the run chose.",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ReconcileJobMappingsResponse",
+          "longName": "ReconcileJobMappingsResponse",
+          "fullName": "mgmt.v1alpha1.ReconcileJobMappingsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "added",
+              "description": "The mappings the call added, those already mapped left out",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "removed",
+              "description": "The mappings the call removed, with the transformer they had",
+              "label": "repeated",
+              "type": "JobMapping",
+              "longType": "JobMapping",
+              "fullType": "mgmt.v1alpha1.JobMapping",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "RetryPolicy",
           "longName": "RetryPolicy",
           "fullName": "mgmt.v1alpha1.RetryPolicy",
@@ -17505,6 +18460,90 @@
               "ismap": false,
               "isoneof": true,
               "oneofdecl": "_maximum_attempts",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ReviewMappingChangesRequest",
+          "longName": "ReviewMappingChangesRequest",
+          "fullName": "mgmt.v1alpha1.ReviewMappingChangesRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The job the changes belong to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "change_ids",
+              "description": "The changes reviewed. Those of another job, or already reviewed, are left alone.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "note",
+              "description": "Why they are fine, kept with them",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_note",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ReviewMappingChangesResponse",
+          "longName": "ReviewMappingChangesResponse",
+          "fullName": "mgmt.v1alpha1.ReviewMappingChangesResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "change_ids",
+              "description": "The changes the call marked reviewed",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
               "defaultValue": ""
             }
           ]
@@ -18808,7 +19847,7 @@
           "name": "JobService",
           "longName": "JobService",
           "fullName": "mgmt.v1alpha1.JobService",
-          "description": "Service that handles jobs, runs, and hooks",
+          "description": "",
           "methods": [
             {
               "name": "GetJobs",
@@ -19174,6 +20213,57 @@
               "responseType": "ValidateJobMappingsResponse",
               "responseLongType": "ValidateJobMappingsResponse",
               "responseFullType": "mgmt.v1alpha1.ValidateJobMappingsResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ReconcileJobMappings",
+              "description": "Brings a job's mappings in step with the source a run read: maps the columns that appeared,\nas the job's strategy chose, and removes those that disappeared. Called by the worker.",
+              "requestType": "ReconcileJobMappingsRequest",
+              "requestLongType": "ReconcileJobMappingsRequest",
+              "requestFullType": "mgmt.v1alpha1.ReconcileJobMappingsRequest",
+              "requestStreaming": false,
+              "responseType": "ReconcileJobMappingsResponse",
+              "responseLongType": "ReconcileJobMappingsResponse",
+              "responseFullType": "mgmt.v1alpha1.ReconcileJobMappingsResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "GetPendingMappingChanges",
+              "description": "Returns the changes runs made to the mappings of jobs under auto_map that\nnobody has reviewed yet. An added column whose mapping has been changed since counts as\nreviewed: somebody decided.",
+              "requestType": "GetPendingMappingChangesRequest",
+              "requestLongType": "GetPendingMappingChangesRequest",
+              "requestFullType": "mgmt.v1alpha1.GetPendingMappingChangesRequest",
+              "requestStreaming": false,
+              "responseType": "GetPendingMappingChangesResponse",
+              "responseLongType": "GetPendingMappingChangesResponse",
+              "responseFullType": "mgmt.v1alpha1.GetPendingMappingChangesResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "ReviewMappingChanges",
+              "description": "Marks changes reviewed, with an optional note.",
+              "requestType": "ReviewMappingChangesRequest",
+              "requestLongType": "ReviewMappingChangesRequest",
+              "requestFullType": "mgmt.v1alpha1.ReviewMappingChangesRequest",
+              "requestStreaming": false,
+              "responseType": "ReviewMappingChangesResponse",
+              "responseLongType": "ReviewMappingChangesResponse",
+              "responseFullType": "mgmt.v1alpha1.ReviewMappingChangesResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ApplyMappingChanges",
+              "description": "Sets the transformer of columns the job maps, from the review tab, and marks the changes it\nsettles reviewed: correcting what a run chose is done where the change is read.",
+              "requestType": "ApplyMappingChangesRequest",
+              "requestLongType": "ApplyMappingChangesRequest",
+              "requestFullType": "mgmt.v1alpha1.ApplyMappingChangesRequest",
+              "requestStreaming": false,
+              "responseType": "ApplyMappingChangesResponse",
+              "responseLongType": "ApplyMappingChangesResponse",
+              "responseFullType": "mgmt.v1alpha1.ApplyMappingChangesResponse",
               "responseStreaming": false
             },
             {

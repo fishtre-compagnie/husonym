@@ -772,6 +772,12 @@ func serve(ctx context.Context) error {
 		connectionService,
 		connectiondatabuilder,
 		connectionPiiAnalyzer,
+		v1alpha1_connectiondataservice.Transformers{
+			Client:            transformerService,
+			IsPresidioEnabled: isPresidioEnabled,
+			Analyze:           presAnalyzeClient,
+			Anonymize:         presAnonClient,
+		},
 	)
 	api.Handle(
 		mgmtv1alpha1connect.NewConnectionDataServiceHandler(

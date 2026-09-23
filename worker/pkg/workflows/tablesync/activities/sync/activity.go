@@ -23,6 +23,7 @@ import (
 	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/phoneformat"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	tablesync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared"
 	"github.com/redis/go-redis/v9"
@@ -49,7 +50,7 @@ type Activity struct {
 	anonymizationClient  mgmtv1alpha1connect.AnonymizationServiceClient
 	transformerclient    mgmtv1alpha1connect.TransformersServiceClient
 	redisclient          redis.UniversalClient
-	athanor              AthanorConfig
+	engines              EngineConfig
 }
 
 func New(
@@ -63,7 +64,7 @@ func New(
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	redisclient redis.UniversalClient,
-	athanor AthanorConfig,
+	engines EngineConfig,
 ) *Activity {
 	return &Activity{
 		connclient:           connclient,
@@ -76,7 +77,7 @@ func New(
 		anonymizationClient:  anonymizationClient,
 		transformerclient:    transformerclient,
 		redisclient:          redisclient,
-		athanor:              athanor,
+		engines:              engines,
 	}
 }
 
@@ -194,7 +195,7 @@ func (a *Activity) SyncTable(
 
 	// Aiguillage vers le moteur Athanor, décidé PAR JOB (opt-in). Athanor exécute le
 	// plan neutre de la table ; sans plan (source non SQL), Benthos reste le moteur.
-	useAthanor, err := a.useAthanorForJob(ctx, req.JobRunId)
+	useAthanor, job, err := a.useAthanorForJob(ctx, req.JobRunId)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +205,7 @@ func (a *Activity) SyncTable(
 			return nil, perr
 		}
 		if plan != nil {
-			resp, aerr := a.runAthanor(ctx, req, plan, info.Attempt, session, getConnectionById, logger)
+			resp, aerr := a.runAthanor(ctx, req, plan, job, info.Attempt, session, getConnectionById, logger)
 			if aerr != nil {
 				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
 			}
@@ -238,6 +239,14 @@ func (a *Activity) SyncTable(
 
 	identityAllocator := a.getIdentityAllocator(a.temporalclient, &info)
 
+	// The permutation of TransformPhoneNumber with preserve_format is keyed on the run's
+	// consistency scope, so that every table of the run — whichever worker takes it — turns a
+	// number into the same one.
+	phonePseudonymizer, err := a.phoneFormatPseudonymizer(job, req.JobRunId)
+	if err != nil {
+		return nil, err
+	}
+
 	bstream, err := a.getBenthosStream(
 		&info,
 		req.AccountId,
@@ -249,6 +258,7 @@ func (a *Activity) SyncTable(
 		continuationToken,
 		identityAllocator,
 		a.anonymizationClient,
+		phonePseudonymizer,
 		logger,
 	)
 	if err != nil {
@@ -393,6 +403,7 @@ func (a *Activity) getBenthosStream(
 	continuationToken *continuation_token.ContinuationToken,
 	identityAllocator tablesync_shared.IdentityAllocator,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	phonePseudonymizer *phoneformat.Pseudonymizer,
 	logger *slog.Logger,
 ) (benthosstream.BenthosStreamClient, error) {
 	benenv, err := a.getBenthosEnvironment(
@@ -406,6 +417,7 @@ func (a *Activity) getBenthosStream(
 		continuationToken,
 		identityAllocator,
 		anonymizationClient,
+		phonePseudonymizer,
 		a.redisclient,
 	)
 	if err != nil {
@@ -452,12 +464,17 @@ func (a *Activity) getBenthosEnvironment(
 	continuationToken *continuation_token.ContinuationToken,
 	identityAllocator tablesync_shared.IdentityAllocator,
 	anonymizationClient mgmtv1alpha1connect.AnonymizationServiceClient,
+	phonePseudonymizer *phoneformat.Pseudonymizer,
 	redisclient redis.UniversalClient,
 ) (*service.Environment, error) {
 	blobEnv := bloblang.NewEnvironment()
 	err := transformers.RegisterTransformIdentityScramble(blobEnv, identityAllocator)
 	if err != nil {
 		return nil, fmt.Errorf("unable to register identity scramble transformer: %w", err)
+	}
+	err = transformers.RegisterTransformPhoneNumberPreserveFormat(blobEnv, phonePseudonymizer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to register phone format transformer: %w", err)
 	}
 	transformPiiTextApiForAccount := transformers.NewAccountAwareAnonymizationPiiTextApi(
 		anonymizationClient,

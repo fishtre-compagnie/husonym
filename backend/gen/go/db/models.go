@@ -138,6 +138,33 @@ type HusonymApiJobHook struct {
 	ConnectionID    pgtype.UUID
 }
 
+type HusonymApiJobMappingChange struct {
+	ID               pgtype.UUID
+	AccountID        pgtype.UUID
+	JobID            pgtype.UUID
+	JobRunID         string
+	CreatedAt        pgtype.Timestamp
+	TableSchema      string
+	TableName        string
+	ColumnName       string
+	Kind             string
+	Transformer      *pg_models.JobMappingTransformerModel
+	DataType         string
+	PreviousDataType string
+	PiiCategory      string
+	ReviewedAt       pgtype.Timestamp
+	ReviewedByID     pgtype.UUID
+	Note             pgtype.Text
+}
+
+type HusonymApiJobSourceColumn struct {
+	JobID       pgtype.UUID
+	TableSchema string
+	TableName   string
+	ColumnName  string
+	DataType    string
+}
+
 type HusonymApiRuncontext struct {
 	WorkflowID  string
 	ExternalID  string

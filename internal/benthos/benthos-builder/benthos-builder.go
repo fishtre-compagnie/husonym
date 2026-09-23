@@ -278,6 +278,18 @@ type BenthosConfigManager struct {
 	sourceConnection       *mgmtv1alpha1.Connection
 	destinationConnections []*mgmtv1alpha1.Connection
 	jobRunId               string
+
+	// Filled by GenerateBenthosConfigs from what the source builder reported.
+	hasConsistencyKey bool
+
+	mappingChanges bb_internal.MappingChanges
+}
+
+// MappingChanges returns how the last GenerateBenthosConfigs call found the job's mappings to
+// differ from its source: the configs it built already follow them, and the job is to be
+// brought in step.
+func (b *BenthosConfigManager) MappingChanges() bb_internal.MappingChanges {
+	return b.mappingChanges
 }
 
 // Manages all necessary configuration parameters for creating
@@ -295,6 +307,9 @@ type WorkerBenthosConfig struct {
 	MetricsEnabled         bool
 	SelectQueryBuilder     bb_shared.SelectQueryMapBuilder
 	PageLimit              *int
+	// HasConsistencyKey says whether the deployment can derive a key for deterministic
+	// pseudonymization (ANONYMIZATION_CONSISTENCY_KEY).
+	HasConsistencyKey bool
 }
 
 // Creates a new BenthosConfigManager configured for worker
@@ -335,6 +350,7 @@ func NewWorkerBenthosConfigManager(
 		sourceConnection:       config.SourceConnection,
 		destinationConnections: config.DestinationConnections,
 		jobRunId:               config.JobRunId,
+		hasConsistencyKey:      config.HasConsistencyKey,
 	}, nil
 }
 

@@ -15,15 +15,12 @@ export default function MssqlDBSourceOptionsForm(props: Props): ReactElement {
     <div className="flex flex-col md:flex-row gap-6 pb-2">
       <div className="w-full">
         <NewColumnAdditionStrategyOptionsForm
-          disableAutoMap={true}
           value={value.newColumnAdditionStrategy}
           setValue={(strategy) => {
-            if (strategy !== 'automap') {
-              setValue({
-                ...value,
-                newColumnAdditionStrategy: strategy,
-              });
-            }
+            setValue({
+              ...value,
+              newColumnAdditionStrategy: strategy,
+            });
           }}
         />
       </div>

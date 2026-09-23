@@ -16,11 +16,18 @@ This is a common occurrence for any company that is adding new columns to a data
 
 ## Driver Support
 
-| Strategy | Description                                                                                     | PostgreSQL | MySQL | MS SQL Server |
-| -------- | ----------------------------------------------------------------------------------------------- | ---------- | ----- | ------------- |
-| Halt     | Stops the job run if a new column is detected that is not found in the configured job mappings. | ✅         | ✅    | ✅            |
-| AutoMap  | Automatically generates a fake value. See more below.                                           | ✅         | ✅    | ❌            |
-| Continue | Ignores new columns; may fail if column doesn't have default. See more below.                   | ✅         | ✅    | ✅            |
+| Strategy         | Description                                                                                        | PostgreSQL | MySQL | MS SQL Server |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ---------- | ----- | ------------- |
+| Halt             | Stops the job run if a new column is detected that is not found in the configured job mappings.    | ✅         | ✅    | ✅            |
+| AutoMap & Review | Maps the new column as suggested, or copies it as is when nothing applies, and reports the change. | ✅         | ✅    | ✅            |
+| Passthrough      | Copies the new column as is, silently. See more below.                                             | ✅         | ✅    | ✅            |
+| Continue         | Ignores new columns; may fail if column doesn't have default. See more below.                      | ✅         | ✅    | ✅            |
+
+## The job follows its source
+
+With **AutoMap & Review** and **Passthrough**, the run that finds a new column writes the mapping it chose into the job. A new column is decided once: the next runs find it mapped, and the job's source page shows what it is mapped with, ready to be changed. A mapping somebody sets by hand in the meantime is never overwritten.
+
+Likewise, when a column disappears from the source, the run removes its mapping from the job — unless the job's [column removal strategy](/guides/column-removal-strategies) is **Halt**.
 
 ## Halt Strategy
 
@@ -42,18 +49,20 @@ However, any additional columns that have a default or are a generated column wi
 | `ALTER TABLE ADD COLUMN full_name TEXT GENERATED ALWAYS AS (first_name \|\| ' ' \|\| last_name) STORED` | ✅      |
 | `ALTER TABLE ADD COLUMN foo TEXT NOT NULL`                                                              | ❌      |
 
-## Auto Map
+## AutoMap & Review
 
-Automap is a smart strategy that attempts to do what it can to prevent PII from leaking or from failure modes with additional columns being added.
+This strategy maps a new column the way the product would suggest it, and never halts a run:
 
-Not all data types are currently supported and will continue to receive updates over time to improve data type support.
+1. a column the database computes itself — a generated column — keeps its database default, its value being recomputed by the destination;
+2. a column covered by a primary key, a foreign key or a unique constraint is copied as is: a transformer there could break the constraint and fail the run;
+3. a column whose name and type the PII detection recognizes is mapped with the suggested transformer, in the configuration it starts with in the catalogue — a phone number keeps its prefix, separators and length, for instance;
+4. any other column is copied as is.
 
-The algorithm works as follows:
+The detection reads names and types, never the data. A column it does not recognize — `notes`, `champ_libre` — may still hold personal data, which is why every change is reported:
 
-1. If the column has a DB Default or is Generated, use the database default
-2. If the column is Nullable, set the column to null.
-3. Based on the data type, generate a proper value that will fit within that column.
-4. If an unsupported data type is detected, halt the run.
+- the run records each change it makes to the job: the columns it mapped, with the transformer it chose; the mappings it removed with their column; and the mapped columns whose type changed since the previous run;
+- a bell in the header shows, as soon as you log in, how many changes are waiting across your jobs, and the jobs list and the job's **Review** tab show them per job — columns that read as personal data and were left in clear come first;
+- in the **Review** tab, each change shows the transformer the run chose and its options. Opening it brings the transformer, its options and a preview of the column before and after them together: keep the run's choice, or change it and apply. Either way, who decided, when, and an optional note saying why are recorded. Several changes can be confirmed at once, and a mapping changed on the job's source page settles its change too.
 
 ## Passthrough
 
@@ -61,105 +70,18 @@ Passthrough mode is a strategy that allows Husonym to handle new columns found i
 
 This strategy is useful when you want to reduce the need for manual updates to job mappings when new columns are added to the source database.
 
-**Note:** It is recommended to use the init schema destination option with the passthrough strategy to ensure that the destination schema is always updated to match the source schema.
+Passthrough is silent: nothing tells anyone that a new column is being copied untransformed. For an anonymization job that is rarely what you want, since every schema change can then quietly add personal data to the destination. Prefer **AutoMap & Review** above, which maps what it recognizes and keeps every change in front of you until someone reviews it.
 
-### Postgres
+## Keeping the destination schema in step
 
-Postgres has many data types and not all of them are currently supported in the auto map mode. Support will continue to increase over time.
+A new column can only be copied into a destination table that has it. Enable the **init schema** destination option and Husonym takes care of that: on every run, it reconciles the destination with the source, on PostgreSQL and MySQL alike.
 
-<!-- cspell:disable  -->
+Reconciling means the destination is made to match the source, in both directions:
 
-| Data Type        | Support | Generator       |
-| ---------------- | ------- | --------------- |
-| smallint         | ✅      | GenerateInt64   |
-| integer          | ✅      | GenerateInt64   |
-| bigint           | ✅      | GenerateInt64   |
-| decimal          | ✅      | GenerateFloat64 |
-| numeric          | ✅      | GenerateFloat64 |
-| real             | ✅      | GenerateFloat64 |
-| double precision | ✅      | GenerateFloat64 |
-| serial           | ✅      | GenerateDefault |
-| smallserial      | ✅      | GenerateDefault |
-| bigserial        | ✅      | GenerateDefault |
-| money            | ✅      | GenerateFloat64 |
-| char             | ✅      | GenerateString  |
-| varchar          | ✅      | GenerateString  |
-| text             | ✅      | GenerateString  |
-| bytea            | ❌      |                 |
-| timestamp        | ✅      |                 |
-| timestamptz      | ✅      |                 |
-| date             | ✅      |                 |
-| time             | ✅      |                 |
-| timetz           | ✅      |                 |
-| interval         | ✅      |                 |
-| boolean          | ✅      | GenerateBool    |
-| point            | ❌      |                 |
-| line             | ❌      |                 |
-| lseg             | ❌      |                 |
-| box              | ❌      |                 |
-| path             | ❌      |                 |
-| polygon          | ❌      |                 |
-| circle           | ❌      |                 |
-| cidr             | ❌      |                 |
-| inet             | ❌      |                 |
-| macaddr          | ❌      |                 |
-| bit              | ❌      |                 |
-| tsvector         | ❌      |                 |
-| uuid             | ✅      | GenerateUuid    |
-| xml              | ❌      |                 |
-| json             | ❌      |                 |
-| jsonb            | ❌      |                 |
-| int4range        | ❌      |                 |
-| int8range        | ❌      |                 |
-| numrange         | ❌      |                 |
-| tsrange          | ❌      |                 |
-| tstzrange        | ❌      |                 |
-| daterange        | ❌      |                 |
-| oid              | ❌      |                 |
-| text[]           | ❌      |                 |
+- tables and columns the source has and the destination lacks are created;
+- columns whose type, default or nullability changed are altered;
+- columns, constraints and triggers the destination has and the source no longer has are **dropped**.
 
-<!-- cspell:enable  -->
+Husonym's job is to keep a destination in step with its source, with sampling and anonymization on top: when the source changes, the destination follows, removals included. Anything added by hand to a destination table — a column, a constraint, a trigger — is therefore removed on the next run. Keep such additions out of the tables a job writes to.
 
-### MySQL
-
-MySQL has many data types and not all of them are currently supported in the auto map mode. Support will continue to increase over time.
-
-<!-- cspell:disable  -->
-
-| Data Type        | Support | Generator           |
-| ---------------- | ------- | ------------------- |
-| tinyint          | ✅      | GenerateInt64       |
-| smallint         | ✅      | GenerateInt64       |
-| mediumint        | ✅      | GenerateInt64       |
-| integer          | ✅      | GenerateInt64       |
-| int              | ✅      | GenerateInt64       |
-| bigint           | ✅      | GenerateInt64       |
-| float            | ✅      | GenerateFloat64     |
-| decimal          | ✅      | GenerateFloat64     |
-| dec              | ✅      | GenerateFloat64     |
-| double           | ✅      | GenerateFloat64     |
-| double precision | ✅      | GenerateFloat64     |
-| char             | ✅      | GenerateString      |
-| varchar          | ✅      | GenerateString      |
-| tinytext         | ✅      | GenerateString      |
-| text             | ✅      | GenerateString      |
-| mediumtext       | ✅      | GenerateString      |
-| longtext         | ✅      | GenerateString      |
-| boolean          | ✅      | GenerateBool        |
-| bool             | ✅      | GenerateBool        |
-| enum             | ✅      | GenerateCategorical |
-| set              | ✅      | GenerateCategorical |
-| date             | ✅      | GenerateJavaScript  |
-| datetime         | ✅      | GenerateJavaScript  |
-| timestamp        | ✅      | GenerateJavaScript  |
-| time             | ✅      | GenerateJavaScript  |
-| year             | ✅      | GenerateJavaScript  |
-| bit              | ❌      |                     |
-| binary           | ❌      |                     |
-| varbinary        | ❌      |                     |
-| tinyblob         | ❌      |                     |
-| blob             | ❌      |                     |
-| mediumblob       | ❌      |                     |
-| longblob         | ❌      |                     |
-
-<!-- cspell:enable  -->
+With init schema turned off, Husonym never touches the destination schema, and it is up to you to add a new column there before the run that copies it, or the write fails.

@@ -6,6 +6,7 @@ import {
   getTransformerSelectButtonText,
   isInvalidTransformer,
 } from '@/util/util';
+import MappingCell, { OpenDecisionButton } from './MappingCell';
 import { JobMappingTransformerForm } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
 import {
@@ -15,7 +16,6 @@ import {
   TransformerSource,
 } from '@husonym/sdk';
 import { createColumnHelper, Row } from '@tanstack/react-table';
-import ColumnPreviewButton from './ColumnPreviewButton';
 import RgpdCell from './RgpdCell';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
@@ -93,7 +93,8 @@ function getJobMappingColumns() {
     },
     cell({ row }) {
       return (
-        <div>
+        // Sans quoi le clic remonterait à la ligne, qui ouvre la décision.
+        <div onClick={(e) => e.stopPropagation()}>
           <IndeterminateCheckbox
             {...{
               checked: row.getIsSelected(),
@@ -189,13 +190,14 @@ function getJobMappingColumns() {
   );
 
   const transformerColumn = columnHelper.accessor(
-    (row) => {
-      if (row.transformer.config.case) {
-        // this needs to be the full transformer object so that memoization works correctly
-        return row.transformer;
-      }
-      return 'transformer';
-    },
+    // Clé de mémoïsation : TanStack compare cette valeur avec === et saute la cellule
+    // quand elle n'a pas bougé. L'identité de l'objet transformer suffisait tant que la
+    // cellule ne montrait que le transformer ; elle montre aussi le point ambre « donnée
+    // personnelle laissée en clair », qui vient de la détection de contenu et non du
+    // transformer. Sans `isSensitive` dans la clé, un scan de contenu reconstruisait la
+    // ligne sans réveiller la cellule, et le point n'apparaissait jamais — même piège
+    // que la colonne RGPD plus bas.
+    (row) => `${transformerRevision(row.transformer)}|${row.isSensitive}`,
     {
       id: 'transformer',
       size: 244,
@@ -206,51 +208,42 @@ function getJobMappingColumns() {
         const transformer =
           table.options.meta?.jmTable?.getTransformerFromField(row.index) ??
           create(SystemTransformerSchema);
-        const transformerForm = row.original.transformer;
         return (
-          <div className="flex flex-row gap-2">
-            <div>
-              <TransformerSelect
-                getTransformers={() =>
-                  table.options.meta?.jmTable?.getAvailableTransformers(
-                    row.index
-                  ) ?? {
-                    system: [],
-                    userDefined: [],
-                  }
-                }
-                buttonText={getTransformerSelectButtonText(transformer)}
-                buttonClassName="w-[195px]"
-                value={transformerForm}
-                onSelect={(updatedValue) =>
-                  table.options.meta?.jmTable?.onTransformerUpdate(
-                    row.index,
-                    updatedValue
-                  )
-                }
-                disabled={false}
-              />
-            </div>
-            <div>
-              <EditTransformerOptions
-                transformer={transformer}
-                value={transformerForm}
-                onSubmit={(updatedValue) => {
-                  table.options.meta?.jmTable?.onTransformerUpdate(
-                    row.index,
-                    updatedValue
-                  );
-                }}
-                disabled={isInvalidTransformer(transformer)}
-              />
-            </div>
-          </div>
+          <MappingCell
+            column={row.original.column}
+            transformer={row.original.transformer}
+            name={
+              isInvalidTransformer(transformer) ? '' : (transformer.name ?? '')
+            }
+            isSensitive={row.original.isSensitive}
+            onOpen={() =>
+              table.options.meta?.jmTable?.onOpenDecision?.(row.index)
+            }
+          />
         );
       },
       filterFn: transformerFilterFn,
       sortFn: transformerSortingFn,
     }
   );
+
+  const openDecisionColumn = columnHelper.display({
+    id: 'openDecision',
+    size: 44,
+    header() {
+      return <span className="sr-only">Decide</span>;
+    },
+    cell({ row, table }) {
+      return (
+        <OpenDecisionButton
+          column={row.original.column}
+          onOpen={() =>
+            table.options.meta?.jmTable?.onOpenDecision?.(row.index)
+          }
+        />
+      );
+    },
+  });
 
   // accessor et NON display : une colonne `display` n'a pas de valeur dérivée des
   // données, donc TanStack réutilise sa cellule mémoïsée. Résultat observé : après
@@ -321,30 +314,6 @@ function getJobMappingColumns() {
     }
   );
 
-  const previewColumn = columnHelper.display({
-    id: 'preview',
-    size: 44,
-    header() {
-      return <span className="sr-only">Aperçu des données</span>;
-    },
-    cell({ row, table }) {
-      const connectionId = table.options.meta?.jmTable?.sourceConnectionId;
-      // Job generate : aucune donnée source à lire, le bouton n'aurait rien à montrer.
-      if (!connectionId) {
-        return null;
-      }
-      return (
-        <ColumnPreviewButton
-          connectionId={connectionId}
-          schema={row.original.schema}
-          table={row.original.table}
-          column={row.original.column}
-          dataType={row.original.dataType}
-        />
-      );
-    },
-  });
-
   return columnHelper.columns([
     checkboxColumn,
     schemaColumn,
@@ -354,8 +323,8 @@ function getJobMappingColumns() {
     isNullableColumn,
     constraintColumn,
     rgpdColumn,
-    previewColumn,
     transformerColumn,
+    openDecisionColumn,
   ]);
 }
 
@@ -383,18 +352,31 @@ function transformerFilterFn(
   row:
     | Row<AppTableFeatures, JobMappingRow>
     | Row<AppTableFeatures, NosqlJobMappingRow>,
-  columnId: string,
+  _columnId: string,
   filterValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): boolean {
-  const value = row.getValue<JobMappingTransformerForm | string>(columnId);
+  // Lu sur la ligne, pas sur la valeur de l'accesseur : celle de la colonne Transformer
+  // est une clé de mémoïsation, pas un libellé.
+  const configCase = row.original.transformer.config.case;
   const loweredFilterValue = filterValue.toLowerCase();
-  if (typeof value === 'string') {
-    return value.includes(loweredFilterValue);
+  if (!configCase) {
+    return 'transformer'.includes(loweredFilterValue);
   }
-  const searchableFields = [value?.config.case].filter(Boolean);
-  return searchableFields.some((field) =>
-    field.toLowerCase().includes(loweredFilterValue)
-  );
+  return configCase.toLowerCase().includes(loweredFilterValue);
+}
+
+// Numéro de révision d'un transformer, stable tant que l'objet l'est. React Hook Form en
+// pose un nouveau à chaque édition : le numéro change alors et la cellule se redessine —
+// ce que faisait la comparaison d'identité, mais composable avec le reste de la clé.
+const transformerRevisions = new WeakMap<object, number>();
+let lastTransformerRevision = 0;
+function transformerRevision(transformer: JobMappingTransformerForm): number {
+  let revision = transformerRevisions.get(transformer);
+  if (revision === undefined) {
+    revision = ++lastTransformerRevision;
+    transformerRevisions.set(transformer, revision);
+  }
+  return revision;
 }
 
 function getNosqlJobMappingColumns() {

@@ -23,6 +23,11 @@ import (
 	ds "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/data-sets"
 )
 
+// SemanticTypePhone is the semantic type the phone permutation derives its key under. It is
+// exported because the Benthos path derives the same key for the same job: both engines have to
+// name it the same, or the same job would give different numbers depending on which one ran it.
+const SemanticTypePhone = "person.phone"
+
 // deterministicValueTransformer renvoie un transformer déterministe pour les
 // configs reconnues, sinon (nil, false) — l'appelant retombe alors sur
 // l'adaptateur Benthos aléatoire. Un deriver nil désactive tout (comportement
@@ -63,6 +68,8 @@ func deterministicValueTransformer(
 		// Casse conservée : une colonne email unique et sensible à la casse peut
 		// contenir "Bob@x.com" et "bob@x.com" ; les fusionner casserait l'unicité.
 		return native.NewEmailFaker(d.Domain("person.email").WithCanonicalizer(consistency.PreserveCase), ds.EmailDomains), true
+	case cfg.GetTransformPhoneNumberConfig().GetPreserveFormat():
+		return native.NewPhoneFormatPreserver(d.CipherKey(SemanticTypePhone)), true
 	case cfg.GetTransformPhoneNumberConfig() != nil ||
 		cfg.GetTransformE164PhoneNumberConfig() != nil ||
 		cfg.GetGenerateE164PhoneNumberConfig() != nil:

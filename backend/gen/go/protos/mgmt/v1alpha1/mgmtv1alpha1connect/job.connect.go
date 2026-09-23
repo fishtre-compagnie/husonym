@@ -106,6 +106,18 @@ const (
 	// JobServiceValidateJobMappingsProcedure is the fully-qualified name of the JobService's
 	// ValidateJobMappings RPC.
 	JobServiceValidateJobMappingsProcedure = "/mgmt.v1alpha1.JobService/ValidateJobMappings"
+	// JobServiceReconcileJobMappingsProcedure is the fully-qualified name of the JobService's
+	// ReconcileJobMappings RPC.
+	JobServiceReconcileJobMappingsProcedure = "/mgmt.v1alpha1.JobService/ReconcileJobMappings"
+	// JobServiceGetPendingMappingChangesProcedure is the fully-qualified name of the JobService's
+	// GetPendingMappingChanges RPC.
+	JobServiceGetPendingMappingChangesProcedure = "/mgmt.v1alpha1.JobService/GetPendingMappingChanges"
+	// JobServiceReviewMappingChangesProcedure is the fully-qualified name of the JobService's
+	// ReviewMappingChanges RPC.
+	JobServiceReviewMappingChangesProcedure = "/mgmt.v1alpha1.JobService/ReviewMappingChanges"
+	// JobServiceApplyMappingChangesProcedure is the fully-qualified name of the JobService's
+	// ApplyMappingChanges RPC.
+	JobServiceApplyMappingChangesProcedure = "/mgmt.v1alpha1.JobService/ApplyMappingChanges"
 	// JobServiceValidateSchemaProcedure is the fully-qualified name of the JobService's ValidateSchema
 	// RPC.
 	JobServiceValidateSchemaProcedure = "/mgmt.v1alpha1.JobService/ValidateSchema"
@@ -204,6 +216,18 @@ type JobServiceClient interface {
 	SetJobSyncOptions(context.Context, *connect.Request[v1alpha1.SetJobSyncOptionsRequest]) (*connect.Response[v1alpha1.SetJobSyncOptionsResponse], error)
 	// Validates that the jobmapping configured can run with table constraints
 	ValidateJobMappings(context.Context, *connect.Request[v1alpha1.ValidateJobMappingsRequest]) (*connect.Response[v1alpha1.ValidateJobMappingsResponse], error)
+	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
+	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
+	// Returns the changes runs made to the mappings of jobs under auto_map that
+	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
+	// reviewed: somebody decided.
+	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
+	// Marks changes reviewed, with an optional note.
+	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
+	// Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+	// settles reviewed: correcting what a run chose is done where the change is read.
+	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -420,6 +444,31 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(jobServiceMethods.ByName("ValidateJobMappings")),
 			connect.WithClientOptions(opts...),
 		),
+		reconcileJobMappings: connect.NewClient[v1alpha1.ReconcileJobMappingsRequest, v1alpha1.ReconcileJobMappingsResponse](
+			httpClient,
+			baseURL+JobServiceReconcileJobMappingsProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("ReconcileJobMappings")),
+			connect.WithClientOptions(opts...),
+		),
+		getPendingMappingChanges: connect.NewClient[v1alpha1.GetPendingMappingChangesRequest, v1alpha1.GetPendingMappingChangesResponse](
+			httpClient,
+			baseURL+JobServiceGetPendingMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("GetPendingMappingChanges")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		reviewMappingChanges: connect.NewClient[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse](
+			httpClient,
+			baseURL+JobServiceReviewMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
+			connect.WithClientOptions(opts...),
+		),
+		applyMappingChanges: connect.NewClient[v1alpha1.ApplyMappingChangesRequest, v1alpha1.ApplyMappingChangesResponse](
+			httpClient,
+			baseURL+JobServiceApplyMappingChangesProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("ApplyMappingChanges")),
+			connect.WithClientOptions(opts...),
+		),
 		validateSchema: connect.NewClient[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse](
 			httpClient,
 			baseURL+JobServiceValidateSchemaProcedure,
@@ -535,6 +584,10 @@ type jobServiceClient struct {
 	setJobWorkflowOptions            *connect.Client[v1alpha1.SetJobWorkflowOptionsRequest, v1alpha1.SetJobWorkflowOptionsResponse]
 	setJobSyncOptions                *connect.Client[v1alpha1.SetJobSyncOptionsRequest, v1alpha1.SetJobSyncOptionsResponse]
 	validateJobMappings              *connect.Client[v1alpha1.ValidateJobMappingsRequest, v1alpha1.ValidateJobMappingsResponse]
+	reconcileJobMappings             *connect.Client[v1alpha1.ReconcileJobMappingsRequest, v1alpha1.ReconcileJobMappingsResponse]
+	getPendingMappingChanges         *connect.Client[v1alpha1.GetPendingMappingChangesRequest, v1alpha1.GetPendingMappingChangesResponse]
+	reviewMappingChanges             *connect.Client[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse]
+	applyMappingChanges              *connect.Client[v1alpha1.ApplyMappingChangesRequest, v1alpha1.ApplyMappingChangesResponse]
 	validateSchema                   *connect.Client[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse]
 	getRunContext                    *connect.Client[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse]
 	setRunContext                    *connect.Client[v1alpha1.SetRunContextRequest, v1alpha1.SetRunContextResponse]
@@ -690,6 +743,26 @@ func (c *jobServiceClient) ValidateJobMappings(ctx context.Context, req *connect
 	return c.validateJobMappings.CallUnary(ctx, req)
 }
 
+// ReconcileJobMappings calls mgmt.v1alpha1.JobService.ReconcileJobMappings.
+func (c *jobServiceClient) ReconcileJobMappings(ctx context.Context, req *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error) {
+	return c.reconcileJobMappings.CallUnary(ctx, req)
+}
+
+// GetPendingMappingChanges calls mgmt.v1alpha1.JobService.GetPendingMappingChanges.
+func (c *jobServiceClient) GetPendingMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error) {
+	return c.getPendingMappingChanges.CallUnary(ctx, req)
+}
+
+// ReviewMappingChanges calls mgmt.v1alpha1.JobService.ReviewMappingChanges.
+func (c *jobServiceClient) ReviewMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error) {
+	return c.reviewMappingChanges.CallUnary(ctx, req)
+}
+
+// ApplyMappingChanges calls mgmt.v1alpha1.JobService.ApplyMappingChanges.
+func (c *jobServiceClient) ApplyMappingChanges(ctx context.Context, req *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error) {
+	return c.applyMappingChanges.CallUnary(ctx, req)
+}
+
 // ValidateSchema calls mgmt.v1alpha1.JobService.ValidateSchema.
 func (c *jobServiceClient) ValidateSchema(ctx context.Context, req *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {
 	return c.validateSchema.CallUnary(ctx, req)
@@ -814,6 +887,18 @@ type JobServiceHandler interface {
 	SetJobSyncOptions(context.Context, *connect.Request[v1alpha1.SetJobSyncOptionsRequest]) (*connect.Response[v1alpha1.SetJobSyncOptionsResponse], error)
 	// Validates that the jobmapping configured can run with table constraints
 	ValidateJobMappings(context.Context, *connect.Request[v1alpha1.ValidateJobMappingsRequest]) (*connect.Response[v1alpha1.ValidateJobMappingsResponse], error)
+	// Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+	// as the job's strategy chose, and removes those that disappeared. Called by the worker.
+	ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error)
+	// Returns the changes runs made to the mappings of jobs under auto_map that
+	// nobody has reviewed yet. An added column whose mapping has been changed since counts as
+	// reviewed: somebody decided.
+	GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error)
+	// Marks changes reviewed, with an optional note.
+	ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error)
+	// Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+	// settles reviewed: correcting what a run chose is done where the change is read.
+	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
 	// Gets a run context to be used by a workflow run
@@ -1026,6 +1111,31 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(jobServiceMethods.ByName("ValidateJobMappings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServiceReconcileJobMappingsHandler := connect.NewUnaryHandler(
+		JobServiceReconcileJobMappingsProcedure,
+		svc.ReconcileJobMappings,
+		connect.WithSchema(jobServiceMethods.ByName("ReconcileJobMappings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	jobServiceGetPendingMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceGetPendingMappingChangesProcedure,
+		svc.GetPendingMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("GetPendingMappingChanges")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	jobServiceReviewMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceReviewMappingChangesProcedure,
+		svc.ReviewMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("ReviewMappingChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
+	jobServiceApplyMappingChangesHandler := connect.NewUnaryHandler(
+		JobServiceApplyMappingChangesProcedure,
+		svc.ApplyMappingChanges,
+		connect.WithSchema(jobServiceMethods.ByName("ApplyMappingChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
 	jobServiceValidateSchemaHandler := connect.NewUnaryHandler(
 		JobServiceValidateSchemaProcedure,
 		svc.ValidateSchema,
@@ -1166,6 +1276,14 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceSetJobSyncOptionsHandler.ServeHTTP(w, r)
 		case JobServiceValidateJobMappingsProcedure:
 			jobServiceValidateJobMappingsHandler.ServeHTTP(w, r)
+		case JobServiceReconcileJobMappingsProcedure:
+			jobServiceReconcileJobMappingsHandler.ServeHTTP(w, r)
+		case JobServiceGetPendingMappingChangesProcedure:
+			jobServiceGetPendingMappingChangesHandler.ServeHTTP(w, r)
+		case JobServiceReviewMappingChangesProcedure:
+			jobServiceReviewMappingChangesHandler.ServeHTTP(w, r)
+		case JobServiceApplyMappingChangesProcedure:
+			jobServiceApplyMappingChangesHandler.ServeHTTP(w, r)
 		case JobServiceValidateSchemaProcedure:
 			jobServiceValidateSchemaHandler.ServeHTTP(w, r)
 		case JobServiceGetRunContextProcedure:
@@ -1311,6 +1429,22 @@ func (UnimplementedJobServiceHandler) SetJobSyncOptions(context.Context, *connec
 
 func (UnimplementedJobServiceHandler) ValidateJobMappings(context.Context, *connect.Request[v1alpha1.ValidateJobMappingsRequest]) (*connect.Response[v1alpha1.ValidateJobMappingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ValidateJobMappings is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) ReconcileJobMappings(context.Context, *connect.Request[v1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[v1alpha1.ReconcileJobMappingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ReconcileJobMappings is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) GetPendingMappingChanges(context.Context, *connect.Request[v1alpha1.GetPendingMappingChangesRequest]) (*connect.Response[v1alpha1.GetPendingMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.GetPendingMappingChanges is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) ReviewMappingChanges(context.Context, *connect.Request[v1alpha1.ReviewMappingChangesRequest]) (*connect.Response[v1alpha1.ReviewMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ReviewMappingChanges is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ApplyMappingChanges is not implemented"))
 }
 
 func (UnimplementedJobServiceHandler) ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {

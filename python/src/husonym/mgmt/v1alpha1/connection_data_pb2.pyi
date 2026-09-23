@@ -23,6 +23,18 @@ class PiiDetectionMethod(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PII_DETECTION_METHOD_CHECKSUM: _ClassVar[PiiDetectionMethod]
     PII_DETECTION_METHOD_CONTENT: _ClassVar[PiiDetectionMethod]
     PII_DETECTION_METHOD_FORMAT: _ClassVar[PiiDetectionMethod]
+
+class JavascriptDraftMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: _ClassVar[JavascriptDraftMode]
+    JAVASCRIPT_DRAFT_MODE_TRANSFORM: _ClassVar[JavascriptDraftMode]
+    JAVASCRIPT_DRAFT_MODE_GENERATE: _ClassVar[JavascriptDraftMode]
+
+class JavascriptDraftEngine(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED: _ClassVar[JavascriptDraftEngine]
+    JAVASCRIPT_DRAFT_ENGINE_ATHANOR: _ClassVar[JavascriptDraftEngine]
+    JAVASCRIPT_DRAFT_ENGINE_BENTHOS: _ClassVar[JavascriptDraftEngine]
 PII_CONFIDENCE_UNSPECIFIED: PiiConfidence
 PII_CONFIDENCE_CONFIRMED: PiiConfidence
 PII_CONFIDENCE_NEEDS_REVIEW: PiiConfidence
@@ -31,6 +43,12 @@ PII_DETECTION_METHOD_COLUMN_NAME: PiiDetectionMethod
 PII_DETECTION_METHOD_CHECKSUM: PiiDetectionMethod
 PII_DETECTION_METHOD_CONTENT: PiiDetectionMethod
 PII_DETECTION_METHOD_FORMAT: PiiDetectionMethod
+JAVASCRIPT_DRAFT_MODE_UNSPECIFIED: JavascriptDraftMode
+JAVASCRIPT_DRAFT_MODE_TRANSFORM: JavascriptDraftMode
+JAVASCRIPT_DRAFT_MODE_GENERATE: JavascriptDraftMode
+JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED: JavascriptDraftEngine
+JAVASCRIPT_DRAFT_ENGINE_ATHANOR: JavascriptDraftEngine
+JAVASCRIPT_DRAFT_ENGINE_BENTHOS: JavascriptDraftEngine
 
 class PostgresStreamConfig(_message.Message):
     __slots__ = ()
@@ -147,7 +165,7 @@ class ConnectionSchemaConfig(_message.Message):
     def __init__(self, pg_config: _Optional[_Union[PostgresSchemaConfig, _Mapping]] = ..., aws_s3_config: _Optional[_Union[AwsS3SchemaConfig, _Mapping]] = ..., mysql_config: _Optional[_Union[MysqlSchemaConfig, _Mapping]] = ..., mongo_config: _Optional[_Union[MongoSchemaConfig, _Mapping]] = ..., gcp_cloudstorage_config: _Optional[_Union[GcpCloudStorageSchemaConfig, _Mapping]] = ..., dynamodb_config: _Optional[_Union[DynamoDBSchemaConfig, _Mapping]] = ..., mssql_config: _Optional[_Union[MssqlSchemaConfig, _Mapping]] = ...) -> None: ...
 
 class DatabaseColumn(_message.Message):
-    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation", "data_category", "is_sensitive", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence")
+    __slots__ = ("schema", "table", "column", "data_type", "is_nullable", "column_default", "generated_type", "identity_generation", "character_maximum_length", "data_category", "is_sensitive", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
@@ -156,6 +174,7 @@ class DatabaseColumn(_message.Message):
     COLUMN_DEFAULT_FIELD_NUMBER: _ClassVar[int]
     GENERATED_TYPE_FIELD_NUMBER: _ClassVar[int]
     IDENTITY_GENERATION_FIELD_NUMBER: _ClassVar[int]
+    CHARACTER_MAXIMUM_LENGTH_FIELD_NUMBER: _ClassVar[int]
     DATA_CATEGORY_FIELD_NUMBER: _ClassVar[int]
     IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
     SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
@@ -170,13 +189,14 @@ class DatabaseColumn(_message.Message):
     column_default: str
     generated_type: str
     identity_generation: str
+    character_maximum_length: int
     data_category: str
     is_sensitive: bool
     suggested_transformer_source: _transformer_pb2.TransformerSource
     pii_confidence: PiiConfidence
     pii_detection_method: PiiDetectionMethod
     pii_evidence: str
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ..., data_category: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., data_type: _Optional[str] = ..., is_nullable: _Optional[str] = ..., column_default: _Optional[str] = ..., generated_type: _Optional[str] = ..., identity_generation: _Optional[str] = ..., character_maximum_length: _Optional[int] = ..., data_category: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
 
 class GetConnectionSchemaRequest(_message.Message):
     __slots__ = ("connection_id", "schema_config")
@@ -523,3 +543,61 @@ class GetColumnSampleValuesResponse(_message.Message):
     VALUES_FIELD_NUMBER: _ClassVar[int]
     values: _containers.RepeatedCompositeFieldContainer[ColumnSampleValue]
     def __init__(self, values: _Optional[_Iterable[_Union[ColumnSampleValue, _Mapping]]] = ...) -> None: ...
+
+class GetJavascriptDraftPromptRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "column", "mode", "engine")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    ENGINE_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    column: str
+    mode: JavascriptDraftMode
+    engine: JavascriptDraftEngine
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., mode: _Optional[_Union[JavascriptDraftMode, str]] = ..., engine: _Optional[_Union[JavascriptDraftEngine, str]] = ...) -> None: ...
+
+class PreviewColumnTransformerRequest(_message.Message):
+    __slots__ = ("connection_id", "schema", "table", "column", "transformer", "limit")
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    TRANSFORMER_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    connection_id: str
+    schema: str
+    table: str
+    column: str
+    transformer: _transformer_pb2.TransformerConfig
+    limit: int
+    def __init__(self, connection_id: _Optional[str] = ..., schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., transformer: _Optional[_Union[_transformer_pb2.TransformerConfig, _Mapping]] = ..., limit: _Optional[int] = ...) -> None: ...
+
+class ColumnTransformerPreview(_message.Message):
+    __slots__ = ("input", "output", "error")
+    INPUT_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    input: ColumnSampleValue
+    output: ColumnSampleValue
+    error: str
+    def __init__(self, input: _Optional[_Union[ColumnSampleValue, _Mapping]] = ..., output: _Optional[_Union[ColumnSampleValue, _Mapping]] = ..., error: _Optional[str] = ...) -> None: ...
+
+class PreviewColumnTransformerResponse(_message.Message):
+    __slots__ = ("values", "distinct_inputs", "distinct_outputs")
+    VALUES_FIELD_NUMBER: _ClassVar[int]
+    DISTINCT_INPUTS_FIELD_NUMBER: _ClassVar[int]
+    DISTINCT_OUTPUTS_FIELD_NUMBER: _ClassVar[int]
+    values: _containers.RepeatedCompositeFieldContainer[ColumnTransformerPreview]
+    distinct_inputs: int
+    distinct_outputs: int
+    def __init__(self, values: _Optional[_Iterable[_Union[ColumnTransformerPreview, _Mapping]]] = ..., distinct_inputs: _Optional[int] = ..., distinct_outputs: _Optional[int] = ...) -> None: ...
+
+class GetJavascriptDraftPromptResponse(_message.Message):
+    __slots__ = ("prompt",)
+    PROMPT_FIELD_NUMBER: _ClassVar[int]
+    prompt: str
+    def __init__(self, prompt: _Optional[str] = ...) -> None: ...

@@ -37,6 +37,10 @@ interface JobColumn {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   status: JobStatus;
+  // Changes the runs made to the job's mappings that nobody has reviewed, and how many of them
+  // left a column that reads as personal data in clear.
+  pendingReviews: number;
+  pendingPersonal: number;
 }
 
 interface GetJobsProps {
@@ -108,6 +112,27 @@ export function getColumns(
               </div>
             </span>
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'pendingReviews',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="To review" />
+      ),
+      cell: ({ row }) => {
+        const count = row.original.pendingReviews;
+        if (count === 0) {
+          return null;
+        }
+        const personal = row.original.pendingPersonal;
+        return (
+          <NextLink href={`/${accountName}/jobs/${row.getValue('id')}/review`}>
+            <Badge variant={personal > 0 ? 'destructive' : 'outline'}>
+              {count}
+              {personal > 0 ? ` · ${personal} personal in clear` : ''}
+            </Badge>
+          </NextLink>
         );
       },
     },

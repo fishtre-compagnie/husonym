@@ -955,10 +955,12 @@ type MssqlSourceOptions struct {
 type MssqlNewColumnAdditionStrategy struct {
 	HaltJob     *MssqlHaltJobNewColumnAdditionStrategy     `json:"haltJob,omitempty"`
 	Passthrough *MssqlPassthroughNewColumnAdditionStrategy `json:"passthrough,omitempty"`
+	AutoMap     *MssqlAutoMapNewColumnAdditionStrategy     `json:"autoMap,omitempty"`
 }
 
 type MssqlHaltJobNewColumnAdditionStrategy struct{}
 type MssqlPassthroughNewColumnAdditionStrategy struct{}
+type MssqlAutoMapNewColumnAdditionStrategy struct{}
 
 type MssqlColumnRemovalStrategy struct {
 	HaltJob     *MssqlHaltJobColumnRemovalStrategy     `json:"haltJob,omitempty"`
@@ -1057,6 +1059,13 @@ func (s *MssqlNewColumnAdditionStrategy) ToDto() *mgmtv1alpha1.MssqlSourceConnec
 			},
 		}
 	}
+	if s.AutoMap != nil {
+		return &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy{
+			Strategy: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_{
+				AutoMap: &mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap{},
+			},
+		}
+	}
 	return nil
 }
 
@@ -1069,6 +1078,8 @@ func (s *MssqlNewColumnAdditionStrategy) FromDto(
 			s.HaltJob = &MssqlHaltJobNewColumnAdditionStrategy{}
 		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_Passthrough_:
 			s.Passthrough = &MssqlPassthroughNewColumnAdditionStrategy{}
+		case *mgmtv1alpha1.MssqlSourceConnectionOptions_NewColumnAdditionStrategy_AutoMap_:
+			s.AutoMap = &MssqlAutoMapNewColumnAdditionStrategy{}
 		}
 	}
 }

@@ -2,14 +2,10 @@
 import ButtonText from '@/components/ButtonText';
 import Spinner from '@/components/Spinner';
 import { Badge } from '@/components/ui/badge';
-import { FormDescription, FormLabel } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { CheckCircledIcon, CrossCircledIcon } from '@radix-ui/react-icons';
 
-import FormErrorMessage from '@/components/FormErrorMessage';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
 import { Button } from '@/components/ui/button';
-import { create } from '@bufbuild/protobuf';
 import { useMutation } from '@connectrpc/connect-query';
 import {
   TransformCharacterScramble,
@@ -17,6 +13,7 @@ import {
   TransformersService,
 } from '@husonym/sdk';
 import { ReactElement, useState } from 'react';
+import OptionField from './options/OptionField';
 import { TransformerConfigProps } from './util';
 
 interface Props extends TransformerConfigProps<TransformCharacterScramble> {}
@@ -82,35 +79,23 @@ export default function TransformCharacterScrambleForm(
           />
         </Button>
       </div>
-      <div className="flex flex-row items-center justify-between rounded-lg border dark:border-gray-700 p-3 shadow-xs">
-        <div className="space-y-0.5 w-[70%]">
-          <FormLabel>Regular Expression</FormLabel>
-          <FormDescription>
+      <OptionField
+        schema={TransformCharacterScrambleSchema}
+        value={value}
+        setValue={setValue}
+        isDisabled={isDisabled}
+        errors={errors}
+        field="userProvidedRegex"
+        label="Regular Expression"
+        description={
+          <>
             Provide a Go regular expression to match and transform a substring
             of the value. Leave this blank to transform the entire value. Note:
             the regex needs to compile in Go.{' '}
             <LearnMoreLink href="https://docs.husonym.com/transformers/system#transform-character-scramble" />
-          </FormDescription>
-        </div>
-        <div className="flex flex-col">
-          <div className="justify-end flex min-w-[300px]">
-            <Input
-              type="string"
-              value={value.userProvidedRegex}
-              onChange={(e) => {
-                setValue(
-                  create(TransformCharacterScrambleSchema, {
-                    ...value,
-                    userProvidedRegex: e.target.value,
-                  })
-                );
-              }}
-              disabled={isDisabled}
-            />
-          </div>
-        </div>
-        <FormErrorMessage message={errors?.userProvidedRegex?.message} />
-      </div>
+          </>
+        }
+      />
     </div>
   );
 }

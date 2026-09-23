@@ -54,6 +54,11 @@ interface Props<TData extends RowData> {
    * à droite. N'a d'effet qu'avec `useColumnSizes`.
    */
   noGrowColumnIds?: string[];
+  /**
+   * Appelée avec l'index de la ligne cliquée. Doit être stable : les lignes sont
+   * mémoïsées et ne la relisent pas.
+   */
+  onRowClick?(index: number): void;
 }
 
 /**
@@ -76,6 +81,7 @@ export default function FastTable<TData extends RowData>(
     headerRow,
     useColumnSizes,
     noGrowColumnIds,
+    onRowClick,
   } = props;
 
   const { rows } = table.getRowModel();
@@ -159,6 +165,7 @@ export default function FastTable<TData extends RowData>(
                 disableTdWidth={bodyRow?.disableTdWidth}
                 useColumnSizes={useColumnSizes}
                 noGrowColumnIds={noGrowColumnIds}
+                onRowClick={onRowClick}
               />
             );
           })}

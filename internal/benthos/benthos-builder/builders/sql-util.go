@@ -1,14 +1,13 @@
 package benthosbuilder_builders
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,11 +16,12 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
+	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -41,20 +41,36 @@ type tableMapping struct {
 	Mappings []*mgmtv1alpha1.JobMapping
 }
 
+var errSourceShowsNoMappedColumn = errors.New(
+	"the source shows none of the columns the job maps: check that the connection points to the right database and can read its tables",
+)
+
+// checkSourceShowsTheJob refuses a source in which none of the job's mapped columns remain. That
+// is not a source that lost columns but the wrong database, or a user without the rights to see
+// its tables: removing the mappings of the missing columns would empty the job.
+func checkSourceShowsTheJob(mappings, found []*mgmtv1alpha1.JobMapping) error {
+	if len(mappings) > 0 && len(found) == 0 {
+		return errSourceShowsNoMappedColumn
+	}
+	return nil
+}
+
+// removeMappingsNotFoundInSource splits the mappings between those whose column the source still
+// has and those whose column it no longer has.
 func removeMappingsNotFoundInSource(
 	mappings []*mgmtv1alpha1.JobMapping,
 	groupedSchemas map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
-) []*mgmtv1alpha1.JobMapping {
-	newMappings := make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
+) (kept, removed []*mgmtv1alpha1.JobMapping) {
+	kept = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
 	for _, mapping := range mappings {
 		key := sqlmanager_shared.BuildTable(mapping.Schema, mapping.Table)
-		if _, ok := groupedSchemas[key]; ok {
-			if _, ok := groupedSchemas[key][mapping.Column]; ok {
-				newMappings = append(newMappings, mapping)
-			}
+		if _, ok := groupedSchemas[key][mapping.Column]; ok {
+			kept = append(kept, mapping)
+			continue
 		}
+		removed = append(removed, mapping)
 	}
-	return newMappings
+	return kept, removed
 }
 
 // checks that the source database has all the columns that are mapped in the job mappings
@@ -115,6 +131,180 @@ func shouldHaltOnSchemaAddition(
 		}
 	}
 	return newColumns, len(newColumns) != 0
+}
+
+// formatMappingColumns names mappings the way shouldHaltOnSchemaAddition names new columns, so
+// the two messages about the same columns read alike. Sorted, because the mappings are built by
+// walking maps: without it the same run logs the same columns in a different order every time,
+// and nobody can diff two runs.
+func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
+	columns := make([]string, 0, len(mappings))
+	for _, m := range mappings {
+		columns = append(
+			columns,
+			fmt.Sprintf("%s.%s", sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable()), m.GetColumn()),
+		)
+	}
+	slices.Sort(columns)
+	return columns
+}
+
+// autoMapNewColumns (AutoMap & Review) replaces, among the mappings added for new columns, each
+// passthrough by the transformer the PII detection suggests, in the config it starts with in the
+// catalogue — the mapping the UI would propose for the column.
+//
+// The passthrough stays when nothing is suggested, and when the column carries a primary key, a
+// foreign key or a unique constraint, or is referenced by one: a transformer there could break
+// the constraint and fail the run, while the strategy never stops one. Choosing a transformer
+// that keeps a constraint is another matter. Generated columns keep their GenerateDefault.
+//
+// An option the run could not honor is turned off rather than written to the job: see
+// withinReach.
+//
+// It returns the mappings, and the names of the columns it anonymized and of those it left in
+// passthrough, for the run's log.
+func autoMapNewColumns(
+	mappings []*mgmtv1alpha1.JobMapping,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	constraints *sqlmanager_shared.TableConstraints,
+	hasConsistencyKey bool,
+) (out []*mgmtv1alpha1.JobMapping, anonymized, passedThrough []string) {
+	constrained := constrainedColumns(constraints)
+	out = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
+	for _, m := range mappings {
+		if m.GetTransformer().GetConfig().GetPassthroughConfig() == nil {
+			out = append(out, m)
+			continue
+		}
+		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
+		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
+
+		var dataType string
+		if info := columnInfo[table][m.GetColumn()]; info != nil {
+			dataType = info.DataType
+		}
+		source, category, suggested := job_util.SuggestedTransformer(m.GetColumn(), dataType)
+		if _, ok := constrained[table][m.GetColumn()]; ok || !suggested {
+			out = append(out, m)
+			passedThrough = append(passedThrough, name)
+			continue
+		}
+		// The base catalogue: a run has no license to check, and the suggestions are base
+		// transformers anyway.
+		config, ok := catalog.DefaultConfig(source, false)
+		if !ok {
+			out = append(out, m)
+			passedThrough = append(passedThrough, name)
+			continue
+		}
+		out = append(out, &mgmtv1alpha1.JobMapping{
+			Schema:      m.GetSchema(),
+			Table:       m.GetTable(),
+			Column:      m.GetColumn(),
+			Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: withinReach(config, hasConsistencyKey)},
+		})
+		anonymized = append(anonymized, fmt.Sprintf("%s (%s)", name, category))
+	}
+	slices.Sort(anonymized)
+	slices.Sort(passedThrough)
+	return out, anonymized, passedThrough
+}
+
+// withinReach turns off the options of a config that need something the deployment does not
+// have. It is the strategy's own rule applied to the options: a mapping written to the job is a
+// mapping the runs after this one will keep, so it must be one they can carry out.
+//
+// TransformPhoneNumber keeps the format of a number by permuting its digits under a derived key
+// (preserve_format), which the catalogue turns on by default. Without a key the run would stop
+// on the very column AutoMap had just mapped, and every run after it, until somebody edited the
+// mapping by hand. The number is anonymized without keeping its format instead — the column does
+// not leave in clear, and turning the option back on is a click once the key is set.
+func withinReach(
+	config *mgmtv1alpha1.TransformerConfig,
+	hasConsistencyKey bool,
+) *mgmtv1alpha1.TransformerConfig {
+	if hasConsistencyKey {
+		return config
+	}
+	if phone := config.GetTransformPhoneNumberConfig(); phone.GetPreserveFormat() {
+		phone.PreserveFormat = gotypeutil.ToPtr(false)
+	}
+	return config
+}
+
+// constrainedColumns are the columns, by schema.table, that a primary key, a foreign key or a
+// unique constraint or index covers, on either side of a foreign key.
+func constrainedColumns(constraints *sqlmanager_shared.TableConstraints) map[string]map[string]struct{} {
+	out := map[string]map[string]struct{}{}
+	add := func(table string, columns ...string) {
+		if out[table] == nil {
+			out[table] = map[string]struct{}{}
+		}
+		for _, column := range columns {
+			out[table][column] = struct{}{}
+		}
+	}
+	if constraints == nil {
+		return out
+	}
+	for table, columns := range constraints.PrimaryKeyConstraints {
+		add(table, columns...)
+	}
+	for table, fks := range constraints.ForeignKeyConstraints {
+		for _, fk := range fks {
+			add(table, fk.Columns...)
+			if fk.ForeignKey != nil {
+				add(fk.ForeignKey.Table, fk.ForeignKey.Columns...)
+			}
+		}
+	}
+	for table, sets := range constraints.UniqueConstraints {
+		for _, columns := range sets {
+			add(table, columns...)
+		}
+	}
+	for table, sets := range constraints.UniqueIndexes {
+		for _, columns := range sets {
+			add(table, columns...)
+		}
+	}
+	return out
+}
+
+// sourceColumnsOf lists every column of the tables the mappings cover, with its type as the source
+// reports it: what the backend compares from one run to the next to tell that a column changed
+// type.
+func sourceColumnsOf(
+	mappings []*mgmtv1alpha1.JobMapping,
+	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+) []*mgmtv1alpha1.JobSourceColumn {
+	tables := map[string]struct{ schema, table string }{}
+	for _, m := range mappings {
+		tables[sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())] = struct{ schema, table string }{m.GetSchema(), m.GetTable()}
+	}
+	out := []*mgmtv1alpha1.JobSourceColumn{}
+	for key, t := range tables {
+		for column, info := range columnInfo[key] {
+			var dataType string
+			if info != nil {
+				dataType = info.DataType
+			}
+			out = append(out, &mgmtv1alpha1.JobSourceColumn{
+				Column:   &mgmtv1alpha1.JobColumn{Schema: t.schema, Table: t.table, Column: column},
+				DataType: dataType,
+			})
+		}
+	}
+	// Read out of maps, so in no order: these rows replace the job's source columns on every
+	// run, and an order that changes for nothing makes two runs look different.
+	slices.SortFunc(out, func(a, b *mgmtv1alpha1.JobSourceColumn) int {
+		return cmp.Or(
+			cmp.Compare(a.GetColumn().GetSchema(), b.GetColumn().GetSchema()),
+			cmp.Compare(a.GetColumn().GetTable(), b.GetColumn().GetTable()),
+			cmp.Compare(a.GetColumn().GetColumn(), b.GetColumn().GetColumn()),
+		)
+	})
+	return out
 }
 
 func getMapValuesCount[K comparable, V any](m map[K][]V) int {
@@ -664,880 +854,22 @@ func getAdditionalPassthroughJobMappings(
 		}
 	}
 
+	// Map iteration gives a different order every time, and these mappings are written to the
+	// job: without this, two runs that find the same new columns leave the job's mappings in a
+	// different order, and its history reads as a change where nothing changed.
+	sortMappings(output)
 	return output, nil
 }
 
-// Based on the source schema and the provided mappings, we find the missing columns (if any) and generate job mappings for them automatically
-func getAdditionalJobMappings(
-	driver string,
-	groupedSchemas map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
-	mappings []*mgmtv1alpha1.JobMapping,
-	getTableFromKey func(key string) (schema, table string, err error),
-	logger *slog.Logger,
-) ([]*mgmtv1alpha1.JobMapping, error) {
-	output := []*mgmtv1alpha1.JobMapping{}
-
-	tableColMappings := getUniqueColMappingsMap(mappings)
-
-	for schematable, cols := range groupedSchemas {
-		mappedCols, ok := tableColMappings[schematable]
-		if !ok {
-			// todo: we may want to generate mappings for this entire table? However this may be dead code as we get the grouped schemas based on the mappings
-			logger.Warn(
-				"table found in schema data that is not present in job mappings",
-				"table",
-				schematable,
-			)
-			continue
-		}
-		if len(cols) == len(mappedCols) {
-			continue
-		}
-		for col, info := range cols {
-			if _, ok := mappedCols[col]; !ok {
-				schema, table, err := getTableFromKey(schematable)
-				if err != nil {
-					return nil, err
-				}
-				// we found a column that is not present in the mappings, let's create a mapping for it
-				if info.ColumnDefault != "" || info.IdentityGeneration != nil ||
-					info.GeneratedType != nil {
-					output = append(output, &mgmtv1alpha1.JobMapping{
-						Schema: schema,
-						Table:  table,
-						Column: col,
-						Transformer: &mgmtv1alpha1.JobMappingTransformer{
-							Config: &mgmtv1alpha1.TransformerConfig{
-								Config: &mgmtv1alpha1.TransformerConfig_GenerateDefaultConfig{
-									GenerateDefaultConfig: &mgmtv1alpha1.GenerateDefault{},
-								},
-							},
-						},
-					})
-				} else if info.IsNullable {
-					output = append(output, &mgmtv1alpha1.JobMapping{
-						Schema: schema,
-						Table:  table,
-						Column: col,
-						Transformer: &mgmtv1alpha1.JobMappingTransformer{
-							Config: &mgmtv1alpha1.TransformerConfig{
-								Config: &mgmtv1alpha1.TransformerConfig_Nullconfig{
-									Nullconfig: &mgmtv1alpha1.Null{},
-								},
-							},
-						},
-					})
-				} else {
-					switch driver {
-					case sqlmanager_shared.PostgresDriver:
-						transformer, err := getJmTransformerByPostgresDataType(info)
-						if err != nil {
-							return nil, err
-						}
-						output = append(output, &mgmtv1alpha1.JobMapping{
-							Schema:      schema,
-							Table:       table,
-							Column:      col,
-							Transformer: transformer,
-						})
-					case sqlmanager_shared.MysqlDriver:
-						transformer, err := getJmTransformerByMysqlDataType(info)
-						if err != nil {
-							return nil, err
-						}
-						output = append(output, &mgmtv1alpha1.JobMapping{
-							Schema:      schema,
-							Table:       table,
-							Column:      col,
-							Transformer: transformer,
-						})
-					default:
-						logger.Warn("this driver is not currently supported for additional job mapping by data type")
-						return nil, fmt.Errorf(
-							"this driver %q does not currently support additional job mappings by data type. Please provide discrete job mappings for %q.%q.%q to continue: %w",
-							driver,
-							info.TableSchema,
-							info.TableName,
-							info.ColumnName,
-							errors.ErrUnsupported,
-						)
-					}
-				}
-			}
-		}
-	}
-
-	return output, nil
-}
-
-func getJmTransformerByPostgresDataType(
-	colInfo *sqlmanager_shared.DatabaseSchemaRow,
-) (*mgmtv1alpha1.JobMappingTransformer, error) {
-	cleanedDataType := cleanPostgresType(colInfo.DataType)
-	switch cleanedDataType {
-	case "smallint":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(int64(-32768)),
-						Max: shared.Ptr(int64(32767)),
-					},
-				},
-			},
-		}, nil
-	case "integer":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(int64(-2147483648)),
-						Max: shared.Ptr(int64(2147483647)),
-					},
-				},
-			},
-		}, nil
-	case "bigint":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(int64(-9223372036854775808)),
-						Max: shared.Ptr(int64(9223372036854775807)),
-					},
-				},
-			},
-		}, nil
-	case "decimal", "numeric":
-		var precision *int64
-		if colInfo.NumericPrecision > 0 {
-			np := int64(colInfo.NumericPrecision)
-			precision = &np
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateFloat64Config{
-					GenerateFloat64Config: &mgmtv1alpha1.GenerateFloat64{
-						Precision: precision, // todo: we need to expose scale...
-					},
-				},
-			},
-		}, nil
-	case "real", "double precision":
-		var precision *int64
-		if colInfo.NumericPrecision > 0 {
-			np := int64(colInfo.NumericPrecision)
-			precision = &np
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateFloat64Config{
-					GenerateFloat64Config: &mgmtv1alpha1.GenerateFloat64{
-						Precision: precision,
-					},
-				},
-			},
-		}, nil
-
-	case "smallserial", "serial", "bigserial":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateDefaultConfig{
-					GenerateDefaultConfig: &mgmtv1alpha1.GenerateDefault{},
-				},
-			},
-		}, nil
-	case "money":
-		var precision *int64
-		if colInfo.NumericPrecision > 0 {
-			np := int64(colInfo.NumericPrecision)
-			precision = &np
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateFloat64Config{
-					GenerateFloat64Config: &mgmtv1alpha1.GenerateFloat64{
-						// todo: to adequately support money, we need to know the scale which is set via the lc_monetary setting (but may be properly populated via our query..)
-						Precision: precision,
-						Min:       shared.Ptr(float64(-92233720368547758.08)),
-						Max:       shared.Ptr(float64(92233720368547758.07)),
-					},
-				},
-			},
-		}, nil
-	case "text",
-		"bpchar",
-		"character",
-		"character varying": // todo: test to see if this works when (n) has been specified
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{}, // todo?
-				},
-			},
-		}, nil
-	// case "bytea": // todo https://www.postgresql.org/docs/current/datatype-binary.html
-	case "date":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const year = date.getFullYear();
-								const month = String(date.getMonth() + 1).padStart(2, '0');
-								const day = String(date.getDate()).padStart(2, '0');
-								return year + "-" + month + "-" + day;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "time without time zone":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const hours = String(date.getHours()).padStart(2, '0');
-								const minutes = String(date.getMinutes()).padStart(2, '0');
-								const seconds = String(date.getSeconds()).padStart(2, '0');
-								return hours + ":" + minutes + ":" + seconds;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "time with time zone":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const hours = String(date.getUTCHours()).padStart(2, '0');
-								const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-								const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-								const timezoneOffset = -date.getTimezoneOffset();
-								const absOffset = Math.abs(timezoneOffset);
-								const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');
-								const offsetMinutes = String(absOffset % 60).padStart(2, '0');
-								const offsetSign = timezoneOffset >= 0 ? '+' : '-';
-								return hours + ":" + minutes + ":" + seconds + offsetSign + offsetHours + ":" + offsetMinutes;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "interval":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const hours = String(date.getUTCHours()).padStart(2, '0');
-								const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-								const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-								return hours + ":" + minutes + ":" + seconds;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "timestamp without time zone":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const year = date.getFullYear();
-								const month = String(date.getMonth() + 1).padStart(2, '0');
-								const day = String(date.getDate()).padStart(2, '0');
-								const hours = String(date.getHours()).padStart(2, '0');
-								const minutes = String(date.getMinutes()).padStart(2, '0');
-								const seconds = String(date.getSeconds()).padStart(2, '0');
-								return year + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "timestamp with time zone":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const year = date.getUTCFullYear();
-								const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-								const day = String(date.getUTCDate()).padStart(2, '0');
-								const hours = String(date.getUTCHours()).padStart(2, '0');
-								const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-								const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-								const timezoneOffset = -date.getTimezoneOffset();
-								const absOffset = Math.abs(timezoneOffset);
-								const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');
-								const offsetMinutes = String(absOffset % 60).padStart(2, '0');
-								const offsetSign = timezoneOffset >= 0 ? '+' : '-';
-								return year + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds + offsetSign + offsetHours + ":" + offsetMinutes;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "boolean":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateBoolConfig{
-					GenerateBoolConfig: &mgmtv1alpha1.GenerateBool{},
-				},
-			},
-		}, nil
-	case "uuid":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateUuidConfig{
-					GenerateUuidConfig: &mgmtv1alpha1.GenerateUuid{
-						IncludeHyphens: shared.Ptr(true),
-					},
-				},
-			},
-		}, nil
-	default:
-		return nil, fmt.Errorf(
-			"uncountered unsupported data type %q for %q.%q.%q when attempting to generate an auto-mapper. To continue, provide a discrete job mapping for this column.: %w",
-			colInfo.DataType,
-			colInfo.TableSchema,
-			colInfo.TableName,
-			colInfo.ColumnName,
-			errors.ErrUnsupported,
+// sortMappings orders mappings by schema, table then column.
+func sortMappings(mappings []*mgmtv1alpha1.JobMapping) {
+	slices.SortFunc(mappings, func(a, b *mgmtv1alpha1.JobMapping) int {
+		return cmp.Or(
+			cmp.Compare(a.GetSchema(), b.GetSchema()),
+			cmp.Compare(a.GetTable(), b.GetTable()),
+			cmp.Compare(a.GetColumn(), b.GetColumn()),
 		)
-	}
-}
-
-func getJmTransformerByMysqlDataType(
-	colInfo *sqlmanager_shared.DatabaseSchemaRow,
-) (*mgmtv1alpha1.JobMappingTransformer, error) {
-	cleanedDataType := cleanMysqlType(colInfo.MysqlColumnType)
-	switch cleanedDataType {
-	case "char":
-		params := extractMysqlTypeParams(colInfo.MysqlColumnType)
-		minLength := int64(0)
-		maxLength := int64(255)
-		if len(params) > 0 {
-			fixedLength, err := strconv.ParseInt(params[0], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to parse length for type %q: %w",
-					colInfo.MysqlColumnType,
-					err,
-				)
-			}
-			minLength = fixedLength
-			maxLength = fixedLength
-		} else if colInfo.CharacterMaximumLength > 0 {
-			maxLength = int64(colInfo.CharacterMaximumLength)
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{
-						Min: shared.Ptr(minLength),
-						Max: shared.Ptr(maxLength),
-					},
-				},
-			},
-		}, nil
-
-	case "varchar":
-		params := extractMysqlTypeParams(colInfo.MysqlColumnType)
-		maxLength := int64(65535)
-		if len(params) > 0 {
-			fixedLength, err := strconv.ParseInt(params[0], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to parse length for type %q: %w",
-					colInfo.MysqlColumnType,
-					err,
-				)
-			}
-			maxLength = fixedLength
-		} else if colInfo.CharacterMaximumLength > 0 {
-			maxLength = int64(colInfo.CharacterMaximumLength)
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{Max: shared.Ptr(maxLength)},
-				},
-			},
-		}, nil
-
-	case "tinytext":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{Max: shared.Ptr(int64(255))},
-				},
-			},
-		}, nil
-
-	case "text":
-		params := extractMysqlTypeParams(colInfo.MysqlColumnType)
-		maxLength := int64(65535)
-		if len(params) > 0 {
-			length, err := strconv.ParseInt(params[0], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to parse length for type %q: %w",
-					colInfo.MysqlColumnType,
-					err,
-				)
-			}
-			maxLength = length
-		} else if colInfo.CharacterMaximumLength > 0 {
-			maxLength = int64(colInfo.CharacterMaximumLength)
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{Max: shared.Ptr(maxLength)},
-				},
-			},
-		}, nil
-
-	case "mediumtext":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{
-						Max: shared.Ptr(int64(16_777_215)),
-					},
-				},
-			},
-		}, nil
-	case "longtext":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateStringConfig{
-					GenerateStringConfig: &mgmtv1alpha1.GenerateString{
-						Max: shared.Ptr(int64(4_294_967_295)),
-					},
-				},
-			},
-		}, nil
-	case "enum", "set":
-		params := extractMysqlTypeParams(colInfo.MysqlColumnType)
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateCategoricalConfig{
-					GenerateCategoricalConfig: &mgmtv1alpha1.GenerateCategorical{
-						Categories: shared.Ptr(strings.Join(params, ",")),
-					},
-				},
-			},
-		}, nil
-
-	case "tinyint":
-		isUnsigned := strings.Contains(strings.ToLower(colInfo.MysqlColumnType), "unsigned")
-		var minVal, maxVal int64
-		if isUnsigned {
-			minVal = 0
-			maxVal = 255 // 2^8 - 1
-		} else {
-			minVal = -128 // -2^7
-			maxVal = 127  // 2^7 - 1
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(minVal),
-						Max: shared.Ptr(maxVal),
-					},
-				},
-			},
-		}, nil
-
-	case "smallint":
-		isUnsigned := strings.Contains(strings.ToLower(colInfo.MysqlColumnType), "unsigned")
-		var minVal, maxVal int64
-		if isUnsigned {
-			minVal = 0
-			maxVal = 65535 // 2^16 - 1
-		} else {
-			minVal = -32768 // -2^15
-			maxVal = 32767  // 2^15 - 1
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(minVal),
-						Max: shared.Ptr(maxVal),
-					},
-				},
-			},
-		}, nil
-	case "mediumint":
-		isUnsigned := strings.Contains(strings.ToLower(colInfo.MysqlColumnType), "unsigned")
-		var minVal, maxVal int64
-		if isUnsigned {
-			minVal = 0
-			maxVal = 16777215 // 2^24 - 1
-		} else {
-			minVal = -8388608 // -2^23
-			maxVal = 8388607  // 2^23 - 1
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(minVal),
-						Max: shared.Ptr(maxVal),
-					},
-				},
-			},
-		}, nil
-	case "int", "integer":
-		isUnsigned := strings.Contains(strings.ToLower(colInfo.MysqlColumnType), "unsigned")
-		var minVal, maxVal int64
-		if isUnsigned {
-			minVal = 0
-			maxVal = 4294967295 // 2^32 - 1
-		} else {
-			minVal = -2147483648 // -2^31
-			maxVal = 2147483647  // 2^31 - 1
-		}
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(minVal),
-						Max: shared.Ptr(maxVal),
-					},
-				},
-			},
-		}, nil
-	case "bigint":
-		minVal := int64(0)             // -2^63
-		maxVal := int64(math.MaxInt64) // 2^63 - 1
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateInt64Config{
-					GenerateInt64Config: &mgmtv1alpha1.GenerateInt64{
-						Min: shared.Ptr(minVal),
-						Max: shared.Ptr(maxVal),
-					},
-				},
-			},
-		}, nil
-	case "float":
-		precision := int64(colInfo.NumericPrecision)
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateFloat64Config{
-					GenerateFloat64Config: &mgmtv1alpha1.GenerateFloat64{
-						Precision: &precision,
-					},
-				},
-			},
-		}, nil
-	case "double", "double precision", "decimal", "dec":
-		precision := int64(colInfo.NumericPrecision)
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateFloat64Config{
-					GenerateFloat64Config: &mgmtv1alpha1.GenerateFloat64{
-						Precision: &precision, // todo: expose scale
-					},
-				},
-			},
-		}, nil
-
-	// case "bit":
-	// 	params := extractMysqlTypeParams(colInfo.MysqlColumnType)
-	// 	bitLength := int64(1) // default length is 1
-	// 	if len(params) > 0 {
-	// 		if parsed, err := strconv.ParseInt(params[0], 10, 64); err == nil && parsed > 0 && parsed <= 64 {
-	// 			bitLength = parsed
-	// 		}
-	// 	}
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: fmt.Sprintf(`
-	// 						// Generate random bits up to specified length
-	// 						const length = %d;
-	// 						let value = 0;
-	// 						for (let i = 0; i < length; i++) {
-	// 							if (Math.random() < 0.5) {
-	// 								value |= (1 << i);
-	// 							}
-	// 						}
-	// 						// Convert to binary string padded to the correct length
-	// 						return value.toString(2).padStart(length, '0');
-	// 					`, bitLength),
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-	// case "binary", "varbinary":
-	// 	params := extractMysqlTypeParams(colInfo.DataType)
-	// 	maxLength := int64(255) // default max length
-	// 	if len(params) > 0 {
-	// 		if parsed, err := strconv.ParseInt(params[0], 10, 64); err == nil && parsed > 0 && parsed <= 255 {
-	// 			maxLength = parsed
-	// 		}
-	// 	}
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: fmt.Sprintf(`
-	// 						// Generate random binary data up to maxLength bytes
-	// 						const maxLength = %d;
-	// 						const length = Math.floor(Math.random() * maxLength) + 1;
-	// 						const bytes = new Uint8Array(length);
-	// 						for (let i = 0; i < length; i++) {
-	// 							bytes[i] = Math.floor(Math.random() * 256);
-	// 						}
-	// 						// Convert to base64 for safe transport
-	// 						return Buffer.from(bytes).toString('base64');
-	// 					`, maxLength),
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-	// case "tinyblob":
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: `
-	// 						// Generate random TINYBLOB (max 255 bytes)
-	// 						const maxLength = 255;
-	// 						const length = Math.floor(Math.random() * maxLength) + 1;
-	// 						const bytes = new Uint8Array(length);
-	// 						for (let i = 0; i < length; i++) {
-	// 							bytes[i] = Math.floor(Math.random() * 256);
-	// 						}
-	// 						return Buffer.from(bytes).toString('base64');
-	// 					`,
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-	// case "blob":
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: `
-	// 						// Generate random BLOB (max 65,535 bytes)
-	// 						// Using a smaller max for practical purposes
-	// 						const maxLength = 1024; // Using 1KB for reasonable performance
-	// 						const length = Math.floor(Math.random() * maxLength) + 1;
-	// 						const bytes = new Uint8Array(length);
-	// 						for (let i = 0; i < length; i++) {
-	// 							bytes[i] = Math.floor(Math.random() * 256);
-	// 						}
-	// 						return Buffer.from(bytes).toString('base64');
-	// 					`,
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-	// case "mediumblob":
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: `
-	// 						// Generate random MEDIUMBLOB (max 16,777,215 bytes)
-	// 						// Using a smaller max for practical purposes
-	// 						const maxLength = 2048; // Using 2KB for reasonable performance
-	// 						const length = Math.floor(Math.random() * maxLength) + 1;
-	// 						const bytes = new Uint8Array(length);
-	// 						for (let i = 0; i < length; i++) {
-	// 							bytes[i] = Math.floor(Math.random() * 256);
-	// 						}
-	// 						return Buffer.from(bytes).toString('base64');
-	// 					`,
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-	// case "longblob":
-	// 	return &mgmtv1alpha1.JobMappingTransformer{
-	// 		Config: &mgmtv1alpha1.TransformerConfig{
-	// 			Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-	// 				GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-	// 					Code: `
-	// 						// Generate random LONGBLOB (max 4,294,967,295 bytes)
-	// 						// Using a smaller max for practical purposes
-	// 						const maxLength = 4096; // Using 4KB for reasonable performance
-	// 						const length = Math.floor(Math.random() * maxLength) + 1;
-	// 						const bytes = new Uint8Array(length);
-	// 						for (let i = 0; i < length; i++) {
-	// 							bytes[i] = Math.floor(Math.random() * 256);
-	// 						}
-	// 						return Buffer.from(bytes).toString('base64');
-	// 					`,
-	// 				},
-	// 			},
-	// 		},
-	// 	}, nil
-
-	case "date":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const year = date.getFullYear();
-								const month = String(date.getMonth() + 1).padStart(2, '0');
-								const day = String(date.getDate()).padStart(2, '0');
-								return year + "-" + month + "-" + day;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "datetime", "timestamp":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const year = date.getFullYear();
-								const month = String(date.getMonth() + 1).padStart(2, '0');
-								const day = String(date.getDate()).padStart(2, '0');
-								const hours = String(date.getHours()).padStart(2, '0');
-								const minutes = String(date.getMinutes()).padStart(2, '0');
-								const seconds = String(date.getSeconds()).padStart(2, '0');
-								return year + "-" + month + "-" + day + " " + hours + ":" + minutes + ":" + seconds;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "time":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								const hours = String(date.getHours()).padStart(2, '0');
-								const minutes = String(date.getMinutes()).padStart(2, '0');
-								const seconds = String(date.getSeconds()).padStart(2, '0');
-								return hours + ":" + minutes + ":" + seconds;
-							`,
-					},
-				},
-			},
-		}, nil
-	case "year":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
-					GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{
-						Code: `
-								const date = new Date();
-								return date.getFullYear();
-							`,
-					},
-				},
-			},
-		}, nil
-	case "boolean", "bool":
-		return &mgmtv1alpha1.JobMappingTransformer{
-			Config: &mgmtv1alpha1.TransformerConfig{
-				Config: &mgmtv1alpha1.TransformerConfig_GenerateBoolConfig{
-					GenerateBoolConfig: &mgmtv1alpha1.GenerateBool{},
-				},
-			},
-		}, nil
-	default:
-		return nil, fmt.Errorf(
-			"uncountered unsupported data type %q for %q.%q.%q when attempting to generate an auto-mapper. To continue, provide a discrete job mapping for this column.: %w",
-			colInfo.DataType,
-			colInfo.TableSchema,
-			colInfo.TableName,
-			colInfo.ColumnName,
-			errors.ErrUnsupported,
-		)
-	}
-}
-
-func cleanPostgresType(dataType string) string {
-	parenIndex := strings.Index(dataType, "(")
-	if parenIndex == -1 {
-		return dataType
-	}
-	return strings.TrimSpace(dataType[:parenIndex])
-}
-
-func cleanMysqlType(dataType string) string {
-	parenIndex := strings.Index(dataType, "(")
-	if parenIndex == -1 {
-		return dataType
-	}
-	return strings.TrimSpace(dataType[:parenIndex])
-}
-
-// extractMysqlTypeParams extracts the parameters from MySQL data type definitions
-// Examples:
-// - CHAR(10) -> ["10"]
-// - FLOAT(10, 2) -> ["10", "2"]
-// - ENUM('val1', 'val2') -> ["val1", "val2"]
-func extractMysqlTypeParams(dataType string) []string {
-	parenIndex := strings.Index(dataType, "(")
-	if parenIndex == -1 {
-		return nil
-	}
-
-	closingIndex := strings.LastIndex(dataType, ")")
-	if closingIndex == -1 {
-		return nil
-	}
-
-	// Extract content between parentheses
-	paramsStr := dataType[parenIndex+1 : closingIndex]
-
-	// Handle ENUM/SET cases which use quotes
-	if strings.Contains(paramsStr, "'") {
-		// Split by comma and handle quoted values
-		params := strings.Split(paramsStr, ",")
-		result := make([]string, 0, len(params))
-		for _, p := range params {
-			// Remove quotes and whitespace
-			p = strings.Trim(strings.TrimSpace(p), "'")
-			if p != "" {
-				result = append(result, p)
-			}
-		}
-		return result
-	}
-
-	// Handle regular numeric parameters
-	params := strings.Split(paramsStr, ",")
-	result := make([]string, 0, len(params))
-	for _, p := range params {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			result = append(result, p)
-		}
-	}
-	return result
+	})
 }
 
 func shouldOverrideColumnDefault(
@@ -1808,4 +1140,12 @@ func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) [
 	}
 	slices.Sort(generated)
 	return generated
+}
+
+// unmappedColumns counts columns in a sentence, singular or plural.
+func unmappedColumns(n int) string {
+	if n == 1 {
+		return "1 unmapped column"
+	}
+	return fmt.Sprintf("%d unmapped columns", n)
 }

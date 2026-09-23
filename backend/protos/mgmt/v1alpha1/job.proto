@@ -164,9 +164,11 @@ message PostgresSourceConnectionOptions {
     oneof strategy {
       // halt job if a new column is detected.
       HaltJob halt_job = 1;
-      // automatically handle unmapped columns. It handles this by using the DBs default/nullable values.
-      // If this doesn't exist, will fall back to configuring generators for supported datatypes.
-      // If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
@@ -244,9 +246,11 @@ message MysqlSourceConnectionOptions {
     oneof strategy {
       // halt job if a new column is detected.
       HaltJob halt_job = 1;
-      // automatically handle unmapped columns. It handles this by using the DBs default/nullable values.
-      // If this doesn't exist, will fall back to configuring generators for supported datatypes.
-      // If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
       AutoMap auto_map = 2;
       // pass the new column through as is.
       Passthrough passthrough = 3;
@@ -309,11 +313,19 @@ message MssqlSourceConnectionOptions {
       HaltJob halt_job = 1;
       // pass the new column through as is.
       Passthrough passthrough = 2;
+      // AutoMap & Review: map the new column with the transformer the PII detection suggests, in
+      // the config it starts with in the catalogue; pass it through when there is no suggestion,
+      // or when the column carries a primary key, a foreign key or a unique constraint a
+      // transformer could break. The run writes the mapping to the job and records the change for
+      // review, as it records the removal of a column and the change of a column's type.
+      AutoMap auto_map = 3;
     }
     // Configuration for the HaltJob strategy
     message HaltJob {}
     // Configuration for the Passthrough strategy
     message Passthrough {}
+    // Configuration for the AutoMap strategy
+    message AutoMap {}
   }
 }
 
@@ -1749,6 +1761,137 @@ message PiiDetectionReport {
 }
 
 // Service that handles jobs, runs, and hooks
+// A column of a job's source, named without its mapping.
+message JobColumn {
+  // The database schema
+  string schema = 1 [(buf.validate.field).string.min_len = 1];
+  // The table
+  string table = 2 [(buf.validate.field).string.min_len = 1];
+  // The column
+  string column = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// A column of a job's source with its type, as a run read it.
+message JobSourceColumn {
+  // The column
+  JobColumn column = 1 [(buf.validate.field).required = true];
+  // The column's type as the source reports it
+  string data_type = 2;
+}
+
+message ReconcileJobMappingsRequest {
+  // The job the run belongs to
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+  // The unique identifier of the account
+  string account_id = 2 [(buf.validate.field).string.uuid = true];
+  // The run that read the source
+  string job_run_id = 3 [(buf.validate.field).string.min_len = 1];
+  // A mapping for each column the source has and the job did not map, as the job's strategy for
+  // new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
+  // somebody decided in the meantime.
+  repeated JobMapping added = 4;
+  // The columns the source no longer has. Their mapping is removed from the job.
+  repeated JobColumn removed = 5;
+  // Every column of the tables the job syncs, with its type: what lets the next run tell that a
+  // column changed type.
+  repeated JobSourceColumn columns = 6;
+  // Whether the job's strategy asks for the changes to be reviewed (auto_map):
+  // they are then recorded, each with what the run chose.
+  bool record_changes = 7;
+}
+
+message ReconcileJobMappingsResponse {
+  // The mappings the call added, those already mapped left out
+  repeated JobMapping added = 1;
+  // The mappings the call removed, with the transformer they had
+  repeated JobMapping removed = 2;
+}
+
+// What a run changed in a job's mappings.
+enum JobMappingChangeKind {
+  JOB_MAPPING_CHANGE_KIND_UNSPECIFIED = 0;
+  // The source gained the column, and the run mapped it.
+  JOB_MAPPING_CHANGE_KIND_ADDED = 1;
+  // The source lost the column, and the run removed its mapping.
+  JOB_MAPPING_CHANGE_KIND_REMOVED = 2;
+  // The column's type is not the one the previous run saw.
+  JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED = 3;
+}
+
+// A change a run made to a job's mappings, waiting for somebody to review it.
+message JobMappingChange {
+  // The change
+  string id = 1;
+  // The job
+  string job_id = 2;
+  // The run that made it
+  string job_run_id = 3;
+  // When
+  google.protobuf.Timestamp created_at = 4;
+  // The column
+  JobColumn column = 5;
+  // What happened to it
+  JobMappingChangeKind kind = 6;
+  // The transformer the run chose (added), or the one the removed mapping had (removed). For a
+  // type change, the one the column is mapped with now.
+  JobMappingTransformer transformer = 7;
+  // The column's type as the run saw it
+  string data_type = 8;
+  // The type the previous run saw (type changed)
+  string previous_data_type = 9;
+  // What the column looks like to the PII detection, by name and type ("" when nothing)
+  string pii_category = 10;
+}
+
+message GetPendingMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // Only this job's changes. Every job of the account the caller can see when absent.
+  optional string job_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
+message GetPendingMappingChangesResponse {
+  // Oldest first
+  repeated JobMappingChange changes = 1;
+}
+
+message ReviewMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The job the changes belong to
+  string job_id = 2 [(buf.validate.field).string.uuid = true];
+  // The changes reviewed. Those of another job, or already reviewed, are left alone.
+  repeated string change_ids = 3 [(buf.validate.field).repeated.min_items = 1];
+  // Why they are fine, kept with them
+  optional string note = 4;
+}
+
+message ReviewMappingChangesResponse {
+  // The changes the call marked reviewed
+  repeated string change_ids = 1;
+}
+
+message ApplyMappingChangesRequest {
+  // The unique identifier of the account
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The job the columns belong to
+  string job_id = 2 [(buf.validate.field).string.uuid = true];
+  // The transformer each column is to be mapped with from now on. Only columns the job maps:
+  // a column a run has removed is not brought back.
+  repeated JobMapping mappings = 3 [(buf.validate.field).repeated.min_items = 1];
+  // The changes this settles, marked reviewed in the same transaction
+  repeated string change_ids = 4;
+  // Why, kept with the reviewed changes
+  optional string note = 5;
+}
+
+message ApplyMappingChangesResponse {
+  // The mappings as the job now has them
+  repeated JobMapping mappings = 1;
+  // The changes the call marked reviewed
+  repeated string change_ids = 2;
+}
+
 service JobService {
   // Returns a list of jobs by either account or job
   rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {
@@ -1828,6 +1971,20 @@ service JobService {
   rpc SetJobSyncOptions(SetJobSyncOptionsRequest) returns (SetJobSyncOptionsResponse) {}
   // Validates that the jobmapping configured can run with table constraints
   rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {}
+  // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
+  // as the job's strategy chose, and removes those that disappeared. Called by the worker.
+  rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {}
+  // Returns the changes runs made to the mappings of jobs under auto_map that
+  // nobody has reviewed yet. An added column whose mapping has been changed since counts as
+  // reviewed: somebody decided.
+  rpc GetPendingMappingChanges(GetPendingMappingChangesRequest) returns (GetPendingMappingChangesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Marks changes reviewed, with an optional note.
+  rpc ReviewMappingChanges(ReviewMappingChangesRequest) returns (ReviewMappingChangesResponse) {}
+  // Sets the transformer of columns the job maps, from the review tab, and marks the changes it
+  // settles reviewed: correcting what a run chose is done where the change is read.
+  rpc ApplyMappingChanges(ApplyMappingChangesRequest) returns (ApplyMappingChangesResponse) {}
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
 

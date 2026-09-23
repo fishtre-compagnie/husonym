@@ -31,6 +31,11 @@ type Activity struct {
 	metricsEnabled bool
 
 	pageLimit int
+
+	// hasConsistencyKey says whether the deployment can derive a key for deterministic
+	// pseudonymization. AutoMap reads it: it does not map a column with an option that needs
+	// one when there is none.
+	hasConsistencyKey bool
 }
 
 func New(
@@ -40,6 +45,7 @@ func New(
 	sqlmanager sql_manager.SqlManagerClient,
 	metricsEnabled bool,
 	pageLimit int,
+	hasConsistencyKey bool,
 ) *Activity {
 	return &Activity{
 		jobclient:         jobclient,
@@ -48,6 +54,7 @@ func New(
 		sqlmanager:        sqlmanager,
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
+		hasConsistencyKey: hasConsistencyKey,
 	}
 }
 
@@ -86,6 +93,7 @@ func (a *Activity) GenerateBenthosConfigs(
 		info.WorkflowExecution.RunID,
 		a.metricsEnabled,
 		a.pageLimit,
+		a.hasConsistencyKey,
 	)
 	slogger := temporallogger.NewSlogger(logger)
 	return bbuilder.GenerateBenthosConfigsNew(

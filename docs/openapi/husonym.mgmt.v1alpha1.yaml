@@ -49,7 +49,6 @@ tags:
        This is used in handle data from a connection
     x-displayName: mgmt.v1alpha1.ConnectionDataService
   - name: mgmt.v1alpha1.JobService
-    description: Service that handles jobs, runs, and hooks
     x-displayName: mgmt.v1alpha1.JobService
   - name: mgmt.v1alpha1.MetricsService
     description: Service that handles serving up usage metrics
@@ -1986,6 +1985,55 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/GetJavascriptDraftPrompt:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: GetJavascriptDraftPrompt
+      description: >-
+        Returns the prompt that gets a javascript rule drafted for one column,
+        by an agent or by a
+         model. The server fills it from what it knows and the caller does not: the execution
+         contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
+         the deterministic functions in scope. It reads the schema, never the column's data.
+      operationId: mgmt.v1alpha1.ConnectionDataService.GetJavascriptDraftPrompt
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.GetJavascriptDraftPromptRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.GetJavascriptDraftPromptResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.ConnectionDataService/GetTableRowCount:
     post:
       tags:
@@ -2020,6 +2068,99 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.GetTableRowCountResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
+  /mgmt.v1alpha1.ConnectionDataService/PreviewColumnTransformer:
+    post:
+      tags:
+        - mgmt.v1alpha1.ConnectionDataService
+      summary: PreviewColumnTransformer
+      description: >-
+        Reads a sample of one column and shows what a transformer would make of
+        each value, before
+         anyone commits to it. The server reads the values itself: this previews a real column, and
+         cannot be turned into an unmetered way to anonymize arbitrary data.
+      operationId: mgmt.v1alpha1.ConnectionDataService.PreviewColumnTransformer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.PreviewColumnTransformerRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.PreviewColumnTransformerResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
+  /mgmt.v1alpha1.JobService/ApplyMappingChanges:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: ApplyMappingChanges
+      description: >-
+        Sets the transformer of columns the job maps, from the review tab, and
+        marks the changes it
+         settles reviewed: correcting what a run chose is done where the change is read.
+      operationId: mgmt.v1alpha1.JobService.ApplyMappingChanges
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.ApplyMappingChangesRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.ApplyMappingChangesResponse'
         default:
           description: Error
           content:
@@ -2973,6 +3114,54 @@ paths:
                 $ref: '#/components/schemas/connect.error'
       security:
         - BearerAuth: []
+  /mgmt.v1alpha1.JobService/GetPendingMappingChanges:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: GetPendingMappingChanges
+      description: >-
+        Returns the changes runs made to the mappings of jobs under auto_map
+        that
+         nobody has reviewed yet. An added column whose mapping has been changed since counts as
+         reviewed: somebody decided.
+      operationId: mgmt.v1alpha1.JobService.GetPendingMappingChanges
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                #/components/schemas/mgmt.v1alpha1.GetPendingMappingChangesRequest
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.GetPendingMappingChangesResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
   /mgmt.v1alpha1.JobService/GetPiiDetectionReport:
     post:
       tags:
@@ -3176,6 +3365,95 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.PauseJobResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
+  /mgmt.v1alpha1.JobService/ReconcileJobMappings:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: ReconcileJobMappings
+      description: >-
+        Brings a job's mappings in step with the source a run read: maps the
+        columns that appeared,
+         as the job's strategy chose, and removes those that disappeared. Called by the worker.
+      operationId: mgmt.v1alpha1.JobService.ReconcileJobMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.ReconcileJobMappingsRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.ReconcileJobMappingsResponse
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+      security:
+        - BearerAuth: []
+  /mgmt.v1alpha1.JobService/ReviewMappingChanges:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: ReviewMappingChanges
+      description: Marks changes reviewed, with an optional note.
+      operationId: mgmt.v1alpha1.JobService.ReviewMappingChanges
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.ReviewMappingChangesRequest'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/mgmt.v1alpha1.ReviewMappingChangesResponse
         default:
           description: Error
           content:
@@ -6885,6 +7163,17 @@ components:
             Whether or not to preserve the original length of the phone number.
             This causes the transformed phone number to retain the original
             length.
+        preserveFormat:
+          type:
+            - boolean
+            - 'null'
+          title: preserve_format
+          description: >-
+            Keeps the prefix (0 and the next digit, or + with the country code
+            and the next digit), every separator and the length, and replaces
+            the other digits with a keyed permutation: two distinct numbers
+            never give the same output, and a number written in two formats
+            (06…, +33 6…) gets the same digits. Implies preserve_length.
       title: TransformPhoneNumber
       additionalProperties: false
     mgmt.v1alpha1.TransformPiiText:
@@ -9344,6 +9633,29 @@ components:
              colonne (« vide » et « absent » ne se traitent pas pareil).
       title: ColumnSampleValue
       additionalProperties: false
+    mgmt.v1alpha1.ColumnTransformerPreview:
+      type: object
+      properties:
+        input:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+          title: input
+          description: The value as read from the source.
+        output:
+          oneOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ColumnSampleValue'
+            - type: 'null'
+          title: output
+          description: What the transformer produced. Unset when it failed on this value.
+        error:
+          type:
+            - string
+            - 'null'
+          title: error
+          description: Why the transformer failed on this value, when it did.
+      title: ColumnTransformerPreview
+      additionalProperties: false
+      description: One sampled value and what the transformer made of it.
     mgmt.v1alpha1.ConnectionSchemaConfig:
       type: object
       allOf:
@@ -9573,6 +9885,17 @@ components:
             Populated if the column is an identity. The value is the type of the
             identity column it is. For example, postgres is 'd' for generated by
             default, or 'a' for generated always.
+        characterMaximumLength:
+          type:
+            - integer
+            - 'null'
+          title: character_maximum_length
+          format: int32
+          description: >-
+            How many characters the column accepts, when its type bounds them.
+            Absent for types that
+             bound nothing. It cannot be read back from data_type: MySQL reports `varchar` there and
+             keeps the length in column_type, so anything parsing data_type finds no bound on MySQL.
         dataCategory:
           type: string
           title: data_category
@@ -10167,6 +10490,58 @@ components:
           description: the key here is <schema>.<table> and value is the unique index
       title: GetConnectionTableConstraintsResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetJavascriptDraftPromptRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The connection whose schema describes the column.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table the column belongs to.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column a rule is being drafted for.
+        mode:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptDraftMode'
+          title: mode
+          description: What the rule derives its output from. Defaults to transform.
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JavascriptDraftEngine'
+          title: engine
+          description: >-
+            The engine that will run it. Unspecified means athanor — a product
+            choice, not the
+             deployment's state: ENABLE_ATHANOR_ENGINE is off by default and only the worker reads it,
+             so the server cannot observe which engine a job will get. Athanor is where the product is
+             going and Benthos is on its way out, so a caller on a Benthos deployment says so.
+      title: GetJavascriptDraftPromptRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetJavascriptDraftPromptResponse:
+      type: object
+      properties:
+        prompt:
+          type: string
+          title: prompt
+          description: >-
+            The prompt, ready to send to a model. It carries the execution
+            contract, the column's
+             constraints and the functions in scope — never any of the column's values.
+      title: GetJavascriptDraftPromptResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetTableRowCountRequest:
       type: object
       properties:
@@ -10220,6 +10595,26 @@ components:
           description: Whether or not to generate truncate cascade statements.
       title: InitStatementOptions
       additionalProperties: false
+    mgmt.v1alpha1.JavascriptDraftEngine:
+      type: string
+      title: JavascriptDraftEngine
+      enum:
+        - JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED
+        - JAVASCRIPT_DRAFT_ENGINE_ATHANOR
+        - JAVASCRIPT_DRAFT_ENGINE_BENTHOS
+      description: >-
+        The engine that will run the drafted rule. It decides what the rule may
+        call: the
+         deterministic pseudo functions exist under Athanor only, and calling one under Benthos fails
+         at runtime, so a draft written for the wrong engine is a run that breaks.
+    mgmt.v1alpha1.JavascriptDraftMode:
+      type: string
+      title: JavascriptDraftMode
+      enum:
+        - JAVASCRIPT_DRAFT_MODE_UNSPECIFIED
+        - JAVASCRIPT_DRAFT_MODE_TRANSFORM
+        - JAVASCRIPT_DRAFT_MODE_GENERATE
+      description: What a drafted rule derives its output from.
     mgmt.v1alpha1.MongoSchemaConfig:
       type: object
       title: MongoSchemaConfig
@@ -10266,6 +10661,64 @@ components:
     mgmt.v1alpha1.PostgresStreamConfig:
       type: object
       title: PostgresStreamConfig
+      additionalProperties: false
+    mgmt.v1alpha1.PreviewColumnTransformerRequest:
+      type: object
+      properties:
+        connectionId:
+          type: string
+          title: connection_id
+          format: uuid
+          description: The connection to read the column from.
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The schema of the table.
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table to read.
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column whose values are transformed.
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerConfig'
+          title: transformer
+          description: The transformer to try on them.
+        limit:
+          type: integer
+          title: limit
+          description: Number of rows to read (default 20, max 50).
+      title: PreviewColumnTransformerRequest
+      required:
+        - transformer
+      additionalProperties: false
+    mgmt.v1alpha1.PreviewColumnTransformerResponse:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnTransformerPreview'
+          title: values
+        distinctInputs:
+          type: integer
+          title: distinct_inputs
+          description: >-
+            Distinct non-null values in the sample, before and after. Fewer
+            after than before means the
+             transformer sends different values to the same one — which a column under a uniqueness
+             constraint cannot take. It is a sign, never a proof: a sample this small says nothing
+             certain about the whole table.
+        distinctOutputs:
+          type: integer
+          title: distinct_outputs
+      title: PreviewColumnTransformerResponse
       additionalProperties: false
     mgmt.v1alpha1.PrimaryConstraint:
       type: object
@@ -10539,6 +10992,60 @@ components:
           format: int64
           description: The total number of records to be generated.
       title: AiGenerateSourceTableOption
+      additionalProperties: false
+    mgmt.v1alpha1.ApplyMappingChangesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the columns belong to
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: mappings
+          minItems: 1
+          description: >-
+            The transformer each column is to be mapped with from now on. Only
+            columns the job maps:
+             a column a run has removed is not brought back.
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes this settles, marked reviewed in the same transaction
+        note:
+          type:
+            - string
+            - 'null'
+          title: note
+          description: Why, kept with the reviewed changes
+      title: ApplyMappingChangesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ApplyMappingChangesResponse:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: mappings
+          description: The mappings as the job now has them
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes the call marked reviewed
+      title: ApplyMappingChangesResponse
       additionalProperties: false
     mgmt.v1alpha1.AwsS3DestinationConnectionOptions:
       type: object
@@ -11629,6 +12136,36 @@ components:
           description: The list of jobs
       title: GetJobsResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetPendingMappingChangesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type:
+            - string
+            - 'null'
+          title: job_id
+          format: uuid
+          description: >-
+            Only this job's changes. Every job of the account the caller can see
+            when absent.
+      title: GetPendingMappingChangesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetPendingMappingChangesResponse:
+      type: object
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingChange'
+          title: changes
+          description: Oldest first
+      title: GetPendingMappingChangesResponse
+      additionalProperties: false
     mgmt.v1alpha1.GetPiiDetectionReportRequest:
       type: object
       properties:
@@ -11803,6 +12340,29 @@ components:
           description: The type of job
       title: Job
       additionalProperties: false
+    mgmt.v1alpha1.JobColumn:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+          description: The database schema
+        table:
+          type: string
+          title: table
+          minLength: 1
+          description: The table
+        column:
+          type: string
+          title: column
+          minLength: 1
+          description: The column
+      title: JobColumn
+      additionalProperties: false
+      description: |-
+        Service that handles jobs, runs, and hooks
+         A column of a job's source, named without its mapping.
     mgmt.v1alpha1.JobDestination:
       type: object
       properties:
@@ -12130,6 +12690,72 @@ components:
             the column
       title: JobMapping
       additionalProperties: false
+    mgmt.v1alpha1.JobMappingChange:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The change
+        jobId:
+          type: string
+          title: job_id
+          description: The job
+        jobRunId:
+          type: string
+          title: job_run_id
+          description: The run that made it
+        createdAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: created_at
+          description: When
+        column:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: column
+          description: The column
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingChangeKind'
+          title: kind
+          description: What happened to it
+        transformer:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobMappingTransformer'
+          title: transformer
+          description: >-
+            The transformer the run chose (added), or the one the removed
+            mapping had (removed). For a
+             type change, the one the column is mapped with now.
+        dataType:
+          type: string
+          title: data_type
+          description: The column's type as the run saw it
+        previousDataType:
+          type: string
+          title: previous_data_type
+          description: The type the previous run saw (type changed)
+        piiCategory:
+          type: string
+          title: pii_category
+          description: >-
+            What the column looks like to the PII detection, by name and type
+            ("" when nothing)
+      title: JobMappingChange
+      additionalProperties: false
+      description: >-
+        A change a run made to a job's mappings, waiting for somebody to review
+        it.
+    mgmt.v1alpha1.JobMappingChangeKind:
+      type: string
+      title: JobMappingChangeKind
+      enum:
+        - JOB_MAPPING_CHANGE_KIND_UNSPECIFIED
+        - JOB_MAPPING_CHANGE_KIND_ADDED
+        - JOB_MAPPING_CHANGE_KIND_REMOVED
+        - JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED
+      description: What a run changed in a job's mappings.
     mgmt.v1alpha1.JobMappingTransformer:
       type: object
       properties:
@@ -12338,6 +12964,23 @@ components:
       required:
         - options
       additionalProperties: false
+    mgmt.v1alpha1.JobSourceColumn:
+      type: object
+      properties:
+        column:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: column
+          description: The column
+        dataType:
+          type: string
+          title: data_type
+          description: The column's type as the source reports it
+      title: JobSourceColumn
+      required:
+        - column
+      additionalProperties: false
+      description: A column of a job's source with its type, as a run read it.
     mgmt.v1alpha1.JobSourceOptions:
       type: object
       allOf:
@@ -12920,6 +13563,21 @@ components:
       anyOf:
         - type: object
           properties:
+            autoMap:
+              allOf:
+                - $ref: >-
+                    #/components/schemas/mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
+              title: auto_map
+              description: >-
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
+          title: auto_map
+        - type: object
+          properties:
             haltJob:
               allOf:
                 - $ref: >-
@@ -12941,16 +13599,25 @@ components:
         allOf:
           - anyOf:
               - required:
+                  - autoMap
+              - required:
                   - haltJob
               - required:
                   - passthrough
           - not:
               oneOf:
                 - required:
+                    - autoMap
+                - required:
                     - haltJob
                 - required:
                     - passthrough
       title: NewColumnAdditionStrategy
+    mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap:
+      type: object
+      title: AutoMap
+      additionalProperties: false
+      description: Configuration for the AutoMap strategy
     mgmt.v1alpha1.MssqlSourceConnectionOptions.NewColumnAdditionStrategy.HaltJob:
       type: object
       title: HaltJob
@@ -13203,10 +13870,12 @@ components:
                     #/components/schemas/mgmt.v1alpha1.MysqlSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
               title: auto_map
               description: >-
-                automatically handle unmapped columns. It handles this by using
-                the DBs default/nullable values.
-                 If this doesn't exist, will fall back to configuring generators for supported datatypes.
-                 If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
           title: auto_map
         - type: object
           properties:
@@ -13669,10 +14338,12 @@ components:
                     #/components/schemas/mgmt.v1alpha1.PostgresSourceConnectionOptions.NewColumnAdditionStrategy.AutoMap
               title: auto_map
               description: >-
-                automatically handle unmapped columns. It handles this by using
-                the DBs default/nullable values.
-                 If this doesn't exist, will fall back to configuring generators for supported datatypes.
-                 If none of the criteria above can be met, the job run will fail to prevent leaking of PII.
+                AutoMap & Review: map the new column with the transformer the
+                PII detection suggests, in
+                 the config it starts with in the catalogue; pass it through when there is no suggestion,
+                 or when the column carries a primary key, a foreign key or a unique constraint a
+                 transformer could break. The run writes the mapping to the job and records the change for
+                 review, as it records the removal of a column and the change of a column's type.
           title: auto_map
         - type: object
           properties:
@@ -13790,6 +14461,77 @@ components:
           description: Whether to cascade the truncate to child tables
       title: PostgresTruncateTableConfig
       additionalProperties: false
+    mgmt.v1alpha1.ReconcileJobMappingsRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the run belongs to
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobRunId:
+          type: string
+          title: job_run_id
+          minLength: 1
+          description: The run that read the source
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: added
+          description: >-
+            A mapping for each column the source has and the job did not map, as
+            the job's strategy for
+             new columns chose it. A column the job maps by the time the call arrives keeps its mapping:
+             somebody decided in the meantime.
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobColumn'
+          title: removed
+          description: >-
+            The columns the source no longer has. Their mapping is removed from
+            the job.
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobSourceColumn'
+          title: columns
+          description: >-
+            Every column of the tables the job syncs, with its type: what lets
+            the next run tell that a
+             column changed type.
+        recordChanges:
+          type: boolean
+          title: record_changes
+          description: >-
+            Whether the job's strategy asks for the changes to be reviewed
+            (auto_map):
+             they are then recorded, each with what the run chose.
+      title: ReconcileJobMappingsRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ReconcileJobMappingsResponse:
+      type: object
+      properties:
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: added
+          description: The mappings the call added, those already mapped left out
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.JobMapping'
+          title: removed
+          description: The mappings the call removed, with the transformer they had
+      title: ReconcileJobMappingsResponse
+      additionalProperties: false
     mgmt.v1alpha1.RetryPolicy:
       type: object
       properties:
@@ -13807,6 +14549,47 @@ components:
       title: RetryPolicy
       additionalProperties: false
       description: Defines the retry policy for an activity
+    mgmt.v1alpha1.ReviewMappingChangesRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          title: account_id
+          format: uuid
+          description: The unique identifier of the account
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job the changes belong to
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          minItems: 1
+          description: >-
+            The changes reviewed. Those of another job, or already reviewed, are
+            left alone.
+        note:
+          type:
+            - string
+            - 'null'
+          title: note
+          description: Why they are fine, kept with them
+      title: ReviewMappingChangesRequest
+      additionalProperties: false
+    mgmt.v1alpha1.ReviewMappingChangesResponse:
+      type: object
+      properties:
+        changeIds:
+          type: array
+          items:
+            type: string
+          title: change_ids
+          description: The changes the call marked reviewed
+      title: ReviewMappingChangesResponse
+      additionalProperties: false
     mgmt.v1alpha1.RunContextKey:
       type: object
       properties:

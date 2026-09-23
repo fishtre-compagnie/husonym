@@ -56,6 +56,14 @@ func (d *Deriver) Domain(semanticType string) *Domain {
 	}
 }
 
+// CipherKey returns the key of a keyed permutation (FPE) for a semantic type, in the
+// same scope as its domain. It is derived under its own label, never from the domain
+// key: a value is MACed under the domain key, and a value spelling the label must not
+// yield the cipher key.
+func (d *Deriver) CipherKey(semanticType string) [32]byte {
+	return sha256hmac(d.scopeKey, "cipher:"+semanticType)
+}
+
 // Domain porte la clé d'un type sémantique et sa politique de canonicalisation.
 type Domain struct {
 	key   []byte

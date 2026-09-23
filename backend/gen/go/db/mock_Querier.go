@@ -1386,6 +1386,69 @@ func (_c *MockQuerier_DeleteJob_Call) RunAndReturn(run func(ctx context.Context,
 	return _c
 }
 
+// DeleteJobSourceColumns provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) DeleteJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) error {
+	ret := _mock.Called(ctx, db, jobID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteJobSourceColumns")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r0 = returnFunc(ctx, db, jobID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_DeleteJobSourceColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteJobSourceColumns'
+type MockQuerier_DeleteJobSourceColumns_Call struct {
+	*mock.Call
+}
+
+// DeleteJobSourceColumns is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - jobID pgtype.UUID
+func (_e *MockQuerier_Expecter) DeleteJobSourceColumns(ctx any, db any, jobID any) *MockQuerier_DeleteJobSourceColumns_Call {
+	return &MockQuerier_DeleteJobSourceColumns_Call{Call: _e.mock.On("DeleteJobSourceColumns", ctx, db, jobID)}
+}
+
+func (_c *MockQuerier_DeleteJobSourceColumns_Call) Run(run func(ctx context.Context, db DBTX, jobID pgtype.UUID)) *MockQuerier_DeleteJobSourceColumns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_DeleteJobSourceColumns_Call) Return(err error) *MockQuerier_DeleteJobSourceColumns_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_DeleteJobSourceColumns_Call) RunAndReturn(run func(ctx context.Context, db DBTX, jobID pgtype.UUID) error) *MockQuerier_DeleteJobSourceColumns_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteSlackOAuthConnection provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) DeleteSlackOAuthConnection(ctx context.Context, db DBTX, accountID pgtype.UUID) error {
 	ret := _mock.Called(ctx, db, accountID)
@@ -3764,6 +3827,78 @@ func (_c *MockQuerier_GetJobConnectionDestinationsByJobIds_Call) RunAndReturn(ru
 	return _c
 }
 
+// GetJobForUpdate provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetJobForUpdate(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobForUpdate")
+	}
+
+	var r0 HusonymApiJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetJobForUpdateParams) (HusonymApiJob, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetJobForUpdateParams) HusonymApiJob); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiJob)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetJobForUpdateParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetJobForUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobForUpdate'
+type MockQuerier_GetJobForUpdate_Call struct {
+	*mock.Call
+}
+
+// GetJobForUpdate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetJobForUpdateParams
+func (_e *MockQuerier_Expecter) GetJobForUpdate(ctx any, db any, arg any) *MockQuerier_GetJobForUpdate_Call {
+	return &MockQuerier_GetJobForUpdate_Call{Call: _e.mock.On("GetJobForUpdate", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetJobForUpdate_Call) Run(run func(ctx context.Context, db DBTX, arg GetJobForUpdateParams)) *MockQuerier_GetJobForUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetJobForUpdateParams
+		if args[2] != nil {
+			arg2 = args[2].(GetJobForUpdateParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetJobForUpdate_Call) Return(husonymApiJob HusonymApiJob, err error) *MockQuerier_GetJobForUpdate_Call {
+	_c.Call.Return(husonymApiJob, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetJobForUpdate_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetJobForUpdateParams) (HusonymApiJob, error)) *MockQuerier_GetJobForUpdate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobHookById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJobHook, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -3910,6 +4045,80 @@ func (_c *MockQuerier_GetJobHooksByJob_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// GetJobSourceColumns provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error) {
+	ret := _mock.Called(ctx, db, jobID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetJobSourceColumns")
+	}
+
+	var r0 []HusonymApiJobSourceColumn
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiJobSourceColumn, error)); ok {
+		return returnFunc(ctx, db, jobID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiJobSourceColumn); ok {
+		r0 = returnFunc(ctx, db, jobID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiJobSourceColumn)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetJobSourceColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetJobSourceColumns'
+type MockQuerier_GetJobSourceColumns_Call struct {
+	*mock.Call
+}
+
+// GetJobSourceColumns is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - jobID pgtype.UUID
+func (_e *MockQuerier_Expecter) GetJobSourceColumns(ctx any, db any, jobID any) *MockQuerier_GetJobSourceColumns_Call {
+	return &MockQuerier_GetJobSourceColumns_Call{Call: _e.mock.On("GetJobSourceColumns", ctx, db, jobID)}
+}
+
+func (_c *MockQuerier_GetJobSourceColumns_Call) Run(run func(ctx context.Context, db DBTX, jobID pgtype.UUID)) *MockQuerier_GetJobSourceColumns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetJobSourceColumns_Call) Return(husonymApiJobSourceColumns []HusonymApiJobSourceColumn, err error) *MockQuerier_GetJobSourceColumns_Call {
+	_c.Call.Return(husonymApiJobSourceColumns, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetJobSourceColumns_Call) RunAndReturn(run func(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)) *MockQuerier_GetJobSourceColumns_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobsByAccount provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error) {
 	ret := _mock.Called(ctx, db, accountid)
@@ -3980,6 +4189,154 @@ func (_c *MockQuerier_GetJobsByAccount_Call) Return(husonymApiJobs []HusonymApiJ
 }
 
 func (_c *MockQuerier_GetJobsByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)) *MockQuerier_GetJobsByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPendingJobMappingChangesByAccount provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error) {
+	ret := _mock.Called(ctx, db, accountid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingJobMappingChangesByAccount")
+	}
+
+	var r0 []HusonymApiJobMappingChange
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) ([]HusonymApiJobMappingChange, error)); ok {
+		return returnFunc(ctx, db, accountid)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) []HusonymApiJobMappingChange); ok {
+		r0 = returnFunc(ctx, db, accountid)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiJobMappingChange)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, accountid)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetPendingJobMappingChangesByAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingJobMappingChangesByAccount'
+type MockQuerier_GetPendingJobMappingChangesByAccount_Call struct {
+	*mock.Call
+}
+
+// GetPendingJobMappingChangesByAccount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - accountid pgtype.UUID
+func (_e *MockQuerier_Expecter) GetPendingJobMappingChangesByAccount(ctx any, db any, accountid any) *MockQuerier_GetPendingJobMappingChangesByAccount_Call {
+	return &MockQuerier_GetPendingJobMappingChangesByAccount_Call{Call: _e.mock.On("GetPendingJobMappingChangesByAccount", ctx, db, accountid)}
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByAccount_Call) Run(run func(ctx context.Context, db DBTX, accountid pgtype.UUID)) *MockQuerier_GetPendingJobMappingChangesByAccount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByAccount_Call) Return(husonymApiJobMappingChanges []HusonymApiJobMappingChange, err error) *MockQuerier_GetPendingJobMappingChangesByAccount_Call {
+	_c.Call.Return(husonymApiJobMappingChanges, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByAccount_Call) RunAndReturn(run func(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error)) *MockQuerier_GetPendingJobMappingChangesByAccount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPendingJobMappingChangesByJob provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetPendingJobMappingChangesByJob(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingJobMappingChangesByJob")
+	}
+
+	var r0 []HusonymApiJobMappingChange
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, GetPendingJobMappingChangesByJobParams) []HusonymApiJobMappingChange); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]HusonymApiJobMappingChange)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, GetPendingJobMappingChangesByJobParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetPendingJobMappingChangesByJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingJobMappingChangesByJob'
+type MockQuerier_GetPendingJobMappingChangesByJob_Call struct {
+	*mock.Call
+}
+
+// GetPendingJobMappingChangesByJob is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg GetPendingJobMappingChangesByJobParams
+func (_e *MockQuerier_Expecter) GetPendingJobMappingChangesByJob(ctx any, db any, arg any) *MockQuerier_GetPendingJobMappingChangesByJob_Call {
+	return &MockQuerier_GetPendingJobMappingChangesByJob_Call{Call: _e.mock.On("GetPendingJobMappingChangesByJob", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByJob_Call) Run(run func(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams)) *MockQuerier_GetPendingJobMappingChangesByJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 GetPendingJobMappingChangesByJobParams
+		if args[2] != nil {
+			arg2 = args[2].(GetPendingJobMappingChangesByJobParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByJob_Call) Return(husonymApiJobMappingChanges []HusonymApiJobMappingChange, err error) *MockQuerier_GetPendingJobMappingChangesByJob_Call {
+	_c.Call.Return(husonymApiJobMappingChanges, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetPendingJobMappingChangesByJob_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)) *MockQuerier_GetPendingJobMappingChangesByJob_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5074,6 +5431,132 @@ func (_c *MockQuerier_GetUserIdentityByUserId_Call) Return(husonymApiUserIdentit
 }
 
 func (_c *MockQuerier_GetUserIdentityByUserId_Call) RunAndReturn(run func(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)) *MockQuerier_GetUserIdentityByUserId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertJobMappingChange provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertJobMappingChange")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertJobMappingChangeParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_InsertJobMappingChange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertJobMappingChange'
+type MockQuerier_InsertJobMappingChange_Call struct {
+	*mock.Call
+}
+
+// InsertJobMappingChange is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg InsertJobMappingChangeParams
+func (_e *MockQuerier_Expecter) InsertJobMappingChange(ctx any, db any, arg any) *MockQuerier_InsertJobMappingChange_Call {
+	return &MockQuerier_InsertJobMappingChange_Call{Call: _e.mock.On("InsertJobMappingChange", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_InsertJobMappingChange_Call) Run(run func(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams)) *MockQuerier_InsertJobMappingChange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 InsertJobMappingChangeParams
+		if args[2] != nil {
+			arg2 = args[2].(InsertJobMappingChangeParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_InsertJobMappingChange_Call) Return(err error) *MockQuerier_InsertJobMappingChange_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_InsertJobMappingChange_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error) *MockQuerier_InsertJobMappingChange_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertJobSourceColumns provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertJobSourceColumns")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertJobSourceColumnsParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_InsertJobSourceColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertJobSourceColumns'
+type MockQuerier_InsertJobSourceColumns_Call struct {
+	*mock.Call
+}
+
+// InsertJobSourceColumns is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg InsertJobSourceColumnsParams
+func (_e *MockQuerier_Expecter) InsertJobSourceColumns(ctx any, db any, arg any) *MockQuerier_InsertJobSourceColumns_Call {
+	return &MockQuerier_InsertJobSourceColumns_Call{Call: _e.mock.On("InsertJobSourceColumns", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_InsertJobSourceColumns_Call) Run(run func(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams)) *MockQuerier_InsertJobSourceColumns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 InsertJobSourceColumnsParams
+		if args[2] != nil {
+			arg2 = args[2].(InsertJobSourceColumnsParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_InsertJobSourceColumns_Call) Return(err error) *MockQuerier_InsertJobSourceColumns_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_InsertJobSourceColumns_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error) *MockQuerier_InsertJobSourceColumns_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6284,6 +6767,80 @@ func (_c *MockQuerier_RemoveJobHookById_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// ReviewJobMappingChanges provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ReviewJobMappingChanges(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams) ([]pgtype.UUID, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReviewJobMappingChanges")
+	}
+
+	var r0 []pgtype.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ReviewJobMappingChangesParams) ([]pgtype.UUID, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ReviewJobMappingChangesParams) []pgtype.UUID); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]pgtype.UUID)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, ReviewJobMappingChangesParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ReviewJobMappingChanges_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReviewJobMappingChanges'
+type MockQuerier_ReviewJobMappingChanges_Call struct {
+	*mock.Call
+}
+
+// ReviewJobMappingChanges is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg ReviewJobMappingChangesParams
+func (_e *MockQuerier_Expecter) ReviewJobMappingChanges(ctx any, db any, arg any) *MockQuerier_ReviewJobMappingChanges_Call {
+	return &MockQuerier_ReviewJobMappingChanges_Call{Call: _e.mock.On("ReviewJobMappingChanges", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_ReviewJobMappingChanges_Call) Run(run func(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams)) *MockQuerier_ReviewJobMappingChanges_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 ReviewJobMappingChangesParams
+		if args[2] != nil {
+			arg2 = args[2].(ReviewJobMappingChangesParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ReviewJobMappingChanges_Call) Return(uUIDs []pgtype.UUID, err error) *MockQuerier_ReviewJobMappingChanges_Call {
+	_c.Call.Return(uUIDs, err)
+	return _c
+}
+
+func (_c *MockQuerier_ReviewJobMappingChanges_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams) ([]pgtype.UUID, error)) *MockQuerier_ReviewJobMappingChanges_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetAccountCreatedAt provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -6562,6 +7119,69 @@ func (_c *MockQuerier_SetJobHookEnabled_Call) Return(husonymApiJobHook HusonymAp
 }
 
 func (_c *MockQuerier_SetJobHookEnabled_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)) *MockQuerier_SetJobHookEnabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetJobMappingsFromRun provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SetJobMappingsFromRun(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetJobMappingsFromRun")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SetJobMappingsFromRunParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_SetJobMappingsFromRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetJobMappingsFromRun'
+type MockQuerier_SetJobMappingsFromRun_Call struct {
+	*mock.Call
+}
+
+// SetJobMappingsFromRun is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg SetJobMappingsFromRunParams
+func (_e *MockQuerier_Expecter) SetJobMappingsFromRun(ctx any, db any, arg any) *MockQuerier_SetJobMappingsFromRun_Call {
+	return &MockQuerier_SetJobMappingsFromRun_Call{Call: _e.mock.On("SetJobMappingsFromRun", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_SetJobMappingsFromRun_Call) Run(run func(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams)) *MockQuerier_SetJobMappingsFromRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 SetJobMappingsFromRunParams
+		if args[2] != nil {
+			arg2 = args[2].(SetJobMappingsFromRunParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SetJobMappingsFromRun_Call) Return(err error) *MockQuerier_SetJobMappingsFromRun_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_SetJobMappingsFromRun_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SetJobMappingsFromRunParams) error) *MockQuerier_SetJobMappingsFromRun_Call {
 	_c.Call.Return(run)
 	return _c
 }

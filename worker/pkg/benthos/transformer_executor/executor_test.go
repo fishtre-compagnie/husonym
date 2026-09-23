@@ -1468,6 +1468,29 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 		require.Equal(t, len(originalNumber), len(*result.(*string)))
 	})
 
+	t.Run("TransformPhoneNumberConfig_PreserveFormat", func(t *testing.T) {
+		preserveFormat := true
+		config := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{
+				TransformPhoneNumberConfig: &mgmtv1alpha1.TransformPhoneNumber{
+					PreserveFormat: &preserveFormat,
+				},
+			},
+		}
+		executor, err := InitializeTransformerByConfigType(config)
+		require.NoError(t, err)
+		originalNumber := "+33 6 12 34 56 78"
+		result, err := executor.Mutate(originalNumber, executor.Opts)
+		require.NoError(t, err)
+		require.NotEqual(t, originalNumber, result)
+		require.Len(t, result, len(originalNumber))
+		require.Equal(t, "+33 6 ", result.(string)[:6])
+
+		again, err := executor.Mutate(originalNumber, executor.Opts)
+		require.NoError(t, err)
+		require.Equal(t, result, again, "one executor, one pseudonym per number")
+	})
+
 	t.Run("TransformPhoneNumberConfig_Empty", func(t *testing.T) {
 		config := &mgmtv1alpha1.TransformerConfig{
 			Config: &mgmtv1alpha1.TransformerConfig_TransformPhoneNumberConfig{

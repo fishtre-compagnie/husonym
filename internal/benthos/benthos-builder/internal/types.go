@@ -77,6 +77,30 @@ type SourceParams struct {
 	JobRunId         string
 	SourceConnection *mgmtv1alpha1.Connection
 	Logger           *slog.Logger
+
+	// MappingChanges is an output, filled by the SQL builder: how the job's mappings differ from
+	// the source it read. The caller writes them to the job, so that the job keeps mirroring its
+	// source instead of each run re-deciding the same columns. It lives here rather than in the
+	// return value because every other builder would have to return an empty one.
+	MappingChanges MappingChanges
+
+	// HasConsistencyKey says whether the deployment can derive a key for deterministic
+	// pseudonymization. The strategy for new columns reads it: it does not choose for a
+	// column an option that needs a key the run will not have.
+	HasConsistencyKey bool
+}
+
+// MappingChanges is what a run changes in its job's mappings.
+type MappingChanges struct {
+	// Mappings for the columns the source has and the job did not map, as the job's strategy
+	// for new columns chose them
+	Added []*mgmtv1alpha1.JobMapping
+	// The job's mappings whose column the source no longer has
+	Removed []*mgmtv1alpha1.JobMapping
+	// Every column of the tables the job syncs, with its type as the source reports it
+	Columns []*mgmtv1alpha1.JobSourceColumn
+	// Whether the strategy asks for the changes to be reviewed (AutoMap & Review)
+	RecordChanges bool
 }
 
 type ReferenceKey struct {
