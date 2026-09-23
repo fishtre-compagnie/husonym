@@ -145,6 +145,11 @@ function getAllNavSettings(accountName: string): Item[] {
       ref: 'hooks',
       title: 'Hooks',
     },
+    {
+      href: `/${accountName}/settings/anonymization`,
+      ref: 'anonymization',
+      title: 'Anonymization',
+    },
   ];
 }
 
