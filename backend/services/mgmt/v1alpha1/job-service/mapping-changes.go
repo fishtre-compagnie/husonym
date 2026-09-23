@@ -49,11 +49,18 @@ func (s *Service) GetPendingMappingChanges(
 		if err != nil {
 			return nil, err
 		}
-		job, err := s.db.Q.GetJobById(ctx, s.db.Db, jobUuid)
-		if err != nil {
-			return nil, err
+		// The job is read to tell what its mappings say now, which only the changes need. A job
+		// deleted while somebody had the review tab open takes its changes with it: the poll
+		// answers an empty list rather than failing on a job that is gone.
+		if len(rows) > 0 {
+			job, err := s.db.Q.GetJobById(ctx, s.db.Db, jobUuid)
+			if err != nil && husonymdb.IsNoRows(err) {
+				return nil, husonymerrors.NewNotFound("job with that id does not exist")
+			} else if err != nil {
+				return nil, err
+			}
+			jobs = []db_queries.HusonymApiJob{job}
 		}
-		jobs = []db_queries.HusonymApiJob{job}
 	} else {
 		if err := user.EnforceAccountAccess(ctx, req.Msg.GetAccountId()); err != nil {
 			return nil, err
@@ -100,7 +107,7 @@ func (s *Service) ReviewMappingChanges(
 		return nil, err
 	}
 
-	params, err := reviewParams(user.PgId(), jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
+	params, err := reviewParams(user.PgId(), accountUuid, jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +139,7 @@ func (s *Service) ApplyMappingChanges(
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
-	params, err := reviewParams(user.PgId(), jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
+	params, err := reviewParams(user.PgId(), accountUuid, jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
 	if err != nil {
 		return nil, err
 	}
@@ -209,12 +216,19 @@ func setTransformers(
 	return out, applied, nil
 }
 
+// reviewParams binds a review to one job of one account. The account is not decoration: the
+// enforcement above checks that the caller may edit jobs of the account they named, never that
+// the job id they passed belongs to it.
 func reviewParams(
-	reviewer, jobUuid pgtype.UUID,
+	reviewer, accountUuid, jobUuid pgtype.UUID,
 	changeIds []string,
 	note *string,
 ) (db_queries.ReviewJobMappingChangesParams, error) {
-	params := db_queries.ReviewJobMappingChangesParams{ReviewedById: reviewer, JobId: jobUuid}
+	params := db_queries.ReviewJobMappingChangesParams{
+		ReviewedById: reviewer,
+		AccountId:    accountUuid,
+		JobId:        jobUuid,
+	}
 	for _, id := range changeIds {
 		uuid, err := husonymdb.ToUuid(id)
 		if err != nil {

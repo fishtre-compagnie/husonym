@@ -16,13 +16,16 @@ SELECT * FROM husonym_api.job_mapping_changes
 WHERE account_id = sqlc.arg('accountId') AND job_id = sqlc.arg('jobId') AND reviewed_at IS NULL
 ORDER BY created_at, table_schema, table_name, column_name;
 
--- Only pending changes of the job: an id of another job, or one already reviewed, is left alone.
+-- Only pending changes of the job, in the caller's account: an id of another job or of another
+-- account, or a change already reviewed, is left alone. The account is what makes a job id the
+-- caller passes harmless — the id alone is enough to find the row.
 -- name: ReviewJobMappingChanges :many
 UPDATE husonym_api.job_mapping_changes
 SET reviewed_at = CURRENT_TIMESTAMP,
     reviewed_by_id = sqlc.arg('reviewedById'),
     note = sqlc.narg('note')
-WHERE job_id = sqlc.arg('jobId')
+WHERE account_id = sqlc.arg('accountId')
+  AND job_id = sqlc.arg('jobId')
   AND id = ANY(sqlc.arg('ids')::uuid[])
   AND reviewed_at IS NULL
 RETURNING id;

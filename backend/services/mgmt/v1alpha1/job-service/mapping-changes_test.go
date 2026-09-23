@@ -7,6 +7,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
@@ -124,6 +125,36 @@ func Test_setTransformers(t *testing.T) {
 
 	t.Run("refuses a mapping without a transformer", func(t *testing.T) {
 		_, _, err := setTransformers(stored, []*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "users", Column: "email"}})
+		require.Error(t, err)
+	})
+}
+
+func Test_reviewParams(t *testing.T) {
+	// The handler enforces that the caller may edit jobs of the account they named, never that
+	// the job id they passed belongs to that account. Without the account in the update, a job
+	// id of another account was enough to mark that account's changes reviewed, under the
+	// caller's name and note.
+	t.Run("binds the review to one job of one account", func(t *testing.T) {
+		const accountId = "22222222-2222-2222-2222-222222222222"
+		reviewer, err := husonymdb.ToUuid("33333333-3333-3333-3333-333333333333")
+		require.NoError(t, err)
+		accountUuid, err := husonymdb.ToUuid(accountId)
+		require.NoError(t, err)
+		jobUuid, err := husonymdb.ToUuid(testJobId)
+		require.NoError(t, err)
+
+		note := "internal references"
+		params, err := reviewParams(reviewer, accountUuid, jobUuid, []string{testJobId}, &note)
+		require.NoError(t, err)
+		require.Equal(t, accountUuid, params.AccountId)
+		require.Equal(t, jobUuid, params.JobId)
+		require.Equal(t, reviewer, params.ReviewedById)
+		require.Len(t, params.Ids, 1)
+		require.Equal(t, note, params.Note.String)
+	})
+
+	t.Run("refuses an id that is not one", func(t *testing.T) {
+		_, err := reviewParams(pgtype.UUID{}, pgtype.UUID{}, pgtype.UUID{}, []string{"nope"}, nil)
 		require.Error(t, err)
 	})
 }

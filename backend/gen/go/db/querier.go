@@ -109,7 +109,9 @@ type Querier interface {
 	RemoveJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveJobConnectionDestinations(ctx context.Context, db DBTX, jobids []pgtype.UUID) error
 	RemoveJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
-	// Only pending changes of the job: an id of another job, or one already reviewed, is left alone.
+	// Only pending changes of the job, in the caller's account: an id of another job or of another
+	// account, or a change already reviewed, is left alone. The account is what makes a job id the
+	// caller passes harmless — the id alone is enough to find the row.
 	ReviewJobMappingChanges(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams) ([]pgtype.UUID, error)
 	SetAccountCreatedAt(ctx context.Context, db DBTX, arg SetAccountCreatedAtParams) (HusonymApiAccount, error)
 	SetAccountHookEnabled(ctx context.Context, db DBTX, arg SetAccountHookEnabledParams) (HusonymApiAccountHook, error)

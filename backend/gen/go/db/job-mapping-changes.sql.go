@@ -216,8 +216,9 @@ UPDATE husonym_api.job_mapping_changes
 SET reviewed_at = CURRENT_TIMESTAMP,
     reviewed_by_id = $1,
     note = $2
-WHERE job_id = $3
-  AND id = ANY($4::uuid[])
+WHERE account_id = $3
+  AND job_id = $4
+  AND id = ANY($5::uuid[])
   AND reviewed_at IS NULL
 RETURNING id
 `
@@ -225,15 +226,19 @@ RETURNING id
 type ReviewJobMappingChangesParams struct {
 	ReviewedById pgtype.UUID
 	Note         pgtype.Text
+	AccountId    pgtype.UUID
 	JobId        pgtype.UUID
 	Ids          []pgtype.UUID
 }
 
-// Only pending changes of the job: an id of another job, or one already reviewed, is left alone.
+// Only pending changes of the job, in the caller's account: an id of another job or of another
+// account, or a change already reviewed, is left alone. The account is what makes a job id the
+// caller passes harmless — the id alone is enough to find the row.
 func (q *Queries) ReviewJobMappingChanges(ctx context.Context, db DBTX, arg ReviewJobMappingChangesParams) ([]pgtype.UUID, error) {
 	rows, err := db.Query(ctx, reviewJobMappingChanges,
 		arg.ReviewedById,
 		arg.Note,
+		arg.AccountId,
 		arg.JobId,
 		arg.Ids,
 	)
