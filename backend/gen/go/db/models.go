@@ -63,6 +63,18 @@ type HusonymApiAccountInvite struct {
 	Role         pgtype.Int4
 }
 
+// Stores the settings of an account: a value that varies by account, part of which may be a secret, and that a human sets once
+type HusonymApiAccountSetting struct {
+	ID              pgtype.UUID
+	AccountID       pgtype.UUID
+	Config          []byte
+	SettingType     pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	CreatedByUserID pgtype.UUID
+	UpdatedByUserID pgtype.UUID
+}
+
 type HusonymApiAccountUserAssociation struct {
 	ID        pgtype.UUID
 	AccountID pgtype.UUID

@@ -56,6 +56,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
+	v1alpha1_accountsettingservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-settings-service"
 	v1alpha1_anonymizationservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/anonymization-service"
 	v1alpha1_apikeyservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/api-key-service"
 	v1alpha1_authservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/auth-service"
@@ -544,17 +545,51 @@ func serve(ctx context.Context) error {
 	)
 	userdataclient := userdata.NewClient(useraccountService, rbacclient, cascadelicense)
 
+	// The settings of an account carry secrets, so they are only held where the deployment
+	// can encrypt one. Without a password the handler answers Unimplemented, and a run
+	// reads that as "no account settings here" and keeps to its own variable — which is
+	// what a deployment that has never set one does today.
+	settingsEncryptor, err := getSymEncryptor()
+	if err != nil {
+		return err
+	}
+	var accountSettingHandler mgmtv1alpha1connect.AccountSettingServiceHandler = mgmtv1alpha1connect.UnimplementedAccountSettingServiceHandler{}
+	if settingsEncryptor != nil {
+		accountSettingHandler = v1alpha1_accountsettingservice.New(
+			&v1alpha1_accountsettingservice.Config{IsHusonymCloud: ncloudlicense.IsValid()},
+			db,
+			userdataclient,
+			settingsEncryptor,
+		)
+	} else {
+		slogger.Warn(
+			"HUSONYM_SYM_ENCRYPTION_PASSWORD is not set: an account cannot hold settings of " +
+				"its own, so a run derives its deterministic outputs from " +
+				"ANONYMIZATION_CONSISTENCY_KEY, shared by every account of the deployment",
+		)
+	}
+	api.Handle(
+		mgmtv1alpha1connect.NewAccountSettingServiceHandler(
+			accountSettingHandler,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
+
 	if cascadelicense.IsValid() {
 		slogger.Debug("enabling account hooks service")
 
 		accountHookOptions := []accounthooks.Option{accounthooks.WithAppBaseUrl(getAppBaseUrl())}
 		var slackClient ee_slack.Interface
 		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
-			encryptor, err := sym_encrypt.NewEncryptor(
-				viper.GetString("HUSONYM_SYM_ENCRYPTION_PASSWORD"),
-			)
+			encryptor, err := getSymEncryptor()
 			if err != nil {
 				return err
+			}
+			if encryptor == nil {
+				return sym_encrypt.ErrEmptyPassword
 			}
 			slackClient = ee_slack.NewClient(
 				encryptor,
@@ -1308,6 +1343,16 @@ func getStripePriceLookupMap() (billing.PriceQuantity, error) {
 
 func getAppBaseUrl() string {
 	return viper.GetString("APP_BASEURL")
+}
+
+// getSymEncryptor builds the encryptor of the deployment's secrets, or nothing when no
+// password is set — which says the deployment has no way to keep one.
+func getSymEncryptor() (sym_encrypt.Interface, error) {
+	password := viper.GetString("HUSONYM_SYM_ENCRYPTION_PASSWORD")
+	if password == "" {
+		return nil, nil
+	}
+	return sym_encrypt.NewEncryptor(password)
 }
 
 func getPresidioAnalyzeClient() (*presidioapi.ClientWithResponses, bool, error) {

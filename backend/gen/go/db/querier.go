@@ -17,6 +17,10 @@ type Querier interface {
 	CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error)
 	CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (HusonymApiAccountHook, error)
 	CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error)
+	// Returns no row when the account already has a setting of that kind: the caller reads the
+	// one that is there. Two runs of the same account that both generate a key that way keep
+	// the one that won.
+	CreateAccountSettingIfAbsent(ctx context.Context, db DBTX, arg CreateAccountSettingIfAbsentParams) (HusonymApiAccountSetting, error)
 	CreateAccountUserAssociation(ctx context.Context, db DBTX, arg CreateAccountUserAssociationParams) error
 	CreateConnection(ctx context.Context, db DBTX, arg CreateConnectionParams) (HusonymApiConnection, error)
 	CreateIdentityProviderAssociation(ctx context.Context, db DBTX, arg CreateIdentityProviderAssociationParams) (HusonymApiUserIdentityProviderAssociation, error)
@@ -46,6 +50,8 @@ type Querier interface {
 	GetAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)
 	GetAccountInviteByToken(ctx context.Context, db DBTX, token string) (HusonymApiAccountInvite, error)
 	GetAccountOnboardingConfig(ctx context.Context, db DBTX, id pgtype.UUID) (*pg_models.AccountOnboardingConfig, error)
+	GetAccountSettingByType(ctx context.Context, db DBTX, arg GetAccountSettingByTypeParams) (HusonymApiAccountSetting, error)
+	GetAccountSettings(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountSetting, error)
 	GetAccountUserAssociation(ctx context.Context, db DBTX, arg GetAccountUserAssociationParams) (HusonymApiAccountUserAssociation, error)
 	GetAccountUsers(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]pgtype.UUID, error)
 	GetAccountsByUser(ctx context.Context, db DBTX, id pgtype.UUID) ([]HusonymApiAccount, error)
@@ -139,6 +145,9 @@ type Querier interface {
 	UpdateJobVirtualForeignKeys(ctx context.Context, db DBTX, arg UpdateJobVirtualForeignKeysParams) (HusonymApiJob, error)
 	UpdateTemporalConfigByAccount(ctx context.Context, db DBTX, arg UpdateTemporalConfigByAccountParams) (HusonymApiAccount, error)
 	UpdateUserDefinedTransformer(ctx context.Context, db DBTX, arg UpdateUserDefinedTransformerParams) (HusonymApiTransformer, error)
+	// The kind of setting is the generated column, so the conflict is named by its constraint
+	// rather than by the columns it covers.
+	UpsertAccountSetting(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)
 }
 
 var _ Querier = (*Queries)(nil)

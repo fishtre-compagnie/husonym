@@ -22,6 +22,7 @@ packages:
   github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect:
     interfaces:
       AccountHookServiceClient: {}
+      AccountSettingServiceClient: {}
       AuthServiceClient: {}
       ConnectionServiceClient: {}
       JobServiceClient: {}

@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package mgmt.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/secret.proto";
+
+// A setting of an account: a value that varies by account, part of which may be a secret,
+// and that a human sets once.
+//
+// Deployment settings — what holds for everybody, such as the Temporal url or the limits —
+// stay in environment variables: they are infrastructure, not product.
+message AccountSetting {
+  // The account this setting belongs to.
+  string account_id = 1;
+
+  // The setting itself. An account holds at most one of each variant.
+  AccountSettingConfig config = 2;
+
+  // The fingerprint of each secret the setting carries, by the path of its field
+  // ("anonymization_consistency.derivation_key").
+  //
+  // A response carries these instead of the secrets, which are absent from it: a
+  // fingerprint answers the only real need — telling whether two deployments share a
+  // secret, or whether the one just written really replaced the one that was there —
+  // while showing the last characters of a secret would only make it easier to guess.
+  map<string, string> secret_fingerprints = 3;
+
+  // The time this setting was created.
+  google.protobuf.Timestamp created_at = 4;
+  // The last time this setting was updated.
+  google.protobuf.Timestamp updated_at = 5;
+
+  // The user that created this setting. Empty when a run generated it.
+  string created_by_user_id = 6;
+  // The user that last updated this setting. Empty when a run generated it.
+  string updated_by_user_id = 7;
+}
+
+// The setting itself, one variant per kind of setting.
+//
+// Adding a setting is adding a variant: neither the table, nor the RPCs, nor the access
+// rules move.
+message AccountSettingConfig {
+  oneof config {
+    option (buf.validate.oneof).required = true;
+
+    // What the account's deterministic anonymization derives from.
+    AnonymizationConsistency anonymization_consistency = 1;
+  }
+}
+
+// What an account's deterministic anonymization derives from.
+message AnonymizationConsistency {
+  // The key both engines derive their deterministic outputs from: Athanor for all of its
+  // transformers, Benthos for the permutation of TransformPhoneNumber in preserve_format.
+  //
+  // It is generated rather than typed. It is given only for a reason: taking over the key
+  // of a deployment being replaced, or replaying outputs produced elsewhere. Replacing it
+  // changes every output of the account, so the destinations already filled no longer
+  // match what a new run writes.
+  string derivation_key = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (mgmt.v1alpha1.secret) = true
+  ];
+}
+
+message GetAccountSettingsRequest {
+  // The account to read the settings of.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetAccountSettingsResponse {
+  // The settings of the account, without their secrets.
+  repeated AccountSetting settings = 1;
+}
+
+message SetAccountSettingRequest {
+  // The account to write the setting for.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The setting to write. It replaces the one the account holds of that kind, if any.
+  AccountSettingConfig config = 2 [(buf.validate.field).required = true];
+}
+
+message SetAccountSettingResponse {
+  // The setting as it now stands, without its secrets.
+  AccountSetting setting = 1;
+}
+
+message GetAccountConsistencyKeyRequest {
+  // The account to read the key of.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Whether to generate a key for the account when it has none.
+  //
+  // A run asks for one only when nothing else gives it a key: the deployment variable
+  // still wins over an account with no setting, so a deployment that carries one keeps
+  // producing the outputs it produced. Where no variable is set, every account gets its
+  // own key on its first run.
+  bool generate_if_absent = 2;
+}
+
+message GetAccountConsistencyKeyResponse {
+  // The key, in clear. Absent when the account has none — and, when one was asked for,
+  // when the deployment has no way to keep a secret.
+  optional string key = 1;
+}
+
+// Holds the settings of an account.
+service AccountSettingService {
+  // Retrieves the settings of an account, without their secrets.
+  rpc GetAccountSettings(GetAccountSettingsRequest) returns (GetAccountSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Writes a setting of an account, replacing the one it holds of that kind.
+  rpc SetAccountSetting(SetAccountSettingRequest) returns (SetAccountSettingResponse) {}
+
+  // Retrieves the key an account's deterministic anonymization derives from, in clear, and
+  // generates one when asked and the account has none.
+  //
+  // For the worker of a run: it already reads the passwords of the databases it
+  // synchronizes, so the key of the account it runs for adds no surface.
+  rpc GetAccountConsistencyKey(GetAccountConsistencyKeyRequest) returns (GetAccountConsistencyKeyResponse) {}
+}
