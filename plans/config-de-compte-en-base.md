@@ -82,7 +82,7 @@ message AccountSetting {
 }
 
 message AnonymizationConsistency {
-  // Chiffré au repos. Jamais renvoyé à l'UI : voir 3.4.
+  // Chiffré au repos, absent des réponses à l'UI : voir 3.4.
   string derivation_key = 1;
 }
 ```
@@ -105,21 +105,28 @@ déjà le cas pour Slack.
 
 | Appelant | Droit |
 |---|---|
-| Un administrateur du compte | écrit un réglage, lit tout **sauf les champs secrets** (renvoyés masqués, jamais en clair) |
+| Un administrateur du compte | écrit un réglage, lit tout **sauf les champs secrets** : absents de la réponse, remplacés par une empreinte (§8.3) |
 | Le worker (clé d'API worker) | lit un réglage **en clair**, pour le compte du run en cours |
 | Quiconque d'autre | rien |
 
 Le worker lit déjà les mots de passe des bases qu'il synchronise ; lui donner la clé de son compte
 n'ajoute pas de surface. L'UI, elle, n'a aucune raison de voir un secret qu'elle vient d'écrire :
-on affiche « défini le … par … », avec un bouton pour remplacer.
+on affiche « défini le … par … » et l'empreinte, avec un bouton pour remplacer.
 
 ## 4. La clé de cohérence comme premier occupant
 
 ### 4.1 Sa vie
 
-- **Créée à la demande, pas par un humain.** Au premier run d'un compte qui n'a pas de clé, le
-  backend en tire une (32 octets, `crypto/rand`), la chiffre, l'enregistre, la renvoie. Personne
-  n'a rien à régler, et deux comptes ne partagent plus rien.
+**Décidé (2026-09-23) : elle est générée, pas saisie.** Ce n'est pas une valeur qu'on cherche à
+écrire à la main ; on ne la fournit que pour en réutiliser une ancienne ou pour la changer.
+
+- **Créée à la demande.** Au premier run d'un compte qui n'a **aucune** clé — ni réglage, ni
+  variable de déploiement (cf. 4.2) — le backend en tire une (32 octets, `crypto/rand`), la
+  chiffre, l'enregistre, la renvoie. Personne n'a rien à régler, et deux comptes ne partagent
+  plus rien.
+- **Fournie seulement pour une raison.** L'écriture accepte une clé donnée : reprendre celle d'un
+  déploiement qu'on remplace, ou rejouer des sorties produites ailleurs. C'est le cas
+  particulier, pas le chemin normal.
 - **Jamais régénérée toute seule.** La régénérer change toutes les sorties : les destinations
   déjà peuplées ne correspondent plus. C'est un geste explicite, avec un avertissement qui le dit.
 - **Sauvegardée avec la base.** Elle vit là où vivent les jobs qu'elle gouverne.
@@ -133,6 +140,14 @@ réglage du compte  →  ANONYMIZATION_CONSISTENCY_KEY  →  (ATHANOR_CONSISTENC
 Un déploiement qui a déjà une clé en variable **continue de produire les mêmes sorties** : tant
 qu'aucun réglage de compte n'existe, la variable gagne. La bascule d'un compte vers sa propre clé
 est un geste explicite, parce qu'elle change ses sorties.
+
+C'est la condition qui rend la génération automatique sans danger, et il faut la lire dans ce
+sens : **on ne génère que lorsque la cascade ne donne rien**. Sur un déploiement existant qui
+porte la variable, rien ne bouge et aucune clé n'est créée ; sur un déploiement neuf, où la
+variable n'est pas posée, chaque compte reçoit la sienne au premier run — l'isolation par compte
+devient le défaut sans que personne ait à la demander. Cela répond à la question 2 du §8 : il n'y
+a pas de bascule des comptes existants, il y a une variable qu'on retire le jour où l'on veut
+qu'ils basculent.
 
 ### 4.3 Ce que le worker en fait
 
@@ -169,8 +184,8 @@ compte, résolue avant l'authentification — ce qui n'est pas un réglage « de
 
 1. Migration + `oneof` + RPC de lecture/écriture + chiffrement, sans aucun occupant : le support
    nu, avec ses tests.
-2. La clé de cohérence : création à la demande, cascade, lecture par le worker, bascule de
-   `EngineConfig` vers une valeur par run.
+2. La clé de cohérence : génération à la demande, reprise d'une clé fournie, cascade, lecture
+   par le worker, bascule de `EngineConfig` vers une valeur par run.
 3. L'UI : une page de réglages du compte, un secret qui s'affiche « défini le … », un
    remplacement.
 4. (Plus tard, hors de ce plan) OIDC ; chiffrement des identifiants de connexion sur le même
@@ -179,12 +194,22 @@ compte, résolue avant l'authentification — ce qui n'est pas un réglage « de
 Les étapes 1 et 2 se tiennent seules et n'exigent pas la 3 : un compte sans réglage retombe sur la
 variable, comme aujourd'hui.
 
-## 8. Questions ouvertes
+## 8. Questions tranchées
 
-1. **Création à la demande, ou geste explicite ?** Le plan propose « à la demande » (§4.1) : rien à
-   régler, et l'isolation par compte devient le défaut. L'inverse — ne rien faire tant qu'un humain
-   n'a pas cliqué — garde le déploiement maître de ses sorties, au prix d'un réglage de plus.
-2. **Bascule des comptes existants.** Créer une clé propre à un compte change ses sorties. Faut-il
-   le faire au premier run (et prévenir), ou seulement pour les comptes créés après ?
-3. **Les champs secrets sont-ils masqués ou absents** de la réponse à l'UI ? Masqués permet
-   d'afficher « •••• 4f2 » et de reconnaître une clé ; absents ne laisse rien fuir.
+1. **Création à la demande, ou geste explicite ?** → **à la demande** (2026-09-23). La clé se
+   génère ; on ne la saisit que pour en reprendre une ancienne ou la changer (§4.1). Sans danger
+   pour l'existant parce qu'on ne génère que si la cascade ne donne rien (§4.2).
+2. **Bascule des comptes existants.** → il n'y en a pas : la variable de déploiement continue de
+   gagner tant qu'elle est posée. La retirer est le geste qui fait basculer (§4.2).
+3. **Les champs secrets sont-ils masqués ou absents** de la réponse à l'UI ? → **absents**, avec
+   une **empreinte** à côté : les premiers octets d'un condensat de la clé, jamais de la clé.
+   Montrer « •••• 4f2 » en découvrant la fin du secret le rend plus facile à deviner, alors qu'une
+   empreinte remplit le seul besoin réel — reconnaître que deux déploiements partagent la même
+   clé, ou qu'on vient bien de remplacer celle qu'on croyait.
+
+## 9. Ce qui reste à décider quand le chantier démarre
+
+- **Le nom du réglage dans l'UI.** « Clé de cohérence » est le terme du code ; ce n'est pas
+  forcément celui qui parle à qui l'ouvre une fois.
+- **Qui a le droit de la remplacer** : tout administrateur de compte, ou un rôle plus étroit ?
+  Remplacer la clé rend inexploitables toutes les destinations déjà peuplées du compte.
