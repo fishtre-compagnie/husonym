@@ -225,4 +225,9 @@ type HusonymApiUserIdentityProviderAssociation struct {
 	ProviderSub string
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	Name        pgtype.Text
+	Email       pgtype.Text
+	// Whether the provider asserts it verified this address. False means no proof, including for rows written before the column existed.
+	EmailVerified bool
+	Picture       pgtype.Text
 }

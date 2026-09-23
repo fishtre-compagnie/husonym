@@ -89,10 +89,18 @@ Reference the [environment variables](/deploy/environment-variables.md) page for
 
 ## Auth Server Admin Access
 
-The backend requires minimal admin access to the auth server in order to show information about members within an account.
-If that is not needed or desired, the `AUTH_API_*` environment variables can be omitted, however the member page will not show any user data for team members.
+The name, email address and picture shown on the members page come from the standard OIDC
+claims (`name`, `email`, `email_verified`, `picture`), read when a user signs in — from the
+token when it carries them, otherwise from the provider's `userinfo` endpoint, which is
+found through its discovery document. Any OIDC-compliant provider works, and no extra
+configuration is needed.
 
-Husonym currently supports keycloak and auth0 for this feature.
+The `AUTH_API_*` variables below configure a **fallback**, used only for a user who has not
+signed in since these values started being stored, or whose provider sends no profile at
+all. They are optional: omitting them means such a member is listed without a name.
+
+That fallback is an administration API of the provider's own — not part of OIDC — so it
+exists only for the two products Husonym implements it for: Keycloak and Auth0.
 
 This is determined by the `AUTH_API_PROVIDER` environment variable that recognizes `auth0` and `keycloak` as their values. If omitted, `auth0` is the default for backwards compatibility.
 

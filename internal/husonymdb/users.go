@@ -10,14 +10,22 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// SetUserByAuthSub finds or creates the user behind an identity provider subject, and
+// refreshes the display identity the provider presents for it.
+//
+// profile may be nil: a deployment whose provider sends no profile claims and exposes no
+// userinfo endpoint still gets its user. The stored values are then left as they are --
+// absence is not erasure.
 func (d *HusonymDb) SetUserByAuthSub(
 	ctx context.Context,
 	authSub string,
+	profile *authmgmt.User,
 ) (*db_queries.HusonymApiUser, error) {
 	var userResp *db_queries.HusonymApiUser
 	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.Serializable}, func(dbtx BaseDBTX) error {
@@ -61,7 +69,47 @@ func (d *HusonymDb) SetUserByAuthSub(
 	}); err != nil {
 		return nil, err
 	}
+
+	d.refreshIdentityProviderProfile(ctx, authSub, profile)
 	return userResp, nil
+}
+
+// refreshIdentityProviderProfile writes what the provider says of a subject onto its
+// association, once the user and the association are committed.
+//
+// Two properties, and both are the point rather than caution:
+//
+//   - it runs OUTSIDE the serializable transaction above. Signing in is a read on the
+//     nominal path, and the application calls it on every page load: a write inside that
+//     transaction turns two tabs of the same user into a serialization failure, which
+//     nothing here retries.
+//   - it cannot fail the sign-in. The statement is a no-op unless something differs, so
+//     a failure here means the display identity is a sign-in out of date -- never a
+//     reason to refuse the user. Same rule as reading the profile in the first place.
+func (d *HusonymDb) refreshIdentityProviderProfile(
+	ctx context.Context,
+	authSub string,
+	profile *authmgmt.User,
+) {
+	if profile == nil {
+		return
+	}
+	_, err := d.Q.SetIdentityProviderProfile(ctx, d.Db, db_queries.SetIdentityProviderProfileParams{
+		ProviderSub: authSub,
+		Name:        ToNullableText(profile.Name),
+		Email:       ToNullableText(profile.Email),
+		// Always written, never coalesced: an assertion that disappears has to lower the
+		// stored value back to false.
+		EmailVerified: profile.EmailVerified,
+		Picture:       ToNullableText(profile.Picture),
+	})
+	// No rows is the nominal case: nothing about the profile changed.
+	if err != nil && !IsNoRows(err) {
+		slog.Default().Warn(
+			"unable to refresh the identity provider profile",
+			"error", err.Error(),
+		)
+	}
 }
 
 func (d *HusonymDb) SetPersonalAccount(

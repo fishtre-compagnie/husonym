@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 )
 
 type Interface interface {
@@ -62,14 +64,20 @@ type AuthTokenErrorData struct {
 	ErrorDescription string `json:"error_description"`
 }
 
+// UserInfo is the response of the provider's userinfo endpoint, in the standard OIDC
+// claims.
+//
+// EmailVerified is lenient for the same reason the token claim is: this whole response is
+// unmarshalled in one go, so a provider that spells the boolean as a string would cost the
+// entire profile -- name and address included -- and not just the assertion it carries.
 type UserInfo struct {
-	Sub           string `json:"sub"`
-	Nickname      string `json:"nickname"`
-	Name          string `json:"name"`
-	Picture       string `json:"picture"`
-	UpdatedAt     string `json:"updated_at"`
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"email_verified"`
+	Sub           string            `json:"sub"`
+	Nickname      string            `json:"nickname"`
+	Name          string            `json:"name"`
+	Picture       string            `json:"picture"`
+	UpdatedAt     string            `json:"updated_at"`
+	Email         string            `json:"email"`
+	EmailVerified utils.LenientBool `json:"email_verified"`
 }
 
 func getHttpClient() *http.Client {

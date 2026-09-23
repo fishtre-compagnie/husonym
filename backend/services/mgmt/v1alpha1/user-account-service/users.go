@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -131,7 +132,11 @@ func (s *Service) SetUser(
 			return nil, husonymerrors.New(err)
 		}
 
-		user, err := s.db.SetUserByAuthSub(ctx, tokenCtxData.AuthUserId)
+		user, err := s.db.SetUserByAuthSub(
+			ctx,
+			tokenCtxData.AuthUserId,
+			s.resolveIdentityProfile(ctx, tokenCtxData),
+		)
 		if err != nil {
 			return nil, husonymerrors.New(err)
 		}
@@ -595,9 +600,9 @@ func (s *Service) GetTeamAccountMembers(
 		return nil, err
 	}
 
-	rbacUsers := []rbac.EntityString{}
-	for _, user := range userIdentities {
-		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(user.UserID))
+	rbacUsers := make([]rbac.EntityString, 0, len(userIdentities))
+	for i := range userIdentities {
+		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(userIdentities[i].UserID))
 	}
 
 	userRoles := s.rbacClient.GetUserRoles(
@@ -630,24 +635,36 @@ func (s *Service) GetTeamAccountMembers(
 			} else {
 				dtoUsers[i].Role = mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED
 			}
-			if user.ProviderSub == "" {
-				logger.Warn(
-					fmt.Sprintf(
-						"unable to find provider sub associated with user id: %q",
-						husonymdb.UUIDString(user.UserID),
-					),
-				)
-				return nil
-			} else {
-				authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub)
-				if err != nil {
+			// What the provider said at sign-in, stored on the association. This is the
+			// nominal path, and it is the same for every OIDC provider.
+			identity := &authmgmt.User{
+				Name:    user.Name.String,
+				Email:   user.Email.String,
+				Picture: user.Picture.String,
+			}
+
+			// A blank field is completed from the deployment's administration API, which
+			// only Auth0 and Keycloak have. It may only ever add -- see
+			// completeDisplayIdentity.
+			if !isDisplayIdentityComplete(identity) {
+				if user.ProviderSub == "" {
+					logger.Warn(
+						fmt.Sprintf(
+							"unable to find provider sub associated with user id: %q",
+							husonymdb.UUIDString(user.UserID),
+						),
+					)
+				} else if authuser, err := s.authadminclient.GetUserBySub(ctx, user.ProviderSub); err != nil {
+					// Not fatal: what was stored is still shown.
 					logger.Warn(fmt.Sprintf("unable to retrieve user by sub: %s", err.Error()))
 				} else {
-					dtoUsers[i].Email = authuser.Email
-					dtoUsers[i].Name = authuser.Name
-					dtoUsers[i].Image = authuser.Picture
+					identity = completeDisplayIdentity(identity, authuser)
 				}
 			}
+
+			dtoUsers[i].Email = identity.Email
+			dtoUsers[i].Name = identity.Name
+			dtoUsers[i].Image = identity.Picture
 			return nil
 		})
 	}
