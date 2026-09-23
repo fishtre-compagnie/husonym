@@ -62,31 +62,39 @@ func (d *HusonymDb) SetUserByAuthSub(
 				}
 				userResp = &user
 			}
-			// The association exists from here on, whichever branch got us here.
-			return setIdentityProviderProfile(ctx, d.Q, dbtx, authSub, profile)
+			return nil
 		}
 		userResp = &user
-		return setIdentityProviderProfile(ctx, d.Q, dbtx, authSub, profile)
+		return nil
 	}); err != nil {
 		return nil, err
 	}
+
+	d.refreshIdentityProviderProfile(ctx, authSub, profile)
 	return userResp, nil
 }
 
-// setIdentityProviderProfile writes what the provider says of a subject onto its
-// association. It runs in the caller's transaction, so a provider that answers half a
-// profile never leaves a user without one.
-func setIdentityProviderProfile(
+// refreshIdentityProviderProfile writes what the provider says of a subject onto its
+// association, once the user and the association are committed.
+//
+// Two properties, and both are the point rather than caution:
+//
+//   - it runs OUTSIDE the serializable transaction above. Signing in is a read on the
+//     nominal path, and the application calls it on every page load: a write inside that
+//     transaction turns two tabs of the same user into a serialization failure, which
+//     nothing here retries.
+//   - it cannot fail the sign-in. The statement is a no-op unless something differs, so
+//     a failure here means the display identity is a sign-in out of date -- never a
+//     reason to refuse the user. Same rule as reading the profile in the first place.
+func (d *HusonymDb) refreshIdentityProviderProfile(
 	ctx context.Context,
-	q db_queries.Querier,
-	dbtx BaseDBTX,
 	authSub string,
 	profile *authmgmt.User,
-) error {
+) {
 	if profile == nil {
-		return nil
+		return
 	}
-	_, err := q.SetIdentityProviderProfile(ctx, dbtx, db_queries.SetIdentityProviderProfileParams{
+	_, err := d.Q.SetIdentityProviderProfile(ctx, d.Db, db_queries.SetIdentityProviderProfileParams{
 		ProviderSub: authSub,
 		Name:        ToNullableText(profile.Name),
 		Email:       ToNullableText(profile.Email),
@@ -95,10 +103,13 @@ func setIdentityProviderProfile(
 		EmailVerified: profile.EmailVerified,
 		Picture:       ToNullableText(profile.Picture),
 	})
+	// No rows is the nominal case: nothing about the profile changed.
 	if err != nil && !IsNoRows(err) {
-		return err
+		slog.Default().Warn(
+			"unable to refresh the identity provider profile",
+			"error", err.Error(),
+		)
 	}
-	return nil
 }
 
 func (d *HusonymDb) SetPersonalAccount(

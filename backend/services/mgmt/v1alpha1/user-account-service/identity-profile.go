@@ -48,7 +48,7 @@ func (s *Service) resolveIdentityProfile(
 	return &authmgmt.User{
 		Name:          userinfo.Name,
 		Email:         userinfo.Email,
-		EmailVerified: userinfo.EmailVerified,
+		EmailVerified: bool(userinfo.EmailVerified),
 		Picture:       userinfo.Picture,
 	}
 }

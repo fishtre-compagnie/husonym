@@ -129,6 +129,12 @@ type Querier interface {
 	// A claim the provider did not send leaves the stored value alone: an empty argument is
 	// absence, not erasure. email_verified is the exception -- it is always written, since
 	// losing the assertion has to lower it back to false.
+	//
+	// The WHERE clause makes this a no-op when nothing differs, which is what almost every
+	// sign-in looks like. That is not an optimisation: this statement runs on a path the
+	// application takes on every page load, so writing unconditionally would turn a read into
+	// a row-level conflict between two tabs of the same user. No row updated returns no row,
+	// which the caller reads as "nothing to do".
 	SetIdentityProviderProfile(ctx context.Context, db DBTX, arg SetIdentityProviderProfileParams) (HusonymApiUserIdentityProviderAssociation, error)
 	SetJobHookEnabled(ctx context.Context, db DBTX, arg SetJobHookEnabledParams) (HusonymApiJobHook, error)
 	// The run's write: no user to record in updated_by_id (the worker's key has none), and the

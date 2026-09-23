@@ -60,6 +60,12 @@ RETURNING *;
 -- A claim the provider did not send leaves the stored value alone: an empty argument is
 -- absence, not erasure. email_verified is the exception -- it is always written, since
 -- losing the assertion has to lower it back to false.
+--
+-- The WHERE clause makes this a no-op when nothing differs, which is what almost every
+-- sign-in looks like. That is not an optimisation: this statement runs on a path the
+-- application takes on every page load, so writing unconditionally would turn a read into
+-- a row-level conflict between two tabs of the same user. No row updated returns no row,
+-- which the caller reads as "nothing to do".
 -- name: SetIdentityProviderProfile :one
 UPDATE husonym_api.user_identity_provider_associations
 SET name = COALESCE(sqlc.narg('name'), name),
@@ -68,6 +74,12 @@ SET name = COALESCE(sqlc.narg('name'), name),
     picture = COALESCE(sqlc.narg('picture'), picture),
     updated_at = CURRENT_TIMESTAMP
 WHERE provider_sub = sqlc.arg('providerSub')
+  AND (
+    name IS DISTINCT FROM COALESCE(sqlc.narg('name'), name)
+    OR email IS DISTINCT FROM COALESCE(sqlc.narg('email'), email)
+    OR email_verified IS DISTINCT FROM sqlc.arg('emailVerified')
+    OR picture IS DISTINCT FROM COALESCE(sqlc.narg('picture'), picture)
+  )
 RETURNING *;
 
 -- name: GetUserIdentityAssociationsByUserIds :many

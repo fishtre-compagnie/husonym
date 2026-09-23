@@ -46,38 +46,19 @@ func Test_CustomClaims_ProfileClaims(t *testing.T) {
 
 		require.False(t, claims.HasProfileClaims())
 	})
-}
 
-// A provider that spells a boolean claim as a string must not fail the whole payload:
-// the validator rejects the token on any unmarshal error, so that would lock every user
-// of the deployment out over a display claim.
-func Test_LenientBool(t *testing.T) {
-	t.Run("accepts a boolean", func(t *testing.T) {
+	// The shape of a display claim must never cost a sign-in: the validator rejects the
+	// token on any unmarshal error. utils.LenientBool covers the shapes themselves.
+	t.Run("a display claim in an unexpected shape keeps the rest of the payload", func(t *testing.T) {
 		var claims CustomClaims
-		require.NoError(t, json.Unmarshal([]byte(`{"email_verified": true}`), &claims))
-		require.True(t, bool(claims.EmailVerified))
+		require.NoError(t, json.Unmarshal([]byte(`{
+			"scope": "read:jobs",
+			"email": "ada@example.com",
+			"email_verified": {"value": true}
+		}`), &claims))
 
-		require.NoError(t, json.Unmarshal([]byte(`{"email_verified": false}`), &claims))
+		require.Equal(t, "read:jobs", claims.Scope)
+		require.True(t, claims.HasProfileClaims())
 		require.False(t, bool(claims.EmailVerified))
-	})
-
-	t.Run("accepts the string spelling of one", func(t *testing.T) {
-		var claims CustomClaims
-		require.NoError(t, json.Unmarshal([]byte(`{"email_verified": "true"}`), &claims))
-		require.True(t, bool(claims.EmailVerified))
-
-		require.NoError(t, json.Unmarshal([]byte(`{"email_verified": "false"}`), &claims))
-		require.False(t, bool(claims.EmailVerified))
-	})
-
-	t.Run("anything else it cannot read is false, not verified", func(t *testing.T) {
-		var claims CustomClaims
-		require.NoError(t, json.Unmarshal([]byte(`{"email_verified": "yes"}`), &claims))
-		require.False(t, bool(claims.EmailVerified))
-	})
-
-	t.Run("a shape it can read neither way is still an error", func(t *testing.T) {
-		var claims CustomClaims
-		require.Error(t, json.Unmarshal([]byte(`{"email_verified": {"a": 1}}`), &claims))
 	})
 }

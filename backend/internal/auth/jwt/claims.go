@@ -2,8 +2,8 @@ package auth_jwt
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 )
 
 // CustomClaims contains custom data we want from the token.
@@ -12,14 +12,18 @@ import (
 // They are not always there: an access token is not an ID token, and most providers keep
 // the profile for the userinfo endpoint. Their absence is normal and is not an error --
 // see HasProfileClaims.
+//
+// The validator unmarshals the whole token payload into this struct and rejects the token
+// on any error, so every field added here has to read whatever a provider may write.
+// That is what utils.LenientBool is for.
 type CustomClaims struct {
 	Scope       string   `json:"scope"`
 	Permissions []string `json:"permissions,omitempty"`
 
-	Name          string      `json:"name,omitempty"`
-	Email         *string     `json:"email,omitempty"`
-	EmailVerified LenientBool `json:"email_verified,omitempty"`
-	Picture       string      `json:"picture,omitempty"`
+	Name          string            `json:"name,omitempty"`
+	Email         *string           `json:"email,omitempty"`
+	EmailVerified utils.LenientBool `json:"email_verified,omitempty"`
+	Picture       string            `json:"picture,omitempty"`
 }
 
 // Validate does nothing for this example, but we need
@@ -38,28 +42,4 @@ func (c *CustomClaims) Validate(ctx context.Context) error {
 // and a provider that sends the address sends the rest with it.
 func (c *CustomClaims) HasProfileClaims() bool {
 	return c != nil && c.Email != nil && *c.Email != ""
-}
-
-// LenientBool is a boolean claim that also accepts the string spelling of one.
-//
-// This is not defensive decoration. The validator unmarshals the whole payload into
-// CustomClaims and rejects the token on any error, so a single claim a provider spells
-// "true" instead of true would lock every user of that deployment out -- and the payload
-// comes from a provider Husonym does not choose. Only the claim it is used for degrades,
-// and it degrades to false, which is the absence of proof.
-type LenientBool bool
-
-func (b *LenientBool) UnmarshalJSON(data []byte) error {
-	var asBool bool
-	if err := json.Unmarshal(data, &asBool); err == nil {
-		*b = LenientBool(asBool)
-		return nil
-	}
-
-	var asString string
-	if err := json.Unmarshal(data, &asString); err != nil {
-		return fmt.Errorf("claim is neither a boolean nor a string: %w", err)
-	}
-	*b = asString == "true"
-	return nil
 }

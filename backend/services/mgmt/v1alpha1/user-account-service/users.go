@@ -636,16 +636,22 @@ func (s *Service) GetTeamAccountMembers(
 			}
 			// What the provider said at sign-in, stored on the association. This is the
 			// nominal path, and it is the same for every OIDC provider.
-			if user.Email.Valid || user.Name.Valid || user.Picture.Valid {
-				dtoUsers[i].Email = user.Email.String
-				dtoUsers[i].Name = user.Name.String
-				dtoUsers[i].Image = user.Picture.String
+			//
+			// The address is what decides whether a profile was stored, exactly as it
+			// decides whether a token carries one (CustomClaims.HasProfileClaims): the
+			// columns are written independently, so a provider that answered a name but
+			// no address leaves a row that looks filled and identifies nobody.
+			dtoUsers[i].Email = user.Email.String
+			dtoUsers[i].Name = user.Name.String
+			dtoUsers[i].Image = user.Picture.String
+			if user.Email.Valid {
 				return nil
 			}
 
-			// Nothing stored yet: a user who has not signed in since the profile columns
-			// exist, or a provider that sends no profile at all. Fall back on the
-			// deployment's administration API, which only Auth0 and Keycloak have.
+			// No address stored: a user who has not signed in since the profile columns
+			// exist, or a provider that did not answer one. Fall back on the deployment's
+			// administration API, which only Auth0 and Keycloak have -- and keep whatever
+			// was stored if it cannot answer either.
 			if user.ProviderSub == "" {
 				logger.Warn(
 					fmt.Sprintf(
@@ -661,8 +667,12 @@ func (s *Service) GetTeamAccountMembers(
 				return nil
 			}
 			dtoUsers[i].Email = authuser.Email
-			dtoUsers[i].Name = authuser.Name
-			dtoUsers[i].Image = authuser.Picture
+			if authuser.Name != "" {
+				dtoUsers[i].Name = authuser.Name
+			}
+			if authuser.Picture != "" {
+				dtoUsers[i].Image = authuser.Picture
+			}
 			return nil
 		})
 	}

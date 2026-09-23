@@ -189,6 +189,51 @@ func (s *IntegrationTestSuite) Test_SetUserByAuthSub_IdentityProfile() {
 		require.Equal(t, "https://example.com/ada.png", association.Picture.String)
 	})
 
+	// The path SetUser takes on every page load. It must not write, or two tabs of the
+	// same user would collide on the row.
+	t.Run("an unchanged profile writes nothing", func(t *testing.T) {
+		sub := "profile-unchanged"
+		profile := &authmgmt.User{
+			Name:          "Ada Lovelace",
+			Email:         "ada@example.com",
+			EmailVerified: true,
+			Picture:       "https://example.com/ada.png",
+		}
+		_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		require.NoError(t, err)
+
+		before, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+
+		_, err = s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		require.NoError(t, err)
+
+		after, err := s.db.Q.GetUserAssociationByProviderSub(s.ctx, s.db.Db, sub)
+		require.NoError(t, err)
+		require.Equal(
+			t,
+			before.UpdatedAt.Time,
+			after.UpdatedAt.Time,
+			"an identical profile must leave the row untouched",
+		)
+	})
+
+	t.Run("concurrent sign-ins of the same user do not collide", func(t *testing.T) {
+		sub := "profile-concurrent"
+		profile := &authmgmt.User{Name: "Ada Lovelace", Email: "ada@example.com"}
+		_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+		require.NoError(t, err)
+
+		group := new(errgroup.Group)
+		for range 8 {
+			group.Go(func() error {
+				_, err := s.db.SetUserByAuthSub(s.ctx, sub, profile)
+				return err
+			})
+		}
+		require.NoError(t, group.Wait(), "serialization failure on the sign-in path")
+	})
+
 	t.Run("no profile at all still signs the user in", func(t *testing.T) {
 		resp, err := s.db.SetUserByAuthSub(s.ctx, "profile-absent", nil)
 		requireNoErrResp(t, resp, err)
