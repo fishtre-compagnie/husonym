@@ -16,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
 	datasync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
@@ -111,6 +112,17 @@ func NewTestDataSyncWorkflowEnv(
 	userclient := husonymApi.OSSUnauthenticatedLicensedClients.Users()
 	accounthookclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountHooks()
 	anonymizationclient := husonymApi.OSSUnauthenticatedLicensedClients.Anonymize()
+	accountsettingclient := husonymApi.OSSUnauthenticatedLicensedClients.AccountSettings()
+
+	// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
+	// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
+	// preserve_format, que le catalogue pose par défaut sur une colonne téléphone. Elle
+	// tient le rôle de la variable de déploiement, donc la cascade y retombe tant qu'aucun
+	// compte ne porte la sienne.
+	consistencyKeys := consistencykey.NewResolver(
+		accountsettingclient,
+		"husonym-integration-tests-consistency-key",
+	)
 	testSuite := &testsuite.WorkflowTestSuite{}
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestWorkflowEnvironment()
@@ -131,7 +143,7 @@ func NewTestDataSyncWorkflowEnv(
 		workflowEnv.Redisclient,
 		false,
 		workflowEnv.pageLimit,
-		true,
+		consistencyKeys,
 	)
 
 	schemainit_workflow_register.Register(
@@ -155,12 +167,9 @@ func NewTestDataSyncWorkflowEnv(
 		anonymizationclient,
 		transformerclient,
 		workflowEnv.Redisclient,
-		// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
-		// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
-		// preserve_format, que le catalogue pose par défaut sur une colonne téléphone.
 		sync_activity.EngineConfig{
-			Policy:         datasync_shared.NewAthanorPolicy(false, "", ""),
-			ConsistencyKey: "husonym-integration-tests-consistency-key",
+			Policy: datasync_shared.NewAthanorPolicy(false, "", ""),
+			Keys:   consistencyKeys,
 		},
 	)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
 	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
@@ -39,7 +40,7 @@ func Register(
 	redisclient redis.UniversalClient,
 	isOtelEnabled bool,
 	pageLimit int,
-	hasConsistencyKey bool,
+	keys *consistencykey.Resolver,
 ) {
 	genbenthosActivity := genbenthosconfigs_activity.New(
 		jobclient,
@@ -48,7 +49,7 @@ func Register(
 		sqlmanager,
 		isOtelEnabled,
 		pageLimit,
-		hasConsistencyKey,
+		keys,
 	)
 
 	retrieveActivityOpts := syncactivityopts_activity.New(jobclient)

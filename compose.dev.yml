@@ -94,6 +94,10 @@ services:
 
       - AUTH_ENABLED=false
 
+      # Mot de passe de chiffrement des secrets d'un réglage de compte. De
+      # développement uniquement : en production, fournir un secret propre.
+      - HUSONYM_SYM_ENCRYPTION_PASSWORD=husonym-dev-only-encryption-password
+
       # Scan de contenu PII (Phase 2) : client Presidio maison, hors licence EE.
       - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
       # « fr » mesuré meilleur sur le PIPELINE complet : F1 0,90 contre 0,88, et
@@ -148,7 +152,10 @@ services:
       - TABLESYNC_MAX_CONCURRENCY=3
       - LOG_LEVEL=DEBUG
       - DB_LOG_LEVEL=ERROR
-      # Clé de développement uniquement : en production, fournir un secret propre.
+      # Clé de développement uniquement : en production, fournir un secret propre — ou
+      # ne rien poser, et chaque compte reçoit la sienne à son premier run. Posée ici,
+      # elle gagne tant qu'aucun compte ne porte de réglage, donc les sorties des bases
+      # de développement ne bougent pas.
       - ANONYMIZATION_CONSISTENCY_KEY=husonym-dev-only-consistency-key
     env_file:
       - path: ./.env.worker.local

@@ -52,13 +52,13 @@ func Decrypt[T proto.Message](encryptor sym_encrypt.Interface, msg T) (T, error)
 // secret fingerprints the same in two deployments — which is what anyone reading one wants
 // to know. Fingerprinting the ciphertext would tell nothing, as encrypting twice never
 // gives the same bytes.
-func Redact[T proto.Message](msg T) (T, map[string]string, error) {
-	fingerprints := map[string]string{}
-	out, err := transform(msg, func(path, value string) (string, error) {
-		fingerprints[path] = Fingerprint(value)
+func Redact[T proto.Message](msg T) (redacted T, fingerprintsByField map[string]string, err error) {
+	fingerprintsByField = map[string]string{}
+	redacted, err = transform(msg, func(path, value string) (string, error) {
+		fingerprintsByField[path] = Fingerprint(value)
 		return "", nil
 	})
-	return out, fingerprints, err
+	return redacted, fingerprintsByField, err
 }
 
 // Fingerprint is the first bytes of a digest of a secret, in hex.

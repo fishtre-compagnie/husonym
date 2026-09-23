@@ -1,4 +1,5 @@
 export * from './mgmt/v1alpha1/account_hook_pb.js';
+export * from './mgmt/v1alpha1/account_setting_pb.js';
 export * from './mgmt/v1alpha1/anonymization_pb.js';
 export * from './mgmt/v1alpha1/api_key_pb.js';
 export * from './mgmt/v1alpha1/connection_data_pb.js';

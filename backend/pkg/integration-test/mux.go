@@ -21,6 +21,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
+	v1alpha1_accountsettingservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-settings-service"
 	v1alpha_anonymizationservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/anonymization-service"
 	v1alpha1_connectiondataservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-data-service"
 	v1alpha1_connectionservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/connection-service"
@@ -36,6 +37,7 @@ import (
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
+	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -352,6 +354,19 @@ func (s *HusonymApiTestClient) setupMux(
 		),
 	)
 
+	// The settings of an account, with a password of their own: the tests exercise the
+	// service the way a deployment that can keep a secret runs it.
+	settingsEncryptor, err := sym_encrypt.NewEncryptor("husonym-integration-tests-encryption-password")
+	if err != nil {
+		return nil, err
+	}
+	accountSettingService := v1alpha1_accountsettingservice.New(
+		&v1alpha1_accountsettingservice.Config{IsHusonymCloud: isHusonymCloud},
+		husonymDb,
+		userclient,
+		settingsEncryptor,
+	)
+
 	mux := http.NewServeMux()
 
 	interceptors := []connect.Interceptor{}
@@ -382,6 +397,10 @@ func (s *HusonymApiTestClient) setupMux(
 	))
 	mux.Handle(mgmtv1alpha1connect.NewConnectionDataServiceHandler(
 		connectionDataService,
+		connect.WithInterceptors(interceptors...),
+	))
+	mux.Handle(mgmtv1alpha1connect.NewAccountSettingServiceHandler(
+		accountSettingService,
 		connect.WithInterceptors(interceptors...),
 	))
 

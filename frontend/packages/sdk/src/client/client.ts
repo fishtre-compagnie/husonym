@@ -6,6 +6,7 @@ import {
 } from '@connectrpc/connect';
 
 import { AccountHookService } from './mgmt/v1alpha1/account_hook_pb.js';
+import { AccountSettingService } from './mgmt/v1alpha1/account_setting_pb.js';
 import { AnonymizationService } from './mgmt/v1alpha1/anonymization_pb.js';
 import { ApiKeyService } from './mgmt/v1alpha1/api_key_pb.js';
 import { ConnectionDataService } from './mgmt/v1alpha1/connection_data_pb.js';
@@ -27,6 +28,7 @@ export interface HusonymV1alpha1Client {
   metrics: Client<typeof MetricsService>;
   anonymization: Client<typeof AnonymizationService>;
   accountHooks: Client<typeof AccountHookService>;
+  accountSettings: Client<typeof AccountSettingService>;
 }
 
 /**
@@ -94,6 +96,7 @@ export function getHusonymV1alpha1Client(
     metrics: createClient(MetricsService, transport),
     anonymization: createClient(AnonymizationService, transport),
     accountHooks: createClient(AccountHookService, transport),
+    accountSettings: createClient(AccountSettingService, transport),
   };
 }
 

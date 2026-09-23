@@ -199,13 +199,22 @@ func (a *Activity) SyncTable(
 	if err != nil {
 		return nil, err
 	}
+
+	// La clé dont ce run dérive ses sorties déterministes, celle du compte : lue une fois
+	// ici, comme le job l'est, et non une fois par chemin. Athanor en dérive tous ses
+	// transformers, Benthos la permutation de TransformPhoneNumber en preserve_format.
+	consistencyKey, err := a.engines.Keys.ForAccount(ctx, req.AccountId)
+	if err != nil {
+		return nil, err
+	}
+
 	if useAthanor {
 		plan, perr := a.getTablePlan(ctx, req)
 		if perr != nil {
 			return nil, perr
 		}
 		if plan != nil {
-			resp, aerr := a.runAthanor(ctx, req, plan, job, info.Attempt, session, getConnectionById, logger)
+			resp, aerr := a.runAthanor(ctx, req, plan, job, consistencyKey, info.Attempt, session, getConnectionById, logger)
 			if aerr != nil {
 				return nil, fmt.Errorf("could not complete sync via athanor engine: %w", aerr)
 			}
@@ -242,7 +251,7 @@ func (a *Activity) SyncTable(
 	// The permutation of TransformPhoneNumber with preserve_format is keyed on the run's
 	// consistency scope, so that every table of the run — whichever worker takes it — turns a
 	// number into the same one.
-	phonePseudonymizer, err := a.phoneFormatPseudonymizer(job, req.JobRunId)
+	phonePseudonymizer, err := a.phoneFormatPseudonymizer(job, req.JobRunId, consistencyKey)
 	if err != nil {
 		return nil, err
 	}

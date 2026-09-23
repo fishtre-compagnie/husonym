@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 
 	benthosstream "github.com/fishtre-compagnie/husonym/internal/benthos-stream"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -106,7 +107,7 @@ output:
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -198,7 +199,7 @@ output:
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 	env.RegisterActivity(activity.SyncTable)
 
@@ -243,7 +244,7 @@ func Test_Sync_Run_No_BenthosConfig(t *testing.T) {
 
 	benthosStreamManager := benthosstream.NewBenthosStreamManager()
 	temporalclient := tmprl_mocks.NewClient(t)
-	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil, nil, EngineConfig{})
+	activity := New(nil, nil, nil, nil, nil, benthosStreamManager, temporalclient, nil, nil, nil, engineConfigWithoutAccountSettings(t))
 
 	env.RegisterActivity(activity.SyncTable)
 
@@ -333,7 +334,7 @@ metrics:
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -428,7 +429,7 @@ func Test_Sync_Run_Processor_Error(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -517,7 +518,7 @@ output:
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -628,7 +629,7 @@ output:
 		nil,
 		nil,
 		nil,
-		EngineConfig{},
+		engineConfigWithoutAccountSettings(t),
 	)
 
 	env.RegisterActivity(activity.SyncTable)
@@ -658,6 +659,18 @@ func Test_getEnvVarLookupFn(t *testing.T) {
 	val, ok = fn("bar")
 	assert.False(t, ok)
 	assert.Empty(t, val)
+}
+
+// engineConfigWithoutAccountSettings gives the activity a resolver whose API holds no
+// account settings — the deployment these tests describe, where nothing derives from a key
+// of its own.
+func engineConfigWithoutAccountSettings(t *testing.T) EngineConfig {
+	t.Helper()
+	client := mgmtv1alpha1connect.NewMockAccountSettingServiceClient(t)
+	client.On("GetAccountConsistencyKey", mock.Anything, mock.Anything).
+		Return(nil, connect.NewError(connect.CodeUnimplemented, errors.New("test: not wired"))).
+		Maybe()
+	return EngineConfig{Keys: consistencykey.NewResolver(client, "")}
 }
 
 func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
