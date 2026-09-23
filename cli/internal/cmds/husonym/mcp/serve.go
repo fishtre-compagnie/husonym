@@ -9,6 +9,7 @@ import (
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
 	mcp_server "github.com/fishtre-compagnie/husonym/cli/internal/mcp"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/fishtre-compagnie/husonym/cli/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -68,6 +69,7 @@ func serve(ctx context.Context, apiKey string, debugMode bool) error {
 
 	server := mcp_server.New(mcp_server.Options{
 		Connections: maskedconn.New(httpclient, husonymurl),
+		Data:        novalues.New(httpclient, husonymurl),
 		AccountId:   accountId,
 		Version:     version.Get().GitVersion,
 		Logger:      logger,
