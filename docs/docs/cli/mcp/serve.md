@@ -1,0 +1,53 @@
+---
+title: Serve
+description: Learn how to serve Husonym to an agent over the Model Context Protocol with the husonym mcp serve command.
+id: serve
+hide_title: false
+slug: /cli/mcp/serve
+---
+
+## Overview
+
+Learn how to serve Husonym to an agent over the Model Context Protocol with the husonym mcp serve command.
+
+The `husonym mcp serve` command runs a [Model Context Protocol](https://modelcontextprotocol.io) server on stdin and stdout. It is not meant to be run by hand: an MCP client, such as an AI assistant, starts it and talks to it.
+
+The server answers for the account of the API key it is given, with that key's rights.
+
+## Usage
+
+```bash
+husonym mcp serve
+```
+
+A client is usually configured with the command and its environment, for instance:
+
+```json
+{
+  "mcpServers": {
+    "husonym": {
+      "command": "husonym",
+      "args": ["mcp", "serve"],
+      "env": {
+        "HUSONYM_API_URL": "https://husonym.example.com",
+        "HUSONYM_API_KEY": "<your api key>"
+      }
+    }
+  }
+}
+```
+
+## Tools
+
+| Tool               | Description                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `list_connections` | Lists the connections of the account: id, name and category. Never returns their credentials. |
+
+Connection credentials are write-only through this server: none of its tools reads them back.
+
+## Environment Variables
+
+| Variable        | Description                                                                                              | Is Required                                   | Default Value         |
+| --------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------- |
+| HUSONYM_API_URL | The base url of the Husonym API. This can be overridden to connect to different Husonym API environments | false                                         | http://localhost:8080 |
+| HUSONYM_API_KEY | The api key for Husonym API. The server does not fall back on the session of `husonym login`.            | true, unless the API has authentication off |                       |

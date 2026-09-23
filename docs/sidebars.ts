@@ -112,6 +112,19 @@ const sidebars: SidebarsConfig = {
           ],
         },
         {
+          type: 'category',
+          label: 'mcp',
+          collapsible: true,
+          collapsed: false,
+          items: [
+            {
+              type: 'doc',
+              id: 'cli/mcp/serve',
+              label: 'serve',
+            },
+          ],
+        },
+        {
           type: 'doc',
           id: 'cli/version',
           label: 'version',
