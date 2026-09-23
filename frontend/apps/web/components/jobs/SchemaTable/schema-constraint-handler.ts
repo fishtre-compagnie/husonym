@@ -249,9 +249,19 @@ function postgresTypeToTransformerDataType(
       return TransformerDataType.FLOAT64;
     case 'uuid':
       return TransformerDataType.UUID;
+    // PostgreSQL écrit le type en toutes lettres (format_type) : une colonne
+    // timestamp arrive en « timestamp without time zone », jamais « timestamp ».
+    // Sans ces variantes, elle retombait en UNSPECIFIED et la liste de
+    // transformers ne gardait que ceux marqués ANY.
     case 'timestamp':
+    case 'timestamptz':
+    case 'timestamp without time zone':
+    case 'timestamp with time zone':
     case 'date':
     case 'time':
+    case 'timetz':
+    case 'time without time zone':
+    case 'time with time zone':
       return TransformerDataType.TIME;
     case 'json':
     case 'jsonb':

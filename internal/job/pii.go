@@ -3,6 +3,7 @@ package job
 import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
+	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 )
 
 // LooksSensitive reports whether the name and type of a column read as personal data, and under
@@ -26,10 +27,22 @@ func LooksSensitive(columnName, dataType string) (category string, sensitive boo
 // SuggestedTransformer returns the transformer the PII detection suggests for a column, by its
 // name and type, with the category it recognized — the suggestion the product makes wherever a
 // column is to be mapped. False when it suggests nothing.
+//
+// A suggestion the column's type does not take is no suggestion. The detection reads the name
+// first: `state`, `gender` or `city` name a string generator whatever the column holds, so a
+// `state smallint` would be handed GenerateState and every batch would fail on "CA". Where a
+// person picks from a list the UI has already filtered by type, this is the same filter.
 func SuggestedTransformer(columnName, dataType string) (mgmtv1alpha1.TransformerSource, string, bool) {
+	none := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED
 	classification, ok := piidetect.Classify(columnName, dataType)
-	if !ok || classification.Suggested == mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
-		return mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED, "", false
+	if !ok || classification.Suggested == none {
+		return none, "", false
+	}
+	// The whole catalogue, enterprise transformers included: what a license allows is the
+	// caller's business, the types a transformer takes are not.
+	transformer, ok := catalog.BySource(true)[classification.Suggested]
+	if !ok || !acceptsDataType(transformer.GetDataTypes(), TransformerDataTypeOf(dataType)) {
+		return none, "", false
 	}
 	return classification.Suggested, classification.Category, true
 }

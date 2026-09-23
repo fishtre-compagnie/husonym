@@ -45,4 +45,32 @@ func Test_SuggestedTransformer(t *testing.T) {
 		_, _, ok := SuggestedTransformer("champ_libre", "text")
 		require.False(t, ok)
 	})
+
+	t.Run("nothing when the column's type does not take the suggestion", func(t *testing.T) {
+		// The detection reads the name: `state` names a generator of "CA", which a smallint
+		// column refuses on every row. A run that writes the suggestion into the job would fail
+		// that run and every one after it, until somebody edits the mapping by hand.
+		for _, column := range []struct{ name, dataType string }{
+			{"state", "smallint"},
+			{"gender", "boolean"},
+			{"city", "int"},
+			{"country", "smallint"},
+		} {
+			_, _, ok := SuggestedTransformer(column.name, column.dataType)
+			require.False(t, ok, "%s %s", column.name, column.dataType)
+		}
+	})
+
+	t.Run("the same column as a string is suggested", func(t *testing.T) {
+		source, _, ok := SuggestedTransformer("state", "character varying(2)")
+		require.True(t, ok)
+		require.Equal(t, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STATE, source)
+	})
+
+	t.Run("a date column keeps its suggestion, type spelled out in full", func(t *testing.T) {
+		// PostgreSQL reports "timestamp without time zone": a table that only knew "timestamp"
+		// would drop the suggestion of every timestamp column in the product.
+		_, _, ok := SuggestedTransformer("date_naissance", "timestamp without time zone")
+		require.True(t, ok)
+	})
 }
