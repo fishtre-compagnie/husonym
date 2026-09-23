@@ -154,8 +154,13 @@ func NewTestDataSyncWorkflowEnv(
 		anonymizationclient,
 		transformerclient,
 		workflowEnv.Redisclient,
-		// chemin Benthos par défaut dans les tests d'intégration
-		sync_activity.AthanorConfig{Policy: datasync_shared.NewAthanorPolicy(false, "", "")},
+		// Chemin Benthos par défaut dans les tests d'intégration. La clé de cohérence est
+		// fournie quand même : Benthos en dérive la permutation de TransformPhoneNumber en
+		// preserve_format, que le catalogue pose par défaut sur une colonne téléphone.
+		sync_activity.AthanorConfig{
+			Policy:         datasync_shared.NewAthanorPolicy(false, "", ""),
+			ConsistencyKey: "husonym-integration-tests-consistency-key",
+		},
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {
