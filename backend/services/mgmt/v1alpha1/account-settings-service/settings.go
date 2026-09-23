@@ -128,7 +128,17 @@ func (s *Service) storedConfig(stored []byte) (*mgmtv1alpha1.AccountSettingConfi
 	if err := json.Unmarshal(stored, config); err != nil {
 		return nil, fmt.Errorf("unable to read an account setting: %w", err)
 	}
-	return protosecret.Decrypt(s.encryptor, config)
+	plain, err := protosecret.Decrypt(s.encryptor, config)
+	if err != nil {
+		// There is one key, with no version and no fallback, so a password that is not the
+		// one that wrote this setting cannot read it. Say which password, rather than let a
+		// rotation look like a corrupt row.
+		return nil, fmt.Errorf(
+			"unable to read an account setting: HUSONYM_SYM_ENCRYPTION_PASSWORD is not the "+
+				"one this setting was written with: %w", err,
+		)
+	}
+	return plain, nil
 }
 
 // toRedactedDto is what leaves towards a user: the setting without its secrets, and the

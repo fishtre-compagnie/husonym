@@ -184,6 +184,18 @@ func serve(ctx context.Context) error {
 		services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
 	}
 
+	// The settings of an account carry secrets, so they are only held where the deployment
+	// can encrypt one. Without a password the handler answers Unimplemented, and health and
+	// reflection must say the same: a run reads that as "no account settings here" and keeps
+	// to its own variable, which is what a deployment that never set one does today.
+	settingsEncryptor, err := getSymEncryptor()
+	if err != nil {
+		return err
+	}
+	if settingsEncryptor != nil {
+		services = append(services, mgmtv1alpha1connect.AccountSettingServiceName)
+	}
+
 	checker := grpchealth.NewStaticChecker(services...)
 	mux.Handle(grpchealth.NewHandler(checker))
 
@@ -545,14 +557,6 @@ func serve(ctx context.Context) error {
 	)
 	userdataclient := userdata.NewClient(useraccountService, rbacclient, cascadelicense)
 
-	// The settings of an account carry secrets, so they are only held where the deployment
-	// can encrypt one. Without a password the handler answers Unimplemented, and a run
-	// reads that as "no account settings here" and keeps to its own variable — which is
-	// what a deployment that has never set one does today.
-	settingsEncryptor, err := getSymEncryptor()
-	if err != nil {
-		return err
-	}
 	var accountSettingHandler mgmtv1alpha1connect.AccountSettingServiceHandler = mgmtv1alpha1connect.UnimplementedAccountSettingServiceHandler{}
 	if settingsEncryptor != nil {
 		accountSettingHandler = v1alpha1_accountsettingservice.New(
