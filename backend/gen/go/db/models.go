@@ -70,11 +70,11 @@ type HusonymApiAccountSetting struct {
 	ID              pgtype.UUID
 	AccountID       pgtype.UUID
 	Config          []byte
-	SettingType     pgtype.Text
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
 	CreatedByUserID pgtype.UUID
 	UpdatedByUserID pgtype.UUID
+	SettingType     pgtype.Text
 }
 
 type HusonymApiAccountUserAssociation struct {

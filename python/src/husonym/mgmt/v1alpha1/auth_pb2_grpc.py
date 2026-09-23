@@ -36,6 +36,11 @@ class AuthServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlResponse.FromString,
                 _registered_method=True)
+        self.GetAccountLoginMethod = channel.unary_unary(
+                '/mgmt.v1alpha1.AuthService/GetAccountLoginMethod',
+                request_serializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodResponse.FromString,
+                _registered_method=True)
         self.GetAuthStatus = channel.unary_unary(
                 '/mgmt.v1alpha1.AuthService/GetAuthStatus',
                 request_serializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthStatusRequest.SerializeToString,
@@ -77,10 +82,21 @@ class AuthServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetAuthStatus(self, request, context):
+    def GetAccountLoginMethod(self, request, context):
         """Returns the auth status of the API server. Whether or not the backend has authentication enabled.
         This is used by clients to make decisions on whether or not they should send access tokens to the API.
+        Tells an unauthenticated caller which identity provider an account signs in with.
+
+        The tenant has to be known before the flow starts -- an OIDC flow begins with the
+        client id of the right connector -- and the caller has not authenticated yet, by
+        definition. The account is designated by the link that was followed.
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetAuthStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -107,6 +123,11 @@ def add_AuthServiceServicer_to_server(servicer, server):
                     servicer.GetAuthorizeUrl,
                     request_deserializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlResponse.SerializeToString,
+            ),
+            'GetAccountLoginMethod': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAccountLoginMethod,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodResponse.SerializeToString,
             ),
             'GetAuthStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAuthStatus,
@@ -224,6 +245,33 @@ class AuthService:
             '/mgmt.v1alpha1.AuthService/GetAuthorizeUrl',
             mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_auth__pb2.GetAuthorizeUrlResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetAccountLoginMethod(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.AuthService/GetAccountLoginMethod',
+            mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_auth__pb2.GetAccountLoginMethodResponse.FromString,
             options,
             channel_credentials,
             insecure,

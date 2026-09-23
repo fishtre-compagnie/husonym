@@ -251,3 +251,71 @@ func (_c *MockAccountSettingServiceClient_SetAccountSetting_Call) RunAndReturn(r
 	_c.Call.Return(run)
 	return _c
 }
+
+// TestAccountSetting provides a mock function for the type MockAccountSettingServiceClient
+func (_mock *MockAccountSettingServiceClient) TestAccountSetting(context1 context.Context, request *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]) (*connect.Response[mgmtv1alpha1.TestAccountSettingResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TestAccountSetting")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.TestAccountSettingResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]) (*connect.Response[mgmtv1alpha1.TestAccountSettingResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]) *connect.Response[mgmtv1alpha1.TestAccountSettingResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.TestAccountSettingResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockAccountSettingServiceClient_TestAccountSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TestAccountSetting'
+type MockAccountSettingServiceClient_TestAccountSetting_Call struct {
+	*mock.Call
+}
+
+// TestAccountSetting is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]
+func (_e *MockAccountSettingServiceClient_Expecter) TestAccountSetting(context1 any, request any) *MockAccountSettingServiceClient_TestAccountSetting_Call {
+	return &MockAccountSettingServiceClient_TestAccountSetting_Call{Call: _e.mock.On("TestAccountSetting", context1, request)}
+}
+
+func (_c *MockAccountSettingServiceClient_TestAccountSetting_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.TestAccountSettingRequest])) *MockAccountSettingServiceClient_TestAccountSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.TestAccountSettingRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAccountSettingServiceClient_TestAccountSetting_Call) Return(response *connect.Response[mgmtv1alpha1.TestAccountSettingResponse], err error) *MockAccountSettingServiceClient_TestAccountSetting_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockAccountSettingServiceClient_TestAccountSetting_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.TestAccountSettingRequest]) (*connect.Response[mgmtv1alpha1.TestAccountSettingResponse], error)) *MockAccountSettingServiceClient_TestAccountSetting_Call {
+	_c.Call.Return(run)
+	return _c
+}

@@ -4,11 +4,13 @@ import (
 	"context"
 
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
 type Service struct {
 	cfg        *Config
 	authclient AuthClient
+	db         *husonymdb.HusonymDb
 }
 
 type Config struct {
@@ -37,6 +39,7 @@ type AuthClient interface {
 func New(
 	cfg *Config,
 	authclient AuthClient,
+	db *husonymdb.HusonymDb,
 ) *Service {
-	return &Service{cfg: cfg, authclient: authclient}
+	return &Service{cfg: cfg, authclient: authclient, db: db}
 }

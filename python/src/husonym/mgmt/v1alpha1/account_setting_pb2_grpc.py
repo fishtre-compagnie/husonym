@@ -25,6 +25,11 @@ class AccountSettingServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingResponse.FromString,
                 _registered_method=True)
+        self.TestAccountSetting = channel.unary_unary(
+                '/mgmt.v1alpha1.AccountSettingService/TestAccountSetting',
+                request_serializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingResponse.FromString,
+                _registered_method=True)
         self.GetAccountConsistencyKey = channel.unary_unary(
                 '/mgmt.v1alpha1.AccountSettingService/GetAccountConsistencyKey',
                 request_serializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.GetAccountConsistencyKeyRequest.SerializeToString,
@@ -45,6 +50,18 @@ class AccountSettingServiceServicer:
 
     def SetAccountSetting(self, request, context):
         """Writes a setting of an account, replacing the one it holds of that kind.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def TestAccountSetting(self, request, context):
+        """Tries a setting without writing it, and returns what it found.
+
+        For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+        it performs the discovery, checks that the document calls itself what it was asked
+        under, and reads the keys -- so a provider is refused with a reason instead of
+        locking an account out after it is saved.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,6 +90,11 @@ def add_AccountSettingServiceServicer_to_server(servicer, server):
                     servicer.SetAccountSetting,
                     request_deserializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingResponse.SerializeToString,
+            ),
+            'TestAccountSetting': grpc.unary_unary_rpc_method_handler(
+                    servicer.TestAccountSetting,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingResponse.SerializeToString,
             ),
             'GetAccountConsistencyKey': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAccountConsistencyKey,
@@ -135,6 +157,33 @@ class AccountSettingService:
             '/mgmt.v1alpha1.AccountSettingService/SetAccountSetting',
             mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_account__setting__pb2.SetAccountSettingResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def TestAccountSetting(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.AccountSettingService/TestAccountSetting',
+            mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_account__setting__pb2.TestAccountSettingResponse.FromString,
             options,
             channel_credentials,
             insecure,

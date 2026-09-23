@@ -85,3 +85,46 @@ func readSchema(t *testing.T) string {
 	}
 	return schema.String()
 }
+
+// The queries that select a provider filter on setting_type, which the generated column
+// derives from the variant's own name. A literal that drifted from the proto would match
+// nothing, quietly: no issuer would ever be resolved and no account would ever sign in.
+func TestTheQueriesFilterOnTheVariantsOwnName(t *testing.T) {
+	field := (&mgmtv1alpha1.AccountSettingConfig{}).
+		ProtoReflect().Descriptor().Oneofs().ByName("config").
+		Fields().ByName("oidc_provider")
+	require.NotNil(t, field)
+
+	queries := readQueries(t)
+	require.Contains(t, queries, fmt.Sprintf("setting_type = '%s'", field.Name()))
+}
+
+// The queries that read a provider name the key protojson writes, not the variant's own
+// name, and the two differ. A query looking for the wrong one finds nothing, quietly:
+// no issuer would ever be accepted and no account would ever sign in.
+func TestTheQueriesReadTheKeyProtojsonWrites(t *testing.T) {
+	stored, err := json.Marshal(&mgmtv1alpha1.AccountSettingConfig{
+		Config: &mgmtv1alpha1.AccountSettingConfig_OidcProvider{
+			OidcProvider: &mgmtv1alpha1.OidcProvider{
+				Issuer:   "https://idp.example.com/",
+				ClientId: "a-client",
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Contains(t, string(stored), `"oidcProvider"`)
+	require.Contains(t, string(stored), `"clientId"`)
+
+	queries := readQueries(t)
+	require.Contains(t, queries, `config->'oidcProvider'->>'issuer'`)
+	require.Contains(t, queries, `config->'oidcProvider'->>'clientId'`)
+}
+
+func readQueries(t *testing.T) string {
+	t.Helper()
+	content, err := os.ReadFile(
+		filepath.Join("..", "..", "..", "..", "sql", "postgresql", "queries", "account-settings.sql"),
+	)
+	require.NoError(t, err)
+	return string(content)
+}

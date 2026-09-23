@@ -136,6 +136,42 @@ components:
       type: object
       title: CheckTokenResponse
       additionalProperties: false
+    mgmt.v1alpha1.GetAccountLoginMethodRequest:
+      type: object
+      properties:
+        accountSlug:
+          type: string
+          title: account_slug
+          maxLength: 100
+          minLength: 1
+          description: |-
+            The slug of the account somebody is signing in to. It comes from the URL they
+             followed, because nothing is known about them yet.
+      title: GetAccountLoginMethodRequest
+      additionalProperties: false
+    mgmt.v1alpha1.GetAccountLoginMethodResponse:
+      type: object
+      properties:
+        issuer:
+          type: string
+          title: issuer
+          description: |-
+            The issuer to start the flow against. Empty when the account has declared none, which
+             means the deployment's own provider.
+        clientId:
+          type: string
+          title: client_id
+          description: The client to authorize as. Empty alongside an empty issuer.
+      title: GetAccountLoginMethodResponse
+      additionalProperties: false
+      description: |-
+        Where to send somebody who is signing in to a given account.
+
+         Unauthenticated by necessity: the provider has to be known before anybody can prove who
+         they are. What it gives away is which accounts have declared a provider -- impersonal,
+         and a fact an attacker who already knows the account could observe anyway. What it must
+         never give away is whether a person has an account, so the shape of the answer does not
+         depend on any person, and an unknown slug answers like a known one with no provider.
     mgmt.v1alpha1.GetAuthStatusRequest:
       type: object
       title: GetAuthStatusRequest
@@ -169,6 +205,16 @@ components:
           title: scope
           minLength: 1
           description: The scopes the client is requesting as a part of the oauth login request
+        accountSlug:
+          type: string
+          title: account_slug
+          maxLength: 100
+          description: |-
+            The account being signed in to, when it declares its own identity provider.
+
+             Same necessity as the browser's: the flow starts with the client id of the right
+             connector, and nothing is known about the caller yet. Empty uses the deployment's
+             provider, which is what an account with no setting uses too.
       title: GetAuthorizeUrlRequest
       additionalProperties: false
     mgmt.v1alpha1.GetAuthorizeUrlResponse:
@@ -268,14 +314,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.CheckTokenResponse'
+  /mgmt.v1alpha1.AuthService/GetAccountLoginMethod:
+    post:
+      tags:
+        - mgmt.v1alpha1.AuthService
+      summary: |-
+        Returns the auth status of the API server. Whether or not the backend has authentication enabled.
+         This is used by clients to make decisions on whether or not they should send access tokens to the API.
+         Tells an unauthenticated caller which identity provider an account signs in with.
+      description: |-
+        The tenant has to be known before the flow starts -- an OIDC flow begins with the
+         client id of the right connector -- and the caller has not authenticated yet, by
+         definition. The account is designated by the link that was followed.
+      operationId: mgmt.v1alpha1.AuthService.GetAccountLoginMethod
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountLoginMethodRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.GetAccountLoginMethodResponse'
   /mgmt.v1alpha1.AuthService/GetAuthStatus:
     post:
       tags:
         - mgmt.v1alpha1.AuthService
       summary: GetAuthStatus
-      description: |-
-        Returns the auth status of the API server. Whether or not the backend has authentication enabled.
-         This is used by clients to make decisions on whether or not they should send access tokens to the API.
       operationId: mgmt.v1alpha1.AuthService.GetAuthStatus
       parameters:
         - name: Connect-Protocol-Version

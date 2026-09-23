@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/auth.proto.
  */
 export const file_mgmt_v1alpha1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChhtZ210L3YxYWxwaGExL2F1dGgucHJvdG8SDW1nbXQudjFhbHBoYTEiRwoPTG9naW5DbGlSZXF1ZXN0EhUKBGNvZGUYASABKAlCB7pIBHICEAESHQoMcmVkaXJlY3RfdXJpGAIgASgJQge6SARyAhABIkQKEExvZ2luQ2xpUmVzcG9uc2USMAoMYWNjZXNzX3Rva2VuGAEgASgLMhoubWdtdC52MWFscGhhMS5BY2Nlc3NUb2tlbiIWChRHZXRBdXRoU3RhdHVzUmVxdWVzdCIrChVHZXRBdXRoU3RhdHVzUmVzcG9uc2USEgoKaXNfZW5hYmxlZBgBIAEoCCKsAQoLQWNjZXNzVG9rZW4SFAoMYWNjZXNzX3Rva2VuGAEgASgJEhoKDXJlZnJlc2hfdG9rZW4YAiABKAlIAIgBARISCgpleHBpcmVzX2luGAMgASgDEg0KBXNjb3BlGAQgASgJEhUKCGlkX3Rva2VuGAUgASgJSAGIAQESEgoKdG9rZW5fdHlwZRgGIAEoCUIQCg5fcmVmcmVzaF90b2tlbkILCglfaWRfdG9rZW4iZwoWR2V0QXV0aG9yaXplVXJsUmVxdWVzdBIWCgVzdGF0ZRgBIAEoCUIHukgEcgIQARIdCgxyZWRpcmVjdF91cmkYAiABKAlCB7pIBHICEAESFgoFc2NvcGUYAyABKAlCB7pIBHICEAEiJgoXR2V0QXV0aG9yaXplVXJsUmVzcG9uc2USCwoDdXJsGAEgASgJIjMKEVJlZnJlc2hDbGlSZXF1ZXN0Eh4KDXJlZnJlc2hfdG9rZW4YASABKAlCB7pIBHICEAEiRgoSUmVmcmVzaENsaVJlc3BvbnNlEjAKDGFjY2Vzc190b2tlbhgBIAEoCzIaLm1nbXQudjFhbHBoYTEuQWNjZXNzVG9rZW4iEwoRQ2hlY2tUb2tlblJlcXVlc3QiFAoSQ2hlY2tUb2tlblJlc3BvbnNlMs4DCgtBdXRoU2VydmljZRJNCghMb2dpbkNsaRIeLm1nbXQudjFhbHBoYTEuTG9naW5DbGlSZXF1ZXN0Gh8ubWdtdC52MWFscGhhMS5Mb2dpbkNsaVJlc3BvbnNlIgASUwoKUmVmcmVzaENsaRIgLm1nbXQudjFhbHBoYTEuUmVmcmVzaENsaVJlcXVlc3QaIS5tZ210LnYxYWxwaGExLlJlZnJlc2hDbGlSZXNwb25zZSIAElMKCkNoZWNrVG9rZW4SIC5tZ210LnYxYWxwaGExLkNoZWNrVG9rZW5SZXF1ZXN0GiEubWdtdC52MWFscGhhMS5DaGVja1Rva2VuUmVzcG9uc2UiABJlCg9HZXRBdXRob3JpemVVcmwSJS5tZ210LnYxYWxwaGExLkdldEF1dGhvcml6ZVVybFJlcXVlc3QaJi5tZ210LnYxYWxwaGExLkdldEF1dGhvcml6ZVVybFJlc3BvbnNlIgOQAgESXwoNR2V0QXV0aFN0YXR1cxIjLm1nbXQudjFhbHBoYTEuR2V0QXV0aFN0YXR1c1JlcXVlc3QaJC5tZ210LnYxYWxwaGExLkdldEF1dGhTdGF0dXNSZXNwb25zZSIDkAIBQsoBChFjb20ubWdtdC52MWFscGhhMUIJQXV0aFByb3RvUAFaVWdpdGh1Yi5jb20vZmlzaHRyZS1jb21wYWduaWUvaHVzb255bS9iYWNrZW5kL2dlbi9nby9wcm90b3MvbWdtdC92MWFscGhhMTttZ210djFhbHBoYTGiAgNNWFiqAg1NZ210LlYxYWxwaGExygINTWdtdFxWMWFscGhhMeICGU1nbXRcVjFhbHBoYTFcR1BCTWV0YWRhdGHqAg5NZ210OjpWMWFscGhhMWIGcHJvdG8z", [file_buf_validate_validate]);
+  fileDesc("ChhtZ210L3YxYWxwaGExL2F1dGgucHJvdG8SDW1nbXQudjFhbHBoYTEiRwoPTG9naW5DbGlSZXF1ZXN0EhUKBGNvZGUYASABKAlCB7pIBHICEAESHQoMcmVkaXJlY3RfdXJpGAIgASgJQge6SARyAhABIkQKEExvZ2luQ2xpUmVzcG9uc2USMAoMYWNjZXNzX3Rva2VuGAEgASgLMhoubWdtdC52MWFscGhhMS5BY2Nlc3NUb2tlbiIWChRHZXRBdXRoU3RhdHVzUmVxdWVzdCIrChVHZXRBdXRoU3RhdHVzUmVzcG9uc2USEgoKaXNfZW5hYmxlZBgBIAEoCCI/ChxHZXRBY2NvdW50TG9naW5NZXRob2RSZXF1ZXN0Eh8KDGFjY291bnRfc2x1ZxgBIAEoCUIJukgGcgQQARhkIkIKHUdldEFjY291bnRMb2dpbk1ldGhvZFJlc3BvbnNlEg4KBmlzc3VlchgBIAEoCRIRCgljbGllbnRfaWQYAiABKAkirAEKC0FjY2Vzc1Rva2VuEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIaCg1yZWZyZXNoX3Rva2VuGAIgASgJSACIAQESEgoKZXhwaXJlc19pbhgDIAEoAxINCgVzY29wZRgEIAEoCRIVCghpZF90b2tlbhgFIAEoCUgBiAEBEhIKCnRva2VuX3R5cGUYBiABKAlCEAoOX3JlZnJlc2hfdG9rZW5CCwoJX2lkX3Rva2VuIoYBChZHZXRBdXRob3JpemVVcmxSZXF1ZXN0EhYKBXN0YXRlGAEgASgJQge6SARyAhABEh0KDHJlZGlyZWN0X3VyaRgCIAEoCUIHukgEcgIQARIWCgVzY29wZRgDIAEoCUIHukgEcgIQARIdCgxhY2NvdW50X3NsdWcYBCABKAlCB7pIBHICGGQiJgoXR2V0QXV0aG9yaXplVXJsUmVzcG9uc2USCwoDdXJsGAEgASgJIjMKEVJlZnJlc2hDbGlSZXF1ZXN0Eh4KDXJlZnJlc2hfdG9rZW4YASABKAlCB7pIBHICEAEiRgoSUmVmcmVzaENsaVJlc3BvbnNlEjAKDGFjY2Vzc190b2tlbhgBIAEoCzIaLm1nbXQudjFhbHBoYTEuQWNjZXNzVG9rZW4iEwoRQ2hlY2tUb2tlblJlcXVlc3QiFAoSQ2hlY2tUb2tlblJlc3BvbnNlMscECgtBdXRoU2VydmljZRJNCghMb2dpbkNsaRIeLm1nbXQudjFhbHBoYTEuTG9naW5DbGlSZXF1ZXN0Gh8ubWdtdC52MWFscGhhMS5Mb2dpbkNsaVJlc3BvbnNlIgASUwoKUmVmcmVzaENsaRIgLm1nbXQudjFhbHBoYTEuUmVmcmVzaENsaVJlcXVlc3QaIS5tZ210LnYxYWxwaGExLlJlZnJlc2hDbGlSZXNwb25zZSIAElMKCkNoZWNrVG9rZW4SIC5tZ210LnYxYWxwaGExLkNoZWNrVG9rZW5SZXF1ZXN0GiEubWdtdC52MWFscGhhMS5DaGVja1Rva2VuUmVzcG9uc2UiABJlCg9HZXRBdXRob3JpemVVcmwSJS5tZ210LnYxYWxwaGExLkdldEF1dGhvcml6ZVVybFJlcXVlc3QaJi5tZ210LnYxYWxwaGExLkdldEF1dGhvcml6ZVVybFJlc3BvbnNlIgOQAgESdwoVR2V0QWNjb3VudExvZ2luTWV0aG9kEisubWdtdC52MWFscGhhMS5HZXRBY2NvdW50TG9naW5NZXRob2RSZXF1ZXN0GiwubWdtdC52MWFscGhhMS5HZXRBY2NvdW50TG9naW5NZXRob2RSZXNwb25zZSIDkAIBEl8KDUdldEF1dGhTdGF0dXMSIy5tZ210LnYxYWxwaGExLkdldEF1dGhTdGF0dXNSZXF1ZXN0GiQubWdtdC52MWFscGhhMS5HZXRBdXRoU3RhdHVzUmVzcG9uc2UiA5ACAULKAQoRY29tLm1nbXQudjFhbHBoYTFCCUF1dGhQcm90b1ABWlVnaXRodWIuY29tL2Zpc2h0cmUtY29tcGFnbmllL2h1c29ueW0vYmFja2VuZC9nZW4vZ28vcHJvdG9zL21nbXQvdjFhbHBoYTE7bWdtdHYxYWxwaGExogIDTVhYqgINTWdtdC5WMWFscGhhMcoCDU1nbXRcVjFhbHBoYTHiAhlNZ210XFYxYWxwaGExXEdQQk1ldGFkYXRh6gIOTWdtdDo6VjFhbHBoYTFiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * @generated from message mgmt.v1alpha1.LoginCliRequest
@@ -92,6 +92,61 @@ export const GetAuthStatusResponseSchema: GenMessage<GetAuthStatusResponse> = /*
   messageDesc(file_mgmt_v1alpha1_auth, 3);
 
 /**
+ * @generated from message mgmt.v1alpha1.GetAccountLoginMethodRequest
+ */
+export type GetAccountLoginMethodRequest = Message<"mgmt.v1alpha1.GetAccountLoginMethodRequest"> & {
+  /**
+   * The slug of the account somebody is signing in to. It comes from the URL they
+   * followed, because nothing is known about them yet.
+   *
+   * @generated from field: string account_slug = 1;
+   */
+  accountSlug: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetAccountLoginMethodRequest.
+ * Use `create(GetAccountLoginMethodRequestSchema)` to create a new message.
+ */
+export const GetAccountLoginMethodRequestSchema: GenMessage<GetAccountLoginMethodRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_auth, 4);
+
+/**
+ * Where to send somebody who is signing in to a given account.
+ *
+ * Unauthenticated by necessity: the provider has to be known before anybody can prove who
+ * they are. What it gives away is which accounts have declared a provider -- impersonal,
+ * and a fact an attacker who already knows the account could observe anyway. What it must
+ * never give away is whether a person has an account, so the shape of the answer does not
+ * depend on any person, and an unknown slug answers like a known one with no provider.
+ *
+ * @generated from message mgmt.v1alpha1.GetAccountLoginMethodResponse
+ */
+export type GetAccountLoginMethodResponse = Message<"mgmt.v1alpha1.GetAccountLoginMethodResponse"> & {
+  /**
+   * The issuer to start the flow against. Empty when the account has declared none, which
+   * means the deployment's own provider.
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * The client to authorize as. Empty alongside an empty issuer.
+   *
+   * @generated from field: string client_id = 2;
+   */
+  clientId: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.GetAccountLoginMethodResponse.
+ * Use `create(GetAccountLoginMethodResponseSchema)` to create a new message.
+ */
+export const GetAccountLoginMethodResponseSchema: GenMessage<GetAccountLoginMethodResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_auth, 5);
+
+/**
  * A decoded representation of an Access token from the backing auth server
  *
  * @generated from message mgmt.v1alpha1.AccessToken
@@ -146,7 +201,7 @@ export type AccessToken = Message<"mgmt.v1alpha1.AccessToken"> & {
  * Use `create(AccessTokenSchema)` to create a new message.
  */
 export const AccessTokenSchema: GenMessage<AccessToken> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 4);
+  messageDesc(file_mgmt_v1alpha1_auth, 6);
 
 /**
  * @generated from message mgmt.v1alpha1.GetAuthorizeUrlRequest
@@ -172,6 +227,17 @@ export type GetAuthorizeUrlRequest = Message<"mgmt.v1alpha1.GetAuthorizeUrlReque
    * @generated from field: string scope = 3;
    */
   scope: string;
+
+  /**
+   * The account being signed in to, when it declares its own identity provider.
+   *
+   * Same necessity as the browser's: the flow starts with the client id of the right
+   * connector, and nothing is known about the caller yet. Empty uses the deployment's
+   * provider, which is what an account with no setting uses too.
+   *
+   * @generated from field: string account_slug = 4;
+   */
+  accountSlug: string;
 };
 
 /**
@@ -179,7 +245,7 @@ export type GetAuthorizeUrlRequest = Message<"mgmt.v1alpha1.GetAuthorizeUrlReque
  * Use `create(GetAuthorizeUrlRequestSchema)` to create a new message.
  */
 export const GetAuthorizeUrlRequestSchema: GenMessage<GetAuthorizeUrlRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 5);
+  messageDesc(file_mgmt_v1alpha1_auth, 7);
 
 /**
  * @generated from message mgmt.v1alpha1.GetAuthorizeUrlResponse
@@ -198,7 +264,7 @@ export type GetAuthorizeUrlResponse = Message<"mgmt.v1alpha1.GetAuthorizeUrlResp
  * Use `create(GetAuthorizeUrlResponseSchema)` to create a new message.
  */
 export const GetAuthorizeUrlResponseSchema: GenMessage<GetAuthorizeUrlResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 6);
+  messageDesc(file_mgmt_v1alpha1_auth, 8);
 
 /**
  * @generated from message mgmt.v1alpha1.RefreshCliRequest
@@ -217,7 +283,7 @@ export type RefreshCliRequest = Message<"mgmt.v1alpha1.RefreshCliRequest"> & {
  * Use `create(RefreshCliRequestSchema)` to create a new message.
  */
 export const RefreshCliRequestSchema: GenMessage<RefreshCliRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 7);
+  messageDesc(file_mgmt_v1alpha1_auth, 9);
 
 /**
  * @generated from message mgmt.v1alpha1.RefreshCliResponse
@@ -236,7 +302,7 @@ export type RefreshCliResponse = Message<"mgmt.v1alpha1.RefreshCliResponse"> & {
  * Use `create(RefreshCliResponseSchema)` to create a new message.
  */
 export const RefreshCliResponseSchema: GenMessage<RefreshCliResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 8);
+  messageDesc(file_mgmt_v1alpha1_auth, 10);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckTokenRequest
@@ -249,7 +315,7 @@ export type CheckTokenRequest = Message<"mgmt.v1alpha1.CheckTokenRequest"> & {
  * Use `create(CheckTokenRequestSchema)` to create a new message.
  */
 export const CheckTokenRequestSchema: GenMessage<CheckTokenRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 9);
+  messageDesc(file_mgmt_v1alpha1_auth, 11);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckTokenResponse
@@ -262,7 +328,7 @@ export type CheckTokenResponse = Message<"mgmt.v1alpha1.CheckTokenResponse"> & {
  * Use `create(CheckTokenResponseSchema)` to create a new message.
  */
 export const CheckTokenResponseSchema: GenMessage<CheckTokenResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_auth, 10);
+  messageDesc(file_mgmt_v1alpha1_auth, 12);
 
 /**
  * Service that handles generic Authentication for Husonym
@@ -315,7 +381,20 @@ export const AuthService: GenService<{
   /**
    * Returns the auth status of the API server. Whether or not the backend has authentication enabled.
    * This is used by clients to make decisions on whether or not they should send access tokens to the API.
+   * Tells an unauthenticated caller which identity provider an account signs in with.
    *
+   * The tenant has to be known before the flow starts -- an OIDC flow begins with the
+   * client id of the right connector -- and the caller has not authenticated yet, by
+   * definition. The account is designated by the link that was followed.
+   *
+   * @generated from rpc mgmt.v1alpha1.AuthService.GetAccountLoginMethod
+   */
+  getAccountLoginMethod: {
+    methodKind: "unary";
+    input: typeof GetAccountLoginMethodRequestSchema;
+    output: typeof GetAccountLoginMethodResponseSchema;
+  },
+  /**
    * @generated from rpc mgmt.v1alpha1.AuthService.GetAuthStatus
    */
   getAuthStatus: {

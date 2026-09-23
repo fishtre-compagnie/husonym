@@ -46,13 +46,22 @@ func NewCmd() *cobra.Command {
 				)
 				return nil
 			}
-			return login(cmd.Context(), logger)
+			accountSlug, err := cmd.Flags().GetString("account")
+			if err != nil {
+				return err
+			}
+			return login(cmd.Context(), logger, accountSlug)
 		},
 	}
+	cmd.Flags().String(
+		"account",
+		"",
+		"the account to sign in to, when it uses its own identity provider",
+	)
 	return cmd
 }
 
-func login(ctx context.Context, logger *slog.Logger) error {
+func login(ctx context.Context, logger *slog.Logger, accountSlug string) error {
 	httpclient := http_client.NewWithHeaders(version.Get().Headers())
 	authclient := mgmtv1alpha1connect.NewAuthServiceClient(httpclient, auth.GetHusonymUrl())
 	isAuthEnabled, err := auth.GetAuthEnabled(ctx, authclient)
@@ -63,7 +72,7 @@ func login(ctx context.Context, logger *slog.Logger) error {
 		logger.Info("auth is not enabled server-side, exiting")
 		return nil
 	}
-	err = oAuthLogin(ctx, authclient)
+	err = oAuthLogin(ctx, authclient, accountSlug)
 	if err != nil {
 		return err
 	}
@@ -115,6 +124,7 @@ type oauthResult struct {
 func oAuthLogin(
 	ctx context.Context,
 	authclient mgmtv1alpha1connect.AuthServiceClient,
+	accountSlug string,
 ) error {
 	state := uuid.NewString()
 
@@ -124,6 +134,7 @@ func oAuthLogin(
 			State:       state,
 			RedirectUri: redirectUri,
 			Scope:       "openid profile offline_access",
+			AccountSlug: accountSlug,
 		}),
 	)
 	if err != nil {

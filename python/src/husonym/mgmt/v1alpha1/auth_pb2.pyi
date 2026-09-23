@@ -30,6 +30,20 @@ class GetAuthStatusResponse(_message.Message):
     is_enabled: bool
     def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
 
+class GetAccountLoginMethodRequest(_message.Message):
+    __slots__ = ("account_slug",)
+    ACCOUNT_SLUG_FIELD_NUMBER: _ClassVar[int]
+    account_slug: str
+    def __init__(self, account_slug: _Optional[str] = ...) -> None: ...
+
+class GetAccountLoginMethodResponse(_message.Message):
+    __slots__ = ("issuer", "client_id")
+    ISSUER_FIELD_NUMBER: _ClassVar[int]
+    CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    issuer: str
+    client_id: str
+    def __init__(self, issuer: _Optional[str] = ..., client_id: _Optional[str] = ...) -> None: ...
+
 class AccessToken(_message.Message):
     __slots__ = ("access_token", "refresh_token", "expires_in", "scope", "id_token", "token_type")
     ACCESS_TOKEN_FIELD_NUMBER: _ClassVar[int]
@@ -47,14 +61,16 @@ class AccessToken(_message.Message):
     def __init__(self, access_token: _Optional[str] = ..., refresh_token: _Optional[str] = ..., expires_in: _Optional[int] = ..., scope: _Optional[str] = ..., id_token: _Optional[str] = ..., token_type: _Optional[str] = ...) -> None: ...
 
 class GetAuthorizeUrlRequest(_message.Message):
-    __slots__ = ("state", "redirect_uri", "scope")
+    __slots__ = ("state", "redirect_uri", "scope", "account_slug")
     STATE_FIELD_NUMBER: _ClassVar[int]
     REDIRECT_URI_FIELD_NUMBER: _ClassVar[int]
     SCOPE_FIELD_NUMBER: _ClassVar[int]
+    ACCOUNT_SLUG_FIELD_NUMBER: _ClassVar[int]
     state: str
     redirect_uri: str
     scope: str
-    def __init__(self, state: _Optional[str] = ..., redirect_uri: _Optional[str] = ..., scope: _Optional[str] = ...) -> None: ...
+    account_slug: str
+    def __init__(self, state: _Optional[str] = ..., redirect_uri: _Optional[str] = ..., scope: _Optional[str] = ..., account_slug: _Optional[str] = ...) -> None: ...
 
 class GetAuthorizeUrlResponse(_message.Message):
     __slots__ = ("url",)

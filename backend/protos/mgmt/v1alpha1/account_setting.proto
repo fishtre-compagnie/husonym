@@ -48,6 +48,9 @@ message AccountSettingConfig {
 
     // What the account's deterministic anonymization derives from.
     AnonymizationConsistency anonymization_consistency = 1;
+
+    // The identity provider the account's members sign in with.
+    OidcProvider oidc_provider = 2;
   }
 }
 
@@ -64,6 +67,78 @@ message AnonymizationConsistency {
     (buf.validate.field).string.min_len = 1,
     (mgmt.v1alpha1.secret) = true
   ];
+}
+
+// The identity provider an account's members sign in with.
+//
+// Nothing here names a product. What an account declares is what the standard defines:
+// an issuer to discover, a client to authorize as, and the audience its tokens carry.
+// A provider that needs more than this is a provider Husonym does not claim to support.
+message OidcProvider {
+  // The issuer, exactly as its tokens spell it in their iss claim.
+  //
+  // It is compared by exact string equality, so it is the issuer and not the URL a human
+  // would type: a discovery document that answers under one name and calls itself another
+  // is rejected by the test below rather than accepted and puzzled over later.
+  string issuer = 1 [
+    (buf.validate.field).string.uri = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The client the frontend authorizes as. Public information: the browser carries it in
+  // the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
+  string client_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The secret of that client, for providers that require a confidential one.
+  //
+  // It plays no part in validating a token -- that needs only the public JWKS -- and is
+  // used solely in the authorization flow. Empty for a public client.
+  string client_secret = 3 [(mgmt.v1alpha1.secret) = true];
+
+  // What the aud claim of a token must carry for this account. Empty falls back to the
+  // deployment's audiences.
+  repeated string audiences = 4;
+}
+
+// How much a finding of a setting test weighs.
+enum SettingCheckLevel {
+  SETTING_CHECK_LEVEL_UNSPECIFIED = 0;
+  // The setting cannot work. Saving it would lock the account out.
+  SETTING_CHECK_LEVEL_BLOCKING = 1;
+  // The setting works, but not the way its author probably meant.
+  SETTING_CHECK_LEVEL_WARNING = 2;
+  // Worth knowing, nothing to do.
+  SETTING_CHECK_LEVEL_INFO = 3;
+}
+
+// One finding of a setting test.
+//
+// A finding, not a sentence: what was checked, how much it weighs, what is missing and
+// what to do about it. The same shape the connection checks use, for the same reason --
+// a human fixes a provider from a remedy, never from a stack trace.
+message SettingCheck {
+  // What was checked, as a stable identifier a screen can translate.
+  string check = 1;
+  // How much the finding weighs.
+  SettingCheckLevel level = 2;
+  // What was found, in one sentence.
+  string detail = 3;
+  // What to do about it. Empty when there is nothing to do.
+  string remedy = 4;
+}
+
+message TestAccountSettingRequest {
+  // The account the setting would belong to.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The setting to try. It is not written, whatever the findings say.
+  AccountSettingConfig config = 2 [(buf.validate.field).required = true];
+}
+
+message TestAccountSettingResponse {
+  // What the test found, in the order it found it.
+  repeated SettingCheck checks = 1;
+  // Whether nothing blocking was found. A caller that reads only this is still correct.
+  bool ok = 2;
 }
 
 message GetAccountSettingsRequest {
@@ -116,6 +191,16 @@ service AccountSettingService {
 
   // Writes a setting of an account, replacing the one it holds of that kind.
   rpc SetAccountSetting(SetAccountSettingRequest) returns (SetAccountSettingResponse) {}
+
+  // Tries a setting without writing it, and returns what it found.
+  //
+  // For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+  // it performs the discovery, checks that the document calls itself what it was asked
+  // under, and reads the keys -- so a provider is refused with a reason instead of
+  // locking an account out after it is saved.
+  rpc TestAccountSetting(TestAccountSettingRequest) returns (TestAccountSettingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Retrieves the key an account's deterministic anonymization derives from, in clear, and
   // generates one when asked and the account has none.

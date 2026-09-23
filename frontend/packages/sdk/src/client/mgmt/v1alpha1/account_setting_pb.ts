@@ -2,8 +2,8 @@
 // @generated from file mgmt/v1alpha1/account_setting.proto (package mgmt.v1alpha1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/account_setting.proto.
  */
 export const file_mgmt_v1alpha1_account_setting: GenFile = /*@__PURE__*/
-  fileDesc("CiNtZ210L3YxYWxwaGExL2FjY291bnRfc2V0dGluZy5wcm90bxINbWdtdC52MWFscGhhMSKAAwoOQWNjb3VudFNldHRpbmcSEgoKYWNjb3VudF9pZBgBIAEoCRIzCgZjb25maWcYAiABKAsyIy5tZ210LnYxYWxwaGExLkFjY291bnRTZXR0aW5nQ29uZmlnElIKE3NlY3JldF9maW5nZXJwcmludHMYAyADKAsyNS5tZ210LnYxYWxwaGExLkFjY291bnRTZXR0aW5nLlNlY3JldEZpbmdlcnByaW50c0VudHJ5Ei4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNyZWF0ZWRfYnlfdXNlcl9pZBgGIAEoCRIaChJ1cGRhdGVkX2J5X3VzZXJfaWQYByABKAkaOQoXU2VjcmV0RmluZ2VycHJpbnRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJ1ChRBY2NvdW50U2V0dGluZ0NvbmZpZxJMChlhbm9ueW1pemF0aW9uX2NvbnNpc3RlbmN5GAEgASgLMicubWdtdC52MWFscGhhMS5Bbm9ueW1pemF0aW9uQ29uc2lzdGVuY3lIAEIPCgZjb25maWcSBbpIAggBIj8KGEFub255bWl6YXRpb25Db25zaXN0ZW5jeRIjCg5kZXJpdmF0aW9uX2tleRgBIAEoCUILukgEcgIQAYi1GAEiOQoZR2V0QWNjb3VudFNldHRpbmdzUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABASJNChpHZXRBY2NvdW50U2V0dGluZ3NSZXNwb25zZRIvCghzZXR0aW5ncxgBIAMoCzIdLm1nbXQudjFhbHBoYTEuQWNjb3VudFNldHRpbmcidQoYU2V0QWNjb3VudFNldHRpbmdSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjsKBmNvbmZpZxgCIAEoCzIjLm1nbXQudjFhbHBoYTEuQWNjb3VudFNldHRpbmdDb25maWdCBrpIA8gBASJLChlTZXRBY2NvdW50U2V0dGluZ1Jlc3BvbnNlEi4KB3NldHRpbmcYASABKAsyHS5tZ210LnYxYWxwaGExLkFjY291bnRTZXR0aW5nIlsKH0dldEFjY291bnRDb25zaXN0ZW5jeUtleVJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESGgoSZ2VuZXJhdGVfaWZfYWJzZW50GAIgASgIIjwKIEdldEFjY291bnRDb25zaXN0ZW5jeUtleVJlc3BvbnNlEhAKA2tleRgBIAEoCUgAiAEBQgYKBF9rZXky8AIKFUFjY291bnRTZXR0aW5nU2VydmljZRJuChJHZXRBY2NvdW50U2V0dGluZ3MSKC5tZ210LnYxYWxwaGExLkdldEFjY291bnRTZXR0aW5nc1JlcXVlc3QaKS5tZ210LnYxYWxwaGExLkdldEFjY291bnRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESaAoRU2V0QWNjb3VudFNldHRpbmcSJy5tZ210LnYxYWxwaGExLlNldEFjY291bnRTZXR0aW5nUmVxdWVzdBooLm1nbXQudjFhbHBoYTEuU2V0QWNjb3VudFNldHRpbmdSZXNwb25zZSIAEn0KGEdldEFjY291bnRDb25zaXN0ZW5jeUtleRIuLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVxdWVzdBovLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVzcG9uc2UiAELUAQoRY29tLm1nbXQudjFhbHBoYTFCE0FjY291bnRTZXR0aW5nUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_secret]);
+  fileDesc("CiNtZ210L3YxYWxwaGExL2FjY291bnRfc2V0dGluZy5wcm90bxINbWdtdC52MWFscGhhMSKAAwoOQWNjb3VudFNldHRpbmcSEgoKYWNjb3VudF9pZBgBIAEoCRIzCgZjb25maWcYAiABKAsyIy5tZ210LnYxYWxwaGExLkFjY291bnRTZXR0aW5nQ29uZmlnElIKE3NlY3JldF9maW5nZXJwcmludHMYAyADKAsyNS5tZ210LnYxYWxwaGExLkFjY291bnRTZXR0aW5nLlNlY3JldEZpbmdlcnByaW50c0VudHJ5Ei4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmNyZWF0ZWRfYnlfdXNlcl9pZBgGIAEoCRIaChJ1cGRhdGVkX2J5X3VzZXJfaWQYByABKAkaOQoXU2VjcmV0RmluZ2VycHJpbnRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKrAQoUQWNjb3VudFNldHRpbmdDb25maWcSTAoZYW5vbnltaXphdGlvbl9jb25zaXN0ZW5jeRgBIAEoCzInLm1nbXQudjFhbHBoYTEuQW5vbnltaXphdGlvbkNvbnNpc3RlbmN5SAASNAoNb2lkY19wcm92aWRlchgCIAEoCzIbLm1nbXQudjFhbHBoYTEuT2lkY1Byb3ZpZGVySABCDwoGY29uZmlnEgW6SAIIASI/ChhBbm9ueW1pemF0aW9uQ29uc2lzdGVuY3kSIwoOZGVyaXZhdGlvbl9rZXkYASABKAlCC7pIBHICEAGItRgBInYKDE9pZGNQcm92aWRlchIaCgZpc3N1ZXIYASABKAlCCrpIB3IFEAGIAQESGgoJY2xpZW50X2lkGAIgASgJQge6SARyAhABEhsKDWNsaWVudF9zZWNyZXQYAyABKAlCBIi1GAESEQoJYXVkaWVuY2VzGAQgAygJIm4KDFNldHRpbmdDaGVjaxINCgVjaGVjaxgBIAEoCRIvCgVsZXZlbBgCIAEoDjIgLm1nbXQudjFhbHBoYTEuU2V0dGluZ0NoZWNrTGV2ZWwSDgoGZGV0YWlsGAMgASgJEg4KBnJlbWVkeRgEIAEoCSJ2ChlUZXN0QWNjb3VudFNldHRpbmdSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjsKBmNvbmZpZxgCIAEoCzIjLm1nbXQudjFhbHBoYTEuQWNjb3VudFNldHRpbmdDb25maWdCBrpIA8gBASJVChpUZXN0QWNjb3VudFNldHRpbmdSZXNwb25zZRIrCgZjaGVja3MYASADKAsyGy5tZ210LnYxYWxwaGExLlNldHRpbmdDaGVjaxIKCgJvaxgCIAEoCCI5ChlHZXRBY2NvdW50U2V0dGluZ3NSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBIk0KGkdldEFjY291bnRTZXR0aW5nc1Jlc3BvbnNlEi8KCHNldHRpbmdzGAEgAygLMh0ubWdtdC52MWFscGhhMS5BY2NvdW50U2V0dGluZyJ1ChhTZXRBY2NvdW50U2V0dGluZ1JlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESOwoGY29uZmlnGAIgASgLMiMubWdtdC52MWFscGhhMS5BY2NvdW50U2V0dGluZ0NvbmZpZ0IGukgDyAEBIksKGVNldEFjY291bnRTZXR0aW5nUmVzcG9uc2USLgoHc2V0dGluZxgBIAEoCzIdLm1nbXQudjFhbHBoYTEuQWNjb3VudFNldHRpbmciWwofR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARIaChJnZW5lcmF0ZV9pZl9hYnNlbnQYAiABKAgiPAogR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVzcG9uc2USEAoDa2V5GAEgASgJSACIAQFCBgoEX2tleSqZAQoRU2V0dGluZ0NoZWNrTGV2ZWwSIwofU0VUVElOR19DSEVDS19MRVZFTF9VTlNQRUNJRklFRBAAEiAKHFNFVFRJTkdfQ0hFQ0tfTEVWRUxfQkxPQ0tJTkcQARIfChtTRVRUSU5HX0NIRUNLX0xFVkVMX1dBUk5JTkcQAhIcChhTRVRUSU5HX0NIRUNLX0xFVkVMX0lORk8QAzLgAwoVQWNjb3VudFNldHRpbmdTZXJ2aWNlEm4KEkdldEFjY291bnRTZXR0aW5ncxIoLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudFNldHRpbmdzUmVxdWVzdBopLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudFNldHRpbmdzUmVzcG9uc2UiA5ACARJoChFTZXRBY2NvdW50U2V0dGluZxInLm1nbXQudjFhbHBoYTEuU2V0QWNjb3VudFNldHRpbmdSZXF1ZXN0GigubWdtdC52MWFscGhhMS5TZXRBY2NvdW50U2V0dGluZ1Jlc3BvbnNlIgASbgoSVGVzdEFjY291bnRTZXR0aW5nEigubWdtdC52MWFscGhhMS5UZXN0QWNjb3VudFNldHRpbmdSZXF1ZXN0GikubWdtdC52MWFscGhhMS5UZXN0QWNjb3VudFNldHRpbmdSZXNwb25zZSIDkAIBEn0KGEdldEFjY291bnRDb25zaXN0ZW5jeUtleRIuLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVxdWVzdBovLm1nbXQudjFhbHBoYTEuR2V0QWNjb3VudENvbnNpc3RlbmN5S2V5UmVzcG9uc2UiAELUAQoRY29tLm1nbXQudjFhbHBoYTFCE0FjY291bnRTZXR0aW5nUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_secret]);
 
 /**
  * A setting of an account: a value that varies by account, part of which may be a secret,
@@ -109,6 +109,14 @@ export type AccountSettingConfig = Message<"mgmt.v1alpha1.AccountSettingConfig">
      */
     value: AnonymizationConsistency;
     case: "anonymizationConsistency";
+  } | {
+    /**
+     * The identity provider the account's members sign in with.
+     *
+     * @generated from field: mgmt.v1alpha1.OidcProvider oidc_provider = 2;
+     */
+    value: OidcProvider;
+    case: "oidcProvider";
   } | { case: undefined; value?: undefined };
 };
 
@@ -147,6 +155,159 @@ export const AnonymizationConsistencySchema: GenMessage<AnonymizationConsistency
   messageDesc(file_mgmt_v1alpha1_account_setting, 2);
 
 /**
+ * The identity provider an account's members sign in with.
+ *
+ * Nothing here names a product. What an account declares is what the standard defines:
+ * an issuer to discover, a client to authorize as, and the audience its tokens carry.
+ * A provider that needs more than this is a provider Husonym does not claim to support.
+ *
+ * @generated from message mgmt.v1alpha1.OidcProvider
+ */
+export type OidcProvider = Message<"mgmt.v1alpha1.OidcProvider"> & {
+  /**
+   * The issuer, exactly as its tokens spell it in their iss claim.
+   *
+   * It is compared by exact string equality, so it is the issuer and not the URL a human
+   * would type: a discovery document that answers under one name and calls itself another
+   * is rejected by the test below rather than accepted and puzzled over later.
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * The client the frontend authorizes as. Public information: the browser carries it in
+   * the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
+   *
+   * @generated from field: string client_id = 2;
+   */
+  clientId: string;
+
+  /**
+   * The secret of that client, for providers that require a confidential one.
+   *
+   * It plays no part in validating a token -- that needs only the public JWKS -- and is
+   * used solely in the authorization flow. Empty for a public client.
+   *
+   * @generated from field: string client_secret = 3;
+   */
+  clientSecret: string;
+
+  /**
+   * What the aud claim of a token must carry for this account. Empty falls back to the
+   * deployment's audiences.
+   *
+   * @generated from field: repeated string audiences = 4;
+   */
+  audiences: string[];
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.OidcProvider.
+ * Use `create(OidcProviderSchema)` to create a new message.
+ */
+export const OidcProviderSchema: GenMessage<OidcProvider> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_account_setting, 3);
+
+/**
+ * One finding of a setting test.
+ *
+ * A finding, not a sentence: what was checked, how much it weighs, what is missing and
+ * what to do about it. The same shape the connection checks use, for the same reason --
+ * a human fixes a provider from a remedy, never from a stack trace.
+ *
+ * @generated from message mgmt.v1alpha1.SettingCheck
+ */
+export type SettingCheck = Message<"mgmt.v1alpha1.SettingCheck"> & {
+  /**
+   * What was checked, as a stable identifier a screen can translate.
+   *
+   * @generated from field: string check = 1;
+   */
+  check: string;
+
+  /**
+   * How much the finding weighs.
+   *
+   * @generated from field: mgmt.v1alpha1.SettingCheckLevel level = 2;
+   */
+  level: SettingCheckLevel;
+
+  /**
+   * What was found, in one sentence.
+   *
+   * @generated from field: string detail = 3;
+   */
+  detail: string;
+
+  /**
+   * What to do about it. Empty when there is nothing to do.
+   *
+   * @generated from field: string remedy = 4;
+   */
+  remedy: string;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.SettingCheck.
+ * Use `create(SettingCheckSchema)` to create a new message.
+ */
+export const SettingCheckSchema: GenMessage<SettingCheck> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_account_setting, 4);
+
+/**
+ * @generated from message mgmt.v1alpha1.TestAccountSettingRequest
+ */
+export type TestAccountSettingRequest = Message<"mgmt.v1alpha1.TestAccountSettingRequest"> & {
+  /**
+   * The account the setting would belong to.
+   *
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * The setting to try. It is not written, whatever the findings say.
+   *
+   * @generated from field: mgmt.v1alpha1.AccountSettingConfig config = 2;
+   */
+  config?: AccountSettingConfig | undefined;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.TestAccountSettingRequest.
+ * Use `create(TestAccountSettingRequestSchema)` to create a new message.
+ */
+export const TestAccountSettingRequestSchema: GenMessage<TestAccountSettingRequest> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_account_setting, 5);
+
+/**
+ * @generated from message mgmt.v1alpha1.TestAccountSettingResponse
+ */
+export type TestAccountSettingResponse = Message<"mgmt.v1alpha1.TestAccountSettingResponse"> & {
+  /**
+   * What the test found, in the order it found it.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.SettingCheck checks = 1;
+   */
+  checks: SettingCheck[];
+
+  /**
+   * Whether nothing blocking was found. A caller that reads only this is still correct.
+   *
+   * @generated from field: bool ok = 2;
+   */
+  ok: boolean;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.TestAccountSettingResponse.
+ * Use `create(TestAccountSettingResponseSchema)` to create a new message.
+ */
+export const TestAccountSettingResponseSchema: GenMessage<TestAccountSettingResponse> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_account_setting, 6);
+
+/**
  * @generated from message mgmt.v1alpha1.GetAccountSettingsRequest
  */
 export type GetAccountSettingsRequest = Message<"mgmt.v1alpha1.GetAccountSettingsRequest"> & {
@@ -163,7 +324,7 @@ export type GetAccountSettingsRequest = Message<"mgmt.v1alpha1.GetAccountSetting
  * Use `create(GetAccountSettingsRequestSchema)` to create a new message.
  */
 export const GetAccountSettingsRequestSchema: GenMessage<GetAccountSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 3);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 7);
 
 /**
  * @generated from message mgmt.v1alpha1.GetAccountSettingsResponse
@@ -182,7 +343,7 @@ export type GetAccountSettingsResponse = Message<"mgmt.v1alpha1.GetAccountSettin
  * Use `create(GetAccountSettingsResponseSchema)` to create a new message.
  */
 export const GetAccountSettingsResponseSchema: GenMessage<GetAccountSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 4);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 8);
 
 /**
  * @generated from message mgmt.v1alpha1.SetAccountSettingRequest
@@ -208,7 +369,7 @@ export type SetAccountSettingRequest = Message<"mgmt.v1alpha1.SetAccountSettingR
  * Use `create(SetAccountSettingRequestSchema)` to create a new message.
  */
 export const SetAccountSettingRequestSchema: GenMessage<SetAccountSettingRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 5);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 9);
 
 /**
  * @generated from message mgmt.v1alpha1.SetAccountSettingResponse
@@ -227,7 +388,7 @@ export type SetAccountSettingResponse = Message<"mgmt.v1alpha1.SetAccountSetting
  * Use `create(SetAccountSettingResponseSchema)` to create a new message.
  */
 export const SetAccountSettingResponseSchema: GenMessage<SetAccountSettingResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 6);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 10);
 
 /**
  * @generated from message mgmt.v1alpha1.GetAccountConsistencyKeyRequest
@@ -258,7 +419,7 @@ export type GetAccountConsistencyKeyRequest = Message<"mgmt.v1alpha1.GetAccountC
  * Use `create(GetAccountConsistencyKeyRequestSchema)` to create a new message.
  */
 export const GetAccountConsistencyKeyRequestSchema: GenMessage<GetAccountConsistencyKeyRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 7);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 11);
 
 /**
  * @generated from message mgmt.v1alpha1.GetAccountConsistencyKeyResponse
@@ -278,7 +439,46 @@ export type GetAccountConsistencyKeyResponse = Message<"mgmt.v1alpha1.GetAccount
  * Use `create(GetAccountConsistencyKeyResponseSchema)` to create a new message.
  */
 export const GetAccountConsistencyKeyResponseSchema: GenMessage<GetAccountConsistencyKeyResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_account_setting, 8);
+  messageDesc(file_mgmt_v1alpha1_account_setting, 12);
+
+/**
+ * How much a finding of a setting test weighs.
+ *
+ * @generated from enum mgmt.v1alpha1.SettingCheckLevel
+ */
+export enum SettingCheckLevel {
+  /**
+   * @generated from enum value: SETTING_CHECK_LEVEL_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The setting cannot work. Saving it would lock the account out.
+   *
+   * @generated from enum value: SETTING_CHECK_LEVEL_BLOCKING = 1;
+   */
+  BLOCKING = 1,
+
+  /**
+   * The setting works, but not the way its author probably meant.
+   *
+   * @generated from enum value: SETTING_CHECK_LEVEL_WARNING = 2;
+   */
+  WARNING = 2,
+
+  /**
+   * Worth knowing, nothing to do.
+   *
+   * @generated from enum value: SETTING_CHECK_LEVEL_INFO = 3;
+   */
+  INFO = 3,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.SettingCheckLevel.
+ */
+export const SettingCheckLevelSchema: GenEnum<SettingCheckLevel> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_account_setting, 0);
 
 /**
  * Holds the settings of an account.
@@ -305,6 +505,21 @@ export const AccountSettingService: GenService<{
     methodKind: "unary";
     input: typeof SetAccountSettingRequestSchema;
     output: typeof SetAccountSettingResponseSchema;
+  },
+  /**
+   * Tries a setting without writing it, and returns what it found.
+   *
+   * For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+   * it performs the discovery, checks that the document calls itself what it was asked
+   * under, and reads the keys -- so a provider is refused with a reason instead of
+   * locking an account out after it is saved.
+   *
+   * @generated from rpc mgmt.v1alpha1.AccountSettingService.TestAccountSetting
+   */
+  testAccountSetting: {
+    methodKind: "unary";
+    input: typeof TestAccountSettingRequestSchema;
+    output: typeof TestAccountSettingResponseSchema;
   },
   /**
    * Retrieves the key an account's deterministic anonymization derives from, in clear, and

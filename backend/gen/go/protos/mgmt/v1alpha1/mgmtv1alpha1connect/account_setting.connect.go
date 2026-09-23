@@ -39,6 +39,9 @@ const (
 	// AccountSettingServiceSetAccountSettingProcedure is the fully-qualified name of the
 	// AccountSettingService's SetAccountSetting RPC.
 	AccountSettingServiceSetAccountSettingProcedure = "/mgmt.v1alpha1.AccountSettingService/SetAccountSetting"
+	// AccountSettingServiceTestAccountSettingProcedure is the fully-qualified name of the
+	// AccountSettingService's TestAccountSetting RPC.
+	AccountSettingServiceTestAccountSettingProcedure = "/mgmt.v1alpha1.AccountSettingService/TestAccountSetting"
 	// AccountSettingServiceGetAccountConsistencyKeyProcedure is the fully-qualified name of the
 	// AccountSettingService's GetAccountConsistencyKey RPC.
 	AccountSettingServiceGetAccountConsistencyKeyProcedure = "/mgmt.v1alpha1.AccountSettingService/GetAccountConsistencyKey"
@@ -50,6 +53,13 @@ type AccountSettingServiceClient interface {
 	GetAccountSettings(context.Context, *connect.Request[v1alpha1.GetAccountSettingsRequest]) (*connect.Response[v1alpha1.GetAccountSettingsResponse], error)
 	// Writes a setting of an account, replacing the one it holds of that kind.
 	SetAccountSetting(context.Context, *connect.Request[v1alpha1.SetAccountSettingRequest]) (*connect.Response[v1alpha1.SetAccountSettingResponse], error)
+	// Tries a setting without writing it, and returns what it found.
+	//
+	// For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+	// it performs the discovery, checks that the document calls itself what it was asked
+	// under, and reads the keys -- so a provider is refused with a reason instead of
+	// locking an account out after it is saved.
+	TestAccountSetting(context.Context, *connect.Request[v1alpha1.TestAccountSettingRequest]) (*connect.Response[v1alpha1.TestAccountSettingResponse], error)
 	// Retrieves the key an account's deterministic anonymization derives from, in clear, and
 	// generates one when asked and the account has none.
 	//
@@ -82,6 +92,13 @@ func NewAccountSettingServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(accountSettingServiceMethods.ByName("SetAccountSetting")),
 			connect.WithClientOptions(opts...),
 		),
+		testAccountSetting: connect.NewClient[v1alpha1.TestAccountSettingRequest, v1alpha1.TestAccountSettingResponse](
+			httpClient,
+			baseURL+AccountSettingServiceTestAccountSettingProcedure,
+			connect.WithSchema(accountSettingServiceMethods.ByName("TestAccountSetting")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountConsistencyKey: connect.NewClient[v1alpha1.GetAccountConsistencyKeyRequest, v1alpha1.GetAccountConsistencyKeyResponse](
 			httpClient,
 			baseURL+AccountSettingServiceGetAccountConsistencyKeyProcedure,
@@ -95,6 +112,7 @@ func NewAccountSettingServiceClient(httpClient connect.HTTPClient, baseURL strin
 type accountSettingServiceClient struct {
 	getAccountSettings       *connect.Client[v1alpha1.GetAccountSettingsRequest, v1alpha1.GetAccountSettingsResponse]
 	setAccountSetting        *connect.Client[v1alpha1.SetAccountSettingRequest, v1alpha1.SetAccountSettingResponse]
+	testAccountSetting       *connect.Client[v1alpha1.TestAccountSettingRequest, v1alpha1.TestAccountSettingResponse]
 	getAccountConsistencyKey *connect.Client[v1alpha1.GetAccountConsistencyKeyRequest, v1alpha1.GetAccountConsistencyKeyResponse]
 }
 
@@ -106,6 +124,11 @@ func (c *accountSettingServiceClient) GetAccountSettings(ctx context.Context, re
 // SetAccountSetting calls mgmt.v1alpha1.AccountSettingService.SetAccountSetting.
 func (c *accountSettingServiceClient) SetAccountSetting(ctx context.Context, req *connect.Request[v1alpha1.SetAccountSettingRequest]) (*connect.Response[v1alpha1.SetAccountSettingResponse], error) {
 	return c.setAccountSetting.CallUnary(ctx, req)
+}
+
+// TestAccountSetting calls mgmt.v1alpha1.AccountSettingService.TestAccountSetting.
+func (c *accountSettingServiceClient) TestAccountSetting(ctx context.Context, req *connect.Request[v1alpha1.TestAccountSettingRequest]) (*connect.Response[v1alpha1.TestAccountSettingResponse], error) {
+	return c.testAccountSetting.CallUnary(ctx, req)
 }
 
 // GetAccountConsistencyKey calls mgmt.v1alpha1.AccountSettingService.GetAccountConsistencyKey.
@@ -120,6 +143,13 @@ type AccountSettingServiceHandler interface {
 	GetAccountSettings(context.Context, *connect.Request[v1alpha1.GetAccountSettingsRequest]) (*connect.Response[v1alpha1.GetAccountSettingsResponse], error)
 	// Writes a setting of an account, replacing the one it holds of that kind.
 	SetAccountSetting(context.Context, *connect.Request[v1alpha1.SetAccountSettingRequest]) (*connect.Response[v1alpha1.SetAccountSettingResponse], error)
+	// Tries a setting without writing it, and returns what it found.
+	//
+	// For OIDC this is what makes "any compliant provider" true rather than merely claimed:
+	// it performs the discovery, checks that the document calls itself what it was asked
+	// under, and reads the keys -- so a provider is refused with a reason instead of
+	// locking an account out after it is saved.
+	TestAccountSetting(context.Context, *connect.Request[v1alpha1.TestAccountSettingRequest]) (*connect.Response[v1alpha1.TestAccountSettingResponse], error)
 	// Retrieves the key an account's deterministic anonymization derives from, in clear, and
 	// generates one when asked and the account has none.
 	//
@@ -148,6 +178,13 @@ func NewAccountSettingServiceHandler(svc AccountSettingServiceHandler, opts ...c
 		connect.WithSchema(accountSettingServiceMethods.ByName("SetAccountSetting")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountSettingServiceTestAccountSettingHandler := connect.NewUnaryHandler(
+		AccountSettingServiceTestAccountSettingProcedure,
+		svc.TestAccountSetting,
+		connect.WithSchema(accountSettingServiceMethods.ByName("TestAccountSetting")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	accountSettingServiceGetAccountConsistencyKeyHandler := connect.NewUnaryHandler(
 		AccountSettingServiceGetAccountConsistencyKeyProcedure,
 		svc.GetAccountConsistencyKey,
@@ -160,6 +197,8 @@ func NewAccountSettingServiceHandler(svc AccountSettingServiceHandler, opts ...c
 			accountSettingServiceGetAccountSettingsHandler.ServeHTTP(w, r)
 		case AccountSettingServiceSetAccountSettingProcedure:
 			accountSettingServiceSetAccountSettingHandler.ServeHTTP(w, r)
+		case AccountSettingServiceTestAccountSettingProcedure:
+			accountSettingServiceTestAccountSettingHandler.ServeHTTP(w, r)
 		case AccountSettingServiceGetAccountConsistencyKeyProcedure:
 			accountSettingServiceGetAccountConsistencyKeyHandler.ServeHTTP(w, r)
 		default:
@@ -177,6 +216,10 @@ func (UnimplementedAccountSettingServiceHandler) GetAccountSettings(context.Cont
 
 func (UnimplementedAccountSettingServiceHandler) SetAccountSetting(context.Context, *connect.Request[v1alpha1.SetAccountSettingRequest]) (*connect.Response[v1alpha1.SetAccountSettingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.AccountSettingService.SetAccountSetting is not implemented"))
+}
+
+func (UnimplementedAccountSettingServiceHandler) TestAccountSetting(context.Context, *connect.Request[v1alpha1.TestAccountSettingRequest]) (*connect.Response[v1alpha1.TestAccountSettingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.AccountSettingService.TestAccountSetting is not implemented"))
 }
 
 func (UnimplementedAccountSettingServiceHandler) GetAccountConsistencyKey(context.Context, *connect.Request[v1alpha1.GetAccountConsistencyKeyRequest]) (*connect.Response[v1alpha1.GetAccountConsistencyKeyResponse], error) {

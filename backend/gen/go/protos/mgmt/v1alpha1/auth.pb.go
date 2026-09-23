@@ -203,6 +203,114 @@ func (x *GetAuthStatusResponse) GetIsEnabled() bool {
 	return false
 }
 
+type GetAccountLoginMethodRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The slug of the account somebody is signing in to. It comes from the URL they
+	// followed, because nothing is known about them yet.
+	AccountSlug   string `protobuf:"bytes,1,opt,name=account_slug,json=accountSlug,proto3" json:"account_slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountLoginMethodRequest) Reset() {
+	*x = GetAccountLoginMethodRequest{}
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountLoginMethodRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountLoginMethodRequest) ProtoMessage() {}
+
+func (x *GetAccountLoginMethodRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountLoginMethodRequest.ProtoReflect.Descriptor instead.
+func (*GetAccountLoginMethodRequest) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetAccountLoginMethodRequest) GetAccountSlug() string {
+	if x != nil {
+		return x.AccountSlug
+	}
+	return ""
+}
+
+// Where to send somebody who is signing in to a given account.
+//
+// Unauthenticated by necessity: the provider has to be known before anybody can prove who
+// they are. What it gives away is which accounts have declared a provider -- impersonal,
+// and a fact an attacker who already knows the account could observe anyway. What it must
+// never give away is whether a person has an account, so the shape of the answer does not
+// depend on any person, and an unknown slug answers like a known one with no provider.
+type GetAccountLoginMethodResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The issuer to start the flow against. Empty when the account has declared none, which
+	// means the deployment's own provider.
+	Issuer string `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	// The client to authorize as. Empty alongside an empty issuer.
+	ClientId      string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountLoginMethodResponse) Reset() {
+	*x = GetAccountLoginMethodResponse{}
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountLoginMethodResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountLoginMethodResponse) ProtoMessage() {}
+
+func (x *GetAccountLoginMethodResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountLoginMethodResponse.ProtoReflect.Descriptor instead.
+func (*GetAccountLoginMethodResponse) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetAccountLoginMethodResponse) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *GetAccountLoginMethodResponse) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
 // A decoded representation of an Access token from the backing auth server
 type AccessToken struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -225,7 +333,7 @@ type AccessToken struct {
 
 func (x *AccessToken) Reset() {
 	*x = AccessToken{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[4]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +345,7 @@ func (x *AccessToken) String() string {
 func (*AccessToken) ProtoMessage() {}
 
 func (x *AccessToken) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[4]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +358,7 @@ func (x *AccessToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccessToken.ProtoReflect.Descriptor instead.
 func (*AccessToken) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{4}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AccessToken) GetAccessToken() string {
@@ -302,14 +410,20 @@ type GetAuthorizeUrlRequest struct {
 	// The redirect uri that the client will be redirected back to during the auth request
 	RedirectUri string `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
 	// The scopes the client is requesting as a part of the oauth login request
-	Scope         string `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
+	Scope string `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
+	// The account being signed in to, when it declares its own identity provider.
+	//
+	// Same necessity as the browser's: the flow starts with the client id of the right
+	// connector, and nothing is known about the caller yet. Empty uses the deployment's
+	// provider, which is what an account with no setting uses too.
+	AccountSlug   string `protobuf:"bytes,4,opt,name=account_slug,json=accountSlug,proto3" json:"account_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetAuthorizeUrlRequest) Reset() {
 	*x = GetAuthorizeUrlRequest{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[5]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -321,7 +435,7 @@ func (x *GetAuthorizeUrlRequest) String() string {
 func (*GetAuthorizeUrlRequest) ProtoMessage() {}
 
 func (x *GetAuthorizeUrlRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[5]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +448,7 @@ func (x *GetAuthorizeUrlRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuthorizeUrlRequest.ProtoReflect.Descriptor instead.
 func (*GetAuthorizeUrlRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{5}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetAuthorizeUrlRequest) GetState() string {
@@ -358,6 +472,13 @@ func (x *GetAuthorizeUrlRequest) GetScope() string {
 	return ""
 }
 
+func (x *GetAuthorizeUrlRequest) GetAccountSlug() string {
+	if x != nil {
+		return x.AccountSlug
+	}
+	return ""
+}
+
 type GetAuthorizeUrlResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The generated url that is the client will be redirected to during the Oauth flow
@@ -368,7 +489,7 @@ type GetAuthorizeUrlResponse struct {
 
 func (x *GetAuthorizeUrlResponse) Reset() {
 	*x = GetAuthorizeUrlResponse{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[6]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -380,7 +501,7 @@ func (x *GetAuthorizeUrlResponse) String() string {
 func (*GetAuthorizeUrlResponse) ProtoMessage() {}
 
 func (x *GetAuthorizeUrlResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[6]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -393,7 +514,7 @@ func (x *GetAuthorizeUrlResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuthorizeUrlResponse.ProtoReflect.Descriptor instead.
 func (*GetAuthorizeUrlResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{6}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetAuthorizeUrlResponse) GetUrl() string {
@@ -413,7 +534,7 @@ type RefreshCliRequest struct {
 
 func (x *RefreshCliRequest) Reset() {
 	*x = RefreshCliRequest{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[7]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -425,7 +546,7 @@ func (x *RefreshCliRequest) String() string {
 func (*RefreshCliRequest) ProtoMessage() {}
 
 func (x *RefreshCliRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[7]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +559,7 @@ func (x *RefreshCliRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshCliRequest.ProtoReflect.Descriptor instead.
 func (*RefreshCliRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{7}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RefreshCliRequest) GetRefreshToken() string {
@@ -458,7 +579,7 @@ type RefreshCliResponse struct {
 
 func (x *RefreshCliResponse) Reset() {
 	*x = RefreshCliResponse{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[8]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +591,7 @@ func (x *RefreshCliResponse) String() string {
 func (*RefreshCliResponse) ProtoMessage() {}
 
 func (x *RefreshCliResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[8]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +604,7 @@ func (x *RefreshCliResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefreshCliResponse.ProtoReflect.Descriptor instead.
 func (*RefreshCliResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{8}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RefreshCliResponse) GetAccessToken() *AccessToken {
@@ -501,7 +622,7 @@ type CheckTokenRequest struct {
 
 func (x *CheckTokenRequest) Reset() {
 	*x = CheckTokenRequest{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[9]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +634,7 @@ func (x *CheckTokenRequest) String() string {
 func (*CheckTokenRequest) ProtoMessage() {}
 
 func (x *CheckTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[9]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -526,7 +647,7 @@ func (x *CheckTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckTokenRequest.ProtoReflect.Descriptor instead.
 func (*CheckTokenRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{9}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 type CheckTokenResponse struct {
@@ -537,7 +658,7 @@ type CheckTokenResponse struct {
 
 func (x *CheckTokenResponse) Reset() {
 	*x = CheckTokenResponse{}
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[10]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +670,7 @@ func (x *CheckTokenResponse) String() string {
 func (*CheckTokenResponse) ProtoMessage() {}
 
 func (x *CheckTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[10]
+	mi := &file_mgmt_v1alpha1_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +683,7 @@ func (x *CheckTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckTokenResponse.ProtoReflect.Descriptor instead.
 func (*CheckTokenResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{10}
+	return file_mgmt_v1alpha1_auth_proto_rawDescGZIP(), []int{12}
 }
 
 var File_mgmt_v1alpha1_auth_proto protoreflect.FileDescriptor
@@ -578,7 +699,12 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\x14GetAuthStatusRequest\"6\n" +
 	"\x15GetAuthStatusResponse\x12\x1d\n" +
 	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\"\xed\x01\n" +
+	"is_enabled\x18\x01 \x01(\bR\tisEnabled\"L\n" +
+	"\x1cGetAccountLoginMethodRequest\x12,\n" +
+	"\faccount_slug\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18dR\vaccountSlug\"T\n" +
+	"\x1dGetAccountLoginMethodResponse\x12\x16\n" +
+	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\"\xed\x01\n" +
 	"\vAccessToken\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12(\n" +
 	"\rrefresh_token\x18\x02 \x01(\tH\x00R\frefreshToken\x88\x01\x01\x12\x1d\n" +
@@ -589,11 +715,12 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\n" +
 	"token_type\x18\x06 \x01(\tR\ttokenTypeB\x10\n" +
 	"\x0e_refresh_tokenB\v\n" +
-	"\t_id_token\"\x82\x01\n" +
+	"\t_id_token\"\xae\x01\n" +
 	"\x16GetAuthorizeUrlRequest\x12\x1d\n" +
 	"\x05state\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05state\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\x12\x1d\n" +
-	"\x05scope\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05scope\"+\n" +
+	"\x05scope\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05scope\x12*\n" +
+	"\faccount_slug\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18dR\vaccountSlug\"+\n" +
 	"\x17GetAuthorizeUrlResponse\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\"A\n" +
 	"\x11RefreshCliRequest\x12,\n" +
@@ -601,14 +728,15 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\x12RefreshCliResponse\x12=\n" +
 	"\faccess_token\x18\x01 \x01(\v2\x1a.mgmt.v1alpha1.AccessTokenR\vaccessToken\"\x13\n" +
 	"\x11CheckTokenRequest\"\x14\n" +
-	"\x12CheckTokenResponse2\xce\x03\n" +
+	"\x12CheckTokenResponse2\xc7\x04\n" +
 	"\vAuthService\x12M\n" +
 	"\bLoginCli\x12\x1e.mgmt.v1alpha1.LoginCliRequest\x1a\x1f.mgmt.v1alpha1.LoginCliResponse\"\x00\x12S\n" +
 	"\n" +
 	"RefreshCli\x12 .mgmt.v1alpha1.RefreshCliRequest\x1a!.mgmt.v1alpha1.RefreshCliResponse\"\x00\x12S\n" +
 	"\n" +
 	"CheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x00\x12e\n" +
-	"\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\x03\x90\x02\x01\x12_\n" +
+	"\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\x03\x90\x02\x01\x12w\n" +
+	"\x15GetAccountLoginMethod\x12+.mgmt.v1alpha1.GetAccountLoginMethodRequest\x1a,.mgmt.v1alpha1.GetAccountLoginMethodResponse\"\x03\x90\x02\x01\x12_\n" +
 	"\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\x03\x90\x02\x01B\xca\x01\n" +
 	"\x11com.mgmt.v1alpha1B\tAuthProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
@@ -624,35 +752,39 @@ func file_mgmt_v1alpha1_auth_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_auth_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_mgmt_v1alpha1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_mgmt_v1alpha1_auth_proto_goTypes = []any{
-	(*LoginCliRequest)(nil),         // 0: mgmt.v1alpha1.LoginCliRequest
-	(*LoginCliResponse)(nil),        // 1: mgmt.v1alpha1.LoginCliResponse
-	(*GetAuthStatusRequest)(nil),    // 2: mgmt.v1alpha1.GetAuthStatusRequest
-	(*GetAuthStatusResponse)(nil),   // 3: mgmt.v1alpha1.GetAuthStatusResponse
-	(*AccessToken)(nil),             // 4: mgmt.v1alpha1.AccessToken
-	(*GetAuthorizeUrlRequest)(nil),  // 5: mgmt.v1alpha1.GetAuthorizeUrlRequest
-	(*GetAuthorizeUrlResponse)(nil), // 6: mgmt.v1alpha1.GetAuthorizeUrlResponse
-	(*RefreshCliRequest)(nil),       // 7: mgmt.v1alpha1.RefreshCliRequest
-	(*RefreshCliResponse)(nil),      // 8: mgmt.v1alpha1.RefreshCliResponse
-	(*CheckTokenRequest)(nil),       // 9: mgmt.v1alpha1.CheckTokenRequest
-	(*CheckTokenResponse)(nil),      // 10: mgmt.v1alpha1.CheckTokenResponse
+	(*LoginCliRequest)(nil),               // 0: mgmt.v1alpha1.LoginCliRequest
+	(*LoginCliResponse)(nil),              // 1: mgmt.v1alpha1.LoginCliResponse
+	(*GetAuthStatusRequest)(nil),          // 2: mgmt.v1alpha1.GetAuthStatusRequest
+	(*GetAuthStatusResponse)(nil),         // 3: mgmt.v1alpha1.GetAuthStatusResponse
+	(*GetAccountLoginMethodRequest)(nil),  // 4: mgmt.v1alpha1.GetAccountLoginMethodRequest
+	(*GetAccountLoginMethodResponse)(nil), // 5: mgmt.v1alpha1.GetAccountLoginMethodResponse
+	(*AccessToken)(nil),                   // 6: mgmt.v1alpha1.AccessToken
+	(*GetAuthorizeUrlRequest)(nil),        // 7: mgmt.v1alpha1.GetAuthorizeUrlRequest
+	(*GetAuthorizeUrlResponse)(nil),       // 8: mgmt.v1alpha1.GetAuthorizeUrlResponse
+	(*RefreshCliRequest)(nil),             // 9: mgmt.v1alpha1.RefreshCliRequest
+	(*RefreshCliResponse)(nil),            // 10: mgmt.v1alpha1.RefreshCliResponse
+	(*CheckTokenRequest)(nil),             // 11: mgmt.v1alpha1.CheckTokenRequest
+	(*CheckTokenResponse)(nil),            // 12: mgmt.v1alpha1.CheckTokenResponse
 }
 var file_mgmt_v1alpha1_auth_proto_depIdxs = []int32{
-	4,  // 0: mgmt.v1alpha1.LoginCliResponse.access_token:type_name -> mgmt.v1alpha1.AccessToken
-	4,  // 1: mgmt.v1alpha1.RefreshCliResponse.access_token:type_name -> mgmt.v1alpha1.AccessToken
+	6,  // 0: mgmt.v1alpha1.LoginCliResponse.access_token:type_name -> mgmt.v1alpha1.AccessToken
+	6,  // 1: mgmt.v1alpha1.RefreshCliResponse.access_token:type_name -> mgmt.v1alpha1.AccessToken
 	0,  // 2: mgmt.v1alpha1.AuthService.LoginCli:input_type -> mgmt.v1alpha1.LoginCliRequest
-	7,  // 3: mgmt.v1alpha1.AuthService.RefreshCli:input_type -> mgmt.v1alpha1.RefreshCliRequest
-	9,  // 4: mgmt.v1alpha1.AuthService.CheckToken:input_type -> mgmt.v1alpha1.CheckTokenRequest
-	5,  // 5: mgmt.v1alpha1.AuthService.GetAuthorizeUrl:input_type -> mgmt.v1alpha1.GetAuthorizeUrlRequest
-	2,  // 6: mgmt.v1alpha1.AuthService.GetAuthStatus:input_type -> mgmt.v1alpha1.GetAuthStatusRequest
-	1,  // 7: mgmt.v1alpha1.AuthService.LoginCli:output_type -> mgmt.v1alpha1.LoginCliResponse
-	8,  // 8: mgmt.v1alpha1.AuthService.RefreshCli:output_type -> mgmt.v1alpha1.RefreshCliResponse
-	10, // 9: mgmt.v1alpha1.AuthService.CheckToken:output_type -> mgmt.v1alpha1.CheckTokenResponse
-	6,  // 10: mgmt.v1alpha1.AuthService.GetAuthorizeUrl:output_type -> mgmt.v1alpha1.GetAuthorizeUrlResponse
-	3,  // 11: mgmt.v1alpha1.AuthService.GetAuthStatus:output_type -> mgmt.v1alpha1.GetAuthStatusResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
+	9,  // 3: mgmt.v1alpha1.AuthService.RefreshCli:input_type -> mgmt.v1alpha1.RefreshCliRequest
+	11, // 4: mgmt.v1alpha1.AuthService.CheckToken:input_type -> mgmt.v1alpha1.CheckTokenRequest
+	7,  // 5: mgmt.v1alpha1.AuthService.GetAuthorizeUrl:input_type -> mgmt.v1alpha1.GetAuthorizeUrlRequest
+	4,  // 6: mgmt.v1alpha1.AuthService.GetAccountLoginMethod:input_type -> mgmt.v1alpha1.GetAccountLoginMethodRequest
+	2,  // 7: mgmt.v1alpha1.AuthService.GetAuthStatus:input_type -> mgmt.v1alpha1.GetAuthStatusRequest
+	1,  // 8: mgmt.v1alpha1.AuthService.LoginCli:output_type -> mgmt.v1alpha1.LoginCliResponse
+	10, // 9: mgmt.v1alpha1.AuthService.RefreshCli:output_type -> mgmt.v1alpha1.RefreshCliResponse
+	12, // 10: mgmt.v1alpha1.AuthService.CheckToken:output_type -> mgmt.v1alpha1.CheckTokenResponse
+	8,  // 11: mgmt.v1alpha1.AuthService.GetAuthorizeUrl:output_type -> mgmt.v1alpha1.GetAuthorizeUrlResponse
+	5,  // 12: mgmt.v1alpha1.AuthService.GetAccountLoginMethod:output_type -> mgmt.v1alpha1.GetAccountLoginMethodResponse
+	3,  // 13: mgmt.v1alpha1.AuthService.GetAuthStatus:output_type -> mgmt.v1alpha1.GetAuthStatusResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -663,14 +795,14 @@ func file_mgmt_v1alpha1_auth_proto_init() {
 	if File_mgmt_v1alpha1_auth_proto != nil {
 		return
 	}
-	file_mgmt_v1alpha1_auth_proto_msgTypes[4].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_auth_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_auth_proto_rawDesc), len(file_mgmt_v1alpha1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
