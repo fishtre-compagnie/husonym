@@ -32,6 +32,13 @@ func Test_verdicts(t *testing.T) {
 		tableColumns := []*mgmtv1alpha1.DatabaseColumn{column("id", "uuid"), column("email", "text"), column("note", "text")}
 		got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note})
 
+		// One verdict per column, in the table's order: note is in the schema and in the
+		// detections, and must not come back twice.
+		columns := make([]string, 0, len(got))
+		for _, v := range got {
+			columns = append(columns, v.GetColumn())
+		}
+		require.Equal(t, []string{"id", "email", "note"}, columns)
 		require.Equal(t, map[string]mgmtv1alpha1.PiiDetectionMethod{
 			"id":    mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_UNSPECIFIED,
 			"email": mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_COLUMN_NAME,
