@@ -69,7 +69,7 @@ func Test_SuggestMappings(t *testing.T) {
 			{
 				"table": "public.locked",
 				"columns": [{"column": "id", "sensitive": false}],
-				"scan_error": "deadline_exceeded: table is locked"
+				"scan_error": "the API could not scan public.locked: deadline_exceeded"
 			},
 			{
 				"table": "public.orders",

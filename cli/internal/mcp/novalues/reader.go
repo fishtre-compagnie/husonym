@@ -11,6 +11,7 @@ package novalues
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -102,7 +103,8 @@ func (r *Reader) ScanPii(
 		Table:        table,
 	}))
 	if err != nil {
-		return nil, err
+		// Only the code is passed on: a sampling error can quote the value it choked on.
+		return nil, fmt.Errorf("the API could not scan %s.%s: %s", schema, table, connect.CodeOf(err))
 	}
 	return res.Msg.GetVerdicts(), nil
 }
