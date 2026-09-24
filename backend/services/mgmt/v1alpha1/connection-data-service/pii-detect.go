@@ -18,6 +18,7 @@ import (
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -110,11 +111,12 @@ func (s *Service) DetectPiiInConnectionData(
 	// chaîne, qui ferait échouer la synchronisation). Son absence ne justifie pas
 	// de refuser le scan : la suggestion retombe alors sur la variante chaîne.
 	columnTypes := map[string]string{}
-	if columns, terr := dataconn.GetTableSchema(ctx, req.Msg.GetSchema(), req.Msg.GetTable()); terr != nil {
+	tableColumns, terr := dataconn.GetTableSchema(ctx, req.Msg.GetSchema(), req.Msg.GetTable())
+	if terr != nil {
 		logger.Warn(fmt.Sprintf("unable to read the column types of %s.%s, suggesting string transformers: %v",
 			req.Msg.GetSchema(), req.Msg.GetTable(), terr))
 	} else {
-		for _, column := range columns {
+		for _, column := range tableColumns {
 			columnTypes[column.GetColumn()] = column.GetDataType()
 		}
 	}
@@ -285,7 +287,46 @@ func (s *Service) DetectPiiInConnectionData(
 
 	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
 		Detections: detections,
+		Verdicts:   verdicts(req.Msg.GetSchema(), req.Msg.GetTable(), tableColumns, wanted, detections),
 	}), nil
+}
+
+// verdicts reconciles each column's name with what the scan found in it. Without the table's
+// schema — it could not be read — the columns the scan found something in are all there is to
+// go on, and their names are still read, only without their types.
+func verdicts(
+	schema, table string,
+	tableColumns []*mgmtv1alpha1.DatabaseColumn,
+	wanted map[string]struct{},
+	detections []*mgmtv1alpha1.ColumnPiiDetection,
+) []*mgmtv1alpha1.ColumnPiiVerdict {
+	byColumn := make(map[string]*mgmtv1alpha1.ColumnPiiDetection, len(detections))
+	for _, detection := range detections {
+		byColumn[detection.GetColumn()] = detection
+	}
+
+	columns := tableColumns
+	if columns == nil {
+		for _, detection := range detections {
+			columns = append(columns, &mgmtv1alpha1.DatabaseColumn{
+				Schema: schema, Table: table, Column: detection.GetColumn(),
+			})
+		}
+	}
+
+	out := make([]*mgmtv1alpha1.ColumnPiiVerdict, 0, len(columns))
+	for _, column := range columns {
+		if wanted != nil {
+			if _, ok := wanted[column.GetColumn()]; !ok {
+				continue
+			}
+		}
+		// A copy: the name-based detection is written onto the column, which is not ours.
+		named := proto.CloneOf(column)
+		piidetect.Enrich([]*mgmtv1alpha1.DatabaseColumn{named})
+		out = append(out, piidetect.Reconcile(named, byColumn[column.GetColumn()]))
+	}
+	return out
 }
 
 // analyzeColumn examines each value on its own (NER recognizes an isolated

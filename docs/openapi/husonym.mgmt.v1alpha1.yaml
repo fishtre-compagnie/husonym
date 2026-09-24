@@ -10200,6 +10200,57 @@ components:
       title: ColumnPiiDetection
       additionalProperties: false
       description: PII detected in a column by analyzing sampled content (Presidio).
+    mgmt.v1alpha1.ColumnPiiVerdict:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+        table:
+          type: string
+          title: table
+        column:
+          type: string
+          title: column
+        isSensitive:
+          type: boolean
+          title: is_sensitive
+          description: True if the column is considered personal data (GDPR).
+        dataCategory:
+          type: string
+          title: data_category
+          description: >-
+            What the data is (ex: "email", "nir"). Empty if nothing was
+            recognized.
+        suggestedTransformerSource:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.TransformerSource'
+          title: suggested_transformer_source
+          description: >-
+            Recommended transformer. TRANSFORMER_SOURCE_UNSPECIFIED when none
+            fits.
+        piiConfidence:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiConfidence'
+          title: pii_confidence
+          description: >-
+            Only CONFIRMED allows the suggested transformer to be applied
+            without a person.
+        piiDetectionMethod:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PiiDetectionMethod'
+          title: pii_detection_method
+          description: How the verdict was reached.
+        piiEvidence:
+          type: string
+          title: pii_evidence
+          description: The proof, in words, for the tooltip.
+      title: ColumnPiiVerdict
+      additionalProperties: false
+      description: >-
+        The verdict on one column: what its name says and what its content
+        showed, reconciled by
+         the server, so that every caller — the UI, the CLI, an agent — is told the same thing.
     mgmt.v1alpha1.ColumnSampleValue:
       type: object
       properties:
@@ -10583,6 +10634,18 @@ components:
           items:
             $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiDetection'
           title: detections
+          description: >-
+            What the content scan found, column by column, before reconciling
+            with the names.
+        verdicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ColumnPiiVerdict'
+          title: verdicts
+          description: >-
+            One verdict per column of the table (or per requested column), name
+            and content
+             reconciled. A column the scan found nothing in still has one, from its name alone.
       title: DetectPiiInConnectionDataResponse
       additionalProperties: false
     mgmt.v1alpha1.DynamoDBSchemaConfig:

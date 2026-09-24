@@ -9518,6 +9518,126 @@
           ]
         },
         {
+          "name": "ColumnPiiVerdict",
+          "longName": "ColumnPiiVerdict",
+          "fullName": "mgmt.v1alpha1.ColumnPiiVerdict",
+          "description": "The verdict on one column: what its name says and what its content showed, reconciled by\nthe server, so that every caller — the UI, the CLI, an agent — is told the same thing.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "schema",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "table",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "column",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "is_sensitive",
+              "description": "True if the column is considered personal data (GDPR).",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "data_category",
+              "description": "What the data is (ex: \"email\", \"nir\"). Empty if nothing was recognized.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "suggested_transformer_source",
+              "description": "Recommended transformer. TRANSFORMER_SOURCE_UNSPECIFIED when none fits.",
+              "label": "",
+              "type": "TransformerSource",
+              "longType": "TransformerSource",
+              "fullType": "mgmt.v1alpha1.TransformerSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_confidence",
+              "description": "Only CONFIRMED allows the suggested transformer to be applied without a person.",
+              "label": "",
+              "type": "PiiConfidence",
+              "longType": "PiiConfidence",
+              "fullType": "mgmt.v1alpha1.PiiConfidence",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_detection_method",
+              "description": "How the verdict was reached.",
+              "label": "",
+              "type": "PiiDetectionMethod",
+              "longType": "PiiDetectionMethod",
+              "fullType": "mgmt.v1alpha1.PiiDetectionMethod",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pii_evidence",
+              "description": "The proof, in words, for the tooltip.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "ColumnSampleValue",
           "longName": "ColumnSampleValue",
           "fullName": "mgmt.v1alpha1.ColumnSampleValue",
@@ -10105,11 +10225,23 @@
           "fields": [
             {
               "name": "detections",
-              "description": "",
+              "description": "What the content scan found, column by column, before reconciling with the names.",
               "label": "repeated",
               "type": "ColumnPiiDetection",
               "longType": "ColumnPiiDetection",
               "fullType": "mgmt.v1alpha1.ColumnPiiDetection",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "verdicts",
+              "description": "One verdict per column of the table (or per requested column), name and content\nreconciled. A column the scan found nothing in still has one, from its name alone.",
+              "label": "repeated",
+              "type": "ColumnPiiVerdict",
+              "longType": "ColumnPiiVerdict",
+              "fullType": "mgmt.v1alpha1.ColumnPiiVerdict",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",

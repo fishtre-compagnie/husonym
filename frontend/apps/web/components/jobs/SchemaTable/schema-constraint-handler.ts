@@ -6,6 +6,8 @@ import {
   ForeignKey,
   ForeignKeySchema,
   GetConnectionSchemaResponse,
+  PiiConfidence,
+  PiiDetectionMethod,
   PrimaryConstraint,
   PrimaryConstraintSchema,
   TransformerDataType,
@@ -36,6 +38,9 @@ export interface SchemaConstraintHandler {
   getIsSensitive(key: ColumnKey): boolean;
   getDataCategory(key: ColumnKey): string | undefined;
   getSuggestedTransformerSource(key: ColumnKey): TransformerSource;
+  getPiiConfidence(key: ColumnKey): PiiConfidence;
+  getPiiDetectionMethod(key: ColumnKey): PiiDetectionMethod;
+  getPiiEvidence(key: ColumnKey): string;
 }
 
 export interface ColumnKey {
@@ -57,6 +62,9 @@ interface ColDetails {
   isSensitive: boolean;
   dataCategory?: string;
   suggestedTransformerSource: TransformerSource;
+  piiConfidence: PiiConfidence;
+  piiDetectionMethod: PiiDetectionMethod;
+  piiEvidence: string;
 }
 
 export function getSchemaConstraintHandler(
@@ -141,6 +149,20 @@ export function getSchemaConstraintHandler(
         colmap[fromColKey(key)]?.suggestedTransformerSource ??
         TransformerSource.UNSPECIFIED
       );
+    },
+    getPiiConfidence(key) {
+      return (
+        colmap[fromColKey(key)]?.piiConfidence ?? PiiConfidence.UNSPECIFIED
+      );
+    },
+    getPiiDetectionMethod(key) {
+      return (
+        colmap[fromColKey(key)]?.piiDetectionMethod ??
+        PiiDetectionMethod.UNSPECIFIED
+      );
+    },
+    getPiiEvidence(key) {
+      return colmap[fromColKey(key)]?.piiEvidence ?? '';
     },
   };
 }
@@ -396,6 +418,9 @@ function buildColDetailsMap(
         isSensitive: dbcol.isSensitive,
         dataCategory: dbcol.dataCategory || undefined,
         suggestedTransformerSource: dbcol.suggestedTransformerSource,
+        piiConfidence: dbcol.piiConfidence,
+        piiDetectionMethod: dbcol.piiDetectionMethod,
+        piiEvidence: dbcol.piiEvidence,
       };
     });
   });
