@@ -50,6 +50,20 @@ func Test_verdicts(t *testing.T) {
 		}, summarize(got))
 	})
 
+	t.Run("une détection hors du schéma garde son verdict", func(t *testing.T) {
+		// Le schéma peut revenir vide sans erreur, ou manquer une colonne échantillonnée : la
+		// détection ne doit pas disparaître pour autant.
+		for name, tableColumns := range map[string][]*mgmtv1alpha1.DatabaseColumn{
+			"schéma vide":               {},
+			"colonne absente du schéma": {column("id", "uuid")},
+		} {
+			got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note})
+			require.Equal(t,
+				mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+				summarize(got)["note"], name)
+		}
+	})
+
 	t.Run("sans le schéma de la table, les colonnes où le scan a trouvé quelque chose", func(t *testing.T) {
 		email := &mgmtv1alpha1.ColumnPiiDetection{
 			Schema: "public", Table: "users", Column: "email",

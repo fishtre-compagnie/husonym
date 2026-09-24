@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -291,9 +292,11 @@ func (s *Service) DetectPiiInConnectionData(
 	}), nil
 }
 
-// verdicts reconciles each column's name with what the scan found in it. Without the table's
-// schema — it could not be read — the columns the scan found something in are all there is to
-// go on, and their names are still read, only without their types.
+// verdicts reconciles each column's name with what the scan found in it: every column of the
+// table's schema, and every column the scan found something in. The two lists should agree, but
+// the schema can come back empty or fail, and a sampled column can be missing from it; a
+// detection with no verdict would vanish from the screen while the scan still counts it. Such a
+// column's name is still read, only without its type.
 func verdicts(
 	schema, table string,
 	tableColumns []*mgmtv1alpha1.DatabaseColumn,
@@ -305,9 +308,13 @@ func verdicts(
 		byColumn[detection.GetColumn()] = detection
 	}
 
-	columns := tableColumns
-	if columns == nil {
-		for _, detection := range detections {
+	columns := slices.Clone(tableColumns)
+	inSchema := make(map[string]bool, len(tableColumns))
+	for _, column := range tableColumns {
+		inSchema[column.GetColumn()] = true
+	}
+	for _, detection := range detections {
+		if !inSchema[detection.GetColumn()] {
 			columns = append(columns, &mgmtv1alpha1.DatabaseColumn{
 				Schema: schema, Table: table, Column: detection.GetColumn(),
 			})
