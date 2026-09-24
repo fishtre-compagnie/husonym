@@ -1,13 +1,15 @@
 // Package mcp_server serves Husonym to an agent over the Model Context Protocol.
 //
-// It answers for one account, with the credentials of whoever started it. What it reads, it
-// reads through the readers under this tree, never through a Connect client of its own: see
-// imports_test.go for the rule, and maskedconn, novalues and rowvalues for why.
+// It answers for one account, with the credentials of whoever started it. It reaches the API
+// through the readers under this tree only, to read as to write, never through a Connect client
+// of its own: see
+// imports_test.go for the rule, and maskedconn, novalues, rowvalues and jobs for why.
 package mcp_server
 
 import (
 	"log/slog"
 
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/jobs"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
@@ -19,6 +21,7 @@ type Options struct {
 	Connections *maskedconn.Reader
 	Data        *novalues.Reader
 	Values      *rowvalues.Reader
+	Jobs        *jobs.Reader
 	AccountId   string
 	Version     string
 	Logger      *slog.Logger
@@ -34,6 +37,11 @@ func New(opts Options) *mcp.Server {
 	addDescribeConnection(server, opts.Connections)
 	addIntrospectSchema(server, opts.Data)
 	addSuggestMappings(server, opts.Data)
-	addPreviewColumn(server, opts.Connections, opts.Data, opts.Values)
+	addPreviewColumn(server, opts.Data, opts.Values)
+	addCreateJob(server, opts.Connections, opts.Data, opts.Jobs)
+	addUpdateJobMappings(server, opts.Data, opts.Jobs)
+	addRunJob(server, opts.Jobs)
+	addGetRunStatus(server, opts.Jobs)
+	addGetRunFailure(server, opts.Values)
 	return server
 }

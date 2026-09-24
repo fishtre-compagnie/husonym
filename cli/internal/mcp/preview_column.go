@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -32,12 +31,7 @@ type previewValue struct {
 	Error  string  `json:"error,omitempty" jsonschema:"why the transformer failed on this value"`
 }
 
-func addPreviewColumn(
-	server *mcp.Server,
-	connections *maskedconn.Reader,
-	data *novalues.Reader,
-	values *rowvalues.Reader,
-) {
+func addPreviewColumn(server *mcp.Server, data *novalues.Reader, values *rowvalues.Reader) {
 	openWorld := false
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "preview_column",
@@ -46,11 +40,10 @@ func addPreviewColumn(
 			"asked first, once per connection for the session, and nothing is read if they decline. " +
 			"Prefer suggest_mappings and introspect_schema, which read no value, when they are enough.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
-	}, previewColumn(connections, data, values))
+	}, previewColumn(data, values))
 }
 
 func previewColumn(
-	connections *maskedconn.Reader,
 	data *novalues.Reader,
 	values *rowvalues.Reader,
 ) mcp.ToolHandlerFor[previewColumnInput, previewColumnOutput] {
@@ -70,19 +63,20 @@ func previewColumn(
 		if err != nil {
 			return nil, previewColumnOutput{}, err
 		}
-		// The person is asked about a connection they know by its name, not by its id.
-		conn, err := connections.Get(ctx, input.ConnectionId)
+		transformer, err := data.DefaultTransformer(ctx, source)
 		if err != nil {
-			return nil, previewColumnOutput{}, fmt.Errorf("unable to read connection %s: %w", input.ConnectionId, err)
+			if errors.Is(err, novalues.ErrRunsCode) {
+				return nil, previewColumnOutput{}, fmt.Errorf("%s %w", input.Transformer, err)
+			}
+			return nil, previewColumnOutput{}, fmt.Errorf("unable to find the transformer %s: %w", input.Transformer, err)
 		}
 
 		preview, questions, err := values.Preview(ctx, req, &rowvalues.Column{
-			ConnectionId:   input.ConnectionId,
-			ConnectionName: conn.GetName(),
-			Schema:         column.GetSchema(),
-			Table:          column.GetTable(),
-			Column:         column.GetColumn(),
-		}, source, input.Limit)
+			ConnectionId: input.ConnectionId,
+			Schema:       column.GetSchema(),
+			Table:        column.GetTable(),
+			Column:       column.GetColumn(),
+		}, transformer, input.Limit)
 		switch {
 		case errors.Is(err, rowvalues.ErrDeclined), errors.Is(err, rowvalues.ErrCannotAsk):
 			return nil, previewColumnOutput{}, err

@@ -8,6 +8,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
 	mcp_server "github.com/fishtre-compagnie/husonym/cli/internal/mcp"
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/jobs"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
@@ -62,10 +63,13 @@ func serve(ctx context.Context, apiKey string, debugMode bool) error {
 		return err
 	}
 
+	connections := maskedconn.New(httpclient, husonymurl)
+	jobReader := jobs.New(httpclient, husonymurl, accountId, connections)
 	server := mcp_server.New(mcp_server.Options{
-		Connections: maskedconn.New(httpclient, husonymurl),
-		Data:        novalues.New(httpclient, husonymurl),
-		Values:      rowvalues.New(httpclient, husonymurl),
+		Connections: connections,
+		Data:        novalues.New(httpclient, husonymurl, accountId),
+		Values:      rowvalues.New(httpclient, husonymurl, accountId, connections, jobReader),
+		Jobs:        jobReader,
 		AccountId:   accountId,
 		Version:     version.Get().GitVersion,
 		Logger:      logger,

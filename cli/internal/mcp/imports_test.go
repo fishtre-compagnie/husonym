@@ -17,8 +17,9 @@ import (
 // The MCP surface reaches the API through its readers and through nothing else. maskedconn reads
 // connections with their secrets masked, which keeps secrets write-only there
 // (plans/mcp-husonym.md §6.1); novalues reads the structure of the data and never a row;
-// rowvalues reads rows, and asks the person first. A rule in prose would not hold — a Connect
-// client is one import away — so this test holds it instead.
+// rowvalues reads rows, and asks the person first; jobs writes jobs, and asks the person before
+// anything runs. A rule in prose would not hold — a Connect client is one import away — so this
+// test holds it instead.
 //
 // It is an allowlist, not a denylist: a way of reading that does not exist yet is refused until
 // someone adds it here, with the reason it cannot hand back a secret.
@@ -29,8 +30,10 @@ import (
 // place among the reader's fields, its own test pins.
 var readers = map[string]string{
 	"maskedconn": "reads connections, and asks for every one with its secrets masked",
-	"novalues":   "reads schemas and PII detections, never a value from a row",
+	"novalues":   "reads schemas, PII detections and mapping checks, never a value from a row",
 	"rowvalues":  "reads values from rows, and only once the person has agreed for the connection",
+	"jobs": "reads and changes jobs, empties the message of each failure it reads, and runs a job " +
+		"only once the person has agreed to that run",
 }
 
 const mcpTree = "github.com/fishtre-compagnie/husonym/cli/internal/mcp/"
@@ -38,6 +41,7 @@ const mcpTree = "github.com/fishtre-compagnie/husonym/cli/internal/mcp/"
 var allowedImports = map[string]string{
 	"cmp":           "standard library, no I/O",
 	"context":       "standard library, no I/O",
+	"crypto/rand":   "standard library, the id of a question put to the person",
 	"encoding/json": "standard library, no I/O",
 	"errors":        "standard library, no I/O",
 	"fmt":           "standard library, no I/O",
@@ -46,8 +50,10 @@ var allowedImports = map[string]string{
 	"slices":        "standard library, no I/O",
 	"strings":       "standard library, no I/O",
 	"time":          "standard library, no I/O",
+	"unicode/utf8":  "standard library, no I/O",
 
 	"google.golang.org/protobuf/encoding/protojson": "encodes a message already read, no I/O",
+	"google.golang.org/protobuf/proto":              "clones, merges and compares messages, no I/O",
 
 	"github.com/modelcontextprotocol/go-sdk/mcp": "the protocol itself",
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1": "message types only; " +
@@ -62,8 +68,7 @@ var readerImports = map[string]string{
 	"connectrpc.com/connect": "requests and responses of the clients the reader pins",
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect": "the " +
 		"clients, narrowed by the reader to pinned interfaces",
-	"crypto/rand": "the id of a question put to the person",
-	"sync":        "the consents a reader keeps",
+	"sync": "the consents and questions a reader keeps",
 }
 
 // sources other than Go are refused outright: assembly or C in this tree could reach anything.
