@@ -46,17 +46,11 @@ func serve(ctx context.Context, apiKey string, debugMode bool) error {
 	// The logger writes to stderr, which is just as well: stdout carries the protocol.
 	logger := cli_logger.NewSLogger(cli_logger.GetCharmLevelOrDefault(debugMode))
 
-	isAuthEnabled, err := auth.IsAuthEnabled(ctx)
-	if err != nil {
-		return err
-	}
-	// Without a key the HTTP client would fall back on the token of a past "husonym login",
-	// which is a person's session, not a credential handed to an agent.
-	if isAuthEnabled && apiKey == "" {
-		return fmt.Errorf("the MCP server takes its credentials from $%s, which is not set", auth.ApiKeyEnvVarName)
-	}
-
-	httpclient, err := auth.GetHusonymHttpClient(ctx, logger, auth.WithApiKey(&apiKey))
+	// Without a key the client would fall back on the token of a past "husonym login", which is
+	// a person's session, not a credential handed to an agent. The refusal is decided where the
+	// client asks whether the API requires authentication, once: asking twice would let an API
+	// answer differently the second time and get the session after all.
+	httpclient, err := auth.GetHusonymHttpClient(ctx, logger, auth.WithApiKey(&apiKey), auth.WithApiKeyOnly())
 	if err != nil {
 		return err
 	}

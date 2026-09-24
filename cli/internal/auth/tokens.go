@@ -54,6 +54,7 @@ func GetHusonymUrl() string {
 type httpClientConfig struct {
 	apiKey       *string
 	extraHeaders map[string]string
+	apiKeyOnly   bool
 }
 
 type HttpOption func(cfg *httpClientConfig)
@@ -61,6 +62,15 @@ type HttpOption func(cfg *httpClientConfig)
 func WithApiKey(apiKey *string) HttpOption {
 	return func(cfg *httpClientConfig) {
 		cfg.apiKey = apiKey
+	}
+}
+
+// WithApiKeyOnly refuses the fallback on the session of a past "husonym login": without an API
+// key, the client is refused when the API requires authentication. For a caller handed a
+// credential on purpose, such as an agent, which must never borrow a person's session.
+func WithApiKeyOnly() HttpOption {
+	return func(cfg *httpClientConfig) {
+		cfg.apiKeyOnly = true
 	}
 }
 
@@ -93,6 +103,8 @@ func GetHusonymHttpClient(
 	}
 	if cfg.apiKey != nil && *cfg.apiKey != "" {
 		headers = http_client.MergeMaps(headers, http_client.GetBearerAuthHeaders(cfg.apiKey))
+	} else if cfg.apiKeyOnly {
+		return nil, fmt.Errorf("the API requires authentication and $%s is not set", ApiKeyEnvVarName)
 	} else {
 		accessToken, err := getAccessToken(ctx, headers, logger)
 		if err != nil {
