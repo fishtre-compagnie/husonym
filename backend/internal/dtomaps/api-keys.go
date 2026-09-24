@@ -3,6 +3,7 @@ package dtomaps
 import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -22,5 +23,6 @@ func ToAccountApiKeyDto(
 		KeyValue:    cleartextKeyValue,
 		UserId:      husonymdb.UUIDString(input.UserID),
 		ExpiresAt:   timestamppb.New(input.ExpiresAt.Time),
+		Permissions: permission.FromNames(input.Permissions),
 	}
 }

@@ -3,6 +3,8 @@ package userdata
 import (
 	"context"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 )
 
@@ -11,6 +13,10 @@ type UserEntityEnforcer struct {
 	user                 rbac.EntityString
 	enforceAccountAccess func(ctx context.Context, accountId string) error
 	isApiKey             bool
+	// keyScope is what an account API key was granted; nil for a person, and for a worker key,
+	// which its own list of procedures bounds. A key is answered by its scope, not by the RBAC:
+	// its scope was capped by its creator's rights when it was made.
+	keyScope *permission.Scope
 }
 
 var _ EntityEnforcer = (*UserEntityEnforcer)(nil)
@@ -45,7 +51,7 @@ func (u *UserEntityEnforcer) EnforceJob(
 		return err
 	}
 	if u.isApiKey {
-		return nil
+		return u.keyRequire(permission.Job(action))
 	}
 	return u.enforcer.EnforceJob(
 		ctx,
@@ -65,7 +71,7 @@ func (u *UserEntityEnforcer) Job(
 		return false, err
 	}
 	if u.isApiKey {
-		return true, nil
+		return u.keyAllows(permission.Job(action)), nil
 	}
 	return u.enforcer.Job(
 		ctx,
@@ -85,7 +91,7 @@ func (u *UserEntityEnforcer) EnforceConnection(
 		return err
 	}
 	if u.isApiKey {
-		return nil
+		return u.keyRequire(permission.Connection(action))
 	}
 	return u.enforcer.EnforceConnection(
 		ctx,
@@ -105,7 +111,7 @@ func (u *UserEntityEnforcer) Connection(
 		return false, err
 	}
 	if u.isApiKey {
-		return true, nil
+		return u.keyAllows(permission.Connection(action)), nil
 	}
 	return u.enforcer.Connection(
 		ctx,
@@ -125,7 +131,7 @@ func (u *UserEntityEnforcer) EnforceAccount(
 		return err
 	}
 	if u.isApiKey {
-		return nil
+		return u.keyRequire(permission.Account(action))
 	}
 	return u.enforcer.EnforceAccount(ctx, u.user, rbac.NewAccountIdEntity(account.GetId()), action)
 }
@@ -139,7 +145,20 @@ func (u *UserEntityEnforcer) Account(
 		return false, err
 	}
 	if u.isApiKey {
-		return true, nil
+		return u.keyAllows(permission.Account(action)), nil
 	}
 	return u.enforcer.Account(ctx, u.user, rbac.NewAccountIdEntity(account.GetId()), action)
+}
+
+// keyRequire answers for an API key: a worker key passes, as its list of procedures bounds it;
+// an account key holds what its scope grants, and is told what it lacks.
+func (u *UserEntityEnforcer) keyRequire(p mgmtv1alpha1.Permission) error {
+	if u.keyScope == nil {
+		return nil
+	}
+	return u.keyScope.Require(p)
+}
+
+func (u *UserEntityEnforcer) keyAllows(p mgmtv1alpha1.Permission) bool {
+	return u.keyScope == nil || u.keyScope.Allows(p)
 }

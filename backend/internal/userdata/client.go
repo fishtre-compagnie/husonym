@@ -7,6 +7,8 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -77,7 +79,17 @@ func (c *Client) GetUser(ctx context.Context) (*User, error) {
 			return enforceAccountAccess(ctx, user, accountId)
 		},
 		isApiKey: user.IsApiKey(),
+		keyScope: accountKeyScope(apiKeyData),
 	}
 
 	return user, nil
+}
+
+// accountKeyScope reads the scope of an account API key. A worker key and a person have none.
+func accountKeyScope(data *auth_apikey.TokenContextData) *permission.Scope {
+	if data == nil || data.ApiKeyType != apikey.AccountApiKey || data.ApiKey == nil {
+		return nil
+	}
+	scope := permission.NewScope(data.ApiKey.Permissions)
+	return &scope
 }

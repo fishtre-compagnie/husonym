@@ -4,16 +4,22 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 type TokenContextKey struct{}
@@ -85,6 +91,13 @@ func (c *Client) InjectTokenCtx(
 		if time.Now().After(apiKey.ExpiresAt.Time) {
 			return nil, ErrApiKeyExpired
 		}
+		required, err := requiredBy(spec)
+		if err != nil {
+			return nil, err
+		}
+		if err := permission.NewScope(apiKey.Permissions).Require(required...); err != nil {
+			return nil, err
+		}
 
 		return SetTokenData(ctx, &TokenContextData{
 			RawToken:   token,
@@ -101,6 +114,36 @@ func (c *Client) InjectTokenCtx(
 		}), nil
 	}
 	return nil, ErrInvalidApiKey
+}
+
+// requiredBy reads what a procedure declares a scoped key must hold. A procedure that declares
+// nothing is refused: it is an opening nobody chose, and a test keeps every procedure declared.
+func requiredBy(spec connect.Spec) ([]mgmtv1alpha1.Permission, error) {
+	if method, ok := spec.Schema.(protoreflect.MethodDescriptor); ok {
+		if required, ok := Requires(method); ok {
+			return required, nil
+		}
+	}
+	return nil, husonymerrors.NewUnauthorized(fmt.Sprintf(
+		"%s declares no permission, so no API key may call it", spec.Procedure,
+	))
+}
+
+// Requires gives what a procedure declares a scoped key must hold, and whether it declares
+// anything at all. A procedure that needs no permission declares an empty list.
+func Requires(method protoreflect.MethodDescriptor) ([]mgmtv1alpha1.Permission, bool) {
+	opts, ok := method.Options().(*descriptorpb.MethodOptions)
+	if !ok || opts == nil || !proto.HasExtension(opts, mgmtv1alpha1.E_Requires) {
+		return nil, false
+	}
+	declared, ok := proto.GetExtension(opts, mgmtv1alpha1.E_Requires).(*mgmtv1alpha1.ProcedurePermissions)
+	if !ok {
+		return nil, false
+	}
+	if declared.GetNone() {
+		return []mgmtv1alpha1.Permission{}, len(declared.GetAllOf()) == 0
+	}
+	return declared.GetAllOf(), len(declared.GetAllOf()) > 0
 }
 
 func GetTokenDataFromCtx(ctx context.Context) (*TokenContextData, error) {

@@ -2,10 +2,12 @@ package v1alpha1_apikeyservice
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
@@ -98,6 +100,9 @@ func (s *Service) CreateAccountApiKey(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.Msg.GetAccountId()), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
+	if err := enforceHeldByCreator(ctx, user, req.Msg.GetAccountId(), req.Msg.GetPermissions()); err != nil {
+		return nil, err
+	}
 
 	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
 	if err != nil {
@@ -120,6 +125,7 @@ func (s *Service) CreateAccountApiKey(
 		AccountUuid:       accountUuid,
 		CreatedByUserUuid: user.PgId(),
 		ExpiresAt:         expiresAt,
+		Permissions:       permission.Names(req.Msg.GetPermissions()),
 	})
 	if err != nil {
 		return nil, err
@@ -225,4 +231,39 @@ func (s *Service) DeleteAccountApiKey(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.DeleteAccountApiKeyResponse{}), nil
+}
+
+// enforceHeldByCreator refuses a permission the creator does not hold account-wide: a key cannot
+// do more than the person who made it. Without a license the RBAC allows everything, so this
+// only bites where roles exist.
+func enforceHeldByCreator(
+	ctx context.Context,
+	user *userdata.User,
+	accountId string,
+	permissions []mgmtv1alpha1.Permission,
+) error {
+	wildcard := userdata.NewWildcardDomainEntity(accountId)
+	for _, p := range permissions {
+		var held bool
+		var err error
+		switch entity, action := permission.Split(p); entity {
+		case "account":
+			held, err = user.Account(ctx, userdata.NewIdentifier(accountId), rbac.AccountAction(action))
+		case "connection":
+			held, err = user.Connection(ctx, wildcard, rbac.ConnectionAction(action))
+		case "job":
+			held, err = user.Job(ctx, wildcard, rbac.JobAction(action))
+		default:
+			return husonymerrors.NewBadRequest(fmt.Sprintf("no such permission: %s", permission.Name(p)))
+		}
+		if err != nil {
+			return err
+		}
+		if !held {
+			return husonymerrors.NewUnauthorized(fmt.Sprintf(
+				"a key cannot hold %s: you do not hold it yourself", permission.Name(p),
+			))
+		}
+	}
+	return nil
 }
