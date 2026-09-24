@@ -39,13 +39,13 @@ A client is usually configured with the command and its environment, for instanc
 
 ## Tools
 
-| Tool                  | Description                                                                                                                  |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `list_connections`    | Lists the connections of the account: id, name and category.                                                                 |
-| `describe_connection` | Describes one connection: host, port, database, user, tunnel, TLS and options, with every secret masked.                     |
-| `introspect_schema`   | Lists the tables of a SQL connection, or gives the columns, types and keys of up to 20 of them, foreign keys in both directions. |
+| Tool                  | Description                                                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_connections`    | Lists the connections of the account: id, name and category.                                                                            |
+| `describe_connection` | Describes one connection: host, port, database, user, tunnel, TLS and options, with every secret masked.                                |
+| `introspect_schema`   | Lists the tables of a SQL connection, or gives the columns, types and keys of up to 20 of them, foreign keys in both directions.        |
 | `suggest_mappings`    | Says which columns hold personal data and which transformer fits each, with how sure the detection is and why. Key columns are flagged. |
-| `preview_column`      | Shows what a transformer makes of real values of a column, and whether it collapses distinct values together. Asks the person first. |
+| `preview_column`      | Shows what a transformer makes of real values of a column, and whether it collapses distinct values together. Asks the person first.    |
 
 Every tool reads; none writes.
 
@@ -55,7 +55,7 @@ Only `preview_column` returns values read from rows, and those values reach the 
 
 ## Environment Variables
 
-| Variable        | Description                                                                                              | Is Required                                   | Default Value         |
-| --------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------- |
-| HUSONYM_API_URL | The base url of the Husonym API. This can be overridden to connect to different Husonym API environments | false                                         | http://localhost:8080 |
+| Variable        | Description                                                                                              | Is Required                                 | Default Value         |
+| --------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------- |
+| HUSONYM_API_URL | The base url of the Husonym API. This can be overridden to connect to different Husonym API environments | false                                       | http://localhost:8080 |
 | HUSONYM_API_KEY | The api key for Husonym API. The server does not fall back on the session of `husonym login`.            | true, unless the API has authentication off |                       |
