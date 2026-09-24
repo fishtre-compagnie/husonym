@@ -145,6 +145,12 @@ func Test_ConnectionChecks_Mysql(t *testing.T) {
 				findings, err = connectionchecks.Source(ctx, odd, connectionchecks.MySQL, "reporting", []*connectionchecks.Table{table})
 				require.NoError(t, err)
 				require.Empty(t, findings, "sql_mode %q: the remedy reached the account", mode)
+				var grantees int
+				err = admin.QueryRowContext(ctx,
+					"SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = 'checks' AND Table_name = ?", table.Table).
+					Scan(&grantees)
+				require.NoError(t, err)
+				require.Equal(t, 1, grantees, "sql_mode %q: and no other account", mode)
 			}
 		})
 	}

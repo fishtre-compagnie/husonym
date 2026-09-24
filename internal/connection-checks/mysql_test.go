@@ -230,6 +230,15 @@ func Test_mysqlAccount_quoted(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func Test_mysqlAccount_quoted_nul(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("z\x00z@%"))
+	account := &mysqlAccount{db: db}
+	require.Equal(t, "<account>", account.quoted(context.Background()), "no identifier may hold a NUL")
+}
+
 // MariaDB names the definer privilege SET USER.
 func Test_checkMysqlDestination_triggerDefinerMariaDB(t *testing.T) {
 	db, mock, err := sqlmock.New()

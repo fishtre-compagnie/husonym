@@ -381,10 +381,11 @@ func (a *mysqlAccount) current(ctx context.Context) (string, error) {
 }
 
 // quoted is the account as a statement names it, `user`@`host`; a placeholder when it
-// cannot be read, which a remedy still reads right with.
+// cannot be read, or holds a NUL, which no identifier may: a remedy still reads right with
+// it.
 func (a *mysqlAccount) quoted(ctx context.Context) string {
 	current, err := a.current(ctx)
-	if err != nil {
+	if err != nil || strings.ContainsRune(current, 0) {
 		return "<account>"
 	}
 	// A user name may hold an @, a host may not: the account splits at the last one.

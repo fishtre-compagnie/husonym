@@ -123,7 +123,7 @@ func checkPostgresDestination(
 			fmt.Sprintf("destination %q cannot suspend foreign keys, which Athanor writes each table in one "+
 				"pass with (%v): from PostgreSQL 15 on, GRANT SET ON PARAMETER session_replication_role TO %s "+
 				"allows it, and lets the account suspend foreign keys and triggers on every table it writes; "+
-				"before, only a superuser can, and the job can run with Benthos instead", name, foreignKeys, account)))
+				"before, only a superuser can. A job run with Benthos does not need it", name, foreignKeys, account)))
 	}
 	sortFindings(findings)
 	return findings, nil
