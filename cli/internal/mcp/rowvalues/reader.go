@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"connectrpc.com/connect"
@@ -69,7 +70,9 @@ type Reader struct {
 	// session, so nothing outlives the session it was given in.
 	granted map[consentKey]bool
 	// asked holds the questions put and not yet answered, by the id sent with each. An answer
-	// counts only against a question this reader asked, and only once.
+	// counts only against a question this reader asked, for the connection it asked about, and
+	// only once. A connection has one question pending at most: asking again replaces it, so a
+	// client that never answers leaves one entry per connection, not one per call.
 	asked map[string]consentKey
 }
 
@@ -157,6 +160,7 @@ func (r *Reader) consent(req *mcp.CallToolRequest, column *Column) (mcp.InputReq
 	if capabilities := req.ClientCapabilities(); capabilities == nil || capabilities.Elicitation == nil {
 		return nil, ErrCannotAsk
 	}
+	maps.DeleteFunc(r.asked, func(_ string, pending consentKey) bool { return pending == key })
 	id := rand.Text()
 	r.asked[id] = key
 	return mcp.InputRequestMap{id: &mcp.ElicitParams{
