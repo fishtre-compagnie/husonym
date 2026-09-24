@@ -17,6 +17,8 @@ type JobMappingsValidator struct {
 
 	jobSourceOptions *SqlJobSourceOpts
 	jobMappings      map[string]map[string]*mgmtv1alpha1.JobMapping // schema.table -> column -> job mapping
+	// jobType decides which transformers a column takes; unspecified, they are not checked.
+	jobType mgmtv1alpha1.SupportedJobType
 }
 
 type JobMappingsValidatorResponse struct {
@@ -151,6 +153,7 @@ func (j *JobMappingsValidator) Validate(
 	}
 	j.ValidateRequiredForeignKeys(tableConstraints.ForeignKeyConstraints)
 	j.ValidateRequiredColumns(tableColumnMap)
+	j.ValidateTransformers(tableColumnMap, tableConstraints.ForeignKeyConstraints, virtualForeignKeys)
 	return &JobMappingsValidatorResponse{
 		DatabaseErrors: j.databaseErrors,
 		TableErrors:    j.tableErrors,

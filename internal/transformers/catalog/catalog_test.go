@@ -36,3 +36,25 @@ func Test_DefaultConfig(t *testing.T) {
 		require.False(t, ok)
 	})
 }
+
+func Test_SourceOf(t *testing.T) {
+	t.Run("each transformer is read back from its config", func(t *testing.T) {
+		kinds := map[mgmtv1alpha1.TransformerSource]bool{}
+		for _, transformer := range Transformers(true) {
+			source, ok := SourceOf(transformer.GetConfig())
+			require.True(t, ok, "%s", transformer.GetSource())
+			require.Equal(t, transformer.GetSource(), source, "two transformers share a kind of config")
+			kinds[source] = true
+		}
+		require.Len(t, kinds, len(Transformers(true)))
+	})
+
+	t.Run("a user-defined transformer is no system one", func(t *testing.T) {
+		_, ok := SourceOf(&mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
+			UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{},
+		}})
+		require.False(t, ok)
+		_, ok = SourceOf(&mgmtv1alpha1.TransformerConfig{})
+		require.False(t, ok)
+	})
+}

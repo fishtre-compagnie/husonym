@@ -810,18 +810,20 @@ class PauseJobResponse(_message.Message):
     def __init__(self, job: _Optional[_Union[Job, _Mapping]] = ...) -> None: ...
 
 class UpdateJobSourceConnectionRequest(_message.Message):
-    __slots__ = ("id", "source", "mappings", "virtual_foreign_keys", "job_type")
+    __slots__ = ("id", "source", "mappings", "virtual_foreign_keys", "job_type", "expected_updated_at")
     ID_FIELD_NUMBER: _ClassVar[int]
     SOURCE_FIELD_NUMBER: _ClassVar[int]
     MAPPINGS_FIELD_NUMBER: _ClassVar[int]
     VIRTUAL_FOREIGN_KEYS_FIELD_NUMBER: _ClassVar[int]
     JOB_TYPE_FIELD_NUMBER: _ClassVar[int]
+    EXPECTED_UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
     id: str
     source: JobSource
     mappings: _containers.RepeatedCompositeFieldContainer[JobMapping]
     virtual_foreign_keys: _containers.RepeatedCompositeFieldContainer[VirtualForeignConstraint]
     job_type: JobTypeConfig
-    def __init__(self, id: _Optional[str] = ..., source: _Optional[_Union[JobSource, _Mapping]] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_type: _Optional[_Union[JobTypeConfig, _Mapping]] = ...) -> None: ...
+    expected_updated_at: _timestamp_pb2.Timestamp
+    def __init__(self, id: _Optional[str] = ..., source: _Optional[_Union[JobSource, _Mapping]] = ..., mappings: _Optional[_Iterable[_Union[JobMapping, _Mapping]]] = ..., virtual_foreign_keys: _Optional[_Iterable[_Union[VirtualForeignConstraint, _Mapping]]] = ..., job_type: _Optional[_Union[JobTypeConfig, _Mapping]] = ..., expected_updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class UpdateJobSourceConnectionResponse(_message.Message):
     __slots__ = ("job",)
@@ -1352,6 +1354,7 @@ class ColumnError(_message.Message):
         COLUMN_ERROR_CODE_VFK_TARGET_COLUMN_NOT_FOUND_IN_SOURCE: _ClassVar[ColumnError.ColumnErrorCode]
         COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH: _ClassVar[ColumnError.ColumnErrorCode]
         COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE: _ClassVar[ColumnError.ColumnErrorCode]
+        COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED: _ClassVar[ColumnError.ColumnErrorCode]
     COLUMN_ERROR_CODE_UNSPECIFIED: ColumnError.ColumnErrorCode
     COLUMN_ERROR_CODE_NOT_FOUND_IN_SOURCE: ColumnError.ColumnErrorCode
     COLUMN_ERROR_CODE_NOT_FOUND_IN_MAPPING: ColumnError.ColumnErrorCode
@@ -1364,6 +1367,7 @@ class ColumnError(_message.Message):
     COLUMN_ERROR_CODE_VFK_TARGET_COLUMN_NOT_FOUND_IN_SOURCE: ColumnError.ColumnErrorCode
     COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH: ColumnError.ColumnErrorCode
     COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE: ColumnError.ColumnErrorCode
+    COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED: ColumnError.ColumnErrorCode
     class ColumnErrorReport(_message.Message):
         __slots__ = ("code", "message")
         CODE_FIELD_NUMBER: _ClassVar[int]

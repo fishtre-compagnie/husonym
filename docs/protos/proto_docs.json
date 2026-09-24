@@ -12509,6 +12509,11 @@
               "name": "COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE",
               "number": "11",
               "description": "Virtual foreign key source column not unique"
+            },
+            {
+              "name": "COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED",
+              "number": "12",
+              "description": "The transformer does not fit the column: a generated or identity column, a foreign key,\na column without a default, or a type the transformer does not take. The message names\nthe transformers that fit."
             }
           ]
         },
@@ -20388,7 +20393,7 @@
           "description": "",
           "hasExtensions": false,
           "hasFields": true,
-          "hasOneofs": false,
+          "hasOneofs": true,
           "extensions": [],
           "fields": [
             {
@@ -20449,6 +20454,18 @@
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "expected_updated_at",
+              "description": "The updated_at of the job as the caller read it. When set, the update is refused with\nFailedPrecondition if the job has changed since, so that a change made meanwhile — in the UI,\nor by a run mapping a new column — is not overwritten.",
+              "label": "optional",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_expected_updated_at",
               "defaultValue": ""
             }
           ]

@@ -10,6 +10,7 @@ import (
 	ee_transformers "github.com/fishtre-compagnie/husonym/internal/ee/transformers"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -911,6 +912,10 @@ var (
 	baseSystemTransformerSourceMap = map[mgmtv1alpha1.TransformerSource]*mgmtv1alpha1.SystemTransformer{}
 
 	allSystemTransformersSourceMap = map[mgmtv1alpha1.TransformerSource]*mgmtv1alpha1.SystemTransformer{}
+
+	// sourceByKind reads a config back to the system transformer it configures: each kind of
+	// config, a field of the config oneof, belongs to one transformer.
+	sourceByKind = map[protoreflect.FieldNumber]mgmtv1alpha1.TransformerSource{}
 )
 
 func init() {
@@ -930,7 +935,31 @@ func init() {
 	}
 	for _, transformer := range allSystemTransformers {
 		allSystemTransformersSourceMap[transformer.Source] = transformer
+		if kind, ok := kindOf(transformer.GetConfig()); ok {
+			sourceByKind[kind] = transformer.Source
+		}
 	}
+}
+
+// kindOf is the field of the config oneof a config sets.
+func kindOf(config *mgmtv1alpha1.TransformerConfig) (protoreflect.FieldNumber, bool) {
+	message := config.ProtoReflect()
+	field := message.WhichOneof(message.Descriptor().Oneofs().ByName("config"))
+	if field == nil {
+		return 0, false
+	}
+	return field.Number(), true
+}
+
+// SourceOf returns the system transformer a config configures, or false for a config of no
+// system transformer — a user-defined one, or none at all.
+func SourceOf(config *mgmtv1alpha1.TransformerConfig) (mgmtv1alpha1.TransformerSource, bool) {
+	kind, ok := kindOf(config)
+	if !ok {
+		return mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED, false
+	}
+	source, ok := sourceByKind[kind]
+	return source, ok
 }
 
 // Transformers returns the system transformers an account can use: the base ones, and the
