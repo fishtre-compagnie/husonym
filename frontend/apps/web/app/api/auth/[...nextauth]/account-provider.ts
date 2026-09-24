@@ -107,11 +107,31 @@ function trimEnd(val: string, chars: string): string {
 }
 
 /**
- * The deployment's public URL, as Auth.js reads it: behind a proxy, a request may carry an
- * internal origin. An empty variable is unset.
+ * The deployment's public URL, as Auth.js reads it: AUTH_URL or NEXTAUTH_URL (an empty one
+ * is unset), else -- when the deployment trusts its proxy (AUTH_TRUST_HOST) -- what the
+ * proxy forwarded, else the request's own; behind a proxy, a request may carry an internal
+ * origin.
  */
 export function getPublicBaseUrl(req: NextRequest): URL {
-  return new URL(
-    process.env.AUTH_URL || process.env.NEXTAUTH_URL || req.nextUrl.origin
-  );
+  const configured = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+  if (configured) {
+    return new URL(configured);
+  }
+  const url = new URL(req.nextUrl.origin);
+  if (process.env.AUTH_TRUST_HOST === 'true') {
+    const proto = req.headers.get('x-forwarded-proto')?.split(',')[0].trim();
+    const host = req.headers.get('x-forwarded-host')?.split(',')[0].trim();
+    if (proto === 'https' || proto === 'http') {
+      url.protocol = `${proto}:`;
+    }
+    if (host) {
+      url.host = host;
+    }
+  }
+  return url;
+}
+
+// isSecureRequest tells whether the deployment is reached over https, for its cookies.
+export function isSecureRequest(req: NextRequest): boolean {
+  return getPublicBaseUrl(req).protocol === 'https:';
 }
