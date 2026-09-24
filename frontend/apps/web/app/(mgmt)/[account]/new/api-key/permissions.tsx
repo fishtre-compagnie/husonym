@@ -21,7 +21,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
     options: [
       { value: Permission.JOB_VIEW, label: 'View' },
       { value: Permission.JOB_CREATE, label: 'Create' },
-      { value: Permission.JOB_EDIT, label: 'Edit' },
+      {
+        value: Permission.JOB_EDIT,
+        label: 'Edit',
+        hint: 'On a scheduled job, changes what its next run does: grant it as you would Run.',
+      },
       {
         value: Permission.JOB_EXECUTE,
         label: 'Run',
