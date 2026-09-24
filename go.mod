@@ -26,7 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.0
 	github.com/aws/smithy-go v1.28.2
-	github.com/casbin/casbin/v3 v3.10.0
+	github.com/casbin/casbin/v3 v3.11.0
 	github.com/cenkalti/backoff/v7 v7.0.0
 	github.com/dop251/goja v0.0.0-20260917113740-793a2a65c13b
 	github.com/dop251/goja_nodejs v0.0.0-20260918173711-b481721df8a2
@@ -41,14 +41,14 @@ require (
 	github.com/grafana/pyroscope-go v1.4.2
 	github.com/itchyny/gojq v0.12.19
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/lestrrat-go/jwx/v3 v3.0.13
+	github.com/lestrrat-go/jwx/v3 v3.3.0
 	github.com/lib/pq v1.12.3
 	github.com/microsoft/go-mssqldb v1.11.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/openai/openai-go/v3 v3.63.1
+	github.com/openai/openai-go/v3 v3.64.0
 	github.com/pganalyze/pg_query_go/v6 v6.2.2
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.71.0
@@ -313,11 +313,11 @@ require (
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
-	github.com/lestrrat-go/dsig v1.0.0 // indirect
+	github.com/lestrrat-go/dsig v1.4.0 // indirect
 	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
-	github.com/lestrrat-go/httprc/v3 v3.0.3 // indirect
+	github.com/lestrrat-go/httprc/v3 v3.0.6 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.1.7 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
@@ -417,7 +417,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1 // indirect
 	github.com/twmb/franz-go/pkg/sr v1.8.0 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
-	github.com/valyala/fastjson v1.6.7 // indirect
+	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/wI2L/jsondiff v0.6.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
