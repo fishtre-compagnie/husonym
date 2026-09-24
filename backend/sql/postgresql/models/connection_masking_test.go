@@ -59,10 +59,31 @@ func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
 		"mongo url, aws session token": {MongoConfig: &MongoConnectionConfig{
 			Url: ptr("mongodb://db/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:" + secret),
 		}},
-		"aws s3": {AwsS3Config: &AwsS3ConnectionConfig{Bucket: "b", Credentials: awsCredentials()}},
-		"dynamo": {DynamoDBConfig: &DynamoDBConfig{Credentials: awsCredentials()}},
-		"gcp":    {GcpCloudStorageConfig: &GcpCloudStorageConfig{Bucket: "b", ServiceAccountCredentials: ptr(secret)}},
-		"openai": {OpenAiConfig: &OpenAiConnectionConfig{ApiUrl: "https://api", ApiKey: secret}},
+		"aws s3":           {AwsS3Config: &AwsS3ConnectionConfig{Bucket: "b", Credentials: awsCredentials()}},
+		"dynamo":           {DynamoDBConfig: &DynamoDBConfig{Credentials: awsCredentials()}},
+		"gcp":              {GcpCloudStorageConfig: &GcpCloudStorageConfig{Bucket: "b", ServiceAccountCredentials: ptr(secret)}},
+		"openai":           {OpenAiConfig: &OpenAiConnectionConfig{ApiUrl: "https://api", ApiKey: secret}},
+		"mssql opaque url": {MssqlConfig: &MssqlConfig{Url: ptr("sqlserver:db;password=" + secret)}},
+		"postgres url, fragment": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://u@db/app#password=" + secret),
+		}},
+		"postgres url, query split by semicolons": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://u@db/app?sslmode=require;password=" + secret),
+		}},
+		"postgres url, pass parameter": {PgConfig: &PostgresConnectionConfig{Url: ptr("postgres://u@db/app?pass=" + secret)}},
+		// An unencoded / or # in a password breaks the parse, and the parse error quotes it.
+		"postgres url that does not parse": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://admin:" + secret + "/x@db/app"),
+		}},
+		"mongo url that does not parse": {MongoConfig: &MongoConnectionConfig{
+			Url: ptr("mongodb://admin:" + secret + "#x@db/app"),
+		}},
+		"mysql dsn parameter": {MysqlConfig: &MysqlConnectionConfig{
+			Url: ptr("u@tcp(db:3306)/app?tls=true&sslpassword=" + secret),
+		}},
+		"openai key in the url": {OpenAiConfig: &OpenAiConnectionConfig{
+			ApiUrl: "https://example.openai.azure.com/openai?api-key=" + secret,
+		}},
 	}
 	for name, tunnel := range sshTunnels() {
 		cases["postgres "+name] = &ConnectionConfig{PgConfig: &PostgresConnectionConfig{
@@ -89,7 +110,7 @@ func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
 	}
 }
 
-func Test_maskUri_KeepsWhatIsNotSecret(t *testing.T) {
+func Test_maskUrl_KeepsWhatIsNotSecret(t *testing.T) {
 	config := &ConnectionConfig{PgConfig: &PostgresConnectionConfig{
 		Url: ptr("postgres://u:" + secret + "@db.internal:5432/app?sslmode=require&password=" + secret),
 	}}

@@ -62,13 +62,9 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 				},
 			}, nil
 		} else if c.PgConfig.Url != nil {
-			uri, err := dbconnectconfig.GetPostgresUri(*c.PgConfig.Url)
-			if err != nil {
-				return nil, err
-			}
-			pgUrl := uri.String()
+			pgUrl := *c.PgConfig.Url
 			if !canViewSensitive {
-				pgUrl = maskUri(uri)
+				pgUrl = maskUrl(pgUrl)
 			}
 			return &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
@@ -136,14 +132,7 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 		} else if c.MysqlConfig.Url != nil {
 			mysqlUrl := *c.MysqlConfig.Url
 			if !canViewSensitive {
-				dsn, err := dbconnectconfig.GetMysqlDsn(mysqlUrl, slog.Default())
-				if err != nil {
-					return nil, err
-				}
-				if dsn.Passwd != "" {
-					dsn.Passwd = uriSensitiveValue
-				}
-				mysqlUrl = dsn.FormatDSN()
+				mysqlUrl = maskMysqlDsn(mysqlUrl)
 			}
 			return &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_MysqlConfig{
@@ -361,15 +350,7 @@ func (m *MongoConnectionConfig) ToDto(
 	}
 	uri := *m.Url
 	if !canViewSensitive {
-		uriconfig, err := url.Parse(uri)
-		if err != nil {
-			var urlErr *url.Error
-			if errors.As(err, &urlErr) {
-				return nil, fmt.Errorf("unable to parse mongo url [%s]: %w", urlErr.Op, urlErr.Err)
-			}
-			return nil, fmt.Errorf("unable to parse mongo url: %w", err)
-		}
-		uri = maskUri(uriconfig)
+		uri = maskUrl(uri)
 	}
 	return &mgmtv1alpha1.MongoConnectionConfig{
 		ConnectionConfig: &mgmtv1alpha1.MongoConnectionConfig_Url{
@@ -453,13 +434,9 @@ func (d *MssqlConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.MssqlConnectio
 		clientTls = d.ClientTls.ToDto(canViewSensitive)
 	}
 	if d.Url != nil {
-		uri, err := dbconnectconfig.GetMssqlUri(*d.Url)
-		if err != nil {
-			return nil, err
-		}
-		mssqlUrl := uri.String()
+		mssqlUrl := *d.Url
 		if !canViewSensitive {
-			mssqlUrl = maskUri(uri)
+			mssqlUrl = maskUrl(mssqlUrl)
 		}
 		return &mgmtv1alpha1.MssqlConnectionConfig{
 			ConnectionConfig: &mgmtv1alpha1.MssqlConnectionConfig_Url{
@@ -633,15 +610,21 @@ const sensitiveValue = "********"
 // splitting this out because URI encodes **** as %2A and it looks ugly
 const uriSensitiveValue = "______"
 
-// maskUri gives a connection URL as a caller who may not see its secrets should see it. A secret
-// hides in two places in a URL: the user's password, and a query parameter — ?password=,
-// ?sslpassword=, a token in Mongo's authMechanismProperties. Both are masked.
+// maskUrl gives a connection URL as a caller who may not see its secrets should see it. A secret
+// hides in the user's password and in query parameters — ?password=, ?sslpassword=, a token in
+// Mongo's authMechanismProperties — and those are masked.
 //
-// A string that is not a URL — a keyword connection string such as "host=db password=…" or
-// "server=db;password=…", which parses as a bare path — cannot be masked field by field, so it
-// is masked whole: a caller who may not see secrets loses the host too, rather than keep them.
-func maskUri(uri *url.URL) string {
-	if uri.Scheme == "" {
+// What cannot be masked field by field is masked whole, and a caller who may not see secrets
+// loses the host too rather than keep one: a string that does not parse — whose parse error
+// would quote the very password that broke it —, a keyword string such as
+// "host=db password=…" that parses as a bare path, an opaque URL such as "sqlserver:db;
+// password=…", and a query holding ";", which the parser drops silently along with what
+// follows. A fragment is masked: nothing a connection needs lives there.
+//
+// It never fails: a masked read must not break on a string a clear one would show.
+func maskUrl(raw string) string {
+	uri, err := url.Parse(raw)
+	if err != nil || uri.Scheme == "" || uri.Opaque != "" || strings.Contains(uri.RawQuery, ";") {
 		return uriSensitiveValue
 	}
 	masked := *uri
@@ -657,14 +640,36 @@ func maskUri(uri *url.URL) string {
 		}
 	}
 	masked.RawQuery = query.Encode()
+	if masked.Fragment != "" {
+		masked.Fragment = uriSensitiveValue
+		masked.RawFragment = ""
+	}
 	return masked.String()
+}
+
+// maskMysqlDsn masks a MySQL connection string: its password, and the parameters that may hold
+// a credential. A string that does not parse is masked whole, like maskUrl does.
+func maskMysqlDsn(raw string) string {
+	dsn, err := dbconnectconfig.GetMysqlDsn(raw, slog.Default())
+	if err != nil {
+		return uriSensitiveValue
+	}
+	if dsn.Passwd != "" {
+		dsn.Passwd = uriSensitiveValue
+	}
+	for key := range dsn.Params {
+		if isSecretQueryKey(key) {
+			dsn.Params[key] = uriSensitiveValue
+		}
+	}
+	return dsn.FormatDSN()
 }
 
 // isSecretQueryKey says whether a URL parameter may carry a credential. It errs on the side of
 // masking: a parameter masked for nothing costs a caller one value, a secret left costs its owner.
 func isSecretQueryKey(key string) bool {
 	key = strings.ToLower(key)
-	for _, marker := range []string{"password", "pwd", "secret", "token", "key", "authmechanismproperties"} {
+	for _, marker := range []string{"pass", "pwd", "secret", "token", "key", "authmechanismproperties"} {
 		if strings.Contains(key, marker) {
 			return true
 		}
@@ -846,9 +851,14 @@ func (o *OpenAiConnectionConfig) ToDto(canViewSensitive bool) *mgmtv1alpha1.Open
 		v := sensitiveValue
 		apiKey = v
 	}
+	// A key can ride in the URL too, as Azure's ?api-key= does.
+	apiUrl := o.ApiUrl
+	if !canViewSensitive && apiUrl != "" {
+		apiUrl = maskUrl(apiUrl)
+	}
 	return &mgmtv1alpha1.OpenAiConnectionConfig{
 		ApiKey: apiKey,
-		ApiUrl: o.ApiUrl,
+		ApiUrl: apiUrl,
 	}
 }
 
