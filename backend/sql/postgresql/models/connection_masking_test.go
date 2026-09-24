@@ -75,6 +75,17 @@ func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
 		"postgres url that does not parse": {PgConfig: &PostgresConnectionConfig{
 			Url: ptr("postgres://admin:" + secret + "/x@db/app"),
 		}},
+		// ... or parses, the start of the password passing for a port and the rest landing in the
+		// path or the query.
+		"postgres url, password split into the path": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://admin:2024/" + secret + "@db/app"),
+		}},
+		"postgres url, password split with an empty port": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://admin:/" + secret + "@db/app"),
+		}},
+		"postgres url, password split into the query": {PgConfig: &PostgresConnectionConfig{
+			Url: ptr("postgres://admin:5432?q=" + secret + "@db/app"),
+		}},
 		"mongo url that does not parse": {MongoConfig: &MongoConnectionConfig{
 			Url: ptr("mongodb://admin:" + secret + "#x@db/app"),
 		}},

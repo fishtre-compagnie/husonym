@@ -619,12 +619,16 @@ const uriSensitiveValue = "______"
 // would quote the very password that broke it —, a keyword string such as
 // "host=db password=…" that parses as a bare path, an opaque URL such as "sqlserver:db;
 // password=…", and a query holding ";", which the parser drops silently along with what
-// follows. A fragment is masked: nothing a connection needs lives there.
+// follows, and a URL with an "@" past its host: a password holding an unencoded / or ? whose
+// start passes for a port — postgres://admin:2024/rest@db — parses, and leaves the rest of the
+// password in the path or the query. A fragment is masked: nothing a connection needs lives
+// there.
 //
 // It never fails: a masked read must not break on a string a clear one would show.
 func maskUrl(raw string) string {
 	uri, err := url.Parse(raw)
-	if err != nil || uri.Scheme == "" || uri.Opaque != "" || strings.Contains(uri.RawQuery, ";") {
+	if err != nil || uri.Scheme == "" || uri.Opaque != "" || strings.Contains(uri.RawQuery, ";") ||
+		strings.Contains(uri.EscapedPath(), "@") || strings.Contains(uri.RawQuery, "@") {
 		return uriSensitiveValue
 	}
 	masked := *uri
