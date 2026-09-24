@@ -1,4 +1,5 @@
 import { SystemAppConfig } from '@/app/config/app-config';
+import { getProviderId } from '../auth/[...nextauth]/account-provider';
 
 export const PUBLIC_PATHNAME = '/api/husonym';
 
@@ -16,7 +17,7 @@ export function getSystemAppConfig(): SystemAppConfig {
     isHusonymCloud,
     isStripeEnabled: process.env.STRIPE_ENABLED === 'true',
     enableRunLogs: process.env.ENABLE_RUN_LOGS === 'true',
-    signInProviderId: process.env.AUTH_PROVIDER_ID,
+    signInProviderId: getProviderId(),
     isMetricsServiceEnabled: process.env.METRICS_SERVICE_ENABLED === 'true',
     // Optional link surfaced by the upgrade CTA. When unset, the CTA is hidden.
     upgradeLink: process.env.UPGRADE_LINK ?? '',

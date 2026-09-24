@@ -4,7 +4,7 @@ import NextAuth, { NextAuthConfig } from 'next-auth';
 import { NextRequest } from 'next/server';
 import {
   AccountLoginMethod,
-  PROVIDER_ID,
+  getProviderId,
   fetchAccountLoginMethod,
   getAccountSlug,
 } from './account-provider';
@@ -33,6 +33,11 @@ function getProviders(
       token: authConfig.tokenUrl,
 
       wellKnown: getWellKnown(authConfig.issuer),
+      // An account's provider is reached as a public client: without a secret, Auth.js
+      // would otherwise authenticate with an empty one, which providers refuse.
+      ...(authConfig.clientSecret
+        ? {}
+        : { client: { token_endpoint_auth_method: 'none' } }),
     });
   }
 
@@ -68,8 +73,16 @@ interface OAuthConfig {
   scope: string;
 }
 
-export async function getLogoutUrl(): Promise<string | undefined> {
-  const oauthconfig = getOAuthConfig(null);
+/**
+ * Where to end the provider's session: that of the provider the session came from. An
+ * account's provider is only ever discovered; the deployment's may be configured.
+ */
+export async function getLogoutUrl(
+  accountIssuer: string | undefined
+): Promise<string | undefined> {
+  const oauthconfig = accountIssuer
+    ? { issuer: accountIssuer, logoutUrl: undefined }
+    : getOAuthConfig(null);
   if (!oauthconfig) {
     console.warn('there is no oauthconfig defined, unable to find logout url');
     return undefined;
@@ -112,7 +125,7 @@ function getOAuthConfig(
     return null;
   }
 
-  const id = PROVIDER_ID;
+  const id = getProviderId();
   const name = process.env.AUTH_PROVIDER_NAME ?? 'unknown';
   const expectedissuer = accountMethod
     ? issuer
@@ -165,6 +178,7 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
       session: async ({ session, token }) => {
         session.accessToken = (token as any).accessToken; // eslint-disable-line @typescript-eslint/no-explicit-any
         session.idToken = (token as any).idToken; // eslint-disable-line @typescript-eslint/no-explicit-any
+        session.accountIssuer = (token as any).accountIssuer; // eslint-disable-line @typescript-eslint/no-explicit-any
         return session;
       },
       jwt: async ({ token, account }) => {
@@ -175,6 +189,11 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
           token.refreshToken = account.refresh_token;
           token.expiresAt = account.expires_at;
           token.provider = account.provider;
+          // The provider that issued these tokens, when it is an account's: refreshing them
+          // and ending the session go to it, whatever account a later request names. Held
+          // in the session token, which only this server can read or write.
+          token.accountIssuer = accountMethod?.issuer;
+          token.accountClientId = accountMethod?.clientId;
         }
         if (
           !token.expiresAt ||
@@ -187,20 +206,24 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
             throw new Error('session is expired, no refresh token available');
           }
 
-          const oauthConfig = getOAuthConfig(null);
+          const oauthConfig = getRefreshConfig(token);
           if (!oauthConfig) {
             throw new Error('unable to find provider to refresh token');
           }
           try {
             const response = await fetch(
-              await getTokenUrl(oauthConfig.issuer),
+              oauthConfig.tokenUrl ?? (await getTokenUrl(oauthConfig.issuer)),
               {
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams({
                   client_id: oauthConfig.clientId,
-                  client_secret: oauthConfig.clientSecret ?? '',
+                  // A public client sends no secret; the deployment's secret never goes
+                  // to an account's provider.
+                  ...(oauthConfig.clientSecret
+                    ? { client_secret: oauthConfig.clientSecret }
+                    : {}),
                   grant_type: 'refresh_token',
                   refresh_token: (token as any).refreshToken, // eslint-disable-line @typescript-eslint/no-explicit-any
                 }),
@@ -232,6 +255,27 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
       },
     },
   };
+}
+
+/**
+ * The provider a session's tokens are refreshed with: the account's that issued them, or
+ * the deployment's for a session that came from it.
+ */
+function getRefreshConfig(
+  token: Record<string, unknown>
+): Pick<
+  OAuthConfig,
+  'issuer' | 'clientId' | 'clientSecret' | 'tokenUrl'
+> | null {
+  const accountIssuer = token.accountIssuer;
+  const accountClientId = token.accountClientId;
+  if (
+    typeof accountIssuer === 'string' &&
+    typeof accountClientId === 'string'
+  ) {
+    return { issuer: accountIssuer, clientId: accountClientId };
+  }
+  return getOAuthConfig(null);
 }
 
 interface OidcConfiguration {
@@ -270,6 +314,9 @@ declare module 'next-auth' {
   export interface Session {
     accessToken: string;
     idToken: string;
+    // The issuer of the account's provider the session came from; unset for the
+    // deployment's.
+    accountIssuer?: string;
   }
 }
 

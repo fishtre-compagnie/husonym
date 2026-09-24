@@ -27,15 +27,22 @@ export interface AccountLoginMethod {
 }
 
 /**
- * The provider id is deliberately FIXED, and this is the decision the rest depends on.
+ * The provider id is deliberately the SAME for every account, and this is the decision the
+ * rest depends on.
  *
  * Auth.js routes callbacks to `/api/auth/callback/<providerId>`, so an id that varied by
  * account would mean a different redirect URI per account -- and every account having to
  * register its own with its provider. One id, with the issuer and client varying behind
  * it, means one redirect URI for the whole deployment: the thing an operator registers
  * once and never touches again.
+ *
+ * It is the deployment's AUTH_PROVIDER_ID, as it was before accounts could bring their own
+ * provider: a deployment keeps the redirect URI it registered, and the sign-in the app
+ * starts (`signInProviderId`) names the provider that exists.
  */
-export const PROVIDER_ID = 'oidc';
+export function getProviderId(): string {
+  return process.env.AUTH_PROVIDER_ID || 'oidc';
+}
 
 export function getAccountSlug(
   request: NextRequest | undefined

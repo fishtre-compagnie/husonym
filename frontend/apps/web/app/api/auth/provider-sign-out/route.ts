@@ -14,7 +14,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(nextauthUrl);
     }
 
-    const logoutUrl = await getLogoutUrl();
+    const logoutUrl = await getLogoutUrl(session?.accountIssuer);
     if (!logoutUrl) {
       throw new Error('unable to locate logout url');
     }
