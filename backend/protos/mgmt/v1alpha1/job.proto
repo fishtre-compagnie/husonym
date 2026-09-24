@@ -2194,7 +2194,10 @@ service JobService {
   // Creates a new job hook
   rpc CreateJobHook(CreateJobHookRequest) returns (CreateJobHookResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_JOB_CREATE]
+      all_of: [
+        PERMISSION_JOB_CREATE,
+        PERMISSION_JOB_EXECUTE
+      ]
     };
   }
   // Removes a job hook
@@ -2214,7 +2217,8 @@ service JobService {
     option (mgmt.v1alpha1.requires) = {
       all_of: [
         PERMISSION_JOB_VIEW,
-        PERMISSION_JOB_EDIT
+        PERMISSION_JOB_EDIT,
+        PERMISSION_JOB_EXECUTE
       ]
     };
   }

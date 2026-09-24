@@ -83,7 +83,7 @@
             {
               "name": "PERMISSION_JOB_EXECUTE",
               "number": "13",
-              "description": "Running a job, which writes to a real destination — and anything that makes it run: creating\nit with a first run or an active schedule, setting its schedule, resuming it."
+              "description": "Running a job, which writes to a real destination — and anything that makes it run: creating\nit with a first run or an active schedule, setting its schedule, resuming it, writing or\nenabling one of its SQL hooks."
             },
             {
               "name": "PERMISSION_JOB_DELETE",

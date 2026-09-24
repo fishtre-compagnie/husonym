@@ -14290,7 +14290,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"#JOB_MAPPING_CHANGE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dJOB_MAPPING_CHANGE_KIND_ADDED\x10\x01\x12#\n" +
 	"\x1fJOB_MAPPING_CHANGE_KIND_REMOVED\x10\x02\x12(\n" +
-	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xd8'\n" +
+	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xda'\n" +
 	"\n" +
 	"JobService\x12T\n" +
 	"\aGetJobs\x12\x1d.mgmt.v1alpha1.GetJobsRequest\x1a\x1e.mgmt.v1alpha1.GetJobsResponse\"\n" +
@@ -14412,17 +14412,17 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"GetJobHook\x12 .mgmt.v1alpha1.GetJobHookRequest\x1a!.mgmt.v1alpha1.GetJobHookResponse\"\n" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\n" +
-	"\x90\x02\x01\x12c\n" +
-	"\rCreateJobHook\x12#.mgmt.v1alpha1.CreateJobHookRequest\x1a$.mgmt.v1alpha1.CreateJobHookResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\v\x12c\n" +
+	"\x90\x02\x01\x12d\n" +
+	"\rCreateJobHook\x12#.mgmt.v1alpha1.CreateJobHookRequest\x1a$.mgmt.v1alpha1.CreateJobHookResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\v\r\x12c\n" +
 	"\rDeleteJobHook\x12#.mgmt.v1alpha1.DeleteJobHookRequest\x1a$.mgmt.v1alpha1.DeleteJobHookResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\x0e\x12~\n" +
 	"\x16IsJobHookNameAvailable\x12,.mgmt.v1alpha1.IsJobHookNameAvailableRequest\x1a-.mgmt.v1alpha1.IsJobHookNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\n" +
-	"\x12d\n" +
-	"\rUpdateJobHook\x12#.mgmt.v1alpha1.UpdateJobHookRequest\x1a$.mgmt.v1alpha1.UpdateJobHookResponse\"\b\x92\xb5\x18\x04\n" +
-	"\x02\n" +
-	"\f\x12p\n" +
+	"\x12e\n" +
+	"\rUpdateJobHook\x12#.mgmt.v1alpha1.UpdateJobHookRequest\x1a$.mgmt.v1alpha1.UpdateJobHookResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\r\x12p\n" +
 	"\x11SetJobHookEnabled\x12'.mgmt.v1alpha1.SetJobHookEnabledRequest\x1a(.mgmt.v1alpha1.SetJobHookEnabledResponse\"\b\x92\xb5\x18\x04\n" +
 	"\x02\n" +
 	"\f\x12\x8a\x01\n" +

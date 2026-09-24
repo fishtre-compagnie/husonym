@@ -44,7 +44,8 @@ const (
 	Permission_PERMISSION_JOB_CREATE                Permission = 11
 	Permission_PERMISSION_JOB_EDIT                  Permission = 12
 	// Running a job, which writes to a real destination — and anything that makes it run: creating
-	// it with a first run or an active schedule, setting its schedule, resuming it.
+	// it with a first run or an active schedule, setting its schedule, resuming it, writing or
+	// enabling one of its SQL hooks.
 	Permission_PERMISSION_JOB_EXECUTE Permission = 13
 	Permission_PERMISSION_JOB_DELETE  Permission = 14
 )

@@ -122,7 +122,8 @@ export enum Permission {
 
   /**
    * Running a job, which writes to a real destination — and anything that makes it run: creating
-   * it with a first run or an active schedule, setting its schedule, resuming it.
+   * it with a first run or an active schedule, setting its schedule, resuming it, writing or
+   * enabling one of its SQL hooks.
    *
    * @generated from enum value: PERMISSION_JOB_EXECUTE = 13;
    */

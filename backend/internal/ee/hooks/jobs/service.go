@@ -269,6 +269,9 @@ func (s *Service) CreateJobHook(
 	if err != nil {
 		return nil, err
 	}
+	if _, err := s.verifyUserHasJob(ctx, req.GetJobId(), rbac.JobAction_Execute); err != nil {
+		return nil, err
+	}
 	logger = logger.With(
 		"accountId", husonymdb.UUIDString(verifyResp.AccountUuid),
 		"jobId", husonymdb.UUIDString(verifyResp.JobUuid),
@@ -379,6 +382,9 @@ func (s *Service) UpdateJobHook(
 	if err != nil {
 		return nil, err
 	}
+	if _, err := s.verifyUserHasJob(ctx, husonymdb.UUIDString(jobuuid), rbac.JobAction_Execute); err != nil {
+		return nil, err
+	}
 
 	updatedhook, err := s.db.Q.UpdateJobHook(ctx, s.db.Db, db_queries.UpdateJobHookParams{
 		Name:            req.GetName(),
@@ -421,6 +427,11 @@ func (s *Service) SetJobHookEnabled(
 	verifyResp, err := s.verifyUserHasJob(ctx, getResp.GetHook().GetJobId(), rbac.JobAction_Edit)
 	if err != nil {
 		return nil, err
+	}
+	if req.GetEnabled() {
+		if _, err := s.verifyUserHasJob(ctx, getResp.GetHook().GetJobId(), rbac.JobAction_Execute); err != nil {
+			return nil, err
+		}
 	}
 
 	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
@@ -518,6 +529,10 @@ type verifyUserJobResponse struct {
 	UserUuid    pgtype.UUID
 }
 
+// A hook is SQL the next run executes, against any connection the job uses, its source
+// included: writing one, or arming it, is running that SQL. Creating, updating and enabling a
+// hook therefore take job:execute on top of the job permission they always took — which the
+// roles that edit jobs hold, so this only narrows an API key given edit without execute.
 func (s *Service) verifyUserHasJob(
 	ctx context.Context,
 	jobId string,
