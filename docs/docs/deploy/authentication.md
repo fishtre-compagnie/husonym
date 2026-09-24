@@ -86,9 +86,12 @@ A key can do only what its permissions name, whatever the rest of the configurat
 | Account     | `account:view`, `account:edit`, `account:create`, `account:delete`                                                             |
 
 - A key needs at least one permission, and can hold none that its creator does not hold themselves.
-- Without `connection:view_sensitive`, a key reads connections with their passwords and keys masked.
+- Using a connection takes its secrets: reading its schema, scanning or previewing its data, `husonym sync` all need `connection:view_sensitive`. Without it, a key reads connections with their passwords and keys masked, and cannot connect to them.
+- Running a job takes `job:execute`, and so does anything that makes it run: creating it with a first run or an active schedule, setting its schedule, resuming it.
+- `account:edit` lets a key manage members and their roles, admin included: grant it as you would admin.
 - A call the key's permissions do not cover is refused, and the refusal names the permission that is missing.
 - Keys created before permissions existed hold all of them. Narrow them by creating new keys with only what they need.
+- The worker needs its worker key, or an account key holding every permission.
 
 ## Temporal mTLS Authentication
 

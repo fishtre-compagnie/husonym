@@ -25,7 +25,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
       {
         value: Permission.JOB_EXECUTE,
         label: 'Run',
-        hint: 'A run writes to a real destination.',
+        hint: 'A run writes to a real destination. Also needed to schedule or resume a job.',
       },
       { value: Permission.JOB_DELETE, label: 'Delete' },
     ],
@@ -37,7 +37,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
       {
         value: Permission.CONNECTION_VIEW_SENSITIVE,
         label: 'See secrets',
-        hint: 'Passwords and keys in clear. Without it, they come back masked.',
+        hint: 'Needed to use a connection: read its schema, scan or preview its data, sync. Also returns passwords and keys in clear.',
       },
       { value: Permission.CONNECTION_CREATE, label: 'Create' },
       { value: Permission.CONNECTION_EDIT, label: 'Edit' },
@@ -51,7 +51,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
       {
         value: Permission.ACCOUNT_EDIT,
         label: 'Edit',
-        hint: 'Settings, members and hooks.',
+        hint: 'Settings, members and hooks, including giving a person the admin role.',
       },
       { value: Permission.ACCOUNT_CREATE, label: 'Create accounts' },
       { value: Permission.ACCOUNT_DELETE, label: 'Delete' },
