@@ -24,7 +24,9 @@ import (
 // someone adds it here, with the reason it cannot hand back a secret.
 
 // readers are the packages under this tree allowed to hold a Connect client, each for the
-// reason given. Each one narrows its client to an interface whose method set its own test pins.
+// reason given. Only the package itself: a directory below a reader is held to allowedImports
+// like any other. Each reader narrows its clients to interfaces whose method sets, and whose
+// place among the reader's fields, its own test pins.
 var readers = map[string]string{
 	"maskedconn": "reads connections, and asks for every one with its secrets masked",
 	"novalues":   "reads schemas and PII detections, never a value from a row",
@@ -51,26 +53,67 @@ var allowedImports = map[string]string{
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1": "message types only; " +
 		"the clients live in mgmtv1alpha1connect, which is not allowed",
 	"github.com/fishtre-compagnie/husonym/cli/internal/connection": "pure functions over a connection " +
-		"already read",
+		"already read; held to this list too, below",
 }
+
+// readerImports is what a reader may import on top of allowedImports: what it takes to hold a
+// Connect client, and what its consent takes.
+var readerImports = map[string]string{
+	"connectrpc.com/connect": "requests and responses of the clients the reader pins",
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect": "the " +
+		"clients, narrowed by the reader to pinned interfaces",
+	"crypto/rand": "the id of a question put to the person",
+	"sync":        "the consents a reader keeps",
+}
+
+// sources other than Go are refused outright: assembly or C in this tree could reach anything.
+var foreignSources = []string{".s", ".S", ".c", ".cc", ".cpp", ".h", ".m", ".syso"}
 
 func Test_Imports_OnlyTheReadersReachTheApi(t *testing.T) {
 	t.Parallel()
 
-	fset := token.NewFileSet()
 	sawReaders := map[string]bool{}
+	checked := checkImports(t, ".", func(dir string) map[string]string {
+		if _, ok := readers[dir]; ok {
+			sawReaders[dir] = true
+			return withReaderImports()
+		}
+		return allowedImports
+	})
+
+	// A test that walked nothing would pass forever.
+	for reader := range readers {
+		require.True(t, sawReaders[reader], "%s is gone: its exemption no longer names anything", reader)
+	}
+	require.NotZero(t, checked, "no file of the MCP surface was checked")
+}
+
+// The packages allowedImports lets in whole are held to the same list, or a file added there
+// later would carry a client into the MCP surface unseen.
+func Test_Imports_AllowedPackagesStayPure(t *testing.T) {
+	t.Parallel()
+	checked := checkImports(t, "../connection", func(string) map[string]string { return allowedImports })
+	require.NotZero(t, checked)
+}
+
+func withReaderImports() map[string]string {
+	allowed := maps.Clone(allowedImports)
+	maps.Copy(allowed, readerImports)
+	return allowed
+}
+
+// checkImports holds every non-test Go file under root to the imports allowedFor its directory,
+// and returns how many files it checked.
+func checkImports(t *testing.T, root string, allowedFor func(dir string) map[string]string) int {
+	t.Helper()
+	fset := token.NewFileSet()
 	checked := 0
-	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
 			return err
 		}
-		if entry.IsDir() {
-			if _, ok := readers[path]; ok {
-				sawReaders[path] = true
-				return filepath.SkipDir
-			}
-			return nil
-		}
+		require.Falsef(t, slices.Contains(foreignSources, filepath.Ext(path)),
+			"%s is not Go: the import rule cannot see what it reaches", path)
 		// Tests are left out: they stand up a fake API, which takes the very client refused
 		// here, and they do not ship.
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
@@ -81,16 +124,17 @@ func Test_Imports_OnlyTheReadersReachTheApi(t *testing.T) {
 			return err
 		}
 		checked++
+		allowed := allowedFor(filepath.Dir(path))
 		for _, spec := range file.Imports {
 			imported, err := strconv.Unquote(spec.Path.Value)
 			if err != nil {
 				return err
 			}
-			// A package of this tree is walked in its turn, and held to the same list.
+			// A package of this tree is walked in its turn, and held to its own list.
 			if strings.HasPrefix(imported, mcpTree) {
 				continue
 			}
-			_, ok := allowedImports[imported]
+			_, ok := allowed[imported]
 			require.Truef(t, ok,
 				"%s imports %q, which is not on the allowlist of the MCP surface. "+
 					"The API is reached through the readers only (%v), so that no secret and no row "+
@@ -102,10 +146,5 @@ func Test_Imports_OnlyTheReadersReachTheApi(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-
-	// A test that walked nothing would pass forever.
-	for reader := range readers {
-		require.True(t, sawReaders[reader], "%s is gone: its exemption no longer names anything", reader)
-	}
-	require.NotZero(t, checked, "no file of the MCP surface was checked")
+	return checked
 }
