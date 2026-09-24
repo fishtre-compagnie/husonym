@@ -51,7 +51,7 @@ var allowedImports = map[string]string{
 		"already read",
 }
 
-func Test_Imports_OnlyTheMaskedReaderReachesTheApi(t *testing.T) {
+func Test_Imports_OnlyTheReadersReachTheApi(t *testing.T) {
 	t.Parallel()
 
 	fset := token.NewFileSet()
