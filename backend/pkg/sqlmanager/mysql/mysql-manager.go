@@ -16,6 +16,7 @@ import (
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	mysqlgrants "github.com/fishtre-compagnie/husonym/internal/mysql-grants"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -503,24 +504,35 @@ func escapeMysqlColumnsWithPrefixes(cols []string, prefixes map[string]int64) []
 	return escaped
 }
 
+// tablePrivileges are the privileges MySQL grants on a table.
+var tablePrivileges = []string{
+	"SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "REFERENCES", "INDEX", "ALTER",
+	"CREATE VIEW", "SHOW VIEW", "TRIGGER",
+}
+
+// GetRolePermissionsMap gives the privileges the session's account holds on each table it can
+// see, keyed schema.table. They are read from SHOW GRANTS, which merges in the privileges of
+// the account's active roles and of an account declared on a specific host: the privilege
+// tables of information_schema showed neither, and such an account appeared to hold nothing.
 func (m *MysqlManager) GetRolePermissionsMap(ctx context.Context) (map[string][]string, error) {
-	querier, err := m.getQuerier(ctx)
+	grants, err := mysqlgrants.Read(ctx, m.pool)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read the grants of the account: %w", err)
+	}
+	tables, err := m.GetAllTables(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := querier.GetMysqlRolePermissions(ctx, m.pool)
-	if err != nil && !husonymdb.IsNoRows(err) {
-		return nil, err
-	} else if err != nil && husonymdb.IsNoRows(err) {
-		return map[string][]string{}, nil
-	}
-
 	schemaTablePrivsMap := map[string][]string{}
-	for _, permission := range rows {
-		key := sqlmanager_shared.BuildTable(permission.TableSchema, permission.TableName)
-		schemaTablePrivsMap[key] = append(schemaTablePrivsMap[key], permission.PrivilegeType)
+	for _, table := range tables {
+		for _, privilege := range tablePrivileges {
+			if grants.HasTablePrivilege(privilege, table.SchemaName, table.TableName) {
+				key := sqlmanager_shared.BuildTable(table.SchemaName, table.TableName)
+				schemaTablePrivsMap[key] = append(schemaTablePrivsMap[key], privilege)
+			}
+		}
 	}
-	return schemaTablePrivsMap, err
+	return schemaTablePrivsMap, nil
 }
 
 type indexInfo struct {

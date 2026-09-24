@@ -2,14 +2,25 @@ import datetime
 
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from mgmt.v1alpha1 import job_pb2 as _job_pb2
 from mgmt.v1alpha1 import permission_pb2 as _permission_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class ConnectionRole(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    CONNECTION_ROLE_UNSPECIFIED: _ClassVar[ConnectionRole]
+    CONNECTION_ROLE_SOURCE: _ClassVar[ConnectionRole]
+    CONNECTION_ROLE_DESTINATION: _ClassVar[ConnectionRole]
+CONNECTION_ROLE_UNSPECIFIED: ConnectionRole
+CONNECTION_ROLE_SOURCE: ConnectionRole
+CONNECTION_ROLE_DESTINATION: ConnectionRole
 
 class GetConnectionsRequest(_message.Message):
     __slots__ = ("account_id", "exclude_sensitive")
@@ -82,36 +93,112 @@ class DeleteConnectionResponse(_message.Message):
     def __init__(self) -> None: ...
 
 class CheckConnectionConfigRequest(_message.Message):
-    __slots__ = ("connection_config",)
+    __slots__ = ("connection_config", "scope")
     CONNECTION_CONFIG_FIELD_NUMBER: _ClassVar[int]
+    SCOPE_FIELD_NUMBER: _ClassVar[int]
     connection_config: ConnectionConfig
-    def __init__(self, connection_config: _Optional[_Union[ConnectionConfig, _Mapping]] = ...) -> None: ...
+    scope: ConnectionCheckScope
+    def __init__(self, connection_config: _Optional[_Union[ConnectionConfig, _Mapping]] = ..., scope: _Optional[_Union[ConnectionCheckScope, _Mapping]] = ...) -> None: ...
 
 class CheckConnectionConfigByIdRequest(_message.Message):
-    __slots__ = ("id",)
+    __slots__ = ("id", "scope")
     ID_FIELD_NUMBER: _ClassVar[int]
+    SCOPE_FIELD_NUMBER: _ClassVar[int]
     id: str
-    def __init__(self, id: _Optional[str] = ...) -> None: ...
+    scope: ConnectionCheckScope
+    def __init__(self, id: _Optional[str] = ..., scope: _Optional[_Union[ConnectionCheckScope, _Mapping]] = ...) -> None: ...
+
+class ConnectionCheckScope(_message.Message):
+    __slots__ = ("role", "engine", "tables", "init_table_schema", "truncate_before_insert")
+    ROLE_FIELD_NUMBER: _ClassVar[int]
+    ENGINE_FIELD_NUMBER: _ClassVar[int]
+    TABLES_FIELD_NUMBER: _ClassVar[int]
+    INIT_TABLE_SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TRUNCATE_BEFORE_INSERT_FIELD_NUMBER: _ClassVar[int]
+    role: ConnectionRole
+    engine: _job_pb2.JobEngine
+    tables: _containers.RepeatedCompositeFieldContainer[ConnectionCheckTable]
+    init_table_schema: bool
+    truncate_before_insert: bool
+    def __init__(self, role: _Optional[_Union[ConnectionRole, str]] = ..., engine: _Optional[_Union[_job_pb2.JobEngine, str]] = ..., tables: _Optional[_Iterable[_Union[ConnectionCheckTable, _Mapping]]] = ..., init_table_schema: _Optional[bool] = ..., truncate_before_insert: _Optional[bool] = ...) -> None: ...
+
+class ConnectionCheckTable(_message.Message):
+    __slots__ = ("schema", "table", "columns")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    columns: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class ConnectionCheck(_message.Message):
+    __slots__ = ("kind", "level", "table", "missing", "message", "remedy")
+    class Kind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        KIND_UNSPECIFIED: _ClassVar[ConnectionCheck.Kind]
+        KIND_TABLE_EXISTS: _ClassVar[ConnectionCheck.Kind]
+        KIND_READABLE: _ClassVar[ConnectionCheck.Kind]
+        KIND_SERVER_WRITABLE: _ClassVar[ConnectionCheck.Kind]
+        KIND_WRITABLE: _ClassVar[ConnectionCheck.Kind]
+        KIND_TRUNCATE: _ClassVar[ConnectionCheck.Kind]
+        KIND_TRIGGERS: _ClassVar[ConnectionCheck.Kind]
+        KIND_TRIGGER_DEFINER: _ClassVar[ConnectionCheck.Kind]
+        KIND_FOREIGN_KEY_SUSPENSION: _ClassVar[ConnectionCheck.Kind]
+    KIND_UNSPECIFIED: ConnectionCheck.Kind
+    KIND_TABLE_EXISTS: ConnectionCheck.Kind
+    KIND_READABLE: ConnectionCheck.Kind
+    KIND_SERVER_WRITABLE: ConnectionCheck.Kind
+    KIND_WRITABLE: ConnectionCheck.Kind
+    KIND_TRUNCATE: ConnectionCheck.Kind
+    KIND_TRIGGERS: ConnectionCheck.Kind
+    KIND_TRIGGER_DEFINER: ConnectionCheck.Kind
+    KIND_FOREIGN_KEY_SUSPENSION: ConnectionCheck.Kind
+    class Level(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        LEVEL_UNSPECIFIED: _ClassVar[ConnectionCheck.Level]
+        LEVEL_BLOCKING: _ClassVar[ConnectionCheck.Level]
+        LEVEL_WARNING: _ClassVar[ConnectionCheck.Level]
+    LEVEL_UNSPECIFIED: ConnectionCheck.Level
+    LEVEL_BLOCKING: ConnectionCheck.Level
+    LEVEL_WARNING: ConnectionCheck.Level
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    LEVEL_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    MISSING_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    REMEDY_FIELD_NUMBER: _ClassVar[int]
+    kind: ConnectionCheck.Kind
+    level: ConnectionCheck.Level
+    table: str
+    missing: _containers.RepeatedScalarFieldContainer[str]
+    message: str
+    remedy: str
+    def __init__(self, kind: _Optional[_Union[ConnectionCheck.Kind, str]] = ..., level: _Optional[_Union[ConnectionCheck.Level, str]] = ..., table: _Optional[str] = ..., missing: _Optional[_Iterable[str]] = ..., message: _Optional[str] = ..., remedy: _Optional[str] = ...) -> None: ...
 
 class CheckConnectionConfigByIdResponse(_message.Message):
-    __slots__ = ("is_connected", "connection_error", "privileges")
+    __slots__ = ("is_connected", "connection_error", "privileges", "checks")
     IS_CONNECTED_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ERROR_FIELD_NUMBER: _ClassVar[int]
     PRIVILEGES_FIELD_NUMBER: _ClassVar[int]
+    CHECKS_FIELD_NUMBER: _ClassVar[int]
     is_connected: bool
     connection_error: str
     privileges: _containers.RepeatedCompositeFieldContainer[ConnectionRolePrivilege]
-    def __init__(self, is_connected: _Optional[bool] = ..., connection_error: _Optional[str] = ..., privileges: _Optional[_Iterable[_Union[ConnectionRolePrivilege, _Mapping]]] = ...) -> None: ...
+    checks: _containers.RepeatedCompositeFieldContainer[ConnectionCheck]
+    def __init__(self, is_connected: _Optional[bool] = ..., connection_error: _Optional[str] = ..., privileges: _Optional[_Iterable[_Union[ConnectionRolePrivilege, _Mapping]]] = ..., checks: _Optional[_Iterable[_Union[ConnectionCheck, _Mapping]]] = ...) -> None: ...
 
 class CheckConnectionConfigResponse(_message.Message):
-    __slots__ = ("is_connected", "connection_error", "privileges")
+    __slots__ = ("is_connected", "connection_error", "privileges", "checks")
     IS_CONNECTED_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_ERROR_FIELD_NUMBER: _ClassVar[int]
     PRIVILEGES_FIELD_NUMBER: _ClassVar[int]
+    CHECKS_FIELD_NUMBER: _ClassVar[int]
     is_connected: bool
     connection_error: str
     privileges: _containers.RepeatedCompositeFieldContainer[ConnectionRolePrivilege]
-    def __init__(self, is_connected: _Optional[bool] = ..., connection_error: _Optional[str] = ..., privileges: _Optional[_Iterable[_Union[ConnectionRolePrivilege, _Mapping]]] = ...) -> None: ...
+    checks: _containers.RepeatedCompositeFieldContainer[ConnectionCheck]
+    def __init__(self, is_connected: _Optional[bool] = ..., connection_error: _Optional[str] = ..., privileges: _Optional[_Iterable[_Union[ConnectionRolePrivilege, _Mapping]]] = ..., checks: _Optional[_Iterable[_Union[ConnectionCheck, _Mapping]]] = ...) -> None: ...
 
 class ConnectionRolePrivilege(_message.Message):
     __slots__ = ("grantee", "schema", "table", "privilege_type")

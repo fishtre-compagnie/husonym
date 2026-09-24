@@ -1,10 +1,22 @@
 package sqlmanager
 
-import sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+import (
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqldbtx"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+)
 
 type SqlConnection struct {
 	database SqlDatabase
 	driver   string
+	// queryer is the connection the manager asks through, for what it does not ask itself.
+	queryer sqldbtx.DBTX
+}
+
+// Queryer is the connection the manager asks through: for a question the manager does not
+// ask itself, such as whether the account may do what a job needs. Nil for a connection made
+// without one.
+func (s *SqlConnection) Queryer() sqldbtx.DBTX {
+	return s.queryer
 }
 
 func (s *SqlConnection) Db() SqlDatabase {

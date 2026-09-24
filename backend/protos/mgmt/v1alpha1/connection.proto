@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/job.proto";
 import "mgmt/v1alpha1/permission.proto";
 
 message GetConnectionsRequest {
@@ -69,11 +70,98 @@ message DeleteConnectionResponse {}
 message CheckConnectionConfigRequest {
   // The connection configuration to validate
   ConnectionConfig connection_config = 1;
+  // Optionally, the role the connection is tested in: the response then says, in checks,
+  // what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+  optional ConnectionCheckScope scope = 2;
 }
 
 message CheckConnectionConfigByIdRequest {
   // The connection id to validate
   string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optionally, the role the connection is tested in: the response then says, in checks,
+  // what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+  optional ConnectionCheckScope scope = 2;
+}
+
+// The role a connection plays in a job, and what the job asks of it there: what a run checks
+// at its start, asked before it.
+message ConnectionCheckScope {
+  // The role of the connection.
+  ConnectionRole role = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // The engine that runs the job: what only Athanor needs is asked only of Athanor.
+  // Unspecified is the deployment default, which the API does not know: what only Athanor
+  // needs is then reported as a warning.
+  JobEngine engine = 2 [(buf.validate.field).enum.defined_only = true];
+  // The tables of the job, and the columns a run writes into each. A table given without
+  // columns is checked on the columns the account can see, generated ones left out: give the
+  // job's columns to check what a run will write. Without tables, only what concerns the
+  // server as a whole is checked. The schemas of the server itself are refused.
+  repeated ConnectionCheckTable tables = 3 [(buf.validate.field).repeated.max_items = 1000];
+  // For a destination: the run creates the tables and columns it lacks.
+  bool init_table_schema = 4;
+  // For a destination: the run empties each table before writing it.
+  bool truncate_before_insert = 5;
+}
+
+// The role a connection plays in a job.
+enum ConnectionRole {
+  CONNECTION_ROLE_UNSPECIFIED = 0;
+  // The connection is read.
+  CONNECTION_ROLE_SOURCE = 1;
+  // The connection is written.
+  CONNECTION_ROLE_DESTINATION = 2;
+}
+
+// A table of a job, and the columns a run writes into it.
+message ConnectionCheckTable {
+  string schema = 1 [(buf.validate.field).string.min_len = 1];
+  string table = 2 [(buf.validate.field).string.min_len = 1];
+  repeated string columns = 3;
+}
+
+// One thing a connection cannot do that its role needs.
+message ConnectionCheck {
+  // What was checked.
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    // The table, or a column the run writes, is there.
+    KIND_TABLE_EXISTS = 1;
+    // The source can read the table.
+    KIND_READABLE = 2;
+    // The destination server accepts writes at all.
+    KIND_SERVER_WRITABLE = 3;
+    // The destination can read, insert, update and delete rows of the table.
+    KIND_WRITABLE = 4;
+    // The destination can empty the table before writing it.
+    KIND_TRUNCATE = 5;
+    // The destination can take the triggers of the table out of the way of the run.
+    KIND_TRIGGERS = 6;
+    // The destination can put a trigger back as its definer.
+    KIND_TRIGGER_DEFINER = 7;
+    // The destination can suspend foreign keys, as Athanor does on PostgreSQL.
+    KIND_FOREIGN_KEY_SUSPENSION = 8;
+  }
+  // What the finding does to a run.
+  enum Level {
+    LEVEL_UNSPECIFIED = 0;
+    // The run stops on it.
+    LEVEL_BLOCKING = 1;
+    // The run may stop on it, depending on what the API cannot see, such as the engine.
+    LEVEL_WARNING = 2;
+  }
+  Kind kind = 1;
+  Level level = 2;
+  // The table concerned, as schema.table; empty for the server as a whole.
+  string table = 3;
+  // What the account lacks: privileges, or the names of absent columns.
+  repeated string missing = 4;
+  // The finding in a sentence naming the connection, as the run reports it.
+  string message = 5;
+  // The statement that grants what is missing, for someone allowed to run it.
+  optional string remedy = 6;
 }
 
 message CheckConnectionConfigByIdResponse {
@@ -83,6 +171,8 @@ message CheckConnectionConfigByIdResponse {
   optional string connection_error = 2;
   // The privileges the role has to the connection
   repeated ConnectionRolePrivilege privileges = 3;
+  // What the connection cannot do that the role asked about needs; empty without a scope.
+  repeated ConnectionCheck checks = 4;
 }
 
 message CheckConnectionConfigResponse {
@@ -91,6 +181,8 @@ message CheckConnectionConfigResponse {
   // This is the error that was received if the API was unable to connect
   optional string connection_error = 2;
   repeated ConnectionRolePrivilege privileges = 3;
+  // What the connection cannot do that the role asked about needs; empty without a scope.
+  repeated ConnectionCheck checks = 4;
 }
 
 message ConnectionRolePrivilege {

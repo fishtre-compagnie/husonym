@@ -17,7 +17,6 @@ type Querier interface {
 	GetDatabaseSchema(ctx context.Context, db DBTX) ([]*GetDatabaseSchemaRow, error)
 	GetDatabaseTableSchemasBySchemasAndTables(ctx context.Context, db DBTX, arg *GetDatabaseTableSchemasBySchemasAndTablesParams) ([]*GetDatabaseTableSchemasBySchemasAndTablesRow, error)
 	GetIndicesBySchemasAndTables(ctx context.Context, db DBTX, arg *GetIndicesBySchemasAndTablesParams) ([]*GetIndicesBySchemasAndTablesRow, error)
-	GetMysqlRolePermissions(ctx context.Context, db DBTX) ([]*GetMysqlRolePermissionsRow, error)
 	GetTableConstraints(ctx context.Context, db DBTX, arg *GetTableConstraintsParams) ([]*GetTableConstraintsRow, error)
 	GetTableConstraintsBySchemas(ctx context.Context, db DBTX, schemas []string) ([]*GetTableConstraintsBySchemasRow, error)
 }

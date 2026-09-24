@@ -23,6 +23,186 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The role a connection plays in a job.
+type ConnectionRole int32
+
+const (
+	ConnectionRole_CONNECTION_ROLE_UNSPECIFIED ConnectionRole = 0
+	// The connection is read.
+	ConnectionRole_CONNECTION_ROLE_SOURCE ConnectionRole = 1
+	// The connection is written.
+	ConnectionRole_CONNECTION_ROLE_DESTINATION ConnectionRole = 2
+)
+
+// Enum value maps for ConnectionRole.
+var (
+	ConnectionRole_name = map[int32]string{
+		0: "CONNECTION_ROLE_UNSPECIFIED",
+		1: "CONNECTION_ROLE_SOURCE",
+		2: "CONNECTION_ROLE_DESTINATION",
+	}
+	ConnectionRole_value = map[string]int32{
+		"CONNECTION_ROLE_UNSPECIFIED": 0,
+		"CONNECTION_ROLE_SOURCE":      1,
+		"CONNECTION_ROLE_DESTINATION": 2,
+	}
+)
+
+func (x ConnectionRole) Enum() *ConnectionRole {
+	p := new(ConnectionRole)
+	*p = x
+	return p
+}
+
+func (x ConnectionRole) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConnectionRole) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_connection_proto_enumTypes[0].Descriptor()
+}
+
+func (ConnectionRole) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_connection_proto_enumTypes[0]
+}
+
+func (x ConnectionRole) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConnectionRole.Descriptor instead.
+func (ConnectionRole) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{0}
+}
+
+// What was checked.
+type ConnectionCheck_Kind int32
+
+const (
+	ConnectionCheck_KIND_UNSPECIFIED ConnectionCheck_Kind = 0
+	// The table, or a column the run writes, is there.
+	ConnectionCheck_KIND_TABLE_EXISTS ConnectionCheck_Kind = 1
+	// The source can read the table.
+	ConnectionCheck_KIND_READABLE ConnectionCheck_Kind = 2
+	// The destination server accepts writes at all.
+	ConnectionCheck_KIND_SERVER_WRITABLE ConnectionCheck_Kind = 3
+	// The destination can read, insert, update and delete rows of the table.
+	ConnectionCheck_KIND_WRITABLE ConnectionCheck_Kind = 4
+	// The destination can empty the table before writing it.
+	ConnectionCheck_KIND_TRUNCATE ConnectionCheck_Kind = 5
+	// The destination can take the triggers of the table out of the way of the run.
+	ConnectionCheck_KIND_TRIGGERS ConnectionCheck_Kind = 6
+	// The destination can put a trigger back as its definer.
+	ConnectionCheck_KIND_TRIGGER_DEFINER ConnectionCheck_Kind = 7
+	// The destination can suspend foreign keys, as Athanor does on PostgreSQL.
+	ConnectionCheck_KIND_FOREIGN_KEY_SUSPENSION ConnectionCheck_Kind = 8
+)
+
+// Enum value maps for ConnectionCheck_Kind.
+var (
+	ConnectionCheck_Kind_name = map[int32]string{
+		0: "KIND_UNSPECIFIED",
+		1: "KIND_TABLE_EXISTS",
+		2: "KIND_READABLE",
+		3: "KIND_SERVER_WRITABLE",
+		4: "KIND_WRITABLE",
+		5: "KIND_TRUNCATE",
+		6: "KIND_TRIGGERS",
+		7: "KIND_TRIGGER_DEFINER",
+		8: "KIND_FOREIGN_KEY_SUSPENSION",
+	}
+	ConnectionCheck_Kind_value = map[string]int32{
+		"KIND_UNSPECIFIED":            0,
+		"KIND_TABLE_EXISTS":           1,
+		"KIND_READABLE":               2,
+		"KIND_SERVER_WRITABLE":        3,
+		"KIND_WRITABLE":               4,
+		"KIND_TRUNCATE":               5,
+		"KIND_TRIGGERS":               6,
+		"KIND_TRIGGER_DEFINER":        7,
+		"KIND_FOREIGN_KEY_SUSPENSION": 8,
+	}
+)
+
+func (x ConnectionCheck_Kind) Enum() *ConnectionCheck_Kind {
+	p := new(ConnectionCheck_Kind)
+	*p = x
+	return p
+}
+
+func (x ConnectionCheck_Kind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConnectionCheck_Kind) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_connection_proto_enumTypes[1].Descriptor()
+}
+
+func (ConnectionCheck_Kind) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_connection_proto_enumTypes[1]
+}
+
+func (x ConnectionCheck_Kind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConnectionCheck_Kind.Descriptor instead.
+func (ConnectionCheck_Kind) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{14, 0}
+}
+
+// What the finding does to a run.
+type ConnectionCheck_Level int32
+
+const (
+	ConnectionCheck_LEVEL_UNSPECIFIED ConnectionCheck_Level = 0
+	// The run stops on it.
+	ConnectionCheck_LEVEL_BLOCKING ConnectionCheck_Level = 1
+	// The run may stop on it, depending on what the API cannot see, such as the engine.
+	ConnectionCheck_LEVEL_WARNING ConnectionCheck_Level = 2
+)
+
+// Enum value maps for ConnectionCheck_Level.
+var (
+	ConnectionCheck_Level_name = map[int32]string{
+		0: "LEVEL_UNSPECIFIED",
+		1: "LEVEL_BLOCKING",
+		2: "LEVEL_WARNING",
+	}
+	ConnectionCheck_Level_value = map[string]int32{
+		"LEVEL_UNSPECIFIED": 0,
+		"LEVEL_BLOCKING":    1,
+		"LEVEL_WARNING":     2,
+	}
+)
+
+func (x ConnectionCheck_Level) Enum() *ConnectionCheck_Level {
+	p := new(ConnectionCheck_Level)
+	*p = x
+	return p
+}
+
+func (x ConnectionCheck_Level) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConnectionCheck_Level) Descriptor() protoreflect.EnumDescriptor {
+	return file_mgmt_v1alpha1_connection_proto_enumTypes[2].Descriptor()
+}
+
+func (ConnectionCheck_Level) Type() protoreflect.EnumType {
+	return &file_mgmt_v1alpha1_connection_proto_enumTypes[2]
+}
+
+func (x ConnectionCheck_Level) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConnectionCheck_Level.Descriptor instead.
+func (ConnectionCheck_Level) EnumDescriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{14, 1}
+}
+
 type GetConnectionsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier of the account to get connections for
@@ -526,8 +706,11 @@ type CheckConnectionConfigRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The connection configuration to validate
 	ConnectionConfig *ConnectionConfig `protobuf:"bytes,1,opt,name=connection_config,json=connectionConfig,proto3" json:"connection_config,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Optionally, the role the connection is tested in: the response then says, in checks,
+	// what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+	Scope         *ConnectionCheckScope `protobuf:"bytes,2,opt,name=scope,proto3,oneof" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckConnectionConfigRequest) Reset() {
@@ -567,10 +750,20 @@ func (x *CheckConnectionConfigRequest) GetConnectionConfig() *ConnectionConfig {
 	return nil
 }
 
+func (x *CheckConnectionConfigRequest) GetScope() *ConnectionCheckScope {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
 type CheckConnectionConfigByIdRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The connection id to validate
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Optionally, the role the connection is tested in: the response then says, in checks,
+	// what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+	Scope         *ConnectionCheckScope `protobuf:"bytes,2,opt,name=scope,proto3,oneof" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -612,6 +805,251 @@ func (x *CheckConnectionConfigByIdRequest) GetId() string {
 	return ""
 }
 
+func (x *CheckConnectionConfigByIdRequest) GetScope() *ConnectionCheckScope {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
+// The role a connection plays in a job, and what the job asks of it there: what a run checks
+// at its start, asked before it.
+type ConnectionCheckScope struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The role of the connection.
+	Role ConnectionRole `protobuf:"varint,1,opt,name=role,proto3,enum=mgmt.v1alpha1.ConnectionRole" json:"role,omitempty"`
+	// The engine that runs the job: what only Athanor needs is asked only of Athanor.
+	// Unspecified is the deployment default, which the API does not know: what only Athanor
+	// needs is then reported as a warning.
+	Engine JobEngine `protobuf:"varint,2,opt,name=engine,proto3,enum=mgmt.v1alpha1.JobEngine" json:"engine,omitempty"`
+	// The tables of the job, and the columns a run writes into each. A table given without
+	// columns is checked on the columns the account can see, generated ones left out: give the
+	// job's columns to check what a run will write. Without tables, only what concerns the
+	// server as a whole is checked. The schemas of the server itself are refused.
+	Tables []*ConnectionCheckTable `protobuf:"bytes,3,rep,name=tables,proto3" json:"tables,omitempty"`
+	// For a destination: the run creates the tables and columns it lacks.
+	InitTableSchema bool `protobuf:"varint,4,opt,name=init_table_schema,json=initTableSchema,proto3" json:"init_table_schema,omitempty"`
+	// For a destination: the run empties each table before writing it.
+	TruncateBeforeInsert bool `protobuf:"varint,5,opt,name=truncate_before_insert,json=truncateBeforeInsert,proto3" json:"truncate_before_insert,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ConnectionCheckScope) Reset() {
+	*x = ConnectionCheckScope{}
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionCheckScope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionCheckScope) ProtoMessage() {}
+
+func (x *ConnectionCheckScope) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionCheckScope.ProtoReflect.Descriptor instead.
+func (*ConnectionCheckScope) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ConnectionCheckScope) GetRole() ConnectionRole {
+	if x != nil {
+		return x.Role
+	}
+	return ConnectionRole_CONNECTION_ROLE_UNSPECIFIED
+}
+
+func (x *ConnectionCheckScope) GetEngine() JobEngine {
+	if x != nil {
+		return x.Engine
+	}
+	return JobEngine_JOB_ENGINE_UNSPECIFIED
+}
+
+func (x *ConnectionCheckScope) GetTables() []*ConnectionCheckTable {
+	if x != nil {
+		return x.Tables
+	}
+	return nil
+}
+
+func (x *ConnectionCheckScope) GetInitTableSchema() bool {
+	if x != nil {
+		return x.InitTableSchema
+	}
+	return false
+}
+
+func (x *ConnectionCheckScope) GetTruncateBeforeInsert() bool {
+	if x != nil {
+		return x.TruncateBeforeInsert
+	}
+	return false
+}
+
+// A table of a job, and the columns a run writes into it.
+type ConnectionCheckTable struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Schema        string                 `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
+	Table         string                 `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	Columns       []string               `protobuf:"bytes,3,rep,name=columns,proto3" json:"columns,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionCheckTable) Reset() {
+	*x = ConnectionCheckTable{}
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionCheckTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionCheckTable) ProtoMessage() {}
+
+func (x *ConnectionCheckTable) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionCheckTable.ProtoReflect.Descriptor instead.
+func (*ConnectionCheckTable) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ConnectionCheckTable) GetSchema() string {
+	if x != nil {
+		return x.Schema
+	}
+	return ""
+}
+
+func (x *ConnectionCheckTable) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *ConnectionCheckTable) GetColumns() []string {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+// One thing a connection cannot do that its role needs.
+type ConnectionCheck struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Kind  ConnectionCheck_Kind   `protobuf:"varint,1,opt,name=kind,proto3,enum=mgmt.v1alpha1.ConnectionCheck_Kind" json:"kind,omitempty"`
+	Level ConnectionCheck_Level  `protobuf:"varint,2,opt,name=level,proto3,enum=mgmt.v1alpha1.ConnectionCheck_Level" json:"level,omitempty"`
+	// The table concerned, as schema.table; empty for the server as a whole.
+	Table string `protobuf:"bytes,3,opt,name=table,proto3" json:"table,omitempty"`
+	// What the account lacks: privileges, or the names of absent columns.
+	Missing []string `protobuf:"bytes,4,rep,name=missing,proto3" json:"missing,omitempty"`
+	// The finding in a sentence naming the connection, as the run reports it.
+	Message string `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	// The statement that grants what is missing, for someone allowed to run it.
+	Remedy        *string `protobuf:"bytes,6,opt,name=remedy,proto3,oneof" json:"remedy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionCheck) Reset() {
+	*x = ConnectionCheck{}
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionCheck) ProtoMessage() {}
+
+func (x *ConnectionCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionCheck.ProtoReflect.Descriptor instead.
+func (*ConnectionCheck) Descriptor() ([]byte, []int) {
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ConnectionCheck) GetKind() ConnectionCheck_Kind {
+	if x != nil {
+		return x.Kind
+	}
+	return ConnectionCheck_KIND_UNSPECIFIED
+}
+
+func (x *ConnectionCheck) GetLevel() ConnectionCheck_Level {
+	if x != nil {
+		return x.Level
+	}
+	return ConnectionCheck_LEVEL_UNSPECIFIED
+}
+
+func (x *ConnectionCheck) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *ConnectionCheck) GetMissing() []string {
+	if x != nil {
+		return x.Missing
+	}
+	return nil
+}
+
+func (x *ConnectionCheck) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ConnectionCheck) GetRemedy() string {
+	if x != nil && x.Remedy != nil {
+		return *x.Remedy
+	}
+	return ""
+}
+
 type CheckConnectionConfigByIdResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether or not the API was able to ping the connection
@@ -619,14 +1057,16 @@ type CheckConnectionConfigByIdResponse struct {
 	// This is the error that was received if the API was unable to connect
 	ConnectionError *string `protobuf:"bytes,2,opt,name=connection_error,json=connectionError,proto3,oneof" json:"connection_error,omitempty"`
 	// The privileges the role has to the connection
-	Privileges    []*ConnectionRolePrivilege `protobuf:"bytes,3,rep,name=privileges,proto3" json:"privileges,omitempty"`
+	Privileges []*ConnectionRolePrivilege `protobuf:"bytes,3,rep,name=privileges,proto3" json:"privileges,omitempty"`
+	// What the connection cannot do that the role asked about needs; empty without a scope.
+	Checks        []*ConnectionCheck `protobuf:"bytes,4,rep,name=checks,proto3" json:"checks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckConnectionConfigByIdResponse) Reset() {
 	*x = CheckConnectionConfigByIdResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[12]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -638,7 +1078,7 @@ func (x *CheckConnectionConfigByIdResponse) String() string {
 func (*CheckConnectionConfigByIdResponse) ProtoMessage() {}
 
 func (x *CheckConnectionConfigByIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[12]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -651,7 +1091,7 @@ func (x *CheckConnectionConfigByIdResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use CheckConnectionConfigByIdResponse.ProtoReflect.Descriptor instead.
 func (*CheckConnectionConfigByIdResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{12}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CheckConnectionConfigByIdResponse) GetIsConnected() bool {
@@ -675,6 +1115,13 @@ func (x *CheckConnectionConfigByIdResponse) GetPrivileges() []*ConnectionRolePri
 	return nil
 }
 
+func (x *CheckConnectionConfigByIdResponse) GetChecks() []*ConnectionCheck {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
 type CheckConnectionConfigResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether or not the API was able to ping the connection
@@ -682,13 +1129,15 @@ type CheckConnectionConfigResponse struct {
 	// This is the error that was received if the API was unable to connect
 	ConnectionError *string                    `protobuf:"bytes,2,opt,name=connection_error,json=connectionError,proto3,oneof" json:"connection_error,omitempty"`
 	Privileges      []*ConnectionRolePrivilege `protobuf:"bytes,3,rep,name=privileges,proto3" json:"privileges,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// What the connection cannot do that the role asked about needs; empty without a scope.
+	Checks        []*ConnectionCheck `protobuf:"bytes,4,rep,name=checks,proto3" json:"checks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckConnectionConfigResponse) Reset() {
 	*x = CheckConnectionConfigResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[13]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -700,7 +1149,7 @@ func (x *CheckConnectionConfigResponse) String() string {
 func (*CheckConnectionConfigResponse) ProtoMessage() {}
 
 func (x *CheckConnectionConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[13]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -713,7 +1162,7 @@ func (x *CheckConnectionConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckConnectionConfigResponse.ProtoReflect.Descriptor instead.
 func (*CheckConnectionConfigResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{13}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CheckConnectionConfigResponse) GetIsConnected() bool {
@@ -737,6 +1186,13 @@ func (x *CheckConnectionConfigResponse) GetPrivileges() []*ConnectionRolePrivile
 	return nil
 }
 
+func (x *CheckConnectionConfigResponse) GetChecks() []*ConnectionCheck {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
 type ConnectionRolePrivilege struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The role that was given the permissions
@@ -753,7 +1209,7 @@ type ConnectionRolePrivilege struct {
 
 func (x *ConnectionRolePrivilege) Reset() {
 	*x = ConnectionRolePrivilege{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[14]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -765,7 +1221,7 @@ func (x *ConnectionRolePrivilege) String() string {
 func (*ConnectionRolePrivilege) ProtoMessage() {}
 
 func (x *ConnectionRolePrivilege) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[14]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -778,7 +1234,7 @@ func (x *ConnectionRolePrivilege) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionRolePrivilege.ProtoReflect.Descriptor instead.
 func (*ConnectionRolePrivilege) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{14}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ConnectionRolePrivilege) GetGrantee() string {
@@ -833,7 +1289,7 @@ type Connection struct {
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[15]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +1301,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[15]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +1314,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{15}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Connection) GetId() string {
@@ -938,7 +1394,7 @@ type ConnectionConfig struct {
 
 func (x *ConnectionConfig) Reset() {
 	*x = ConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[16]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +1406,7 @@ func (x *ConnectionConfig) String() string {
 func (*ConnectionConfig) ProtoMessage() {}
 
 func (x *ConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[16]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +1419,7 @@ func (x *ConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionConfig.ProtoReflect.Descriptor instead.
 func (*ConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{16}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ConnectionConfig) GetConfig() isConnectionConfig_Config {
@@ -1143,7 +1599,7 @@ type MssqlConnectionConfig struct {
 
 func (x *MssqlConnectionConfig) Reset() {
 	*x = MssqlConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[17]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1155,7 +1611,7 @@ func (x *MssqlConnectionConfig) String() string {
 func (*MssqlConnectionConfig) ProtoMessage() {}
 
 func (x *MssqlConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[17]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1168,7 +1624,7 @@ func (x *MssqlConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MssqlConnectionConfig.ProtoReflect.Descriptor instead.
 func (*MssqlConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{17}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MssqlConnectionConfig) GetConnectionConfig() isMssqlConnectionConfig_ConnectionConfig {
@@ -1253,7 +1709,7 @@ type DynamoDBConnectionConfig struct {
 
 func (x *DynamoDBConnectionConfig) Reset() {
 	*x = DynamoDBConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[18]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1265,7 +1721,7 @@ func (x *DynamoDBConnectionConfig) String() string {
 func (*DynamoDBConnectionConfig) ProtoMessage() {}
 
 func (x *DynamoDBConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[18]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1278,7 +1734,7 @@ func (x *DynamoDBConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DynamoDBConnectionConfig.ProtoReflect.Descriptor instead.
 func (*DynamoDBConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{18}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DynamoDBConnectionConfig) GetCredentials() *AwsS3Credentials {
@@ -1320,7 +1776,7 @@ type MongoConnectionConfig struct {
 
 func (x *MongoConnectionConfig) Reset() {
 	*x = MongoConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[19]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1332,7 +1788,7 @@ func (x *MongoConnectionConfig) String() string {
 func (*MongoConnectionConfig) ProtoMessage() {}
 
 func (x *MongoConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[19]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1345,7 +1801,7 @@ func (x *MongoConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MongoConnectionConfig.ProtoReflect.Descriptor instead.
 func (*MongoConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{19}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *MongoConnectionConfig) GetConnectionConfig() isMongoConnectionConfig_ConnectionConfig {
@@ -1402,7 +1858,7 @@ type OpenAiConnectionConfig struct {
 
 func (x *OpenAiConnectionConfig) Reset() {
 	*x = OpenAiConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[20]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1414,7 +1870,7 @@ func (x *OpenAiConnectionConfig) String() string {
 func (*OpenAiConnectionConfig) ProtoMessage() {}
 
 func (x *OpenAiConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[20]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1427,7 +1883,7 @@ func (x *OpenAiConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenAiConnectionConfig.ProtoReflect.Descriptor instead.
 func (*OpenAiConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{20}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *OpenAiConnectionConfig) GetApiKey() string {
@@ -1455,7 +1911,7 @@ type LocalDirectoryConnectionConfig struct {
 
 func (x *LocalDirectoryConnectionConfig) Reset() {
 	*x = LocalDirectoryConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[21]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1467,7 +1923,7 @@ func (x *LocalDirectoryConnectionConfig) String() string {
 func (*LocalDirectoryConnectionConfig) ProtoMessage() {}
 
 func (x *LocalDirectoryConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[21]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1480,7 +1936,7 @@ func (x *LocalDirectoryConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalDirectoryConnectionConfig.ProtoReflect.Descriptor instead.
 func (*LocalDirectoryConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{21}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *LocalDirectoryConnectionConfig) GetPath() string {
@@ -1512,7 +1968,7 @@ type PostgresConnectionConfig struct {
 
 func (x *PostgresConnectionConfig) Reset() {
 	*x = PostgresConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[22]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1980,7 @@ func (x *PostgresConnectionConfig) String() string {
 func (*PostgresConnectionConfig) ProtoMessage() {}
 
 func (x *PostgresConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[22]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1993,7 @@ func (x *PostgresConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostgresConnectionConfig.ProtoReflect.Descriptor instead.
 func (*PostgresConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{22}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PostgresConnectionConfig) GetConnectionConfig() isPostgresConnectionConfig_ConnectionConfig {
@@ -1640,7 +2096,7 @@ type ClientTlsConfig struct {
 
 func (x *ClientTlsConfig) Reset() {
 	*x = ClientTlsConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[23]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1652,7 +2108,7 @@ func (x *ClientTlsConfig) String() string {
 func (*ClientTlsConfig) ProtoMessage() {}
 
 func (x *ClientTlsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[23]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1665,7 +2121,7 @@ func (x *ClientTlsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientTlsConfig.ProtoReflect.Descriptor instead.
 func (*ClientTlsConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{23}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ClientTlsConfig) GetRootCert() string {
@@ -1722,7 +2178,7 @@ type SqlConnectionOptions struct {
 
 func (x *SqlConnectionOptions) Reset() {
 	*x = SqlConnectionOptions{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[24]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1734,7 +2190,7 @@ func (x *SqlConnectionOptions) String() string {
 func (*SqlConnectionOptions) ProtoMessage() {}
 
 func (x *SqlConnectionOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[24]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1747,7 +2203,7 @@ func (x *SqlConnectionOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SqlConnectionOptions.ProtoReflect.Descriptor instead.
 func (*SqlConnectionOptions) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{24}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SqlConnectionOptions) GetMaxConnectionLimit() int32 {
@@ -1798,7 +2254,7 @@ type SSHTunnel struct {
 
 func (x *SSHTunnel) Reset() {
 	*x = SSHTunnel{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[25]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1810,7 +2266,7 @@ func (x *SSHTunnel) String() string {
 func (*SSHTunnel) ProtoMessage() {}
 
 func (x *SSHTunnel) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[25]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1823,7 +2279,7 @@ func (x *SSHTunnel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SSHTunnel.ProtoReflect.Descriptor instead.
 func (*SSHTunnel) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{25}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SSHTunnel) GetHost() string {
@@ -1875,7 +2331,7 @@ type SSHAuthentication struct {
 
 func (x *SSHAuthentication) Reset() {
 	*x = SSHAuthentication{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[26]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1887,7 +2343,7 @@ func (x *SSHAuthentication) String() string {
 func (*SSHAuthentication) ProtoMessage() {}
 
 func (x *SSHAuthentication) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[26]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1900,7 +2356,7 @@ func (x *SSHAuthentication) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SSHAuthentication.ProtoReflect.Descriptor instead.
 func (*SSHAuthentication) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{26}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SSHAuthentication) GetAuthConfig() isSSHAuthentication_AuthConfig {
@@ -1957,7 +2413,7 @@ type SSHPassphrase struct {
 
 func (x *SSHPassphrase) Reset() {
 	*x = SSHPassphrase{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[27]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1969,7 +2425,7 @@ func (x *SSHPassphrase) String() string {
 func (*SSHPassphrase) ProtoMessage() {}
 
 func (x *SSHPassphrase) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[27]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1982,7 +2438,7 @@ func (x *SSHPassphrase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SSHPassphrase.ProtoReflect.Descriptor instead.
 func (*SSHPassphrase) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{27}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SSHPassphrase) GetValue() string {
@@ -2005,7 +2461,7 @@ type SSHPrivateKey struct {
 
 func (x *SSHPrivateKey) Reset() {
 	*x = SSHPrivateKey{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[28]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2017,7 +2473,7 @@ func (x *SSHPrivateKey) String() string {
 func (*SSHPrivateKey) ProtoMessage() {}
 
 func (x *SSHPrivateKey) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[28]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2030,7 +2486,7 @@ func (x *SSHPrivateKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SSHPrivateKey.ProtoReflect.Descriptor instead.
 func (*SSHPrivateKey) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{28}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SSHPrivateKey) GetValue() string {
@@ -2067,7 +2523,7 @@ type PostgresConnection struct {
 
 func (x *PostgresConnection) Reset() {
 	*x = PostgresConnection{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[29]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2079,7 +2535,7 @@ func (x *PostgresConnection) String() string {
 func (*PostgresConnection) ProtoMessage() {}
 
 func (x *PostgresConnection) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[29]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2092,7 +2548,7 @@ func (x *PostgresConnection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostgresConnection.ProtoReflect.Descriptor instead.
 func (*PostgresConnection) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{29}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PostgresConnection) GetHost() string {
@@ -2157,7 +2613,7 @@ type MysqlConnection struct {
 
 func (x *MysqlConnection) Reset() {
 	*x = MysqlConnection{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[30]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2169,7 +2625,7 @@ func (x *MysqlConnection) String() string {
 func (*MysqlConnection) ProtoMessage() {}
 
 func (x *MysqlConnection) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[30]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2182,7 +2638,7 @@ func (x *MysqlConnection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MysqlConnection.ProtoReflect.Descriptor instead.
 func (*MysqlConnection) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{30}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *MysqlConnection) GetUser() string {
@@ -2249,7 +2705,7 @@ type MysqlConnectionConfig struct {
 
 func (x *MysqlConnectionConfig) Reset() {
 	*x = MysqlConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[31]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2261,7 +2717,7 @@ func (x *MysqlConnectionConfig) String() string {
 func (*MysqlConnectionConfig) ProtoMessage() {}
 
 func (x *MysqlConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[31]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2274,7 +2730,7 @@ func (x *MysqlConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MysqlConnectionConfig.ProtoReflect.Descriptor instead.
 func (*MysqlConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{31}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *MysqlConnectionConfig) GetConnectionConfig() isMysqlConnectionConfig_ConnectionConfig {
@@ -2377,7 +2833,7 @@ type AwsS3ConnectionConfig struct {
 
 func (x *AwsS3ConnectionConfig) Reset() {
 	*x = AwsS3ConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[32]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2389,7 +2845,7 @@ func (x *AwsS3ConnectionConfig) String() string {
 func (*AwsS3ConnectionConfig) ProtoMessage() {}
 
 func (x *AwsS3ConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[32]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2402,7 +2858,7 @@ func (x *AwsS3ConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsS3ConnectionConfig.ProtoReflect.Descriptor instead.
 func (*AwsS3ConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{32}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AwsS3ConnectionConfig) GetPathPrefix() string {
@@ -2464,7 +2920,7 @@ type AwsS3Credentials struct {
 
 func (x *AwsS3Credentials) Reset() {
 	*x = AwsS3Credentials{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[33]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2476,7 +2932,7 @@ func (x *AwsS3Credentials) String() string {
 func (*AwsS3Credentials) ProtoMessage() {}
 
 func (x *AwsS3Credentials) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[33]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2489,7 +2945,7 @@ func (x *AwsS3Credentials) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsS3Credentials.ProtoReflect.Descriptor instead.
 func (*AwsS3Credentials) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{33}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AwsS3Credentials) GetProfile() string {
@@ -2556,7 +3012,7 @@ type GcpCloudStorageConnectionConfig struct {
 
 func (x *GcpCloudStorageConnectionConfig) Reset() {
 	*x = GcpCloudStorageConnectionConfig{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[34]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2568,7 +3024,7 @@ func (x *GcpCloudStorageConnectionConfig) String() string {
 func (*GcpCloudStorageConnectionConfig) ProtoMessage() {}
 
 func (x *GcpCloudStorageConnectionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[34]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2581,7 +3037,7 @@ func (x *GcpCloudStorageConnectionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudStorageConnectionConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudStorageConnectionConfig) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{34}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GcpCloudStorageConnectionConfig) GetBucket() string {
@@ -2617,7 +3073,7 @@ type IsConnectionNameAvailableRequest struct {
 
 func (x *IsConnectionNameAvailableRequest) Reset() {
 	*x = IsConnectionNameAvailableRequest{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[35]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2629,7 +3085,7 @@ func (x *IsConnectionNameAvailableRequest) String() string {
 func (*IsConnectionNameAvailableRequest) ProtoMessage() {}
 
 func (x *IsConnectionNameAvailableRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[35]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2642,7 +3098,7 @@ func (x *IsConnectionNameAvailableRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsConnectionNameAvailableRequest.ProtoReflect.Descriptor instead.
 func (*IsConnectionNameAvailableRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{35}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *IsConnectionNameAvailableRequest) GetAccountId() string {
@@ -2669,7 +3125,7 @@ type IsConnectionNameAvailableResponse struct {
 
 func (x *IsConnectionNameAvailableResponse) Reset() {
 	*x = IsConnectionNameAvailableResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[36]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2681,7 +3137,7 @@ func (x *IsConnectionNameAvailableResponse) String() string {
 func (*IsConnectionNameAvailableResponse) ProtoMessage() {}
 
 func (x *IsConnectionNameAvailableResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[36]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2694,7 +3150,7 @@ func (x *IsConnectionNameAvailableResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use IsConnectionNameAvailableResponse.ProtoReflect.Descriptor instead.
 func (*IsConnectionNameAvailableResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{36}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *IsConnectionNameAvailableResponse) GetIsAvailable() bool {
@@ -2716,7 +3172,7 @@ type CheckSqlQueryRequest struct {
 
 func (x *CheckSqlQueryRequest) Reset() {
 	*x = CheckSqlQueryRequest{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[37]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2728,7 +3184,7 @@ func (x *CheckSqlQueryRequest) String() string {
 func (*CheckSqlQueryRequest) ProtoMessage() {}
 
 func (x *CheckSqlQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[37]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2741,7 +3197,7 @@ func (x *CheckSqlQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSqlQueryRequest.ProtoReflect.Descriptor instead.
 func (*CheckSqlQueryRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{37}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *CheckSqlQueryRequest) GetId() string {
@@ -2770,7 +3226,7 @@ type CheckSqlQueryResponse struct {
 
 func (x *CheckSqlQueryResponse) Reset() {
 	*x = CheckSqlQueryResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[38]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2782,7 +3238,7 @@ func (x *CheckSqlQueryResponse) String() string {
 func (*CheckSqlQueryResponse) ProtoMessage() {}
 
 func (x *CheckSqlQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[38]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2795,7 +3251,7 @@ func (x *CheckSqlQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSqlQueryResponse.ProtoReflect.Descriptor instead.
 func (*CheckSqlQueryResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{38}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *CheckSqlQueryResponse) GetIsValid() bool {
@@ -2822,7 +3278,7 @@ type CheckSSHConnectionRequest struct {
 
 func (x *CheckSSHConnectionRequest) Reset() {
 	*x = CheckSSHConnectionRequest{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[39]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2834,7 +3290,7 @@ func (x *CheckSSHConnectionRequest) String() string {
 func (*CheckSSHConnectionRequest) ProtoMessage() {}
 
 func (x *CheckSSHConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[39]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2847,7 +3303,7 @@ func (x *CheckSSHConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSSHConnectionRequest.ProtoReflect.Descriptor instead.
 func (*CheckSSHConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{39}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *CheckSSHConnectionRequest) GetTunnel() *SSHTunnel {
@@ -2867,7 +3323,7 @@ type CheckSSHConnectionResponse struct {
 
 func (x *CheckSSHConnectionResponse) Reset() {
 	*x = CheckSSHConnectionResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[40]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2879,7 +3335,7 @@ func (x *CheckSSHConnectionResponse) String() string {
 func (*CheckSSHConnectionResponse) ProtoMessage() {}
 
 func (x *CheckSSHConnectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[40]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2892,7 +3348,7 @@ func (x *CheckSSHConnectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSSHConnectionResponse.ProtoReflect.Descriptor instead.
 func (*CheckSSHConnectionResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{40}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *CheckSSHConnectionResponse) GetResult() *CheckSSHConnectionResult {
@@ -2912,7 +3368,7 @@ type CheckSSHConnectionByIdRequest struct {
 
 func (x *CheckSSHConnectionByIdRequest) Reset() {
 	*x = CheckSSHConnectionByIdRequest{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[41]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2924,7 +3380,7 @@ func (x *CheckSSHConnectionByIdRequest) String() string {
 func (*CheckSSHConnectionByIdRequest) ProtoMessage() {}
 
 func (x *CheckSSHConnectionByIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[41]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2937,7 +3393,7 @@ func (x *CheckSSHConnectionByIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSSHConnectionByIdRequest.ProtoReflect.Descriptor instead.
 func (*CheckSSHConnectionByIdRequest) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{41}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *CheckSSHConnectionByIdRequest) GetId() string {
@@ -2957,7 +3413,7 @@ type CheckSSHConnectionByIdResponse struct {
 
 func (x *CheckSSHConnectionByIdResponse) Reset() {
 	*x = CheckSSHConnectionByIdResponse{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[42]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2969,7 +3425,7 @@ func (x *CheckSSHConnectionByIdResponse) String() string {
 func (*CheckSSHConnectionByIdResponse) ProtoMessage() {}
 
 func (x *CheckSSHConnectionByIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[42]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2982,7 +3438,7 @@ func (x *CheckSSHConnectionByIdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSSHConnectionByIdResponse.ProtoReflect.Descriptor instead.
 func (*CheckSSHConnectionByIdResponse) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{42}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *CheckSSHConnectionByIdResponse) GetResult() *CheckSSHConnectionResult {
@@ -3004,7 +3460,7 @@ type CheckSSHConnectionResult struct {
 
 func (x *CheckSSHConnectionResult) Reset() {
 	*x = CheckSSHConnectionResult{}
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[43]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3016,7 +3472,7 @@ func (x *CheckSSHConnectionResult) String() string {
 func (*CheckSSHConnectionResult) ProtoMessage() {}
 
 func (x *CheckSSHConnectionResult) ProtoReflect() protoreflect.Message {
-	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[43]
+	mi := &file_mgmt_v1alpha1_connection_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3029,7 +3485,7 @@ func (x *CheckSSHConnectionResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckSSHConnectionResult.ProtoReflect.Descriptor instead.
 func (*CheckSSHConnectionResult) Descriptor() ([]byte, []int) {
-	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{43}
+	return file_mgmt_v1alpha1_connection_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *CheckSSHConnectionResult) GetIsSuccessful() bool {
@@ -3050,7 +3506,7 @@ var File_mgmt_v1alpha1_connection_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\n" +
-	"\x1emgmt/v1alpha1/connection.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"m\n" +
+	"\x1emgmt/v1alpha1/connection.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17mgmt/v1alpha1/job.proto\x1a\x1emgmt/v1alpha1/permission.proto\"m\n" +
 	"\x15GetConnectionsRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12+\n" +
@@ -3083,24 +3539,63 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"connection\"3\n" +
 	"\x17DeleteConnectionRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\"\x1a\n" +
-	"\x18DeleteConnectionResponse\"l\n" +
+	"\x18DeleteConnectionResponse\"\xb6\x01\n" +
 	"\x1cCheckConnectionConfigRequest\x12L\n" +
-	"\x11connection_config\x18\x01 \x01(\v2\x1f.mgmt.v1alpha1.ConnectionConfigR\x10connectionConfig\"<\n" +
+	"\x11connection_config\x18\x01 \x01(\v2\x1f.mgmt.v1alpha1.ConnectionConfigR\x10connectionConfig\x12>\n" +
+	"\x05scope\x18\x02 \x01(\v2#.mgmt.v1alpha1.ConnectionCheckScopeH\x00R\x05scope\x88\x01\x01B\b\n" +
+	"\x06_scope\"\x86\x01\n" +
 	" CheckConnectionConfigByIdRequest\x12\x18\n" +
-	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\"\xd3\x01\n" +
+	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12>\n" +
+	"\x05scope\x18\x02 \x01(\v2#.mgmt.v1alpha1.ConnectionCheckScopeH\x00R\x05scope\x88\x01\x01B\b\n" +
+	"\x06_scope\"\xbb\x02\n" +
+	"\x14ConnectionCheckScope\x12=\n" +
+	"\x04role\x18\x01 \x01(\x0e2\x1d.mgmt.v1alpha1.ConnectionRoleB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04role\x12:\n" +
+	"\x06engine\x18\x02 \x01(\x0e2\x18.mgmt.v1alpha1.JobEngineB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06engine\x12F\n" +
+	"\x06tables\x18\x03 \x03(\v2#.mgmt.v1alpha1.ConnectionCheckTableB\t\xbaH\x06\x92\x01\x03\x10\xe8\aR\x06tables\x12*\n" +
+	"\x11init_table_schema\x18\x04 \x01(\bR\x0finitTableSchema\x124\n" +
+	"\x16truncate_before_insert\x18\x05 \x01(\bR\x14truncateBeforeInsert\"p\n" +
+	"\x14ConnectionCheckTable\x12\x1f\n" +
+	"\x06schema\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06schema\x12\x1d\n" +
+	"\x05table\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05table\x12\x18\n" +
+	"\acolumns\x18\x03 \x03(\tR\acolumns\"\x96\x04\n" +
+	"\x0fConnectionCheck\x127\n" +
+	"\x04kind\x18\x01 \x01(\x0e2#.mgmt.v1alpha1.ConnectionCheck.KindR\x04kind\x12:\n" +
+	"\x05level\x18\x02 \x01(\x0e2$.mgmt.v1alpha1.ConnectionCheck.LevelR\x05level\x12\x14\n" +
+	"\x05table\x18\x03 \x01(\tR\x05table\x12\x18\n" +
+	"\amissing\x18\x04 \x03(\tR\amissing\x12\x18\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\x12\x1b\n" +
+	"\x06remedy\x18\x06 \x01(\tH\x00R\x06remedy\x88\x01\x01\"\xd4\x01\n" +
+	"\x04Kind\x12\x14\n" +
+	"\x10KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11KIND_TABLE_EXISTS\x10\x01\x12\x11\n" +
+	"\rKIND_READABLE\x10\x02\x12\x18\n" +
+	"\x14KIND_SERVER_WRITABLE\x10\x03\x12\x11\n" +
+	"\rKIND_WRITABLE\x10\x04\x12\x11\n" +
+	"\rKIND_TRUNCATE\x10\x05\x12\x11\n" +
+	"\rKIND_TRIGGERS\x10\x06\x12\x18\n" +
+	"\x14KIND_TRIGGER_DEFINER\x10\a\x12\x1f\n" +
+	"\x1bKIND_FOREIGN_KEY_SUSPENSION\x10\b\"E\n" +
+	"\x05Level\x12\x15\n" +
+	"\x11LEVEL_UNSPECIFIED\x10\x00\x12\x12\n" +
+	"\x0eLEVEL_BLOCKING\x10\x01\x12\x11\n" +
+	"\rLEVEL_WARNING\x10\x02B\t\n" +
+	"\a_remedy\"\x8b\x02\n" +
 	"!CheckConnectionConfigByIdResponse\x12!\n" +
 	"\fis_connected\x18\x01 \x01(\bR\visConnected\x12.\n" +
 	"\x10connection_error\x18\x02 \x01(\tH\x00R\x0fconnectionError\x88\x01\x01\x12F\n" +
 	"\n" +
 	"privileges\x18\x03 \x03(\v2&.mgmt.v1alpha1.ConnectionRolePrivilegeR\n" +
-	"privilegesB\x13\n" +
-	"\x11_connection_error\"\xcf\x01\n" +
+	"privileges\x126\n" +
+	"\x06checks\x18\x04 \x03(\v2\x1e.mgmt.v1alpha1.ConnectionCheckR\x06checksB\x13\n" +
+	"\x11_connection_error\"\x87\x02\n" +
 	"\x1dCheckConnectionConfigResponse\x12!\n" +
 	"\fis_connected\x18\x01 \x01(\bR\visConnected\x12.\n" +
 	"\x10connection_error\x18\x02 \x01(\tH\x00R\x0fconnectionError\x88\x01\x01\x12F\n" +
 	"\n" +
 	"privileges\x18\x03 \x03(\v2&.mgmt.v1alpha1.ConnectionRolePrivilegeR\n" +
-	"privilegesB\x13\n" +
+	"privileges\x126\n" +
+	"\x06checks\x18\x04 \x03(\v2\x1e.mgmt.v1alpha1.ConnectionCheckR\x06checksB\x13\n" +
 	"\x11_connection_error\"\x88\x01\n" +
 	"\x17ConnectionRolePrivilege\x12\x18\n" +
 	"\agrantee\x18\x01 \x01(\tR\agrantee\x12\x16\n" +
@@ -3299,7 +3794,11 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\x18CheckSSHConnectionResult\x12#\n" +
 	"\ris_successful\x18\x01 \x01(\bR\fisSuccessful\x12(\n" +
 	"\rerror_message\x18\x02 \x01(\tH\x00R\ferrorMessage\x88\x01\x01B\x10\n" +
-	"\x0e_error_message2\x9d\n" +
+	"\x0e_error_message*n\n" +
+	"\x0eConnectionRole\x12\x1f\n" +
+	"\x1bCONNECTION_ROLE_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16CONNECTION_ROLE_SOURCE\x10\x01\x12\x1f\n" +
+	"\x1bCONNECTION_ROLE_DESTINATION\x10\x022\x9d\n" +
 	"\n" +
 	"\x11ConnectionService\x12i\n" +
 	"\x0eGetConnections\x12$.mgmt.v1alpha1.GetConnectionsRequest\x1a%.mgmt.v1alpha1.GetConnectionsResponse\"\n" +
@@ -3340,124 +3839,141 @@ func file_mgmt_v1alpha1_connection_proto_rawDescGZIP() []byte {
 	return file_mgmt_v1alpha1_connection_proto_rawDescData
 }
 
-var file_mgmt_v1alpha1_connection_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
+var file_mgmt_v1alpha1_connection_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_mgmt_v1alpha1_connection_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_mgmt_v1alpha1_connection_proto_goTypes = []any{
-	(*GetConnectionsRequest)(nil),             // 0: mgmt.v1alpha1.GetConnectionsRequest
-	(*GetConnectionsResponse)(nil),            // 1: mgmt.v1alpha1.GetConnectionsResponse
-	(*GetConnectionRequest)(nil),              // 2: mgmt.v1alpha1.GetConnectionRequest
-	(*GetConnectionResponse)(nil),             // 3: mgmt.v1alpha1.GetConnectionResponse
-	(*CreateConnectionRequest)(nil),           // 4: mgmt.v1alpha1.CreateConnectionRequest
-	(*CreateConnectionResponse)(nil),          // 5: mgmt.v1alpha1.CreateConnectionResponse
-	(*UpdateConnectionRequest)(nil),           // 6: mgmt.v1alpha1.UpdateConnectionRequest
-	(*UpdateConnectionResponse)(nil),          // 7: mgmt.v1alpha1.UpdateConnectionResponse
-	(*DeleteConnectionRequest)(nil),           // 8: mgmt.v1alpha1.DeleteConnectionRequest
-	(*DeleteConnectionResponse)(nil),          // 9: mgmt.v1alpha1.DeleteConnectionResponse
-	(*CheckConnectionConfigRequest)(nil),      // 10: mgmt.v1alpha1.CheckConnectionConfigRequest
-	(*CheckConnectionConfigByIdRequest)(nil),  // 11: mgmt.v1alpha1.CheckConnectionConfigByIdRequest
-	(*CheckConnectionConfigByIdResponse)(nil), // 12: mgmt.v1alpha1.CheckConnectionConfigByIdResponse
-	(*CheckConnectionConfigResponse)(nil),     // 13: mgmt.v1alpha1.CheckConnectionConfigResponse
-	(*ConnectionRolePrivilege)(nil),           // 14: mgmt.v1alpha1.ConnectionRolePrivilege
-	(*Connection)(nil),                        // 15: mgmt.v1alpha1.Connection
-	(*ConnectionConfig)(nil),                  // 16: mgmt.v1alpha1.ConnectionConfig
-	(*MssqlConnectionConfig)(nil),             // 17: mgmt.v1alpha1.MssqlConnectionConfig
-	(*DynamoDBConnectionConfig)(nil),          // 18: mgmt.v1alpha1.DynamoDBConnectionConfig
-	(*MongoConnectionConfig)(nil),             // 19: mgmt.v1alpha1.MongoConnectionConfig
-	(*OpenAiConnectionConfig)(nil),            // 20: mgmt.v1alpha1.OpenAiConnectionConfig
-	(*LocalDirectoryConnectionConfig)(nil),    // 21: mgmt.v1alpha1.LocalDirectoryConnectionConfig
-	(*PostgresConnectionConfig)(nil),          // 22: mgmt.v1alpha1.PostgresConnectionConfig
-	(*ClientTlsConfig)(nil),                   // 23: mgmt.v1alpha1.ClientTlsConfig
-	(*SqlConnectionOptions)(nil),              // 24: mgmt.v1alpha1.SqlConnectionOptions
-	(*SSHTunnel)(nil),                         // 25: mgmt.v1alpha1.SSHTunnel
-	(*SSHAuthentication)(nil),                 // 26: mgmt.v1alpha1.SSHAuthentication
-	(*SSHPassphrase)(nil),                     // 27: mgmt.v1alpha1.SSHPassphrase
-	(*SSHPrivateKey)(nil),                     // 28: mgmt.v1alpha1.SSHPrivateKey
-	(*PostgresConnection)(nil),                // 29: mgmt.v1alpha1.PostgresConnection
-	(*MysqlConnection)(nil),                   // 30: mgmt.v1alpha1.MysqlConnection
-	(*MysqlConnectionConfig)(nil),             // 31: mgmt.v1alpha1.MysqlConnectionConfig
-	(*AwsS3ConnectionConfig)(nil),             // 32: mgmt.v1alpha1.AwsS3ConnectionConfig
-	(*AwsS3Credentials)(nil),                  // 33: mgmt.v1alpha1.AwsS3Credentials
-	(*GcpCloudStorageConnectionConfig)(nil),   // 34: mgmt.v1alpha1.GcpCloudStorageConnectionConfig
-	(*IsConnectionNameAvailableRequest)(nil),  // 35: mgmt.v1alpha1.IsConnectionNameAvailableRequest
-	(*IsConnectionNameAvailableResponse)(nil), // 36: mgmt.v1alpha1.IsConnectionNameAvailableResponse
-	(*CheckSqlQueryRequest)(nil),              // 37: mgmt.v1alpha1.CheckSqlQueryRequest
-	(*CheckSqlQueryResponse)(nil),             // 38: mgmt.v1alpha1.CheckSqlQueryResponse
-	(*CheckSSHConnectionRequest)(nil),         // 39: mgmt.v1alpha1.CheckSSHConnectionRequest
-	(*CheckSSHConnectionResponse)(nil),        // 40: mgmt.v1alpha1.CheckSSHConnectionResponse
-	(*CheckSSHConnectionByIdRequest)(nil),     // 41: mgmt.v1alpha1.CheckSSHConnectionByIdRequest
-	(*CheckSSHConnectionByIdResponse)(nil),    // 42: mgmt.v1alpha1.CheckSSHConnectionByIdResponse
-	(*CheckSSHConnectionResult)(nil),          // 43: mgmt.v1alpha1.CheckSSHConnectionResult
-	(*timestamppb.Timestamp)(nil),             // 44: google.protobuf.Timestamp
+	(ConnectionRole)(0),                       // 0: mgmt.v1alpha1.ConnectionRole
+	(ConnectionCheck_Kind)(0),                 // 1: mgmt.v1alpha1.ConnectionCheck.Kind
+	(ConnectionCheck_Level)(0),                // 2: mgmt.v1alpha1.ConnectionCheck.Level
+	(*GetConnectionsRequest)(nil),             // 3: mgmt.v1alpha1.GetConnectionsRequest
+	(*GetConnectionsResponse)(nil),            // 4: mgmt.v1alpha1.GetConnectionsResponse
+	(*GetConnectionRequest)(nil),              // 5: mgmt.v1alpha1.GetConnectionRequest
+	(*GetConnectionResponse)(nil),             // 6: mgmt.v1alpha1.GetConnectionResponse
+	(*CreateConnectionRequest)(nil),           // 7: mgmt.v1alpha1.CreateConnectionRequest
+	(*CreateConnectionResponse)(nil),          // 8: mgmt.v1alpha1.CreateConnectionResponse
+	(*UpdateConnectionRequest)(nil),           // 9: mgmt.v1alpha1.UpdateConnectionRequest
+	(*UpdateConnectionResponse)(nil),          // 10: mgmt.v1alpha1.UpdateConnectionResponse
+	(*DeleteConnectionRequest)(nil),           // 11: mgmt.v1alpha1.DeleteConnectionRequest
+	(*DeleteConnectionResponse)(nil),          // 12: mgmt.v1alpha1.DeleteConnectionResponse
+	(*CheckConnectionConfigRequest)(nil),      // 13: mgmt.v1alpha1.CheckConnectionConfigRequest
+	(*CheckConnectionConfigByIdRequest)(nil),  // 14: mgmt.v1alpha1.CheckConnectionConfigByIdRequest
+	(*ConnectionCheckScope)(nil),              // 15: mgmt.v1alpha1.ConnectionCheckScope
+	(*ConnectionCheckTable)(nil),              // 16: mgmt.v1alpha1.ConnectionCheckTable
+	(*ConnectionCheck)(nil),                   // 17: mgmt.v1alpha1.ConnectionCheck
+	(*CheckConnectionConfigByIdResponse)(nil), // 18: mgmt.v1alpha1.CheckConnectionConfigByIdResponse
+	(*CheckConnectionConfigResponse)(nil),     // 19: mgmt.v1alpha1.CheckConnectionConfigResponse
+	(*ConnectionRolePrivilege)(nil),           // 20: mgmt.v1alpha1.ConnectionRolePrivilege
+	(*Connection)(nil),                        // 21: mgmt.v1alpha1.Connection
+	(*ConnectionConfig)(nil),                  // 22: mgmt.v1alpha1.ConnectionConfig
+	(*MssqlConnectionConfig)(nil),             // 23: mgmt.v1alpha1.MssqlConnectionConfig
+	(*DynamoDBConnectionConfig)(nil),          // 24: mgmt.v1alpha1.DynamoDBConnectionConfig
+	(*MongoConnectionConfig)(nil),             // 25: mgmt.v1alpha1.MongoConnectionConfig
+	(*OpenAiConnectionConfig)(nil),            // 26: mgmt.v1alpha1.OpenAiConnectionConfig
+	(*LocalDirectoryConnectionConfig)(nil),    // 27: mgmt.v1alpha1.LocalDirectoryConnectionConfig
+	(*PostgresConnectionConfig)(nil),          // 28: mgmt.v1alpha1.PostgresConnectionConfig
+	(*ClientTlsConfig)(nil),                   // 29: mgmt.v1alpha1.ClientTlsConfig
+	(*SqlConnectionOptions)(nil),              // 30: mgmt.v1alpha1.SqlConnectionOptions
+	(*SSHTunnel)(nil),                         // 31: mgmt.v1alpha1.SSHTunnel
+	(*SSHAuthentication)(nil),                 // 32: mgmt.v1alpha1.SSHAuthentication
+	(*SSHPassphrase)(nil),                     // 33: mgmt.v1alpha1.SSHPassphrase
+	(*SSHPrivateKey)(nil),                     // 34: mgmt.v1alpha1.SSHPrivateKey
+	(*PostgresConnection)(nil),                // 35: mgmt.v1alpha1.PostgresConnection
+	(*MysqlConnection)(nil),                   // 36: mgmt.v1alpha1.MysqlConnection
+	(*MysqlConnectionConfig)(nil),             // 37: mgmt.v1alpha1.MysqlConnectionConfig
+	(*AwsS3ConnectionConfig)(nil),             // 38: mgmt.v1alpha1.AwsS3ConnectionConfig
+	(*AwsS3Credentials)(nil),                  // 39: mgmt.v1alpha1.AwsS3Credentials
+	(*GcpCloudStorageConnectionConfig)(nil),   // 40: mgmt.v1alpha1.GcpCloudStorageConnectionConfig
+	(*IsConnectionNameAvailableRequest)(nil),  // 41: mgmt.v1alpha1.IsConnectionNameAvailableRequest
+	(*IsConnectionNameAvailableResponse)(nil), // 42: mgmt.v1alpha1.IsConnectionNameAvailableResponse
+	(*CheckSqlQueryRequest)(nil),              // 43: mgmt.v1alpha1.CheckSqlQueryRequest
+	(*CheckSqlQueryResponse)(nil),             // 44: mgmt.v1alpha1.CheckSqlQueryResponse
+	(*CheckSSHConnectionRequest)(nil),         // 45: mgmt.v1alpha1.CheckSSHConnectionRequest
+	(*CheckSSHConnectionResponse)(nil),        // 46: mgmt.v1alpha1.CheckSSHConnectionResponse
+	(*CheckSSHConnectionByIdRequest)(nil),     // 47: mgmt.v1alpha1.CheckSSHConnectionByIdRequest
+	(*CheckSSHConnectionByIdResponse)(nil),    // 48: mgmt.v1alpha1.CheckSSHConnectionByIdResponse
+	(*CheckSSHConnectionResult)(nil),          // 49: mgmt.v1alpha1.CheckSSHConnectionResult
+	(JobEngine)(0),                            // 50: mgmt.v1alpha1.JobEngine
+	(*timestamppb.Timestamp)(nil),             // 51: google.protobuf.Timestamp
 }
 var file_mgmt_v1alpha1_connection_proto_depIdxs = []int32{
-	15, // 0: mgmt.v1alpha1.GetConnectionsResponse.connections:type_name -> mgmt.v1alpha1.Connection
-	15, // 1: mgmt.v1alpha1.GetConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
-	16, // 2: mgmt.v1alpha1.CreateConnectionRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
-	15, // 3: mgmt.v1alpha1.CreateConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
-	16, // 4: mgmt.v1alpha1.UpdateConnectionRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
-	15, // 5: mgmt.v1alpha1.UpdateConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
-	16, // 6: mgmt.v1alpha1.CheckConnectionConfigRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
-	14, // 7: mgmt.v1alpha1.CheckConnectionConfigByIdResponse.privileges:type_name -> mgmt.v1alpha1.ConnectionRolePrivilege
-	14, // 8: mgmt.v1alpha1.CheckConnectionConfigResponse.privileges:type_name -> mgmt.v1alpha1.ConnectionRolePrivilege
-	16, // 9: mgmt.v1alpha1.Connection.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
-	44, // 10: mgmt.v1alpha1.Connection.created_at:type_name -> google.protobuf.Timestamp
-	44, // 11: mgmt.v1alpha1.Connection.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 12: mgmt.v1alpha1.ConnectionConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresConnectionConfig
-	32, // 13: mgmt.v1alpha1.ConnectionConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3ConnectionConfig
-	31, // 14: mgmt.v1alpha1.ConnectionConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlConnectionConfig
-	21, // 15: mgmt.v1alpha1.ConnectionConfig.local_dir_config:type_name -> mgmt.v1alpha1.LocalDirectoryConnectionConfig
-	20, // 16: mgmt.v1alpha1.ConnectionConfig.openai_config:type_name -> mgmt.v1alpha1.OpenAiConnectionConfig
-	19, // 17: mgmt.v1alpha1.ConnectionConfig.mongo_config:type_name -> mgmt.v1alpha1.MongoConnectionConfig
-	34, // 18: mgmt.v1alpha1.ConnectionConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageConnectionConfig
-	18, // 19: mgmt.v1alpha1.ConnectionConfig.dynamodb_config:type_name -> mgmt.v1alpha1.DynamoDBConnectionConfig
-	17, // 20: mgmt.v1alpha1.ConnectionConfig.mssql_config:type_name -> mgmt.v1alpha1.MssqlConnectionConfig
-	24, // 21: mgmt.v1alpha1.MssqlConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
-	25, // 22: mgmt.v1alpha1.MssqlConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
-	23, // 23: mgmt.v1alpha1.MssqlConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
-	33, // 24: mgmt.v1alpha1.DynamoDBConnectionConfig.credentials:type_name -> mgmt.v1alpha1.AwsS3Credentials
-	25, // 25: mgmt.v1alpha1.MongoConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
-	23, // 26: mgmt.v1alpha1.MongoConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
-	29, // 27: mgmt.v1alpha1.PostgresConnectionConfig.connection:type_name -> mgmt.v1alpha1.PostgresConnection
-	25, // 28: mgmt.v1alpha1.PostgresConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
-	24, // 29: mgmt.v1alpha1.PostgresConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
-	23, // 30: mgmt.v1alpha1.PostgresConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
-	26, // 31: mgmt.v1alpha1.SSHTunnel.authentication:type_name -> mgmt.v1alpha1.SSHAuthentication
-	27, // 32: mgmt.v1alpha1.SSHAuthentication.passphrase:type_name -> mgmt.v1alpha1.SSHPassphrase
-	28, // 33: mgmt.v1alpha1.SSHAuthentication.private_key:type_name -> mgmt.v1alpha1.SSHPrivateKey
-	30, // 34: mgmt.v1alpha1.MysqlConnectionConfig.connection:type_name -> mgmt.v1alpha1.MysqlConnection
-	25, // 35: mgmt.v1alpha1.MysqlConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
-	24, // 36: mgmt.v1alpha1.MysqlConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
-	23, // 37: mgmt.v1alpha1.MysqlConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
-	33, // 38: mgmt.v1alpha1.AwsS3ConnectionConfig.credentials:type_name -> mgmt.v1alpha1.AwsS3Credentials
-	25, // 39: mgmt.v1alpha1.CheckSSHConnectionRequest.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
-	43, // 40: mgmt.v1alpha1.CheckSSHConnectionResponse.result:type_name -> mgmt.v1alpha1.CheckSSHConnectionResult
-	43, // 41: mgmt.v1alpha1.CheckSSHConnectionByIdResponse.result:type_name -> mgmt.v1alpha1.CheckSSHConnectionResult
-	0,  // 42: mgmt.v1alpha1.ConnectionService.GetConnections:input_type -> mgmt.v1alpha1.GetConnectionsRequest
-	2,  // 43: mgmt.v1alpha1.ConnectionService.GetConnection:input_type -> mgmt.v1alpha1.GetConnectionRequest
-	4,  // 44: mgmt.v1alpha1.ConnectionService.CreateConnection:input_type -> mgmt.v1alpha1.CreateConnectionRequest
-	6,  // 45: mgmt.v1alpha1.ConnectionService.UpdateConnection:input_type -> mgmt.v1alpha1.UpdateConnectionRequest
-	8,  // 46: mgmt.v1alpha1.ConnectionService.DeleteConnection:input_type -> mgmt.v1alpha1.DeleteConnectionRequest
-	35, // 47: mgmt.v1alpha1.ConnectionService.IsConnectionNameAvailable:input_type -> mgmt.v1alpha1.IsConnectionNameAvailableRequest
-	10, // 48: mgmt.v1alpha1.ConnectionService.CheckConnectionConfig:input_type -> mgmt.v1alpha1.CheckConnectionConfigRequest
-	11, // 49: mgmt.v1alpha1.ConnectionService.CheckConnectionConfigById:input_type -> mgmt.v1alpha1.CheckConnectionConfigByIdRequest
-	37, // 50: mgmt.v1alpha1.ConnectionService.CheckSqlQuery:input_type -> mgmt.v1alpha1.CheckSqlQueryRequest
-	39, // 51: mgmt.v1alpha1.ConnectionService.CheckSSHConnection:input_type -> mgmt.v1alpha1.CheckSSHConnectionRequest
-	41, // 52: mgmt.v1alpha1.ConnectionService.CheckSSHConnectionById:input_type -> mgmt.v1alpha1.CheckSSHConnectionByIdRequest
-	1,  // 53: mgmt.v1alpha1.ConnectionService.GetConnections:output_type -> mgmt.v1alpha1.GetConnectionsResponse
-	3,  // 54: mgmt.v1alpha1.ConnectionService.GetConnection:output_type -> mgmt.v1alpha1.GetConnectionResponse
-	5,  // 55: mgmt.v1alpha1.ConnectionService.CreateConnection:output_type -> mgmt.v1alpha1.CreateConnectionResponse
-	7,  // 56: mgmt.v1alpha1.ConnectionService.UpdateConnection:output_type -> mgmt.v1alpha1.UpdateConnectionResponse
-	9,  // 57: mgmt.v1alpha1.ConnectionService.DeleteConnection:output_type -> mgmt.v1alpha1.DeleteConnectionResponse
-	36, // 58: mgmt.v1alpha1.ConnectionService.IsConnectionNameAvailable:output_type -> mgmt.v1alpha1.IsConnectionNameAvailableResponse
-	13, // 59: mgmt.v1alpha1.ConnectionService.CheckConnectionConfig:output_type -> mgmt.v1alpha1.CheckConnectionConfigResponse
-	12, // 60: mgmt.v1alpha1.ConnectionService.CheckConnectionConfigById:output_type -> mgmt.v1alpha1.CheckConnectionConfigByIdResponse
-	38, // 61: mgmt.v1alpha1.ConnectionService.CheckSqlQuery:output_type -> mgmt.v1alpha1.CheckSqlQueryResponse
-	40, // 62: mgmt.v1alpha1.ConnectionService.CheckSSHConnection:output_type -> mgmt.v1alpha1.CheckSSHConnectionResponse
-	42, // 63: mgmt.v1alpha1.ConnectionService.CheckSSHConnectionById:output_type -> mgmt.v1alpha1.CheckSSHConnectionByIdResponse
-	53, // [53:64] is the sub-list for method output_type
-	42, // [42:53] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	21, // 0: mgmt.v1alpha1.GetConnectionsResponse.connections:type_name -> mgmt.v1alpha1.Connection
+	21, // 1: mgmt.v1alpha1.GetConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
+	22, // 2: mgmt.v1alpha1.CreateConnectionRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
+	21, // 3: mgmt.v1alpha1.CreateConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
+	22, // 4: mgmt.v1alpha1.UpdateConnectionRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
+	21, // 5: mgmt.v1alpha1.UpdateConnectionResponse.connection:type_name -> mgmt.v1alpha1.Connection
+	22, // 6: mgmt.v1alpha1.CheckConnectionConfigRequest.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
+	15, // 7: mgmt.v1alpha1.CheckConnectionConfigRequest.scope:type_name -> mgmt.v1alpha1.ConnectionCheckScope
+	15, // 8: mgmt.v1alpha1.CheckConnectionConfigByIdRequest.scope:type_name -> mgmt.v1alpha1.ConnectionCheckScope
+	0,  // 9: mgmt.v1alpha1.ConnectionCheckScope.role:type_name -> mgmt.v1alpha1.ConnectionRole
+	50, // 10: mgmt.v1alpha1.ConnectionCheckScope.engine:type_name -> mgmt.v1alpha1.JobEngine
+	16, // 11: mgmt.v1alpha1.ConnectionCheckScope.tables:type_name -> mgmt.v1alpha1.ConnectionCheckTable
+	1,  // 12: mgmt.v1alpha1.ConnectionCheck.kind:type_name -> mgmt.v1alpha1.ConnectionCheck.Kind
+	2,  // 13: mgmt.v1alpha1.ConnectionCheck.level:type_name -> mgmt.v1alpha1.ConnectionCheck.Level
+	20, // 14: mgmt.v1alpha1.CheckConnectionConfigByIdResponse.privileges:type_name -> mgmt.v1alpha1.ConnectionRolePrivilege
+	17, // 15: mgmt.v1alpha1.CheckConnectionConfigByIdResponse.checks:type_name -> mgmt.v1alpha1.ConnectionCheck
+	20, // 16: mgmt.v1alpha1.CheckConnectionConfigResponse.privileges:type_name -> mgmt.v1alpha1.ConnectionRolePrivilege
+	17, // 17: mgmt.v1alpha1.CheckConnectionConfigResponse.checks:type_name -> mgmt.v1alpha1.ConnectionCheck
+	22, // 18: mgmt.v1alpha1.Connection.connection_config:type_name -> mgmt.v1alpha1.ConnectionConfig
+	51, // 19: mgmt.v1alpha1.Connection.created_at:type_name -> google.protobuf.Timestamp
+	51, // 20: mgmt.v1alpha1.Connection.updated_at:type_name -> google.protobuf.Timestamp
+	28, // 21: mgmt.v1alpha1.ConnectionConfig.pg_config:type_name -> mgmt.v1alpha1.PostgresConnectionConfig
+	38, // 22: mgmt.v1alpha1.ConnectionConfig.aws_s3_config:type_name -> mgmt.v1alpha1.AwsS3ConnectionConfig
+	37, // 23: mgmt.v1alpha1.ConnectionConfig.mysql_config:type_name -> mgmt.v1alpha1.MysqlConnectionConfig
+	27, // 24: mgmt.v1alpha1.ConnectionConfig.local_dir_config:type_name -> mgmt.v1alpha1.LocalDirectoryConnectionConfig
+	26, // 25: mgmt.v1alpha1.ConnectionConfig.openai_config:type_name -> mgmt.v1alpha1.OpenAiConnectionConfig
+	25, // 26: mgmt.v1alpha1.ConnectionConfig.mongo_config:type_name -> mgmt.v1alpha1.MongoConnectionConfig
+	40, // 27: mgmt.v1alpha1.ConnectionConfig.gcp_cloudstorage_config:type_name -> mgmt.v1alpha1.GcpCloudStorageConnectionConfig
+	24, // 28: mgmt.v1alpha1.ConnectionConfig.dynamodb_config:type_name -> mgmt.v1alpha1.DynamoDBConnectionConfig
+	23, // 29: mgmt.v1alpha1.ConnectionConfig.mssql_config:type_name -> mgmt.v1alpha1.MssqlConnectionConfig
+	30, // 30: mgmt.v1alpha1.MssqlConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
+	31, // 31: mgmt.v1alpha1.MssqlConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
+	29, // 32: mgmt.v1alpha1.MssqlConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
+	39, // 33: mgmt.v1alpha1.DynamoDBConnectionConfig.credentials:type_name -> mgmt.v1alpha1.AwsS3Credentials
+	31, // 34: mgmt.v1alpha1.MongoConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
+	29, // 35: mgmt.v1alpha1.MongoConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
+	35, // 36: mgmt.v1alpha1.PostgresConnectionConfig.connection:type_name -> mgmt.v1alpha1.PostgresConnection
+	31, // 37: mgmt.v1alpha1.PostgresConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
+	30, // 38: mgmt.v1alpha1.PostgresConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
+	29, // 39: mgmt.v1alpha1.PostgresConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
+	32, // 40: mgmt.v1alpha1.SSHTunnel.authentication:type_name -> mgmt.v1alpha1.SSHAuthentication
+	33, // 41: mgmt.v1alpha1.SSHAuthentication.passphrase:type_name -> mgmt.v1alpha1.SSHPassphrase
+	34, // 42: mgmt.v1alpha1.SSHAuthentication.private_key:type_name -> mgmt.v1alpha1.SSHPrivateKey
+	36, // 43: mgmt.v1alpha1.MysqlConnectionConfig.connection:type_name -> mgmt.v1alpha1.MysqlConnection
+	31, // 44: mgmt.v1alpha1.MysqlConnectionConfig.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
+	30, // 45: mgmt.v1alpha1.MysqlConnectionConfig.connection_options:type_name -> mgmt.v1alpha1.SqlConnectionOptions
+	29, // 46: mgmt.v1alpha1.MysqlConnectionConfig.client_tls:type_name -> mgmt.v1alpha1.ClientTlsConfig
+	39, // 47: mgmt.v1alpha1.AwsS3ConnectionConfig.credentials:type_name -> mgmt.v1alpha1.AwsS3Credentials
+	31, // 48: mgmt.v1alpha1.CheckSSHConnectionRequest.tunnel:type_name -> mgmt.v1alpha1.SSHTunnel
+	49, // 49: mgmt.v1alpha1.CheckSSHConnectionResponse.result:type_name -> mgmt.v1alpha1.CheckSSHConnectionResult
+	49, // 50: mgmt.v1alpha1.CheckSSHConnectionByIdResponse.result:type_name -> mgmt.v1alpha1.CheckSSHConnectionResult
+	3,  // 51: mgmt.v1alpha1.ConnectionService.GetConnections:input_type -> mgmt.v1alpha1.GetConnectionsRequest
+	5,  // 52: mgmt.v1alpha1.ConnectionService.GetConnection:input_type -> mgmt.v1alpha1.GetConnectionRequest
+	7,  // 53: mgmt.v1alpha1.ConnectionService.CreateConnection:input_type -> mgmt.v1alpha1.CreateConnectionRequest
+	9,  // 54: mgmt.v1alpha1.ConnectionService.UpdateConnection:input_type -> mgmt.v1alpha1.UpdateConnectionRequest
+	11, // 55: mgmt.v1alpha1.ConnectionService.DeleteConnection:input_type -> mgmt.v1alpha1.DeleteConnectionRequest
+	41, // 56: mgmt.v1alpha1.ConnectionService.IsConnectionNameAvailable:input_type -> mgmt.v1alpha1.IsConnectionNameAvailableRequest
+	13, // 57: mgmt.v1alpha1.ConnectionService.CheckConnectionConfig:input_type -> mgmt.v1alpha1.CheckConnectionConfigRequest
+	14, // 58: mgmt.v1alpha1.ConnectionService.CheckConnectionConfigById:input_type -> mgmt.v1alpha1.CheckConnectionConfigByIdRequest
+	43, // 59: mgmt.v1alpha1.ConnectionService.CheckSqlQuery:input_type -> mgmt.v1alpha1.CheckSqlQueryRequest
+	45, // 60: mgmt.v1alpha1.ConnectionService.CheckSSHConnection:input_type -> mgmt.v1alpha1.CheckSSHConnectionRequest
+	47, // 61: mgmt.v1alpha1.ConnectionService.CheckSSHConnectionById:input_type -> mgmt.v1alpha1.CheckSSHConnectionByIdRequest
+	4,  // 62: mgmt.v1alpha1.ConnectionService.GetConnections:output_type -> mgmt.v1alpha1.GetConnectionsResponse
+	6,  // 63: mgmt.v1alpha1.ConnectionService.GetConnection:output_type -> mgmt.v1alpha1.GetConnectionResponse
+	8,  // 64: mgmt.v1alpha1.ConnectionService.CreateConnection:output_type -> mgmt.v1alpha1.CreateConnectionResponse
+	10, // 65: mgmt.v1alpha1.ConnectionService.UpdateConnection:output_type -> mgmt.v1alpha1.UpdateConnectionResponse
+	12, // 66: mgmt.v1alpha1.ConnectionService.DeleteConnection:output_type -> mgmt.v1alpha1.DeleteConnectionResponse
+	42, // 67: mgmt.v1alpha1.ConnectionService.IsConnectionNameAvailable:output_type -> mgmt.v1alpha1.IsConnectionNameAvailableResponse
+	19, // 68: mgmt.v1alpha1.ConnectionService.CheckConnectionConfig:output_type -> mgmt.v1alpha1.CheckConnectionConfigResponse
+	18, // 69: mgmt.v1alpha1.ConnectionService.CheckConnectionConfigById:output_type -> mgmt.v1alpha1.CheckConnectionConfigByIdResponse
+	44, // 70: mgmt.v1alpha1.ConnectionService.CheckSqlQuery:output_type -> mgmt.v1alpha1.CheckSqlQueryResponse
+	46, // 71: mgmt.v1alpha1.ConnectionService.CheckSSHConnection:output_type -> mgmt.v1alpha1.CheckSSHConnectionResponse
+	48, // 72: mgmt.v1alpha1.ConnectionService.CheckSSHConnectionById:output_type -> mgmt.v1alpha1.CheckSSHConnectionByIdResponse
+	62, // [62:73] is the sub-list for method output_type
+	51, // [51:62] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_connection_proto_init() }
@@ -3465,10 +3981,14 @@ func file_mgmt_v1alpha1_connection_proto_init() {
 	if File_mgmt_v1alpha1_connection_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_job_proto_init()
 	file_mgmt_v1alpha1_permission_proto_init()
-	file_mgmt_v1alpha1_connection_proto_msgTypes[12].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[13].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[16].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[10].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[11].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[14].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[15].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[16].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[19].OneofWrappers = []any{
 		(*ConnectionConfig_PgConfig)(nil),
 		(*ConnectionConfig_AwsS3Config)(nil),
 		(*ConnectionConfig_MysqlConfig)(nil),
@@ -3479,50 +3999,51 @@ func file_mgmt_v1alpha1_connection_proto_init() {
 		(*ConnectionConfig_DynamodbConfig)(nil),
 		(*ConnectionConfig_MssqlConfig)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[17].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[20].OneofWrappers = []any{
 		(*MssqlConnectionConfig_Url)(nil),
 		(*MssqlConnectionConfig_UrlFromEnv)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[18].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[19].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[21].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[22].OneofWrappers = []any{
 		(*MongoConnectionConfig_Url)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[22].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[25].OneofWrappers = []any{
 		(*PostgresConnectionConfig_Url)(nil),
 		(*PostgresConnectionConfig_Connection)(nil),
 		(*PostgresConnectionConfig_UrlFromEnv)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[23].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[24].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[25].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[26].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[26].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[27].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[28].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[29].OneofWrappers = []any{
 		(*SSHAuthentication_Passphrase)(nil),
 		(*SSHAuthentication_PrivateKey)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[28].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[29].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[31].OneofWrappers = []any{
+	file_mgmt_v1alpha1_connection_proto_msgTypes[31].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[32].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[34].OneofWrappers = []any{
 		(*MysqlConnectionConfig_Url)(nil),
 		(*MysqlConnectionConfig_Connection)(nil),
 		(*MysqlConnectionConfig_UrlFromEnv)(nil),
 	}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[32].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[33].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[34].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[38].OneofWrappers = []any{}
-	file_mgmt_v1alpha1_connection_proto_msgTypes[43].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[35].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[36].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[37].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[41].OneofWrappers = []any{}
+	file_mgmt_v1alpha1_connection_proto_msgTypes[46].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mgmt_v1alpha1_connection_proto_rawDesc), len(file_mgmt_v1alpha1_connection_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   44,
+			NumEnums:      3,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_mgmt_v1alpha1_connection_proto_goTypes,
 		DependencyIndexes: file_mgmt_v1alpha1_connection_proto_depIdxs,
+		EnumInfos:         file_mgmt_v1alpha1_connection_proto_enumTypes,
 		MessageInfos:      file_mgmt_v1alpha1_connection_proto_msgTypes,
 	}.Build()
 	File_mgmt_v1alpha1_connection_proto = out.File

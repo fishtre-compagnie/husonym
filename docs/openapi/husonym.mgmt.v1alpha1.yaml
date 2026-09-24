@@ -8979,6 +8979,15 @@ components:
           title: id
           format: uuid
           description: The connection id to validate
+        scope:
+          oneOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheckScope'
+            - type: 'null'
+          title: scope
+          description: >-
+            Optionally, the role the connection is tested in: the response then
+            says, in checks,
+             what the connection cannot do that the role needs. MySQL and PostgreSQL only.
       title: CheckConnectionConfigByIdRequest
       additionalProperties: false
     mgmt.v1alpha1.CheckConnectionConfigByIdResponse:
@@ -9000,6 +9009,14 @@ components:
             $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionRolePrivilege'
           title: privileges
           description: The privileges the role has to the connection
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheck'
+          title: checks
+          description: >-
+            What the connection cannot do that the role asked about needs; empty
+            without a scope.
       title: CheckConnectionConfigByIdResponse
       additionalProperties: false
     mgmt.v1alpha1.CheckConnectionConfigRequest:
@@ -9010,6 +9027,15 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionConfig'
           title: connection_config
           description: The connection configuration to validate
+        scope:
+          oneOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheckScope'
+            - type: 'null'
+          title: scope
+          description: >-
+            Optionally, the role the connection is tested in: the response then
+            says, in checks,
+             what the connection cannot do that the role needs. MySQL and PostgreSQL only.
       title: CheckConnectionConfigRequest
       additionalProperties: false
     mgmt.v1alpha1.CheckConnectionConfigResponse:
@@ -9030,6 +9056,14 @@ components:
           items:
             $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionRolePrivilege'
           title: privileges
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheck'
+          title: checks
+          description: >-
+            What the connection cannot do that the role asked about needs; empty
+            without a scope.
       title: CheckConnectionConfigResponse
       additionalProperties: false
     mgmt.v1alpha1.CheckSSHConnectionByIdRequest:
@@ -9196,6 +9230,133 @@ components:
           description: The unique account that owns this connection
       title: Connection
       additionalProperties: false
+    mgmt.v1alpha1.ConnectionCheck:
+      type: object
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheck.Kind'
+          title: kind
+        level:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheck.Level'
+          title: level
+        table:
+          type: string
+          title: table
+          description: >-
+            The table concerned, as schema.table; empty for the server as a
+            whole.
+        missing:
+          type: array
+          items:
+            type: string
+          title: missing
+          description: 'What the account lacks: privileges, or the names of absent columns.'
+        message:
+          type: string
+          title: message
+          description: >-
+            The finding in a sentence naming the connection, as the run reports
+            it.
+        remedy:
+          type:
+            - string
+            - 'null'
+          title: remedy
+          description: >-
+            The statement that grants what is missing, for someone allowed to
+            run it.
+      title: ConnectionCheck
+      additionalProperties: false
+      description: One thing a connection cannot do that its role needs.
+    mgmt.v1alpha1.ConnectionCheck.Kind:
+      type: string
+      title: Kind
+      enum:
+        - KIND_UNSPECIFIED
+        - KIND_TABLE_EXISTS
+        - KIND_READABLE
+        - KIND_SERVER_WRITABLE
+        - KIND_WRITABLE
+        - KIND_TRUNCATE
+        - KIND_TRIGGERS
+        - KIND_TRIGGER_DEFINER
+        - KIND_FOREIGN_KEY_SUSPENSION
+      description: What was checked.
+    mgmt.v1alpha1.ConnectionCheck.Level:
+      type: string
+      title: Level
+      enum:
+        - LEVEL_UNSPECIFIED
+        - LEVEL_BLOCKING
+        - LEVEL_WARNING
+      description: What the finding does to a run.
+    mgmt.v1alpha1.ConnectionCheckScope:
+      type: object
+      properties:
+        role:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionRole'
+          not:
+            enum:
+              - CONNECTION_ROLE_UNSPECIFIED
+          title: role
+          description: The role of the connection.
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobEngine'
+          title: engine
+          description: >-
+            The engine that runs the job: what only Athanor needs is asked only
+            of Athanor.
+             Unspecified is the deployment default, which the API does not know: what only Athanor
+             needs is then reported as a warning.
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheckTable'
+          title: tables
+          maxItems: 1000
+          description: >-
+            The tables of the job, and the columns a run writes into each. A
+            table given without
+             columns is checked on the columns the account can see, generated ones left out: give the
+             job's columns to check what a run will write. Without tables, only what concerns the
+             server as a whole is checked. The schemas of the server itself are refused.
+        initTableSchema:
+          type: boolean
+          title: init_table_schema
+          description: 'For a destination: the run creates the tables and columns it lacks.'
+        truncateBeforeInsert:
+          type: boolean
+          title: truncate_before_insert
+          description: 'For a destination: the run empties each table before writing it.'
+      title: ConnectionCheckScope
+      additionalProperties: false
+      description: >-
+        The role a connection plays in a job, and what the job asks of it there:
+        what a run checks
+         at its start, asked before it.
+    mgmt.v1alpha1.ConnectionCheckTable:
+      type: object
+      properties:
+        schema:
+          type: string
+          title: schema
+          minLength: 1
+        table:
+          type: string
+          title: table
+          minLength: 1
+        columns:
+          type: array
+          items:
+            type: string
+          title: columns
+      title: ConnectionCheckTable
+      additionalProperties: false
+      description: A table of a job, and the columns a run writes into it.
     mgmt.v1alpha1.ConnectionConfig:
       type: object
       allOf:
@@ -9339,6 +9500,14 @@ components:
                     - pgConfig
       title: ConnectionConfig
       description: Configuration for all of the supported Husonym connection types
+    mgmt.v1alpha1.ConnectionRole:
+      type: string
+      title: ConnectionRole
+      enum:
+        - CONNECTION_ROLE_UNSPECIFIED
+        - CONNECTION_ROLE_SOURCE
+        - CONNECTION_ROLE_DESTINATION
+      description: The role a connection plays in a job.
     mgmt.v1alpha1.ConnectionRolePrivilege:
       type: object
       properties:
@@ -9539,6 +9708,18 @@ components:
           description: Whether or not the connection name is available
       title: IsConnectionNameAvailableResponse
       additionalProperties: false
+    mgmt.v1alpha1.JobEngine:
+      type: string
+      title: JobEngine
+      enum:
+        - JOB_ENGINE_UNSPECIFIED
+        - JOB_ENGINE_ATHANOR
+        - JOB_ENGINE_BENTHOS
+      description: >-
+        Config that contains various timeouts that are configured in the
+        underlying temporal workflow
+         More options will come in the future as needed
+         Which transformation engine runs a job.
     mgmt.v1alpha1.LocalDirectoryConnectionConfig:
       type: object
       properties:
@@ -13183,18 +13364,6 @@ components:
                 - required:
                     - postgresOptions
       title: JobDestinationOptions
-    mgmt.v1alpha1.JobEngine:
-      type: string
-      title: JobEngine
-      enum:
-        - JOB_ENGINE_UNSPECIFIED
-        - JOB_ENGINE_ATHANOR
-        - JOB_ENGINE_BENTHOS
-      description: >-
-        Config that contains various timeouts that are configured in the
-        underlying temporal workflow
-         More options will come in the future as needed
-         Which transformation engine runs a job.
     mgmt.v1alpha1.JobHook:
       type: object
       properties:
