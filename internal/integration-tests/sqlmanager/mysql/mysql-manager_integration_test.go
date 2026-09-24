@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	mysqldriver "github.com/go-sql-driver/mysql"
+
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -342,6 +344,31 @@ func runMysqlManagerTests(t *testing.T, flavor testFlavor) {
 		require.Contains(t, usersRecord, "SELECT")
 		require.Contains(t, usersRecord, "DELETE")
 		require.Contains(t, usersRecord, "TRIGGER")
+	})
+
+	// An account declared on a host pattern holds what it was granted: the privilege tables of
+	// information_schema were read for 'user'@'%' only, and such an account appeared to hold
+	// nothing.
+	t.Run("GetRolePermissionsMap_accountOnAHostPattern", func(t *testing.T) {
+		t.Parallel()
+		for _, statement := range []string{
+			"CREATE USER 'scoped'@'%.%.%.%' IDENTIFIED BY 'scoped'",
+			"GRANT SELECT, INSERT ON sqlmanagermysql3.users TO 'scoped'@'%.%.%.%'",
+		} {
+			_, err := sourceDB.ExecContext(ctx, statement)
+			require.NoError(t, err, statement)
+		}
+		dsn, err := mysqldriver.ParseDSN(source.URL)
+		require.NoError(t, err)
+		// No default database: the account holds nothing on the container's own.
+		dsn.User, dsn.Passwd, dsn.DBName = "scoped", "scoped", ""
+		scopedDB, err := sql.Open(sqlmanager_shared.MysqlDriver, dsn.FormatDSN())
+		require.NoError(t, err)
+		defer scopedDB.Close()
+
+		actual, err := mysql.NewManager(mysql_queries.New(), scopedDB, func() {}).GetRolePermissionsMap(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []string{"SELECT", "INSERT"}, actual[buildTable("sqlmanagermysql3", "users")])
 	})
 
 	t.Run("GetTableInitStatements", func(t *testing.T) {

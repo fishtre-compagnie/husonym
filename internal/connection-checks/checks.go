@@ -61,6 +61,9 @@ type Level int
 const (
 	// Blocking: the run stops on it.
 	Blocking Level = iota + 1
+	// Warning: the run may stop on it, depending on what the caller cannot see, such as the
+	// engine a deployment runs by default.
+	Warning
 )
 
 // Finding is one thing a connection cannot do that its role needs.

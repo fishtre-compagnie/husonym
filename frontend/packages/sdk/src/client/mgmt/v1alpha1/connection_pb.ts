@@ -2,11 +2,13 @@
 // @generated from file mgmt/v1alpha1/connection.proto (package mgmt.v1alpha1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { JobEngine } from "./job_pb.js";
+import { file_mgmt_v1alpha1_job } from "./job_pb.js";
 import { file_mgmt_v1alpha1_permission } from "./permission_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -14,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mgmt/v1alpha1/connection.proto.
  */
 export const file_mgmt_v1alpha1_connection: GenFile = /*@__PURE__*/
-  fileDesc("Ch5tZ210L3YxYWxwaGExL2Nvbm5lY3Rpb24ucHJvdG8SDW1nbXQudjFhbHBoYTEiUAoVR2V0Q29ubmVjdGlvbnNSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEhkKEWV4Y2x1ZGVfc2Vuc2l0aXZlGAIgASgIIkgKFkdldENvbm5lY3Rpb25zUmVzcG9uc2USLgoLY29ubmVjdGlvbnMYASADKAsyGS5tZ210LnYxYWxwaGExLkNvbm5lY3Rpb24iRwoUR2V0Q29ubmVjdGlvblJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhkKEWV4Y2x1ZGVfc2Vuc2l0aXZlGAIgASgIIkYKFUdldENvbm5lY3Rpb25SZXNwb25zZRItCgpjb25uZWN0aW9uGAEgASgLMhkubWdtdC52MWFscGhhMS5Db25uZWN0aW9uIpwBChdDcmVhdGVDb25uZWN0aW9uUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARInCgRuYW1lGAIgASgJQhm6SBZyFDISXlthLXowLTktXXszLDEwMH0kEjoKEWNvbm5lY3Rpb25fY29uZmlnGAMgASgLMh8ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ29uZmlnIkkKGENyZWF0ZUNvbm5lY3Rpb25SZXNwb25zZRItCgpjb25uZWN0aW9uGAEgASgLMhkubWdtdC52MWFscGhhMS5Db25uZWN0aW9uIpQBChdVcGRhdGVDb25uZWN0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESJwoEbmFtZRgCIAEoCUIZukgWchQyEl5bYS16MC05LV17MywxMDB9JBI6ChFjb25uZWN0aW9uX2NvbmZpZxgDIAEoCzIfLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbkNvbmZpZyJJChhVcGRhdGVDb25uZWN0aW9uUmVzcG9uc2USLQoKY29ubmVjdGlvbhgBIAEoCzIZLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbiIvChdEZWxldGVDb25uZWN0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiGgoYRGVsZXRlQ29ubmVjdGlvblJlc3BvbnNlIloKHENoZWNrQ29ubmVjdGlvbkNvbmZpZ1JlcXVlc3QSOgoRY29ubmVjdGlvbl9jb25maWcYASABKAsyHy5tZ210LnYxYWxwaGExLkNvbm5lY3Rpb25Db25maWciOAogQ2hlY2tDb25uZWN0aW9uQ29uZmlnQnlJZFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIqkBCiFDaGVja0Nvbm5lY3Rpb25Db25maWdCeUlkUmVzcG9uc2USFAoMaXNfY29ubmVjdGVkGAEgASgIEh0KEGNvbm5lY3Rpb25fZXJyb3IYAiABKAlIAIgBARI6Cgpwcml2aWxlZ2VzGAMgAygLMiYubWdtdC52MWFscGhhMS5Db25uZWN0aW9uUm9sZVByaXZpbGVnZUITChFfY29ubmVjdGlvbl9lcnJvciKlAQodQ2hlY2tDb25uZWN0aW9uQ29uZmlnUmVzcG9uc2USFAoMaXNfY29ubmVjdGVkGAEgASgIEh0KEGNvbm5lY3Rpb25fZXJyb3IYAiABKAlIAIgBARI6Cgpwcml2aWxlZ2VzGAMgAygLMiYubWdtdC52MWFscGhhMS5Db25uZWN0aW9uUm9sZVByaXZpbGVnZUITChFfY29ubmVjdGlvbl9lcnJvciJhChdDb25uZWN0aW9uUm9sZVByaXZpbGVnZRIPCgdncmFudGVlGAEgASgJEg4KBnNjaGVtYRgCIAEoCRINCgV0YWJsZRgDIAEoCRIWCg5wcml2aWxlZ2VfdHlwZRgEIAMoCSKOAgoKQ29ubmVjdGlvbhIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEjoKEWNvbm5lY3Rpb25fY29uZmlnGAMgASgLMh8ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ29uZmlnEhoKEmNyZWF0ZWRfYnlfdXNlcl9pZBgEIAEoCRIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJ1cGRhdGVkX2J5X3VzZXJfaWQYBiABKAkSLgoKdXBkYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKYWNjb3VudF9pZBgIIAEoCSL8BAoQQ29ubmVjdGlvbkNvbmZpZxI8CglwZ19jb25maWcYASABKAsyJy5tZ210LnYxYWxwaGExLlBvc3RncmVzQ29ubmVjdGlvbkNvbmZpZ0gAEj0KDWF3c19zM19jb25maWcYAiABKAsyJC5tZ210LnYxYWxwaGExLkF3c1MzQ29ubmVjdGlvbkNvbmZpZ0gAEjwKDG15c3FsX2NvbmZpZxgDIAEoCzIkLm1nbXQudjFhbHBoYTEuTXlzcWxDb25uZWN0aW9uQ29uZmlnSAASSQoQbG9jYWxfZGlyX2NvbmZpZxgEIAEoCzItLm1nbXQudjFhbHBoYTEuTG9jYWxEaXJlY3RvcnlDb25uZWN0aW9uQ29uZmlnSAASPgoNb3BlbmFpX2NvbmZpZxgFIAEoCzIlLm1nbXQudjFhbHBoYTEuT3BlbkFpQ29ubmVjdGlvbkNvbmZpZ0gAEjwKDG1vbmdvX2NvbmZpZxgGIAEoCzIkLm1nbXQudjFhbHBoYTEuTW9uZ29Db25uZWN0aW9uQ29uZmlnSAASUQoXZ2NwX2Nsb3Vkc3RvcmFnZV9jb25maWcYByABKAsyLi5tZ210LnYxYWxwaGExLkdjcENsb3VkU3RvcmFnZUNvbm5lY3Rpb25Db25maWdIABJCCg9keW5hbW9kYl9jb25maWcYCCABKAsyJy5tZ210LnYxYWxwaGExLkR5bmFtb0RCQ29ubmVjdGlvbkNvbmZpZ0gAEjwKDG1zc3FsX2NvbmZpZxgJIAEoCzIkLm1nbXQudjFhbHBoYTEuTXNzcWxDb25uZWN0aW9uQ29uZmlnSABCDwoGY29uZmlnEgW6SAIIASL5AQoVTXNzcWxDb25uZWN0aW9uQ29uZmlnEg0KA3VybBgBIAEoCUgAEhYKDHVybF9mcm9tX2VudhgFIAEoCUgAEj8KEmNvbm5lY3Rpb25fb3B0aW9ucxgCIAEoCzIjLm1nbXQudjFhbHBoYTEuU3FsQ29ubmVjdGlvbk9wdGlvbnMSKAoGdHVubmVsGAMgASgLMhgubWdtdC52MWFscGhhMS5TU0hUdW5uZWwSMgoKY2xpZW50X3RscxgEIAEoCzIeLm1nbXQudjFhbHBoYTEuQ2xpZW50VGxzQ29uZmlnQhoKEWNvbm5lY3Rpb25fY29uZmlnEgW6SAIIASKpAQoYRHluYW1vREJDb25uZWN0aW9uQ29uZmlnEjkKC2NyZWRlbnRpYWxzGAEgASgLMh8ubWdtdC52MWFscGhhMS5Bd3NTM0NyZWRlbnRpYWxzSACIAQESEwoGcmVnaW9uGAIgASgJSAGIAQESFQoIZW5kcG9pbnQYAyABKAlIAogBAUIOCgxfY3JlZGVudGlhbHNCCQoHX3JlZ2lvbkILCglfZW5kcG9pbnQioAEKFU1vbmdvQ29ubmVjdGlvbkNvbmZpZxINCgN1cmwYASABKAlIABIoCgZ0dW5uZWwYAiABKAsyGC5tZ210LnYxYWxwaGExLlNTSFR1bm5lbBIyCgpjbGllbnRfdGxzGAMgASgLMh4ubWdtdC52MWFscGhhMS5DbGllbnRUbHNDb25maWdCGgoRY29ubmVjdGlvbl9jb25maWcSBbpIAggBIjoKFk9wZW5BaUNvbm5lY3Rpb25Db25maWcSDwoHYXBpX2tleRgBIAEoCRIPCgdhcGlfdXJsGAIgASgJIjcKHkxvY2FsRGlyZWN0b3J5Q29ubmVjdGlvbkNvbmZpZxIVCgRwYXRoGAEgASgJQge6SARyAhABIrUCChhQb3N0Z3Jlc0Nvbm5lY3Rpb25Db25maWcSDQoDdXJsGAEgASgJSAASNwoKY29ubmVjdGlvbhgCIAEoCzIhLm1nbXQudjFhbHBoYTEuUG9zdGdyZXNDb25uZWN0aW9uSAASFgoMdXJsX2Zyb21fZW52GAYgASgJSAASKAoGdHVubmVsGAMgASgLMhgubWdtdC52MWFscGhhMS5TU0hUdW5uZWwSPwoSY29ubmVjdGlvbl9vcHRpb25zGAQgASgLMiMubWdtdC52MWFscGhhMS5TcWxDb25uZWN0aW9uT3B0aW9ucxIyCgpjbGllbnRfdGxzGAUgASgLMh4ubWdtdC52MWFscGhhMS5DbGllbnRUbHNDb25maWdCGgoRY29ubmVjdGlvbl9jb25maWcSBbpIAggBIrMBCg9DbGllbnRUbHNDb25maWcSFgoJcm9vdF9jZXJ0GAEgASgJSACIAQESGAoLY2xpZW50X2NlcnQYAiABKAlIAYgBARIXCgpjbGllbnRfa2V5GAMgASgJSAKIAQESGAoLc2VydmVyX25hbWUYBCABKAlIA4gBAUIMCgpfcm9vdF9jZXJ0Qg4KDF9jbGllbnRfY2VydEINCgtfY2xpZW50X2tleUIOCgxfc2VydmVyX25hbWUi+gEKFFNxbENvbm5lY3Rpb25PcHRpb25zEiEKFG1heF9jb25uZWN0aW9uX2xpbWl0GAEgASgFSACIAQESIQoUbWF4X2lkbGVfY29ubmVjdGlvbnMYAiABKAVIAYgBARIeChFtYXhfaWRsZV9kdXJhdGlvbhgDIAEoCUgCiAEBEh4KEW1heF9vcGVuX2R1cmF0aW9uGAQgASgJSAOIAQFCFwoVX21heF9jb25uZWN0aW9uX2xpbWl0QhcKFV9tYXhfaWRsZV9jb25uZWN0aW9uc0IUChJfbWF4X2lkbGVfZHVyYXRpb25CFAoSX21heF9vcGVuX2R1cmF0aW9uItEBCglTU0hUdW5uZWwSFQoEaG9zdBgBIAEoCUIHukgEcgIQARIVCgRwb3J0GAIgASgFQge6SAQaAigAEhUKBHVzZXIYAyABKAlCB7pIBHICEAESKwoVa25vd25faG9zdF9wdWJsaWNfa2V5GAQgASgJQge6SARyAhABSACIAQESOAoOYXV0aGVudGljYXRpb24YBSABKAsyIC5tZ210LnYxYWxwaGExLlNTSEF1dGhlbnRpY2F0aW9uQhgKFl9rbm93bl9ob3N0X3B1YmxpY19rZXkikgEKEVNTSEF1dGhlbnRpY2F0aW9uEjIKCnBhc3NwaHJhc2UYASABKAsyHC5tZ210LnYxYWxwaGExLlNTSFBhc3NwaHJhc2VIABIzCgtwcml2YXRlX2tleRgCIAEoCzIcLm1nbXQudjFhbHBoYTEuU1NIUHJpdmF0ZUtleUgAQhQKC2F1dGhfY29uZmlnEgW6SAIIASInCg1TU0hQYXNzcGhyYXNlEhYKBXZhbHVlGAEgASgJQge6SARyAhABIk8KDVNTSFByaXZhdGVLZXkSFgoFdmFsdWUYASABKAlCB7pIBHICEAESFwoKcGFzc3BocmFzZRgCIAEoCUgAiAEBQg0KC19wYXNzcGhyYXNlIn4KElBvc3RncmVzQ29ubmVjdGlvbhIMCgRob3N0GAEgASgJEgwKBHBvcnQYAiABKAUSDAoEbmFtZRgDIAEoCRIMCgR1c2VyGAQgASgJEgwKBHBhc3MYBSABKAkSFQoIc3NsX21vZGUYBiABKAlIAIgBAUILCglfc3NsX21vZGUiaQoPTXlzcWxDb25uZWN0aW9uEgwKBHVzZXIYASABKAkSDAoEcGFzcxgCIAEoCRIQCghwcm90b2NvbBgDIAEoCRIMCgRob3N0GAQgASgJEgwKBHBvcnQYBSABKAUSDAoEbmFtZRgGIAEoCSKvAgoVTXlzcWxDb25uZWN0aW9uQ29uZmlnEg0KA3VybBgBIAEoCUgAEjQKCmNvbm5lY3Rpb24YAiABKAsyHi5tZ210LnYxYWxwaGExLk15c3FsQ29ubmVjdGlvbkgAEhYKDHVybF9mcm9tX2VudhgGIAEoCUgAEigKBnR1bm5lbBgDIAEoCzIYLm1nbXQudjFhbHBoYTEuU1NIVHVubmVsEj8KEmNvbm5lY3Rpb25fb3B0aW9ucxgEIAEoCzIjLm1nbXQudjFhbHBoYTEuU3FsQ29ubmVjdGlvbk9wdGlvbnMSMgoKY2xpZW50X3RscxgFIAEoCzIeLm1nbXQudjFhbHBoYTEuQ2xpZW50VGxzQ29uZmlnQhoKEWNvbm5lY3Rpb25fY29uZmlnEgW6SAIIASLvAQoVQXdzUzNDb25uZWN0aW9uQ29uZmlnEhgKC3BhdGhfcHJlZml4GAIgASgJSACIAQESOQoLY3JlZGVudGlhbHMYAyABKAsyHy5tZ210LnYxYWxwaGExLkF3c1MzQ3JlZGVudGlhbHNIAYgBARITCgZyZWdpb24YBCABKAlIAogBARIVCghlbmRwb2ludBgFIAEoCUgDiAEBEhcKBmJ1Y2tldBgGIAEoCUIHukgEcgIQAUIOCgxfcGF0aF9wcmVmaXhCDgoMX2NyZWRlbnRpYWxzQgkKB19yZWdpb25CCwoJX2VuZHBvaW50SgQIARACIswCChBBd3NTM0NyZWRlbnRpYWxzEhQKB3Byb2ZpbGUYASABKAlIAIgBARIaCg1hY2Nlc3Nfa2V5X2lkGAIgASgJSAGIAQESHgoRc2VjcmV0X2FjY2Vzc19rZXkYAyABKAlIAogBARIaCg1zZXNzaW9uX3Rva2VuGAQgASgJSAOIAQESGgoNZnJvbV9lYzJfcm9sZRgFIAEoCEgEiAEBEhUKCHJvbGVfYXJuGAYgASgJSAWIAQESHQoQcm9sZV9leHRlcm5hbF9pZBgHIAEoCUgGiAEBQgoKCF9wcm9maWxlQhAKDl9hY2Nlc3Nfa2V5X2lkQhQKEl9zZWNyZXRfYWNjZXNzX2tleUIQCg5fc2Vzc2lvbl90b2tlbkIQCg5fZnJvbV9lYzJfcm9sZUILCglfcm9sZV9hcm5CEwoRX3JvbGVfZXh0ZXJuYWxfaWQirgEKH0djcENsb3VkU3RvcmFnZUNvbm5lY3Rpb25Db25maWcSFwoGYnVja2V0GAEgASgJQge6SARyAhABEhgKC3BhdGhfcHJlZml4GAIgASgJSACIAQESKAobc2VydmljZV9hY2NvdW50X2NyZWRlbnRpYWxzGAMgASgJSAGIAQFCDgoMX3BhdGhfcHJlZml4Qh4KHF9zZXJ2aWNlX2FjY291bnRfY3JlZGVudGlhbHMidAogSXNDb25uZWN0aW9uTmFtZUF2YWlsYWJsZVJlcXVlc3QSHAoKYWNjb3VudF9pZBgBIAEoCUIIukgFcgOwAQESMgoPY29ubmVjdGlvbl9uYW1lGAIgASgJQhm6SBZyFDISXlthLXowLTktXXszLDEwMH0kIjkKIUlzQ29ubmVjdGlvbk5hbWVBdmFpbGFibGVSZXNwb25zZRIUCgxpc19hdmFpbGFibGUYASABKAgiRAoUQ2hlY2tTcWxRdWVyeVJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhYKBXF1ZXJ5GAIgASgJQge6SARyAhABIlcKFUNoZWNrU3FsUXVlcnlSZXNwb25zZRIQCghpc192YWxpZBgBIAEoCBIaCg1lcm9ycl9tZXNzYWdlGAIgASgJSACIAQFCEAoOX2Vyb3JyX21lc3NhZ2UiRQoZQ2hlY2tTU0hDb25uZWN0aW9uUmVxdWVzdBIoCgZ0dW5uZWwYASABKAsyGC5tZ210LnYxYWxwaGExLlNTSFR1bm5lbCJVChpDaGVja1NTSENvbm5lY3Rpb25SZXNwb25zZRI3CgZyZXN1bHQYASABKAsyJy5tZ210LnYxYWxwaGExLkNoZWNrU1NIQ29ubmVjdGlvblJlc3VsdCI1Ch1DaGVja1NTSENvbm5lY3Rpb25CeUlkUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiWQoeQ2hlY2tTU0hDb25uZWN0aW9uQnlJZFJlc3BvbnNlEjcKBnJlc3VsdBgBIAEoCzInLm1nbXQudjFhbHBoYTEuQ2hlY2tTU0hDb25uZWN0aW9uUmVzdWx0Il8KGENoZWNrU1NIQ29ubmVjdGlvblJlc3VsdBIVCg1pc19zdWNjZXNzZnVsGAEgASgIEhoKDWVycm9yX21lc3NhZ2UYAiABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZTKdCgoRQ29ubmVjdGlvblNlcnZpY2USaQoOR2V0Q29ubmVjdGlvbnMSJC5tZ210LnYxYWxwaGExLkdldENvbm5lY3Rpb25zUmVxdWVzdBolLm1nbXQudjFhbHBoYTEuR2V0Q29ubmVjdGlvbnNSZXNwb25zZSIKkAIBkrUYAwoBBRJmCg1HZXRDb25uZWN0aW9uEiMubWdtdC52MWFscGhhMS5HZXRDb25uZWN0aW9uUmVxdWVzdBokLm1nbXQudjFhbHBoYTEuR2V0Q29ubmVjdGlvblJlc3BvbnNlIgqQAgGStRgDCgEFEmwKEENyZWF0ZUNvbm5lY3Rpb24SJi5tZ210LnYxYWxwaGExLkNyZWF0ZUNvbm5lY3Rpb25SZXF1ZXN0GicubWdtdC52MWFscGhhMS5DcmVhdGVDb25uZWN0aW9uUmVzcG9uc2UiB5K1GAMKAQcSbAoQVXBkYXRlQ29ubmVjdGlvbhImLm1nbXQudjFhbHBoYTEuVXBkYXRlQ29ubmVjdGlvblJlcXVlc3QaJy5tZ210LnYxYWxwaGExLlVwZGF0ZUNvbm5lY3Rpb25SZXNwb25zZSIHkrUYAwoBCBJsChBEZWxldGVDb25uZWN0aW9uEiYubWdtdC52MWFscGhhMS5EZWxldGVDb25uZWN0aW9uUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuRGVsZXRlQ29ubmVjdGlvblJlc3BvbnNlIgeStRgDCgEJEocBChlJc0Nvbm5lY3Rpb25OYW1lQXZhaWxhYmxlEi8ubWdtdC52MWFscGhhMS5Jc0Nvbm5lY3Rpb25OYW1lQXZhaWxhYmxlUmVxdWVzdBowLm1nbXQudjFhbHBoYTEuSXNDb25uZWN0aW9uTmFtZUF2YWlsYWJsZVJlc3BvbnNlIgeStRgDCgEFEnsKFUNoZWNrQ29ubmVjdGlvbkNvbmZpZxIrLm1nbXQudjFhbHBoYTEuQ2hlY2tDb25uZWN0aW9uQ29uZmlnUmVxdWVzdBosLm1nbXQudjFhbHBoYTEuQ2hlY2tDb25uZWN0aW9uQ29uZmlnUmVzcG9uc2UiB5K1GAMKAQcSiAEKGUNoZWNrQ29ubmVjdGlvbkNvbmZpZ0J5SWQSLy5tZ210LnYxYWxwaGExLkNoZWNrQ29ubmVjdGlvbkNvbmZpZ0J5SWRSZXF1ZXN0GjAubWdtdC52MWFscGhhMS5DaGVja0Nvbm5lY3Rpb25Db25maWdCeUlkUmVzcG9uc2UiCJK1GAQKAgUGEmQKDUNoZWNrU3FsUXVlcnkSIy5tZ210LnYxYWxwaGExLkNoZWNrU3FsUXVlcnlSZXF1ZXN0GiQubWdtdC52MWFscGhhMS5DaGVja1NxbFF1ZXJ5UmVzcG9uc2UiCJK1GAQKAgUGEnIKEkNoZWNrU1NIQ29ubmVjdGlvbhIoLm1nbXQudjFhbHBoYTEuQ2hlY2tTU0hDb25uZWN0aW9uUmVxdWVzdBopLm1nbXQudjFhbHBoYTEuQ2hlY2tTU0hDb25uZWN0aW9uUmVzcG9uc2UiB5K1GAMKAQcSfwoWQ2hlY2tTU0hDb25uZWN0aW9uQnlJZBIsLm1nbXQudjFhbHBoYTEuQ2hlY2tTU0hDb25uZWN0aW9uQnlJZFJlcXVlc3QaLS5tZ210LnYxYWxwaGExLkNoZWNrU1NIQ29ubmVjdGlvbkJ5SWRSZXNwb25zZSIIkrUYBAoCBQZC0AEKEWNvbS5tZ210LnYxYWxwaGExQg9Db25uZWN0aW9uUHJvdG9QAVpVZ2l0aHViLmNvbS9maXNodHJlLWNvbXBhZ25pZS9odXNvbnltL2JhY2tlbmQvZ2VuL2dvL3Byb3Rvcy9tZ210L3YxYWxwaGExO21nbXR2MWFscGhhMaICA01YWKoCDU1nbXQuVjFhbHBoYTHKAg1NZ210XFYxYWxwaGEx4gIZTWdtdFxWMWFscGhhMVxHUEJNZXRhZGF0YeoCDk1nbXQ6OlYxYWxwaGExYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_permission]);
+  fileDesc("Ch5tZ210L3YxYWxwaGExL2Nvbm5lY3Rpb24ucHJvdG8SDW1nbXQudjFhbHBoYTEiUAoVR2V0Q29ubmVjdGlvbnNSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEhkKEWV4Y2x1ZGVfc2Vuc2l0aXZlGAIgASgIIkgKFkdldENvbm5lY3Rpb25zUmVzcG9uc2USLgoLY29ubmVjdGlvbnMYASADKAsyGS5tZ210LnYxYWxwaGExLkNvbm5lY3Rpb24iRwoUR2V0Q29ubmVjdGlvblJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBEhkKEWV4Y2x1ZGVfc2Vuc2l0aXZlGAIgASgIIkYKFUdldENvbm5lY3Rpb25SZXNwb25zZRItCgpjb25uZWN0aW9uGAEgASgLMhkubWdtdC52MWFscGhhMS5Db25uZWN0aW9uIpwBChdDcmVhdGVDb25uZWN0aW9uUmVxdWVzdBIcCgphY2NvdW50X2lkGAEgASgJQgi6SAVyA7ABARInCgRuYW1lGAIgASgJQhm6SBZyFDISXlthLXowLTktXXszLDEwMH0kEjoKEWNvbm5lY3Rpb25fY29uZmlnGAMgASgLMh8ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ29uZmlnIkkKGENyZWF0ZUNvbm5lY3Rpb25SZXNwb25zZRItCgpjb25uZWN0aW9uGAEgASgLMhkubWdtdC52MWFscGhhMS5Db25uZWN0aW9uIpQBChdVcGRhdGVDb25uZWN0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESJwoEbmFtZRgCIAEoCUIZukgWchQyEl5bYS16MC05LV17MywxMDB9JBI6ChFjb25uZWN0aW9uX2NvbmZpZxgDIAEoCzIfLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbkNvbmZpZyJJChhVcGRhdGVDb25uZWN0aW9uUmVzcG9uc2USLQoKY29ubmVjdGlvbhgBIAEoCzIZLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbiIvChdEZWxldGVDb25uZWN0aW9uUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQEiGgoYRGVsZXRlQ29ubmVjdGlvblJlc3BvbnNlIp0BChxDaGVja0Nvbm5lY3Rpb25Db25maWdSZXF1ZXN0EjoKEWNvbm5lY3Rpb25fY29uZmlnGAEgASgLMh8ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ29uZmlnEjcKBXNjb3BlGAIgASgLMiMubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ2hlY2tTY29wZUgAiAEBQggKBl9zY29wZSJ7CiBDaGVja0Nvbm5lY3Rpb25Db25maWdCeUlkUmVxdWVzdBIUCgJpZBgBIAEoCUIIukgFcgOwAQESNwoFc2NvcGUYAiABKAsyIy5tZ210LnYxYWxwaGExLkNvbm5lY3Rpb25DaGVja1Njb3BlSACIAQFCCAoGX3Njb3BlIukBChRDb25uZWN0aW9uQ2hlY2tTY29wZRI3CgRyb2xlGAEgASgOMh0ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uUm9sZUIKukgHggEEEAEgABIoCgZlbmdpbmUYAiABKA4yGC5tZ210LnYxYWxwaGExLkpvYkVuZ2luZRIzCgZ0YWJsZXMYAyADKAsyIy5tZ210LnYxYWxwaGExLkNvbm5lY3Rpb25DaGVja1RhYmxlEhkKEWluaXRfdGFibGVfc2NoZW1hGAQgASgIEh4KFnRydW5jYXRlX2JlZm9yZV9pbnNlcnQYBSABKAgiWAoUQ29ubmVjdGlvbkNoZWNrVGFibGUSFwoGc2NoZW1hGAEgASgJQge6SARyAhABEhYKBXRhYmxlGAIgASgJQge6SARyAhABEg8KB2NvbHVtbnMYAyADKAki6AMKD0Nvbm5lY3Rpb25DaGVjaxIxCgRraW5kGAEgASgOMiMubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ2hlY2suS2luZBIzCgVsZXZlbBgCIAEoDjIkLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbkNoZWNrLkxldmVsEg0KBXRhYmxlGAMgASgJEg8KB21pc3NpbmcYBCADKAkSDwoHbWVzc2FnZRgFIAEoCRITCgZyZW1lZHkYBiABKAlIAIgBASLUAQoES2luZBIUChBLSU5EX1VOU1BFQ0lGSUVEEAASFQoRS0lORF9UQUJMRV9FWElTVFMQARIRCg1LSU5EX1JFQURBQkxFEAISGAoUS0lORF9TRVJWRVJfV1JJVEFCTEUQAxIRCg1LSU5EX1dSSVRBQkxFEAQSEQoNS0lORF9UUlVOQ0FURRAFEhEKDUtJTkRfVFJJR0dFUlMQBhIYChRLSU5EX1RSSUdHRVJfREVGSU5FUhAHEh8KG0tJTkRfRk9SRUlHTl9LRVlfU1VTUEVOU0lPThAIIkUKBUxldmVsEhUKEUxFVkVMX1VOU1BFQ0lGSUVEEAASEgoOTEVWRUxfQkxPQ0tJTkcQARIRCg1MRVZFTF9XQVJOSU5HEAJCCQoHX3JlbWVkeSLZAQohQ2hlY2tDb25uZWN0aW9uQ29uZmlnQnlJZFJlc3BvbnNlEhQKDGlzX2Nvbm5lY3RlZBgBIAEoCBIdChBjb25uZWN0aW9uX2Vycm9yGAIgASgJSACIAQESOgoKcHJpdmlsZWdlcxgDIAMoCzImLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvblJvbGVQcml2aWxlZ2USLgoGY2hlY2tzGAQgAygLMh4ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ2hlY2tCEwoRX2Nvbm5lY3Rpb25fZXJyb3Ii1QEKHUNoZWNrQ29ubmVjdGlvbkNvbmZpZ1Jlc3BvbnNlEhQKDGlzX2Nvbm5lY3RlZBgBIAEoCBIdChBjb25uZWN0aW9uX2Vycm9yGAIgASgJSACIAQESOgoKcHJpdmlsZWdlcxgDIAMoCzImLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvblJvbGVQcml2aWxlZ2USLgoGY2hlY2tzGAQgAygLMh4ubWdtdC52MWFscGhhMS5Db25uZWN0aW9uQ2hlY2tCEwoRX2Nvbm5lY3Rpb25fZXJyb3IiYQoXQ29ubmVjdGlvblJvbGVQcml2aWxlZ2USDwoHZ3JhbnRlZRgBIAEoCRIOCgZzY2hlbWEYAiABKAkSDQoFdGFibGUYAyABKAkSFgoOcHJpdmlsZWdlX3R5cGUYBCADKAkijgIKCkNvbm5lY3Rpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRI6ChFjb25uZWN0aW9uX2NvbmZpZxgDIAEoCzIfLm1nbXQudjFhbHBoYTEuQ29ubmVjdGlvbkNvbmZpZxIaChJjcmVhdGVkX2J5X3VzZXJfaWQYBCABKAkSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoSdXBkYXRlZF9ieV91c2VyX2lkGAYgASgJEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmFjY291bnRfaWQYCCABKAki/AQKEENvbm5lY3Rpb25Db25maWcSPAoJcGdfY29uZmlnGAEgASgLMicubWdtdC52MWFscGhhMS5Qb3N0Z3Jlc0Nvbm5lY3Rpb25Db25maWdIABI9Cg1hd3NfczNfY29uZmlnGAIgASgLMiQubWdtdC52MWFscGhhMS5Bd3NTM0Nvbm5lY3Rpb25Db25maWdIABI8CgxteXNxbF9jb25maWcYAyABKAsyJC5tZ210LnYxYWxwaGExLk15c3FsQ29ubmVjdGlvbkNvbmZpZ0gAEkkKEGxvY2FsX2Rpcl9jb25maWcYBCABKAsyLS5tZ210LnYxYWxwaGExLkxvY2FsRGlyZWN0b3J5Q29ubmVjdGlvbkNvbmZpZ0gAEj4KDW9wZW5haV9jb25maWcYBSABKAsyJS5tZ210LnYxYWxwaGExLk9wZW5BaUNvbm5lY3Rpb25Db25maWdIABI8Cgxtb25nb19jb25maWcYBiABKAsyJC5tZ210LnYxYWxwaGExLk1vbmdvQ29ubmVjdGlvbkNvbmZpZ0gAElEKF2djcF9jbG91ZHN0b3JhZ2VfY29uZmlnGAcgASgLMi4ubWdtdC52MWFscGhhMS5HY3BDbG91ZFN0b3JhZ2VDb25uZWN0aW9uQ29uZmlnSAASQgoPZHluYW1vZGJfY29uZmlnGAggASgLMicubWdtdC52MWFscGhhMS5EeW5hbW9EQkNvbm5lY3Rpb25Db25maWdIABI8Cgxtc3NxbF9jb25maWcYCSABKAsyJC5tZ210LnYxYWxwaGExLk1zc3FsQ29ubmVjdGlvbkNvbmZpZ0gAQg8KBmNvbmZpZxIFukgCCAEi+QEKFU1zc3FsQ29ubmVjdGlvbkNvbmZpZxINCgN1cmwYASABKAlIABIWCgx1cmxfZnJvbV9lbnYYBSABKAlIABI/ChJjb25uZWN0aW9uX29wdGlvbnMYAiABKAsyIy5tZ210LnYxYWxwaGExLlNxbENvbm5lY3Rpb25PcHRpb25zEigKBnR1bm5lbBgDIAEoCzIYLm1nbXQudjFhbHBoYTEuU1NIVHVubmVsEjIKCmNsaWVudF90bHMYBCABKAsyHi5tZ210LnYxYWxwaGExLkNsaWVudFRsc0NvbmZpZ0IaChFjb25uZWN0aW9uX2NvbmZpZxIFukgCCAEiqQEKGER5bmFtb0RCQ29ubmVjdGlvbkNvbmZpZxI5CgtjcmVkZW50aWFscxgBIAEoCzIfLm1nbXQudjFhbHBoYTEuQXdzUzNDcmVkZW50aWFsc0gAiAEBEhMKBnJlZ2lvbhgCIAEoCUgBiAEBEhUKCGVuZHBvaW50GAMgASgJSAKIAQFCDgoMX2NyZWRlbnRpYWxzQgkKB19yZWdpb25CCwoJX2VuZHBvaW50IqABChVNb25nb0Nvbm5lY3Rpb25Db25maWcSDQoDdXJsGAEgASgJSAASKAoGdHVubmVsGAIgASgLMhgubWdtdC52MWFscGhhMS5TU0hUdW5uZWwSMgoKY2xpZW50X3RscxgDIAEoCzIeLm1nbXQudjFhbHBoYTEuQ2xpZW50VGxzQ29uZmlnQhoKEWNvbm5lY3Rpb25fY29uZmlnEgW6SAIIASI6ChZPcGVuQWlDb25uZWN0aW9uQ29uZmlnEg8KB2FwaV9rZXkYASABKAkSDwoHYXBpX3VybBgCIAEoCSI3Ch5Mb2NhbERpcmVjdG9yeUNvbm5lY3Rpb25Db25maWcSFQoEcGF0aBgBIAEoCUIHukgEcgIQASK1AgoYUG9zdGdyZXNDb25uZWN0aW9uQ29uZmlnEg0KA3VybBgBIAEoCUgAEjcKCmNvbm5lY3Rpb24YAiABKAsyIS5tZ210LnYxYWxwaGExLlBvc3RncmVzQ29ubmVjdGlvbkgAEhYKDHVybF9mcm9tX2VudhgGIAEoCUgAEigKBnR1bm5lbBgDIAEoCzIYLm1nbXQudjFhbHBoYTEuU1NIVHVubmVsEj8KEmNvbm5lY3Rpb25fb3B0aW9ucxgEIAEoCzIjLm1nbXQudjFhbHBoYTEuU3FsQ29ubmVjdGlvbk9wdGlvbnMSMgoKY2xpZW50X3RscxgFIAEoCzIeLm1nbXQudjFhbHBoYTEuQ2xpZW50VGxzQ29uZmlnQhoKEWNvbm5lY3Rpb25fY29uZmlnEgW6SAIIASKzAQoPQ2xpZW50VGxzQ29uZmlnEhYKCXJvb3RfY2VydBgBIAEoCUgAiAEBEhgKC2NsaWVudF9jZXJ0GAIgASgJSAGIAQESFwoKY2xpZW50X2tleRgDIAEoCUgCiAEBEhgKC3NlcnZlcl9uYW1lGAQgASgJSAOIAQFCDAoKX3Jvb3RfY2VydEIOCgxfY2xpZW50X2NlcnRCDQoLX2NsaWVudF9rZXlCDgoMX3NlcnZlcl9uYW1lIvoBChRTcWxDb25uZWN0aW9uT3B0aW9ucxIhChRtYXhfY29ubmVjdGlvbl9saW1pdBgBIAEoBUgAiAEBEiEKFG1heF9pZGxlX2Nvbm5lY3Rpb25zGAIgASgFSAGIAQESHgoRbWF4X2lkbGVfZHVyYXRpb24YAyABKAlIAogBARIeChFtYXhfb3Blbl9kdXJhdGlvbhgEIAEoCUgDiAEBQhcKFV9tYXhfY29ubmVjdGlvbl9saW1pdEIXChVfbWF4X2lkbGVfY29ubmVjdGlvbnNCFAoSX21heF9pZGxlX2R1cmF0aW9uQhQKEl9tYXhfb3Blbl9kdXJhdGlvbiLRAQoJU1NIVHVubmVsEhUKBGhvc3QYASABKAlCB7pIBHICEAESFQoEcG9ydBgCIAEoBUIHukgEGgIoABIVCgR1c2VyGAMgASgJQge6SARyAhABEisKFWtub3duX2hvc3RfcHVibGljX2tleRgEIAEoCUIHukgEcgIQAUgAiAEBEjgKDmF1dGhlbnRpY2F0aW9uGAUgASgLMiAubWdtdC52MWFscGhhMS5TU0hBdXRoZW50aWNhdGlvbkIYChZfa25vd25faG9zdF9wdWJsaWNfa2V5IpIBChFTU0hBdXRoZW50aWNhdGlvbhIyCgpwYXNzcGhyYXNlGAEgASgLMhwubWdtdC52MWFscGhhMS5TU0hQYXNzcGhyYXNlSAASMwoLcHJpdmF0ZV9rZXkYAiABKAsyHC5tZ210LnYxYWxwaGExLlNTSFByaXZhdGVLZXlIAEIUCgthdXRoX2NvbmZpZxIFukgCCAEiJwoNU1NIUGFzc3BocmFzZRIWCgV2YWx1ZRgBIAEoCUIHukgEcgIQASJPCg1TU0hQcml2YXRlS2V5EhYKBXZhbHVlGAEgASgJQge6SARyAhABEhcKCnBhc3NwaHJhc2UYAiABKAlIAIgBAUINCgtfcGFzc3BocmFzZSJ+ChJQb3N0Z3Jlc0Nvbm5lY3Rpb24SDAoEaG9zdBgBIAEoCRIMCgRwb3J0GAIgASgFEgwKBG5hbWUYAyABKAkSDAoEdXNlchgEIAEoCRIMCgRwYXNzGAUgASgJEhUKCHNzbF9tb2RlGAYgASgJSACIAQFCCwoJX3NzbF9tb2RlImkKD015c3FsQ29ubmVjdGlvbhIMCgR1c2VyGAEgASgJEgwKBHBhc3MYAiABKAkSEAoIcHJvdG9jb2wYAyABKAkSDAoEaG9zdBgEIAEoCRIMCgRwb3J0GAUgASgFEgwKBG5hbWUYBiABKAkirwIKFU15c3FsQ29ubmVjdGlvbkNvbmZpZxINCgN1cmwYASABKAlIABI0Cgpjb25uZWN0aW9uGAIgASgLMh4ubWdtdC52MWFscGhhMS5NeXNxbENvbm5lY3Rpb25IABIWCgx1cmxfZnJvbV9lbnYYBiABKAlIABIoCgZ0dW5uZWwYAyABKAsyGC5tZ210LnYxYWxwaGExLlNTSFR1bm5lbBI/ChJjb25uZWN0aW9uX29wdGlvbnMYBCABKAsyIy5tZ210LnYxYWxwaGExLlNxbENvbm5lY3Rpb25PcHRpb25zEjIKCmNsaWVudF90bHMYBSABKAsyHi5tZ210LnYxYWxwaGExLkNsaWVudFRsc0NvbmZpZ0IaChFjb25uZWN0aW9uX2NvbmZpZxIFukgCCAEi7wEKFUF3c1MzQ29ubmVjdGlvbkNvbmZpZxIYCgtwYXRoX3ByZWZpeBgCIAEoCUgAiAEBEjkKC2NyZWRlbnRpYWxzGAMgASgLMh8ubWdtdC52MWFscGhhMS5Bd3NTM0NyZWRlbnRpYWxzSAGIAQESEwoGcmVnaW9uGAQgASgJSAKIAQESFQoIZW5kcG9pbnQYBSABKAlIA4gBARIXCgZidWNrZXQYBiABKAlCB7pIBHICEAFCDgoMX3BhdGhfcHJlZml4Qg4KDF9jcmVkZW50aWFsc0IJCgdfcmVnaW9uQgsKCV9lbmRwb2ludEoECAEQAiLMAgoQQXdzUzNDcmVkZW50aWFscxIUCgdwcm9maWxlGAEgASgJSACIAQESGgoNYWNjZXNzX2tleV9pZBgCIAEoCUgBiAEBEh4KEXNlY3JldF9hY2Nlc3Nfa2V5GAMgASgJSAKIAQESGgoNc2Vzc2lvbl90b2tlbhgEIAEoCUgDiAEBEhoKDWZyb21fZWMyX3JvbGUYBSABKAhIBIgBARIVCghyb2xlX2FybhgGIAEoCUgFiAEBEh0KEHJvbGVfZXh0ZXJuYWxfaWQYByABKAlIBogBAUIKCghfcHJvZmlsZUIQCg5fYWNjZXNzX2tleV9pZEIUChJfc2VjcmV0X2FjY2Vzc19rZXlCEAoOX3Nlc3Npb25fdG9rZW5CEAoOX2Zyb21fZWMyX3JvbGVCCwoJX3JvbGVfYXJuQhMKEV9yb2xlX2V4dGVybmFsX2lkIq4BCh9HY3BDbG91ZFN0b3JhZ2VDb25uZWN0aW9uQ29uZmlnEhcKBmJ1Y2tldBgBIAEoCUIHukgEcgIQARIYCgtwYXRoX3ByZWZpeBgCIAEoCUgAiAEBEigKG3NlcnZpY2VfYWNjb3VudF9jcmVkZW50aWFscxgDIAEoCUgBiAEBQg4KDF9wYXRoX3ByZWZpeEIeChxfc2VydmljZV9hY2NvdW50X2NyZWRlbnRpYWxzInQKIElzQ29ubmVjdGlvbk5hbWVBdmFpbGFibGVSZXF1ZXN0EhwKCmFjY291bnRfaWQYASABKAlCCLpIBXIDsAEBEjIKD2Nvbm5lY3Rpb25fbmFtZRgCIAEoCUIZukgWchQyEl5bYS16MC05LV17MywxMDB9JCI5CiFJc0Nvbm5lY3Rpb25OYW1lQXZhaWxhYmxlUmVzcG9uc2USFAoMaXNfYXZhaWxhYmxlGAEgASgIIkQKFENoZWNrU3FsUXVlcnlSZXF1ZXN0EhQKAmlkGAEgASgJQgi6SAVyA7ABARIWCgVxdWVyeRgCIAEoCUIHukgEcgIQASJXChVDaGVja1NxbFF1ZXJ5UmVzcG9uc2USEAoIaXNfdmFsaWQYASABKAgSGgoNZXJvcnJfbWVzc2FnZRgCIAEoCUgAiAEBQhAKDl9lcm9ycl9tZXNzYWdlIkUKGUNoZWNrU1NIQ29ubmVjdGlvblJlcXVlc3QSKAoGdHVubmVsGAEgASgLMhgubWdtdC52MWFscGhhMS5TU0hUdW5uZWwiVQoaQ2hlY2tTU0hDb25uZWN0aW9uUmVzcG9uc2USNwoGcmVzdWx0GAEgASgLMicubWdtdC52MWFscGhhMS5DaGVja1NTSENvbm5lY3Rpb25SZXN1bHQiNQodQ2hlY2tTU0hDb25uZWN0aW9uQnlJZFJlcXVlc3QSFAoCaWQYASABKAlCCLpIBXIDsAEBIlkKHkNoZWNrU1NIQ29ubmVjdGlvbkJ5SWRSZXNwb25zZRI3CgZyZXN1bHQYASABKAsyJy5tZ210LnYxYWxwaGExLkNoZWNrU1NIQ29ubmVjdGlvblJlc3VsdCJfChhDaGVja1NTSENvbm5lY3Rpb25SZXN1bHQSFQoNaXNfc3VjY2Vzc2Z1bBgBIAEoCBIaCg1lcnJvcl9tZXNzYWdlGAIgASgJSACIAQFCEAoOX2Vycm9yX21lc3NhZ2UqbgoOQ29ubmVjdGlvblJvbGUSHwobQ09OTkVDVElPTl9ST0xFX1VOU1BFQ0lGSUVEEAASGgoWQ09OTkVDVElPTl9ST0xFX1NPVVJDRRABEh8KG0NPTk5FQ1RJT05fUk9MRV9ERVNUSU5BVElPThACMp0KChFDb25uZWN0aW9uU2VydmljZRJpCg5HZXRDb25uZWN0aW9ucxIkLm1nbXQudjFhbHBoYTEuR2V0Q29ubmVjdGlvbnNSZXF1ZXN0GiUubWdtdC52MWFscGhhMS5HZXRDb25uZWN0aW9uc1Jlc3BvbnNlIgqQAgGStRgDCgEFEmYKDUdldENvbm5lY3Rpb24SIy5tZ210LnYxYWxwaGExLkdldENvbm5lY3Rpb25SZXF1ZXN0GiQubWdtdC52MWFscGhhMS5HZXRDb25uZWN0aW9uUmVzcG9uc2UiCpACAZK1GAMKAQUSbAoQQ3JlYXRlQ29ubmVjdGlvbhImLm1nbXQudjFhbHBoYTEuQ3JlYXRlQ29ubmVjdGlvblJlcXVlc3QaJy5tZ210LnYxYWxwaGExLkNyZWF0ZUNvbm5lY3Rpb25SZXNwb25zZSIHkrUYAwoBBxJsChBVcGRhdGVDb25uZWN0aW9uEiYubWdtdC52MWFscGhhMS5VcGRhdGVDb25uZWN0aW9uUmVxdWVzdBonLm1nbXQudjFhbHBoYTEuVXBkYXRlQ29ubmVjdGlvblJlc3BvbnNlIgeStRgDCgEIEmwKEERlbGV0ZUNvbm5lY3Rpb24SJi5tZ210LnYxYWxwaGExLkRlbGV0ZUNvbm5lY3Rpb25SZXF1ZXN0GicubWdtdC52MWFscGhhMS5EZWxldGVDb25uZWN0aW9uUmVzcG9uc2UiB5K1GAMKAQkShwEKGUlzQ29ubmVjdGlvbk5hbWVBdmFpbGFibGUSLy5tZ210LnYxYWxwaGExLklzQ29ubmVjdGlvbk5hbWVBdmFpbGFibGVSZXF1ZXN0GjAubWdtdC52MWFscGhhMS5Jc0Nvbm5lY3Rpb25OYW1lQXZhaWxhYmxlUmVzcG9uc2UiB5K1GAMKAQUSewoVQ2hlY2tDb25uZWN0aW9uQ29uZmlnEisubWdtdC52MWFscGhhMS5DaGVja0Nvbm5lY3Rpb25Db25maWdSZXF1ZXN0GiwubWdtdC52MWFscGhhMS5DaGVja0Nvbm5lY3Rpb25Db25maWdSZXNwb25zZSIHkrUYAwoBBxKIAQoZQ2hlY2tDb25uZWN0aW9uQ29uZmlnQnlJZBIvLm1nbXQudjFhbHBoYTEuQ2hlY2tDb25uZWN0aW9uQ29uZmlnQnlJZFJlcXVlc3QaMC5tZ210LnYxYWxwaGExLkNoZWNrQ29ubmVjdGlvbkNvbmZpZ0J5SWRSZXNwb25zZSIIkrUYBAoCBQYSZAoNQ2hlY2tTcWxRdWVyeRIjLm1nbXQudjFhbHBoYTEuQ2hlY2tTcWxRdWVyeVJlcXVlc3QaJC5tZ210LnYxYWxwaGExLkNoZWNrU3FsUXVlcnlSZXNwb25zZSIIkrUYBAoCBQYScgoSQ2hlY2tTU0hDb25uZWN0aW9uEigubWdtdC52MWFscGhhMS5DaGVja1NTSENvbm5lY3Rpb25SZXF1ZXN0GikubWdtdC52MWFscGhhMS5DaGVja1NTSENvbm5lY3Rpb25SZXNwb25zZSIHkrUYAwoBBxJ/ChZDaGVja1NTSENvbm5lY3Rpb25CeUlkEiwubWdtdC52MWFscGhhMS5DaGVja1NTSENvbm5lY3Rpb25CeUlkUmVxdWVzdBotLm1nbXQudjFhbHBoYTEuQ2hlY2tTU0hDb25uZWN0aW9uQnlJZFJlc3BvbnNlIgiStRgECgIFBkLQAQoRY29tLm1nbXQudjFhbHBoYTFCD0Nvbm5lY3Rpb25Qcm90b1ABWlVnaXRodWIuY29tL2Zpc2h0cmUtY29tcGFnbmllL2h1c29ueW0vYmFja2VuZC9nZW4vZ28vcHJvdG9zL21nbXQvdjFhbHBoYTE7bWdtdHYxYWxwaGExogIDTVhYqgINTWdtdC5WMWFscGhhMcoCDU1nbXRcVjFhbHBoYTHiAhlNZ210XFYxYWxwaGExXEdQQk1ldGFkYXRh6gIOTWdtdDo6VjFhbHBoYTFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mgmt_v1alpha1_job, file_mgmt_v1alpha1_permission]);
 
 /**
  * @generated from message mgmt.v1alpha1.GetConnectionsRequest
@@ -256,6 +258,14 @@ export type CheckConnectionConfigRequest = Message<"mgmt.v1alpha1.CheckConnectio
    * @generated from field: mgmt.v1alpha1.ConnectionConfig connection_config = 1;
    */
   connectionConfig?: ConnectionConfig | undefined;
+
+  /**
+   * Optionally, the role the connection is tested in: the response then says, in checks,
+   * what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+   *
+   * @generated from field: optional mgmt.v1alpha1.ConnectionCheckScope scope = 2;
+   */
+  scope?: ConnectionCheckScope | undefined;
 };
 
 /**
@@ -275,6 +285,14 @@ export type CheckConnectionConfigByIdRequest = Message<"mgmt.v1alpha1.CheckConne
    * @generated from field: string id = 1;
    */
   id: string;
+
+  /**
+   * Optionally, the role the connection is tested in: the response then says, in checks,
+   * what the connection cannot do that the role needs. MySQL and PostgreSQL only.
+   *
+   * @generated from field: optional mgmt.v1alpha1.ConnectionCheckScope scope = 2;
+   */
+  scope?: ConnectionCheckScope | undefined;
 };
 
 /**
@@ -283,6 +301,247 @@ export type CheckConnectionConfigByIdRequest = Message<"mgmt.v1alpha1.CheckConne
  */
 export const CheckConnectionConfigByIdRequestSchema: GenMessage<CheckConnectionConfigByIdRequest> = /*@__PURE__*/
   messageDesc(file_mgmt_v1alpha1_connection, 11);
+
+/**
+ * The role a connection plays in a job, and what the job asks of it there: what a run checks
+ * at its start, asked before it.
+ *
+ * @generated from message mgmt.v1alpha1.ConnectionCheckScope
+ */
+export type ConnectionCheckScope = Message<"mgmt.v1alpha1.ConnectionCheckScope"> & {
+  /**
+   * The role of the connection.
+   *
+   * @generated from field: mgmt.v1alpha1.ConnectionRole role = 1;
+   */
+  role: ConnectionRole;
+
+  /**
+   * The engine that runs the job: what only Athanor needs is asked only of Athanor.
+   * Unspecified is the deployment default, which the API does not know: what only Athanor
+   * needs is then reported as a warning.
+   *
+   * @generated from field: mgmt.v1alpha1.JobEngine engine = 2;
+   */
+  engine: JobEngine;
+
+  /**
+   * The tables of the job, and the columns a run writes into each; a table given without
+   * columns is checked on all of its columns but generated ones. Without tables, only what
+   * concerns the server as a whole is checked.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.ConnectionCheckTable tables = 3;
+   */
+  tables: ConnectionCheckTable[];
+
+  /**
+   * For a destination: the run creates the tables and columns it lacks.
+   *
+   * @generated from field: bool init_table_schema = 4;
+   */
+  initTableSchema: boolean;
+
+  /**
+   * For a destination: the run empties each table before writing it.
+   *
+   * @generated from field: bool truncate_before_insert = 5;
+   */
+  truncateBeforeInsert: boolean;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.ConnectionCheckScope.
+ * Use `create(ConnectionCheckScopeSchema)` to create a new message.
+ */
+export const ConnectionCheckScopeSchema: GenMessage<ConnectionCheckScope> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_connection, 12);
+
+/**
+ * A table of a job, and the columns a run writes into it.
+ *
+ * @generated from message mgmt.v1alpha1.ConnectionCheckTable
+ */
+export type ConnectionCheckTable = Message<"mgmt.v1alpha1.ConnectionCheckTable"> & {
+  /**
+   * @generated from field: string schema = 1;
+   */
+  schema: string;
+
+  /**
+   * @generated from field: string table = 2;
+   */
+  table: string;
+
+  /**
+   * @generated from field: repeated string columns = 3;
+   */
+  columns: string[];
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.ConnectionCheckTable.
+ * Use `create(ConnectionCheckTableSchema)` to create a new message.
+ */
+export const ConnectionCheckTableSchema: GenMessage<ConnectionCheckTable> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_connection, 13);
+
+/**
+ * One thing a connection cannot do that its role needs.
+ *
+ * @generated from message mgmt.v1alpha1.ConnectionCheck
+ */
+export type ConnectionCheck = Message<"mgmt.v1alpha1.ConnectionCheck"> & {
+  /**
+   * @generated from field: mgmt.v1alpha1.ConnectionCheck.Kind kind = 1;
+   */
+  kind: ConnectionCheck_Kind;
+
+  /**
+   * @generated from field: mgmt.v1alpha1.ConnectionCheck.Level level = 2;
+   */
+  level: ConnectionCheck_Level;
+
+  /**
+   * The table concerned, as schema.table; empty for the server as a whole.
+   *
+   * @generated from field: string table = 3;
+   */
+  table: string;
+
+  /**
+   * What the account lacks: privileges, or the names of absent columns.
+   *
+   * @generated from field: repeated string missing = 4;
+   */
+  missing: string[];
+
+  /**
+   * The finding in a sentence naming the connection, as the run reports it.
+   *
+   * @generated from field: string message = 5;
+   */
+  message: string;
+
+  /**
+   * The statement that grants what is missing, for someone allowed to run it.
+   *
+   * @generated from field: optional string remedy = 6;
+   */
+  remedy?: string | undefined;
+};
+
+/**
+ * Describes the message mgmt.v1alpha1.ConnectionCheck.
+ * Use `create(ConnectionCheckSchema)` to create a new message.
+ */
+export const ConnectionCheckSchema: GenMessage<ConnectionCheck> = /*@__PURE__*/
+  messageDesc(file_mgmt_v1alpha1_connection, 14);
+
+/**
+ * What was checked.
+ *
+ * @generated from enum mgmt.v1alpha1.ConnectionCheck.Kind
+ */
+export enum ConnectionCheck_Kind {
+  /**
+   * @generated from enum value: KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The table, or a column the run writes, is there.
+   *
+   * @generated from enum value: KIND_TABLE_EXISTS = 1;
+   */
+  TABLE_EXISTS = 1,
+
+  /**
+   * The source can read the table.
+   *
+   * @generated from enum value: KIND_READABLE = 2;
+   */
+  READABLE = 2,
+
+  /**
+   * The destination server accepts writes at all.
+   *
+   * @generated from enum value: KIND_SERVER_WRITABLE = 3;
+   */
+  SERVER_WRITABLE = 3,
+
+  /**
+   * The destination can read, insert, update and delete rows of the table.
+   *
+   * @generated from enum value: KIND_WRITABLE = 4;
+   */
+  WRITABLE = 4,
+
+  /**
+   * The destination can empty the table before writing it.
+   *
+   * @generated from enum value: KIND_TRUNCATE = 5;
+   */
+  TRUNCATE = 5,
+
+  /**
+   * The destination can take the triggers of the table out of the way of the run.
+   *
+   * @generated from enum value: KIND_TRIGGERS = 6;
+   */
+  TRIGGERS = 6,
+
+  /**
+   * The destination can put a trigger back as its definer.
+   *
+   * @generated from enum value: KIND_TRIGGER_DEFINER = 7;
+   */
+  TRIGGER_DEFINER = 7,
+
+  /**
+   * The destination can suspend foreign keys, as Athanor does on PostgreSQL.
+   *
+   * @generated from enum value: KIND_FOREIGN_KEY_SUSPENSION = 8;
+   */
+  FOREIGN_KEY_SUSPENSION = 8,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.ConnectionCheck.Kind.
+ */
+export const ConnectionCheck_KindSchema: GenEnum<ConnectionCheck_Kind> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_connection, 14, 0);
+
+/**
+ * What the finding does to a run.
+ *
+ * @generated from enum mgmt.v1alpha1.ConnectionCheck.Level
+ */
+export enum ConnectionCheck_Level {
+  /**
+   * @generated from enum value: LEVEL_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The run stops on it.
+   *
+   * @generated from enum value: LEVEL_BLOCKING = 1;
+   */
+  BLOCKING = 1,
+
+  /**
+   * The run may stop on it, depending on what the API cannot see, such as the engine.
+   *
+   * @generated from enum value: LEVEL_WARNING = 2;
+   */
+  WARNING = 2,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.ConnectionCheck.Level.
+ */
+export const ConnectionCheck_LevelSchema: GenEnum<ConnectionCheck_Level> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_connection, 14, 1);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckConnectionConfigByIdResponse
@@ -308,6 +567,13 @@ export type CheckConnectionConfigByIdResponse = Message<"mgmt.v1alpha1.CheckConn
    * @generated from field: repeated mgmt.v1alpha1.ConnectionRolePrivilege privileges = 3;
    */
   privileges: ConnectionRolePrivilege[];
+
+  /**
+   * What the connection cannot do that the role asked about needs; empty without a scope.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.ConnectionCheck checks = 4;
+   */
+  checks: ConnectionCheck[];
 };
 
 /**
@@ -315,7 +581,7 @@ export type CheckConnectionConfigByIdResponse = Message<"mgmt.v1alpha1.CheckConn
  * Use `create(CheckConnectionConfigByIdResponseSchema)` to create a new message.
  */
 export const CheckConnectionConfigByIdResponseSchema: GenMessage<CheckConnectionConfigByIdResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 12);
+  messageDesc(file_mgmt_v1alpha1_connection, 15);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckConnectionConfigResponse
@@ -339,6 +605,13 @@ export type CheckConnectionConfigResponse = Message<"mgmt.v1alpha1.CheckConnecti
    * @generated from field: repeated mgmt.v1alpha1.ConnectionRolePrivilege privileges = 3;
    */
   privileges: ConnectionRolePrivilege[];
+
+  /**
+   * What the connection cannot do that the role asked about needs; empty without a scope.
+   *
+   * @generated from field: repeated mgmt.v1alpha1.ConnectionCheck checks = 4;
+   */
+  checks: ConnectionCheck[];
 };
 
 /**
@@ -346,7 +619,7 @@ export type CheckConnectionConfigResponse = Message<"mgmt.v1alpha1.CheckConnecti
  * Use `create(CheckConnectionConfigResponseSchema)` to create a new message.
  */
 export const CheckConnectionConfigResponseSchema: GenMessage<CheckConnectionConfigResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 13);
+  messageDesc(file_mgmt_v1alpha1_connection, 16);
 
 /**
  * @generated from message mgmt.v1alpha1.ConnectionRolePrivilege
@@ -386,7 +659,7 @@ export type ConnectionRolePrivilege = Message<"mgmt.v1alpha1.ConnectionRolePrivi
  * Use `create(ConnectionRolePrivilegeSchema)` to create a new message.
  */
 export const ConnectionRolePrivilegeSchema: GenMessage<ConnectionRolePrivilege> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 14);
+  messageDesc(file_mgmt_v1alpha1_connection, 17);
 
 /**
  * @generated from message mgmt.v1alpha1.Connection
@@ -454,7 +727,7 @@ export type Connection = Message<"mgmt.v1alpha1.Connection"> & {
  * Use `create(ConnectionSchema)` to create a new message.
  */
 export const ConnectionSchema: GenMessage<Connection> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 15);
+  messageDesc(file_mgmt_v1alpha1_connection, 18);
 
 /**
  * Configuration for all of the supported Husonym connection types
@@ -545,7 +818,7 @@ export type ConnectionConfig = Message<"mgmt.v1alpha1.ConnectionConfig"> & {
  * Use `create(ConnectionConfigSchema)` to create a new message.
  */
 export const ConnectionConfigSchema: GenMessage<ConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 16);
+  messageDesc(file_mgmt_v1alpha1_connection, 19);
 
 /**
  * Configuration for a Mssql Connection
@@ -605,7 +878,7 @@ export type MssqlConnectionConfig = Message<"mgmt.v1alpha1.MssqlConnectionConfig
  * Use `create(MssqlConnectionConfigSchema)` to create a new message.
  */
 export const MssqlConnectionConfigSchema: GenMessage<MssqlConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 17);
+  messageDesc(file_mgmt_v1alpha1_connection, 20);
 
 /**
  * Configuration for a DynaomDB Connection
@@ -641,7 +914,7 @@ export type DynamoDBConnectionConfig = Message<"mgmt.v1alpha1.DynamoDBConnection
  * Use `create(DynamoDBConnectionConfigSchema)` to create a new message.
  */
 export const DynamoDBConnectionConfigSchema: GenMessage<DynamoDBConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 18);
+  messageDesc(file_mgmt_v1alpha1_connection, 21);
 
 /**
  * @generated from message mgmt.v1alpha1.MongoConnectionConfig
@@ -682,7 +955,7 @@ export type MongoConnectionConfig = Message<"mgmt.v1alpha1.MongoConnectionConfig
  * Use `create(MongoConnectionConfigSchema)` to create a new message.
  */
 export const MongoConnectionConfigSchema: GenMessage<MongoConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 19);
+  messageDesc(file_mgmt_v1alpha1_connection, 22);
 
 /**
  * Configures a connection to OpenAI or OpenAI compatible API.
@@ -710,7 +983,7 @@ export type OpenAiConnectionConfig = Message<"mgmt.v1alpha1.OpenAiConnectionConf
  * Use `create(OpenAiConnectionConfigSchema)` to create a new message.
  */
 export const OpenAiConnectionConfigSchema: GenMessage<OpenAiConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 20);
+  messageDesc(file_mgmt_v1alpha1_connection, 23);
 
 /**
  * Configures a connection to a directory available on the local file system
@@ -731,7 +1004,7 @@ export type LocalDirectoryConnectionConfig = Message<"mgmt.v1alpha1.LocalDirecto
  * Use `create(LocalDirectoryConnectionConfigSchema)` to create a new message.
  */
 export const LocalDirectoryConnectionConfigSchema: GenMessage<LocalDirectoryConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 21);
+  messageDesc(file_mgmt_v1alpha1_connection, 24);
 
 /**
  * @generated from message mgmt.v1alpha1.PostgresConnectionConfig
@@ -797,7 +1070,7 @@ export type PostgresConnectionConfig = Message<"mgmt.v1alpha1.PostgresConnection
  * Use `create(PostgresConnectionConfigSchema)` to create a new message.
  */
 export const PostgresConnectionConfigSchema: GenMessage<PostgresConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 22);
+  messageDesc(file_mgmt_v1alpha1_connection, 25);
 
 /**
  * Config for providing client-side TLS certificates
@@ -840,7 +1113,7 @@ export type ClientTlsConfig = Message<"mgmt.v1alpha1.ClientTlsConfig"> & {
  * Use `create(ClientTlsConfigSchema)` to create a new message.
  */
 export const ClientTlsConfigSchema: GenMessage<ClientTlsConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 23);
+  messageDesc(file_mgmt_v1alpha1_connection, 26);
 
 /**
  * @generated from message mgmt.v1alpha1.SqlConnectionOptions
@@ -890,7 +1163,7 @@ export type SqlConnectionOptions = Message<"mgmt.v1alpha1.SqlConnectionOptions">
  * Use `create(SqlConnectionOptionsSchema)` to create a new message.
  */
 export const SqlConnectionOptionsSchema: GenMessage<SqlConnectionOptions> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 24);
+  messageDesc(file_mgmt_v1alpha1_connection, 27);
 
 /**
  * @generated from message mgmt.v1alpha1.SSHTunnel
@@ -939,7 +1212,7 @@ export type SSHTunnel = Message<"mgmt.v1alpha1.SSHTunnel"> & {
  * Use `create(SSHTunnelSchema)` to create a new message.
  */
 export const SSHTunnelSchema: GenMessage<SSHTunnel> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 25);
+  messageDesc(file_mgmt_v1alpha1_connection, 28);
 
 /**
  * SSH Authentication
@@ -974,7 +1247,7 @@ export type SSHAuthentication = Message<"mgmt.v1alpha1.SSHAuthentication"> & {
  * Use `create(SSHAuthenticationSchema)` to create a new message.
  */
 export const SSHAuthenticationSchema: GenMessage<SSHAuthentication> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 26);
+  messageDesc(file_mgmt_v1alpha1_connection, 29);
 
 /**
  * Contains the configuration needed to retrieve the SSH passphrase for the tunnel
@@ -997,7 +1270,7 @@ export type SSHPassphrase = Message<"mgmt.v1alpha1.SSHPassphrase"> & {
  * Use `create(SSHPassphraseSchema)` to create a new message.
  */
 export const SSHPassphraseSchema: GenMessage<SSHPassphrase> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 27);
+  messageDesc(file_mgmt_v1alpha1_connection, 30);
 
 /**
  * Contains the configuration needed to retrieve the SSH private key for the tunnel
@@ -1025,7 +1298,7 @@ export type SSHPrivateKey = Message<"mgmt.v1alpha1.SSHPrivateKey"> & {
  * Use `create(SSHPrivateKeySchema)` to create a new message.
  */
 export const SSHPrivateKeySchema: GenMessage<SSHPrivateKey> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 28);
+  messageDesc(file_mgmt_v1alpha1_connection, 31);
 
 /**
  * @generated from message mgmt.v1alpha1.PostgresConnection
@@ -1079,7 +1352,7 @@ export type PostgresConnection = Message<"mgmt.v1alpha1.PostgresConnection"> & {
  * Use `create(PostgresConnectionSchema)` to create a new message.
  */
 export const PostgresConnectionSchema: GenMessage<PostgresConnection> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 29);
+  messageDesc(file_mgmt_v1alpha1_connection, 32);
 
 /**
  * @generated from message mgmt.v1alpha1.MysqlConnection
@@ -1133,7 +1406,7 @@ export type MysqlConnection = Message<"mgmt.v1alpha1.MysqlConnection"> & {
  * Use `create(MysqlConnectionSchema)` to create a new message.
  */
 export const MysqlConnectionSchema: GenMessage<MysqlConnection> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 30);
+  messageDesc(file_mgmt_v1alpha1_connection, 33);
 
 /**
  * @generated from message mgmt.v1alpha1.MysqlConnectionConfig
@@ -1199,7 +1472,7 @@ export type MysqlConnectionConfig = Message<"mgmt.v1alpha1.MysqlConnectionConfig
  * Use `create(MysqlConnectionConfigSchema)` to create a new message.
  */
 export const MysqlConnectionConfigSchema: GenMessage<MysqlConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 31);
+  messageDesc(file_mgmt_v1alpha1_connection, 34);
 
 /**
  * @generated from message mgmt.v1alpha1.AwsS3ConnectionConfig
@@ -1246,7 +1519,7 @@ export type AwsS3ConnectionConfig = Message<"mgmt.v1alpha1.AwsS3ConnectionConfig
  * Use `create(AwsS3ConnectionConfigSchema)` to create a new message.
  */
 export const AwsS3ConnectionConfigSchema: GenMessage<AwsS3ConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 32);
+  messageDesc(file_mgmt_v1alpha1_connection, 35);
 
 /**
  * S3 Credentials that are used by the worker process.
@@ -1310,7 +1583,7 @@ export type AwsS3Credentials = Message<"mgmt.v1alpha1.AwsS3Credentials"> & {
  * Use `create(AwsS3CredentialsSchema)` to create a new message.
  */
 export const AwsS3CredentialsSchema: GenMessage<AwsS3Credentials> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 33);
+  messageDesc(file_mgmt_v1alpha1_connection, 36);
 
 /**
  * Configuration for GCP Cloud Storage Buckets
@@ -1345,7 +1618,7 @@ export type GcpCloudStorageConnectionConfig = Message<"mgmt.v1alpha1.GcpCloudSto
  * Use `create(GcpCloudStorageConnectionConfigSchema)` to create a new message.
  */
 export const GcpCloudStorageConnectionConfigSchema: GenMessage<GcpCloudStorageConnectionConfig> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 34);
+  messageDesc(file_mgmt_v1alpha1_connection, 37);
 
 /**
  * @generated from message mgmt.v1alpha1.IsConnectionNameAvailableRequest
@@ -1371,7 +1644,7 @@ export type IsConnectionNameAvailableRequest = Message<"mgmt.v1alpha1.IsConnecti
  * Use `create(IsConnectionNameAvailableRequestSchema)` to create a new message.
  */
 export const IsConnectionNameAvailableRequestSchema: GenMessage<IsConnectionNameAvailableRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 35);
+  messageDesc(file_mgmt_v1alpha1_connection, 38);
 
 /**
  * @generated from message mgmt.v1alpha1.IsConnectionNameAvailableResponse
@@ -1390,7 +1663,7 @@ export type IsConnectionNameAvailableResponse = Message<"mgmt.v1alpha1.IsConnect
  * Use `create(IsConnectionNameAvailableResponseSchema)` to create a new message.
  */
 export const IsConnectionNameAvailableResponseSchema: GenMessage<IsConnectionNameAvailableResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 36);
+  messageDesc(file_mgmt_v1alpha1_connection, 39);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSqlQueryRequest
@@ -1416,7 +1689,7 @@ export type CheckSqlQueryRequest = Message<"mgmt.v1alpha1.CheckSqlQueryRequest">
  * Use `create(CheckSqlQueryRequestSchema)` to create a new message.
  */
 export const CheckSqlQueryRequestSchema: GenMessage<CheckSqlQueryRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 37);
+  messageDesc(file_mgmt_v1alpha1_connection, 40);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSqlQueryResponse
@@ -1442,7 +1715,7 @@ export type CheckSqlQueryResponse = Message<"mgmt.v1alpha1.CheckSqlQueryResponse
  * Use `create(CheckSqlQueryResponseSchema)` to create a new message.
  */
 export const CheckSqlQueryResponseSchema: GenMessage<CheckSqlQueryResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 38);
+  messageDesc(file_mgmt_v1alpha1_connection, 41);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSSHConnectionRequest
@@ -1461,7 +1734,7 @@ export type CheckSSHConnectionRequest = Message<"mgmt.v1alpha1.CheckSSHConnectio
  * Use `create(CheckSSHConnectionRequestSchema)` to create a new message.
  */
 export const CheckSSHConnectionRequestSchema: GenMessage<CheckSSHConnectionRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 39);
+  messageDesc(file_mgmt_v1alpha1_connection, 42);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSSHConnectionResponse
@@ -1480,7 +1753,7 @@ export type CheckSSHConnectionResponse = Message<"mgmt.v1alpha1.CheckSSHConnecti
  * Use `create(CheckSSHConnectionResponseSchema)` to create a new message.
  */
 export const CheckSSHConnectionResponseSchema: GenMessage<CheckSSHConnectionResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 40);
+  messageDesc(file_mgmt_v1alpha1_connection, 43);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSSHConnectionByIdRequest
@@ -1499,7 +1772,7 @@ export type CheckSSHConnectionByIdRequest = Message<"mgmt.v1alpha1.CheckSSHConne
  * Use `create(CheckSSHConnectionByIdRequestSchema)` to create a new message.
  */
 export const CheckSSHConnectionByIdRequestSchema: GenMessage<CheckSSHConnectionByIdRequest> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 41);
+  messageDesc(file_mgmt_v1alpha1_connection, 44);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSSHConnectionByIdResponse
@@ -1518,7 +1791,7 @@ export type CheckSSHConnectionByIdResponse = Message<"mgmt.v1alpha1.CheckSSHConn
  * Use `create(CheckSSHConnectionByIdResponseSchema)` to create a new message.
  */
 export const CheckSSHConnectionByIdResponseSchema: GenMessage<CheckSSHConnectionByIdResponse> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 42);
+  messageDesc(file_mgmt_v1alpha1_connection, 45);
 
 /**
  * @generated from message mgmt.v1alpha1.CheckSSHConnectionResult
@@ -1544,7 +1817,39 @@ export type CheckSSHConnectionResult = Message<"mgmt.v1alpha1.CheckSSHConnection
  * Use `create(CheckSSHConnectionResultSchema)` to create a new message.
  */
 export const CheckSSHConnectionResultSchema: GenMessage<CheckSSHConnectionResult> = /*@__PURE__*/
-  messageDesc(file_mgmt_v1alpha1_connection, 43);
+  messageDesc(file_mgmt_v1alpha1_connection, 46);
+
+/**
+ * The role a connection plays in a job.
+ *
+ * @generated from enum mgmt.v1alpha1.ConnectionRole
+ */
+export enum ConnectionRole {
+  /**
+   * @generated from enum value: CONNECTION_ROLE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The connection is read.
+   *
+   * @generated from enum value: CONNECTION_ROLE_SOURCE = 1;
+   */
+  SOURCE = 1,
+
+  /**
+   * The connection is written.
+   *
+   * @generated from enum value: CONNECTION_ROLE_DESTINATION = 2;
+   */
+  DESTINATION = 2,
+}
+
+/**
+ * Describes the enum mgmt.v1alpha1.ConnectionRole.
+ */
+export const ConnectionRoleSchema: GenEnum<ConnectionRole> = /*@__PURE__*/
+  enumDesc(file_mgmt_v1alpha1_connection, 0);
 
 /**
  * Service for managing datasource connections.

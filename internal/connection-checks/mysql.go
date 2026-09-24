@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
+	mysqlgrants "github.com/fishtre-compagnie/husonym/internal/mysql-grants"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -122,19 +123,19 @@ func checkMysqlDestination(
 		existing = append(existing, t)
 	}
 
-	grants, err := readMysqlGrants(ctx, db)
+	grants, err := mysqlgrants.Read(ctx, db)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the privileges of destination %q: %w", name, err)
 	}
 	var seeTriggers []*Table
 	for _, t := range existing {
-		if truncates && !grants.hasTablePrivilege("DROP", t.Schema, t.Table) {
+		if truncates && !grants.HasTablePrivilege("DROP", t.Schema, t.Table) {
 			findings = append(findings, blocking(CheckTruncate, t.String(), []string{"DROP"},
 				mysqlGrantOnTable([]string{"DROP"}, t, account.quoted(ctx)),
 				fmt.Sprintf("destination %q cannot empty %s before writing it "+
 					"(missing DROP, which TRUNCATE takes)", name, t)))
 		}
-		if !grants.hasTablePrivilege("TRIGGER", t.Schema, t.Table) {
+		if !grants.HasTablePrivilege("TRIGGER", t.Schema, t.Table) {
 			findings = append(findings, blocking(CheckTriggers, t.String(), []string{"TRIGGER"},
 				mysqlGrantOnTable([]string{"TRIGGER"}, t, account.quoted(ctx)),
 				fmt.Sprintf("destination %q cannot see the triggers of %s nor take them "+
@@ -161,10 +162,10 @@ func checkMysqlTriggerDefiners(
 	db Db,
 	name string,
 	tables []*Table,
-	grants mysqlGrants,
+	grants mysqlgrants.Grants,
 	account *mysqlAccount,
 ) ([]*Finding, error) {
-	if len(tables) == 0 || grants.hasGlobalPrivilege("SUPER", "SET_USER_ID", "SET_ANY_DEFINER") {
+	if len(tables) == 0 || grants.HasGlobalPrivilege("SUPER", "SET_USER_ID", "SET_ANY_DEFINER") {
 		return nil, nil
 	}
 	current, err := account.current(ctx)
@@ -307,29 +308,6 @@ func mysqlReadOnly(ctx context.Context, db Db) (bool, error) {
 		readOnly = readOnly || !strings.EqualFold(value, "OFF")
 	}
 	return readOnly, rows.Err()
-}
-
-// readMysqlGrants reads SHOW GRANTS for the session's own account, and whether the server
-// folds table names to lower case, which its grants are then written in.
-func readMysqlGrants(ctx context.Context, db Db) (mysqlGrants, error) {
-	var lowerCaseTableNames int
-	if err := db.QueryRowContext(ctx, "SELECT @@lower_case_table_names").Scan(&lowerCaseTableNames); err != nil {
-		return mysqlGrants{}, err
-	}
-	rows, err := db.QueryContext(ctx, "SHOW GRANTS")
-	if err != nil {
-		return mysqlGrants{}, err
-	}
-	defer rows.Close()
-	var lines []string
-	for rows.Next() {
-		var line string
-		if err := rows.Scan(&line); err != nil {
-			return mysqlGrants{}, err
-		}
-		lines = append(lines, line)
-	}
-	return parseMysqlGrants(lines, lowerCaseTableNames != 0), rows.Err()
 }
 
 // The probes name the columns the run writes, so that a privilege held on some columns only

@@ -186,7 +186,11 @@ func Test_checkMysqlDestination_columnAddedByTheRun(t *testing.T) {
 			if createsTables {
 				require.Empty(t, findings)
 			} else {
-				require.Equal(t, []string{`destination "staging" has no column libellé in shop.ARTICLE that the account can see`}, Messages(findings))
+				require.Equal(
+					t,
+					[]string{`destination "staging" has no column libellé in shop.ARTICLE that the account can see`},
+					Messages(findings),
+				)
 			}
 			require.NoError(t, mock.ExpectationsWereMet())
 		})

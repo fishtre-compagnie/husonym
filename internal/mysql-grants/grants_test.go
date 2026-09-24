@@ -1,4 +1,4 @@
-package connectionchecks
+package mysqlgrants
 
 import (
 	"testing"
@@ -19,8 +19,8 @@ var showGrants = []string{
 }
 
 func TestParseMysqlGrants(t *testing.T) {
-	grants := parseMysqlGrants(showGrants, false)
-	require.Equal(t, []mysqlGrant{
+	grants := Parse(showGrants, false)
+	require.Equal(t, []entry{
 		{privileges: []string{"RELOAD", "PROCESS"}, database: "*", table: "*"},
 		{privileges: []string{"SET_USER_ID"}, database: "*", table: "*"},
 		{privileges: []string{"DROP", "TRIGGER"}, database: `probe\_cl%`, table: "*"},
@@ -30,26 +30,26 @@ func TestParseMysqlGrants(t *testing.T) {
 }
 
 func TestMysqlGrants_hasTablePrivilege(t *testing.T) {
-	grants := parseMysqlGrants(showGrants, false)
-	require.True(t, grants.hasTablePrivilege("TRIGGER", "probe_claude", "t"), "granted on a matching pattern")
-	require.False(t, grants.hasTablePrivilege("TRIGGER", "probeXclaude", "t"), `\_ is a literal underscore`)
-	require.True(t, grants.hasTablePrivilege("INSERT", "probe_claude", "autre"), "granted on the database")
-	require.True(t, grants.hasTablePrivilege("DELETE", "probe_claude", "t"), "granted on the table")
-	require.False(t, grants.hasTablePrivilege("DELETE", "probe_claude", "autre"))
-	require.False(t, grants.hasTablePrivilege("UPDATE", "probe_claude", "t"), "granted on some columns only")
-	require.True(t, grants.hasGlobalPrivilege("SUPER", "SET_USER_ID"))
-	require.False(t, grants.hasGlobalPrivilege("SUPER"))
+	grants := Parse(showGrants, false)
+	require.True(t, grants.HasTablePrivilege("TRIGGER", "probe_claude", "t"), "granted on a matching pattern")
+	require.False(t, grants.HasTablePrivilege("TRIGGER", "probeXclaude", "t"), `\_ is a literal underscore`)
+	require.True(t, grants.HasTablePrivilege("INSERT", "probe_claude", "autre"), "granted on the database")
+	require.True(t, grants.HasTablePrivilege("DELETE", "probe_claude", "t"), "granted on the table")
+	require.False(t, grants.HasTablePrivilege("DELETE", "probe_claude", "autre"))
+	require.False(t, grants.HasTablePrivilege("UPDATE", "probe_claude", "t"), "granted on some columns only")
+	require.True(t, grants.HasGlobalPrivilege("SUPER", "SET_USER_ID"))
+	require.False(t, grants.HasGlobalPrivilege("SUPER"))
 }
 
 // ALL PRIVILEGES on every database, taken back on one of them (partial_revokes).
 func TestMysqlGrants_partialRevoke(t *testing.T) {
-	grants := parseMysqlGrants([]string{
+	grants := Parse([]string{
 		"GRANT ALL PRIVILEGES ON *.* TO `app`@`10.0.0.%` WITH GRANT OPTION",
 		"REVOKE DROP ON `prod`.* FROM `app`@`10.0.0.%`",
 	}, false)
-	require.True(t, grants.hasTablePrivilege("DROP", "staging", "t"))
-	require.False(t, grants.hasTablePrivilege("DROP", "prod", "t"))
-	require.True(t, grants.hasTablePrivilege("TRIGGER", "prod", "t"))
+	require.True(t, grants.HasTablePrivilege("DROP", "staging", "t"))
+	require.False(t, grants.HasTablePrivilege("DROP", "prod", "t"))
+	require.True(t, grants.HasTablePrivilege("TRIGGER", "prod", "t"))
 }
 
 func TestMatchMysqlPattern(t *testing.T) {
@@ -67,7 +67,7 @@ func TestMatchMysqlPattern(t *testing.T) {
 		{"%", "", true},
 		{"é_", "éa", true},
 	} {
-		require.Equal(t, c.match, matchMysqlPattern(c.pattern, c.name), "%s ~ %s", c.pattern, c.name)
+		require.Equal(t, c.match, matchPattern(c.pattern, c.name), "%s ~ %s", c.pattern, c.name)
 	}
 }
 
@@ -78,26 +78,26 @@ func TestMysqlGrants_foldCase(t *testing.T) {
 		"GRANT SELECT, TRIGGER ON `bench_x`.* TO `u`@`%`",
 		"GRANT DELETE ON `bench_x`.`article` TO `u`@`%`",
 	}
-	folding := parseMysqlGrants(lines, true)
-	require.True(t, folding.hasTablePrivilege("TRIGGER", "Bench_X", "ARTICLE"))
-	require.True(t, folding.hasTablePrivilege("DELETE", "Bench_X", "ARTICLE"))
-	exact := parseMysqlGrants(lines, false)
-	require.False(t, exact.hasTablePrivilege("DELETE", "bench_x", "ARTICLE"), "another table on a case-sensitive server")
+	folding := Parse(lines, true)
+	require.True(t, folding.HasTablePrivilege("TRIGGER", "Bench_X", "ARTICLE"))
+	require.True(t, folding.HasTablePrivilege("DELETE", "Bench_X", "ARTICLE"))
+	exact := Parse(lines, false)
+	require.False(t, exact.HasTablePrivilege("DELETE", "bench_x", "ARTICLE"), "another table on a case-sensitive server")
 }
 
 // GRANT ALL PRIVILEGES ON *.* holds the dynamic privileges too. Reading it as the single
 // word it is parsed into reported the account as lacking SUPER and SET_USER_ID, and the
 // run was refused before it started.
 func TestMysqlGrants_hasGlobalPrivilegeThroughAll(t *testing.T) {
-	grants := parseMysqlGrants([]string{
+	grants := Parse([]string{
 		"GRANT ALL PRIVILEGES ON *.* TO `app`@`%` WITH GRANT OPTION",
 	}, false)
-	require.True(t, grants.hasGlobalPrivilege("SUPER", "SET_USER_ID"))
-	require.True(t, grants.hasGlobalPrivilege("SET_USER_ID"))
+	require.True(t, grants.HasGlobalPrivilege("SUPER", "SET_USER_ID"))
+	require.True(t, grants.HasGlobalPrivilege("SET_USER_ID"))
 
-	onOneDatabase := parseMysqlGrants([]string{
+	onOneDatabase := Parse([]string{
 		"GRANT ALL PRIVILEGES ON `prod`.* TO `app`@`%`",
 	}, false)
-	require.False(t, onOneDatabase.hasGlobalPrivilege("SUPER", "SET_USER_ID"),
+	require.False(t, onOneDatabase.HasGlobalPrivilege("SUPER", "SET_USER_ID"),
 		"ALL on one database is not ALL on every database")
 }

@@ -1,19 +1,28 @@
-package connectionchecks
-
-import (
-	"slices"
-	"strings"
-)
-
+// Package mysqlgrants reads what a MySQL account may do from SHOW GRANTS.
+//
 // MySQL has no has_table_privilege. What a run does with rows is asked of the server itself
-// (see mysql.go); what it does to a table — empty it, take its triggers out of the way —
+// (see internal/connection-checks); what it does to a table — empty it, take its triggers out of the way —
 // and to a trigger — give it back its definer — has no statement to ask it with, and is
 // read from SHOW GRANTS. Without FOR, SHOW GRANTS describes the account the session runs as,
 // with the privileges of its active roles merged in: what information_schema shows neither
 // for a role nor for an account declared on a specific host.
+package mysqlgrants
 
-// mysqlGrant is one line of SHOW GRANTS about privileges on a database or a table.
-type mysqlGrant struct {
+import (
+	"context"
+	"database/sql"
+	"slices"
+	"strings"
+)
+
+// Querier is what reading the grants needs from a connection.
+type Querier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// entry is one line of SHOW GRANTS about privileges on a database or a table.
+type entry struct {
 	// revoke marks a partial revoke: the privileges are taken back on one database from a
 	// global grant (partial_revokes).
 	revoke bool
@@ -26,21 +35,21 @@ type mysqlGrant struct {
 	table string
 }
 
-// mysqlGrants is what SHOW GRANTS said about the account.
-type mysqlGrants struct {
-	grants []mysqlGrant
+// Grants is what SHOW GRANTS said about the account.
+type Grants struct {
+	grants []entry
 	// foldCase compares database and table names without regard to case, as a server with
 	// lower_case_table_names 1 or 2 does: it grants on the names folded to lower case, and a
 	// job names its tables the way the source spells them.
 	foldCase bool
 }
 
-// parseMysqlGrants reads the lines of SHOW GRANTS. Lines granting roles or proxies, or
+// Parse reads the lines of SHOW GRANTS. Lines granting roles or proxies, or
 // privileges on routines, say nothing about tables and are left out.
-func parseMysqlGrants(lines []string, foldCase bool) mysqlGrants {
-	grants := mysqlGrants{foldCase: foldCase}
+func Parse(lines []string, foldCase bool) Grants {
+	grants := Grants{foldCase: foldCase}
 	for _, line := range lines {
-		grant, ok := parseMysqlGrant(line)
+		grant, ok := parseEntry(line)
 		if ok {
 			grants.grants = append(grants.grants, grant)
 		}
@@ -48,8 +57,8 @@ func parseMysqlGrants(lines []string, foldCase bool) mysqlGrants {
 	return grants
 }
 
-func parseMysqlGrant(line string) (mysqlGrant, bool) {
-	var grant mysqlGrant
+func parseEntry(line string) (entry, bool) {
+	var grant entry
 	var rest, to string
 	switch {
 	case strings.HasPrefix(line, "GRANT "):
@@ -77,7 +86,7 @@ func parseMysqlGrant(line string) (mysqlGrant, bool) {
 		}
 		grant.privileges = append(grant.privileges, privilege)
 	}
-	database, table, ok := splitMysqlTarget(target)
+	database, table, ok := splitTarget(target)
 	if !ok {
 		return grant, false // a procedure or a function
 	}
@@ -108,21 +117,21 @@ func splitTopLevel(list string) []string {
 	return append(parts, list[start:])
 }
 
-// splitMysqlTarget reads *.*, `db`.* or `db`.`table`.
-func splitMysqlTarget(target string) (database, table string, ok bool) {
-	database, rest, ok := readMysqlName(target)
+// splitTarget reads *.*, `db`.* or `db`.`table`.
+func splitTarget(target string) (database, table string, ok bool) {
+	database, rest, ok := readName(target)
 	if !ok || !strings.HasPrefix(rest, ".") {
 		return "", "", false
 	}
-	table, rest, ok = readMysqlName(rest[1:])
+	table, rest, ok = readName(rest[1:])
 	if !ok || rest != "" {
 		return "", "", false
 	}
 	return database, table, true
 }
 
-// readMysqlName reads * or a name between backticks at the start of s.
-func readMysqlName(s string) (name, rest string, ok bool) {
+// readName reads * or a name between backticks at the start of s.
+func readName(s string) (name, rest string, ok bool) {
 	if strings.HasPrefix(s, "*") {
 		return "*", s[1:], true
 	}
@@ -145,9 +154,9 @@ func readMysqlName(s string) (name, rest string, ok bool) {
 	return "", "", false
 }
 
-// hasTablePrivilege tells whether the account holds a privilege on a table: on every
+// HasTablePrivilege tells whether the account holds a privilege on a table: on every
 // database and not taken back on this one, on the database, or on the table.
-func (g mysqlGrants) hasTablePrivilege(privilege, database, table string) bool {
+func (g Grants) HasTablePrivilege(privilege, database, table string) bool {
 	database, table = g.fold(database), g.fold(table)
 	for _, grant := range g.grants {
 		if grant.revoke || !grant.grants(privilege) {
@@ -159,7 +168,7 @@ func (g mysqlGrants) hasTablePrivilege(privilege, database, table string) bool {
 				return true
 			}
 		case grant.table == "*":
-			if matchMysqlPattern(g.fold(grant.database), database) {
+			if matchPattern(g.fold(grant.database), database) {
 				return true
 			}
 		case g.fold(grant.database) == database && g.fold(grant.table) == table:
@@ -169,23 +178,23 @@ func (g mysqlGrants) hasTablePrivilege(privilege, database, table string) bool {
 	return false
 }
 
-func (g mysqlGrants) fold(name string) string {
+func (g Grants) fold(name string) string {
 	if g.foldCase {
 		return strings.ToLower(name)
 	}
 	return name
 }
 
-// hasGlobalPrivilege tells whether the account holds one of the privileges on every
+// HasGlobalPrivilege tells whether the account holds one of the privileges on every
 // database — where the dynamic privileges are granted.
-func (g mysqlGrants) hasGlobalPrivilege(privileges ...string) bool {
+func (g Grants) HasGlobalPrivilege(privileges ...string) bool {
 	for _, grant := range g.grants {
 		if grant.revoke || grant.database != "*" {
 			continue
 		}
 		for _, privilege := range privileges {
 			// grants, and not a plain lookup: GRANT ALL PRIVILEGES ON *.* holds every
-			// dynamic privilege too, and parseMysqlGrant records it as the single "ALL".
+			// dynamic privilege too, and parseEntry records it as the single "ALL".
 			if grant.grants(privilege) {
 				return true
 			}
@@ -194,7 +203,7 @@ func (g mysqlGrants) hasGlobalPrivilege(privileges ...string) bool {
 	return false
 }
 
-func (g mysqlGrants) revoked(privilege, database string) bool {
+func (g Grants) revoked(privilege, database string) bool {
 	for _, grant := range g.grants {
 		if grant.revoke && g.fold(grant.database) == database && grant.grants(privilege) {
 			return true
@@ -203,13 +212,13 @@ func (g mysqlGrants) revoked(privilege, database string) bool {
 	return false
 }
 
-func (g mysqlGrant) grants(privilege string) bool {
+func (g entry) grants(privilege string) bool {
 	return slices.Contains(g.privileges, privilege) || slices.Contains(g.privileges, "ALL")
 }
 
-// matchMysqlPattern matches a database name against the pattern of a database-level grant:
+// matchPattern matches a database name against the pattern of a database-level grant:
 // _ is any character, % any run of them, and a backslash makes the next one literal.
-func matchMysqlPattern(pattern, name string) bool {
+func matchPattern(pattern, name string) bool {
 	return matchRunes([]rune(pattern), []rune(name))
 }
 
@@ -233,4 +242,27 @@ func matchRunes(pattern, name []rune) bool {
 		}
 	}
 	return len(name) > 0 && name[0] == pattern[0] && matchRunes(pattern[1:], name[1:])
+}
+
+// Read reads SHOW GRANTS for the session's own account, and whether the server
+// folds table names to lower case, which its grants are then written in.
+func Read(ctx context.Context, db Querier) (Grants, error) {
+	var lowerCaseTableNames int
+	if err := db.QueryRowContext(ctx, "SELECT @@lower_case_table_names").Scan(&lowerCaseTableNames); err != nil {
+		return Grants{}, err
+	}
+	rows, err := db.QueryContext(ctx, "SHOW GRANTS")
+	if err != nil {
+		return Grants{}, err
+	}
+	defer rows.Close()
+	var lines []string
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			return Grants{}, err
+		}
+		lines = append(lines, line)
+	}
+	return Parse(lines, lowerCaseTableNames != 0), rows.Err()
 }

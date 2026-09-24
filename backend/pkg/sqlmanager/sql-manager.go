@@ -180,10 +180,14 @@ func (s *SqlManager) NewSqlConnection(
 	switch connection.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
 		db := sqlmanager_postgres.NewManager(s.config.pgQuerier, connclient, closer)
-		return NewPostgresSqlConnection(db), nil
+		conn := NewPostgresSqlConnection(db)
+		conn.queryer = connclient
+		return conn, nil
 	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
 		db := sqlmanager_mysql.NewManager(s.config.mysqlQuerier, connclient, closer)
-		return NewMysqlSqlConnection(db), nil
+		conn := NewMysqlSqlConnection(db)
+		conn.queryer = connclient
+		return conn, nil
 	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
 		db := sqlmanager_mssql.NewManager(s.config.mssqlQuerier, connclient, closer, slogger)
 		return NewMssqlSqlConnection(db), nil

@@ -48,11 +48,22 @@ func (s *Service) CheckConnectionConfig(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.CheckConnectionConfigRequest],
 ) (*connect.Response[mgmtv1alpha1.CheckConnectionConfigResponse], error) {
+	// A connection not saved yet has no name for the findings to call it by.
+	return s.checkConnection(ctx, req.Msg, "this connection")
+}
+
+// checkConnection tests a connection, and when a scope is given, whether it can do what its
+// role in a job needs; name is how the findings call it.
+func (s *Service) checkConnection(
+	ctx context.Context,
+	msg *mgmtv1alpha1.CheckConnectionConfigRequest,
+	name string,
+) (*connect.Response[mgmtv1alpha1.CheckConnectionConfigResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
-	switch req.Msg.GetConnectionConfig().GetConfig().(type) {
+	switch msg.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_PgConfig, *mgmtv1alpha1.ConnectionConfig_MysqlConfig, *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		role, err := getDbRoleFromConnectionConfig(req.Msg.GetConnectionConfig(), logger)
+		role, err := getDbRoleFromConnectionConfig(msg.GetConnectionConfig(), logger)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve db role/user from connection config prior to checking connection: %w", err)
 		}
@@ -60,7 +71,7 @@ func (s *Service) CheckConnectionConfig(
 		db, err := s.sqlmanager.NewSqlConnection(
 			ctx,
 			connectionmanager.NewUniqueSession(),
-			&connInput{cc: req.Msg.GetConnectionConfig(), id: uuid.NewString()},
+			&connInput{cc: msg.GetConnectionConfig(), id: uuid.NewString()},
 			logger,
 		)
 		if err != nil {
@@ -89,14 +100,22 @@ func (s *Service) CheckConnectionConfig(
 				PrivilegeType: permissions,
 			})
 		}
+		var checks []*mgmtv1alpha1.ConnectionCheck
+		if msg.Scope != nil {
+			checks, err = checkRole(ctx, db, msg.GetConnectionConfig(), name, msg.GetScope())
+			if err != nil {
+				return nil, fmt.Errorf("unable to check the connection in its role: %w", err)
+			}
+		}
 		return connect.NewResponse(&mgmtv1alpha1.CheckConnectionConfigResponse{
 			IsConnected:     true,
 			ConnectionError: nil,
 			Privileges:      privs,
+			Checks:          checks,
 		}), nil
 
 	case *mgmtv1alpha1.ConnectionConfig_MongoConfig:
-		db, err := s.mongoconnector.NewFromConnectionConfig(req.Msg.GetConnectionConfig(), logger)
+		db, err := s.mongoconnector.NewFromConnectionConfig(msg.GetConnectionConfig(), logger)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +180,7 @@ func (s *Service) CheckConnectionConfig(
 			Privileges:      privs,
 		}), nil
 	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
-		client, err := s.awsManager.NewDynamoDbClient(ctx, req.Msg.GetConnectionConfig().GetDynamodbConfig())
+		client, err := s.awsManager.NewDynamoDbClient(ctx, msg.GetConnectionConfig().GetDynamodbConfig())
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +206,7 @@ func (s *Service) CheckConnectionConfig(
 		}), nil
 	default:
 		return nil, husonymerrors.NewBadRequest(
-			fmt.Errorf("this method does not support this connection type %T: %w", req.Msg.GetConnectionConfig().GetConfig(), errors.ErrUnsupported).
+			fmt.Errorf("this method does not support this connection type %T: %w", msg.GetConnectionConfig().GetConfig(), errors.ErrUnsupported).
 				Error(),
 		)
 	}
@@ -204,12 +223,10 @@ func (s *Service) CheckConnectionConfigById(
 		return nil, err
 	}
 
-	resp, err := s.CheckConnectionConfig(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.CheckConnectionConfigRequest{
-			ConnectionConfig: connResp.Msg.GetConnection().ConnectionConfig,
-		}),
-	)
+	resp, err := s.checkConnection(ctx, &mgmtv1alpha1.CheckConnectionConfigRequest{
+		ConnectionConfig: connResp.Msg.GetConnection().ConnectionConfig,
+		Scope:            req.Msg.Scope,
+	}, connResp.Msg.GetConnection().GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -218,6 +235,7 @@ func (s *Service) CheckConnectionConfigById(
 		IsConnected:     resp.Msg.GetIsConnected(),
 		ConnectionError: resp.Msg.ConnectionError,
 		Privileges:      resp.Msg.GetPrivileges(),
+		Checks:          resp.Msg.GetChecks(),
 	}), nil
 }
 
