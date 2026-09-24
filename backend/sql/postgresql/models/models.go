@@ -66,17 +66,15 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 			if err != nil {
 				return nil, err
 			}
-			if !canViewSensitive && uri.User != nil {
-				_, ok := uri.User.Password()
-				if ok {
-					uri.User = url.UserPassword(uri.User.Username(), uriSensitiveValue)
-				}
+			pgUrl := uri.String()
+			if !canViewSensitive {
+				pgUrl = maskUri(uri)
 			}
 			return &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 					PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 						ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Url{
-							Url: uri.String(),
+							Url: pgUrl,
 						},
 						Tunnel:            tunnel,
 						ConnectionOptions: connectionOptions,
@@ -202,7 +200,7 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 			},
 		}, nil
 	} else if c.GcpCloudStorageConfig != nil {
-		gdto, err := c.GcpCloudStorageConfig.ToDto()
+		gdto, err := c.GcpCloudStorageConfig.ToDto(canViewSensitive)
 		if err != nil {
 			return nil, err
 		}
@@ -371,13 +369,7 @@ func (m *MongoConnectionConfig) ToDto(
 			}
 			return nil, fmt.Errorf("unable to parse mongo url: %w", err)
 		}
-		if uriconfig.User != nil {
-			_, ok := uriconfig.User.Password()
-			if ok {
-				uriconfig.User = url.UserPassword(uriconfig.User.Username(), uriSensitiveValue)
-			}
-		}
-		uri = uriconfig.String()
+		uri = maskUri(uriconfig)
 	}
 	return &mgmtv1alpha1.MongoConnectionConfig{
 		ConnectionConfig: &mgmtv1alpha1.MongoConnectionConfig_Url{
@@ -414,11 +406,19 @@ type GcpCloudStorageConfig struct {
 	ServiceAccountCredentials *string `json:"serviceAccountCredentials,omitempty"`
 }
 
-func (g *GcpCloudStorageConfig) ToDto() (*mgmtv1alpha1.GcpCloudStorageConnectionConfig, error) {
+func (g *GcpCloudStorageConfig) ToDto(
+	canViewSensitive bool,
+) (*mgmtv1alpha1.GcpCloudStorageConnectionConfig, error) {
+	// The credentials are a service account's private key, in full.
+	credentials := g.ServiceAccountCredentials
+	if !canViewSensitive && credentials != nil && *credentials != "" {
+		v := sensitiveValue
+		credentials = &v
+	}
 	return &mgmtv1alpha1.GcpCloudStorageConnectionConfig{
 		Bucket:                    g.Bucket,
 		PathPrefix:                g.PathPrefix,
-		ServiceAccountCredentials: g.ServiceAccountCredentials,
+		ServiceAccountCredentials: credentials,
 	}, nil
 }
 func (g *GcpCloudStorageConfig) FromDto(dto *mgmtv1alpha1.GcpCloudStorageConnectionConfig) error {
@@ -457,15 +457,13 @@ func (d *MssqlConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.MssqlConnectio
 		if err != nil {
 			return nil, err
 		}
-		if !canViewSensitive && uri.User != nil {
-			_, ok := uri.User.Password()
-			if ok {
-				uri.User = url.UserPassword(uri.User.Username(), uriSensitiveValue)
-			}
+		mssqlUrl := uri.String()
+		if !canViewSensitive {
+			mssqlUrl = maskUri(uri)
 		}
 		return &mgmtv1alpha1.MssqlConnectionConfig{
 			ConnectionConfig: &mgmtv1alpha1.MssqlConnectionConfig_Url{
-				Url: uri.String(),
+				Url: mssqlUrl,
 			},
 			ConnectionOptions: connectionOptions,
 			Tunnel:            tunnel,
@@ -635,6 +633,45 @@ const sensitiveValue = "********"
 // splitting this out because URI encodes **** as %2A and it looks ugly
 const uriSensitiveValue = "______"
 
+// maskUri gives a connection URL as a caller who may not see its secrets should see it. A secret
+// hides in two places in a URL: the user's password, and a query parameter — ?password=,
+// ?sslpassword=, a token in Mongo's authMechanismProperties. Both are masked.
+//
+// A string that is not a URL — a keyword connection string such as "host=db password=…" or
+// "server=db;password=…", which parses as a bare path — cannot be masked field by field, so it
+// is masked whole: a caller who may not see secrets loses the host too, rather than keep them.
+func maskUri(uri *url.URL) string {
+	if uri.Scheme == "" {
+		return uriSensitiveValue
+	}
+	masked := *uri
+	if masked.User != nil {
+		if _, ok := masked.User.Password(); ok {
+			masked.User = url.UserPassword(masked.User.Username(), uriSensitiveValue)
+		}
+	}
+	query := masked.Query()
+	for key := range query {
+		if isSecretQueryKey(key) {
+			query.Set(key, uriSensitiveValue)
+		}
+	}
+	masked.RawQuery = query.Encode()
+	return masked.String()
+}
+
+// isSecretQueryKey says whether a URL parameter may carry a credential. It errs on the side of
+// masking: a parameter masked for nothing costs a caller one value, a secret left costs its owner.
+func isSecretQueryKey(key string) bool {
+	key = strings.ToLower(key)
+	for _, marker := range []string{"password", "pwd", "secret", "token", "key", "authmechanismproperties"} {
+		if strings.Contains(key, marker) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *SSHAuthentication) ToDto(canViewSensitive bool) *mgmtv1alpha1.SSHAuthentication {
 	if s.SSHPassphrase != nil {
 		value := s.SSHPassphrase.Value
@@ -756,11 +793,17 @@ func (a *AwsS3Credentials) ToDto(canViewSensitive bool) *mgmtv1alpha1.AwsS3Crede
 		v := sensitiveValue
 		secretAccessKey = &v
 	}
+	// A session token is a credential of its own: with the key id, it signs requests.
+	sessionToken := a.SessionToken
+	if !canViewSensitive && sessionToken != nil && *sessionToken != "" {
+		v := sensitiveValue
+		sessionToken = &v
+	}
 	return &mgmtv1alpha1.AwsS3Credentials{
 		Profile:         a.Profile,
 		AccessKeyId:     a.AccessKeyId,
 		SecretAccessKey: secretAccessKey,
-		SessionToken:    a.SessionToken,
+		SessionToken:    sessionToken,
 		FromEc2Role:     a.FromEc2Role,
 		RoleArn:         a.RoleArn,
 		RoleExternalId:  a.RoleExternalId,
