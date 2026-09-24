@@ -1,14 +1,24 @@
 'use client';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { getErrorMessage } from '@/util/util';
 import {
   CheckConnectionConfigByIdResponse,
   CheckConnectionConfigResponse,
+  ConnectionCheck,
 } from '@husonym/sdk';
 import { ArrowTopRightIcon, CheckCircledIcon } from '@radix-ui/react-icons';
 import Link from 'next/link';
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 import { MdErrorOutline } from 'react-icons/md';
 import { TiWarningOutline } from 'react-icons/ti';
+import ConnectionCheckList from './checks/ConnectionCheckList';
+import { countChecks } from './checks/useConnectionChecks';
 
 interface TestConnectionBadgeProps {
   validationResponse:
@@ -52,6 +62,9 @@ function ValidationResponseBadge(
     return null;
   }
   if (validationResponse.isConnected) {
+    if (validationResponse.checks.length > 0) {
+      return <FindingsBadge checks={validationResponse.checks} />;
+    }
     if (validationResponse.privileges.length === 0) {
       return (
         <div className="inline-flex">
@@ -98,5 +111,55 @@ function ValidationResponseBadge(
         <ArrowTopRightIcon />
       </Link>
     </div>
+  );
+}
+
+interface FindingsBadgeProps {
+  checks: ConnectionCheck[];
+}
+
+// FindingsBadge tells what the connection cannot do in its role at server level, and opens
+// the findings. The job's tables are checked when the job is saved.
+function FindingsBadge(props: FindingsBadgeProps): ReactElement {
+  const { checks } = props;
+  const [open, setOpen] = useState(false);
+  const { blocking, warnings } = countChecks(checks);
+  const parts = [
+    blocking > 0 ? `${blocking} blocking` : '',
+    warnings > 0 ? `${warnings} warning${warnings > 1 ? 's' : ''}` : '',
+  ].filter((part) => !!part);
+  const className =
+    blocking > 0
+      ? 'text-red-900 dark:text-red-100 border-red-700 bg-red-100 dark:bg-red-950 hover:bg-red-200 dark:hover:bg-red-950/90'
+      : 'text-orange-900 dark:text-orange-100 border-orange-700 bg-orange-100 dark:bg-orange-900 hover:bg-orange-200 dark:hover:bg-orange-950/90';
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`inline-flex flex-row items-center gap-2 rounded-xl border px-2 py-1 h-auto transition-colors ${className}`}
+      >
+        {blocking > 0 ? <MdErrorOutline /> : <TiWarningOutline />}
+        <span className="text-nowrap text-xs font-medium">
+          Connected · {parts.join(', ')}{' '}
+          <span className="underline">Details</span>
+        </span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl flex flex-col gap-4">
+          <DialogHeader>
+            <DialogTitle>Connection checks</DialogTitle>
+            <DialogDescription>
+              What the connection cannot do in its role, at server level. The
+              job&apos;s tables are checked when the job is saved.
+            </DialogDescription>
+          </DialogHeader>
+          <ConnectionCheckList
+            checks={checks}
+            allClearText="Nothing missing."
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

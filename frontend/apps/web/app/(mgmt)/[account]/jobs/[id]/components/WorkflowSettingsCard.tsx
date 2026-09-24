@@ -1,4 +1,5 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -55,11 +56,31 @@ export default function WorkflowSettingsCard({
   const { mutateAsync: updateJobWorkflowOptions } = useMutation(
     JobService.method.setJobWorkflowOptions
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   async function onSubmit(values: WorkflowSettingsSchema) {
     if (!account?.id) {
       return;
     }
+    const engine = values.engine ?? JobEngine.UNSPECIFIED;
+    if (engine === (job.workflowOptions?.engine ?? JobEngine.UNSPECIFIED)) {
+      await saveWorkflowOptions(values);
+      return;
+    }
+    // What the engine changes is asked of the destination servers as a whole (suspending
+    // foreign keys): they are checked with the new engine, and without the tables, so that a
+    // finding the engine does not change keeps no one from changing it. The source reads the
+    // same way under both.
+    await checkThenSave(
+      { ...job, workflowOptions: { engine } },
+      () => saveWorkflowOptions(values),
+      { checkSource: false, serverOnly: true }
+    );
+  }
+
+  async function saveWorkflowOptions(
+    values: WorkflowSettingsSchema
+  ): Promise<void> {
     try {
       const resp = await updateJobWorkflowOptions({
         id: job.id,
@@ -80,6 +101,7 @@ export default function WorkflowSettingsCard({
   return (
     <Card className="overflow-hidden">
       <Form {...form}>
+        {checksDialog}
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent>
             <FormField

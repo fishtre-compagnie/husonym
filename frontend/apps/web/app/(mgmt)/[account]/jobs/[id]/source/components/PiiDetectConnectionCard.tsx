@@ -1,4 +1,6 @@
 import { EditPiiDetectionJobFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
+import { getErrorMessage } from '@/util/util';
 import {
   DataSampling,
   Incremental,
@@ -38,6 +40,7 @@ export default function PiiDetectConnectionCard({
     isLoading: isJobDataLoading,
   } = useQuery(JobService.method.getJob, { id: jobId }, { enabled: !!jobId });
 
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
   const { mutateAsync: updateJobSourceConnection } = useMutation(
     JobService.method.updateJobSourceConnection
   );
@@ -80,32 +83,41 @@ export default function PiiDetectConnectionCard({
         }
       );
 
-      await updateJobSourceConnection({
-        id: job.id,
-        mappings: [],
-        virtualForeignKeys: [],
-        source: toJobSource(
-          {
-            connect: {
-              destinations: [],
-              sourceId: validatedData.sourceId,
-              sourceOptions: {},
-            },
-          },
-          getConnectionById
-        ),
-        jobType: {
-          jobType: {
-            case: 'piiDetect',
-            value: toPiiDetectJobTypeConfig(validatedData),
+      const source = toJobSource(
+        {
+          connect: {
+            destinations: [],
+            sourceId: validatedData.sourceId,
+            sourceOptions: {},
           },
         },
+        getConnectionById
+      );
+      await checkThenSave({ ...job, source, mappings: [] }, async () => {
+        try {
+          await updateJobSourceConnection({
+            id: job.id,
+            mappings: [],
+            virtualForeignKeys: [],
+            source,
+            jobType: {
+              jobType: {
+                case: 'piiDetect',
+                value: toPiiDetectJobTypeConfig(validatedData),
+              },
+            },
+          });
+          toast.success('Successfully updated source connection!');
+          const updatedJobResp = await mutate();
+          if (updatedJobResp.data?.job) {
+            setFromRemote(updatedJobResp.data?.job);
+          }
+        } catch (err) {
+          toast.error('Unable to update job source connection', {
+            description: getErrorMessage(err),
+          });
+        }
       });
-      toast.success('Successfully updated source connection!');
-      const updatedJobResp = await mutate();
-      if (updatedJobResp.data?.job) {
-        setFromRemote(updatedJobResp.data?.job);
-      }
     } catch (err) {
       if (err instanceof ValidationError) {
         const validationErrors: Record<string, string> = {};
@@ -123,6 +135,7 @@ export default function PiiDetectConnectionCard({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {checksDialog}
       <SourceConnectionId
         value={formData.sourceId}
         onChange={(value) =>

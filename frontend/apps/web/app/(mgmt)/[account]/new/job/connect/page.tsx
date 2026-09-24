@@ -2,6 +2,7 @@
 import FormPersist from '@/app/(mgmt)/FormPersist';
 import Spinner from '@/components/Spinner';
 import TestConnectionBadge from '@/components/connections/TestConnectionBadge';
+import { getServerScope } from '@/components/connections/checks/targets';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
 import SourceOptionsForm from '@/components/jobs/Form/SourceOptionsForm';
@@ -33,6 +34,7 @@ import {
   Code,
   ConnectError,
   ConnectionConfigSchema,
+  ConnectionRole,
   ConnectionSchema,
   ConnectionService,
 } from '@husonym/sdk';
@@ -53,7 +55,7 @@ import {
   getNewJobSessionKeys,
 } from '../../../jobs/util';
 import JobsProgressSteps, { getJobProgressSteps } from '../JobsProgressSteps';
-import { ConnectFormValues } from '../job-form-validations';
+import { ConnectFormValues, DefineFormValues } from '../job-form-validations';
 import ConnectionSelectContent from './ConnectionSelectContent';
 
 const NEW_CONNECTION_VALUE = 'new-connection';
@@ -81,6 +83,10 @@ export default function Page(props: PageProps): ReactElement {
     sourceOptions: {},
     destinations: [{ connectionId: '', destinationOptions: {} }],
   });
+  const [defineFormValues] = useSessionStorage<DefineFormValues>(
+    sessionKeys.global.define,
+    { jobName: '' }
+  );
   const [isSourceValidating, setIsSourceValidating] = useState<boolean>(false);
 
   const [sourceValidationResponse, setSourceValidationResponse] = useState<
@@ -219,6 +225,10 @@ export default function Page(props: PageProps): ReactElement {
                               try {
                                 const res = await checkConnectionConfig({
                                   id: form.getValues('sourceId'),
+                                  scope: getServerScope(
+                                    ConnectionRole.SOURCE,
+                                    defineFormValues.workflowSettings?.engine
+                                  ),
                                 });
                                 setSourceValidationResponse(res);
                               } catch (err) {
@@ -478,6 +488,11 @@ export default function Page(props: PageProps): ReactElement {
                                           const res =
                                             await checkConnectionConfig({
                                               id: value,
+                                              scope: getServerScope(
+                                                ConnectionRole.DESTINATION,
+                                                defineFormValues
+                                                  .workflowSettings?.engine
+                                              ),
                                             });
                                           setDestinationValidation(
                                             (prevState) => ({

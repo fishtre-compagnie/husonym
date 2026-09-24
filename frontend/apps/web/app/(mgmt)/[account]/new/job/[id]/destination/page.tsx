@@ -1,4 +1,5 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import { isValidConnectionPair } from '@/app/(mgmt)/[account]/connections/util';
 import {
   getConnectionIdFromSource,
@@ -40,6 +41,7 @@ import {
   ConnectionDataService,
   ConnectionSchema,
   ConnectionService,
+  CreateJobDestination,
   CreateJobDestinationSchema,
   GetConnectionSchemaMapsResponseSchema,
   JobService,
@@ -77,6 +79,7 @@ export default function Page(props: PageProps): ReactElement {
   const { mutateAsync: createJobConnections } = useMutation(
     JobService.method.createJobDestinationConnections
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const connections = connectionsData?.connections ?? [];
   const connRecord = connections.reduce(
@@ -131,16 +134,32 @@ export default function Page(props: PageProps): ReactElement {
   );
 
   async function onSubmit(values: FormValues): Promise<void> {
+    const currentJob = data?.job;
+    if (!currentJob) {
+      return;
+    }
+    const connMap = new Map(connections.map((c) => [c.id, c]));
+    const destinations = values.destinations.map((d) =>
+      create(CreateJobDestinationSchema, {
+        connectionId: d.connectionId,
+        options: toJobDestinationOptions(d, connMap.get(d.connectionId)),
+      })
+    );
+    // Only the new destinations are checked: the rest of the job is not changed.
+    await checkThenSave(
+      { ...currentJob, destinations },
+      () => saveDestinations(destinations),
+      { checkSource: false }
+    );
+  }
+
+  async function saveDestinations(
+    destinations: CreateJobDestination[]
+  ): Promise<void> {
     try {
-      const connMap = new Map(connections.map((c) => [c.id, c]));
       const job = await createJobConnections({
         jobId: id,
-        destinations: values.destinations.map((d) => {
-          return create(CreateJobDestinationSchema, {
-            connectionId: d.connectionId,
-            options: toJobDestinationOptions(d, connMap.get(d.connectionId)),
-          });
-        }),
+        destinations,
       });
       toast.success('Successfully created job destination(s)');
       if (job.job?.id) {
@@ -172,6 +191,7 @@ export default function Page(props: PageProps): ReactElement {
         <SkeletonTable />
       ) : (
         <Form {...form}>
+          {checksDialog}
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-12">
               {fields.map((f, index) => {

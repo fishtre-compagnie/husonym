@@ -1,5 +1,6 @@
 'use client';
 
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import FormPersist from '@/app/(mgmt)/FormPersist';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
@@ -129,6 +130,7 @@ export default function Page(props: PageProps): ReactElement {
   const { mutateAsync: createNewSyncJob } = useMutation(
     JobService.method.createJob
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const fkConstraints = tableConstraints?.foreignKeyConstraints;
   const [rootTables, setRootTables] = useState<Set<string>>(new Set());
@@ -166,34 +168,35 @@ export default function Page(props: PageProps): ReactElement {
       return;
     }
 
-    try {
-      const connMap = new Map(connections.map((c) => [c.id, c]));
-      const job = await createNewSyncJob(
-        getCreateNewSyncJobRequest(
-          {
-            define: defineFormValues,
-            connect: connectFormValues,
-            schema: schemaFormValues,
-            subset: values,
-          },
-          account.id,
-          (id) => connMap.get(id)
-        )
-      );
-      toast.success('Successfully created the job!');
-      clearNewJobSession(window.sessionStorage, sessionPrefix);
+    const connMap = new Map(connections.map((c) => [c.id, c]));
+    const request = getCreateNewSyncJobRequest(
+      {
+        define: defineFormValues,
+        connect: connectFormValues,
+        schema: schemaFormValues,
+        subset: values,
+      },
+      account.id,
+      (id) => connMap.get(id)
+    );
+    await checkThenSave(request, async () => {
+      try {
+        const job = await createNewSyncJob(request);
+        toast.success('Successfully created the job!');
+        clearNewJobSession(window.sessionStorage, sessionPrefix);
 
-      if (job.job?.id) {
-        router.push(`/${account?.name}/jobs/${job.job.id}`);
-      } else {
-        router.push(`/${account?.name}/jobs`);
+        if (job.job?.id) {
+          router.push(`/${account?.name}/jobs/${job.job.id}`);
+        } else {
+          router.push(`/${account?.name}/jobs`);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Unable to create job', {
+          description: getErrorMessage(err),
+        });
       }
-    } catch (err) {
-      console.error(err);
-      toast.error('Unable to create job', {
-        description: getErrorMessage(err),
-      });
-    }
+    });
   }
 
   const formSubsets = form.watch().subsets; // ensures that all form changes cause a re-render since stuff happens outside of the form that depends on the form values
@@ -347,6 +350,7 @@ export default function Page(props: PageProps): ReactElement {
   return (
     <div className="px-12 md:px-24 lg:px-32 flex flex-col gap-5">
       <FormPersist formKey={formKey} form={form} />
+      {checksDialog}
       <OverviewContainer
         Header={
           <PageHeader

@@ -1,4 +1,5 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import SampleTable from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SampleTable/SampleTable';
 import { getAiSampleTableColumns } from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SampleTable/SampleTableColumns';
 import SelectModelNames from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SelectModelNames';
@@ -125,6 +126,7 @@ export default function AiDataGenConnectionCard({
   const { mutateAsync: updateSourceConnection } = useMutation(
     JobService.method.updateJobSourceConnection
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
   const { mutateAsync: getConnectionAsync } = useMutation(
     ConnectionService.method.getConnection
   );
@@ -203,6 +205,20 @@ export default function AiDataGenConnectionCard({
     if (!job || !account?.id) {
       return;
     }
+    await checkThenSave(
+      {
+        ...job,
+        source: toSingleTableEditAiGenerateJobSource(values),
+        mappings: [],
+      },
+      () => saveSource(values, job)
+    );
+  }
+
+  async function saveSource(
+    values: SingleTableEditAiSourceFormValues,
+    job: Job
+  ): Promise<void> {
     try {
       setIsUpdating(true);
       await updateSourceConnection({
@@ -315,6 +331,7 @@ export default function AiDataGenConnectionCard({
 
   return (
     <Form {...form}>
+      {checksDialog}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}

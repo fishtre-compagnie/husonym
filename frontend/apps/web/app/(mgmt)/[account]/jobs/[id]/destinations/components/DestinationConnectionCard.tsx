@@ -1,4 +1,5 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
 import ButtonText from '@/components/ButtonText';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
@@ -27,6 +28,8 @@ import {
   Connection,
   JobDestination,
   JobMapping,
+  Job,
+  JobDestinationOptions,
   JobService,
 } from '@husonym/sdk';
 import { TrashIcon } from '@radix-ui/react-icons';
@@ -47,6 +50,9 @@ interface Props {
   mutate: () => {};
   isDeleteDisabled?: boolean;
   jobmappings?: JobMapping[];
+  // The job the destination belongs to: what it asks of the destination is checked before
+  // the destination is saved.
+  job?: Job;
 }
 
 export default function DestinationConnectionCard({
@@ -58,6 +64,7 @@ export default function DestinationConnectionCard({
   isDeleteDisabled,
   jobSourceId,
   jobmappings,
+  job,
 }: Props): ReactElement {
   const { mutateAsync: setJobDestConnection } = useMutation(
     JobService.method.updateJobDestinationConnection
@@ -65,6 +72,7 @@ export default function DestinationConnectionCard({
   const { mutateAsync: removeJobDestConnection } = useMutation(
     JobService.method.deleteJobDestinationConnection
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const form = useForm({
     resolver: yupResolver(NewDestinationFormValues),
@@ -72,13 +80,32 @@ export default function DestinationConnectionCard({
   });
 
   async function onSubmit(values: NewDestinationFormValues) {
+    const connection = connections.find((c) => c.id === values.connectionId);
+    const options = toJobDestinationOptions(values, connection);
+    if (!job) {
+      return;
+    }
+    // Only this destination is checked: the others and the source are not changed.
+    await checkThenSave(
+      {
+        ...job,
+        destinations: [{ connectionId: values.connectionId, options }],
+      },
+      () => saveDestination(values.connectionId, options),
+      { checkSource: false }
+    );
+  }
+
+  async function saveDestination(
+    connectionId: string,
+    options: JobDestinationOptions
+  ): Promise<void> {
     try {
-      const connection = connections.find((c) => c.id === values.connectionId);
       await setJobDestConnection({
         jobId,
-        connectionId: values.connectionId,
+        connectionId,
         destinationId: destination.id,
-        options: toJobDestinationOptions(values, connection),
+        options,
       });
       mutate();
       toast.success('Successfully updated job destination!');
@@ -119,6 +146,7 @@ export default function DestinationConnectionCard({
   return (
     <Card>
       <Form {...form}>
+        {checksDialog}
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="mt-6">
             <div className="space-y-4">

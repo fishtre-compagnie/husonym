@@ -1,4 +1,6 @@
 'use client';
+import { getErrorMessage } from '@/util/util';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
 import {
   clearNewJobSession,
   getCreateNewPiiDetectJobRequest,
@@ -83,6 +85,7 @@ export default function Page(props: PageProps): ReactElement {
   );
 
   const { mutateAsync: createJob } = useMutation(JobService.method.createJob);
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const {
     formData,
@@ -115,27 +118,34 @@ export default function Page(props: PageProps): ReactElement {
         }
       );
 
-      const job = await createJob(
-        getCreateNewPiiDetectJobRequest(
-          {
-            define: defineFormValues,
-            connect: connectFormValues,
-            schema: validatedData,
-          },
-          account?.id ?? '',
-          (id) => connectionsRecord[id]
-        )
+      const request = getCreateNewPiiDetectJobRequest(
+        {
+          define: defineFormValues,
+          connect: connectFormValues,
+          schema: validatedData,
+        },
+        account?.id ?? '',
+        (id) => connectionsRecord[id]
       );
-      toast.success('Successfully created job!');
+      await checkThenSave(request, async () => {
+        try {
+          const job = await createJob(request);
+          toast.success('Successfully created job!');
 
-      resetForm();
-      clearNewJobSession(window.sessionStorage, sessionPrefix);
+          resetForm();
+          clearNewJobSession(window.sessionStorage, sessionPrefix);
 
-      if (job.job?.id) {
-        router.push(`/${account?.name}/jobs/${job.job.id}`);
-      } else {
-        router.push(`/${account?.name}/jobs`);
-      }
+          if (job.job?.id) {
+            router.push(`/${account?.name}/jobs/${job.job.id}`);
+          } else {
+            router.push(`/${account?.name}/jobs`);
+          }
+        } catch (err) {
+          toast.error('Unable to create job', {
+            description: getErrorMessage(err),
+          });
+        }
+      });
     } catch (err) {
       if (err instanceof ValidationError) {
         const validationErrors: Record<string, string> = {};
@@ -153,6 +163,7 @@ export default function Page(props: PageProps): ReactElement {
 
   return (
     <div className="flex flex-col gap-5">
+      {checksDialog}
       <OverviewContainer
         Header={
           <PageHeader

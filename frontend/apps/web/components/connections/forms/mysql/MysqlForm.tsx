@@ -213,6 +213,7 @@ export default function MysqlForm(props: Props): ReactElement {
       <div className="flex justify-end gap-3">
         <CheckConnectionButton
           isValid={Object.keys(errors).length === 0}
+          canCheckRole
           getRequest={() => {
             return createMessage(CheckConnectionConfigRequestSchema, {
               connectionConfig: buildConnectionConfigMysql({

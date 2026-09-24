@@ -10,14 +10,18 @@ import {
 import {
   CheckConnectionConfigByIdResponse,
   CheckConnectionConfigResponse,
+  ConnectionCheck,
+  ConnectionRole,
 } from '@husonym/sdk';
 import {
   CheckCircledIcon,
   ExclamationTriangleIcon,
+  InfoCircledIcon,
 } from '@radix-ui/react-icons';
 import { ReactElement, useMemo } from 'react';
 import { IoWarning } from 'react-icons/io5';
 import Spinner from '../Spinner';
+import ConnectionCheckList from '../connections/checks/ConnectionCheckList';
 import LearnMoreLink from '../labels/LearnMoreLink';
 import { Button } from '../ui/button';
 import PermissionsDataTable from './PermissionsDataTable';
@@ -31,6 +35,8 @@ interface Props {
   isValidating: boolean;
   connectionName: string;
   connectionType: PermissionConnectionType;
+  // The role the connection was tested in, if any: its findings are then shown.
+  checkedRole?: ConnectionRole;
 }
 
 export default function PermissionsDialog(props: Props): ReactElement {
@@ -41,6 +47,7 @@ export default function PermissionsDialog(props: Props): ReactElement {
     checkResponse,
     isValidating,
     connectionType,
+    checkedRole,
   } = props;
 
   const columns = useMemo(
@@ -61,6 +68,9 @@ export default function PermissionsDialog(props: Props): ReactElement {
             <LearnMoreLink href="https://docs.husonym.com/connections/postgres#permissions" />{' '}
           </DialogDescription>
         </DialogHeader>
+        {checkedRole !== undefined && checkResponse.isConnected ? (
+          <RoleChecks role={checkedRole} checks={checkResponse.checks} />
+        ) : null}
         <PermissionsDataTable
           ConnectionAlert={
             <TestConnectionResult
@@ -84,6 +94,32 @@ export default function PermissionsDialog(props: Props): ReactElement {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface RoleChecksProps {
+  role: ConnectionRole;
+  checks: ConnectionCheck[];
+}
+
+// RoleChecks tells what the connection cannot do in the role it was tested in. Without the
+// tables of a job, only what concerns the server as a whole is checked.
+function RoleChecks(props: RoleChecksProps): ReactElement {
+  const { role, checks } = props;
+  const roleName = role === ConnectionRole.SOURCE ? 'source' : 'destination';
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold">As a {roleName}</h3>
+      <ConnectionCheckList
+        checks={checks}
+        allClearText={`Nothing missing for a ${roleName} at server level.`}
+      />
+      <p className="flex flex-row items-center gap-2 text-xs text-muted-foreground">
+        <InfoCircledIcon className="h-4 w-4 shrink-0" />
+        Only server-wide checks run here. A job&apos;s tables are checked when
+        the job is created or edited.
+      </p>
+    </div>
   );
 }
 
