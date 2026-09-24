@@ -9317,11 +9317,13 @@ components:
           items:
             $ref: '#/components/schemas/mgmt.v1alpha1.ConnectionCheckTable'
           title: tables
+          maxItems: 1000
           description: >-
-            The tables of the job, and the columns a run writes into each; a
+            The tables of the job, and the columns a run writes into each. A
             table given without
-             columns is checked on all of its columns but generated ones. Without tables, only what
-             concerns the server as a whole is checked.
+             columns is checked on the columns the account can see, generated ones left out: give the
+             job's columns to check what a run will write. Without tables, only what concerns the
+             server as a whole is checked. The schemas of the server itself are refused.
         initTableSchema:
           type: boolean
           title: init_table_schema

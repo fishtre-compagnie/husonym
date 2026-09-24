@@ -822,9 +822,10 @@ type ConnectionCheckScope struct {
 	// Unspecified is the deployment default, which the API does not know: what only Athanor
 	// needs is then reported as a warning.
 	Engine JobEngine `protobuf:"varint,2,opt,name=engine,proto3,enum=mgmt.v1alpha1.JobEngine" json:"engine,omitempty"`
-	// The tables of the job, and the columns a run writes into each; a table given without
-	// columns is checked on all of its columns but generated ones. Without tables, only what
-	// concerns the server as a whole is checked.
+	// The tables of the job, and the columns a run writes into each. A table given without
+	// columns is checked on the columns the account can see, generated ones left out: give the
+	// job's columns to check what a run will write. Without tables, only what concerns the
+	// server as a whole is checked. The schemas of the server itself are refused.
 	Tables []*ConnectionCheckTable `protobuf:"bytes,3,rep,name=tables,proto3" json:"tables,omitempty"`
 	// For a destination: the run creates the tables and columns it lacks.
 	InitTableSchema bool `protobuf:"varint,4,opt,name=init_table_schema,json=initTableSchema,proto3" json:"init_table_schema,omitempty"`
@@ -3546,12 +3547,12 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	" CheckConnectionConfigByIdRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\x12>\n" +
 	"\x05scope\x18\x02 \x01(\v2#.mgmt.v1alpha1.ConnectionCheckScopeH\x00R\x05scope\x88\x01\x01B\b\n" +
-	"\x06_scope\"\xa6\x02\n" +
+	"\x06_scope\"\xbb\x02\n" +
 	"\x14ConnectionCheckScope\x12=\n" +
 	"\x04role\x18\x01 \x01(\x0e2\x1d.mgmt.v1alpha1.ConnectionRoleB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04role\x120\n" +
-	"\x06engine\x18\x02 \x01(\x0e2\x18.mgmt.v1alpha1.JobEngineR\x06engine\x12;\n" +
-	"\x06tables\x18\x03 \x03(\v2#.mgmt.v1alpha1.ConnectionCheckTableR\x06tables\x12*\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04role\x12:\n" +
+	"\x06engine\x18\x02 \x01(\x0e2\x18.mgmt.v1alpha1.JobEngineB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06engine\x12F\n" +
+	"\x06tables\x18\x03 \x03(\v2#.mgmt.v1alpha1.ConnectionCheckTableB\t\xbaH\x06\x92\x01\x03\x10\xe8\aR\x06tables\x12*\n" +
 	"\x11init_table_schema\x18\x04 \x01(\bR\x0finitTableSchema\x124\n" +
 	"\x16truncate_before_insert\x18\x05 \x01(\bR\x14truncateBeforeInsert\"p\n" +
 	"\x14ConnectionCheckTable\x12\x1f\n" +

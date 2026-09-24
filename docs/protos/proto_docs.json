@@ -20250,7 +20250,7 @@
             },
             {
               "name": "tables",
-              "description": "The tables of the job, and the columns a run writes into each; a table given without\ncolumns is checked on all of its columns but generated ones. Without tables, only what\nconcerns the server as a whole is checked.",
+              "description": "The tables of the job, and the columns a run writes into each. A table given without\ncolumns is checked on the columns the account can see, generated ones left out: give the\njob's columns to check what a run will write. Without tables, only what concerns the\nserver as a whole is checked. The schemas of the server itself are refused.",
               "label": "repeated",
               "type": "ConnectionCheckTable",
               "longType": "ConnectionCheckTable",

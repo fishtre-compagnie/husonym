@@ -51,6 +51,16 @@ func (s *IntegrationTestSuite) Test_CheckConnectionConfigById_Role() {
 	}
 	orders := []*mgmtv1alpha1.ConnectionCheckTable{{Schema: schema, Table: "orders"}}
 
+	// The server's own tables are no job's: asking about them is refused, and no grant on
+	// them is ever written.
+	_, err = clients.Connections().CheckConnectionConfigById(s.ctx, connect.NewRequest(
+		&mgmtv1alpha1.CheckConnectionConfigByIdRequest{Id: conn.GetId(), Scope: &mgmtv1alpha1.ConnectionCheckScope{
+			Role:   mgmtv1alpha1.ConnectionRole_CONNECTION_ROLE_DESTINATION,
+			Tables: []*mgmtv1alpha1.ConnectionCheckTable{{Schema: "pg_catalog", Table: "pg_authid"}},
+		}},
+	))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
 	// Without a scope, the answer is what it always was.
 	require.Empty(t, check(nil).GetChecks())
 

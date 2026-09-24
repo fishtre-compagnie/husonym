@@ -101,3 +101,10 @@ func TestMysqlGrants_hasGlobalPrivilegeThroughAll(t *testing.T) {
 	require.False(t, onOneDatabase.HasGlobalPrivilege("SUPER", "SET_USER_ID"),
 		"ALL on one database is not ALL on every database")
 }
+
+// MariaDB grants the definer privilege as SET USER, two words.
+func TestGrants_setUser(t *testing.T) {
+	grants := Parse([]string{"GRANT SET USER ON *.* TO `app`@`%`"}, false)
+	require.True(t, grants.HasGlobalPrivilege("SET USER"))
+	require.False(t, grants.HasGlobalPrivilege("SUPER"))
+}

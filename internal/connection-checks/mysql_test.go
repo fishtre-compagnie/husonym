@@ -150,13 +150,12 @@ func Test_checkMysqlDestination_triggerDefiner(t *testing.T) {
 	expectCurrentUser(mock)
 	mock.ExpectQuery("information_schema.TRIGGERS").WithArgs("shop", "ARTICLE").
 		WillReturnRows(sqlmock.NewRows([]string{"n", "d"}).AddRow("trg_mine", "app@%").AddRow("trg_dba", "dba@localhost"))
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT VERSION()")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow("8.4.2"))
 
 	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{article}, false, false)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	require.Contains(t, findings[0].Message, "cannot put back the trigger trg_dba of shop.ARTICLE, whose definer is dba@localhost")
-	require.Equal(t, "GRANT SET_ANY_DEFINER ON *.* TO 'app'@'%';", findings[0].Remedy, "the account is read once")
+	require.Empty(t, findings[0].Remedy, "a privilege that runs code as any account is not handed out for pasting")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -217,29 +216,64 @@ func Test_checkMysqlDestination_tableCreatedByTheRun(t *testing.T) {
 	}
 }
 
-// The privilege that lets an account name another as a trigger's definer changed name.
-func Test_mysqlDefinerPrivilege(t *testing.T) {
-	for version, privilege := range map[string]string{
-		"8.0.36":                 "SET_USER_ID",
-		"8.2.0":                  "SET_ANY_DEFINER",
-		"9.1.0":                  "SET_ANY_DEFINER",
-		"11.4.2-MariaDB-ubu2404": "SET USER",
-	} {
-		db, mock, err := sqlmock.New()
-		require.NoError(t, err)
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT VERSION()")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(version))
-		require.Equal(t, privilege, mysqlDefinerPrivilege(context.Background(), db), version)
-		db.Close()
-	}
-}
-
 func Test_mysqlAccount_quoted(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("o'brien@10.0.%"))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("o'brien@corp@10.0.%"))
 	account := &mysqlAccount{db: db}
-	require.Equal(t, `'o\'brien'@'10.0.%'`, account.quoted(context.Background()))
-	require.Equal(t, `'o\'brien'@'10.0.%'`, account.quoted(context.Background()), "read once")
+	require.Equal(t, `'o''brien@corp'@'10.0.%'`, account.quoted(context.Background()),
+		"a user name may hold an @, a host may not; a doubled quote holds under NO_BACKSLASH_ESCAPES too")
+	require.Equal(t, `'o''brien@corp'@'10.0.%'`, account.quoted(context.Background()), "read once")
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// MariaDB names the definer privilege SET USER.
+func Test_checkMysqlDestination_triggerDefinerMariaDB(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	expectReadOnly(mock, [2]string{"read_only", "OFF"})
+	for _, statement := range []string{article.mysqlSelect(), article.mysqlInsert(), article.mysqlUpdate(), article.mysqlDelete()} {
+		expectProbe(mock, statement, nil)
+	}
+	expectGrants(mock, "GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER ON `shop`.* TO `app`@`%`", "GRANT SET USER ON *.* TO `app`@`%`")
+
+	findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{article}, false, false)
+	require.NoError(t, err)
+	require.Empty(t, findings)
+	require.NoError(t, mock.ExpectationsWereMet(), "holding the privilege, the triggers are not even read")
+}
+
+// Asked without columns, a table is taken with those the account sees: none seen, it holds
+// nothing on it, or the table is not there.
+func Test_checkMysql_tableWithoutVisibleColumns(t *testing.T) {
+	bare := &Table{Schema: "shop", Table: "ARTICLE"}
+	require.Equal(t, "SELECT 1 FROM `shop`.`ARTICLE` WHERE FALSE", bare.mysqlSelect())
+
+	t.Run("no privilege", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+		expectReadOnly(mock, writable...)
+		expectProbe(mock, bare.mysqlSelect(), denied(mysqlTableAccessDenied))
+		expectCurrentUser(mock)
+		expectGrants(mock)
+
+		findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{bare}, false, false)
+		require.NoError(t, err)
+		require.Equal(t, "GRANT SELECT, INSERT, UPDATE, DELETE ON `shop`.`ARTICLE` TO 'app'@'%';", findings[0].Remedy)
+	})
+
+	t.Run("no table", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+		expectProbe(mock, bare.mysqlSelect(), denied(mysqlNoSuchTable))
+
+		findings, err := checkMysqlSource(context.Background(), db, "prod", []*Table{bare})
+		require.NoError(t, err)
+		require.Equal(t, []string{`source "prod" has no table shop.ARTICLE`}, Messages(findings))
+		require.Empty(t, findings[0].Remedy)
+	})
 }

@@ -28,6 +28,9 @@ var (
 // usageOnSchema is how a missing USAGE on the schema of a table is named.
 const usageOnSchema = "USAGE on its schema"
 
+// absentTable marks, among the privileges missing, a table that is not there.
+const absentTable = "(absent)"
+
 // checkPostgresSource: a source only needs to be read. A read-only server is fine.
 func checkPostgresSource(ctx context.Context, db Db, name string, tables []*Table) ([]*Finding, error) {
 	missing, err := postgresMissingPrivileges(ctx, db, tables, sourcePrivileges, false)
@@ -102,15 +105,21 @@ func checkPostgresDestination(
 			fmt.Sprintf("destination %q cannot empty %s before writing it (missing TRUNCATE)", name, table)))
 	}
 	for _, trigger := range triggers {
-		findings = append(findings, blocking(CheckTriggers, trigger.table, []string{"ownership of the table"},
-			fmt.Sprintf("GRANT %s TO %s;", sqlmanager_postgres.EscapePgColumn(trigger.owner), account),
+		// No remedy: disabling a trigger takes the owner's role, often postgres or the
+		// service's master user; granting it would hand the account all that role owns.
+		findings = append(findings, blocking(CheckTriggers, trigger.table, []string{"ownership of the table"}, "",
 			fmt.Sprintf("destination %q cannot take the triggers of %s out of the way of "+
 				"the run: disabling a trigger takes the owner of the table (%s), a member of its role, or a superuser",
 				name, trigger.table, trigger.owner)))
 	}
 	if foreignKeys != nil {
+		remedy := ""
+		if postgresVersion(ctx, db) >= 150000 {
+			// GRANT SET ON PARAMETER came with PostgreSQL 15; before, only a superuser may.
+			remedy = fmt.Sprintf("GRANT SET ON PARAMETER session_replication_role TO %s;", account)
+		}
 		findings = append(findings, blocking(CheckForeignKeySuspension, "", []string{"SET on session_replication_role"},
-			fmt.Sprintf("GRANT SET ON PARAMETER session_replication_role TO %s;", account),
+			remedy,
 			fmt.Sprintf("destination %q cannot suspend foreign keys, which Athanor writes each table in one "+
 				"pass with (%v): make the account a superuser, or from PostgreSQL 15 on run "+
 				"GRANT SET ON PARAMETER session_replication_role TO %s", name, foreignKeys, account)))
@@ -174,9 +183,14 @@ CROSS JOIN LATERAL (
 ) r
 WHERE CASE
   WHEN p.privilege = 'USAGE' THEN r.nsp IS NOT NULL AND NOT has_schema_privilege(r.nsp, 'USAGE')
-  WHEN r.rel IS NULL THEN NOT $3::bool
+  WHEN r.rel IS NULL THEN FALSE
   ELSE NOT has_table_privilege(r.rel, p.privilege)
 END
+UNION
+-- A table that is not there, and that the run does not create, lacks nothing: it is absent.
+SELECT t.schema_name, t.table_name, '`+absentTable+`'
+FROM jsonb_to_recordset($1::jsonb) AS t(schema_name text, table_name text)
+WHERE NOT $3::bool AND to_regclass(quote_ident(t.schema_name) || '.' || quote_ident(t.table_name)) IS NULL
 ORDER BY 1, 2, 3`, tablesList, string(privilegesJSON), createsTables)
 	if err != nil {
 		return nil, err
@@ -243,6 +257,11 @@ func describeMissing(
 ) []*Finding {
 	findings := make([]*Finding, 0, len(missing))
 	for table, privileges := range missing {
+		if slices.Contains(privileges, absentTable) {
+			findings = append(findings, blocking(CheckTableExists, table.String(), nil, "",
+				fmt.Sprintf("%s %q has no table %s", role, name, table)))
+			continue
+		}
 		findings = append(findings, blocking(check, table.String(), privileges,
 			postgresGrantOnTable(privileges, table, account),
 			fmt.Sprintf("%s %q cannot %s %s (missing %s)", role, name, verb, table, strings.Join(privileges, ", "))))
@@ -265,6 +284,15 @@ func postgresGrantOnTable(privileges []string, table postgresTable, account stri
 			strings.Join(onTable, ", "), table.quoted(), account))
 	}
 	return strings.Join(statements, " ")
+}
+
+// postgresVersion is server_version_num, or 0 when it cannot be read.
+func postgresVersion(ctx context.Context, db Db) int {
+	var version int
+	if err := db.QueryRowContext(ctx, "SELECT current_setting('server_version_num')::int").Scan(&version); err != nil {
+		return 0
+	}
+	return version
 }
 
 // postgresAccount is the account the session runs as, quoted for a statement to name it; a

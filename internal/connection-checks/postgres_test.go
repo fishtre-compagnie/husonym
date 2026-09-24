@@ -85,6 +85,7 @@ func Test_checkPostgresDestination_cannotSuspendForeignKeys(t *testing.T) {
 		WillReturnError(errors.New(`permission denied to set parameter "session_replication_role"`))
 	mock.ExpectRollback()
 	expectAccount(mock, "SELECT current_user", "husonym")
+	mock.ExpectQuery(regexp.QuoteMeta("server_version_num")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(160004))
 
 	findings, err := checkPostgresDestination(context.Background(), db, "dest", articles,
 		DestinationOptions{SuspendsForeignKeys: true})
@@ -139,6 +140,44 @@ func Test_checkPostgresDestination_truncateAndTriggers(t *testing.T) {
 			`trigger takes the owner of the table (app_owner), a member of its role, or a superuser`,
 	}, Messages(findings))
 	require.Equal(t, `GRANT TRUNCATE ON TABLE "shop"."ARTICLE" TO "husonym";`, findings[0].Remedy)
-	require.Equal(t, `GRANT "app_owner" TO "husonym";`, findings[1].Remedy)
+	require.Empty(t, findings[1].Remedy, "the owner's role would hand the account all it owns")
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Before PostgreSQL 15 no grant lets an account set session_replication_role: no remedy.
+func Test_checkPostgresDestination_foreignKeysBefore15(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery(regexp.QuoteMeta(readOnlyQuery)).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow("off"))
+	mock.ExpectQuery("has_table_privilege").WillReturnRows(sqlmock.NewRows([]string{"s", "t", "p"}))
+	mock.ExpectQuery("pg_has_role").WillReturnRows(sqlmock.NewRows([]string{"t", "o"}))
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET LOCAL session_replication_role = replica")).
+		WillReturnError(errors.New("permission denied"))
+	mock.ExpectRollback()
+	expectAccount(mock, "SELECT current_user", "husonym")
+	mock.ExpectQuery(regexp.QuoteMeta("server_version_num")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(140011))
+
+	findings, err := checkPostgresDestination(context.Background(), db, "dest", articles,
+		DestinationOptions{SuspendsForeignKeys: true})
+	require.NoError(t, err)
+	require.Empty(t, findings[0].Remedy)
+}
+
+// A table that is not there lacks nothing a grant could give: it is reported absent.
+func Test_checkPostgresSource_absentTable(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery("has_table_privilege").
+		WillReturnRows(sqlmock.NewRows([]string{"s", "t", "p"}).AddRow("shop", "ARTICLE", absentTable))
+	expectAccount(mock, "SELECT current_user", "husonym")
+
+	findings, err := checkPostgresSource(context.Background(), db, "prod", articles)
+	require.NoError(t, err)
+	require.Equal(t, []*Finding{{
+		Check: CheckTableExists, Level: Blocking, Table: "shop.ARTICLE",
+		Message: `source "prod" has no table shop.ARTICLE`,
+	}}, findings)
 }

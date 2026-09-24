@@ -155,8 +155,9 @@ func checkMysqlDestination(
 
 // checkMysqlTriggerDefiners: a trigger taken out of the way is created again as its
 // definer. Naming an account other than one's own as definer takes SET_USER_ID (SUPER, or
-// SET_ANY_DEFINER from 8.2 on): without it the triggers would be dropped and could not
-// come back.
+// SET_ANY_DEFINER from 8.2 on; SET USER on MariaDB): without it the triggers would be dropped
+// and could not come back. No remedy is written: the privilege lets an account run code as
+// any other, root included, which is not a statement to hand out for pasting.
 func checkMysqlTriggerDefiners(
 	ctx context.Context,
 	db Db,
@@ -165,7 +166,7 @@ func checkMysqlTriggerDefiners(
 	grants mysqlgrants.Grants,
 	account *mysqlAccount,
 ) ([]*Finding, error) {
-	if len(tables) == 0 || grants.HasGlobalPrivilege("SUPER", "SET_USER_ID", "SET_ANY_DEFINER") {
+	if len(tables) == 0 || grants.HasGlobalPrivilege("SUPER", "SET_USER_ID", "SET_ANY_DEFINER", "SET USER") {
 		return nil, nil
 	}
 	current, err := account.current(ctx)
@@ -173,7 +174,6 @@ func checkMysqlTriggerDefiners(
 		return nil, fmt.Errorf("unable to read the account of destination %q: %w", name, err)
 	}
 	var findings []*Finding
-	definerPrivilege := ""
 	for _, t := range tables {
 		rows, err := db.QueryContext(ctx,
 			"SELECT TRIGGER_NAME, DEFINER FROM information_schema.TRIGGERS "+
@@ -188,13 +188,11 @@ func checkMysqlTriggerDefiners(
 				return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
 			}
 			if definer != current {
-				if definerPrivilege == "" {
-					definerPrivilege = mysqlDefinerPrivilege(ctx, db)
-				}
-				findings = append(findings, blocking(CheckTriggerDefiner, t.String(), []string{definerPrivilege},
-					fmt.Sprintf("GRANT %s ON *.* TO %s;", definerPrivilege, account.quoted(ctx)),
+				findings = append(findings, blocking(CheckTriggerDefiner, t.String(),
+					[]string{"SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB"}, "",
 					fmt.Sprintf("destination %q cannot put back the trigger %s of %s, "+
-						"whose definer is %s (missing SET_USER_ID or SUPER): a trigger runs as its definer, and only "+
+						"whose definer is %s (missing SET_USER_ID, SET_ANY_DEFINER or SUPER; SET USER on MariaDB): "+
+						"a trigger runs as its definer, and only "+
 						"such an account can name another one", name, trigger, t, definer)))
 			}
 		}
@@ -209,6 +207,16 @@ func checkMysqlTriggerDefiners(
 
 // mysqlMissingRowPrivileges returns the privileges on rows a destination table refuses.
 func mysqlMissingRowPrivileges(ctx context.Context, db Db, t *Table) ([]string, error) {
+	if len(t.Columns) == 0 {
+		// Asked without columns, the table is taken with those the account can see, and it
+		// sees a column when it holds any privilege on it: none seen, it holds none of these.
+		// Only a caller outside a run asks so; a run always names the columns it writes.
+		allowed, err := mysqlProbe(ctx, db, t.mysqlSelect())
+		if err != nil || allowed {
+			return nil, err
+		}
+		return []string{"SELECT", "INSERT", "UPDATE", "DELETE"}, nil
+	}
 	var missing []string
 	for _, probe := range []struct{ privilege, statement string }{
 		{"SELECT", t.mysqlSelect()},
@@ -328,7 +336,12 @@ func (t *Table) mysqlColumns() string {
 }
 
 func (t *Table) mysqlSelect() string {
-	return "SELECT " + t.mysqlColumns() + " FROM " + t.mysqlName() + " WHERE FALSE"
+	columns := t.mysqlColumns()
+	if columns == "" {
+		// A table without columns is asked about as a whole.
+		columns = "1"
+	}
+	return "SELECT " + columns + " FROM " + t.mysqlName() + " WHERE FALSE"
 }
 
 func (t *Table) mysqlInsert() string {
@@ -374,8 +387,12 @@ func (a *mysqlAccount) quoted(ctx context.Context) string {
 	if err != nil {
 		return "<account>"
 	}
-	user, host, _ := strings.Cut(current, "@")
-	return quoteMysqlString(user) + "@" + quoteMysqlString(host)
+	// A user name may hold an @, a host may not: the account splits at the last one.
+	at := strings.LastIndex(current, "@")
+	if at < 0 {
+		return quoteMysqlString(current)
+	}
+	return quoteMysqlString(current[:at]) + "@" + quoteMysqlString(current[at+1:])
 }
 
 // mysqlGrantOnTable is the statement granting privileges on a table.
@@ -383,25 +400,8 @@ func mysqlGrantOnTable(privileges []string, t *Table, account string) string {
 	return fmt.Sprintf("GRANT %s ON %s TO %s;", strings.Join(privileges, ", "), t.mysqlName(), account)
 }
 
-// mysqlDefinerPrivilege is the privilege that lets an account name another as the definer of
-// a trigger, on the server at hand: SET USER on MariaDB, SET_ANY_DEFINER from MySQL 8.2 on,
-// SET_USER_ID before.
-func mysqlDefinerPrivilege(ctx context.Context, db Db) string {
-	var version string
-	if err := db.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
-		return "SET_USER_ID"
-	}
-	if strings.Contains(strings.ToLower(version), "mariadb") {
-		return "SET USER"
-	}
-	var major, minor int
-	if _, err := fmt.Sscanf(version, "%d.%d", &major, &minor); err == nil && (major > 8 || major == 8 && minor >= 2) {
-		return "SET_ANY_DEFINER"
-	}
-	return "SET_USER_ID"
-}
-
-// quoteMysqlString quotes a name the way an account is written in a statement.
+// quoteMysqlString quotes a name the way an account is written in a statement. A quote is
+// doubled, which holds whether the server takes backslashes as escapes or not.
 func quoteMysqlString(s string) string {
-	return "'" + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), "'", `\'`) + "'"
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

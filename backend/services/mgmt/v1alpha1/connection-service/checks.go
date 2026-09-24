@@ -3,12 +3,24 @@ package v1alpha1_connectionservice
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionchecks "github.com/fishtre-compagnie/husonym/internal/connection-checks"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
+
+// checkTimeout bounds how long a connection is asked about its role: each table costs a few
+// statements, run one after the other.
+const checkTimeout = 2 * time.Minute
+
+// systemSchemas are the schemas of the server itself. A job has no business in them, and a
+// remedy granting on them would grant on the server's own accounts.
+var systemSchemas = []string{"mysql", "sys", "performance_schema", "information_schema", "pg_catalog", "pg_toast"}
 
 // checkRole asks a connection whether it can do what its role in a job needs: the checks a
 // run makes at its start, made before it. A connection neither MySQL nor PostgreSQL is not
@@ -32,7 +44,16 @@ func checkRole(
 	if db.Queryer() == nil {
 		return nil, fmt.Errorf("the connection %q cannot be asked about its privileges", name)
 	}
-	tables, err := checkedTables(ctx, db, scope.GetTables())
+	for _, table := range scope.GetTables() {
+		if slices.Contains(systemSchemas, strings.ToLower(table.GetSchema())) {
+			return nil, husonymerrors.NewBadRequest(fmt.Sprintf(
+				"%s.%s is a table of the server itself, which a job does not read or write",
+				table.GetSchema(), table.GetTable()))
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, checkTimeout)
+	defer cancel()
+	tables, err := checkedTables(ctx, db, dialect, scope.GetTables())
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the columns of the tables to check: %w", err)
 	}
@@ -70,22 +91,30 @@ func checkRole(
 	return checks, nil
 }
 
-// checkedTables are the tables to check, a table given without columns taken with all of
-// the columns a run can write: every one but those the database generates.
+// checkedTables are the tables to check, each once. On MySQL, a table given without columns
+// is taken with the columns the account can see, generated ones left out: the probes name
+// them. PostgreSQL asks about a table as a whole, and its columns are not read.
 func checkedTables(
 	ctx context.Context,
 	db *sqlmanager.SqlConnection,
+	dialect connectionchecks.Dialect,
 	given []*mgmtv1alpha1.ConnectionCheckTable,
 ) ([]*connectionchecks.Table, error) {
 	tables := make([]*connectionchecks.Table, 0, len(given))
+	seen := map[string]bool{}
+	// filled are the tables whose columns are read, and not given.
+	filled := map[*connectionchecks.Table]bool{}
 	var withoutColumns []*sqlmanager_shared.SchemaTable
-	byKey := map[string]*connectionchecks.Table{}
 	for _, table := range given {
 		t := &connectionchecks.Table{Schema: table.GetSchema(), Table: table.GetTable(), Columns: table.GetColumns()}
+		if seen[t.String()] {
+			continue
+		}
+		seen[t.String()] = true
 		tables = append(tables, t)
-		if len(t.Columns) == 0 {
+		if len(t.Columns) == 0 && dialect == connectionchecks.MySQL {
 			withoutColumns = append(withoutColumns, &sqlmanager_shared.SchemaTable{Schema: t.Schema, Table: t.Table})
-			byKey[t.String()] = t
+			filled[t] = true
 		}
 	}
 	if len(withoutColumns) == 0 {
@@ -96,11 +125,16 @@ func checkedTables(
 		return nil, err
 	}
 	for _, row := range rows {
-		t, ok := byKey[row.TableSchema+"."+row.TableName]
-		if !ok || row.GeneratedType != nil && *row.GeneratedType != "" {
+		if row.GeneratedType != nil && *row.GeneratedType != "" {
 			continue
 		}
-		t.Columns = append(t.Columns, row.ColumnName)
+		// MySQL may fold the names of tables: the row is matched the way the server would.
+		i := slices.IndexFunc(tables, func(t *connectionchecks.Table) bool {
+			return filled[t] && strings.EqualFold(t.Schema, row.TableSchema) && strings.EqualFold(t.Table, row.TableName)
+		})
+		if i >= 0 && !slices.Contains(tables[i].Columns, row.ColumnName) {
+			tables[i].Columns = append(tables[i].Columns, row.ColumnName)
+		}
 	}
 	return tables, nil
 }

@@ -94,11 +94,12 @@ message ConnectionCheckScope {
   // The engine that runs the job: what only Athanor needs is asked only of Athanor.
   // Unspecified is the deployment default, which the API does not know: what only Athanor
   // needs is then reported as a warning.
-  JobEngine engine = 2;
-  // The tables of the job, and the columns a run writes into each; a table given without
-  // columns is checked on all of its columns but generated ones. Without tables, only what
-  // concerns the server as a whole is checked.
-  repeated ConnectionCheckTable tables = 3;
+  JobEngine engine = 2 [(buf.validate.field).enum.defined_only = true];
+  // The tables of the job, and the columns a run writes into each. A table given without
+  // columns is checked on the columns the account can see, generated ones left out: give the
+  // job's columns to check what a run will write. Without tables, only what concerns the
+  // server as a whole is checked. The schemas of the server itself are refused.
+  repeated ConnectionCheckTable tables = 3 [(buf.validate.field).repeated.max_items = 1000];
   // For a destination: the run creates the tables and columns it lacks.
   bool init_table_schema = 4;
   // For a destination: the run empties each table before writing it.
