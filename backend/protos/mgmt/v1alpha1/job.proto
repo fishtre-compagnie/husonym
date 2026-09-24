@@ -1932,7 +1932,8 @@ service JobService {
     option (mgmt.v1alpha1.requires) = {
       all_of: [
         PERMISSION_JOB_VIEW,
-        PERMISSION_JOB_EDIT
+        PERMISSION_JOB_EDIT,
+        PERMISSION_JOB_EXECUTE
       ]
     };
   }
@@ -2112,7 +2113,10 @@ service JobService {
   // Validates that the jobmapping configured can run with table constraints
   rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_CONNECTION_VIEW]
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
     };
   }
   // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
@@ -2147,7 +2151,10 @@ service JobService {
   // Validates that the schema is compatible with the job mappings
   rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_CONNECTION_VIEW]
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
     };
   }
 

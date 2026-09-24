@@ -514,14 +514,20 @@ service ConnectionService {
   // Used to verify that a connection is still connectable.
   rpc CheckConnectionConfigById(CheckConnectionConfigByIdRequest) returns (CheckConnectionConfigByIdResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_CONNECTION_VIEW]
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
     };
   }
   // Checks a constructed SQL query against a sql-based connection to see if it's valid based on that connection's data schema
   // This is useful when constructing subsets to see if the WHERE clause is correct
   rpc CheckSqlQuery(CheckSqlQueryRequest) returns (CheckSqlQueryResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_CONNECTION_VIEW]
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
     };
   }
   // Checks if the SSH server is reachable and accessible with the given credentials
@@ -533,7 +539,10 @@ service ConnectionService {
   // Checks if the SSH server is reachable and accessible with the given credentials
   rpc CheckSSHConnectionById(CheckSSHConnectionByIdRequest) returns (CheckSSHConnectionByIdResponse) {
     option (mgmt.v1alpha1.requires) = {
-      all_of: [PERMISSION_CONNECTION_VIEW]
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
     };
   }
 }

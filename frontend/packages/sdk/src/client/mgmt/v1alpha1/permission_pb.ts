@@ -82,7 +82,9 @@ export enum Permission {
   CONNECTION_VIEW = 5,
 
   /**
-   * Seeing a connection's secrets in clear. Without it, they come back masked.
+   * Holding a connection's secrets: seeing them in clear, and using the connection — reading its
+   * schema, scanning or previewing its data — which takes them. Without it, a connection comes
+   * back masked, and cannot be connected to.
    *
    * @generated from enum value: PERMISSION_CONNECTION_VIEW_SENSITIVE = 6;
    */
@@ -119,7 +121,8 @@ export enum Permission {
   JOB_EDIT = 12,
 
   /**
-   * Running a job, which writes to a real destination.
+   * Running a job, which writes to a real destination — and anything that makes it run: creating
+   * it with a first run or an active schedule, setting its schedule, resuming it.
    *
    * @generated from enum value: PERMISSION_JOB_EXECUTE = 13;
    */

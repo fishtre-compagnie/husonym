@@ -48,7 +48,7 @@
             {
               "name": "PERMISSION_CONNECTION_VIEW_SENSITIVE",
               "number": "6",
-              "description": "Seeing a connection's secrets in clear. Without it, they come back masked."
+              "description": "Holding a connection's secrets: seeing them in clear, and using the connection — reading its\nschema, scanning or previewing its data — which takes them. Without it, a connection comes\nback masked, and cannot be connected to."
             },
             {
               "name": "PERMISSION_CONNECTION_CREATE",
@@ -83,7 +83,7 @@
             {
               "name": "PERMISSION_JOB_EXECUTE",
               "number": "13",
-              "description": "Running a job, which writes to a real destination."
+              "description": "Running a job, which writes to a real destination — and anything that makes it run: creating\nit with a first run or an active schedule, setting its schedule, resuming it."
             },
             {
               "name": "PERMISSION_JOB_DELETE",

@@ -3299,7 +3299,7 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\x18CheckSSHConnectionResult\x12#\n" +
 	"\ris_successful\x18\x01 \x01(\bR\fisSuccessful\x12(\n" +
 	"\rerror_message\x18\x02 \x01(\tH\x00R\ferrorMessage\x88\x01\x01B\x10\n" +
-	"\x0e_error_message2\x9a\n" +
+	"\x0e_error_message2\x9d\n" +
 	"\n" +
 	"\x11ConnectionService\x12i\n" +
 	"\x0eGetConnections\x12$.mgmt.v1alpha1.GetConnectionsRequest\x1a%.mgmt.v1alpha1.GetConnectionsResponse\"\n" +
@@ -3317,15 +3317,15 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\x19IsConnectionNameAvailable\x12/.mgmt.v1alpha1.IsConnectionNameAvailableRequest\x1a0.mgmt.v1alpha1.IsConnectionNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\x05\x12{\n" +
 	"\x15CheckConnectionConfig\x12+.mgmt.v1alpha1.CheckConnectionConfigRequest\x1a,.mgmt.v1alpha1.CheckConnectionConfigResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\a\x12\x87\x01\n" +
-	"\x19CheckConnectionConfigById\x12/.mgmt.v1alpha1.CheckConnectionConfigByIdRequest\x1a0.mgmt.v1alpha1.CheckConnectionConfigByIdResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x05\x12c\n" +
-	"\rCheckSqlQuery\x12#.mgmt.v1alpha1.CheckSqlQueryRequest\x1a$.mgmt.v1alpha1.CheckSqlQueryResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x05\x12r\n" +
+	"\x01\a\x12\x88\x01\n" +
+	"\x19CheckConnectionConfigById\x12/.mgmt.v1alpha1.CheckConnectionConfigByIdRequest\x1a0.mgmt.v1alpha1.CheckConnectionConfigByIdResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12d\n" +
+	"\rCheckSqlQuery\x12#.mgmt.v1alpha1.CheckSqlQueryRequest\x1a$.mgmt.v1alpha1.CheckSqlQueryResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12r\n" +
 	"\x12CheckSSHConnection\x12(.mgmt.v1alpha1.CheckSSHConnectionRequest\x1a).mgmt.v1alpha1.CheckSSHConnectionResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\a\x12~\n" +
-	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x05B\xd0\x01\n" +
+	"\x01\a\x12\x7f\n" +
+	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06B\xd0\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x0fConnectionProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (

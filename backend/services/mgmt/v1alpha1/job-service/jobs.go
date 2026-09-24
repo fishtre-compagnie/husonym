@@ -364,6 +364,19 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, err
 	}
+	// A job created with a run, or with a schedule that starts active, writes to its
+	// destination: creating it that way is executing it. The roles that create jobs can run
+	// them, so this only narrows an API key given create without execute.
+	if req.Msg.GetInitiateJobRun() || req.Msg.GetCronSchedule() != "" {
+		err = user.EnforceJob(
+			ctx,
+			userdata.NewWildcardDomainEntity(req.Msg.GetAccountId()),
+			rbac.JobAction_Execute,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
 	// Jobs are the paid surface: creating, configuring and running one requires an active
 	// license. Reading, pausing, canceling and deleting deliberately do not, so an
 	// account whose license lapsed keeps access to its configuration and history and can
@@ -822,7 +835,11 @@ func (s *Service) UpdateJobSchedule(
 	if err != nil {
 		return nil, err
 	}
-	// Scheduling is what makes a job run on its own — gated like execution itself.
+	// Scheduling is what makes a job run on its own — gated like execution itself: a schedule
+	// decides when an active job writes to its destination.
+	if err := user.EnforceJob(ctx, jobDto, rbac.JobAction_Execute); err != nil {
+		return nil, err
+	}
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
@@ -915,8 +932,12 @@ func (s *Service) PauseJob(
 
 	// Only resuming is gated. Pausing stays available without a license: an account whose
 	// license lapsed must always be able to stop its schedules, and blocking that would
-	// leave it with jobs it can neither run nor quiet.
+	// leave it with jobs it can neither run nor quiet. Resuming lets the job run on its own
+	// again, so it takes what running it takes.
 	if !req.Msg.Pause {
+		if err := user.EnforceJob(ctx, jobDto, rbac.JobAction_Execute); err != nil {
+			return nil, err
+		}
 		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 			return nil, err
 		}

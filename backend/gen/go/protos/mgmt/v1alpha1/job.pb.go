@@ -14290,7 +14290,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"#JOB_MAPPING_CHANGE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dJOB_MAPPING_CHANGE_KIND_ADDED\x10\x01\x12#\n" +
 	"\x1fJOB_MAPPING_CHANGE_KIND_REMOVED\x10\x02\x12(\n" +
-	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xd5'\n" +
+	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xd8'\n" +
 	"\n" +
 	"JobService\x12T\n" +
 	"\aGetJobs\x12\x1d.mgmt.v1alpha1.GetJobsRequest\x1a\x1e.mgmt.v1alpha1.GetJobsResponse\"\n" +
@@ -14308,10 +14308,10 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x12IsJobNameAvailable\x12(.mgmt.v1alpha1.IsJobNameAvailableRequest\x1a).mgmt.v1alpha1.IsJobNameAvailableResponse\"\n" +
 	"\x92\xb5\x18\x03\n" +
 	"\x01\n" +
-	"\x90\x02\x01\x12p\n" +
-	"\x11UpdateJobSchedule\x12'.mgmt.v1alpha1.UpdateJobScheduleRequest\x1a(.mgmt.v1alpha1.UpdateJobScheduleResponse\"\b\x92\xb5\x18\x04\n" +
-	"\x02\n" +
-	"\f\x12\x89\x01\n" +
+	"\x90\x02\x01\x12q\n" +
+	"\x11UpdateJobSchedule\x12'.mgmt.v1alpha1.UpdateJobScheduleRequest\x1a(.mgmt.v1alpha1.UpdateJobScheduleResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\r\x12\x89\x01\n" +
 	"\x19UpdateJobSourceConnection\x12/.mgmt.v1alpha1.UpdateJobSourceConnectionRequest\x1a0.mgmt.v1alpha1.UpdateJobSourceConnectionResponse\"\t\x92\xb5\x18\x05\n" +
 	"\x03\n" +
 	"\f\x05\x12\x9e\x01\n" +
@@ -14382,9 +14382,9 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\f\x12p\n" +
 	"\x11SetJobSyncOptions\x12'.mgmt.v1alpha1.SetJobSyncOptionsRequest\x1a(.mgmt.v1alpha1.SetJobSyncOptionsResponse\"\b\x92\xb5\x18\x04\n" +
 	"\x02\n" +
-	"\f\x12u\n" +
-	"\x13ValidateJobMappings\x12).mgmt.v1alpha1.ValidateJobMappingsRequest\x1a*.mgmt.v1alpha1.ValidateJobMappingsResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x05\x12x\n" +
+	"\f\x12v\n" +
+	"\x13ValidateJobMappings\x12).mgmt.v1alpha1.ValidateJobMappingsRequest\x1a*.mgmt.v1alpha1.ValidateJobMappingsResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12x\n" +
 	"\x14ReconcileJobMappings\x12*.mgmt.v1alpha1.ReconcileJobMappingsRequest\x1a+.mgmt.v1alpha1.ReconcileJobMappingsResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\f\x12\x87\x01\n" +
 	"\x18GetPendingMappingChanges\x12..mgmt.v1alpha1.GetPendingMappingChangesRequest\x1a/.mgmt.v1alpha1.GetPendingMappingChangesResponse\"\n" +
@@ -14394,9 +14394,9 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x14ReviewMappingChanges\x12*.mgmt.v1alpha1.ReviewMappingChangesRequest\x1a+.mgmt.v1alpha1.ReviewMappingChangesResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\f\x12u\n" +
 	"\x13ApplyMappingChanges\x12).mgmt.v1alpha1.ApplyMappingChangesRequest\x1a*.mgmt.v1alpha1.ApplyMappingChangesResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\f\x12f\n" +
-	"\x0eValidateSchema\x12$.mgmt.v1alpha1.ValidateSchemaRequest\x1a%.mgmt.v1alpha1.ValidateSchemaResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\x05\x12c\n" +
+	"\x01\f\x12g\n" +
+	"\x0eValidateSchema\x12$.mgmt.v1alpha1.ValidateSchemaRequest\x1a%.mgmt.v1alpha1.ValidateSchemaResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12c\n" +
 	"\rGetRunContext\x12#.mgmt.v1alpha1.GetRunContextRequest\x1a$.mgmt.v1alpha1.GetRunContextResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\n" +
 	"\x12c\n" +

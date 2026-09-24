@@ -33,7 +33,9 @@ const (
 	Permission_PERMISSION_ACCOUNT_CREATE  Permission = 3
 	Permission_PERMISSION_ACCOUNT_DELETE  Permission = 4
 	Permission_PERMISSION_CONNECTION_VIEW Permission = 5
-	// Seeing a connection's secrets in clear. Without it, they come back masked.
+	// Holding a connection's secrets: seeing them in clear, and using the connection — reading its
+	// schema, scanning or previewing its data — which takes them. Without it, a connection comes
+	// back masked, and cannot be connected to.
 	Permission_PERMISSION_CONNECTION_VIEW_SENSITIVE Permission = 6
 	Permission_PERMISSION_CONNECTION_CREATE         Permission = 7
 	Permission_PERMISSION_CONNECTION_EDIT           Permission = 8
@@ -41,7 +43,8 @@ const (
 	Permission_PERMISSION_JOB_VIEW                  Permission = 10
 	Permission_PERMISSION_JOB_CREATE                Permission = 11
 	Permission_PERMISSION_JOB_EDIT                  Permission = 12
-	// Running a job, which writes to a real destination.
+	// Running a job, which writes to a real destination — and anything that makes it run: creating
+	// it with a first run or an active schedule, setting its schedule, resuming it.
 	Permission_PERMISSION_JOB_EXECUTE Permission = 13
 	Permission_PERMISSION_JOB_DELETE  Permission = 14
 )
