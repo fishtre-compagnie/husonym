@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
 import ButtonText from '@/components/ButtonText';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
@@ -86,14 +85,14 @@ export default function DestinationConnectionCard({
     if (!job) {
       return;
     }
+    // Only this destination is checked: the others and the source are not changed.
     await checkThenSave(
-      getCheckTargetsOfJob({
+      {
         ...job,
-        // only this destination is checked: the others and the source are not changed
-        source: undefined,
         destinations: [{ connectionId: values.connectionId, options }],
-      }),
-      () => saveDestination(values.connectionId, options)
+      },
+      () => saveDestination(values.connectionId, options),
+      { checkSource: false }
     );
   }
 

@@ -79,7 +79,7 @@ describe('getCheckTargetsOfJob', () => {
     expect(target.scope.tables).toEqual([]);
   });
 
-  it('checks the table an AI generate job fills on all of its columns', () => {
+  it('checks only the servers of an AI generate job, as its run names no column', () => {
     const [target] = getCheckTargetsOfJob({
       source: create(JobSourceSchema, {
         options: {
@@ -99,9 +99,45 @@ describe('getCheckTargetsOfJob', () => {
     });
     // the AI connection is not a database: only the destination is checked
     expect(target.role).toBe(ConnectionRole.DESTINATION);
-    expect(
-      target.scope.tables.map((t) => [t.schema, t.table, t.columns])
-    ).toEqual([['public', 'users', []]]);
+    expect(target.scope.tables).toEqual([]);
+  });
+
+  it('leaves out the mappings of columns the source no longer has', () => {
+    const [source, destination] = getCheckTargetsOfJob(
+      {
+        source: mysqlSource('src'),
+        destinations: [
+          { connectionId: 'dst', options: postgresDestination(false, false) },
+        ],
+        mappings: [
+          { schema: 'public', table: 'users', column: 'id' },
+          { schema: 'public', table: 'users', column: 'dropped' },
+          { schema: 'public', table: 'gone', column: 'id' },
+        ],
+      },
+      { sourceColumns: new Set(['public.users.id', 'public.users.email']) }
+    );
+    for (const target of [source, destination]) {
+      expect(
+        target.scope.tables.map((t) => [t.schema, t.table, t.columns])
+      ).toEqual([['public', 'users', ['id']]]);
+    }
+  });
+
+  it('leaves the source out, or the tables, when asked', () => {
+    const job = {
+      source: mysqlSource('src'),
+      destinations: [
+        { connectionId: 'dst', options: postgresDestination(false, false) },
+      ],
+      mappings: [{ schema: 'public', table: 'users', column: 'id' }],
+    };
+    const targets = getCheckTargetsOfJob(job, {
+      checkSource: false,
+      serverOnly: true,
+    });
+    expect(targets.map((t) => t.connectionId)).toEqual(['dst']);
+    expect(targets[0].scope.tables).toEqual([]);
   });
 
   it('checks nothing for a job without SQL connections', () => {

@@ -1,7 +1,6 @@
 'use client';
 import { getErrorMessage } from '@/util/util';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import {
   clearNewJobSession,
   getCreateNewPiiDetectJobRequest,
@@ -128,7 +127,7 @@ export default function Page(props: PageProps): ReactElement {
         account?.id ?? '',
         (id) => connectionsRecord[id]
       );
-      await checkThenSave(getCheckTargetsOfJob(request), async () => {
+      await checkThenSave(request, async () => {
         try {
           const job = await createJob(request);
           toast.success('Successfully created job!');

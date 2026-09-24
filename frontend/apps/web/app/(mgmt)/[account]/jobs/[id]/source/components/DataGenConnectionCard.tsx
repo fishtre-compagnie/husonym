@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { SingleTableEditSourceFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
 import {
   SchemaTable,
@@ -331,11 +330,11 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
       return;
     }
     await checkThenSave(
-      getCheckTargetsOfJob({
+      {
         ...job,
         source: toSingleTableEditGenerateJobSource(values),
         mappings: values.mappings,
-      }),
+      },
       () => saveSource(values, job)
     );
   }

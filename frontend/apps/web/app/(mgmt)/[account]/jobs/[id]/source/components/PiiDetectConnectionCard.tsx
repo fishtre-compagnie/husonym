@@ -1,6 +1,5 @@
 import { EditPiiDetectionJobFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { getErrorMessage } from '@/util/util';
 import {
   DataSampling,
@@ -94,34 +93,31 @@ export default function PiiDetectConnectionCard({
         },
         getConnectionById
       );
-      await checkThenSave(
-        getCheckTargetsOfJob({ ...job, source, mappings: [] }),
-        async () => {
-          try {
-            await updateJobSourceConnection({
-              id: job.id,
-              mappings: [],
-              virtualForeignKeys: [],
-              source,
+      await checkThenSave({ ...job, source, mappings: [] }, async () => {
+        try {
+          await updateJobSourceConnection({
+            id: job.id,
+            mappings: [],
+            virtualForeignKeys: [],
+            source,
+            jobType: {
               jobType: {
-                jobType: {
-                  case: 'piiDetect',
-                  value: toPiiDetectJobTypeConfig(validatedData),
-                },
+                case: 'piiDetect',
+                value: toPiiDetectJobTypeConfig(validatedData),
               },
-            });
-            toast.success('Successfully updated source connection!');
-            const updatedJobResp = await mutate();
-            if (updatedJobResp.data?.job) {
-              setFromRemote(updatedJobResp.data?.job);
-            }
-          } catch (err) {
-            toast.error('Unable to update job source connection', {
-              description: getErrorMessage(err),
-            });
+            },
+          });
+          toast.success('Successfully updated source connection!');
+          const updatedJobResp = await mutate();
+          if (updatedJobResp.data?.job) {
+            setFromRemote(updatedJobResp.data?.job);
           }
+        } catch (err) {
+          toast.error('Unable to update job source connection', {
+            description: getErrorMessage(err),
+          });
         }
-      );
+      });
     } catch (err) {
       if (err instanceof ValidationError) {
         const validationErrors: Record<string, string> = {};

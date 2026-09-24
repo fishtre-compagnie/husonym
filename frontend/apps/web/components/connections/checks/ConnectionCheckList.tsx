@@ -23,19 +23,7 @@ interface Props {
 export default function ConnectionCheckList(props: Props): ReactElement {
   const { checks, unreachable, allClearText } = props;
 
-  if (unreachable) {
-    return (
-      <ul className="flex flex-col divide-y rounded-lg border">
-        <Finding
-          blocking={false}
-          label="Warning"
-          message={`Could not be checked from the API: ${unreachable}. The run checks it again at its start.`}
-          missing={[]}
-        />
-      </ul>
-    );
-  }
-  if (checks.length === 0) {
+  if (checks.length === 0 && !unreachable) {
     return (
       <div className="flex flex-row items-center gap-2 text-sm text-green-800 dark:text-green-400">
         <CheckCircledIcon className="h-4 w-4 shrink-0" />
@@ -48,6 +36,14 @@ export default function ConnectionCheckList(props: Props): ReactElement {
   );
   return (
     <ul className="flex flex-col divide-y rounded-lg border">
+      {unreachable ? (
+        <Finding
+          blocking={false}
+          label="Warning"
+          message={`Could not be checked from the API: ${unreachable}. The run checks it again at its start.`}
+          missing={[]}
+        />
+      ) : null}
       {ordered.map((check, index) => (
         <Finding
           key={`${check.kind}-${check.table}-${index}`}

@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { isValidConnectionPair } from '@/app/(mgmt)/[account]/connections/util';
 import {
   getConnectionIdFromSource,
@@ -146,14 +145,11 @@ export default function Page(props: PageProps): ReactElement {
         options: toJobDestinationOptions(d, connMap.get(d.connectionId)),
       })
     );
+    // Only the new destinations are checked: the rest of the job is not changed.
     await checkThenSave(
-      getCheckTargetsOfJob({
-        ...currentJob,
-        // only the new destinations are checked: the rest of the job is not changed
-        source: undefined,
-        destinations,
-      }),
-      () => saveDestinations(destinations)
+      { ...currentJob, destinations },
+      () => saveDestinations(destinations),
+      { checkSource: false }
     );
   }
 

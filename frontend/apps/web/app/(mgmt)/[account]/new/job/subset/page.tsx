@@ -1,7 +1,6 @@
 'use client';
 
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import FormPersist from '@/app/(mgmt)/FormPersist';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
@@ -180,7 +179,7 @@ export default function Page(props: PageProps): ReactElement {
       account.id,
       (id) => connMap.get(id)
     );
-    await checkThenSave(getCheckTargetsOfJob(request), async () => {
+    await checkThenSave(request, async () => {
       try {
         const job = await createNewSyncJob(request);
         toast.success('Successfully created the job!');

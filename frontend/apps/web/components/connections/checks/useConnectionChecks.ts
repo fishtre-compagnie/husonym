@@ -8,12 +8,15 @@ import {
 import { useCallback } from 'react';
 import { ConnectionCheckTarget, splitScope } from './targets';
 
-// What a connection cannot do that its role needs, or why it could not be asked.
+// What a connection cannot do that its role needs, and why it could not be asked, if it
+// could not.
 export interface ConnectionCheckResult {
   target: ConnectionCheckTarget;
+  // What was found, including in the slices of tables asked before one failed.
   checks: ConnectionCheck[];
-  // Set when the API could not ask the connection: it may still be reachable from the
-  // worker, so this is reported as a warning, never as blocking.
+  // Set when the API could not ask the connection, or a slice of its tables: it may still be
+  // reachable from the worker, so this is reported as a warning. It never hides what was
+  // found before it.
   unreachable?: string;
 }
 
@@ -43,7 +46,7 @@ export function useConnectionChecks(): (
               if (!res.isConnected) {
                 return {
                   target,
-                  checks: [],
+                  checks,
                   unreachable: res.connectionError ?? 'unable to connect',
                 };
               }
@@ -57,7 +60,7 @@ export function useConnectionChecks(): (
               }
             }
           } catch (err) {
-            return { target, checks: [], unreachable: getErrorMessage(err) };
+            return { target, checks, unreachable: getErrorMessage(err) };
           }
           return { target, checks };
         })

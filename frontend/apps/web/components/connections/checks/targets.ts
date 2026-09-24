@@ -30,15 +30,34 @@ export type CheckedJob = {
   workflowOptions?: { engine: JobEngine };
 };
 
+export interface JobCheckOptions {
+  // The source is checked too; a screen that changes only destinations leaves it out.
+  checkSource?: boolean;
+  // Only what concerns the servers as a whole is checked: what the engine changes.
+  serverOnly?: boolean;
+  // The columns the source has, as schema.table.column: a mapping whose column the source no
+  // longer has is left out, as a run leaves it out.
+  sourceColumns?: Set<string>;
+}
+
 // getCheckTargetsOfJob gives the MySQL and PostgreSQL connections of a job to check, each in
-// its role, as the run checks them at its start, on the tables it reads and writes: those of
-// its mappings, or the table an AI generate job fills. Other connections are not checked.
-export function getCheckTargetsOfJob(job: CheckedJob): ConnectionCheckTarget[] {
+// its role, as the run checks them at its start, on the tables and columns of its mappings.
+// Other connections are not checked.
+//
+// An AI generate job has no mappings: the columns it writes are those the model returns, and
+// its run checks its table without naming them. Only its servers are checked here, so that
+// the page never asks more of the table than the run does.
+export function getCheckTargetsOfJob(
+  job: CheckedJob,
+  options: JobCheckOptions = {}
+): ConnectionCheckTarget[] {
   const engine = job.workflowOptions?.engine ?? JobEngine.UNSPECIFIED;
-  const tables = getJobTables(job);
+  const tables = options.serverOnly
+    ? []
+    : toCheckedTables(job.mappings, options.sourceColumns);
   const targets: ConnectionCheckTarget[] = [];
   const sourceId = getSqlSourceConnectionId(job.source);
-  if (sourceId) {
+  if (sourceId && options.checkSource !== false) {
     targets.push({
       connectionId: sourceId,
       role: ConnectionRole.SOURCE,
@@ -73,23 +92,6 @@ export function getCheckTargetsOfJob(job: CheckedJob): ConnectionCheckTarget[] {
   return targets;
 }
 
-function getJobTables(job: CheckedJob): ConnectionCheckTable[] {
-  const config = job.source?.options?.config;
-  if (config?.case === 'aiGenerate') {
-    // The columns an AI generate job writes are those the model returns: the table is
-    // checked on all of its columns.
-    return config.value.schemas.flatMap((schema) =>
-      schema.tables.map((table) =>
-        create(ConnectionCheckTableSchema, {
-          schema: schema.schema,
-          table: table.table,
-        })
-      )
-    );
-  }
-  return toCheckedTables(job.mappings);
-}
-
 // getServerScope asks what a connection cannot do in a role before the job has tables:
 // only what concerns the server as a whole is checked.
 export function getServerScope(
@@ -104,7 +106,9 @@ export function getServerScope(
 
 // getSqlSourceConnectionId is the source connection a run reads, when it is MySQL or
 // PostgreSQL.
-function getSqlSourceConnectionId(source?: JobSource): string | undefined {
+export function getSqlSourceConnectionId(
+  source?: JobSource
+): string | undefined {
   const config = source?.options?.config;
   if (config?.case === 'mysql' || config?.case === 'postgres') {
     return config.value.connectionId || undefined;
@@ -112,16 +116,21 @@ function getSqlSourceConnectionId(source?: JobSource): string | undefined {
   return undefined;
 }
 
-// toCheckedTables groups the mappings of a job by table, with the columns each maps.
+// toCheckedTables groups the mappings of a job by table, with the columns each maps, leaving
+// out those the source does not have when its columns are known.
 function toCheckedTables(
-  mappings: Pick<JobMapping, 'schema' | 'table' | 'column'>[]
+  mappings: Pick<JobMapping, 'schema' | 'table' | 'column'>[],
+  sourceColumns?: Set<string>
 ): ConnectionCheckTable[] {
   const byName = new Map<string, ConnectionCheckTable>();
   for (const mapping of mappings) {
-    if (!mapping.schema || !mapping.table) {
+    if (!mapping.schema || !mapping.table || !mapping.column) {
       continue;
     }
     const key = `${mapping.schema}.${mapping.table}`;
+    if (sourceColumns && !sourceColumns.has(`${key}.${mapping.column}`)) {
+      continue;
+    }
     let table = byName.get(key);
     if (!table) {
       table = create(ConnectionCheckTableSchema, {
@@ -130,7 +139,7 @@ function toCheckedTables(
       });
       byName.set(key, table);
     }
-    if (mapping.column && !table.columns.includes(mapping.column)) {
+    if (!table.columns.includes(mapping.column)) {
       table.columns.push(mapping.column);
     }
   }

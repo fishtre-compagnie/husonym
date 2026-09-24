@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import SampleTable from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SampleTable/SampleTable';
 import { getAiSampleTableColumns } from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SampleTable/SampleTableColumns';
 import SelectModelNames from '@/app/(mgmt)/[account]/new/job/aigenerate/single/schema/SelectModelNames';
@@ -207,11 +206,11 @@ export default function AiDataGenConnectionCard({
       return;
     }
     await checkThenSave(
-      getCheckTargetsOfJob({
+      {
         ...job,
         source: toSingleTableEditAiGenerateJobSource(values),
         mappings: [],
-      }),
+      },
       () => saveSource(values, job)
     );
   }

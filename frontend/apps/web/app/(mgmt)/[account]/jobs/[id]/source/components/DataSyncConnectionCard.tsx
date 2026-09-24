@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
 import SourceOptionsForm from '@/components/jobs/Form/SourceOptionsForm';
 import NosqlTable from '@/components/jobs/NosqlTable/NosqlTable';
@@ -323,9 +322,8 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     const source = create(JobSourceSchema, {
       options: toJobSourceOptions(values, job, connection, values.sourceId),
     });
-    await checkThenSave(
-      getCheckTargetsOfJob({ ...job, source, mappings: values.mappings }),
-      () => saveSource(values, job, connection)
+    await checkThenSave({ ...job, source, mappings: values.mappings }, () =>
+      saveSource(values, job, connection)
     );
   }
 

@@ -91,9 +91,11 @@ func checkRole(
 	return checks, nil
 }
 
-// checkedTables are the tables to check, each once. On MySQL, a table given without columns
-// is taken with the columns the account can see, generated ones left out: the probes name
-// them. PostgreSQL asks about a table as a whole, and its columns are not read.
+// checkedTables are the tables to check, each once. On MySQL, the probes name the columns: a
+// table given without columns is taken with the columns the account can see, and generated
+// columns are left out of every table, given or not, as a run leaves them out of what it
+// writes — MySQL refuses a statement that names one. PostgreSQL asks about a table as a
+// whole, and its columns are not read.
 func checkedTables(
 	ctx context.Context,
 	db *sqlmanager.SqlConnection,
@@ -104,39 +106,58 @@ func checkedTables(
 	seen := map[string]bool{}
 	// filled are the tables whose columns are read, and not given.
 	filled := map[*connectionchecks.Table]bool{}
-	var withoutColumns []*sqlmanager_shared.SchemaTable
+	var read []*sqlmanager_shared.SchemaTable
 	for _, table := range given {
-		t := &connectionchecks.Table{Schema: table.GetSchema(), Table: table.GetTable(), Columns: table.GetColumns()}
+		t := &connectionchecks.Table{
+			Schema: table.GetSchema(), Table: table.GetTable(), Columns: slices.Clone(table.GetColumns()),
+		}
 		if seen[t.String()] {
 			continue
 		}
 		seen[t.String()] = true
 		tables = append(tables, t)
-		if len(t.Columns) == 0 && dialect == connectionchecks.MySQL {
-			withoutColumns = append(withoutColumns, &sqlmanager_shared.SchemaTable{Schema: t.Schema, Table: t.Table})
-			filled[t] = true
+		if dialect == connectionchecks.MySQL {
+			read = append(read, &sqlmanager_shared.SchemaTable{Schema: t.Schema, Table: t.Table})
+			filled[t] = len(t.Columns) == 0
 		}
 	}
-	if len(withoutColumns) == 0 {
+	if len(read) == 0 {
 		return tables, nil
 	}
-	rows, err := db.Db().GetDatabaseTableSchemasBySchemasAndTables(ctx, withoutColumns)
+	rows, err := db.Db().GetDatabaseTableSchemasBySchemasAndTables(ctx, read)
 	if err != nil {
 		return nil, err
 	}
+	setMysqlColumns(tables, filled, rows)
+	return tables, nil
+}
+
+// setMysqlColumns gives the tables the columns their probes name, from the columns the
+// server lists: filled tables take those they were not given, and every table loses its
+// generated columns.
+func setMysqlColumns(
+	tables []*connectionchecks.Table,
+	filled map[*connectionchecks.Table]bool,
+	rows []*sqlmanager_shared.DatabaseSchemaRow,
+) {
 	for _, row := range rows {
-		if row.GeneratedType != nil && *row.GeneratedType != "" {
-			continue
-		}
 		// MySQL may fold the names of tables: the row is matched the way the server would.
 		i := slices.IndexFunc(tables, func(t *connectionchecks.Table) bool {
-			return filled[t] && strings.EqualFold(t.Schema, row.TableSchema) && strings.EqualFold(t.Table, row.TableName)
+			return strings.EqualFold(t.Schema, row.TableSchema) && strings.EqualFold(t.Table, row.TableName)
 		})
-		if i >= 0 && !slices.Contains(tables[i].Columns, row.ColumnName) {
-			tables[i].Columns = append(tables[i].Columns, row.ColumnName)
+		if i < 0 {
+			continue
+		}
+		t := tables[i]
+		if row.GeneratedType != nil && *row.GeneratedType != "" {
+			// MySQL compares column names regardless of case.
+			t.Columns = slices.DeleteFunc(t.Columns, func(c string) bool { return strings.EqualFold(c, row.ColumnName) })
+			continue
+		}
+		if filled[t] && !slices.Contains(t.Columns, row.ColumnName) {
+			t.Columns = append(t.Columns, row.ColumnName)
 		}
 	}
-	return tables, nil
 }
 
 func toConnectionCheck(finding *connectionchecks.Finding) *mgmtv1alpha1.ConnectionCheck {

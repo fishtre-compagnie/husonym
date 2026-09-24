@@ -1,6 +1,5 @@
 'use client';
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -68,15 +67,14 @@ export default function WorkflowSettingsCard({
       await saveWorkflowOptions(values);
       return;
     }
-    // What a destination must allow depends on the engine: the destinations are checked
-    // with the new one. The source reads the same way under both.
+    // What the engine changes is asked of the destination servers as a whole (suspending
+    // foreign keys): they are checked with the new engine, and without the tables, so that a
+    // finding the engine does not change keeps no one from changing it. The source reads the
+    // same way under both.
     await checkThenSave(
-      getCheckTargetsOfJob({
-        ...job,
-        source: undefined,
-        workflowOptions: { engine },
-      }),
-      () => saveWorkflowOptions(values)
+      { ...job, workflowOptions: { engine } },
+      () => saveWorkflowOptions(values),
+      { checkSource: false, serverOnly: true }
     );
   }
 

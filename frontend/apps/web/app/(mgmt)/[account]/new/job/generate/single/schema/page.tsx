@@ -1,7 +1,6 @@
 'use client';
 
 import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
-import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import FormPersist from '@/app/(mgmt)/FormPersist';
 import { useOnApplyDefaultClick } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/useOnApplyDefaultClick';
 import { useOnImportMappings } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/useOnImportMappings';
@@ -164,7 +163,7 @@ export default function Page(props: PageProps): ReactElement {
       account.id,
       (id) => connMap.get(id)
     );
-    await checkThenSave(getCheckTargetsOfJob(request), async () => {
+    await checkThenSave(request, async () => {
       try {
         const job = await createJobAsync(request);
 
