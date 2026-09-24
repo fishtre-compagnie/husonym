@@ -22,6 +22,9 @@ export const ApiKeyFormValues = Yup.object({
     ),
   expiresAtSelect: Yup.string().oneOf(['7', '30', '60', '90', 'custom']),
   expiresAt: Yup.date().required('The Expiration is a required field.'),
+  permissions: Yup.array(Yup.number().required())
+    .min(1, 'Give the key at least one permission: it can do nothing else.')
+    .required(),
 });
 
 export type ApiKeyFormValues = Yup.InferType<typeof ApiKeyFormValues>;

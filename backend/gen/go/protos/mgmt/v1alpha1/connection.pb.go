@@ -3050,7 +3050,7 @@ var File_mgmt_v1alpha1_connection_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\n" +
-	"\x1emgmt/v1alpha1/connection.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"m\n" +
+	"\x1emgmt/v1alpha1/connection.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"m\n" +
 	"\x15GetConnectionsRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12+\n" +
@@ -3299,19 +3299,33 @@ const file_mgmt_v1alpha1_connection_proto_rawDesc = "" +
 	"\x18CheckSSHConnectionResult\x12#\n" +
 	"\ris_successful\x18\x01 \x01(\bR\fisSuccessful\x12(\n" +
 	"\rerror_message\x18\x02 \x01(\tH\x00R\ferrorMessage\x88\x01\x01B\x10\n" +
-	"\x0e_error_message2\xcd\t\n" +
-	"\x11ConnectionService\x12b\n" +
-	"\x0eGetConnections\x12$.mgmt.v1alpha1.GetConnectionsRequest\x1a%.mgmt.v1alpha1.GetConnectionsResponse\"\x03\x90\x02\x01\x12_\n" +
-	"\rGetConnection\x12#.mgmt.v1alpha1.GetConnectionRequest\x1a$.mgmt.v1alpha1.GetConnectionResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x10CreateConnection\x12&.mgmt.v1alpha1.CreateConnectionRequest\x1a'.mgmt.v1alpha1.CreateConnectionResponse\"\x00\x12e\n" +
-	"\x10UpdateConnection\x12&.mgmt.v1alpha1.UpdateConnectionRequest\x1a'.mgmt.v1alpha1.UpdateConnectionResponse\"\x00\x12e\n" +
-	"\x10DeleteConnection\x12&.mgmt.v1alpha1.DeleteConnectionRequest\x1a'.mgmt.v1alpha1.DeleteConnectionResponse\"\x00\x12\x80\x01\n" +
-	"\x19IsConnectionNameAvailable\x12/.mgmt.v1alpha1.IsConnectionNameAvailableRequest\x1a0.mgmt.v1alpha1.IsConnectionNameAvailableResponse\"\x00\x12t\n" +
-	"\x15CheckConnectionConfig\x12+.mgmt.v1alpha1.CheckConnectionConfigRequest\x1a,.mgmt.v1alpha1.CheckConnectionConfigResponse\"\x00\x12\x80\x01\n" +
-	"\x19CheckConnectionConfigById\x12/.mgmt.v1alpha1.CheckConnectionConfigByIdRequest\x1a0.mgmt.v1alpha1.CheckConnectionConfigByIdResponse\"\x00\x12\\\n" +
-	"\rCheckSqlQuery\x12#.mgmt.v1alpha1.CheckSqlQueryRequest\x1a$.mgmt.v1alpha1.CheckSqlQueryResponse\"\x00\x12k\n" +
-	"\x12CheckSSHConnection\x12(.mgmt.v1alpha1.CheckSSHConnectionRequest\x1a).mgmt.v1alpha1.CheckSSHConnectionResponse\"\x00\x12w\n" +
-	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\x00B\xd0\x01\n" +
+	"\x0e_error_message2\x9d\n" +
+	"\n" +
+	"\x11ConnectionService\x12i\n" +
+	"\x0eGetConnections\x12$.mgmt.v1alpha1.GetConnectionsRequest\x1a%.mgmt.v1alpha1.GetConnectionsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12f\n" +
+	"\rGetConnection\x12#.mgmt.v1alpha1.GetConnectionRequest\x1a$.mgmt.v1alpha1.GetConnectionResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12l\n" +
+	"\x10CreateConnection\x12&.mgmt.v1alpha1.CreateConnectionRequest\x1a'.mgmt.v1alpha1.CreateConnectionResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\a\x12l\n" +
+	"\x10UpdateConnection\x12&.mgmt.v1alpha1.UpdateConnectionRequest\x1a'.mgmt.v1alpha1.UpdateConnectionResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\b\x12l\n" +
+	"\x10DeleteConnection\x12&.mgmt.v1alpha1.DeleteConnectionRequest\x1a'.mgmt.v1alpha1.DeleteConnectionResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\t\x12\x87\x01\n" +
+	"\x19IsConnectionNameAvailable\x12/.mgmt.v1alpha1.IsConnectionNameAvailableRequest\x1a0.mgmt.v1alpha1.IsConnectionNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12{\n" +
+	"\x15CheckConnectionConfig\x12+.mgmt.v1alpha1.CheckConnectionConfigRequest\x1a,.mgmt.v1alpha1.CheckConnectionConfigResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\a\x12\x88\x01\n" +
+	"\x19CheckConnectionConfigById\x12/.mgmt.v1alpha1.CheckConnectionConfigByIdRequest\x1a0.mgmt.v1alpha1.CheckConnectionConfigByIdResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12d\n" +
+	"\rCheckSqlQuery\x12#.mgmt.v1alpha1.CheckSqlQueryRequest\x1a$.mgmt.v1alpha1.CheckSqlQueryResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12r\n" +
+	"\x12CheckSSHConnection\x12(.mgmt.v1alpha1.CheckSSHConnectionRequest\x1a).mgmt.v1alpha1.CheckSSHConnectionResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\a\x12\x7f\n" +
+	"\x16CheckSSHConnectionById\x12,.mgmt.v1alpha1.CheckSSHConnectionByIdRequest\x1a-.mgmt.v1alpha1.CheckSSHConnectionByIdResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06B\xd0\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x0fConnectionProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -3451,6 +3465,7 @@ func file_mgmt_v1alpha1_connection_proto_init() {
 	if File_mgmt_v1alpha1_connection_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_connection_proto_msgTypes[12].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_connection_proto_msgTypes[13].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_connection_proto_msgTypes[16].OneofWrappers = []any{

@@ -1,0 +1,33 @@
+---
+title: permission.proto
+hide_title: true
+---
+
+import { ProtoMessage, ProtoServiceMethod, ProtoEnum } from '@theme/ProtoFile';
+
+# `permission.proto`
+_**path** mgmt/v1alpha1/permission.proto_
+
+_**package** mgmt.v1alpha1_
+
+
+
+---
+
+## Messages
+
+
+### `ProcedurePermissions`
+<ProtoMessage key={0} message={{"name":"ProcedurePermissions","longName":"ProcedurePermissions","fullName":"mgmt.v1alpha1.ProcedurePermissions","description":"What a scoped API key must be granted to call a procedure.","hasExtensions":false,"hasFields":true,"hasOneofs":false,"extensions":[],"fields":[{"name":"all_of","description":"The key needs every one of these.","label":"repeated","type":"Permission","longType":"Permission","fullType":"mgmt.v1alpha1.Permission","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":"","typeLink":"/api/mgmt/v1alpha1/permission.proto#permission"},{"name":"none","description":"The procedure needs no permission: it tells the caller about itself, or about the\ndeployment, and holds nothing a scope restricts. Set only when that is true — a\nprocedure with neither this nor a permission is refused to every scoped key.","label":"","type":"bool","longType":"bool","fullType":"bool","ismap":false,"isoneof":false,"oneofdecl":"","defaultValue":""}]}} />
+
+---
+## Enums
+
+
+### `Permission`
+<ProtoEnum key={0} enumb={{"name":"Permission","longName":"Permission","fullName":"mgmt.v1alpha1.Permission","description":"A permission a caller can be granted: one action on one kind of entity, as the RBAC names\nthem. An API key's scope is a list of these, and can only narrow what the key may do.","values":[{"name":"PERMISSION_UNSPECIFIED","number":"0","description":""},{"name":"PERMISSION_ACCOUNT_VIEW","number":"1","description":""},{"name":"PERMISSION_ACCOUNT_EDIT","number":"2","description":""},{"name":"PERMISSION_ACCOUNT_CREATE","number":"3","description":""},{"name":"PERMISSION_ACCOUNT_DELETE","number":"4","description":""},{"name":"PERMISSION_CONNECTION_VIEW","number":"5","description":""},{"name":"PERMISSION_CONNECTION_VIEW_SENSITIVE","number":"6","description":"Holding a connection's secrets: seeing them in clear, and using the connection — reading its\nschema, scanning or previewing its data — which takes them. Without it, a connection comes\nback masked, and cannot be connected to."},{"name":"PERMISSION_CONNECTION_CREATE","number":"7","description":""},{"name":"PERMISSION_CONNECTION_EDIT","number":"8","description":""},{"name":"PERMISSION_CONNECTION_DELETE","number":"9","description":""},{"name":"PERMISSION_JOB_VIEW","number":"10","description":""},{"name":"PERMISSION_JOB_CREATE","number":"11","description":""},{"name":"PERMISSION_JOB_EDIT","number":"12","description":""},{"name":"PERMISSION_JOB_EXECUTE","number":"13","description":"Running a job, which writes to a real destination — and anything that makes it run: creating\nit with a first run or an active schedule, setting its schedule, resuming it, writing or\nenabling one of its SQL hooks."},{"name":"PERMISSION_JOB_DELETE","number":"14","description":""}]}} />
+
+---
+
+
+  

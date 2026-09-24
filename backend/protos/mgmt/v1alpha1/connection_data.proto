@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "mgmt/v1alpha1/permission.proto";
 import "mgmt/v1alpha1/transformer.proto";
 
 message PostgresStreamConfig {}
@@ -547,36 +548,109 @@ message GetJavascriptDraftPromptResponse {
 service ConnectionDataService {
   // Streaming endpoint that will stream the data available from the Connection to the client.
   // Used primarily by the CLI sync command.
-  rpc GetConnectionDataStream(GetConnectionDataStreamRequest) returns (stream GetConnectionDataStreamResponse) {}
+  rpc GetConnectionDataStream(GetConnectionDataStreamRequest) returns (stream GetConnectionDataStreamResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // Returns the schema for a specific connection. Used mostly for SQL-based connections
-  rpc GetConnectionSchema(GetConnectionSchemaRequest) returns (GetConnectionSchemaResponse) {}
+  rpc GetConnectionSchema(GetConnectionSchemaRequest) returns (GetConnectionSchemaResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // Returns the schema in map format. The keys are the fully qualified table in the format <schema>.<table>
-  rpc GetConnectionSchemaMap(GetConnectionSchemaMapRequest) returns (GetConnectionSchemaMapResponse) {}
+  rpc GetConnectionSchemaMap(GetConnectionSchemaMapRequest) returns (GetConnectionSchemaMapResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // Returns the schema in map format for every request provided
-  rpc GetConnectionSchemaMaps(GetConnectionSchemaMapsRequest) returns (GetConnectionSchemaMapsResponse) {}
+  rpc GetConnectionSchemaMaps(GetConnectionSchemaMapsRequest) returns (GetConnectionSchemaMapsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // For a specific connection, returns the table constraints. Mostly useful for SQL-based Connections.
-  rpc GetConnectionTableConstraints(GetConnectionTableConstraintsRequest) returns (GetConnectionTableConstraintsResponse) {}
+  rpc GetConnectionTableConstraints(GetConnectionTableConstraintsRequest) returns (GetConnectionTableConstraintsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // For a specific connection, returns the init table statements. Mostly useful for SQL-based Connections.
   // Used primarily by the CLI sync command to create table schema init statement.
-  rpc GetConnectionInitStatements(GetConnectionInitStatementsRequest) returns (GetConnectionInitStatementsResponse) {}
+  rpc GetConnectionInitStatements(GetConnectionInitStatementsRequest) returns (GetConnectionInitStatementsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // Query an AI connection by providing the necessary values. Typically used for generating preview data
-  rpc GetAiGeneratedData(GetAiGeneratedDataRequest) returns (GetAiGeneratedDataResponse) {}
+  rpc GetAiGeneratedData(GetAiGeneratedDataRequest) returns (GetAiGeneratedDataResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
+  }
   // Query table with subset to get row count
   rpc GetTableRowCount(GetTableRowCountRequest) returns (GetTableRowCountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Get all schemas and tables for a connection
   rpc GetAllSchemasAndTables(GetAllSchemasAndTablesRequest) returns (GetAllSchemasAndTablesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Scans sampled column content through Presidio to detect PII (deep scan).
   // Complements the name-based heuristic returned by GetConnectionSchema.
   rpc DetectPiiInConnectionData(DetectPiiInConnectionDataRequest) returns (DetectPiiInConnectionDataResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Retourne un échantillon des valeurs d'une colonne, pour lever un doute sur
   // une détection RGPD en consultant les données réelles.
   rpc GetColumnSampleValues(GetColumnSampleValuesRequest) returns (GetColumnSampleValuesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns the prompt that gets a javascript rule drafted for one column, by an agent or by a
@@ -584,12 +658,24 @@ service ConnectionDataService {
   // contract of the sandbox, the column's type, nullability, uniqueness and foreign keys, and
   // the deterministic functions in scope. It reads the schema, never the column's data.
   rpc GetJavascriptDraftPrompt(GetJavascriptDraftPromptRequest) returns (GetJavascriptDraftPromptResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Reads a sample of one column and shows what a transformer would make of each value, before
   // anyone commits to it. The server reads the values itself: this previews a real column, and
   // cannot be turned into an unmetered way to anonymize arbitrary data.
   rpc PreviewColumnTransformer(PreviewColumnTransformerRequest) returns (PreviewColumnTransformerResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_CONNECTION_VIEW,
+        PERMISSION_CONNECTION_VIEW_SENSITIVE
+      ]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

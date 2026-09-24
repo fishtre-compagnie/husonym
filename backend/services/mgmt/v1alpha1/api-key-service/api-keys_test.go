@@ -3,6 +3,7 @@ package v1alpha1_apikeyservice
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	pgxmock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/jackc/pgx/v5"
 	"github.com/google/uuid"
@@ -190,7 +192,9 @@ func Test_Service_CreateAccountApiKey(t *testing.T) {
 
 	svc := New(&Config{}, husonymdb.New(mockDbtx, mockQuerier), mockUserService)
 
-	mockIsUserInAccount(t, mockUserService, true)
+	enforcer := mockIsUserInAccount(t, mockUserService, true)
+	enforcer.On("Job", mock.Anything, mock.Anything, rbac.JobAction_Execute).Return(true, nil)
+	enforcer.On("Connection", mock.Anything, mock.Anything, rbac.ConnectionAction_View).Return(true, nil)
 
 	mockDbtx.On("Begin", mock.Anything).Return(mockTx, nil)
 	mockTx.On("Commit", mock.Anything).Return(nil)
@@ -213,7 +217,10 @@ func Test_Service_CreateAccountApiKey(t *testing.T) {
 		KeyName:     "foo",
 		UserID:      user.ID,
 	}
-	mockQuerier.On("CreateAccountApiKey", mock.Anything, mock.Anything, mock.Anything).
+	mockQuerier.On("CreateAccountApiKey", mock.Anything, mock.Anything,
+		mock.MatchedBy(func(arg db_queries.CreateAccountApiKeyParams) bool {
+			return slices.Equal(arg.Permissions, []string{"job:execute", "connection:view"})
+		})).
 		Return(rawData, nil)
 
 	resp, err := svc.CreateAccountApiKey(
@@ -222,6 +229,10 @@ func Test_Service_CreateAccountApiKey(t *testing.T) {
 			AccountId: uuid.NewString(),
 			Name:      "foo",
 			ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
+			Permissions: []mgmtv1alpha1.Permission{
+				mgmtv1alpha1.Permission_PERMISSION_JOB_EXECUTE,
+				mgmtv1alpha1.Permission_PERMISSION_CONNECTION_VIEW,
+			},
 		}),
 	)
 	assert.NoError(t, err)
@@ -233,6 +244,35 @@ func Test_Service_CreateAccountApiKey(t *testing.T) {
 		rawData.KeyValue,
 		"KeyValue return should be the clear text, not the hash",
 	)
+}
+
+// A key cannot hold more than its creator: a permission the creator lacks refuses the key,
+// and nothing is written.
+func Test_Service_CreateAccountApiKey_BeyondTheCreator(t *testing.T) {
+	mockQuerier := db_queries.NewMockQuerier(t)
+	mockUserService := userdata.NewMockInterface(t)
+	svc := New(&Config{}, husonymdb.New(husonymdb.NewMockDBTX(t), mockQuerier), mockUserService)
+
+	enforcer := mockIsUserInAccount(t, mockUserService, true)
+	enforcer.On("Job", mock.Anything, mock.Anything, rbac.JobAction_View).Return(true, nil)
+	enforcer.On("Job", mock.Anything, mock.Anything, rbac.JobAction_Execute).Return(false, nil)
+
+	resp, err := svc.CreateAccountApiKey(
+		context.Background(),
+		connect.NewRequest(&mgmtv1alpha1.CreateAccountApiKeyRequest{
+			AccountId: uuid.NewString(),
+			Name:      "foo",
+			ExpiresAt: timestamppb.New(time.Now().Add(24 * time.Hour)),
+			Permissions: []mgmtv1alpha1.Permission{
+				mgmtv1alpha1.Permission_PERMISSION_JOB_VIEW,
+				mgmtv1alpha1.Permission_PERMISSION_JOB_EXECUTE,
+			},
+		}),
+	)
+	assert.Nil(t, resp)
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	assert.ErrorContains(t, err, "job:execute")
+	mockQuerier.AssertNotCalled(t, "CreateAccountApiKey", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func Test_Service_RegenerateAccountApiKey(t *testing.T) {
@@ -480,7 +520,11 @@ func newPgUuid(t *testing.T) pgtype.UUID {
 	return val
 }
 
-func mockIsUserInAccount(t testing.TB, userServiceMock *userdata.MockInterface, isInAccount bool) {
+func mockIsUserInAccount(
+	t testing.TB,
+	userServiceMock *userdata.MockInterface,
+	isInAccount bool,
+) *userdata.MockEntityEnforcer {
 	mockEntityEnforcer := userdata.NewMockEntityEnforcer(t)
 	if isInAccount {
 		mockEntityEnforcer.On("EnforceAccount", mock.Anything, mock.Anything, mock.Anything).
@@ -494,4 +538,5 @@ func mockIsUserInAccount(t testing.TB, userServiceMock *userdata.MockInterface, 
 	userServiceMock.On("GetUser", mock.Anything).Once().Return(&userdata.User{
 		EntityEnforcer: mockEntityEnforcer,
 	}, nil)
+	return mockEntityEnforcer
 }

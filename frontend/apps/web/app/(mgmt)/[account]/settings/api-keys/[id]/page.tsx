@@ -1,5 +1,6 @@
 'use client';
 import { ApiKeyValueSessionStore } from '@/app/(mgmt)/[account]/new/api-key/NewApiKeyForm';
+import { permissionLabel } from '@/app/(mgmt)/[account]/new/api-key/permissions';
 import ButtonText from '@/components/ButtonText';
 import { CopyButton } from '@/components/CopyButton';
 import { useAccount } from '@/components/providers/account-provider';
@@ -161,6 +162,22 @@ function ApiKeyDetails(props: ApiKeyDetailsProps): ReactElement {
           <div className="flex flex-row gap-2">
             <p className="text-sm tracking-tight w-[100px]">User ID:</p>
             <Badge variant="outline">{apiKey.userId}</Badge>
+          </div>
+          <div className="flex flex-row gap-2">
+            <p className="text-sm tracking-tight w-[100px] shrink-0">
+              Permissions:
+            </p>
+            <div className="flex flex-row flex-wrap gap-2">
+              {apiKey.permissions.length === 0 ? (
+                <Badge variant="outline">None: the key can do nothing</Badge>
+              ) : (
+                apiKey.permissions.map((p) => (
+                  <Badge key={p} variant="outline">
+                    {permissionLabel(p)}
+                  </Badge>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

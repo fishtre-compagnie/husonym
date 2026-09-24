@@ -67,12 +67,33 @@ To do so via the web app:
 3. Click the API Keys section
 4. Click the `+ New API Key` button.
 5. Write down a name and select when it should expire
-6. Submit
+6. Check the permissions the key needs
+7. Submit
 
 If successful, you should now be on the API Key Details page and the API Key should be seen in plaintext on the page.
 
 It's important to save this somewhere as it is no longer retrievable again. If lost, a new key must be regenerated.
 These keys are not stored in plaintext in the database and are one-way hashed so the original contents are no longer retrievable.
+
+### Permissions
+
+A key can do only what its permissions name, whatever the rest of the configuration allows. A permission is one action on one kind of entity:
+
+| Entity      | Permissions                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Jobs        | `job:view`, `job:create`, `job:edit`, `job:execute` (runs a job), `job:delete`                                                 |
+| Connections | `connection:view`, `connection:view_sensitive` (secrets in clear), `connection:create`, `connection:edit`, `connection:delete` |
+| Account     | `account:view`, `account:edit`, `account:create`, `account:delete`                                                             |
+
+- A key needs at least one permission, and can hold none that its creator does not hold themselves.
+- Using a connection takes its secrets: reading its schema, scanning or previewing its data, `husonym sync` all need `connection:view_sensitive`. Without it, a key reads connections with their passwords and keys masked, and cannot connect to them.
+- Running a job takes `job:execute`, and so does anything that makes it run: creating it with a first run or an active schedule, setting its schedule, resuming it, and writing or enabling one of its SQL hooks.
+- On a job that runs on a schedule, `job:edit` changes what its next run does — its mappings, its destination: grant it as you would `job:execute`.
+- `account:edit` lets a key manage members and their roles, admin included: grant it as you would admin.
+- A call the key's permissions do not cover is refused, and the refusal names the permission that is missing.
+- Keys created before permissions existed hold all of them. Narrow them by creating new keys with only what they need.
+- The worker needs its worker key, or an account key holding every permission.
+- Rolling the migration that added permissions back and forth gives every key every permission again: narrow keys again afterwards.
 
 ## Temporal mTLS Authentication
 

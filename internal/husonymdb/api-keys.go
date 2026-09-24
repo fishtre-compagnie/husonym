@@ -13,6 +13,8 @@ type CreateAccountApiKeyRequest struct {
 	AccountUuid       pgtype.UUID
 	CreatedByUserUuid pgtype.UUID
 	ExpiresAt         pgtype.Timestamp
+	// Permissions are what the key may do, as entity:action.
+	Permissions []string
 }
 
 func (d *HusonymDb) CreateAccountApikey(
@@ -37,6 +39,8 @@ func (d *HusonymDb) CreateAccountApikey(
 				CreatedByID: req.CreatedByUserUuid,
 				UpdatedByID: req.CreatedByUserUuid,
 				UserID:      user.ID,
+				// A key given no permission holds none: stored as an empty list, never as NULL.
+				Permissions: append([]string{}, req.Permissions...),
 			},
 		)
 		if err != nil {

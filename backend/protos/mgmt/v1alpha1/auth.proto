@@ -3,6 +3,7 @@ syntax = "proto3";
 package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 message LoginCliRequest {
   // The oauth code
@@ -92,15 +93,22 @@ message CheckTokenResponse {}
 // Today this is mostly used by the CLI to receive authentication information
 service AuthService {
   // Used by the CLI to login to Husonym with OAuth.
-  rpc LoginCli(LoginCliRequest) returns (LoginCliResponse) {}
+  rpc LoginCli(LoginCliRequest) returns (LoginCliResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
   // Used by the CLI to refresh an expired Husonym accesss token.
   // This should only be used if an access token was previously retrieved from the `LoginCli` or `RefreshCli` methods.
-  rpc RefreshCli(RefreshCliRequest) returns (RefreshCliResponse) {}
+  rpc RefreshCli(RefreshCliRequest) returns (RefreshCliResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
   // Empty endpoint to simply check if the provided access token is valid
-  rpc CheckToken(CheckTokenRequest) returns (CheckTokenResponse) {}
+  rpc CheckToken(CheckTokenRequest) returns (CheckTokenResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
 
   // Used by the CLI to retrieve an Authorize URL for use with OAuth login.
   rpc GetAuthorizeUrl(GetAuthorizeUrlRequest) returns (GetAuthorizeUrlResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -112,10 +120,12 @@ service AuthService {
   // client id of the right connector -- and the caller has not authenticated yet, by
   // definition. The account is designated by the link that was followed.
   rpc GetAccountLoginMethod(GetAccountLoginMethodRequest) returns (GetAccountLoginMethodResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetAuthStatus(GetAuthStatusRequest) returns (GetAuthStatusResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

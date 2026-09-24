@@ -63,7 +63,9 @@ func Test_pendingChanges(t *testing.T) {
 
 	t.Run("an added column whose mapping somebody changed is settled", func(t *testing.T) {
 		changes, err := pendingChanges(
-			[]db_queries.HusonymApiJobMappingChange{changeRow(t, changeAdded, "email", passthroughMapping("users", "email").GetTransformer())},
+			[]db_queries.HusonymApiJobMappingChange{
+				changeRow(t, changeAdded, "email", passthroughMapping("users", "email").GetTransformer()),
+			},
 			mappingsNow(t, emailMapping("users", "email")),
 		)
 		require.NoError(t, err)
@@ -72,7 +74,9 @@ func Test_pendingChanges(t *testing.T) {
 
 	t.Run("a removal waits for its review, the column being gone", func(t *testing.T) {
 		changes, err := pendingChanges(
-			[]db_queries.HusonymApiJobMappingChange{changeRow(t, changeRemoved, "commentaire", passthroughMapping("users", "commentaire").GetTransformer())},
+			[]db_queries.HusonymApiJobMappingChange{
+				changeRow(t, changeRemoved, "commentaire", passthroughMapping("users", "commentaire").GetTransformer()),
+			},
 			mappingsNow(t),
 		)
 		require.NoError(t, err)

@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 message CreateAccountApiKeyRequest {
   // The unique identifier of the account to create the API key for.
@@ -16,6 +17,17 @@ message CreateAccountApiKeyRequest {
     (buf.validate.field).timestamp.gt_now = true,
     (buf.validate.field).timestamp.within = {seconds: 31536000}
   ];
+  // What the key may do. At least one permission, and none the caller does not hold itself.
+  repeated Permission permissions = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
 }
 message CreateAccountApiKeyResponse {
   // The created API key
@@ -43,6 +55,8 @@ message AccountApiKey {
   string user_id = 9;
   // The timestamp of what the API key expires and will not longer be usable.
   google.protobuf.Timestamp expires_at = 10;
+  // What the key may do. A key can do nothing its permissions do not name.
+  repeated Permission permissions = 11;
 }
 
 message GetAccountApiKeysRequest {
@@ -88,18 +102,36 @@ message DeleteAccountApiKeyResponse {}
 service ApiKeyService {
   // Retrieves a list of Account API Keys
   rpc GetAccountApiKeys(GetAccountApiKeysRequest) returns (GetAccountApiKeysResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Retrieves a single API Key
   rpc GetAccountApiKey(GetAccountApiKeyRequest) returns (GetAccountApiKeyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Creates a single API Key
   // This method will return the decrypted contents of the API key
-  rpc CreateAccountApiKey(CreateAccountApiKeyRequest) returns (CreateAccountApiKeyResponse) {}
+  rpc CreateAccountApiKey(CreateAccountApiKeyRequest) returns (CreateAccountApiKeyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Regenerates a single API Key with a new expiration time
   // This method will return the decrypted contents of the API key
-  rpc RegenerateAccountApiKey(RegenerateAccountApiKeyRequest) returns (RegenerateAccountApiKeyResponse) {}
+  rpc RegenerateAccountApiKey(RegenerateAccountApiKeyRequest) returns (RegenerateAccountApiKeyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Deletes an API Key from the system.
-  rpc DeleteAccountApiKey(DeleteAccountApiKeyRequest) returns (DeleteAccountApiKeyResponse) {}
+  rpc DeleteAccountApiKey(DeleteAccountApiKeyRequest) returns (DeleteAccountApiKeyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 }

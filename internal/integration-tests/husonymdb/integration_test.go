@@ -127,7 +127,11 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		})
 		requireNoErrResp(t, resp, err)
 
-		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		association, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.Equal(t, "Ada Lovelace", association.Name.String)
 		require.Equal(t, "ada@example.com", association.Email.String)
@@ -151,7 +155,11 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		association, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.Equal(t, "Ada King", association.Name.String)
 		require.Equal(t, "ada.king@example.com", association.Email.String)
@@ -171,7 +179,11 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		association, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.False(t, association.EmailVerified)
 	})
@@ -191,7 +203,11 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		})
 		require.NoError(t, err)
 
-		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		association, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.Equal(t, "Ada Lovelace", association.Name.String)
 		require.Equal(t, "https://example.com/ada.png", association.Picture.String)
@@ -210,13 +226,21 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		_, err := s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 		require.NoError(t, err)
 
-		before, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		before, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 
 		_, err = s.db.SetUserByIdentity(s.ctx, testIdentity(sub), profile)
 		require.NoError(t, err)
 
-		after, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer})
+		after, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: sub, ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.Equal(
 			t,
@@ -246,7 +270,11 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("profile-absent"), nil)
 		requireNoErrResp(t, resp, err)
 
-		association, err := s.db.Q.GetUserAssociationByIdentity(s.ctx, s.db.Db, db_queries.GetUserAssociationByIdentityParams{ProviderSub: "profile-absent", ProviderIss: testIssuer})
+		association, err := s.db.Q.GetUserAssociationByIdentity(
+			s.ctx,
+			s.db.Db,
+			db_queries.GetUserAssociationByIdentityParams{ProviderSub: "profile-absent", ProviderIss: testIssuer},
+		)
 		require.NoError(t, err)
 		require.False(t, association.Name.Valid)
 		require.False(t, association.EmailVerified)
@@ -658,8 +686,21 @@ func (s *IntegrationTestSuite) Test_CreateAccountApiKey() {
 		AccountUuid:       account.ID,
 		CreatedByUserUuid: user.ID,
 		ExpiresAt:         getFutureTs(t, 24*time.Hour),
+		Permissions:       []string{"job:view", "connection:view"},
 	})
 	requireNoErrResp(t, key, err)
+	require.Equal(t, []string{"job:view", "connection:view"}, key.Permissions)
+
+	// Given none, a key holds none: an empty list, not a NULL the column would refuse.
+	bare, err := s.db.CreateAccountApikey(s.ctx, &husonymdb.CreateAccountApiKeyRequest{
+		KeyName:           "bare",
+		KeyValue:          "baz",
+		AccountUuid:       account.ID,
+		CreatedByUserUuid: user.ID,
+		ExpiresAt:         getFutureTs(t, 24*time.Hour),
+	})
+	requireNoErrResp(t, bare, err)
+	require.Empty(t, bare.Permissions)
 }
 
 func (s *IntegrationTestSuite) Test_CreateJob() {
@@ -683,7 +724,9 @@ func (s *IntegrationTestSuite) Test_CreateJob() {
 		AccountID: account.ID,
 		Status:    1,
 		ConnectionOptions: &pg_models.JobSourceOptions{
-			PostgresOptions: &pg_models.PostgresSourceOptions{NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}}},
+			PostgresOptions: &pg_models.PostgresSourceOptions{
+				NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}},
+			},
 		},
 		Mappings:           []*pg_models.JobMapping{{Schema: "foo", Table: "bar", Column: "baz"}},
 		CronSchedule:       pgtype.Text{String: "blah", Valid: true},
@@ -714,7 +757,9 @@ func (s *IntegrationTestSuite) Test_SetSourceSubsets() {
 		AccountID: account.ID,
 		Status:    1,
 		ConnectionOptions: &pg_models.JobSourceOptions{
-			PostgresOptions: &pg_models.PostgresSourceOptions{NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}}},
+			PostgresOptions: &pg_models.PostgresSourceOptions{
+				NewColumnAdditionStrategy: &pg_models.PostgresNewColumnAdditionStrategy{HaltJob: &pg_models.PostgresHaltJobStrategy{}},
+			},
 		},
 		Mappings:           []*pg_models.JobMapping{{Schema: "foo", Table: "bar", Column: "baz"}},
 		CronSchedule:       pgtype.Text{String: "blah", Valid: true},

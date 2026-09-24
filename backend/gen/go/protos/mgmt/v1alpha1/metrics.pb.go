@@ -552,7 +552,7 @@ var File_mgmt_v1alpha1_metrics_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_metrics_proto_rawDesc = "" +
 	"\n" +
-	"\x1bmgmt/v1alpha1/metrics.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\"d\n" +
+	"\x1bmgmt/v1alpha1/metrics.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1emgmt/v1alpha1/permission.proto\"d\n" +
 	"\x04Date\x12\x1e\n" +
 	"\x04year\x18\x01 \x01(\rB\n" +
 	"\xbaH\a*\x05\x18\x8fN(\x00R\x04year\x12\x1f\n" +
@@ -587,10 +587,14 @@ const file_mgmt_v1alpha1_metrics_proto_rawDesc = "" +
 	"\x05count\x18\x01 \x01(\x04R\x05count*]\n" +
 	"\x10RangedMetricName\x12\"\n" +
 	"\x1eRANGED_METRIC_NAME_UNSPECIFIED\x10\x00\x12%\n" +
-	"!RANGED_METRIC_NAME_INPUT_RECEIVED\x10\x012\xe7\x01\n" +
-	"\x0eMetricsService\x12q\n" +
-	"\x13GetDailyMetricCount\x12).mgmt.v1alpha1.GetDailyMetricCountRequest\x1a*.mgmt.v1alpha1.GetDailyMetricCountResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x0eGetMetricCount\x12$.mgmt.v1alpha1.GetMetricCountRequest\x1a%.mgmt.v1alpha1.GetMetricCountResponse\"\x03\x90\x02\x01B\xcd\x01\n" +
+	"!RANGED_METRIC_NAME_INPUT_RECEIVED\x10\x012\xf5\x01\n" +
+	"\x0eMetricsService\x12x\n" +
+	"\x13GetDailyMetricCount\x12).mgmt.v1alpha1.GetDailyMetricCountRequest\x1a*.mgmt.v1alpha1.GetDailyMetricCountResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12i\n" +
+	"\x0eGetMetricCount\x12$.mgmt.v1alpha1.GetMetricCountRequest\x1a%.mgmt.v1alpha1.GetMetricCountResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01B\xcd\x01\n" +
 	"\x11com.mgmt.v1alpha1B\fMetricsProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -641,6 +645,7 @@ func file_mgmt_v1alpha1_metrics_proto_init() {
 	if File_mgmt_v1alpha1_metrics_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_metrics_proto_msgTypes[1].OneofWrappers = []any{
 		(*GetDailyMetricCountRequest_AccountId)(nil),
 		(*GetDailyMetricCountRequest_JobId)(nil),

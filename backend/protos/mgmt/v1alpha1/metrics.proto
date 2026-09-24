@@ -3,6 +3,7 @@ syntax = "proto3";
 package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 // Represents a whole or partial calendar date, such as a birthday. The time of
 // day and time zone are either specified elsewhere or are insignificant. The
@@ -116,11 +117,17 @@ message GetMetricCountResponse {
 service MetricsService {
   // Retrieve a timed range of records
   rpc GetDailyMetricCount(GetDailyMetricCountRequest) returns (GetDailyMetricCountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // For the given metric and time range, returns the total count found
   rpc GetMetricCount(GetMetricCountRequest) returns (GetMetricCountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

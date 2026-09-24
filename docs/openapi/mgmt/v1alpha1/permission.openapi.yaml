@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  summary: Husonym API
+  description: API documentation for mgmt.v1alpha1
+  version: "0.5"
+  termsOfService: "https://husonym.com/terms-of-service"
+  contact:
+    name: Husonym Support
+    email: support@husonym.com
+  license:
+    name: MIT
+    url: https://github.com/fishtre-compagnie/husonym/blob/main/LICENSE.md
+  title: mgmt.v1alpha1
+externalDocs:
+  description: API and SDK Documentation
+  url: https://docs.husonym.com/api
+servers:
+  - url: https://husonym-api.svcs.husonym.com
+    description: Husonym Cloud
+  - url: http://localhost:{port}
+    description: Development
+    variables:
+      port:
+        default: "8080"
+        description: The port to use for the development server
+components:
+  schemas:
+    mgmt.v1alpha1.Permission:
+      type: string
+      title: Permission
+      enum:
+        - PERMISSION_UNSPECIFIED
+        - PERMISSION_ACCOUNT_VIEW
+        - PERMISSION_ACCOUNT_EDIT
+        - PERMISSION_ACCOUNT_CREATE
+        - PERMISSION_ACCOUNT_DELETE
+        - PERMISSION_CONNECTION_VIEW
+        - PERMISSION_CONNECTION_VIEW_SENSITIVE
+        - PERMISSION_CONNECTION_CREATE
+        - PERMISSION_CONNECTION_EDIT
+        - PERMISSION_CONNECTION_DELETE
+        - PERMISSION_JOB_VIEW
+        - PERMISSION_JOB_CREATE
+        - PERMISSION_JOB_EDIT
+        - PERMISSION_JOB_EXECUTE
+        - PERMISSION_JOB_DELETE
+      description: |-
+        A permission a caller can be granted: one action on one kind of entity, as the RBAC names
+         them. An API key's scope is a list of these, and can only narrow what the key may do.
+    mgmt.v1alpha1.ProcedurePermissions:
+      type: object
+      properties:
+        allOf:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.Permission'
+          title: all_of
+          description: The key needs every one of these.
+        none:
+          type: boolean
+          title: none
+          description: |-
+            The procedure needs no permission: it tells the caller about itself, or about the
+             deployment, and holds nothing a scope restricts. Set only when that is true — a
+             procedure with neither this nor a permission is refused to every scoped key.
+      title: ProcedurePermissions
+      additionalProperties: false
+      description: What a scoped API key must be granted to call a procedure.
+security:
+  - BearerAuth: []
+paths: {}

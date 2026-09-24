@@ -13379,7 +13379,7 @@ var File_mgmt_v1alpha1_job_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\n" +
-	"\x17mgmt/v1alpha1/job.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#mgmt/v1alpha1/connection_data.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"9\n" +
+	"\x17mgmt/v1alpha1/job.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#mgmt/v1alpha1/connection_data.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"9\n" +
 	"\x0eGetJobsRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"9\n" +
@@ -14290,56 +14290,150 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"#JOB_MAPPING_CHANGE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dJOB_MAPPING_CHANGE_KIND_ADDED\x10\x01\x12#\n" +
 	"\x1fJOB_MAPPING_CHANGE_KIND_REMOVED\x10\x02\x12(\n" +
-	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\x89%\n" +
+	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xda'\n" +
 	"\n" +
-	"JobService\x12M\n" +
-	"\aGetJobs\x12\x1d.mgmt.v1alpha1.GetJobsRequest\x1a\x1e.mgmt.v1alpha1.GetJobsResponse\"\x03\x90\x02\x01\x12J\n" +
-	"\x06GetJob\x12\x1c.mgmt.v1alpha1.GetJobRequest\x1a\x1d.mgmt.v1alpha1.GetJobResponse\"\x03\x90\x02\x01\x12P\n" +
-	"\tCreateJob\x12\x1f.mgmt.v1alpha1.CreateJobRequest\x1a .mgmt.v1alpha1.CreateJobResponse\"\x00\x12P\n" +
-	"\tDeleteJob\x12\x1f.mgmt.v1alpha1.DeleteJobRequest\x1a .mgmt.v1alpha1.DeleteJobResponse\"\x00\x12n\n" +
-	"\x12IsJobNameAvailable\x12(.mgmt.v1alpha1.IsJobNameAvailableRequest\x1a).mgmt.v1alpha1.IsJobNameAvailableResponse\"\x03\x90\x02\x01\x12h\n" +
-	"\x11UpdateJobSchedule\x12'.mgmt.v1alpha1.UpdateJobScheduleRequest\x1a(.mgmt.v1alpha1.UpdateJobScheduleResponse\"\x00\x12\x80\x01\n" +
-	"\x19UpdateJobSourceConnection\x12/.mgmt.v1alpha1.UpdateJobSourceConnectionRequest\x1a0.mgmt.v1alpha1.UpdateJobSourceConnectionResponse\"\x00\x12\x95\x01\n" +
-	" SetJobSourceSqlConnectionSubsets\x126.mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest\x1a7.mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse\"\x00\x12\x8f\x01\n" +
-	"\x1eUpdateJobDestinationConnection\x124.mgmt.v1alpha1.UpdateJobDestinationConnectionRequest\x1a5.mgmt.v1alpha1.UpdateJobDestinationConnectionResponse\"\x00\x12\x8f\x01\n" +
-	"\x1eDeleteJobDestinationConnection\x124.mgmt.v1alpha1.DeleteJobDestinationConnectionRequest\x1a5.mgmt.v1alpha1.DeleteJobDestinationConnectionResponse\"\x00\x12\x92\x01\n" +
-	"\x1fCreateJobDestinationConnections\x125.mgmt.v1alpha1.CreateJobDestinationConnectionsRequest\x1a6.mgmt.v1alpha1.CreateJobDestinationConnectionsResponse\"\x00\x12M\n" +
-	"\bPauseJob\x12\x1e.mgmt.v1alpha1.PauseJobRequest\x1a\x1f.mgmt.v1alpha1.PauseJobResponse\"\x00\x12h\n" +
-	"\x10GetJobRecentRuns\x12&.mgmt.v1alpha1.GetJobRecentRunsRequest\x1a'.mgmt.v1alpha1.GetJobRecentRunsResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x0eGetJobNextRuns\x12$.mgmt.v1alpha1.GetJobNextRunsRequest\x1a%.mgmt.v1alpha1.GetJobNextRunsResponse\"\x03\x90\x02\x01\x12\\\n" +
-	"\fGetJobStatus\x12\".mgmt.v1alpha1.GetJobStatusRequest\x1a#.mgmt.v1alpha1.GetJobStatusResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x0eGetJobStatuses\x12$.mgmt.v1alpha1.GetJobStatusesRequest\x1a%.mgmt.v1alpha1.GetJobStatusesResponse\"\x03\x90\x02\x01\x12V\n" +
+	"JobService\x12T\n" +
+	"\aGetJobs\x12\x1d.mgmt.v1alpha1.GetJobsRequest\x1a\x1e.mgmt.v1alpha1.GetJobsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12Q\n" +
+	"\x06GetJob\x12\x1c.mgmt.v1alpha1.GetJobRequest\x1a\x1d.mgmt.v1alpha1.GetJobResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12W\n" +
+	"\tCreateJob\x12\x1f.mgmt.v1alpha1.CreateJobRequest\x1a .mgmt.v1alpha1.CreateJobResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\v\x12W\n" +
+	"\tDeleteJob\x12\x1f.mgmt.v1alpha1.DeleteJobRequest\x1a .mgmt.v1alpha1.DeleteJobResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x0e\x12u\n" +
+	"\x12IsJobNameAvailable\x12(.mgmt.v1alpha1.IsJobNameAvailableRequest\x1a).mgmt.v1alpha1.IsJobNameAvailableResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12q\n" +
+	"\x11UpdateJobSchedule\x12'.mgmt.v1alpha1.UpdateJobScheduleRequest\x1a(.mgmt.v1alpha1.UpdateJobScheduleResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\r\x12\x89\x01\n" +
+	"\x19UpdateJobSourceConnection\x12/.mgmt.v1alpha1.UpdateJobSourceConnectionRequest\x1a0.mgmt.v1alpha1.UpdateJobSourceConnectionResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\x05\x12\x9e\x01\n" +
+	" SetJobSourceSqlConnectionSubsets\x126.mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsRequest\x1a7.mgmt.v1alpha1.SetJobSourceSqlConnectionSubsetsResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\x05\x12\x97\x01\n" +
+	"\x1eUpdateJobDestinationConnection\x124.mgmt.v1alpha1.UpdateJobDestinationConnectionRequest\x1a5.mgmt.v1alpha1.UpdateJobDestinationConnectionResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12\x97\x01\n" +
+	"\x1eDeleteJobDestinationConnection\x124.mgmt.v1alpha1.DeleteJobDestinationConnectionRequest\x1a5.mgmt.v1alpha1.DeleteJobDestinationConnectionResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12\x9a\x01\n" +
+	"\x1fCreateJobDestinationConnections\x125.mgmt.v1alpha1.CreateJobDestinationConnectionsRequest\x1a6.mgmt.v1alpha1.CreateJobDestinationConnectionsResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\v\x12U\n" +
+	"\bPauseJob\x12\x1e.mgmt.v1alpha1.PauseJobRequest\x1a\x1f.mgmt.v1alpha1.PauseJobResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12o\n" +
+	"\x10GetJobRecentRuns\x12&.mgmt.v1alpha1.GetJobRecentRunsRequest\x1a'.mgmt.v1alpha1.GetJobRecentRunsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12i\n" +
+	"\x0eGetJobNextRuns\x12$.mgmt.v1alpha1.GetJobNextRunsRequest\x1a%.mgmt.v1alpha1.GetJobNextRunsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12c\n" +
+	"\fGetJobStatus\x12\".mgmt.v1alpha1.GetJobStatusRequest\x1a#.mgmt.v1alpha1.GetJobStatusResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12i\n" +
+	"\x0eGetJobStatuses\x12$.mgmt.v1alpha1.GetJobStatusesRequest\x1a%.mgmt.v1alpha1.GetJobStatusesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12]\n" +
 	"\n" +
-	"GetJobRuns\x12 .mgmt.v1alpha1.GetJobRunsRequest\x1a!.mgmt.v1alpha1.GetJobRunsResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x0fGetJobRunEvents\x12%.mgmt.v1alpha1.GetJobRunEventsRequest\x1a&.mgmt.v1alpha1.GetJobRunEventsResponse\"\x03\x90\x02\x01\x12S\n" +
-	"\tGetJobRun\x12\x1f.mgmt.v1alpha1.GetJobRunRequest\x1a .mgmt.v1alpha1.GetJobRunResponse\"\x03\x90\x02\x01\x12Y\n" +
-	"\fDeleteJobRun\x12\".mgmt.v1alpha1.DeleteJobRunRequest\x1a#.mgmt.v1alpha1.DeleteJobRunResponse\"\x00\x12Y\n" +
-	"\fCreateJobRun\x12\".mgmt.v1alpha1.CreateJobRunRequest\x1a#.mgmt.v1alpha1.CreateJobRunResponse\"\x00\x12Y\n" +
-	"\fCancelJobRun\x12\".mgmt.v1alpha1.CancelJobRunRequest\x1a#.mgmt.v1alpha1.CancelJobRunResponse\"\x00\x12b\n" +
-	"\x0fTerminateJobRun\x12%.mgmt.v1alpha1.TerminateJobRunRequest\x1a&.mgmt.v1alpha1.TerminateJobRunResponse\"\x00\x12p\n" +
-	"\x13GetJobRunLogsStream\x12).mgmt.v1alpha1.GetJobRunLogsStreamRequest\x1a*.mgmt.v1alpha1.GetJobRunLogsStreamResponse\"\x000\x01\x12\\\n" +
-	"\rGetJobRunLogs\x12#.mgmt.v1alpha1.GetJobRunLogsRequest\x1a$.mgmt.v1alpha1.GetJobRunLogsResponse\"\x00\x12t\n" +
-	"\x15SetJobWorkflowOptions\x12+.mgmt.v1alpha1.SetJobWorkflowOptionsRequest\x1a,.mgmt.v1alpha1.SetJobWorkflowOptionsResponse\"\x00\x12h\n" +
-	"\x11SetJobSyncOptions\x12'.mgmt.v1alpha1.SetJobSyncOptionsRequest\x1a(.mgmt.v1alpha1.SetJobSyncOptionsResponse\"\x00\x12n\n" +
-	"\x13ValidateJobMappings\x12).mgmt.v1alpha1.ValidateJobMappingsRequest\x1a*.mgmt.v1alpha1.ValidateJobMappingsResponse\"\x00\x12q\n" +
-	"\x14ReconcileJobMappings\x12*.mgmt.v1alpha1.ReconcileJobMappingsRequest\x1a+.mgmt.v1alpha1.ReconcileJobMappingsResponse\"\x00\x12\x80\x01\n" +
-	"\x18GetPendingMappingChanges\x12..mgmt.v1alpha1.GetPendingMappingChangesRequest\x1a/.mgmt.v1alpha1.GetPendingMappingChangesResponse\"\x03\x90\x02\x01\x12q\n" +
-	"\x14ReviewMappingChanges\x12*.mgmt.v1alpha1.ReviewMappingChangesRequest\x1a+.mgmt.v1alpha1.ReviewMappingChangesResponse\"\x00\x12n\n" +
-	"\x13ApplyMappingChanges\x12).mgmt.v1alpha1.ApplyMappingChangesRequest\x1a*.mgmt.v1alpha1.ApplyMappingChangesResponse\"\x00\x12_\n" +
-	"\x0eValidateSchema\x12$.mgmt.v1alpha1.ValidateSchemaRequest\x1a%.mgmt.v1alpha1.ValidateSchemaResponse\"\x00\x12\\\n" +
-	"\rGetRunContext\x12#.mgmt.v1alpha1.GetRunContextRequest\x1a$.mgmt.v1alpha1.GetRunContextResponse\"\x00\x12\\\n" +
-	"\rSetRunContext\x12#.mgmt.v1alpha1.SetRunContextRequest\x1a$.mgmt.v1alpha1.SetRunContextResponse\"\x00\x12a\n" +
-	"\x0eSetRunContexts\x12$.mgmt.v1alpha1.SetRunContextsRequest\x1a%.mgmt.v1alpha1.SetRunContextsResponse\"\x00(\x01\x12Y\n" +
-	"\vGetJobHooks\x12!.mgmt.v1alpha1.GetJobHooksRequest\x1a\".mgmt.v1alpha1.GetJobHooksResponse\"\x03\x90\x02\x01\x12V\n" +
+	"GetJobRuns\x12 .mgmt.v1alpha1.GetJobRunsRequest\x1a!.mgmt.v1alpha1.GetJobRunsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12l\n" +
+	"\x0fGetJobRunEvents\x12%.mgmt.v1alpha1.GetJobRunEventsRequest\x1a&.mgmt.v1alpha1.GetJobRunEventsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12Z\n" +
+	"\tGetJobRun\x12\x1f.mgmt.v1alpha1.GetJobRunRequest\x1a .mgmt.v1alpha1.GetJobRunResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12a\n" +
+	"\fDeleteJobRun\x12\".mgmt.v1alpha1.DeleteJobRunRequest\x1a#.mgmt.v1alpha1.DeleteJobRunResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\x0e\x12a\n" +
+	"\fCreateJobRun\x12\".mgmt.v1alpha1.CreateJobRunRequest\x1a#.mgmt.v1alpha1.CreateJobRunResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\r\x12a\n" +
+	"\fCancelJobRun\x12\".mgmt.v1alpha1.CancelJobRunRequest\x1a#.mgmt.v1alpha1.CancelJobRunResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\r\x12j\n" +
+	"\x0fTerminateJobRun\x12%.mgmt.v1alpha1.TerminateJobRunRequest\x1a&.mgmt.v1alpha1.TerminateJobRunResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\r\x12w\n" +
+	"\x13GetJobRunLogsStream\x12).mgmt.v1alpha1.GetJobRunLogsStreamRequest\x1a*.mgmt.v1alpha1.GetJobRunLogsStreamResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"0\x01\x12c\n" +
+	"\rGetJobRunLogs\x12#.mgmt.v1alpha1.GetJobRunLogsRequest\x1a$.mgmt.v1alpha1.GetJobRunLogsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x12|\n" +
+	"\x15SetJobWorkflowOptions\x12+.mgmt.v1alpha1.SetJobWorkflowOptionsRequest\x1a,.mgmt.v1alpha1.SetJobWorkflowOptionsResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12p\n" +
+	"\x11SetJobSyncOptions\x12'.mgmt.v1alpha1.SetJobSyncOptionsRequest\x1a(.mgmt.v1alpha1.SetJobSyncOptionsResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12v\n" +
+	"\x13ValidateJobMappings\x12).mgmt.v1alpha1.ValidateJobMappingsRequest\x1a*.mgmt.v1alpha1.ValidateJobMappingsResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12x\n" +
+	"\x14ReconcileJobMappings\x12*.mgmt.v1alpha1.ReconcileJobMappingsRequest\x1a+.mgmt.v1alpha1.ReconcileJobMappingsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12\x87\x01\n" +
+	"\x18GetPendingMappingChanges\x12..mgmt.v1alpha1.GetPendingMappingChangesRequest\x1a/.mgmt.v1alpha1.GetPendingMappingChangesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12x\n" +
+	"\x14ReviewMappingChanges\x12*.mgmt.v1alpha1.ReviewMappingChangesRequest\x1a+.mgmt.v1alpha1.ReviewMappingChangesResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12u\n" +
+	"\x13ApplyMappingChanges\x12).mgmt.v1alpha1.ApplyMappingChangesRequest\x1a*.mgmt.v1alpha1.ApplyMappingChangesResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12g\n" +
+	"\x0eValidateSchema\x12$.mgmt.v1alpha1.ValidateSchemaRequest\x1a%.mgmt.v1alpha1.ValidateSchemaResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x05\x06\x12c\n" +
+	"\rGetRunContext\x12#.mgmt.v1alpha1.GetRunContextRequest\x1a$.mgmt.v1alpha1.GetRunContextResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x12c\n" +
+	"\rSetRunContext\x12#.mgmt.v1alpha1.SetRunContextRequest\x1a$.mgmt.v1alpha1.SetRunContextResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12h\n" +
+	"\x0eSetRunContexts\x12$.mgmt.v1alpha1.SetRunContextsRequest\x1a%.mgmt.v1alpha1.SetRunContextsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f(\x01\x12`\n" +
+	"\vGetJobHooks\x12!.mgmt.v1alpha1.GetJobHooksRequest\x1a\".mgmt.v1alpha1.GetJobHooksResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12]\n" +
 	"\n" +
-	"GetJobHook\x12 .mgmt.v1alpha1.GetJobHookRequest\x1a!.mgmt.v1alpha1.GetJobHookResponse\"\x03\x90\x02\x01\x12\\\n" +
-	"\rCreateJobHook\x12#.mgmt.v1alpha1.CreateJobHookRequest\x1a$.mgmt.v1alpha1.CreateJobHookResponse\"\x00\x12\\\n" +
-	"\rDeleteJobHook\x12#.mgmt.v1alpha1.DeleteJobHookRequest\x1a$.mgmt.v1alpha1.DeleteJobHookResponse\"\x00\x12w\n" +
-	"\x16IsJobHookNameAvailable\x12,.mgmt.v1alpha1.IsJobHookNameAvailableRequest\x1a-.mgmt.v1alpha1.IsJobHookNameAvailableResponse\"\x00\x12\\\n" +
-	"\rUpdateJobHook\x12#.mgmt.v1alpha1.UpdateJobHookRequest\x1a$.mgmt.v1alpha1.UpdateJobHookResponse\"\x00\x12h\n" +
-	"\x11SetJobHookEnabled\x12'.mgmt.v1alpha1.SetJobHookEnabledRequest\x1a(.mgmt.v1alpha1.SetJobHookEnabledResponse\"\x00\x12\x83\x01\n" +
-	"\x19GetActiveJobHooksByTiming\x12/.mgmt.v1alpha1.GetActiveJobHooksByTimingRequest\x1a0.mgmt.v1alpha1.GetActiveJobHooksByTimingResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetPiiDetectionReport\x12+.mgmt.v1alpha1.GetPiiDetectionReportRequest\x1a,.mgmt.v1alpha1.GetPiiDetectionReportResponse\"\x03\x90\x02\x01B\xc9\x01\n" +
+	"GetJobHook\x12 .mgmt.v1alpha1.GetJobHookRequest\x1a!.mgmt.v1alpha1.GetJobHookResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12d\n" +
+	"\rCreateJobHook\x12#.mgmt.v1alpha1.CreateJobHookRequest\x1a$.mgmt.v1alpha1.CreateJobHookResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\v\r\x12c\n" +
+	"\rDeleteJobHook\x12#.mgmt.v1alpha1.DeleteJobHookRequest\x1a$.mgmt.v1alpha1.DeleteJobHookResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x0e\x12~\n" +
+	"\x16IsJobHookNameAvailable\x12,.mgmt.v1alpha1.IsJobHookNameAvailableRequest\x1a-.mgmt.v1alpha1.IsJobHookNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x12e\n" +
+	"\rUpdateJobHook\x12#.mgmt.v1alpha1.UpdateJobHookRequest\x1a$.mgmt.v1alpha1.UpdateJobHookResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\f\r\x12p\n" +
+	"\x11SetJobHookEnabled\x12'.mgmt.v1alpha1.SetJobHookEnabledRequest\x1a(.mgmt.v1alpha1.SetJobHookEnabledResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\n" +
+	"\f\x12\x8a\x01\n" +
+	"\x19GetActiveJobHooksByTiming\x12/.mgmt.v1alpha1.GetActiveJobHooksByTimingRequest\x1a0.mgmt.v1alpha1.GetActiveJobHooksByTimingResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12~\n" +
+	"\x15GetPiiDetectionReport\x12+.mgmt.v1alpha1.GetPiiDetectionReportRequest\x1a,.mgmt.v1alpha1.GetPiiDetectionReportResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01B\xc9\x01\n" +
 	"\x11com.mgmt.v1alpha1B\bJobProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -14914,6 +15008,7 @@ func file_mgmt_v1alpha1_job_proto_init() {
 		return
 	}
 	file_mgmt_v1alpha1_connection_data_proto_init()
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_transformer_proto_init()
 	file_mgmt_v1alpha1_job_proto_msgTypes[3].OneofWrappers = []any{
 		(*JobSourceOptions_Postgres)(nil),

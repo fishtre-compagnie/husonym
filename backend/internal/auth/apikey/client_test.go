@@ -39,15 +39,16 @@ func Test_Client_InjectTokenCtx_Account(t *testing.T) {
 	expiresAt, err := husonymdb.ToTimestamp(time.Now().Add(5 * time.Minute))
 	assert.NoError(t, err)
 	apiKeyRecord := db_queries.HusonymApiAccountApiKey{
-		ID:        pgtype.UUID{Valid: true},
-		ExpiresAt: expiresAt,
+		ID:          pgtype.UUID{Valid: true},
+		ExpiresAt:   expiresAt,
+		Permissions: []string{"job:view"},
 	}
 	mockQuerier.On("GetAccountApiKeyByKeyValue", mock.Anything, mock.Anything, hashedFakeToken).
 		Return(apiKeyRecord, nil)
 
 	newctx, err := client.InjectTokenCtx(context.Background(), http.Header{
 		"Authorization": []string{fmt.Sprintf("Bearer %s", fakeToken)},
-	}, connect.Spec{})
+	}, specOf("JobService", "GetJob"))
 	assert.NoError(t, err)
 	assert.NotNil(t, newctx)
 

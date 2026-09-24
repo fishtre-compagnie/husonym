@@ -32,6 +32,7 @@ type HusonymApiAccountApiKey struct {
 	ExpiresAt   pgtype.Timestamp
 	KeyName     string
 	UserID      pgtype.UUID
+	Permissions []string
 }
 
 // Stores hooks that can be configured to run as part of an account

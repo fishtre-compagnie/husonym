@@ -13,11 +13,11 @@ import (
 
 const createAccountApiKey = `-- name: CreateAccountApiKey :one
 INSERT INTO husonym_api.account_api_keys (
-  key_name, key_value, account_id, expires_at, created_by_id, updated_by_id, user_id
+  key_name, key_value, account_id, expires_at, created_by_id, updated_by_id, user_id, permissions
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7
+  $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id
+RETURNING id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id, permissions
 `
 
 type CreateAccountApiKeyParams struct {
@@ -28,6 +28,7 @@ type CreateAccountApiKeyParams struct {
 	CreatedByID pgtype.UUID
 	UpdatedByID pgtype.UUID
 	UserID      pgtype.UUID
+	Permissions []string
 }
 
 func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error) {
@@ -39,6 +40,7 @@ func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAc
 		arg.CreatedByID,
 		arg.UpdatedByID,
 		arg.UserID,
+		arg.Permissions,
 	)
 	var i HusonymApiAccountApiKey
 	err := row.Scan(
@@ -52,12 +54,13 @@ func (q *Queries) CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAc
 		&i.ExpiresAt,
 		&i.KeyName,
 		&i.UserID,
+		&i.Permissions,
 	)
 	return i, err
 }
 
 const getAccountApiKeyById = `-- name: GetAccountApiKeyById :one
-SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from husonym_api.account_api_keys WHERE id = $1
+SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id, permissions from husonym_api.account_api_keys WHERE id = $1
 `
 
 func (q *Queries) GetAccountApiKeyById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountApiKey, error) {
@@ -74,12 +77,13 @@ func (q *Queries) GetAccountApiKeyById(ctx context.Context, db DBTX, id pgtype.U
 		&i.ExpiresAt,
 		&i.KeyName,
 		&i.UserID,
+		&i.Permissions,
 	)
 	return i, err
 }
 
 const getAccountApiKeyByKeyValue = `-- name: GetAccountApiKeyByKeyValue :one
-SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id from husonym_api.account_api_keys WHERE key_value = $1
+SELECT id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id, permissions from husonym_api.account_api_keys WHERE key_value = $1
 `
 
 func (q *Queries) GetAccountApiKeyByKeyValue(ctx context.Context, db DBTX, keyValue string) (HusonymApiAccountApiKey, error) {
@@ -96,12 +100,13 @@ func (q *Queries) GetAccountApiKeyByKeyValue(ctx context.Context, db DBTX, keyVa
 		&i.ExpiresAt,
 		&i.KeyName,
 		&i.UserID,
+		&i.Permissions,
 	)
 	return i, err
 }
 
 const getAccountApiKeys = `-- name: GetAccountApiKeys :many
-SELECT aak.id, aak.account_id, aak.key_value, aak.created_by_id, aak.updated_by_id, aak.created_at, aak.updated_at, aak.expires_at, aak.key_name, aak.user_id from husonym_api.account_api_keys aak
+SELECT aak.id, aak.account_id, aak.key_value, aak.created_by_id, aak.updated_by_id, aak.created_at, aak.updated_at, aak.expires_at, aak.key_name, aak.user_id, aak.permissions from husonym_api.account_api_keys aak
 INNER JOIN husonym_api.accounts a on a.id = aak.account_id
 WHERE a.id = $1
 `
@@ -126,6 +131,7 @@ func (q *Queries) GetAccountApiKeys(ctx context.Context, db DBTX, accountid pgty
 			&i.ExpiresAt,
 			&i.KeyName,
 			&i.UserID,
+			&i.Permissions,
 		); err != nil {
 			return nil, err
 		}
@@ -171,7 +177,7 @@ SET key_value = $1,
     expires_at = $2,
     updated_by_id = $3
 WHERE id = $4
-RETURNING id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id
+RETURNING id, account_id, key_value, created_by_id, updated_by_id, created_at, updated_at, expires_at, key_name, user_id, permissions
 `
 
 type UpdateAccountApiKeyValueParams struct {
@@ -200,6 +206,7 @@ func (q *Queries) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg Upd
 		&i.ExpiresAt,
 		&i.KeyName,
 		&i.UserID,
+		&i.Permissions,
 	)
 	return i, err
 }

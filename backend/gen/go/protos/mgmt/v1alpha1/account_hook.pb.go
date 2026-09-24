@@ -1730,7 +1730,7 @@ var File_mgmt_v1alpha1_account_hook_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_account_hook_proto_rawDesc = "" +
 	"\n" +
-	" mgmt/v1alpha1/account_hook.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xcf\x03\n" +
+	" mgmt/v1alpha1/account_hook.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\xcf\x03\n" +
 	"\vAccountHook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1838,21 +1838,37 @@ const file_mgmt_v1alpha1_account_hook_proto_rawDesc = "" +
 	"\x1eACCOUNT_HOOK_EVENT_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ACCOUNT_HOOK_EVENT_JOB_RUN_CREATED\x10\x01\x12%\n" +
 	"!ACCOUNT_HOOK_EVENT_JOB_RUN_FAILED\x10\x02\x12(\n" +
-	"$ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED\x10\x032\xfa\n" +
-	"\n" +
-	"\x12AccountHookService\x12e\n" +
-	"\x0fGetAccountHooks\x12%.mgmt.v1alpha1.GetAccountHooksRequest\x1a&.mgmt.v1alpha1.GetAccountHooksResponse\"\x03\x90\x02\x01\x12b\n" +
-	"\x0eGetAccountHook\x12$.mgmt.v1alpha1.GetAccountHookRequest\x1a%.mgmt.v1alpha1.GetAccountHookResponse\"\x03\x90\x02\x01\x12h\n" +
-	"\x11CreateAccountHook\x12'.mgmt.v1alpha1.CreateAccountHookRequest\x1a(.mgmt.v1alpha1.CreateAccountHookResponse\"\x00\x12h\n" +
-	"\x11UpdateAccountHook\x12'.mgmt.v1alpha1.UpdateAccountHookRequest\x1a(.mgmt.v1alpha1.UpdateAccountHookResponse\"\x00\x12h\n" +
-	"\x11DeleteAccountHook\x12'.mgmt.v1alpha1.DeleteAccountHookRequest\x1a(.mgmt.v1alpha1.DeleteAccountHookResponse\"\x00\x12\x83\x01\n" +
-	"\x1aIsAccountHookNameAvailable\x120.mgmt.v1alpha1.IsAccountHookNameAvailableRequest\x1a1.mgmt.v1alpha1.IsAccountHookNameAvailableResponse\"\x00\x12t\n" +
-	"\x15SetAccountHookEnabled\x12+.mgmt.v1alpha1.SetAccountHookEnabledRequest\x1a,.mgmt.v1alpha1.SetAccountHookEnabledResponse\"\x00\x12\x8c\x01\n" +
-	"\x1cGetActiveAccountHooksByEvent\x122.mgmt.v1alpha1.GetActiveAccountHooksByEventRequest\x1a3.mgmt.v1alpha1.GetActiveAccountHooksByEventResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetSlackConnectionUrl\x12+.mgmt.v1alpha1.GetSlackConnectionUrlRequest\x1a,.mgmt.v1alpha1.GetSlackConnectionUrlResponse\"\x03\x90\x02\x01\x12}\n" +
-	"\x18HandleSlackOAuthCallback\x12..mgmt.v1alpha1.HandleSlackOAuthCallbackRequest\x1a/.mgmt.v1alpha1.HandleSlackOAuthCallbackResponse\"\x00\x12q\n" +
-	"\x13TestSlackConnection\x12).mgmt.v1alpha1.TestSlackConnectionRequest\x1a*.mgmt.v1alpha1.TestSlackConnectionResponse\"\x03\x90\x02\x01\x12e\n" +
-	"\x10SendSlackMessage\x12&.mgmt.v1alpha1.SendSlackMessageRequest\x1a'.mgmt.v1alpha1.SendSlackMessageResponse\"\x00B\xd1\x01\n" +
+	"$ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED\x10\x032\xd2\v\n" +
+	"\x12AccountHookService\x12l\n" +
+	"\x0fGetAccountHooks\x12%.mgmt.v1alpha1.GetAccountHooksRequest\x1a&.mgmt.v1alpha1.GetAccountHooksResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12i\n" +
+	"\x0eGetAccountHook\x12$.mgmt.v1alpha1.GetAccountHookRequest\x1a%.mgmt.v1alpha1.GetAccountHookResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12o\n" +
+	"\x11CreateAccountHook\x12'.mgmt.v1alpha1.CreateAccountHookRequest\x1a(.mgmt.v1alpha1.CreateAccountHookResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12p\n" +
+	"\x11UpdateAccountHook\x12'.mgmt.v1alpha1.UpdateAccountHookRequest\x1a(.mgmt.v1alpha1.UpdateAccountHookResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\x12o\n" +
+	"\x11DeleteAccountHook\x12'.mgmt.v1alpha1.DeleteAccountHookRequest\x1a(.mgmt.v1alpha1.DeleteAccountHookResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12\x8a\x01\n" +
+	"\x1aIsAccountHookNameAvailable\x120.mgmt.v1alpha1.IsAccountHookNameAvailableRequest\x1a1.mgmt.v1alpha1.IsAccountHookNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x01\x12|\n" +
+	"\x15SetAccountHookEnabled\x12+.mgmt.v1alpha1.SetAccountHookEnabledRequest\x1a,.mgmt.v1alpha1.SetAccountHookEnabledResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\x12\x93\x01\n" +
+	"\x1cGetActiveAccountHooksByEvent\x122.mgmt.v1alpha1.GetActiveAccountHooksByEventRequest\x1a3.mgmt.v1alpha1.GetActiveAccountHooksByEventResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12~\n" +
+	"\x15GetSlackConnectionUrl\x12+.mgmt.v1alpha1.GetSlackConnectionUrlRequest\x1a,.mgmt.v1alpha1.GetSlackConnectionUrlResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x02\x90\x02\x01\x12\x84\x01\n" +
+	"\x18HandleSlackOAuthCallback\x12..mgmt.v1alpha1.HandleSlackOAuthCallbackRequest\x1a/.mgmt.v1alpha1.HandleSlackOAuthCallbackResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12x\n" +
+	"\x13TestSlackConnection\x12).mgmt.v1alpha1.TestSlackConnectionRequest\x1a*.mgmt.v1alpha1.TestSlackConnectionResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12m\n" +
+	"\x10SendSlackMessage\x12&.mgmt.v1alpha1.SendSlackMessageRequest\x1a'.mgmt.v1alpha1.SendSlackMessageResponse\"\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02B\xd1\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x10AccountHookProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -1960,6 +1976,7 @@ func file_mgmt_v1alpha1_account_hook_proto_init() {
 	if File_mgmt_v1alpha1_account_hook_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_account_hook_proto_msgTypes[2].OneofWrappers = []any{
 		(*AccountHookConfig_Webhook)(nil),
 		(*AccountHookConfig_Slack)(nil),
