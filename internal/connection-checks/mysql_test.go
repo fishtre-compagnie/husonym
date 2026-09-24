@@ -76,7 +76,7 @@ func Test_checkMysqlSource(t *testing.T) {
 		Table:   "shop.ARTICLE",
 		Missing: []string{"SELECT"},
 		Message: `source "prod" cannot read shop.ARTICLE (missing SELECT)`,
-		Remedy:  "GRANT SELECT ON `shop`.`ARTICLE` TO 'app'@'%';",
+		Remedy:  "GRANT SELECT ON `shop`.`ARTICLE` TO `app`@`%`;",
 	}}, findings)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -129,11 +129,11 @@ func Test_checkMysqlDestination_missingPrivileges(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, findings, 3)
 	require.Equal(t, `destination "staging" cannot write shop.ARTICLE (missing INSERT, UPDATE)`, findings[0].Message)
-	require.Equal(t, "GRANT INSERT, UPDATE ON `shop`.`ARTICLE` TO 'app'@'%';", findings[0].Remedy)
+	require.Equal(t, "GRANT INSERT, UPDATE ON `shop`.`ARTICLE` TO `app`@`%`;", findings[0].Remedy)
 	require.Contains(t, findings[1].Message, "cannot empty shop.ARTICLE before writing it (missing DROP")
-	require.Equal(t, "GRANT DROP ON `shop`.`ARTICLE` TO 'app'@'%';", findings[1].Remedy)
+	require.Equal(t, "GRANT DROP ON `shop`.`ARTICLE` TO `app`@`%`;", findings[1].Remedy)
 	require.Contains(t, findings[2].Message, "cannot see the triggers of shop.ARTICLE")
-	require.Equal(t, "GRANT TRIGGER ON `shop`.`ARTICLE` TO 'app'@'%';", findings[2].Remedy)
+	require.Equal(t, "GRANT TRIGGER ON `shop`.`ARTICLE` TO `app`@`%`;", findings[2].Remedy)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -220,12 +220,23 @@ func Test_mysqlAccount_quoted(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("o'brien@corp@10.0.%"))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("o'brien\\`x@corp@10.0.%"))
 	account := &mysqlAccount{db: db}
-	require.Equal(t, `'o''brien@corp'@'10.0.%'`, account.quoted(context.Background()),
-		"a user name may hold an @, a host may not; a doubled quote holds under NO_BACKSLASH_ESCAPES too")
-	require.Equal(t, `'o''brien@corp'@'10.0.%'`, account.quoted(context.Background()), "read once")
+	quoted := "`o'brien\\``x@corp`@`10.0.%`"
+	require.Equal(t, quoted, account.quoted(context.Background()),
+		"a user name may hold an @, a host may not; between backticks a quote or a backslash means "+
+			"itself, with NO_BACKSLASH_ESCAPES or without, and a backtick is doubled")
+	require.Equal(t, quoted, account.quoted(context.Background()), "read once")
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func Test_mysqlAccount_quoted_nul(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT CURRENT_USER()")).WillReturnRows(sqlmock.NewRows([]string{"u"}).AddRow("z\x00z@%"))
+	account := &mysqlAccount{db: db}
+	require.Equal(t, "<account>", account.quoted(context.Background()), "no identifier may hold a NUL")
 }
 
 // MariaDB names the definer privilege SET USER.
@@ -262,7 +273,7 @@ func Test_checkMysql_tableWithoutVisibleColumns(t *testing.T) {
 
 		findings, err := checkMysqlDestination(context.Background(), db, "staging", []*Table{bare}, false, false)
 		require.NoError(t, err)
-		require.Equal(t, "GRANT SELECT, INSERT, UPDATE, DELETE ON `shop`.`ARTICLE` TO 'app'@'%';", findings[0].Remedy)
+		require.Equal(t, "GRANT SELECT, INSERT, UPDATE, DELETE ON `shop`.`ARTICLE` TO `app`@`%`;", findings[0].Remedy)
 	})
 
 	t.Run("no table", func(t *testing.T) {

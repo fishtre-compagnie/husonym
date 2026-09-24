@@ -93,6 +93,7 @@ func Test_checkPostgresDestination_cannotSuspendForeignKeys(t *testing.T) {
 	require.Len(t, findings, 1)
 	require.Equal(t, CheckForeignKeySuspension, findings[0].Check)
 	require.Contains(t, findings[0].Message, "cannot suspend foreign keys")
+	require.NotContains(t, findings[0].Message, "make the account a superuser", "no remedy hands out more than asked")
 	require.Contains(t, findings[0].Message, `GRANT SET ON PARAMETER session_replication_role TO "husonym"`)
 	require.Equal(t, `GRANT SET ON PARAMETER session_replication_role TO "husonym";`, findings[0].Remedy)
 	require.NoError(t, mock.ExpectationsWereMet())

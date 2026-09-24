@@ -113,6 +113,45 @@ func Test_ConnectionChecks_Mysql(t *testing.T) {
 			_, err = admin.ExecContext(ctx, fmt.Sprintf("GRANT %s ON *.* TO 'bare'@'%%'", definer))
 			require.NoError(t, err)
 			require.Empty(t, destination())
+
+			// An account whose name holds a quote and a backslash is granted to by its remedy
+			// as it is, whether the server takes backslashes as escapes or not — and to
+			// nobody else.
+			for i, mode := range []string{"", "NO_BACKSLASH_ESCAPES"} {
+				user := fmt.Sprintf(`o'b\%d`, i)
+				table := &connectionchecks.Table{Schema: "checks", Table: fmt.Sprintf("odd_%d", i)}
+				for _, statement := range []string{
+					fmt.Sprintf("CREATE TABLE checks.odd_%d (id INT PRIMARY KEY)", i),
+					fmt.Sprintf("CREATE USER `%s`@`%%` IDENTIFIED BY 'odd'", user),
+				} {
+					_, err := admin.ExecContext(ctx, statement)
+					require.NoError(t, err, statement)
+				}
+				dsn.User, dsn.Passwd = user, "odd"
+				odd, err := sql.Open("mysql", dsn.FormatDSN())
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = odd.Close() })
+
+				findings, err := connectionchecks.Source(ctx, odd, connectionchecks.MySQL, "reporting", []*connectionchecks.Table{table})
+				require.NoError(t, err)
+				require.Len(t, findings, 1)
+				conn, err := admin.Conn(ctx)
+				require.NoError(t, err)
+				_, err = conn.ExecContext(ctx, fmt.Sprintf("SET SESSION sql_mode = '%s'", mode))
+				require.NoError(t, err)
+				_, err = conn.ExecContext(ctx, findings[0].Remedy)
+				require.NoError(t, err, "sql_mode %q: %s", mode, findings[0].Remedy)
+				require.NoError(t, conn.Close())
+				findings, err = connectionchecks.Source(ctx, odd, connectionchecks.MySQL, "reporting", []*connectionchecks.Table{table})
+				require.NoError(t, err)
+				require.Empty(t, findings, "sql_mode %q: the remedy reached the account", mode)
+				var grantees int
+				err = admin.QueryRowContext(ctx,
+					"SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = 'checks' AND Table_name = ?", table.Table).
+					Scan(&grantees)
+				require.NoError(t, err)
+				require.Equal(t, 1, grantees, "sql_mode %q: and no other account", mode)
+			}
 		})
 	}
 }
