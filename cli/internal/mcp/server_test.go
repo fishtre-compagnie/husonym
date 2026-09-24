@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -134,6 +135,11 @@ func (f *fakeDataService) GetConnectionSchema(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetConnectionSchemaRequest],
 ) (*connect.Response[mgmtv1alpha1.GetConnectionSchemaResponse], error) {
+	return connect.NewResponse(&mgmtv1alpha1.GetConnectionSchemaResponse{Schemas: shopColumns()}), nil
+}
+
+// shopColumns are the columns of the shop, each with what its name says, as the API gives them.
+func shopColumns() []*mgmtv1alpha1.DatabaseColumn {
 	length := int32(255)
 	byName := func(column, category string, source mgmtv1alpha1.TransformerSource) func(*mgmtv1alpha1.DatabaseColumn) {
 		return func(c *mgmtv1alpha1.DatabaseColumn) {
@@ -152,20 +158,18 @@ func (f *fakeDataService) GetConnectionSchema(
 		}
 		return c
 	}
-	return connect.NewResponse(&mgmtv1alpha1.GetConnectionSchemaResponse{
-		Schemas: []*mgmtv1alpha1.DatabaseColumn{
-			column("users", "id", "uuid", "NO"),
-			column("users", "email", "character varying", "NO",
-				byName("email", "email", mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL),
-				func(c *mgmtv1alpha1.DatabaseColumn) { c.CharacterMaximumLength = &length }),
-			column("users", "birth_date", "text", "YES",
-				byName("birth_date", "birth_date", mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT)),
-			column("orders", "id", "uuid", "NO"),
-			column("orders", "user_id", "uuid", "NO"),
-			column("orders", "note", "text", "YES"),
-			column("locked", "id", "integer", "NO"),
-		},
-	}), nil
+	return []*mgmtv1alpha1.DatabaseColumn{
+		column("users", "id", "uuid", "NO"),
+		column("users", "email", "character varying", "NO",
+			byName("email", "email", mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL),
+			func(c *mgmtv1alpha1.DatabaseColumn) { c.CharacterMaximumLength = &length }),
+		column("users", "birth_date", "text", "YES",
+			byName("birth_date", "birth_date", mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT)),
+		column("orders", "id", "uuid", "NO"),
+		column("orders", "user_id", "uuid", "NO"),
+		column("orders", "note", "text", "YES"),
+		column("locked", "id", "integer", "NO"),
+	}
 }
 
 func (f *fakeDataService) GetConnectionTableConstraints(
@@ -227,7 +231,21 @@ func (f *fakeDataService) DetectPiiInConnectionData(
 			PiiEvidence:                "PERSON reconnu par analyse de contenu sur 6/20 valeurs (score moyen 0.85)",
 		}}
 	}
-	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{Detections: detections}), nil
+	// The verdicts, as the API reconciles them: with the API's own rule, over every column.
+	byColumn := map[string]*mgmtv1alpha1.ColumnPiiDetection{}
+	for _, detection := range detections {
+		byColumn[detection.GetColumn()] = detection
+	}
+	var verdicts []*mgmtv1alpha1.ColumnPiiVerdict
+	for _, column := range shopColumns() {
+		if tableKey(column.GetSchema(), column.GetTable()) == table {
+			verdicts = append(verdicts, piidetect.Reconcile(column, byColumn[column.GetColumn()]))
+		}
+	}
+	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
+		Detections: detections,
+		Verdicts:   verdicts,
+	}), nil
 }
 
 func (f *fakeDataService) scannedTables() []string {

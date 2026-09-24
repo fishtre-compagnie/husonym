@@ -87,24 +87,30 @@ func suggestMappings(reader *novalues.Reader) mcp.ToolHandlerFor[suggestMappings
 			tableColumns := columnsByTable[table]
 			suggestions := tableSuggestions{Table: table}
 
-			content := map[string]*mgmtv1alpha1.ColumnPiiDetection{}
+			scanned := map[string]*mgmtv1alpha1.ColumnPiiVerdict{}
 			if input.ScanContent {
 				// One table that fails — too large, locked, not readable — must not cost the
 				// others their scan: its failure is reported and its names still speak.
-				detections, err := reader.DetectPii(
+				verdicts, err := reader.ScanPii(
 					ctx, input.ConnectionId, tableColumns[0].GetSchema(), tableColumns[0].GetTable(),
 				)
 				if err != nil {
 					suggestions.ScanError = err.Error()
 				}
-				for _, detection := range detections {
-					content[detection.GetColumn()] = detection
+				for _, verdict := range verdicts {
+					scanned[verdict.GetColumn()] = verdict
 				}
 			}
 
 			keys := keyColumns(constraints, referencedBy[table], table)
 			for _, column := range tableColumns {
-				suggestion := resolvePii(column, content[column.GetColumn()])
+				// The API decides: after a scan, its verdict reconciles the name with the
+				// content; without one, the schema already carries the name's.
+				var verdict piiVerdict = column
+				if v, ok := scanned[column.GetColumn()]; ok {
+					verdict = v
+				}
+				suggestion := suggest(verdict)
 				suggestion.Keys = keys[column.GetColumn()]
 				suggestions.Columns = append(suggestions.Columns, suggestion)
 			}
@@ -114,47 +120,26 @@ func suggestMappings(reader *novalues.Reader) mcp.ToolHandlerFor[suggestMappings
 	}
 }
 
-// resolvePii decides between what the column's name says and what its content showed. It is
-// the rule of resolvePiiWith in the job's schema table (frontend SchemaTable.tsx), so that an
-// agent and a person looking at the same column are told the same thing:
-//   - a name that establishes the nature of the data wins, unless the content leaves the
-//     format in doubt — "it is a birth date" does not tell whether it is dd/mm or mm/dd;
-//   - otherwise the content decides;
-//   - otherwise the column is not personal data, and only the name's category remains.
-func resolvePii(column *mgmtv1alpha1.DatabaseColumn, content *mgmtv1alpha1.ColumnPiiDetection) columnSuggestion {
-	if column.GetIsSensitive() {
-		suggestion := columnSuggestion{
-			Column:               column.GetColumn(),
-			Sensitive:            true,
-			Category:             column.GetDataCategory(),
-			SuggestedTransformer: transformerLabel(column.GetSuggestedTransformerSource()),
-			Confidence:           confidenceLabel(column.GetPiiConfidence()),
-			Method:               methodLabel(column.GetPiiDetectionMethod()),
-			Evidence:             column.GetPiiEvidence(),
-		}
-		if content.GetPiiConfidence() == mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW &&
-			content.GetPiiDetectionMethod() == mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT {
-			suggestion.Confidence = confidenceLabel(content.GetPiiConfidence())
-			suggestion.Method = methodLabel(content.GetPiiDetectionMethod())
-			suggestion.Evidence = content.GetPiiEvidence()
-		}
-		return suggestion
-	}
-	if content != nil {
-		return columnSuggestion{
-			Column:               column.GetColumn(),
-			Sensitive:            content.GetIsSensitive(),
-			Category:             content.GetDataCategory(),
-			SuggestedTransformer: transformerLabel(content.GetSuggestedTransformerSource()),
-			Confidence:           confidenceLabel(content.GetPiiConfidence()),
-			Method:               methodLabel(content.GetPiiDetectionMethod()),
-			Evidence:             content.GetPiiEvidence(),
-		}
-	}
+// piiVerdict is what a column's schema and a scan's verdict both carry.
+type piiVerdict interface {
+	GetColumn() string
+	GetIsSensitive() bool
+	GetDataCategory() string
+	GetSuggestedTransformerSource() mgmtv1alpha1.TransformerSource
+	GetPiiConfidence() mgmtv1alpha1.PiiConfidence
+	GetPiiDetectionMethod() mgmtv1alpha1.PiiDetectionMethod
+	GetPiiEvidence() string
+}
+
+func suggest(verdict piiVerdict) columnSuggestion {
 	return columnSuggestion{
-		Column:               column.GetColumn(),
-		Category:             column.GetDataCategory(),
-		SuggestedTransformer: transformerLabel(column.GetSuggestedTransformerSource()),
+		Column:               verdict.GetColumn(),
+		Sensitive:            verdict.GetIsSensitive(),
+		Category:             verdict.GetDataCategory(),
+		SuggestedTransformer: transformerLabel(verdict.GetSuggestedTransformerSource()),
+		Confidence:           confidenceLabel(verdict.GetPiiConfidence()),
+		Method:               methodLabel(verdict.GetPiiDetectionMethod()),
+		Evidence:             verdict.GetPiiEvidence(),
 	}
 }
 

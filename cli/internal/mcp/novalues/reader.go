@@ -5,8 +5,8 @@
 // through it in front of whoever serves the model. This package holds that client behind an
 // interface that leaves them out, so the rest of the MCP surface cannot reach them.
 //
-// What comes back is structure — names, types, constraints — and PII detections, which the
-// API builds from samples it reads itself but reports as counts and labels, not values.
+// What comes back is structure — names, types, constraints — and PII verdicts, which the API
+// builds from samples it reads itself but reports as counts and labels, not values.
 package novalues
 
 import (
@@ -90,11 +90,12 @@ func (r *Reader) Constraints(
 	return res.Msg, nil
 }
 
-// DetectPii has the API scan a sample of each column of one table for PII.
-func (r *Reader) DetectPii(
+// ScanPii has the API scan a sample of one table for PII, and returns its verdict on each
+// column: the name and the content, reconciled by the API.
+func (r *Reader) ScanPii(
 	ctx context.Context,
 	connectionId, schema, table string,
-) ([]*mgmtv1alpha1.ColumnPiiDetection, error) {
+) ([]*mgmtv1alpha1.ColumnPiiVerdict, error) {
 	res, err := r.client.DetectPiiInConnectionData(ctx, connect.NewRequest(&mgmtv1alpha1.DetectPiiInConnectionDataRequest{
 		ConnectionId: connectionId,
 		Schema:       schema,
@@ -103,5 +104,5 @@ func (r *Reader) DetectPii(
 	if err != nil {
 		return nil, err
 	}
-	return res.Msg.GetDetections(), nil
+	return res.Msg.GetVerdicts(), nil
 }
