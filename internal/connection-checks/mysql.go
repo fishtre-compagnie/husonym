@@ -1,4 +1,4 @@
-package runprivileges_activity
+package connectionchecks
 
 import (
 	"context"
@@ -37,17 +37,21 @@ var (
 )
 
 // checkMysqlSource: a source only needs to be read. A read-only server is fine.
-func checkMysqlSource(ctx context.Context, db sqlDb, name string, tables []*jobTable) ([]string, error) {
-	var findings []string
+func checkMysqlSource(ctx context.Context, db Db, name string, tables []*Table) ([]*Finding, error) {
+	account := &mysqlAccount{db: db}
+	var findings []*Finding
 	for _, t := range tables {
 		allowed, err := mysqlProbe(ctx, db, t.mysqlSelect())
 		switch {
 		case errors.Is(err, errMysqlNoSuchTable):
-			findings = append(findings, fmt.Sprintf("source %q has no table %s", name, t))
+			findings = append(findings, blocking(CheckTableExists, t.String(), nil, "",
+				fmt.Sprintf("source %q has no table %s", name, t)))
 		case err != nil:
 			return nil, fmt.Errorf("unable to read the privileges of source %q on %s: %w", name, t, err)
 		case !allowed:
-			findings = append(findings, fmt.Sprintf("source %q cannot read %s (missing SELECT)", name, t))
+			findings = append(findings, blocking(CheckReadable, t.String(), []string{"SELECT"},
+				mysqlGrantOnTable([]string{"SELECT"}, t, account.quoted(ctx)),
+				fmt.Sprintf("source %q cannot read %s (missing SELECT)", name, t)))
 		}
 	}
 	return findings, nil
@@ -58,22 +62,24 @@ func checkMysqlSource(ctx context.Context, db sqlDb, name string, tables []*jobT
 // the tables out of its way, which takes TRIGGER, and puts them back as their definer.
 func checkMysqlDestination(
 	ctx context.Context,
-	db sqlDb,
+	db Db,
 	name string,
-	tables []*jobTable,
+	tables []*Table,
 	createsTables, truncates bool,
-) ([]string, error) {
+) ([]*Finding, error) {
 	readOnly, err := mysqlReadOnly(ctx, db)
 	if err != nil {
 		return nil, fmt.Errorf("unable to tell whether destination %q accepts writes: %w", name, err)
 	}
 	if readOnly {
-		return []string{fmt.Sprintf("destination %q is a read-only server (read_only or super_read_only is ON): "+
-			"a destination must be a standalone or primary server", name)}, nil
+		return []*Finding{blocking(CheckServerWritable, "", nil, "", fmt.Sprintf(
+			"destination %q is a read-only server (read_only or super_read_only is ON): "+
+				"a destination must be a standalone or primary server", name))}, nil
 	}
 
-	var findings []string
-	var existing []*jobTable
+	account := &mysqlAccount{db: db}
+	var findings []*Finding
+	var existing []*Table
 	for _, t := range tables {
 		missing, err := mysqlMissingRowPrivileges(ctx, db, t)
 		if errors.Is(err, errMysqlNoSuchColumn) {
@@ -85,8 +91,9 @@ func checkMysqlDestination(
 			err = perr
 			if perr == nil {
 				if !createsTables {
-					findings = append(findings, fmt.Sprintf("destination %q has no column %s in %s that the account can see",
-						name, strings.Join(absent, ", "), present))
+					findings = append(findings, blocking(CheckTableExists, present.String(), absent, "",
+						fmt.Sprintf("destination %q has no column %s in %s that the account can see",
+							name, strings.Join(absent, ", "), present)))
 				}
 				if len(present.Columns) == 0 {
 					// Not one column of the mapping is there: there is nothing to probe,
@@ -100,15 +107,17 @@ func checkMysqlDestination(
 		switch {
 		case errors.Is(err, errMysqlNoSuchTable):
 			if !createsTables {
-				findings = append(findings, fmt.Sprintf("destination %q has no table %s", name, t))
+				findings = append(findings, blocking(CheckTableExists, t.String(), nil, "",
+					fmt.Sprintf("destination %q has no table %s", name, t)))
 			}
 			continue // a table the run creates is the account's own
 		case err != nil:
 			return nil, fmt.Errorf("unable to read the privileges of destination %q on %s: %w", name, t, err)
 		}
 		if len(missing) > 0 {
-			findings = append(findings, fmt.Sprintf("destination %q cannot write %s (missing %s)",
-				name, t, strings.Join(missing, ", ")))
+			findings = append(findings, blocking(CheckWritable, t.String(), missing,
+				mysqlGrantOnTable(missing, t, account.quoted(ctx)),
+				fmt.Sprintf("destination %q cannot write %s (missing %s)", name, t, strings.Join(missing, ", "))))
 		}
 		existing = append(existing, t)
 	}
@@ -117,22 +126,26 @@ func checkMysqlDestination(
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the privileges of destination %q: %w", name, err)
 	}
-	var seeTriggers []*jobTable
+	var seeTriggers []*Table
 	for _, t := range existing {
 		if truncates && !grants.hasTablePrivilege("DROP", t.Schema, t.Table) {
-			findings = append(findings, fmt.Sprintf("destination %q cannot empty %s before writing it "+
-				"(missing DROP, which TRUNCATE takes)", name, t))
+			findings = append(findings, blocking(CheckTruncate, t.String(), []string{"DROP"},
+				mysqlGrantOnTable([]string{"DROP"}, t, account.quoted(ctx)),
+				fmt.Sprintf("destination %q cannot empty %s before writing it "+
+					"(missing DROP, which TRUNCATE takes)", name, t)))
 		}
 		if !grants.hasTablePrivilege("TRIGGER", t.Schema, t.Table) {
-			findings = append(findings, fmt.Sprintf("destination %q cannot see the triggers of %s nor take them "+
-				"out of the way of the run (missing TRIGGER): MySQL hides the triggers of a table from an account "+
-				"without it, and they would fire on what the run writes", name, t))
+			findings = append(findings, blocking(CheckTriggers, t.String(), []string{"TRIGGER"},
+				mysqlGrantOnTable([]string{"TRIGGER"}, t, account.quoted(ctx)),
+				fmt.Sprintf("destination %q cannot see the triggers of %s nor take them "+
+					"out of the way of the run (missing TRIGGER): MySQL hides the triggers of a table from an account "+
+					"without it, and they would fire on what the run writes", name, t)))
 			continue
 		}
 		seeTriggers = append(seeTriggers, t)
 	}
 
-	definerFindings, err := checkMysqlTriggerDefiners(ctx, db, name, seeTriggers, grants)
+	definerFindings, err := checkMysqlTriggerDefiners(ctx, db, name, seeTriggers, grants, account)
 	if err != nil {
 		return nil, err
 	}
@@ -145,19 +158,21 @@ func checkMysqlDestination(
 // come back.
 func checkMysqlTriggerDefiners(
 	ctx context.Context,
-	db sqlDb,
+	db Db,
 	name string,
-	tables []*jobTable,
+	tables []*Table,
 	grants mysqlGrants,
-) ([]string, error) {
+	account *mysqlAccount,
+) ([]*Finding, error) {
 	if len(tables) == 0 || grants.hasGlobalPrivilege("SUPER", "SET_USER_ID", "SET_ANY_DEFINER") {
 		return nil, nil
 	}
-	var account string
-	if err := db.QueryRowContext(ctx, "SELECT CURRENT_USER()").Scan(&account); err != nil {
+	current, err := account.current(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("unable to read the account of destination %q: %w", name, err)
 	}
-	var findings []string
+	var findings []*Finding
+	definerPrivilege := ""
 	for _, t := range tables {
 		rows, err := db.QueryContext(ctx,
 			"SELECT TRIGGER_NAME, DEFINER FROM information_schema.TRIGGERS "+
@@ -171,10 +186,15 @@ func checkMysqlTriggerDefiners(
 				rows.Close()
 				return nil, fmt.Errorf("unable to read the triggers of destination %q: %w", name, err)
 			}
-			if definer != account {
-				findings = append(findings, fmt.Sprintf("destination %q cannot put back the trigger %s of %s, "+
-					"whose definer is %s (missing SET_USER_ID or SUPER): a trigger runs as its definer, and only "+
-					"such an account can name another one", name, trigger, t, definer))
+			if definer != current {
+				if definerPrivilege == "" {
+					definerPrivilege = mysqlDefinerPrivilege(ctx, db)
+				}
+				findings = append(findings, blocking(CheckTriggerDefiner, t.String(), []string{definerPrivilege},
+					fmt.Sprintf("GRANT %s ON *.* TO %s;", definerPrivilege, account.quoted(ctx)),
+					fmt.Sprintf("destination %q cannot put back the trigger %s of %s, "+
+						"whose definer is %s (missing SET_USER_ID or SUPER): a trigger runs as its definer, and only "+
+						"such an account can name another one", name, trigger, t, definer)))
 			}
 		}
 		err = rows.Err()
@@ -187,7 +207,7 @@ func checkMysqlTriggerDefiners(
 }
 
 // mysqlMissingRowPrivileges returns the privileges on rows a destination table refuses.
-func mysqlMissingRowPrivileges(ctx context.Context, db sqlDb, t *jobTable) ([]string, error) {
+func mysqlMissingRowPrivileges(ctx context.Context, db Db, t *Table) ([]string, error) {
 	var missing []string
 	for _, probe := range []struct{ privilege, statement string }{
 		{"SELECT", t.mysqlSelect()},
@@ -207,7 +227,7 @@ func mysqlMissingRowPrivileges(ctx context.Context, db sqlDb, t *jobTable) ([]st
 }
 
 // mysqlProbe explains a statement: the server checks its privileges without running it.
-func mysqlProbe(ctx context.Context, db sqlDb, statement string) (bool, error) {
+func mysqlProbe(ctx context.Context, db Db, statement string) (bool, error) {
 	rows, err := db.QueryContext(ctx, "EXPLAIN "+statement)
 	if err == nil {
 		// MariaDB answers an EXPLAIN SELECT it refuses with the header of its result, and
@@ -236,7 +256,7 @@ func mysqlProbe(ctx context.Context, db sqlDb, statement string) (bool, error) {
 // mysqlPresentColumns splits the columns a table is written with between those the
 // destination has, which the table returned keeps, and those it lacks. information_schema
 // lists only the columns the account holds a privilege on.
-func mysqlPresentColumns(ctx context.Context, db sqlDb, t *jobTable) (*jobTable, []string, error) {
+func mysqlPresentColumns(ctx context.Context, db Db, t *Table) (*Table, []string, error) {
 	rows, err := db.QueryContext(ctx,
 		"SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
 		t.Schema, t.Table)
@@ -255,7 +275,7 @@ func mysqlPresentColumns(ctx context.Context, db sqlDb, t *jobTable) (*jobTable,
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
-	present := &jobTable{Schema: t.Schema, Table: t.Table}
+	present := &Table{Schema: t.Schema, Table: t.Table}
 	var absent []string
 	for _, column := range t.Columns {
 		// MySQL compares column names regardless of case
@@ -271,7 +291,7 @@ func mysqlPresentColumns(ctx context.Context, db sqlDb, t *jobTable) (*jobTable,
 // mysqlReadOnly tells whether the server refuses writes: read_only refuses those of regular
 // accounts, super_read_only everyone's. MariaDB has no super_read_only, which SHOW then
 // leaves out where selecting it fails.
-func mysqlReadOnly(ctx context.Context, db sqlDb) (bool, error) {
+func mysqlReadOnly(ctx context.Context, db Db) (bool, error) {
 	rows, err := db.QueryContext(ctx,
 		"SHOW GLOBAL VARIABLES WHERE Variable_name IN ('read_only', 'super_read_only')")
 	if err != nil {
@@ -291,7 +311,7 @@ func mysqlReadOnly(ctx context.Context, db sqlDb) (bool, error) {
 
 // readMysqlGrants reads SHOW GRANTS for the session's own account, and whether the server
 // folds table names to lower case, which its grants are then written in.
-func readMysqlGrants(ctx context.Context, db sqlDb) (mysqlGrants, error) {
+func readMysqlGrants(ctx context.Context, db Db) (mysqlGrants, error) {
 	var lowerCaseTableNames int
 	if err := db.QueryRowContext(ctx, "SELECT @@lower_case_table_names").Scan(&lowerCaseTableNames); err != nil {
 		return mysqlGrants{}, err
@@ -317,11 +337,11 @@ func readMysqlGrants(ctx context.Context, db sqlDb) (mysqlGrants, error) {
 // evaluated: MySQL prunes the partitions of an INSERT with them, and MariaDB refuses
 // DEFAULT on a column without a default. NULL goes through both, on any column.
 
-func (t *jobTable) mysqlName() string {
+func (t *Table) mysqlName() string {
 	return quoteMysql(t.Schema) + "." + quoteMysql(t.Table)
 }
 
-func (t *jobTable) mysqlColumns() string {
+func (t *Table) mysqlColumns() string {
 	quoted := make([]string, len(t.Columns))
 	for i, column := range t.Columns {
 		quoted[i] = quoteMysql(column)
@@ -329,16 +349,16 @@ func (t *jobTable) mysqlColumns() string {
 	return strings.Join(quoted, ", ")
 }
 
-func (t *jobTable) mysqlSelect() string {
+func (t *Table) mysqlSelect() string {
 	return "SELECT " + t.mysqlColumns() + " FROM " + t.mysqlName() + " WHERE FALSE"
 }
 
-func (t *jobTable) mysqlInsert() string {
+func (t *Table) mysqlInsert() string {
 	nulls := slices.Repeat([]string{"NULL"}, len(t.Columns))
 	return "INSERT INTO " + t.mysqlName() + " (" + t.mysqlColumns() + ") VALUES (" + strings.Join(nulls, ", ") + ")"
 }
 
-func (t *jobTable) mysqlUpdate() string {
+func (t *Table) mysqlUpdate() string {
 	sets := make([]string, len(t.Columns))
 	for i, column := range t.Columns {
 		sets[i] = quoteMysql(column) + " = NULL"
@@ -346,8 +366,64 @@ func (t *jobTable) mysqlUpdate() string {
 	return "UPDATE " + t.mysqlName() + " SET " + strings.Join(sets, ", ") + " WHERE FALSE"
 }
 
-func (t *jobTable) mysqlDelete() string {
+func (t *Table) mysqlDelete() string {
 	return "DELETE FROM " + t.mysqlName() + " WHERE FALSE"
 }
 
 var quoteMysql = sqlmanager_mysql.EscapeMysqlColumn
+
+// mysqlAccount is the account the session runs as, read once, and only when something asks.
+type mysqlAccount struct {
+	db   Db
+	name string
+	err  error
+	read bool
+}
+
+// current is the account as CURRENT_USER() gives it: user@host.
+func (a *mysqlAccount) current(ctx context.Context) (string, error) {
+	if !a.read {
+		a.err = a.db.QueryRowContext(ctx, "SELECT CURRENT_USER()").Scan(&a.name)
+		a.read = true
+	}
+	return a.name, a.err
+}
+
+// quoted is the account as a statement names it, 'user'@'host'; a placeholder when it
+// cannot be read, which a remedy still reads right with.
+func (a *mysqlAccount) quoted(ctx context.Context) string {
+	current, err := a.current(ctx)
+	if err != nil {
+		return "<account>"
+	}
+	user, host, _ := strings.Cut(current, "@")
+	return quoteMysqlString(user) + "@" + quoteMysqlString(host)
+}
+
+// mysqlGrantOnTable is the statement granting privileges on a table.
+func mysqlGrantOnTable(privileges []string, t *Table, account string) string {
+	return fmt.Sprintf("GRANT %s ON %s TO %s;", strings.Join(privileges, ", "), t.mysqlName(), account)
+}
+
+// mysqlDefinerPrivilege is the privilege that lets an account name another as the definer of
+// a trigger, on the server at hand: SET USER on MariaDB, SET_ANY_DEFINER from MySQL 8.2 on,
+// SET_USER_ID before.
+func mysqlDefinerPrivilege(ctx context.Context, db Db) string {
+	var version string
+	if err := db.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version); err != nil {
+		return "SET_USER_ID"
+	}
+	if strings.Contains(strings.ToLower(version), "mariadb") {
+		return "SET USER"
+	}
+	var major, minor int
+	if _, err := fmt.Sscanf(version, "%d.%d", &major, &minor); err == nil && (major > 8 || major == 8 && minor >= 2) {
+		return "SET_ANY_DEFINER"
+	}
+	return "SET_USER_ID"
+}
+
+// quoteMysqlString quotes a name the way an account is written in a statement.
+func quoteMysqlString(s string) string {
+	return "'" + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), "'", `\'`) + "'"
+}

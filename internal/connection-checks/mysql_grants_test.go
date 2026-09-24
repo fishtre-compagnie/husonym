@@ -1,4 +1,4 @@
-package runprivileges_activity
+package connectionchecks
 
 import (
 	"testing"

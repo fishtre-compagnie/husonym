@@ -1,14 +1,11 @@
 // Package runprivileges_activity stops a run at its start when a connection lacks what
 // its role in the job needs.
 //
-// What a connection must be able to do depends on how the job uses it: a source is read,
-// and may be a read-only replica; a destination is written, on a server that accepts
-// writes, emptied first when the job says so, and has the triggers of its tables taken out
-// of the way of the run and put back. Without this check a run found out half way: on the
-// first refused INSERT, after other tables were already written, or never, when the
-// statement was retried for minutes — or it went on, when MySQL hid triggers from an
-// account that could not suspend them. The message names what is missing so that it can
-// be granted.
+// Without this check a run found out half way: on the first refused INSERT, after other
+// tables were already written, or never, when the statement was retried for minutes — or it
+// went on, when MySQL hid triggers from an account that could not suspend them. The checks
+// themselves live in internal/connection-checks, which the API asks too when a connection is
+// tested in its role; the message names what is missing so that it can be granted.
 package runprivileges_activity
 
 import (
@@ -21,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	connectionchecks "github.com/fishtre-compagnie/husonym/internal/connection-checks"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
@@ -72,12 +70,6 @@ type TableColumns struct {
 
 type CheckRunPrivilegesResponse struct{}
 
-// Privileges a role needs on every table of the job.
-var (
-	sourcePrivileges      = []string{"SELECT"}
-	destinationPrivileges = []string{"SELECT", "INSERT", "UPDATE", "DELETE"}
-)
-
 // CheckRunPrivileges verifies the MySQL and PostgreSQL connections of a job against their
 // role. SQL Server is not checked yet and runs as before.
 func (a *Activity) CheckRunPrivileges(
@@ -103,9 +95,9 @@ func (a *Activity) CheckRunPrivileges(
 		}
 	}()
 
-	tables := make([]*jobTable, len(req.Tables))
+	tables := make([]*connectionchecks.Table, len(req.Tables))
 	for i, t := range req.Tables {
-		tables[i] = &jobTable{Schema: t.Schema, Table: t.Table, Columns: t.Columns}
+		tables[i] = &connectionchecks.Table{Schema: t.Schema, Table: t.Table, Columns: t.Columns}
 	}
 	if len(tables) == 0 {
 		return &CheckRunPrivilegesResponse{}, nil
@@ -128,7 +120,7 @@ func (a *Activity) CheckRunPrivileges(
 		connectionmanager.WithSessionGroup(activityInfo.WorkflowExecution.ID),
 	)
 	defer a.sqlconnmanager.ReleaseSession(session, slogger)
-	var findings []string
+	var findings []*connectionchecks.Finding
 
 	sourceOptions := job.GetSource().GetOptions()
 	sourceID := sourceOptions.GetMysql().GetConnectionId()
@@ -136,12 +128,10 @@ func (a *Activity) CheckRunPrivileges(
 		sourceID = sourceOptions.GetPostgres().GetConnectionId()
 	}
 	if sourceID != "" {
-		found, err := a.check(ctx, session, sourceID, slogger, func(name string, db sqlDb, isMysql bool) ([]string, error) {
-			if isMysql {
-				return checkMysqlSource(ctx, db, name, tables)
-			}
-			return checkPostgresSource(ctx, db, name, tables)
-		})
+		found, err := a.check(ctx, session, sourceID, slogger,
+			func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
+				return connectionchecks.Source(ctx, db, dialect, name, tables)
+			})
 		if err != nil {
 			return nil, err
 		}
@@ -153,14 +143,16 @@ func (a *Activity) CheckRunPrivileges(
 		if mysqlOptions == nil && postgresOptions == nil {
 			continue
 		}
+		options := connectionchecks.DestinationOptions{
+			CreatesTables: mysqlOptions.GetInitTableSchema() || postgresOptions.GetInitTableSchema(),
+			Truncates: mysqlOptions.GetTruncateTable().GetTruncateBeforeInsert() ||
+				postgresOptions.GetTruncateTable().GetTruncateBeforeInsert(),
+			// Athanor suspends foreign keys on PostgreSQL; on MySQL it is a session variable anyone sets.
+			SuspendsForeignKeys: postgresOptions != nil && usesAthanor,
+		}
 		found, err := a.check(ctx, session, destination.GetConnectionId(), slogger,
-			func(name string, db sqlDb, isMysql bool) ([]string, error) {
-				if isMysql {
-					return checkMysqlDestination(ctx, db, name, tables, mysqlOptions.GetInitTableSchema(),
-						mysqlOptions.GetTruncateTable().GetTruncateBeforeInsert())
-				}
-				return checkPostgresDestination(ctx, db, name, tables, postgresOptions.GetInitTableSchema(),
-					postgresOptions.GetTruncateTable().GetTruncateBeforeInsert(), usesAthanor)
+			func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
+				return connectionchecks.Destination(ctx, db, dialect, name, tables, options)
 			})
 		if err != nil {
 			return nil, err
@@ -168,7 +160,7 @@ func (a *Activity) CheckRunPrivileges(
 		findings = append(findings, found...)
 	}
 	if len(findings) > 0 {
-		return nil, fmt.Errorf("privilege check failed: %s", strings.Join(findings, "; "))
+		return nil, fmt.Errorf("privilege check failed: %s", strings.Join(connectionchecks.Messages(findings), "; "))
 	}
 	logger.Debug("privilege check passed")
 	return &CheckRunPrivilegesResponse{}, nil
@@ -181,8 +173,8 @@ func (a *Activity) check(
 	session connectionmanager.SessionInterface,
 	connectionID string,
 	slogger *slog.Logger,
-	check func(name string, db sqlDb, isMysql bool) ([]string, error),
-) ([]string, error) {
+	check func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error),
+) ([]*connectionchecks.Finding, error) {
 	connResp, err := a.connclient.GetConnection(ctx,
 		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionID}))
 	if err != nil {
@@ -198,14 +190,9 @@ func (a *Activity) check(
 	if err != nil {
 		return nil, fmt.Errorf("unable to open connection %q: %w", connection.GetName(), err)
 	}
-	return check(connection.GetName(), db, config.GetMysqlConfig() != nil)
+	dialect := connectionchecks.Postgres
+	if config.GetMysqlConfig() != nil {
+		dialect = connectionchecks.MySQL
+	}
+	return check(connection.GetName(), db, dialect)
 }
-
-// jobTable is a table of the run with the columns it writes.
-type jobTable struct {
-	Schema  string
-	Table   string
-	Columns []string
-}
-
-func (t *jobTable) String() string { return t.Schema + "." + t.Table }
