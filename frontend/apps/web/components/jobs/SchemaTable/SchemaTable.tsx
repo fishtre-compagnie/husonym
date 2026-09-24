@@ -24,6 +24,8 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { useMutation } from '@connectrpc/connect-query';
 import {
+  ColumnPiiDetection,
+  ColumnPiiVerdict,
   ConnectionDataService,
   GetConnectionSchemaResponse,
   JobMapping,
@@ -100,16 +102,6 @@ interface Props {
   applyPiiOnLoad?: boolean;
 }
 
-// Détection remontée par le scan de contenu, telle que le backend l'a qualifiée.
-interface ContentPii {
-  source: TransformerSource;
-  category?: string;
-  isSensitive: boolean;
-  confidence: PiiConfidence;
-  method: PiiDetectionMethod;
-  evidence: string;
-}
-
 interface ResolvedPii {
   isSensitive: boolean;
   suggestedTransformerSource: TransformerSource;
@@ -148,65 +140,41 @@ export function SchemaTable(props: Props): ReactElement {
   } = props;
 
   // --- Scan de contenu PII (Presidio) ---------------------------------------
-  const [contentPii, setContentPii] = useState<Record<string, ContentPii>>({});
+  const [contentPii, setContentPii] = useState<
+    Record<string, ColumnPiiVerdict>
+  >({});
   const [isScanningPii, setIsScanningPii] = useState(false);
   const { mutateAsync: detectPii } = useMutation(
     ConnectionDataService.method.detectPiiInConnectionData
   );
 
-  // Fusionne détection par NOM (constraintHandler, déterministe) et détection de
-  // CONTENU (scan, qualifiée par le backend). Le nom prime : c'est une preuve
-  // reproductible qui ne dépend d'aucun modèle. Le contenu comble les colonnes
-  // que le nom a manquées — typiquement celles nommées col_1, col_2...
+  // Verdict RGPD d'une colonne. Après le scan de contenu, c'est celui que le
+  // backend a rendu en réconciliant le nom et le contenu (piidetect.Reconcile) ;
+  // avant, celui du nom seul, tel que le schéma le porte. L'écran ne tranche rien
+  // lui-même : la règle vit au backend, qui la sert aussi à la CLI et aux agents.
   const resolvePiiWith = (
-    content: Record<string, ContentPii>,
+    verdicts: Record<string, ColumnPiiVerdict>,
     colKey: { schema: string; table: string; column: string }
   ): ResolvedPii => {
-    const nameSensitive = constraintHandler.getIsSensitive(colKey);
-    const nameSource = constraintHandler.getSuggestedTransformerSource(colKey);
-    const nameCategory = constraintHandler.getDataCategory(colKey);
-    const c = content[`${colKey.schema}.${colKey.table}.${colKey.column}`];
-    if (nameSensitive) {
-      // Le nom a établi la NATURE de la donnée. Mais un doute sur le FORMAT est
-      // une autre question : « c'est bien une date de naissance » n'implique pas
-      // « on sait dans quel format la réécrire ». Une date jj/mm indistinguable
-      // de mm/jj doit être signalée même si la colonne s'appelle
-      // date_naissance, sinon on écrirait la base cible dans le mauvais format.
-      const formatDoubt =
-        c?.confidence === PiiConfidence.NEEDS_REVIEW &&
-        c.method === PiiDetectionMethod.FORMAT;
+    const v = verdicts[`${colKey.schema}.${colKey.table}.${colKey.column}`];
+    if (v) {
       return {
-        isSensitive: true,
-        suggestedTransformerSource: nameSource,
-        dataCategory: nameCategory,
-        confidence: formatDoubt
-          ? PiiConfidence.NEEDS_REVIEW
-          : PiiConfidence.CONFIRMED,
-        method: formatDoubt
-          ? PiiDetectionMethod.FORMAT
-          : PiiDetectionMethod.COLUMN_NAME,
-        evidence: formatDoubt
-          ? (c?.evidence ?? '')
-          : `reconnu par le nom de colonne « ${colKey.column} »`,
-      };
-    }
-    if (c) {
-      return {
-        isSensitive: c.isSensitive,
-        suggestedTransformerSource: c.source,
-        dataCategory: c.category,
-        confidence: c.confidence,
-        method: c.method,
-        evidence: c.evidence,
+        isSensitive: v.isSensitive,
+        suggestedTransformerSource: v.suggestedTransformerSource,
+        dataCategory: v.dataCategory || undefined,
+        confidence: v.piiConfidence,
+        method: v.piiDetectionMethod,
+        evidence: v.piiEvidence,
       };
     }
     return {
-      isSensitive: false,
-      suggestedTransformerSource: nameSource,
-      dataCategory: nameCategory,
-      confidence: PiiConfidence.UNSPECIFIED,
-      method: PiiDetectionMethod.UNSPECIFIED,
-      evidence: '',
+      isSensitive: constraintHandler.getIsSensitive(colKey),
+      suggestedTransformerSource:
+        constraintHandler.getSuggestedTransformerSource(colKey),
+      dataCategory: constraintHandler.getDataCategory(colKey),
+      confidence: constraintHandler.getPiiConfidence(colKey),
+      method: constraintHandler.getPiiDetectionMethod(colKey),
+      evidence: constraintHandler.getPiiEvidence(colKey),
     };
   };
 
@@ -293,17 +261,26 @@ export function SchemaTable(props: Props): ReactElement {
   };
 
   // Détection de contenu CONFIRMÉE (clé de contrôle vérifiée) : appliquée comme
-  // celle par nom. Une détection statistique ou ambiguë ne l'est jamais.
+  // celle par nom, à toute colonne encore en passthrough — y compris une colonne
+  // que son nom a reconnue et qu'on a remise en passthrough. Une détection
+  // statistique ou ambiguë ne l'est jamais. C'est la détection brute qui décide
+  // ici, pas le verdict affiché : le comportement reste celui d'avant le verdict.
   const applyContentPiiSuggestions = (
-    content: Record<string, ContentPii>
-  ): number =>
-    applyPiiSuggestions((colKey) => {
-      const c = content[`${colKey.schema}.${colKey.table}.${colKey.column}`];
+    detections: ColumnPiiDetection[]
+  ): number => {
+    const byColumn = new Map(
+      detections.map((d) => [`${d.schema}.${d.table}.${d.column}`, d])
+    );
+    return applyPiiSuggestions((colKey) => {
+      const d = byColumn.get(
+        `${colKey.schema}.${colKey.table}.${colKey.column}`
+      );
       // UNSPECIFIED : pas de générateur adapté (IBAN, SIRET, date...).
-      return c?.confidence === PiiConfidence.CONFIRMED
-        ? c.source
+      return d?.piiConfidence === PiiConfidence.CONFIRMED
+        ? d.suggestedTransformerSource
         : TransformerSource.UNSPECIFIED;
     });
+  };
 
   // Tables déjà analysées, et connexion à laquelle ces détections se rapportent.
   // Sans ce suivi, le scan automatique ne couvrait que les tables présentes au
@@ -345,7 +322,9 @@ export function SchemaTable(props: Props): ReactElement {
 
     setIsScanningPii(true);
     try {
-      const next: Record<string, ContentPii> = {};
+      const next: Record<string, ColumnPiiVerdict> = {};
+      // Ce que le scan a trouvé, avant réconciliation : c'est ce qu'il annonce.
+      const found: ColumnPiiDetection[] = [];
       // Une table en échec (volumineuse, verrouillée, droits manquants) ne doit pas
       // emporter le scan des autres : sur une base réelle, une seule table lente
       // faisait perdre le résultat de toutes celles déjà analysées.
@@ -358,16 +337,10 @@ export function SchemaTable(props: Props): ReactElement {
             table: tbl,
             sampleSize: 20,
           });
-          resp.detections.forEach((det) => {
-            next[`${det.schema}.${det.table}.${det.column}`] = {
-              source: det.suggestedTransformerSource,
-              category: det.dataCategory,
-              isSensitive: det.isSensitive,
-              confidence: det.piiConfidence,
-              method: det.piiDetectionMethod,
-              evidence: det.piiEvidence,
-            };
+          resp.verdicts.forEach((v) => {
+            next[`${v.schema}.${v.table}.${v.column}`] = v;
           });
+          found.push(...resp.detections);
         } catch (e) {
           failed.push(`${sch}.${tbl}`);
           console.warn(`scan PII impossible sur ${sch}.${tbl}`, e);
@@ -381,7 +354,7 @@ export function SchemaTable(props: Props): ReactElement {
       // leurs ; celles des autres tables, analysées plus tôt, sont conservées.
       const rescanned = new Set(tables.keys());
       setContentPii((prev) => {
-        const merged: Record<string, ContentPii> = {};
+        const merged: Record<string, ColumnPiiVerdict> = {};
         Object.entries(prev).forEach(([key, value]) => {
           const table = key.slice(0, key.lastIndexOf('.'));
           if (!rescanned.has(table)) {
@@ -405,13 +378,13 @@ export function SchemaTable(props: Props): ReactElement {
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
       // sur un modèle statistique ou un format ambigu ne le sont jamais : elles
       // s'affichent en badge orange pour que l'utilisateur lève le doute.
-      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(next) : 0;
+      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(found) : 0;
 
-      const confirmed = Object.values(next).filter(
-        (c) => c.confidence === PiiConfidence.CONFIRMED
+      const confirmed = found.filter(
+        (d) => d.piiConfidence === PiiConfidence.CONFIRMED
       ).length;
-      const toReview = Object.values(next).filter(
-        (c) => c.confidence === PiiConfidence.NEEDS_REVIEW
+      const toReview = found.filter(
+        (d) => d.piiConfidence === PiiConfidence.NEEDS_REVIEW
       ).length;
 
       // Le scan de fond avance table par table : il n'annonce que ce qu'il

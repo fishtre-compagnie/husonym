@@ -510,11 +510,35 @@ class ColumnPiiDetection(_message.Message):
     pii_evidence: str
     def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., entity_type: _Optional[str] = ..., score: _Optional[float] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., is_sensitive: _Optional[bool] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ..., data_category: _Optional[str] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
 
+class ColumnPiiVerdict(_message.Message):
+    __slots__ = ("schema", "table", "column", "is_sensitive", "data_category", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence")
+    SCHEMA_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMN_FIELD_NUMBER: _ClassVar[int]
+    IS_SENSITIVE_FIELD_NUMBER: _ClassVar[int]
+    DATA_CATEGORY_FIELD_NUMBER: _ClassVar[int]
+    SUGGESTED_TRANSFORMER_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    PII_CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    PII_DETECTION_METHOD_FIELD_NUMBER: _ClassVar[int]
+    PII_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
+    schema: str
+    table: str
+    column: str
+    is_sensitive: bool
+    data_category: str
+    suggested_transformer_source: _transformer_pb2.TransformerSource
+    pii_confidence: PiiConfidence
+    pii_detection_method: PiiDetectionMethod
+    pii_evidence: str
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., data_category: _Optional[str] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
+
 class DetectPiiInConnectionDataResponse(_message.Message):
-    __slots__ = ("detections",)
+    __slots__ = ("detections", "verdicts")
     DETECTIONS_FIELD_NUMBER: _ClassVar[int]
+    VERDICTS_FIELD_NUMBER: _ClassVar[int]
     detections: _containers.RepeatedCompositeFieldContainer[ColumnPiiDetection]
-    def __init__(self, detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ...) -> None: ...
+    verdicts: _containers.RepeatedCompositeFieldContainer[ColumnPiiVerdict]
+    def __init__(self, detections: _Optional[_Iterable[_Union[ColumnPiiDetection, _Mapping]]] = ..., verdicts: _Optional[_Iterable[_Union[ColumnPiiVerdict, _Mapping]]] = ...) -> None: ...
 
 class GetColumnSampleValuesRequest(_message.Message):
     __slots__ = ("connection_id", "schema", "table", "column", "limit")

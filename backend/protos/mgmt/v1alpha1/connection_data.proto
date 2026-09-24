@@ -408,8 +408,32 @@ message ColumnPiiDetection {
   string pii_evidence = 13;
 }
 
+// The verdict on one column: what its name says and what its content showed, reconciled by
+// the server, so that every caller — the UI, the CLI, an agent — is told the same thing.
+message ColumnPiiVerdict {
+  string schema = 1;
+  string table = 2;
+  string column = 3;
+  // True if the column is considered personal data (GDPR).
+  bool is_sensitive = 4;
+  // What the data is (ex: "email", "nir"). Empty if nothing was recognized.
+  string data_category = 5;
+  // Recommended transformer. TRANSFORMER_SOURCE_UNSPECIFIED when none fits.
+  TransformerSource suggested_transformer_source = 6;
+  // Only CONFIRMED allows the suggested transformer to be applied without a person.
+  PiiConfidence pii_confidence = 7;
+  // How the verdict was reached.
+  PiiDetectionMethod pii_detection_method = 8;
+  // The proof, in words, for the tooltip.
+  string pii_evidence = 9;
+}
+
 message DetectPiiInConnectionDataResponse {
+  // What the content scan found, column by column, before reconciling with the names.
   repeated ColumnPiiDetection detections = 1;
+  // One verdict per column of the table (or per requested column), name and content
+  // reconciled. A column the scan found nothing in still has one, from its name alone.
+  repeated ColumnPiiVerdict verdicts = 2;
 }
 
 // Échantillon des valeurs d'une colonne, pour lever un doute sur une détection
