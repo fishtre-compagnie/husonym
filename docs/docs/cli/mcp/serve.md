@@ -14,6 +14,8 @@ The `husonym mcp serve` command runs a [Model Context Protocol](https://modelcon
 
 The server answers for the account of the API key it is given, with that key's rights.
 
+Give the server a key of its own, with only the permissions it needs: every tool it offers today reads, and `connection:view` is enough for all of them. See [API key permissions](/deploy/authentication#permissions).
+
 ## Usage
 
 ```bash

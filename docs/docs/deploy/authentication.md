@@ -67,12 +67,28 @@ To do so via the web app:
 3. Click the API Keys section
 4. Click the `+ New API Key` button.
 5. Write down a name and select when it should expire
-6. Submit
+6. Check the permissions the key needs
+7. Submit
 
 If successful, you should now be on the API Key Details page and the API Key should be seen in plaintext on the page.
 
 It's important to save this somewhere as it is no longer retrievable again. If lost, a new key must be regenerated.
 These keys are not stored in plaintext in the database and are one-way hashed so the original contents are no longer retrievable.
+
+### Permissions
+
+A key can do only what its permissions name, whatever the rest of the configuration allows. A permission is one action on one kind of entity:
+
+| Entity      | Permissions                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Jobs        | `job:view`, `job:create`, `job:edit`, `job:execute` (runs a job), `job:delete`                                                 |
+| Connections | `connection:view`, `connection:view_sensitive` (secrets in clear), `connection:create`, `connection:edit`, `connection:delete` |
+| Account     | `account:view`, `account:edit`, `account:create`, `account:delete`                                                             |
+
+- A key needs at least one permission, and can hold none that its creator does not hold themselves.
+- Without `connection:view_sensitive`, a key reads connections with their passwords and keys masked.
+- A call the key's permissions do not cover is refused, and the refusal names the permission that is missing.
+- Keys created before permissions existed hold all of them. Narrow them by creating new keys with only what they need.
 
 ## Temporal mTLS Authentication
 

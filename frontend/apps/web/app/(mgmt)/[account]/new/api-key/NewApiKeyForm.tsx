@@ -37,6 +37,7 @@ import { useRouter } from 'next/navigation';
 import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { PermissionsField } from './permissions';
 
 export interface ApiKeyValueSessionStore {
   keyValue: string;
@@ -52,6 +53,7 @@ export default function NewApiKeyForm(): ReactElement {
       name: '',
       expiresAtSelect: '7',
       expiresAt: startOfDay(addDays(new Date(), 7)),
+      permissions: [],
     },
   });
   const { mutateAsync } = useMutation(ApiKeyService.method.createAccountApiKey);
@@ -65,6 +67,7 @@ export default function NewApiKeyForm(): ReactElement {
         accountId: account.id,
         expiresAt: timestampFromMs(values.expiresAt.getTime()),
         name: values.name,
+        permissions: values.permissions,
       });
       if (apiKey.apiKey?.id) {
         if (apiKey.apiKey.keyValue && !!window?.sessionStorage) {
@@ -212,6 +215,28 @@ export default function NewApiKeyForm(): ReactElement {
                   />
                 </PopoverContent>
               </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="permissions"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Permissions <RequiredLabel />
+              </FormLabel>
+              <FormDescription>
+                What the key may do. It can do nothing you leave unchecked, and
+                nothing you cannot do yourself.
+              </FormDescription>
+              <FormControl>
+                <PermissionsField
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
