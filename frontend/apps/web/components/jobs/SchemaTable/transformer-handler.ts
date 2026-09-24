@@ -101,6 +101,8 @@ export class TransformerHandler {
   }
 }
 
+// The API holds mappings to the same rule when it validates them (transformerFits, in
+// internal/job/transformer-fit.go): a change here goes there too.
 function shouldIncludeSystem(
   transformer: SystemTransformer,
   filters: TransformerFilters

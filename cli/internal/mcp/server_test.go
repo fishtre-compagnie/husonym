@@ -14,6 +14,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/jobs"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
@@ -26,6 +27,8 @@ const (
 	accountId     = "7f2c1e4a-0000-4000-8000-000000000001"
 	connectionId  = "7f2c1e4a-0000-4000-8000-0000000000c1"
 	clearPassword = "hunter2-in-clear"
+	// aliasId is a second connection to the database of connectionId, under another name.
+	aliasId = "7f2c1e4a-0000-4000-8000-0000000000c3"
 )
 
 var (
@@ -81,12 +84,20 @@ func (f *fakeConnectionService) GetConnection(
 	if f.err != nil {
 		return nil, f.err
 	}
+	name := "staging"
+	if req.Msg.GetId() == connectionId {
+		name = "production"
+	}
 	return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
-		Connection: postgresConnection(req.Msg.GetId(), "production", req.Msg.GetExcludeSensitive()),
+		Connection: postgresConnection(req.Msg.GetId(), name, req.Msg.GetExcludeSensitive()),
 	}), nil
 }
 
 func postgresConnection(id, name string, excludeSensitive bool) *mgmtv1alpha1.Connection {
+	host := "db.internal"
+	if id != connectionId && id != aliasId {
+		host = name + ".internal"
+	}
 	pass := clearPassword
 	if excludeSensitive {
 		pass = "********"
@@ -99,7 +110,7 @@ func postgresConnection(id, name string, excludeSensitive bool) *mgmtv1alpha1.Co
 				PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
 					ConnectionConfig: &mgmtv1alpha1.PostgresConnectionConfig_Connection{
 						Connection: &mgmtv1alpha1.PostgresConnection{
-							Host: "db.internal", Port: 5432, Name: "shop", User: "husonym", Pass: pass,
+							Host: host, Port: 5432, Name: "shop", User: "husonym", Pass: pass,
 						},
 					},
 				},
@@ -121,7 +132,7 @@ type fakeDataService struct {
 	scanFailure map[string]error
 }
 
-// fakeTransformersService knows one system transformer.
+// fakeTransformersService knows a few system transformers, with their default configuration.
 type fakeTransformersService struct {
 	mgmtv1alpha1connect.UnimplementedTransformersServiceHandler
 }
@@ -130,16 +141,30 @@ func (fakeTransformersService) GetSystemTransformerBySource(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.GetSystemTransformerBySourceRequest],
 ) (*connect.Response[mgmtv1alpha1.GetSystemTransformerBySourceResponse], error) {
-	if req.Msg.GetSource() != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL {
+	preserveDomain, preserveLength := true, false
+	var config *mgmtv1alpha1.TransformerConfig
+	switch req.Msg.GetSource() {
+	case mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL:
+		config = &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
+			GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
+		}}
+	case mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_EMAIL:
+		config = &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformEmailConfig{
+			TransformEmailConfig: &mgmtv1alpha1.TransformEmail{PreserveDomain: &preserveDomain, PreserveLength: &preserveLength},
+		}}
+	case mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT:
+		config = &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+			TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{},
+		}}
+	case mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_PASSTHROUGH:
+		config = &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
+			PassthroughConfig: &mgmtv1alpha1.Passthrough{},
+		}}
+	default:
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown transformer"))
 	}
 	return connect.NewResponse(&mgmtv1alpha1.GetSystemTransformerBySourceResponse{
-		Transformer: &mgmtv1alpha1.SystemTransformer{
-			Source: req.Msg.GetSource(),
-			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
-				GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
-			}},
-		},
+		Transformer: &mgmtv1alpha1.SystemTransformer{Source: req.Msg.GetSource(), Config: config},
 	}), nil
 }
 
@@ -327,19 +352,36 @@ func connectClientWith(
 	protocolVersion string,
 ) *mcp.ClientSession {
 	t.Helper()
+	return connectAPI(t, fakeAPI{connections: connections, data: data, jobs: &fakeJobService{}}, clientOptions, protocolVersion)
+}
+
+// fakeAPI is the part of the API the MCP server calls.
+type fakeAPI struct {
+	connections *fakeConnectionService
+	data        *fakeDataService
+	jobs        *fakeJobService
+}
+
+// connectAPI is connectClientWith on a whole fake API.
+func connectAPI(t *testing.T, fakes fakeAPI, clientOptions *mcp.ClientOptions, protocolVersion string) *mcp.ClientSession {
+	t.Helper()
 	ctx := t.Context()
 
 	mux := http.NewServeMux()
-	mux.Handle(mgmtv1alpha1connect.NewConnectionServiceHandler(connections))
-	mux.Handle(mgmtv1alpha1connect.NewConnectionDataServiceHandler(data))
+	mux.Handle(mgmtv1alpha1connect.NewConnectionServiceHandler(fakes.connections))
+	mux.Handle(mgmtv1alpha1connect.NewConnectionDataServiceHandler(fakes.data))
 	mux.Handle(mgmtv1alpha1connect.NewTransformersServiceHandler(fakeTransformersService{}))
+	mux.Handle(mgmtv1alpha1connect.NewJobServiceHandler(fakes.jobs))
 	api := httptest.NewServer(mux)
 	t.Cleanup(api.Close)
 
+	connections := maskedconn.New(api.Client(), api.URL)
+	jobReader := jobs.New(api.Client(), api.URL, accountId, connections)
 	server := New(Options{
-		Connections: maskedconn.New(api.Client(), api.URL),
-		Data:        novalues.New(api.Client(), api.URL),
-		Values:      rowvalues.New(api.Client(), api.URL),
+		Connections: connections,
+		Data:        novalues.New(api.Client(), api.URL, accountId),
+		Values:      rowvalues.New(api.Client(), api.URL, accountId, connections, jobReader),
+		Jobs:        jobReader,
 		AccountId:   accountId,
 		Version:     "test",
 	})
@@ -382,13 +424,19 @@ func Test_Catalogue(t *testing.T) {
 
 	tools, err := session.ListTools(t.Context(), nil)
 	require.NoError(t, err)
-	names := make([]string, 0, len(tools.Tools))
+	var reading, writing []string
 	for _, tool := range tools.Tools {
-		names = append(names, tool.Name)
-		// No tool writes before API keys carry a scope (plans/mcp-husonym.md §5.1).
-		require.True(t, tool.Annotations.ReadOnlyHint, "%s is not read-only", tool.Name)
+		if tool.Annotations.ReadOnlyHint {
+			reading = append(reading, tool.Name)
+		} else {
+			writing = append(writing, tool.Name)
+		}
 	}
 	require.ElementsMatch(t, []string{
-		"describe_connection", "introspect_schema", "list_connections", "preview_column", "suggest_mappings",
-	}, names)
+		"describe_connection", "get_run_failure", "get_run_status", "introspect_schema", "list_connections",
+		"preview_column", "suggest_mappings",
+	}, reading)
+	// Each of these is held by the scope of the API key (plans/mcp-husonym.md §5.1): the API
+	// refuses what the key does not grant, and names the permission missing.
+	require.ElementsMatch(t, []string{"create_job", "run_job", "update_job_mappings"}, writing)
 }

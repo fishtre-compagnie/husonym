@@ -801,6 +801,11 @@ message UpdateJobSourceConnectionRequest {
 
   // The new job type configuration
   JobTypeConfig job_type = 5;
+
+  // The updated_at of the job as the caller read it. When set, the update is refused with
+  // FailedPrecondition if the job has changed since, so that a change made meanwhile — in the UI,
+  // or by a run mapping a new column — is not overwritten.
+  optional google.protobuf.Timestamp expected_updated_at = 6;
 }
 message UpdateJobSourceConnectionResponse {
   Job job = 1;
@@ -1314,6 +1319,10 @@ message ColumnError {
     COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH = 10;
     // Virtual foreign key source column not unique
     COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE = 11;
+    // The transformer does not fit the column: a generated or identity column, a foreign key,
+    // a column without a default, or a type the transformer does not take. The message names
+    // the transformers that fit.
+    COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED = 12;
   }
 
   // Column error report

@@ -32,6 +32,19 @@ func (p *person) client() *mcp.ClientOptions {
 	}
 }
 
+// byHand is a client that declares it can ask, but answers by hand: the tests send the answers
+// a confused or hostile client could send.
+func byHand() *mcp.ClientOptions {
+	options := (&person{answer: "accept"}).client()
+	options.MultiRoundTrip = &mcp.MultiRoundTripOptions{Disabled: true}
+	return options
+}
+
+// accept answers yes to the question id.
+func accept(id string) mcp.InputResponseMap {
+	return mcp.InputResponseMap{id: &mcp.ElicitResult{Action: "accept"}}
+}
+
 func (p *person) asked() []string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -109,7 +122,7 @@ func testConsent(t *testing.T, protocolVersion string) {
 
 		questions := somebody.asked()
 		require.Len(t, questions, 1, "the consent covers the connection for the session")
-		require.Contains(t, questions[0], "public.users.email")
+		require.Contains(t, questions[0], `the column "email" of the table "public.users"`)
 		require.Contains(t, questions[0], `"production"`)
 		require.Contains(t, questions[0], "sent to the model")
 
@@ -159,12 +172,18 @@ func testConsent(t *testing.T, protocolVersion string) {
 	})
 }
 
-// questionOf calls preview_column as a client that fulfils nothing itself, and returns the id
-// of the question the server puts — the id a forged answer would have to name.
-func questionOf(t *testing.T, session *mcp.ClientSession, args map[string]any, responses mcp.InputResponseMap) string {
+// questionOf calls a tool as a client that fulfils nothing itself, and returns the id of the
+// question the server puts — the id a forged answer would have to name.
+func questionOf(
+	t *testing.T,
+	session *mcp.ClientSession,
+	tool string,
+	args map[string]any,
+	responses mcp.InputResponseMap,
+) string {
 	t.Helper()
 	res, err := session.CallTool(t.Context(), &mcp.CallToolParams{
-		Name: "preview_column", Arguments: args, InputResponses: responses,
+		Name: tool, Arguments: args, InputResponses: responses,
 	})
 	require.NoError(t, err)
 	require.True(t, res.NeedsInput(), "expected a question, got %v", res.Content)
@@ -181,12 +200,7 @@ func Test_PreviewColumn_AnswersAreBoundToTheirQuestion(t *testing.T) {
 	t.Parallel()
 	answeringByHand := func(t *testing.T) (*mcp.ClientSession, *fakeDataService) {
 		data := &fakeDataService{}
-		options := (&person{answer: "accept"}).client()
-		options.MultiRoundTrip = &mcp.MultiRoundTripOptions{Disabled: true}
-		return connectClientWith(t, &fakeConnectionService{}, data, options, ""), data
-	}
-	accept := func(id string) mcp.InputResponseMap {
-		return mcp.InputResponseMap{id: &mcp.ElicitResult{Action: "accept"}}
+		return connectClientWith(t, &fakeConnectionService{}, data, byHand(), ""), data
 	}
 	other := maps.Clone(previewEmail)
 	other["connection_id"] = "7f2c1e4a-0000-4000-8000-0000000000c2"
@@ -194,16 +208,16 @@ func Test_PreviewColumn_AnswersAreBoundToTheirQuestion(t *testing.T) {
 	t.Run("an answer about one connection opens no other", func(t *testing.T) {
 		t.Parallel()
 		session, data := answeringByHand(t)
-		asked := questionOf(t, session, previewEmail, nil)
+		asked := questionOf(t, session, "preview_column", previewEmail, nil)
 
-		questionOf(t, session, other, accept(asked))
+		questionOf(t, session, "preview_column", other, accept(asked))
 		require.Empty(t, data.previewRequests())
 	})
 
 	t.Run("an answer counts once", func(t *testing.T) {
 		t.Parallel()
 		session, data := answeringByHand(t)
-		asked := questionOf(t, session, previewEmail, nil)
+		asked := questionOf(t, session, "preview_column", previewEmail, nil)
 
 		_, err := session.CallTool(t.Context(), &mcp.CallToolParams{
 			Name: "preview_column", Arguments: previewEmail,
@@ -211,25 +225,25 @@ func Test_PreviewColumn_AnswersAreBoundToTheirQuestion(t *testing.T) {
 		})
 		require.NoError(t, err)
 		// The same id, now accepting: it was spent on the decline.
-		questionOf(t, session, previewEmail, accept(asked))
+		questionOf(t, session, "preview_column", previewEmail, accept(asked))
 		require.Empty(t, data.previewRequests())
 	})
 
 	t.Run("a question asked again replaces the one pending", func(t *testing.T) {
 		t.Parallel()
 		session, data := answeringByHand(t)
-		first := questionOf(t, session, previewEmail, nil)
-		second := questionOf(t, session, previewEmail, nil)
+		first := questionOf(t, session, "preview_column", previewEmail, nil)
+		second := questionOf(t, session, "preview_column", previewEmail, nil)
 		require.NotEqual(t, first, second)
 
-		questionOf(t, session, previewEmail, accept(first))
+		questionOf(t, session, "preview_column", previewEmail, accept(first))
 		require.Empty(t, data.previewRequests(), "the first question no longer stands")
 	})
 
 	t.Run("the answer to the question asked opens the read", func(t *testing.T) {
 		t.Parallel()
 		session, data := answeringByHand(t)
-		asked := questionOf(t, session, previewEmail, nil)
+		asked := questionOf(t, session, "preview_column", previewEmail, nil)
 
 		res, err := session.CallTool(t.Context(), &mcp.CallToolParams{
 			Name: "preview_column", Arguments: previewEmail, InputResponses: accept(asked),

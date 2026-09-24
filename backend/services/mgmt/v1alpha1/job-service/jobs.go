@@ -1150,7 +1150,31 @@ func (s *Service) UpdateJobSourceConnection(
 		}
 	}
 
+	accountUuid, err := husonymdb.ToUuid(jobDto.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+
 	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
+		if expected := req.Msg.GetExpectedUpdatedAt(); expected != nil {
+			// The row is locked until the update commits: a change landing between the check and
+			// the write waits, and the next caller expecting the old version is refused.
+			current, err := s.db.Q.GetJobForUpdate(ctx, dbtx, db_queries.GetJobForUpdateParams{
+				ID:        jobUuid,
+				AccountID: accountUuid,
+			})
+			if err != nil && husonymdb.IsNoRows(err) {
+				return husonymerrors.NewNotFound("unable to find job")
+			} else if err != nil {
+				return err
+			}
+			if !current.UpdatedAt.Time.Equal(expected.AsTime().Truncate(time.Microsecond)) {
+				return husonymerrors.NewFailedPrecondition(
+					"the job has changed since it was read: read it again, and apply the change to it as it is now",
+				)
+			}
+		}
+
 		_, err = s.db.Q.UpdateJobSource(ctx, dbtx, db_queries.UpdateJobSourceParams{
 			ID:                jobUuid,
 			ConnectionOptions: connectionOptions,
@@ -1811,6 +1835,7 @@ func (s *Service) ValidateJobMappings(
 	validator := job_util.NewJobMappingsValidator(
 		req.Msg.Mappings,
 		job_util.WithJobSourceOptions(sqlSourceOpts),
+		job_util.WithJobType(job_util.SupportedJobTypeOf(req.Msg.GetJobSource())),
 	)
 	result, err := validator.Validate(colInfoMap, req.Msg.VirtualForeignKeys, tableConstraints)
 	if err != nil {

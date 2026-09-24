@@ -408,6 +408,7 @@ components:
         - COLUMN_ERROR_CODE_VFK_TARGET_COLUMN_NOT_FOUND_IN_SOURCE
         - COLUMN_ERROR_CODE_VFK_COLUMN_DATATYPE_MISMATCH
         - COLUMN_ERROR_CODE_VFK_SOURCE_COLUMN_NOT_UNIQUE
+        - COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED
       description: An enumeration of column error codes
     mgmt.v1alpha1.ColumnError.ColumnErrorReport:
       type: object
@@ -5507,6 +5508,15 @@ components:
             - $ref: '#/components/schemas/mgmt.v1alpha1.JobTypeConfig'
           title: job_type
           description: The new job type configuration
+        expectedUpdatedAt:
+          oneOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+            - type: "null"
+          title: expected_updated_at
+          description: |-
+            The updated_at of the job as the caller read it. When set, the update is refused with
+             FailedPrecondition if the job has changed since, so that a change made meanwhile — in the UI,
+             or by a run mapping a new column — is not overwritten.
       title: UpdateJobSourceConnectionRequest
       additionalProperties: false
     mgmt.v1alpha1.UpdateJobSourceConnectionResponse:

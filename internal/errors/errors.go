@@ -33,6 +33,12 @@ func NewBadRequest(message string) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.New(message))
 }
 
+// NewFailedPrecondition refuses a request the state it was made against no longer matches, such
+// as a write expecting a version that has moved on.
+func NewFailedPrecondition(message string) error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New(message))
+}
+
 func NewAlreadyExists(message string) error {
 	return connect.NewError(connect.CodeAlreadyExists, errors.New(message))
 }
