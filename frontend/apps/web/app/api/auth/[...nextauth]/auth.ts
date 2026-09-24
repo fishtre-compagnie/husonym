@@ -6,8 +6,8 @@ import {
   AccountLoginMethod,
   getProviderId,
   fetchAccountLoginMethod,
-  getAccountSlug,
 } from './account-provider';
+import { FlowAccount, getRequestAccount } from './login-flow';
 
 function getProviders(
   accountMethod: AccountLoginMethod | null
@@ -35,9 +35,14 @@ function getProviders(
       wellKnown: getWellKnown(authConfig.issuer),
       // An account's provider is reached as a public client: without a secret, Auth.js
       // would otherwise authenticate with an empty one, which providers refuse.
+      // A public client has no secret: PKCE is what binds the code to this flow, and it
+      // is required, not merely accepted.
       ...(authConfig.clientSecret
         ? {}
-        : { client: { token_endpoint_auth_method: 'none' } }),
+        : {
+            client: { token_endpoint_auth_method: 'none' },
+            checks: ['pkce', 'state'],
+          }),
     });
   }
 
@@ -181,14 +186,10 @@ export const {
   // auth function meant to be used in RSC or middleware.
   auth,
 } = NextAuth(async (request: NextRequest | undefined) => {
-  const slug = getAccountSlug(request);
-  const accountMethod = slug ? await fetchAccountLoginMethod(slug) : null;
-  return buildConfig(accountMethod ? { ...accountMethod, slug: slug! } : null);
+  return buildConfig(await getRequestAccount(request));
 });
 
-function buildConfig(
-  accountMethod: (AccountLoginMethod & { slug: string }) | null
-): NextAuthConfig {
+function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
   return {
     providers: getProviders(accountMethod),
     session: { strategy: 'jwt' },

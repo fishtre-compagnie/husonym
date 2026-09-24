@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   ACCOUNT_COOKIE,
+  getPublicBaseUrl,
   sanitizeSlug,
 } from '../../[...nextauth]/account-provider';
 
@@ -29,7 +30,7 @@ export async function GET(
   // no session, and the cookie set here tells that sign-in which account it is for. The
   // redirect and the cookie go by the deployment's public URL: behind a proxy, the request
   // may carry an internal origin.
-  const publicUrl = new URL(getPublicBaseUrl(req));
+  const publicUrl = getPublicBaseUrl(req);
   const res = NextResponse.redirect(new URL('/', publicUrl));
   res.cookies.set({
     name: ACCOUNT_COOKIE,
@@ -43,9 +44,4 @@ export async function GET(
     maxAge: 15 * 60,
   });
   return res;
-}
-
-function getPublicBaseUrl(req: NextRequest): string {
-  // An empty variable is unset, as Auth.js reads it.
-  return process.env.AUTH_URL || process.env.NEXTAUTH_URL || req.nextUrl.origin;
 }
