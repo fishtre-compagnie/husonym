@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
 	accounts_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/accounts"
 	connections_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/connections"
 	jobs_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/jobs"
 	login_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/login"
+	mcp_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/mcp"
 	sync_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/sync"
 	version_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/version"
 	whoami_cmd "github.com/fishtre-compagnie/husonym/cli/internal/cmds/husonym/whoami"
@@ -25,8 +27,7 @@ const (
 	cliSettingsFileNameNoExt = "config"
 	cliSettingsFileExt       = "yaml"
 
-	apiKeyEnvVarName = "HUSONYM_API_KEY" //nolint:gosec
-	apiKeyFlag       = "api-key"
+	apiKeyFlag = "api-key"
 )
 
 func Execute() {
@@ -48,7 +49,7 @@ func Execute() {
 			if err != nil {
 				panic(err)
 			}
-			envApiKey := viper.GetString(apiKeyEnvVarName)
+			envApiKey := viper.GetString(auth.ApiKeyEnvVarName)
 			if apiKey == "" && envApiKey != "" {
 				err = rootCmd.Flags().Set(apiKeyFlag, envApiKey)
 				if err != nil {
@@ -65,7 +66,7 @@ func Execute() {
 		&cfgFilePath, "config", "", fmt.Sprintf("config file (default is $HOME/%s/%s.%s)", husonymDirName, cliSettingsFileNameNoExt, cliSettingsFileExt),
 	)
 	rootCmd.PersistentFlags().
-		String(apiKeyFlag, "", fmt.Sprintf("Husonym API Key. Takes precedence over $%s", apiKeyEnvVarName))
+		String(apiKeyFlag, "", fmt.Sprintf("Husonym API Key. Takes precedence over $%s", auth.ApiKeyEnvVarName))
 
 	rootCmd.PersistentFlags().Bool("debug", false, "Run in debug mode")
 
@@ -76,6 +77,7 @@ func Execute() {
 	rootCmd.AddCommand(sync_cmd.NewCmd())
 	rootCmd.AddCommand(accounts_cmd.NewCmd())
 	rootCmd.AddCommand(connections_cmd.NewCmd())
+	rootCmd.AddCommand(mcp_cmd.NewCmd())
 
 	cobra.CheckErr(rootCmd.Execute())
 }

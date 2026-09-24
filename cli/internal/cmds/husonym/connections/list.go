@@ -10,6 +10,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
+	"github.com/fishtre-compagnie/husonym/cli/internal/connection"
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
 	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
@@ -108,40 +109,14 @@ func printConnectionsTable(
 		)
 
 	for idx := range connections {
-		connection := connections[idx]
+		conn := connections[idx]
 		tbl.AddRow(
-			connection.Id,
-			connection.Name,
-			getCategory(connection.GetConnectionConfig()),
-			connection.CreatedAt.AsTime().Local().Format(time.RFC3339),
-			connection.UpdatedAt.AsTime().Local().Format(time.RFC3339),
+			conn.Id,
+			conn.Name,
+			connection.Category(conn.GetConnectionConfig()),
+			conn.CreatedAt.AsTime().Local().Format(time.RFC3339),
+			conn.UpdatedAt.AsTime().Local().Format(time.RFC3339),
 		)
 	}
 	tbl.Print()
-}
-
-func getCategory(cc *mgmtv1alpha1.ConnectionConfig) string {
-	if cc == nil {
-		return "Unknown"
-	}
-	switch cc.GetConfig().(type) {
-	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		return "PostgreSQL"
-	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		return "MySQL"
-	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config:
-		return "AWS S3"
-	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
-		return "GCP Cloud Storage"
-	case *mgmtv1alpha1.ConnectionConfig_MongoConfig:
-		return "MongoDB"
-	case *mgmtv1alpha1.ConnectionConfig_OpenaiConfig:
-		return "OpenAI"
-	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
-		return "DynamoDB"
-	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		return "MSSQL"
-	default:
-		return "Unknown"
-	}
 }
