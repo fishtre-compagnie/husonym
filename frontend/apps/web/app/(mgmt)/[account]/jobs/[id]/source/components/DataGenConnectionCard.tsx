@@ -1,4 +1,6 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
+import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { SingleTableEditSourceFormValues } from '@/app/(mgmt)/[account]/new/job/job-form-validations';
 import {
   SchemaTable,
@@ -212,6 +214,7 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
   const { mutateAsync: updateJobSrcConnection } = useMutation(
     JobService.method.updateJobSourceConnection
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   useEffect(() => {
     if (!fkSourceConnectionId || !account?.id) {
@@ -327,6 +330,20 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
     if (!job) {
       return;
     }
+    await checkThenSave(
+      getCheckTargetsOfJob({
+        ...job,
+        source: toSingleTableEditGenerateJobSource(values),
+        mappings: values.mappings,
+      }),
+      () => saveSource(values, job)
+    );
+  }
+
+  async function saveSource(
+    values: SingleTableEditSourceFormValues,
+    job: Job
+  ): Promise<void> {
     try {
       await updateJobSrcConnection({
         id: job.id,
@@ -444,6 +461,7 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
 
   return (
     <Form {...form}>
+      {checksDialog}
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}

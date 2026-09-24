@@ -1,5 +1,6 @@
 import ButtonText from '@/components/ButtonText';
 import FormErrorMessage from '@/components/FormErrorMessage';
+import { getServerScope } from '@/components/connections/checks/targets';
 import FormHeader from '@/components/forms/FormHeader';
 import { PasswordInput } from '@/components/PasswordComponent';
 import { PermissionConnectionType } from '@/components/permissions/columns';
@@ -17,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { getErrorMessage } from '@/util/util';
 import {
   AwsAdvancedFormValues,
@@ -36,6 +38,7 @@ import {
   CheckSSHConnectionByIdRequest,
   CheckSSHConnectionRequest,
   CheckSSHConnectionResult,
+  ConnectionRole,
   ConnectionService,
 } from '@husonym/sdk';
 import {
@@ -571,6 +574,8 @@ interface CheckConnectionButtonProps {
   mode: 'check' | 'checkById';
   getRequest(): CheckConnectionConfigRequest;
   getRequestById(): CheckConnectionConfigByIdRequest;
+  // The connection can be tested in the role it plays in a job: MySQL and PostgreSQL.
+  canCheckRole?: boolean;
 }
 
 export function CheckConnectionButton(
@@ -583,8 +588,12 @@ export function CheckConnectionButton(
     connectionName,
     connectionType,
     mode,
+    canCheckRole,
   } = props;
   const [isChecking, setIsChecking] = useState(false);
+  const [role, setRole] = useState<ConnectionRole>(ConnectionRole.SOURCE);
+  // The role the response was asked in: the choice may change after the test.
+  const [checkedRole, setCheckedRole] = useState<ConnectionRole | undefined>();
   const [validationResponse, setValidationResponse] = useState<
     | CheckConnectionConfigResponse
     | CheckConnectionConfigByIdResponse
@@ -599,14 +608,21 @@ export function CheckConnectionButton(
   );
 
   async function onClick(): Promise<void> {
+    // Without tables, only what concerns the server as a whole is checked: a job's tables
+    // are checked when the job is saved.
+    const scope = canCheckRole ? getServerScope(role) : undefined;
     try {
       setIsChecking(true);
+      setCheckedRole(scope ? role : undefined);
       if (mode === 'check') {
-        const res = await checkConnectionConfig(getRequest());
+        const res = await checkConnectionConfig({ ...getRequest(), scope });
         setValidationResponse(res);
         setOpenPermissionDialog(!!res?.isConnected);
       } else {
-        const res = await checkConnectionConfigById(getRequestById());
+        const res = await checkConnectionConfigById({
+          ...getRequestById(),
+          scope,
+        });
         setValidationResponse(res);
         setOpenPermissionDialog(!!res?.isConnected);
       }
@@ -634,8 +650,37 @@ export function CheckConnectionButton(
         isValidating={isChecking}
         connectionName={connectionName}
         connectionType={connectionType}
+        checkedRole={checkedRole}
       />
-      <div className="flex justify-end">
+      <div className="flex flex-row items-center justify-end gap-3">
+        {canCheckRole ? (
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-sm text-muted-foreground">Test as</span>
+            <ToggleGroup
+              type="single"
+              value={String(role)}
+              onValueChange={(value) => {
+                // an empty value comes when the selected item is clicked again
+                if (value) {
+                  setRole(Number(value));
+                }
+              }}
+            >
+              <ToggleGroupItem
+                className="border"
+                value={String(ConnectionRole.SOURCE)}
+              >
+                Source
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                className="border"
+                value={String(ConnectionRole.DESTINATION)}
+              >
+                Destination
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        ) : null}
         <Button
           variant="outline"
           disabled={!isValid}

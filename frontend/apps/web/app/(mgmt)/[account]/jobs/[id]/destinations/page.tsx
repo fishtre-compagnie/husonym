@@ -81,6 +81,7 @@ export default function Page(props: PageProps): ReactElement {
             return (
               <DestinationConnectionCard
                 key={destination.id}
+                job={data?.job}
                 jobSourceId={destinationJobSourceId}
                 jobId={id}
                 destination={destination}

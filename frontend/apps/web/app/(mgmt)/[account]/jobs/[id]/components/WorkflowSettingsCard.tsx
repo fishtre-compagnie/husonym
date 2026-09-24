@@ -1,4 +1,6 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
+import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -55,11 +57,32 @@ export default function WorkflowSettingsCard({
   const { mutateAsync: updateJobWorkflowOptions } = useMutation(
     JobService.method.setJobWorkflowOptions
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   async function onSubmit(values: WorkflowSettingsSchema) {
     if (!account?.id) {
       return;
     }
+    const engine = values.engine ?? JobEngine.UNSPECIFIED;
+    if (engine === (job.workflowOptions?.engine ?? JobEngine.UNSPECIFIED)) {
+      await saveWorkflowOptions(values);
+      return;
+    }
+    // What a destination must allow depends on the engine: the destinations are checked
+    // with the new one. The source reads the same way under both.
+    await checkThenSave(
+      getCheckTargetsOfJob({
+        ...job,
+        source: undefined,
+        workflowOptions: { engine },
+      }),
+      () => saveWorkflowOptions(values)
+    );
+  }
+
+  async function saveWorkflowOptions(
+    values: WorkflowSettingsSchema
+  ): Promise<void> {
     try {
       const resp = await updateJobWorkflowOptions({
         id: job.id,
@@ -80,6 +103,7 @@ export default function WorkflowSettingsCard({
   return (
     <Card className="overflow-hidden">
       <Form {...form}>
+        {checksDialog}
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent>
             <FormField

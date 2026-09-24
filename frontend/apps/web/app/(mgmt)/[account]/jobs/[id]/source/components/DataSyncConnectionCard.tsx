@@ -1,4 +1,6 @@
 'use client';
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
+import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import ConnectionSelectContent from '@/app/(mgmt)/[account]/new/job/connect/ConnectionSelectContent';
 import SourceOptionsForm from '@/components/jobs/Form/SourceOptionsForm';
 import NosqlTable from '@/components/jobs/NosqlTable/NosqlTable';
@@ -180,6 +182,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
   const { mutateAsync: updateJobDestConnection } = useMutation(
     JobService.method.updateJobDestinationConnection
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const queryclient = useQueryClient();
 
@@ -317,6 +320,20 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     if (!job || !connection) {
       return;
     }
+    const source = create(JobSourceSchema, {
+      options: toJobSourceOptions(values, job, connection, values.sourceId),
+    });
+    await checkThenSave(
+      getCheckTargetsOfJob({ ...job, source, mappings: values.mappings }),
+      () => saveSource(values, job, connection)
+    );
+  }
+
+  async function saveSource(
+    values: DataSyncSourceFormValues,
+    job: Job,
+    connection: Connection
+  ): Promise<void> {
     try {
       await updateJobSrcConnection({
         id: job.id,
@@ -694,6 +711,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
 
   return (
     <Form {...form}>
+      {checksDialog}
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-4">
           <FormField

@@ -1,5 +1,7 @@
 'use client';
 
+import { useCheckedSave } from '@/components/connections/checks/useCheckedSave';
+import { getCheckTargetsOfJob } from '@/components/connections/checks/targets';
 import FormPersist from '@/app/(mgmt)/FormPersist';
 import { useOnApplyDefaultClick } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/useOnApplyDefaultClick';
 import { useOnImportMappings } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/useOnImportMappings';
@@ -130,6 +132,7 @@ export default function Page(props: PageProps): ReactElement {
   const { mutateAsync: createJobAsync } = useMutation(
     JobService.method.createJob
   );
+  const { checkThenSave, dialog: checksDialog } = useCheckedSave();
 
   const form = useForm({
     mode: 'onChange',
@@ -151,34 +154,35 @@ export default function Page(props: PageProps): ReactElement {
     if (!account) {
       return;
     }
-    try {
-      const connMap = new Map(connections.map((c) => [c.id, c]));
-      const job = await createJobAsync(
-        getCreateNewSingleTableGenerateJobRequest(
-          {
-            define: defineFormValues,
-            connect: connectFormValues,
-            schema: values,
-          },
-          account.id,
-          (id) => connMap.get(id)
-        )
-      );
+    const connMap = new Map(connections.map((c) => [c.id, c]));
+    const request = getCreateNewSingleTableGenerateJobRequest(
+      {
+        define: defineFormValues,
+        connect: connectFormValues,
+        schema: values,
+      },
+      account.id,
+      (id) => connMap.get(id)
+    );
+    await checkThenSave(getCheckTargetsOfJob(request), async () => {
+      try {
+        const job = await createJobAsync(request);
 
-      toast.success('Successfully created job!');
+        toast.success('Successfully created job!');
 
-      clearNewJobSession(window.sessionStorage, sessionPrefix);
-      if (job.job?.id) {
-        router.push(`/${account?.name}/jobs/${job.job.id}`);
-      } else {
-        router.push(`/${account?.name}/jobs`);
+        clearNewJobSession(window.sessionStorage, sessionPrefix);
+        if (job.job?.id) {
+          router.push(`/${account?.name}/jobs/${job.job.id}`);
+        } else {
+          router.push(`/${account?.name}/jobs`);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Unable to create job', {
+          description: getErrorMessage(err),
+        });
       }
-    } catch (err) {
-      console.error(err);
-      toast.error('Unable to create job', {
-        description: getErrorMessage(err),
-      });
-    }
+    });
   }
   const formMappings = form.watch('mappings');
 
@@ -358,6 +362,7 @@ export default function Page(props: PageProps): ReactElement {
   return (
     <div className="flex flex-col gap-5">
       <FormPersist formKey={formKey} form={form} />
+      {checksDialog}
       <OverviewContainer
         Header={
           <PageHeader
