@@ -71,6 +71,8 @@ interface OAuthConfig {
   clientSecret?: string;
   audience: string;
   scope: string;
+  // The provider is an account's, not the deployment's.
+  account?: boolean;
 }
 
 /**
@@ -90,9 +92,23 @@ export async function getLogoutUrl(
   if (oauthconfig.logoutUrl) {
     return oauthconfig.logoutUrl;
   }
-  const oidcConfig = await getOpenIdConfiguration(oauthconfig.issuer);
-  if (oidcConfig.end_session_endpoint) {
-    return oidcConfig.end_session_endpoint;
+  const oidcConfig = await getOpenIdConfiguration(
+    oauthconfig.issuer,
+    !!accountIssuer
+  );
+  const endSession = oidcConfig.end_session_endpoint;
+  if (endSession) {
+    // An account's provider sends its users back to its own origin, nowhere else.
+    if (
+      accountIssuer &&
+      new URL(endSession).origin !== new URL(accountIssuer).origin
+    ) {
+      console.warn(
+        'the end session endpoint of the account provider is not on its origin'
+      );
+      return undefined;
+    }
+    return endSession;
   }
   console.warn(
     'oidc configuration well known did not provide an end session endpoint'
@@ -167,10 +183,12 @@ export const {
 } = NextAuth(async (request: NextRequest | undefined) => {
   const slug = getAccountSlug(request);
   const accountMethod = slug ? await fetchAccountLoginMethod(slug) : null;
-  return buildConfig(accountMethod);
+  return buildConfig(accountMethod ? { ...accountMethod, slug: slug! } : null);
 });
 
-function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
+function buildConfig(
+  accountMethod: (AccountLoginMethod & { slug: string }) | null
+): NextAuthConfig {
   return {
     providers: getProviders(accountMethod),
     session: { strategy: 'jwt' },
@@ -194,6 +212,7 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
           // in the session token, which only this server can read or write.
           token.accountIssuer = accountMethod?.issuer;
           token.accountClientId = accountMethod?.clientId;
+          token.accountSlug = accountMethod?.slug;
         }
         if (
           !token.expiresAt ||
@@ -206,13 +225,14 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
             throw new Error('session is expired, no refresh token available');
           }
 
-          const oauthConfig = getRefreshConfig(token);
+          const oauthConfig = await getRefreshConfig(token);
           if (!oauthConfig) {
             throw new Error('unable to find provider to refresh token');
           }
           try {
             const response = await fetch(
-              oauthConfig.tokenUrl ?? (await getTokenUrl(oauthConfig.issuer)),
+              oauthConfig.tokenUrl ??
+                (await getTokenUrl(oauthConfig.issuer, !!oauthConfig.account)),
               {
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
@@ -261,21 +281,32 @@ function buildConfig(accountMethod: AccountLoginMethod | null): NextAuthConfig {
  * The provider a session's tokens are refreshed with: the account's that issued them, or
  * the deployment's for a session that came from it.
  */
-function getRefreshConfig(
+//
+// An account's provider is asked again each time: an account that has since changed or
+// withdrawn it — after a compromise, say — ends the sessions it issued, rather than let
+// them go on refreshing, and sending their refresh tokens, to a provider it no longer
+// trusts.
+async function getRefreshConfig(
   token: Record<string, unknown>
-): Pick<
+): Promise<Pick<
   OAuthConfig,
-  'issuer' | 'clientId' | 'clientSecret' | 'tokenUrl'
-> | null {
-  const accountIssuer = token.accountIssuer;
-  const accountClientId = token.accountClientId;
-  if (
-    typeof accountIssuer === 'string' &&
-    typeof accountClientId === 'string'
-  ) {
-    return { issuer: accountIssuer, clientId: accountClientId };
+  'issuer' | 'clientId' | 'clientSecret' | 'tokenUrl' | 'account'
+> | null> {
+  const { accountIssuer, accountClientId, accountSlug } = token;
+  if (typeof accountIssuer !== 'string') {
+    return getOAuthConfig(null);
   }
-  return getOAuthConfig(null);
+  const current =
+    typeof accountSlug === 'string'
+      ? await fetchAccountLoginMethod(accountSlug)
+      : null;
+  if (
+    current?.issuer !== accountIssuer ||
+    current.clientId !== accountClientId
+  ) {
+    return null;
+  }
+  return { issuer: accountIssuer, clientId: current.clientId, account: true };
 }
 
 interface OidcConfiguration {
@@ -287,9 +318,12 @@ interface OidcConfiguration {
   jwks_uri: string;
 }
 
-async function getTokenUrl(issuer: string): Promise<string> {
+async function getTokenUrl(
+  issuer: string,
+  isAccountIssuer: boolean
+): Promise<string> {
   try {
-    const oidcConfig = await getOpenIdConfiguration(issuer);
+    const oidcConfig = await getOpenIdConfiguration(issuer, isAccountIssuer);
     if (!oidcConfig.token_endpoint) {
       throw new Error('unable to find token endpoint');
     }
@@ -299,16 +333,33 @@ async function getTokenUrl(issuer: string): Promise<string> {
   }
 }
 
+/**
+ * The discovery document of a provider. An account's must call itself by the issuer the
+ * account declared, as Auth.js requires when signing in: otherwise its endpoints are not
+ * that provider's. The deployment's is exempt, since its issuer may be an internal URL
+ * the document names differently (AUTH_EXPECTED_ISSUER).
+ */
 async function getOpenIdConfiguration(
-  issuer: string
+  issuer: string,
+  isAccountIssuer: boolean
 ): Promise<Partial<OidcConfiguration>> {
   const wellKnownUrl = getWellKnown(issuer);
   const res = await fetch(wellKnownUrl, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
   });
-  return (await res.json()) as OidcConfiguration;
+  const doc = (await res.json()) as Partial<OidcConfiguration>;
+  if (isAccountIssuer && doc.issuer !== issuer) {
+    throw new Error(
+      'the discovery document of the account provider names another issuer'
+    );
+  }
+  return doc;
 }
+
+// How long a provider's discovery document may take to answer.
+const DISCOVERY_TIMEOUT_MS = 10_000;
 
 declare module 'next-auth' {
   export interface Session {

@@ -46,5 +46,6 @@ export async function GET(
 }
 
 function getPublicBaseUrl(req: NextRequest): string {
-  return process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? req.nextUrl.origin;
+  // An empty variable is unset, as Auth.js reads it.
+  return process.env.AUTH_URL || process.env.NEXTAUTH_URL || req.nextUrl.origin;
 }
