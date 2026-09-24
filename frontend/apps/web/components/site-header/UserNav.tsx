@@ -68,9 +68,16 @@ export function UserNav(): ReactElement | null {
             className="cursor-pointer"
             onClick={async () => {
               try {
-                await signOut({
-                  callbackUrl: `/api/auth/provider-sign-out?idToken=${session.data.idToken}`,
-                });
+                // The provider's logout is found while the session still says which
+                // provider it came from; the session is then ended here, and at it.
+                const res = await fetch('/api/auth/provider-sign-out');
+                const { url } = (await res.json()) as { url: string | null };
+                if (url) {
+                  await signOut({ redirect: false });
+                  window.location.href = url;
+                } else {
+                  await signOut();
+                }
               } catch (err) {
                 console.error(err);
                 toast.error('Unable to sign out of provider session');

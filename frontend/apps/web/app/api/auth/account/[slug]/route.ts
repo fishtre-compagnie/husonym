@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   ACCOUNT_COOKIE,
-  PROVIDER_ID,
   sanitizeSlug,
 } from '../../[...nextauth]/account-provider';
 
@@ -25,20 +24,28 @@ export async function GET(
     return NextResponse.json({ error: 'invalid account' }, { status: 400 });
   }
 
-  const signIn = new URL(`/api/auth/signin/${PROVIDER_ID}`, req.nextUrl.origin);
-  signIn.searchParams.set('account', slug);
-
-  const res = NextResponse.redirect(signIn);
+  // The flow is not started from here: Auth.js starts a sign-in only on a POST that carries
+  // its CSRF token, and answers a GET with an error. The app does that itself when it finds
+  // no session, and the cookie set here tells that sign-in which account it is for. The
+  // redirect and the cookie go by the deployment's public URL: behind a proxy, the request
+  // may carry an internal origin.
+  const publicUrl = new URL(getPublicBaseUrl(req));
+  const res = NextResponse.redirect(new URL('/', publicUrl));
   res.cookies.set({
     name: ACCOUNT_COOKIE,
     value: slug,
     httpOnly: true,
     sameSite: 'lax',
-    secure: req.nextUrl.protocol === 'https:',
+    secure: publicUrl.protocol === 'https:',
     path: '/',
     // Long enough for a sign-in, including a detour through a provider that asks for a
     // second factor. Not a session: it says which door was used, never who came through.
     maxAge: 15 * 60,
   });
   return res;
+}
+
+function getPublicBaseUrl(req: NextRequest): string {
+  // An empty variable is unset, as Auth.js reads it.
+  return process.env.AUTH_URL || process.env.NEXTAUTH_URL || req.nextUrl.origin;
 }
