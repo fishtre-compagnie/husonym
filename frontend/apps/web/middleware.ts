@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextFetchEvent, NextRequest, NextResponse } from 'next/server';
 import { auth } from './app/api/auth/[...nextauth]/auth';
 import { PUBLIC_PATHNAME, getSystemAppConfig } from './app/api/config/config';
 
-export default auth((req) => {
+// The configuration is lazy (a function of the request): Auth.js then hands back the wrapped
+// middleware as a promise, which Next.js does not take for a middleware.
+const withAuth = auth((req) => {
   if (req.nextUrl.pathname.startsWith(PUBLIC_PATHNAME)) {
     const sysConfig = getSystemAppConfig();
     if (req.auth?.accessToken) {
@@ -17,6 +19,19 @@ export default auth((req) => {
   }
   return NextResponse.next();
 });
+
+export default async function middleware(
+  req: NextRequest,
+  event: NextFetchEvent
+): Promise<Response | undefined> {
+  const handler = await withAuth;
+  // Auth.js types its wrapper as a route handler; as a middleware it hands it the fetch
+  // event, as Next.js gives it.
+  return (
+    (await handler(req, event as unknown as Parameters<typeof handler>[1])) ??
+    undefined
+  );
+}
 
 function trimPrefix(str: string, prefix: string): string {
   if (str.startsWith(prefix)) {
