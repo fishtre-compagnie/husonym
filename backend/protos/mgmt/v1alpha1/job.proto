@@ -5,6 +5,7 @@ package mgmt.v1alpha1;
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mgmt/v1alpha1/connection_data.proto";
+import "mgmt/v1alpha1/permission.proto";
 import "mgmt/v1alpha1/transformer.proto";
 
 message GetJobsRequest {
@@ -1895,129 +1896,341 @@ message ApplyMappingChangesResponse {
 service JobService {
   // Returns a list of jobs by either account or job
   rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns a specific job
   rpc GetJob(GetJobRequest) returns (GetJobResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Creates a new job
-  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {}
+  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_CREATE]
+    };
+  }
   // Deletes a job
-  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {}
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_DELETE]
+    };
+  }
   // Checks if a job name is available
   rpc IsJobNameAvailable(IsJobNameAvailableRequest) returns (IsJobNameAvailableResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Updates the schedule of a job
-  rpc UpdateJobSchedule(UpdateJobScheduleRequest) returns (UpdateJobScheduleResponse) {}
+  rpc UpdateJobSchedule(UpdateJobScheduleRequest) returns (UpdateJobScheduleResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Updates the source connection of a job
-  rpc UpdateJobSourceConnection(UpdateJobSourceConnectionRequest) returns (UpdateJobSourceConnectionResponse) {}
+  rpc UpdateJobSourceConnection(UpdateJobSourceConnectionRequest) returns (UpdateJobSourceConnectionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT,
+        PERMISSION_CONNECTION_VIEW
+      ]
+    };
+  }
   // Sets the source sql connection subsets of a job
-  rpc SetJobSourceSqlConnectionSubsets(SetJobSourceSqlConnectionSubsetsRequest) returns (SetJobSourceSqlConnectionSubsetsResponse) {}
+  rpc SetJobSourceSqlConnectionSubsets(SetJobSourceSqlConnectionSubsetsRequest) returns (SetJobSourceSqlConnectionSubsetsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT,
+        PERMISSION_CONNECTION_VIEW
+      ]
+    };
+  }
   // Updates the destination connection of a job
-  rpc UpdateJobDestinationConnection(UpdateJobDestinationConnectionRequest) returns (UpdateJobDestinationConnectionResponse) {}
+  rpc UpdateJobDestinationConnection(UpdateJobDestinationConnectionRequest) returns (UpdateJobDestinationConnectionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Deletes the destination connection of a job
-  rpc DeleteJobDestinationConnection(DeleteJobDestinationConnectionRequest) returns (DeleteJobDestinationConnectionResponse) {}
+  rpc DeleteJobDestinationConnection(DeleteJobDestinationConnectionRequest) returns (DeleteJobDestinationConnectionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Creates the destination connections of a job
-  rpc CreateJobDestinationConnections(CreateJobDestinationConnectionsRequest) returns (CreateJobDestinationConnectionsResponse) {}
+  rpc CreateJobDestinationConnections(CreateJobDestinationConnectionsRequest) returns (CreateJobDestinationConnectionsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_CREATE
+      ]
+    };
+  }
   // Pauses or unpauses a job
-  rpc PauseJob(PauseJobRequest) returns (PauseJobResponse) {}
+  rpc PauseJob(PauseJobRequest) returns (PauseJobResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Returns a list of recently invoked job runs based on the Temporal cron scheduler. This will return a list of job runs that include archived runs
   rpc GetJobRecentRuns(GetJobRecentRunsRequest) returns (GetJobRecentRunsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns a list of runs that are scheduled for execution based on the Temporal cron scheduler.
   rpc GetJobNextRuns(GetJobNextRunsRequest) returns (GetJobNextRunsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns the status of a job
   rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns the statuses of jobs within an account
   rpc GetJobStatuses(GetJobStatusesRequest) returns (GetJobStatusesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Returns a list of job runs by either account or job
   rpc GetJobRuns(GetJobRunsRequest) returns (GetJobRunsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns a list of events for a job run to understand more details of the run itself
   rpc GetJobRunEvents(GetJobRunEventsRequest) returns (GetJobRunEventsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns a specific job run, along with any of its pending activities
   rpc GetJobRun(GetJobRunRequest) returns (GetJobRunResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Deletes a job run
-  rpc DeleteJobRun(DeleteJobRunRequest) returns (DeleteJobRunResponse) {}
+  rpc DeleteJobRun(DeleteJobRunRequest) returns (DeleteJobRunResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_DELETE
+      ]
+    };
+  }
   // Creates a new job run
-  rpc CreateJobRun(CreateJobRunRequest) returns (CreateJobRunResponse) {}
+  rpc CreateJobRun(CreateJobRunRequest) returns (CreateJobRunResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EXECUTE
+      ]
+    };
+  }
   // Cancels a job run. This is a graceful termination and allows the workflow to clean up and exit gracefully.
-  rpc CancelJobRun(CancelJobRunRequest) returns (CancelJobRunResponse) {}
+  rpc CancelJobRun(CancelJobRunRequest) returns (CancelJobRunResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EXECUTE
+      ]
+    };
+  }
   // Terminates a job run. This is an immediate termination and will not allow the workflow to clean up and exit gracefully.
-  rpc TerminateJobRun(TerminateJobRunRequest) returns (TerminateJobRunResponse) {}
+  rpc TerminateJobRun(TerminateJobRunRequest) returns (TerminateJobRunResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EXECUTE
+      ]
+    };
+  }
   // Returns a stream of logs from the worker nodes that pertain to a specific job run
-  rpc GetJobRunLogsStream(GetJobRunLogsStreamRequest) returns (stream GetJobRunLogsStreamResponse) {}
+  rpc GetJobRunLogsStream(GetJobRunLogsStreamRequest) returns (stream GetJobRunLogsStreamResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
+  }
   // Returns a list of logs from the worker nodes that pertain to a specific job run.
   // Equivalent to the stream endpoint, but runs in a unary fashion.
-  rpc GetJobRunLogs(GetJobRunLogsRequest) returns (GetJobRunLogsResponse) {}
+  rpc GetJobRunLogs(GetJobRunLogsRequest) returns (GetJobRunLogsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
+  }
   // Set any job workflow options. Must provide entire object as is it will fully override the previous configuration
-  rpc SetJobWorkflowOptions(SetJobWorkflowOptionsRequest) returns (SetJobWorkflowOptionsResponse) {}
+  rpc SetJobWorkflowOptions(SetJobWorkflowOptionsRequest) returns (SetJobWorkflowOptionsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Set the job sync options. Must provide entire object as it will fully override the previous configuration
-  rpc SetJobSyncOptions(SetJobSyncOptionsRequest) returns (SetJobSyncOptionsResponse) {}
+  rpc SetJobSyncOptions(SetJobSyncOptionsRequest) returns (SetJobSyncOptionsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Validates that the jobmapping configured can run with table constraints
-  rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {}
+  rpc ValidateJobMappings(ValidateJobMappingsRequest) returns (ValidateJobMappingsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_CONNECTION_VIEW]
+    };
+  }
   // Brings a job's mappings in step with the source a run read: maps the columns that appeared,
   // as the job's strategy chose, and removes those that disappeared. Called by the worker.
-  rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {}
+  rpc ReconcileJobMappings(ReconcileJobMappingsRequest) returns (ReconcileJobMappingsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Returns the changes runs made to the mappings of jobs under auto_map that
   // nobody has reviewed yet. An added column whose mapping has been changed since counts as
   // reviewed: somebody decided.
   rpc GetPendingMappingChanges(GetPendingMappingChangesRequest) returns (GetPendingMappingChangesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Marks changes reviewed, with an optional note.
-  rpc ReviewMappingChanges(ReviewMappingChangesRequest) returns (ReviewMappingChangesResponse) {}
+  rpc ReviewMappingChanges(ReviewMappingChangesRequest) returns (ReviewMappingChangesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Sets the transformer of columns the job maps, from the review tab, and marks the changes it
   // settles reviewed: correcting what a run chose is done where the change is read.
-  rpc ApplyMappingChanges(ApplyMappingChangesRequest) returns (ApplyMappingChangesResponse) {}
+  rpc ApplyMappingChanges(ApplyMappingChangesRequest) returns (ApplyMappingChangesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Validates that the schema is compatible with the job mappings
-  rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {}
+  rpc ValidateSchema(ValidateSchemaRequest) returns (ValidateSchemaResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_CONNECTION_VIEW]
+    };
+  }
 
   // Gets a run context to be used by a workflow run
-  rpc GetRunContext(GetRunContextRequest) returns (GetRunContextResponse) {}
+  rpc GetRunContext(GetRunContextRequest) returns (GetRunContextResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
+  }
   // Sets a run context to be used by a workflow run
-  rpc SetRunContext(SetRunContextRequest) returns (SetRunContextResponse) {}
+  rpc SetRunContext(SetRunContextRequest) returns (SetRunContextResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Sets a stream of run contexts to be used by a workflow run
-  rpc SetRunContexts(stream SetRunContextsRequest) returns (SetRunContextsResponse) {}
+  rpc SetRunContexts(stream SetRunContextsRequest) returns (SetRunContextsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
 
   // Retrieves all job hooks
   rpc GetJobHooks(GetJobHooksRequest) returns (GetJobHooksResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Retrieves a specific job hook
   rpc GetJobHook(GetJobHookRequest) returns (GetJobHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Creates a new job hook
-  rpc CreateJobHook(CreateJobHookRequest) returns (CreateJobHookResponse) {}
+  rpc CreateJobHook(CreateJobHookRequest) returns (CreateJobHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_CREATE]
+    };
+  }
   // Removes a job hook
-  rpc DeleteJobHook(DeleteJobHookRequest) returns (DeleteJobHookResponse) {}
+  rpc DeleteJobHook(DeleteJobHookRequest) returns (DeleteJobHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_DELETE]
+    };
+  }
   // Check if a specific job hook name is available
-  rpc IsJobHookNameAvailable(IsJobHookNameAvailableRequest) returns (IsJobHookNameAvailableResponse) {}
+  rpc IsJobHookNameAvailable(IsJobHookNameAvailableRequest) returns (IsJobHookNameAvailableResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
+  }
   // Updates a job hook
-  rpc UpdateJobHook(UpdateJobHookRequest) returns (UpdateJobHookResponse) {}
+  rpc UpdateJobHook(UpdateJobHookRequest) returns (UpdateJobHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Enables or disables a job hook
-  rpc SetJobHookEnabled(SetJobHookEnabledRequest) returns (SetJobHookEnabledResponse) {}
+  rpc SetJobHookEnabled(SetJobHookEnabledRequest) returns (SetJobHookEnabledResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_JOB_VIEW,
+        PERMISSION_JOB_EDIT
+      ]
+    };
+  }
   // Returns job hooks that are enabled by a specific timing. They will be sorted by priority, created_at, and id ascending.
   rpc GetActiveJobHooksByTiming(GetActiveJobHooksByTimingRequest) returns (GetActiveJobHooksByTimingResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetPiiDetectionReport(GetPiiDetectionReportRequest) returns (GetPiiDetectionReportResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

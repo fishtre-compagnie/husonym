@@ -1,5 +1,6 @@
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
+from mgmt.v1alpha1 import permission_pb2 as _permission_pb2
 from mgmt.v1alpha1 import transformer_pb2 as _transformer_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper

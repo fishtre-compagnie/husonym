@@ -888,7 +888,7 @@ var File_mgmt_v1alpha1_account_setting_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\n" +
-	"#mgmt/v1alpha1/account_setting.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1amgmt/v1alpha1/secret.proto\"\xeb\x03\n" +
+	"#mgmt/v1alpha1/account_setting.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1amgmt/v1alpha1/secret.proto\"\xeb\x03\n" +
 	"\x0eAccountSetting\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12;\n" +
@@ -948,12 +948,18 @@ const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\x1fSETTING_CHECK_LEVEL_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cSETTING_CHECK_LEVEL_BLOCKING\x10\x01\x12\x1f\n" +
 	"\x1bSETTING_CHECK_LEVEL_WARNING\x10\x02\x12\x1c\n" +
-	"\x18SETTING_CHECK_LEVEL_INFO\x10\x032\xe0\x03\n" +
-	"\x15AccountSettingService\x12n\n" +
-	"\x12GetAccountSettings\x12(.mgmt.v1alpha1.GetAccountSettingsRequest\x1a).mgmt.v1alpha1.GetAccountSettingsResponse\"\x03\x90\x02\x01\x12h\n" +
-	"\x11SetAccountSetting\x12'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\x00\x12n\n" +
-	"\x12TestAccountSetting\x12(.mgmt.v1alpha1.TestAccountSettingRequest\x1a).mgmt.v1alpha1.TestAccountSettingResponse\"\x03\x90\x02\x01\x12}\n" +
-	"\x18GetAccountConsistencyKey\x12..mgmt.v1alpha1.GetAccountConsistencyKeyRequest\x1a/.mgmt.v1alpha1.GetAccountConsistencyKeyResponse\"\x00B\xd4\x01\n" +
+	"\x18SETTING_CHECK_LEVEL_INFO\x10\x032\xfd\x03\n" +
+	"\x15AccountSettingService\x12u\n" +
+	"\x12GetAccountSettings\x12(.mgmt.v1alpha1.GetAccountSettingsRequest\x1a).mgmt.v1alpha1.GetAccountSettingsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12o\n" +
+	"\x11SetAccountSetting\x12'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12u\n" +
+	"\x12TestAccountSetting\x12(.mgmt.v1alpha1.TestAccountSettingRequest\x1a).mgmt.v1alpha1.TestAccountSettingResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x02\x90\x02\x01\x12\x84\x01\n" +
+	"\x18GetAccountConsistencyKey\x12..mgmt.v1alpha1.GetAccountConsistencyKeyRequest\x1a/.mgmt.v1alpha1.GetAccountConsistencyKeyResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02B\xd4\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x13AccountSettingProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -1021,6 +1027,7 @@ func file_mgmt_v1alpha1_account_setting_proto_init() {
 	if File_mgmt_v1alpha1_account_setting_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_secret_proto_init()
 	file_mgmt_v1alpha1_account_setting_proto_msgTypes[1].OneofWrappers = []any{
 		(*AccountSettingConfig_AnonymizationConsistency)(nil),

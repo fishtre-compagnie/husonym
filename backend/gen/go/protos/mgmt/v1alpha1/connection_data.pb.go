@@ -3956,7 +3956,7 @@ var File_mgmt_v1alpha1_connection_data_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\n" +
-	"#mgmt/v1alpha1/connection_data.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"\x16\n" +
+	"#mgmt/v1alpha1/connection_data.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"\x16\n" +
 	"\x14PostgresStreamConfig\"\x13\n" +
 	"\x11MysqlStreamConfig\"\x19\n" +
 	"\x17AwsDynamoDBStreamConfig\"e\n" +
@@ -4239,21 +4239,40 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x15JavascriptDraftEngine\x12'\n" +
 	"#JAVASCRIPT_DRAFT_ENGINE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fJAVASCRIPT_DRAFT_ENGINE_ATHANOR\x10\x01\x12#\n" +
-	"\x1fJAVASCRIPT_DRAFT_ENGINE_BENTHOS\x10\x022\xea\f\n" +
-	"\x15ConnectionDataService\x12|\n" +
-	"\x17GetConnectionDataStream\x12-.mgmt.v1alpha1.GetConnectionDataStreamRequest\x1a..mgmt.v1alpha1.GetConnectionDataStreamResponse\"\x000\x01\x12n\n" +
-	"\x13GetConnectionSchema\x12).mgmt.v1alpha1.GetConnectionSchemaRequest\x1a*.mgmt.v1alpha1.GetConnectionSchemaResponse\"\x00\x12w\n" +
-	"\x16GetConnectionSchemaMap\x12,.mgmt.v1alpha1.GetConnectionSchemaMapRequest\x1a-.mgmt.v1alpha1.GetConnectionSchemaMapResponse\"\x00\x12z\n" +
-	"\x17GetConnectionSchemaMaps\x12-.mgmt.v1alpha1.GetConnectionSchemaMapsRequest\x1a..mgmt.v1alpha1.GetConnectionSchemaMapsResponse\"\x00\x12\x8c\x01\n" +
-	"\x1dGetConnectionTableConstraints\x123.mgmt.v1alpha1.GetConnectionTableConstraintsRequest\x1a4.mgmt.v1alpha1.GetConnectionTableConstraintsResponse\"\x00\x12\x86\x01\n" +
-	"\x1bGetConnectionInitStatements\x121.mgmt.v1alpha1.GetConnectionInitStatementsRequest\x1a2.mgmt.v1alpha1.GetConnectionInitStatementsResponse\"\x00\x12k\n" +
-	"\x12GetAiGeneratedData\x12(.mgmt.v1alpha1.GetAiGeneratedDataRequest\x1a).mgmt.v1alpha1.GetAiGeneratedDataResponse\"\x00\x12h\n" +
-	"\x10GetTableRowCount\x12&.mgmt.v1alpha1.GetTableRowCountRequest\x1a'.mgmt.v1alpha1.GetTableRowCountResponse\"\x03\x90\x02\x01\x12z\n" +
-	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
-	"\x19DetectPiiInConnectionData\x12/.mgmt.v1alpha1.DetectPiiInConnectionDataRequest\x1a0.mgmt.v1alpha1.DetectPiiInConnectionDataResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetColumnSampleValues\x12+.mgmt.v1alpha1.GetColumnSampleValuesRequest\x1a,.mgmt.v1alpha1.GetColumnSampleValuesResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
-	"\x18GetJavascriptDraftPrompt\x12..mgmt.v1alpha1.GetJavascriptDraftPromptRequest\x1a/.mgmt.v1alpha1.GetJavascriptDraftPromptResponse\"\x03\x90\x02\x01\x12\x80\x01\n" +
-	"\x18PreviewColumnTransformer\x12..mgmt.v1alpha1.PreviewColumnTransformerRequest\x1a/.mgmt.v1alpha1.PreviewColumnTransformerResponse\"\x03\x90\x02\x01B\xd4\x01\n" +
+	"\x1fJAVASCRIPT_DRAFT_ENGINE_BENTHOS\x10\x022\xc8\r\n" +
+	"\x15ConnectionDataService\x12\x83\x01\n" +
+	"\x17GetConnectionDataStream\x12-.mgmt.v1alpha1.GetConnectionDataStreamRequest\x1a..mgmt.v1alpha1.GetConnectionDataStreamResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x050\x01\x12u\n" +
+	"\x13GetConnectionSchema\x12).mgmt.v1alpha1.GetConnectionSchemaRequest\x1a*.mgmt.v1alpha1.GetConnectionSchemaResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12~\n" +
+	"\x16GetConnectionSchemaMap\x12,.mgmt.v1alpha1.GetConnectionSchemaMapRequest\x1a-.mgmt.v1alpha1.GetConnectionSchemaMapResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12\x81\x01\n" +
+	"\x17GetConnectionSchemaMaps\x12-.mgmt.v1alpha1.GetConnectionSchemaMapsRequest\x1a..mgmt.v1alpha1.GetConnectionSchemaMapsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12\x93\x01\n" +
+	"\x1dGetConnectionTableConstraints\x123.mgmt.v1alpha1.GetConnectionTableConstraintsRequest\x1a4.mgmt.v1alpha1.GetConnectionTableConstraintsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12\x8d\x01\n" +
+	"\x1bGetConnectionInitStatements\x121.mgmt.v1alpha1.GetConnectionInitStatementsRequest\x1a2.mgmt.v1alpha1.GetConnectionInitStatementsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12r\n" +
+	"\x12GetAiGeneratedData\x12(.mgmt.v1alpha1.GetAiGeneratedDataRequest\x1a).mgmt.v1alpha1.GetAiGeneratedDataResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x05\x12o\n" +
+	"\x10GetTableRowCount\x12&.mgmt.v1alpha1.GetTableRowCountRequest\x1a'.mgmt.v1alpha1.GetTableRowCountResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12\x81\x01\n" +
+	"\x16GetAllSchemasAndTables\x12,.mgmt.v1alpha1.GetAllSchemasAndTablesRequest\x1a-.mgmt.v1alpha1.GetAllSchemasAndTablesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12\x8a\x01\n" +
+	"\x19DetectPiiInConnectionData\x12/.mgmt.v1alpha1.DetectPiiInConnectionDataRequest\x1a0.mgmt.v1alpha1.DetectPiiInConnectionDataResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12~\n" +
+	"\x15GetColumnSampleValues\x12+.mgmt.v1alpha1.GetColumnSampleValuesRequest\x1a,.mgmt.v1alpha1.GetColumnSampleValuesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12\x87\x01\n" +
+	"\x18GetJavascriptDraftPrompt\x12..mgmt.v1alpha1.GetJavascriptDraftPromptRequest\x1a/.mgmt.v1alpha1.GetJavascriptDraftPromptResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01\x12\x87\x01\n" +
+	"\x18PreviewColumnTransformer\x12..mgmt.v1alpha1.PreviewColumnTransformerRequest\x1a/.mgmt.v1alpha1.PreviewColumnTransformerResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x05\x90\x02\x01B\xd4\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x13ConnectionDataProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -4439,6 +4458,7 @@ func file_mgmt_v1alpha1_connection_data_proto_init() {
 	if File_mgmt_v1alpha1_connection_data_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_transformer_proto_init()
 	file_mgmt_v1alpha1_connection_data_proto_msgTypes[3].OneofWrappers = []any{
 		(*AwsS3StreamConfig_JobId)(nil),

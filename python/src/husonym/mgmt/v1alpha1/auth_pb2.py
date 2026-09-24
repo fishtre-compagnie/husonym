@@ -23,9 +23,10 @@ _sym_db = _symbol_database.Default()
 
 
 from buf.validate import validate_pb2 as buf_dot_validate_dot_validate__pb2
+from mgmt.v1alpha1 import permission_pb2 as mgmt_dot_v1alpha1_dot_permission__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18mgmt/v1alpha1/auth.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\"Z\n\x0fLoginCliRequest\x12\x1b\n\x04\x63ode\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x04\x63ode\x12*\n\x0credirect_uri\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0bredirectUri\"Q\n\x10LoginCliResponse\x12=\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\x0b\x32\x1a.mgmt.v1alpha1.AccessTokenR\x0b\x61\x63\x63\x65ssToken\"\x16\n\x14GetAuthStatusRequest\"6\n\x15GetAuthStatusResponse\x12\x1d\n\nis_enabled\x18\x01 \x01(\x08R\tisEnabled\"L\n\x1cGetAccountLoginMethodRequest\x12,\n\x0c\x61\x63\x63ount_slug\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x64R\x0b\x61\x63\x63ountSlug\"T\n\x1dGetAccountLoginMethodResponse\x12\x16\n\x06issuer\x18\x01 \x01(\tR\x06issuer\x12\x1b\n\tclient_id\x18\x02 \x01(\tR\x08\x63lientId\"\xed\x01\n\x0b\x41\x63\x63\x65ssToken\x12!\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\tR\x0b\x61\x63\x63\x65ssToken\x12(\n\rrefresh_token\x18\x02 \x01(\tH\x00R\x0crefreshToken\x88\x01\x01\x12\x1d\n\nexpires_in\x18\x03 \x01(\x03R\texpiresIn\x12\x14\n\x05scope\x18\x04 \x01(\tR\x05scope\x12\x1e\n\x08id_token\x18\x05 \x01(\tH\x01R\x07idToken\x88\x01\x01\x12\x1d\n\ntoken_type\x18\x06 \x01(\tR\ttokenTypeB\x10\n\x0e_refresh_tokenB\x0b\n\t_id_token\"\x82\x01\n\x16GetAuthorizeUrlRequest\x12\x1d\n\x05state\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05state\x12*\n\x0credirect_uri\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0bredirectUri\x12\x1d\n\x05scope\x18\x03 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05scope\"+\n\x17GetAuthorizeUrlResponse\x12\x10\n\x03url\x18\x01 \x01(\tR\x03url\"A\n\x11RefreshCliRequest\x12,\n\rrefresh_token\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0crefreshToken\"S\n\x12RefreshCliResponse\x12=\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\x0b\x32\x1a.mgmt.v1alpha1.AccessTokenR\x0b\x61\x63\x63\x65ssToken\"\x13\n\x11\x43heckTokenRequest\"\x14\n\x12\x43heckTokenResponse2\xc7\x04\n\x0b\x41uthService\x12M\n\x08LoginCli\x12\x1e.mgmt.v1alpha1.LoginCliRequest\x1a\x1f.mgmt.v1alpha1.LoginCliResponse\"\x00\x12S\n\nRefreshCli\x12 .mgmt.v1alpha1.RefreshCliRequest\x1a!.mgmt.v1alpha1.RefreshCliResponse\"\x00\x12S\n\nCheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x00\x12\x65\n\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\x03\x90\x02\x01\x12w\n\x15GetAccountLoginMethod\x12+.mgmt.v1alpha1.GetAccountLoginMethodRequest\x1a,.mgmt.v1alpha1.GetAccountLoginMethodResponse\"\x03\x90\x02\x01\x12_\n\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\x03\x90\x02\x01\x42\xca\x01\n\x11\x63om.mgmt.v1alpha1B\tAuthProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18mgmt/v1alpha1/auth.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1emgmt/v1alpha1/permission.proto\"Z\n\x0fLoginCliRequest\x12\x1b\n\x04\x63ode\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x04\x63ode\x12*\n\x0credirect_uri\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0bredirectUri\"Q\n\x10LoginCliResponse\x12=\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\x0b\x32\x1a.mgmt.v1alpha1.AccessTokenR\x0b\x61\x63\x63\x65ssToken\"\x16\n\x14GetAuthStatusRequest\"6\n\x15GetAuthStatusResponse\x12\x1d\n\nis_enabled\x18\x01 \x01(\x08R\tisEnabled\"L\n\x1cGetAccountLoginMethodRequest\x12,\n\x0c\x61\x63\x63ount_slug\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x64R\x0b\x61\x63\x63ountSlug\"T\n\x1dGetAccountLoginMethodResponse\x12\x16\n\x06issuer\x18\x01 \x01(\tR\x06issuer\x12\x1b\n\tclient_id\x18\x02 \x01(\tR\x08\x63lientId\"\xed\x01\n\x0b\x41\x63\x63\x65ssToken\x12!\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\tR\x0b\x61\x63\x63\x65ssToken\x12(\n\rrefresh_token\x18\x02 \x01(\tH\x00R\x0crefreshToken\x88\x01\x01\x12\x1d\n\nexpires_in\x18\x03 \x01(\x03R\texpiresIn\x12\x14\n\x05scope\x18\x04 \x01(\tR\x05scope\x12\x1e\n\x08id_token\x18\x05 \x01(\tH\x01R\x07idToken\x88\x01\x01\x12\x1d\n\ntoken_type\x18\x06 \x01(\tR\ttokenTypeB\x10\n\x0e_refresh_tokenB\x0b\n\t_id_token\"\x82\x01\n\x16GetAuthorizeUrlRequest\x12\x1d\n\x05state\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05state\x12*\n\x0credirect_uri\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0bredirectUri\x12\x1d\n\x05scope\x18\x03 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x05scope\"+\n\x17GetAuthorizeUrlResponse\x12\x10\n\x03url\x18\x01 \x01(\tR\x03url\"A\n\x11RefreshCliRequest\x12,\n\rrefresh_token\x18\x01 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x0crefreshToken\"S\n\x12RefreshCliResponse\x12=\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\x0b\x32\x1a.mgmt.v1alpha1.AccessTokenR\x0b\x61\x63\x63\x65ssToken\"\x13\n\x11\x43heckTokenRequest\"\x14\n\x12\x43heckTokenResponse2\xeb\x04\n\x0b\x41uthService\x12S\n\x08LoginCli\x12\x1e.mgmt.v1alpha1.LoginCliRequest\x1a\x1f.mgmt.v1alpha1.LoginCliResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12Y\n\nRefreshCli\x12 .mgmt.v1alpha1.RefreshCliRequest\x1a!.mgmt.v1alpha1.RefreshCliResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12Y\n\nCheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12k\n\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\t\x90\x02\x01\x92\xb5\x18\x02\x10\x01\x12}\n\x15GetAccountLoginMethod\x12+.mgmt.v1alpha1.GetAccountLoginMethodRequest\x1a,.mgmt.v1alpha1.GetAccountLoginMethodResponse\"\t\x90\x02\x01\x92\xb5\x18\x02\x10\x01\x12\x65\n\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\t\x90\x02\x01\x92\xb5\x18\x02\x10\x01\x42\xca\x01\n\x11\x63om.mgmt.v1alpha1B\tAuthProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -47,38 +48,44 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_GETAUTHORIZEURLREQUEST'].fields_by_name['scope']._serialized_options = b'\272H\004r\002\020\001'
   _globals['_REFRESHCLIREQUEST'].fields_by_name['refresh_token']._loaded_options = None
   _globals['_REFRESHCLIREQUEST'].fields_by_name['refresh_token']._serialized_options = b'\272H\004r\002\020\001'
+  _globals['_AUTHSERVICE'].methods_by_name['LoginCli']._loaded_options = None
+  _globals['_AUTHSERVICE'].methods_by_name['LoginCli']._serialized_options = b'\222\265\030\002\020\001'
+  _globals['_AUTHSERVICE'].methods_by_name['RefreshCli']._loaded_options = None
+  _globals['_AUTHSERVICE'].methods_by_name['RefreshCli']._serialized_options = b'\222\265\030\002\020\001'
+  _globals['_AUTHSERVICE'].methods_by_name['CheckToken']._loaded_options = None
+  _globals['_AUTHSERVICE'].methods_by_name['CheckToken']._serialized_options = b'\222\265\030\002\020\001'
   _globals['_AUTHSERVICE'].methods_by_name['GetAuthorizeUrl']._loaded_options = None
-  _globals['_AUTHSERVICE'].methods_by_name['GetAuthorizeUrl']._serialized_options = b'\220\002\001'
+  _globals['_AUTHSERVICE'].methods_by_name['GetAuthorizeUrl']._serialized_options = b'\220\002\001\222\265\030\002\020\001'
   _globals['_AUTHSERVICE'].methods_by_name['GetAccountLoginMethod']._loaded_options = None
-  _globals['_AUTHSERVICE'].methods_by_name['GetAccountLoginMethod']._serialized_options = b'\220\002\001'
+  _globals['_AUTHSERVICE'].methods_by_name['GetAccountLoginMethod']._serialized_options = b'\220\002\001\222\265\030\002\020\001'
   _globals['_AUTHSERVICE'].methods_by_name['GetAuthStatus']._loaded_options = None
-  _globals['_AUTHSERVICE'].methods_by_name['GetAuthStatus']._serialized_options = b'\220\002\001'
-  _globals['_LOGINCLIREQUEST']._serialized_start=72
-  _globals['_LOGINCLIREQUEST']._serialized_end=162
-  _globals['_LOGINCLIRESPONSE']._serialized_start=164
-  _globals['_LOGINCLIRESPONSE']._serialized_end=245
-  _globals['_GETAUTHSTATUSREQUEST']._serialized_start=247
-  _globals['_GETAUTHSTATUSREQUEST']._serialized_end=269
-  _globals['_GETAUTHSTATUSRESPONSE']._serialized_start=271
-  _globals['_GETAUTHSTATUSRESPONSE']._serialized_end=325
-  _globals['_GETACCOUNTLOGINMETHODREQUEST']._serialized_start=327
-  _globals['_GETACCOUNTLOGINMETHODREQUEST']._serialized_end=403
-  _globals['_GETACCOUNTLOGINMETHODRESPONSE']._serialized_start=405
-  _globals['_GETACCOUNTLOGINMETHODRESPONSE']._serialized_end=489
-  _globals['_ACCESSTOKEN']._serialized_start=492
-  _globals['_ACCESSTOKEN']._serialized_end=729
-  _globals['_GETAUTHORIZEURLREQUEST']._serialized_start=732
-  _globals['_GETAUTHORIZEURLREQUEST']._serialized_end=862
-  _globals['_GETAUTHORIZEURLRESPONSE']._serialized_start=864
-  _globals['_GETAUTHORIZEURLRESPONSE']._serialized_end=907
-  _globals['_REFRESHCLIREQUEST']._serialized_start=909
-  _globals['_REFRESHCLIREQUEST']._serialized_end=974
-  _globals['_REFRESHCLIRESPONSE']._serialized_start=976
-  _globals['_REFRESHCLIRESPONSE']._serialized_end=1059
-  _globals['_CHECKTOKENREQUEST']._serialized_start=1061
-  _globals['_CHECKTOKENREQUEST']._serialized_end=1080
-  _globals['_CHECKTOKENRESPONSE']._serialized_start=1082
-  _globals['_CHECKTOKENRESPONSE']._serialized_end=1102
-  _globals['_AUTHSERVICE']._serialized_start=1105
-  _globals['_AUTHSERVICE']._serialized_end=1688
+  _globals['_AUTHSERVICE'].methods_by_name['GetAuthStatus']._serialized_options = b'\220\002\001\222\265\030\002\020\001'
+  _globals['_LOGINCLIREQUEST']._serialized_start=104
+  _globals['_LOGINCLIREQUEST']._serialized_end=194
+  _globals['_LOGINCLIRESPONSE']._serialized_start=196
+  _globals['_LOGINCLIRESPONSE']._serialized_end=277
+  _globals['_GETAUTHSTATUSREQUEST']._serialized_start=279
+  _globals['_GETAUTHSTATUSREQUEST']._serialized_end=301
+  _globals['_GETAUTHSTATUSRESPONSE']._serialized_start=303
+  _globals['_GETAUTHSTATUSRESPONSE']._serialized_end=357
+  _globals['_GETACCOUNTLOGINMETHODREQUEST']._serialized_start=359
+  _globals['_GETACCOUNTLOGINMETHODREQUEST']._serialized_end=435
+  _globals['_GETACCOUNTLOGINMETHODRESPONSE']._serialized_start=437
+  _globals['_GETACCOUNTLOGINMETHODRESPONSE']._serialized_end=521
+  _globals['_ACCESSTOKEN']._serialized_start=524
+  _globals['_ACCESSTOKEN']._serialized_end=761
+  _globals['_GETAUTHORIZEURLREQUEST']._serialized_start=764
+  _globals['_GETAUTHORIZEURLREQUEST']._serialized_end=894
+  _globals['_GETAUTHORIZEURLRESPONSE']._serialized_start=896
+  _globals['_GETAUTHORIZEURLRESPONSE']._serialized_end=939
+  _globals['_REFRESHCLIREQUEST']._serialized_start=941
+  _globals['_REFRESHCLIREQUEST']._serialized_end=1006
+  _globals['_REFRESHCLIRESPONSE']._serialized_start=1008
+  _globals['_REFRESHCLIRESPONSE']._serialized_end=1091
+  _globals['_CHECKTOKENREQUEST']._serialized_start=1093
+  _globals['_CHECKTOKENREQUEST']._serialized_end=1112
+  _globals['_CHECKTOKENRESPONSE']._serialized_start=1114
+  _globals['_CHECKTOKENRESPONSE']._serialized_end=1134
+  _globals['_AUTHSERVICE']._serialized_start=1137
+  _globals['_AUTHSERVICE']._serialized_end=1756
 # @@protoc_insertion_point(module_scope)

@@ -3489,7 +3489,7 @@ var File_mgmt_v1alpha1_user_account_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\n" +
-	" mgmt/v1alpha1/user_account.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x10\n" +
+	" mgmt/v1alpha1/user_account.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x10\n" +
 	"\x0eGetUserRequest\"*\n" +
 	"\x0fGetUserResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x10\n" +
@@ -3729,35 +3729,67 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x12ACCOUNT_ROLE_ADMIN\x10\x01\x12\x1e\n" +
 	"\x1aACCOUNT_ROLE_JOB_DEVELOPER\x10\x02\x12\x1b\n" +
 	"\x17ACCOUNT_ROLE_JOB_VIEWER\x10\x03\x12\x1d\n" +
-	"\x19ACCOUNT_ROLE_JOB_EXECUTOR\x10\x042\xd0\x18\n" +
-	"\x12UserAccountService\x12M\n" +
-	"\aGetUser\x12\x1d.mgmt.v1alpha1.GetUserRequest\x1a\x1e.mgmt.v1alpha1.GetUserResponse\"\x03\x90\x02\x01\x12J\n" +
-	"\aSetUser\x12\x1d.mgmt.v1alpha1.SetUserRequest\x1a\x1e.mgmt.v1alpha1.SetUserResponse\"\x00\x12e\n" +
-	"\x0fGetUserAccounts\x12%.mgmt.v1alpha1.GetUserAccountsRequest\x1a&.mgmt.v1alpha1.GetUserAccountsResponse\"\x03\x90\x02\x01\x12k\n" +
-	"\x12SetPersonalAccount\x12(.mgmt.v1alpha1.SetPersonalAccountRequest\x1a).mgmt.v1alpha1.SetPersonalAccountResponse\"\x00\x12\x89\x01\n" +
-	"\x1cConvertPersonalToTeamAccount\x122.mgmt.v1alpha1.ConvertPersonalToTeamAccountRequest\x1a3.mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse\"\x00\x12h\n" +
-	"\x11CreateTeamAccount\x12'.mgmt.v1alpha1.CreateTeamAccountRequest\x1a(.mgmt.v1alpha1.CreateTeamAccountResponse\"\x00\x12b\n" +
-	"\x0fIsUserInAccount\x12%.mgmt.v1alpha1.IsUserInAccountRequest\x1a&.mgmt.v1alpha1.IsUserInAccountResponse\"\x00\x12\x80\x01\n" +
-	"\x18GetAccountTemporalConfig\x12..mgmt.v1alpha1.GetAccountTemporalConfigRequest\x1a/.mgmt.v1alpha1.GetAccountTemporalConfigResponse\"\x03\x90\x02\x01\x12}\n" +
-	"\x18SetAccountTemporalConfig\x12..mgmt.v1alpha1.SetAccountTemporalConfigRequest\x1a/.mgmt.v1alpha1.SetAccountTemporalConfigResponse\"\x00\x12w\n" +
-	"\x15GetTeamAccountMembers\x12+.mgmt.v1alpha1.GetTeamAccountMembersRequest\x1a,.mgmt.v1alpha1.GetTeamAccountMembersResponse\"\x03\x90\x02\x01\x12z\n" +
-	"\x17RemoveTeamAccountMember\x12-.mgmt.v1alpha1.RemoveTeamAccountMemberRequest\x1a..mgmt.v1alpha1.RemoveTeamAccountMemberResponse\"\x00\x12z\n" +
-	"\x17InviteUserToTeamAccount\x12-.mgmt.v1alpha1.InviteUserToTeamAccountRequest\x1a..mgmt.v1alpha1.InviteUserToTeamAccountResponse\"\x00\x12w\n" +
-	"\x15GetTeamAccountInvites\x12+.mgmt.v1alpha1.GetTeamAccountInvitesRequest\x1a,.mgmt.v1alpha1.GetTeamAccountInvitesResponse\"\x03\x90\x02\x01\x12z\n" +
-	"\x17RemoveTeamAccountInvite\x12-.mgmt.v1alpha1.RemoveTeamAccountInviteRequest\x1a..mgmt.v1alpha1.RemoveTeamAccountInviteResponse\"\x00\x12z\n" +
-	"\x17AcceptTeamAccountInvite\x12-.mgmt.v1alpha1.AcceptTeamAccountInviteRequest\x1a..mgmt.v1alpha1.AcceptTeamAccountInviteResponse\"\x00\x12t\n" +
-	"\x14GetSystemInformation\x12*.mgmt.v1alpha1.GetSystemInformationRequest\x1a+.mgmt.v1alpha1.GetSystemInformationResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
-	"\x1aGetAccountOnboardingConfig\x120.mgmt.v1alpha1.GetAccountOnboardingConfigRequest\x1a1.mgmt.v1alpha1.GetAccountOnboardingConfigResponse\"\x03\x90\x02\x01\x12\x83\x01\n" +
-	"\x1aSetAccountOnboardingConfig\x120.mgmt.v1alpha1.SetAccountOnboardingConfigRequest\x1a1.mgmt.v1alpha1.SetAccountOnboardingConfigResponse\"\x00\x12h\n" +
-	"\x10GetAccountStatus\x12&.mgmt.v1alpha1.GetAccountStatusRequest\x1a'.mgmt.v1alpha1.GetAccountStatusResponse\"\x03\x90\x02\x01\x12t\n" +
-	"\x14IsAccountStatusValid\x12*.mgmt.v1alpha1.IsAccountStatusValidRequest\x1a+.mgmt.v1alpha1.IsAccountStatusValidResponse\"\x03\x90\x02\x01\x12\x98\x01\n" +
-	" GetAccountBillingCheckoutSession\x126.mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest\x1a7.mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse\"\x03\x90\x02\x01\x12\x92\x01\n" +
-	"\x1eGetAccountBillingPortalSession\x124.mgmt.v1alpha1.GetAccountBillingPortalSessionRequest\x1a5.mgmt.v1alpha1.GetAccountBillingPortalSessionResponse\"\x03\x90\x02\x01\x12n\n" +
-	"\x12GetBillingAccounts\x12(.mgmt.v1alpha1.GetBillingAccountsRequest\x1a).mgmt.v1alpha1.GetBillingAccountsResponse\"\x03\x90\x02\x01\x12q\n" +
-	"\x14SetBillingMeterEvent\x12*.mgmt.v1alpha1.SetBillingMeterEventRequest\x1a+.mgmt.v1alpha1.SetBillingMeterEventResponse\"\x00\x12V\n" +
-	"\vSetUserRole\x12!.mgmt.v1alpha1.SetUserRoleRequest\x1a\".mgmt.v1alpha1.SetUserRoleResponse\"\x00\x12\\\n" +
-	"\rHasPermission\x12#.mgmt.v1alpha1.HasPermissionRequest\x1a$.mgmt.v1alpha1.HasPermissionResponse\"\x00\x12_\n" +
-	"\x0eHasPermissions\x12$.mgmt.v1alpha1.HasPermissionsRequest\x1a%.mgmt.v1alpha1.HasPermissionsResponse\"\x00B\xd1\x01\n" +
+	"\x19ACCOUNT_ROLE_JOB_EXECUTOR\x10\x042\x8e\x1a\n" +
+	"\x12UserAccountService\x12S\n" +
+	"\aGetUser\x12\x1d.mgmt.v1alpha1.GetUserRequest\x1a\x1e.mgmt.v1alpha1.GetUserResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12Q\n" +
+	"\aSetUser\x12\x1d.mgmt.v1alpha1.SetUserRequest\x1a\x1e.mgmt.v1alpha1.SetUserResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12k\n" +
+	"\x0fGetUserAccounts\x12%.mgmt.v1alpha1.GetUserAccountsRequest\x1a&.mgmt.v1alpha1.GetUserAccountsResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12r\n" +
+	"\x12SetPersonalAccount\x12(.mgmt.v1alpha1.SetPersonalAccountRequest\x1a).mgmt.v1alpha1.SetPersonalAccountResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x03\x12\x90\x01\n" +
+	"\x1cConvertPersonalToTeamAccount\x122.mgmt.v1alpha1.ConvertPersonalToTeamAccountRequest\x1a3.mgmt.v1alpha1.ConvertPersonalToTeamAccountResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12o\n" +
+	"\x11CreateTeamAccount\x12'.mgmt.v1alpha1.CreateTeamAccountRequest\x1a(.mgmt.v1alpha1.CreateTeamAccountResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x03\x12h\n" +
+	"\x0fIsUserInAccount\x12%.mgmt.v1alpha1.IsUserInAccountRequest\x1a&.mgmt.v1alpha1.IsUserInAccountResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x87\x01\n" +
+	"\x18GetAccountTemporalConfig\x12..mgmt.v1alpha1.GetAccountTemporalConfigRequest\x1a/.mgmt.v1alpha1.GetAccountTemporalConfigResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12\x84\x01\n" +
+	"\x18SetAccountTemporalConfig\x12..mgmt.v1alpha1.SetAccountTemporalConfigRequest\x1a/.mgmt.v1alpha1.SetAccountTemporalConfigResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12~\n" +
+	"\x15GetTeamAccountMembers\x12+.mgmt.v1alpha1.GetTeamAccountMembersRequest\x1a,.mgmt.v1alpha1.GetTeamAccountMembersResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12\x81\x01\n" +
+	"\x17RemoveTeamAccountMember\x12-.mgmt.v1alpha1.RemoveTeamAccountMemberRequest\x1a..mgmt.v1alpha1.RemoveTeamAccountMemberResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12\x81\x01\n" +
+	"\x17InviteUserToTeamAccount\x12-.mgmt.v1alpha1.InviteUserToTeamAccountRequest\x1a..mgmt.v1alpha1.InviteUserToTeamAccountResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12~\n" +
+	"\x15GetTeamAccountInvites\x12+.mgmt.v1alpha1.GetTeamAccountInvitesRequest\x1a,.mgmt.v1alpha1.GetTeamAccountInvitesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12\x81\x01\n" +
+	"\x17RemoveTeamAccountInvite\x12-.mgmt.v1alpha1.RemoveTeamAccountInviteRequest\x1a..mgmt.v1alpha1.RemoveTeamAccountInviteResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12\x81\x01\n" +
+	"\x17AcceptTeamAccountInvite\x12-.mgmt.v1alpha1.AcceptTeamAccountInviteRequest\x1a..mgmt.v1alpha1.AcceptTeamAccountInviteResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12z\n" +
+	"\x14GetSystemInformation\x12*.mgmt.v1alpha1.GetSystemInformationRequest\x1a+.mgmt.v1alpha1.GetSystemInformationResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12\x8d\x01\n" +
+	"\x1aGetAccountOnboardingConfig\x120.mgmt.v1alpha1.GetAccountOnboardingConfigRequest\x1a1.mgmt.v1alpha1.GetAccountOnboardingConfigResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12\x8a\x01\n" +
+	"\x1aSetAccountOnboardingConfig\x120.mgmt.v1alpha1.SetAccountOnboardingConfigRequest\x1a1.mgmt.v1alpha1.SetAccountOnboardingConfigResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12o\n" +
+	"\x10GetAccountStatus\x12&.mgmt.v1alpha1.GetAccountStatusRequest\x1a'.mgmt.v1alpha1.GetAccountStatusResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12{\n" +
+	"\x14IsAccountStatusValid\x12*.mgmt.v1alpha1.IsAccountStatusValidRequest\x1a+.mgmt.v1alpha1.IsAccountStatusValidResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12\x9f\x01\n" +
+	" GetAccountBillingCheckoutSession\x126.mgmt.v1alpha1.GetAccountBillingCheckoutSessionRequest\x1a7.mgmt.v1alpha1.GetAccountBillingCheckoutSessionResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x02\x90\x02\x01\x12\x99\x01\n" +
+	"\x1eGetAccountBillingPortalSession\x124.mgmt.v1alpha1.GetAccountBillingPortalSessionRequest\x1a5.mgmt.v1alpha1.GetAccountBillingPortalSessionResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x02\x90\x02\x01\x12u\n" +
+	"\x12GetBillingAccounts\x12(.mgmt.v1alpha1.GetBillingAccountsRequest\x1a).mgmt.v1alpha1.GetBillingAccountsResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x02\x90\x02\x01\x12x\n" +
+	"\x14SetBillingMeterEvent\x12*.mgmt.v1alpha1.SetBillingMeterEventRequest\x1a+.mgmt.v1alpha1.SetBillingMeterEventResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12]\n" +
+	"\vSetUserRole\x12!.mgmt.v1alpha1.SetUserRoleRequest\x1a\".mgmt.v1alpha1.SetUserRoleResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12c\n" +
+	"\rHasPermission\x12#.mgmt.v1alpha1.HasPermissionRequest\x1a$.mgmt.v1alpha1.HasPermissionResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x01\x12f\n" +
+	"\x0eHasPermissions\x12$.mgmt.v1alpha1.HasPermissionsRequest\x1a%.mgmt.v1alpha1.HasPermissionsResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x01B\xd1\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x10UserAccountProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -3941,6 +3973,7 @@ func file_mgmt_v1alpha1_user_account_proto_init() {
 	if File_mgmt_v1alpha1_user_account_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_user_account_proto_msgTypes[7].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_user_account_proto_msgTypes[8].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_user_account_proto_msgTypes[19].OneofWrappers = []any{}

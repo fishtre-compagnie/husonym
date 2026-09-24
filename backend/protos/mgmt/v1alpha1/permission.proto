@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mgmt.v1alpha1;
+
+import "google/protobuf/descriptor.proto";
+
+// A permission a caller can be granted: one action on one kind of entity, as the RBAC names
+// them. An API key's scope is a list of these, and can only narrow what the key may do.
+enum Permission {
+  PERMISSION_UNSPECIFIED = 0;
+  PERMISSION_ACCOUNT_VIEW = 1;
+  PERMISSION_ACCOUNT_EDIT = 2;
+  PERMISSION_ACCOUNT_CREATE = 3;
+  PERMISSION_ACCOUNT_DELETE = 4;
+  PERMISSION_CONNECTION_VIEW = 5;
+  // Seeing a connection's secrets in clear. Without it, they come back masked.
+  PERMISSION_CONNECTION_VIEW_SENSITIVE = 6;
+  PERMISSION_CONNECTION_CREATE = 7;
+  PERMISSION_CONNECTION_EDIT = 8;
+  PERMISSION_CONNECTION_DELETE = 9;
+  PERMISSION_JOB_VIEW = 10;
+  PERMISSION_JOB_CREATE = 11;
+  PERMISSION_JOB_EDIT = 12;
+  // Running a job, which writes to a real destination.
+  PERMISSION_JOB_EXECUTE = 13;
+  PERMISSION_JOB_DELETE = 14;
+}
+
+// What a scoped API key must be granted to call a procedure.
+message ProcedurePermissions {
+  // The key needs every one of these.
+  repeated Permission all_of = 1;
+  // The procedure needs no permission: it tells the caller about itself, or about the
+  // deployment, and holds nothing a scope restricts. Set only when that is true — a
+  // procedure with neither this nor a permission is refused to every scoped key.
+  bool none = 2;
+}
+
+extend google.protobuf.MethodOptions {
+  // Declares what a scoped API key must be granted to call a procedure.
+  //
+  // Every procedure carries it: a test refuses one that does not, so that a new procedure is
+  // a decision about who may call it rather than an opening nobody chose. The procedure's own
+  // checks still run; this one only lets a key's scope narrow them.
+  ProcedurePermissions requires = 50002;
+}

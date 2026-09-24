@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/permission.proto";
 import "mgmt/v1alpha1/secret.proto";
 
 // A setting of an account: a value that varies by account, part of which may be a secret,
@@ -182,11 +183,18 @@ message GetAccountConsistencyKeyResponse {
 service AccountSettingService {
   // Retrieves the settings of an account, without their secrets.
   rpc GetAccountSettings(GetAccountSettingsRequest) returns (GetAccountSettingsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Writes a setting of an account, replacing the one it holds of that kind.
-  rpc SetAccountSetting(SetAccountSettingRequest) returns (SetAccountSettingResponse) {}
+  rpc SetAccountSetting(SetAccountSettingRequest) returns (SetAccountSettingResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Tries a setting without writing it, and returns what it found.
   //
@@ -195,6 +203,9 @@ service AccountSettingService {
   // under, and reads the keys -- so a provider is refused with a reason instead of
   // locking an account out after it is saved.
   rpc TestAccountSetting(TestAccountSettingRequest) returns (TestAccountSettingResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -203,5 +214,9 @@ service AccountSettingService {
   //
   // For the worker of a run: it already reads the passwords of the databases it
   // synchronizes, so the key of the account it runs for adds no surface.
-  rpc GetAccountConsistencyKey(GetAccountConsistencyKeyRequest) returns (GetAccountConsistencyKeyResponse) {}
+  rpc GetAccountConsistencyKey(GetAccountConsistencyKeyRequest) returns (GetAccountConsistencyKeyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 }

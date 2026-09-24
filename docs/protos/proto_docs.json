@@ -1,6 +1,156 @@
 {
   "files": [
     {
+      "name": "mgmt/v1alpha1/permission.proto",
+      "description": "",
+      "package": "mgmt.v1alpha1",
+      "hasEnums": true,
+      "hasExtensions": true,
+      "hasMessages": true,
+      "hasServices": false,
+      "enums": [
+        {
+          "name": "Permission",
+          "longName": "Permission",
+          "fullName": "mgmt.v1alpha1.Permission",
+          "description": "A permission a caller can be granted: one action on one kind of entity, as the RBAC names\nthem. An API key's scope is a list of these, and can only narrow what the key may do.",
+          "values": [
+            {
+              "name": "PERMISSION_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_ACCOUNT_VIEW",
+              "number": "1",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_ACCOUNT_EDIT",
+              "number": "2",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_ACCOUNT_CREATE",
+              "number": "3",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_ACCOUNT_DELETE",
+              "number": "4",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_CONNECTION_VIEW",
+              "number": "5",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_CONNECTION_VIEW_SENSITIVE",
+              "number": "6",
+              "description": "Seeing a connection's secrets in clear. Without it, they come back masked."
+            },
+            {
+              "name": "PERMISSION_CONNECTION_CREATE",
+              "number": "7",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_CONNECTION_EDIT",
+              "number": "8",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_CONNECTION_DELETE",
+              "number": "9",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_JOB_VIEW",
+              "number": "10",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_JOB_CREATE",
+              "number": "11",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_JOB_EDIT",
+              "number": "12",
+              "description": ""
+            },
+            {
+              "name": "PERMISSION_JOB_EXECUTE",
+              "number": "13",
+              "description": "Running a job, which writes to a real destination."
+            },
+            {
+              "name": "PERMISSION_JOB_DELETE",
+              "number": "14",
+              "description": ""
+            }
+          ]
+        }
+      ],
+      "extensions": [
+        {
+          "name": "requires",
+          "longName": ".google.protobuf.MethodOptions.requires",
+          "fullName": ".google.protobuf.MethodOptions.requires",
+          "description": "Declares what a scoped API key must be granted to call a procedure.\n\nEvery procedure carries it: a test refuses one that does not, so that a new procedure is\na decision about who may call it rather than an opening nobody chose. The procedure's own\nchecks still run; this one only lets a key's scope narrow them.",
+          "label": "",
+          "type": "ProcedurePermissions",
+          "longType": "ProcedurePermissions",
+          "fullType": "mgmt.v1alpha1.ProcedurePermissions",
+          "number": 50002,
+          "defaultValue": "",
+          "containingType": "MethodOptions",
+          "containingLongType": ".google.protobuf.MethodOptions",
+          "containingFullType": "google.protobuf.MethodOptions"
+        }
+      ],
+      "messages": [
+        {
+          "name": "ProcedurePermissions",
+          "longName": "ProcedurePermissions",
+          "fullName": "mgmt.v1alpha1.ProcedurePermissions",
+          "description": "What a scoped API key must be granted to call a procedure.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "all_of",
+              "description": "The key needs every one of these.",
+              "label": "repeated",
+              "type": "Permission",
+              "longType": "Permission",
+              "fullType": "mgmt.v1alpha1.Permission",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "none",
+              "description": "The procedure needs no permission: it tells the caller about itself, or about the\ndeployment, and holds nothing a scope restricts. Set only when that is true — a\nprocedure with neither this nor a permission is refused to every scoped key.",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        }
+      ],
+      "services": []
+    },
+    {
       "name": "mgmt/v1alpha1/account_hook.proto",
       "description": "",
       "package": "mgmt.v1alpha1",
@@ -6099,6 +6249,18 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
+            },
+            {
+              "name": "permissions",
+              "description": "What the key may do. A key can do nothing its permissions do not name.",
+              "label": "repeated",
+              "type": "Permission",
+              "longType": "Permission",
+              "fullType": "mgmt.v1alpha1.Permission",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
@@ -6143,6 +6305,18 @@
               "type": "Timestamp",
               "longType": "google.protobuf.Timestamp",
               "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "permissions",
+              "description": "What the key may do. At least one permission, and none the caller does not hold itself.",
+              "label": "repeated",
+              "type": "Permission",
+              "longType": "Permission",
+              "fullType": "mgmt.v1alpha1.Permission",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",

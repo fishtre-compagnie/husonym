@@ -14,9 +14,9 @@ SELECT * from husonym_api.account_api_keys WHERE key_value = $1;
 
 -- name: CreateAccountApiKey :one
 INSERT INTO husonym_api.account_api_keys (
-  key_name, key_value, account_id, expires_at, created_by_id, updated_by_id, user_id
+  key_name, key_value, account_id, expires_at, created_by_id, updated_by_id, user_id, permissions
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7
+  $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 

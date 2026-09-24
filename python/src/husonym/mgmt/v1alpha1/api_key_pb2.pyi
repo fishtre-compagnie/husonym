@@ -2,6 +2,7 @@ import datetime
 
 from buf.validate import validate_pb2 as _validate_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from mgmt.v1alpha1 import permission_pb2 as _permission_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -11,14 +12,16 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class CreateAccountApiKeyRequest(_message.Message):
-    __slots__ = ("account_id", "name", "expires_at")
+    __slots__ = ("account_id", "name", "expires_at", "permissions")
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
+    PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     account_id: str
     name: str
     expires_at: _timestamp_pb2.Timestamp
-    def __init__(self, account_id: _Optional[str] = ..., name: _Optional[str] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    permissions: _containers.RepeatedScalarFieldContainer[_permission_pb2.Permission]
+    def __init__(self, account_id: _Optional[str] = ..., name: _Optional[str] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., permissions: _Optional[_Iterable[_Union[_permission_pb2.Permission, str]]] = ...) -> None: ...
 
 class CreateAccountApiKeyResponse(_message.Message):
     __slots__ = ("api_key",)
@@ -27,7 +30,7 @@ class CreateAccountApiKeyResponse(_message.Message):
     def __init__(self, api_key: _Optional[_Union[AccountApiKey, _Mapping]] = ...) -> None: ...
 
 class AccountApiKey(_message.Message):
-    __slots__ = ("id", "name", "account_id", "created_by_id", "created_at", "updated_by_id", "updated_at", "key_value", "user_id", "expires_at")
+    __slots__ = ("id", "name", "account_id", "created_by_id", "created_at", "updated_by_id", "updated_at", "key_value", "user_id", "expires_at", "permissions")
     ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
@@ -38,6 +41,7 @@ class AccountApiKey(_message.Message):
     KEY_VALUE_FIELD_NUMBER: _ClassVar[int]
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
+    PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
     id: str
     name: str
     account_id: str
@@ -48,7 +52,8 @@ class AccountApiKey(_message.Message):
     key_value: str
     user_id: str
     expires_at: _timestamp_pb2.Timestamp
-    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., account_id: _Optional[str] = ..., created_by_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_by_id: _Optional[str] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., key_value: _Optional[str] = ..., user_id: _Optional[str] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    permissions: _containers.RepeatedScalarFieldContainer[_permission_pb2.Permission]
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., account_id: _Optional[str] = ..., created_by_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_by_id: _Optional[str] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., key_value: _Optional[str] = ..., user_id: _Optional[str] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., permissions: _Optional[_Iterable[_Union[_permission_pb2.Permission, str]]] = ...) -> None: ...
 
 class GetAccountApiKeysRequest(_message.Message):
     __slots__ = ("account_id",)

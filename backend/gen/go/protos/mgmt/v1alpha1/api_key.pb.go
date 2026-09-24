@@ -30,7 +30,9 @@ type CreateAccountApiKeyRequest struct {
 	// The friendly name of the API key
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Validate between now and one year: now < x < 365 days
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// What the key may do. At least one permission, and none the caller does not hold itself.
+	Permissions   []Permission `protobuf:"varint,4,rep,packed,name=permissions,proto3,enum=mgmt.v1alpha1.Permission" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -82,6 +84,13 @@ func (x *CreateAccountApiKeyRequest) GetName() string {
 func (x *CreateAccountApiKeyRequest) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *CreateAccountApiKeyRequest) GetPermissions() []Permission {
+	if x != nil {
+		return x.Permissions
 	}
 	return nil
 }
@@ -152,7 +161,9 @@ type AccountApiKey struct {
 	// The unique identifier of the user that the API key belongs to (Each API Key is associated with its own user record to identify what the API key does in the system)
 	UserId string `protobuf:"bytes,9,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// The timestamp of what the API key expires and will not longer be usable.
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// What the key may do. A key can do nothing its permissions do not name.
+	Permissions   []Permission `protobuf:"varint,11,rep,packed,name=permissions,proto3,enum=mgmt.v1alpha1.Permission" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -253,6 +264,13 @@ func (x *AccountApiKey) GetUserId() string {
 func (x *AccountApiKey) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *AccountApiKey) GetPermissions() []Permission {
+	if x != nil {
+		return x.Permissions
 	}
 	return nil
 }
@@ -621,15 +639,16 @@ var File_mgmt_v1alpha1_api_key_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_api_key_proto_rawDesc = "" +
 	"\n" +
-	"\x1bmgmt/v1alpha1/api_key.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc3\x01\n" +
+	"\x1bmgmt/v1alpha1/api_key.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x95\x02\n" +
 	"\x1aCreateAccountApiKeyRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12-\n" +
 	"\x04name\x18\x02 \x01(\tB\x19\xbaH\x16r\x142\x12^[a-z0-9-]{3,100}$R\x04name\x12M\n" +
 	"\n" +
-	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaH\x0f\xc8\x01\x01\xb2\x01\tJ\x05\b\x80\xe7\x84\x0f@\x01R\texpiresAt\"T\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaH\x0f\xc8\x01\x01\xb2\x01\tJ\x05\b\x80\xe7\x84\x0f@\x01R\texpiresAt\x12P\n" +
+	"\vpermissions\x18\x04 \x03(\x0e2\x19.mgmt.v1alpha1.PermissionB\x13\xbaH\x10\x92\x01\r\b\x01\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\vpermissions\"T\n" +
 	"\x1bCreateAccountApiKeyResponse\x125\n" +
-	"\aapi_key\x18\x01 \x01(\v2\x1c.mgmt.v1alpha1.AccountApiKeyR\x06apiKey\"\x94\x03\n" +
+	"\aapi_key\x18\x01 \x01(\v2\x1c.mgmt.v1alpha1.AccountApiKeyR\x06apiKey\"\xd1\x03\n" +
 	"\rAccountApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
@@ -645,7 +664,8 @@ const file_mgmt_v1alpha1_api_key_proto_rawDesc = "" +
 	"\auser_id\x18\t \x01(\tR\x06userId\x129\n" +
 	"\n" +
 	"expires_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtB\f\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12;\n" +
+	"\vpermissions\x18\v \x03(\x0e2\x19.mgmt.v1alpha1.PermissionR\vpermissionsB\f\n" +
 	"\n" +
 	"_key_value\"C\n" +
 	"\x18GetAccountApiKeysRequest\x12'\n" +
@@ -665,13 +685,20 @@ const file_mgmt_v1alpha1_api_key_proto_rawDesc = "" +
 	"\aapi_key\x18\x01 \x01(\v2\x1c.mgmt.v1alpha1.AccountApiKeyR\x06apiKey\"6\n" +
 	"\x1aDeleteAccountApiKeyRequest\x12\x18\n" +
 	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\x02id\"\x1d\n" +
-	"\x1bDeleteAccountApiKeyResponse2\xc2\x04\n" +
-	"\rApiKeyService\x12k\n" +
-	"\x11GetAccountApiKeys\x12'.mgmt.v1alpha1.GetAccountApiKeysRequest\x1a(.mgmt.v1alpha1.GetAccountApiKeysResponse\"\x03\x90\x02\x01\x12h\n" +
-	"\x10GetAccountApiKey\x12&.mgmt.v1alpha1.GetAccountApiKeyRequest\x1a'.mgmt.v1alpha1.GetAccountApiKeyResponse\"\x03\x90\x02\x01\x12n\n" +
-	"\x13CreateAccountApiKey\x12).mgmt.v1alpha1.CreateAccountApiKeyRequest\x1a*.mgmt.v1alpha1.CreateAccountApiKeyResponse\"\x00\x12z\n" +
-	"\x17RegenerateAccountApiKey\x12-.mgmt.v1alpha1.RegenerateAccountApiKeyRequest\x1a..mgmt.v1alpha1.RegenerateAccountApiKeyResponse\"\x00\x12n\n" +
-	"\x13DeleteAccountApiKey\x12).mgmt.v1alpha1.DeleteAccountApiKeyRequest\x1a*.mgmt.v1alpha1.DeleteAccountApiKeyResponse\"\x00B\xcc\x01\n" +
+	"\x1bDeleteAccountApiKeyResponse2\xe6\x04\n" +
+	"\rApiKeyService\x12r\n" +
+	"\x11GetAccountApiKeys\x12'.mgmt.v1alpha1.GetAccountApiKeysRequest\x1a(.mgmt.v1alpha1.GetAccountApiKeysResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12o\n" +
+	"\x10GetAccountApiKey\x12&.mgmt.v1alpha1.GetAccountApiKeyRequest\x1a'.mgmt.v1alpha1.GetAccountApiKeyResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\x01\x90\x02\x01\x12u\n" +
+	"\x13CreateAccountApiKey\x12).mgmt.v1alpha1.CreateAccountApiKeyRequest\x1a*.mgmt.v1alpha1.CreateAccountApiKeyResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12\x81\x01\n" +
+	"\x17RegenerateAccountApiKey\x12-.mgmt.v1alpha1.RegenerateAccountApiKeyRequest\x1a..mgmt.v1alpha1.RegenerateAccountApiKeyResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02\x12u\n" +
+	"\x13DeleteAccountApiKey\x12).mgmt.v1alpha1.DeleteAccountApiKeyRequest\x1a*.mgmt.v1alpha1.DeleteAccountApiKeyResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x02B\xcc\x01\n" +
 	"\x11com.mgmt.v1alpha1B\vApiKeyProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -700,32 +727,35 @@ var file_mgmt_v1alpha1_api_key_proto_goTypes = []any{
 	(*DeleteAccountApiKeyRequest)(nil),      // 9: mgmt.v1alpha1.DeleteAccountApiKeyRequest
 	(*DeleteAccountApiKeyResponse)(nil),     // 10: mgmt.v1alpha1.DeleteAccountApiKeyResponse
 	(*timestamppb.Timestamp)(nil),           // 11: google.protobuf.Timestamp
+	(Permission)(0),                         // 12: mgmt.v1alpha1.Permission
 }
 var file_mgmt_v1alpha1_api_key_proto_depIdxs = []int32{
 	11, // 0: mgmt.v1alpha1.CreateAccountApiKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	2,  // 1: mgmt.v1alpha1.CreateAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
-	11, // 2: mgmt.v1alpha1.AccountApiKey.created_at:type_name -> google.protobuf.Timestamp
-	11, // 3: mgmt.v1alpha1.AccountApiKey.updated_at:type_name -> google.protobuf.Timestamp
-	11, // 4: mgmt.v1alpha1.AccountApiKey.expires_at:type_name -> google.protobuf.Timestamp
-	2,  // 5: mgmt.v1alpha1.GetAccountApiKeysResponse.api_keys:type_name -> mgmt.v1alpha1.AccountApiKey
-	2,  // 6: mgmt.v1alpha1.GetAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
-	11, // 7: mgmt.v1alpha1.RegenerateAccountApiKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	2,  // 8: mgmt.v1alpha1.RegenerateAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
-	3,  // 9: mgmt.v1alpha1.ApiKeyService.GetAccountApiKeys:input_type -> mgmt.v1alpha1.GetAccountApiKeysRequest
-	5,  // 10: mgmt.v1alpha1.ApiKeyService.GetAccountApiKey:input_type -> mgmt.v1alpha1.GetAccountApiKeyRequest
-	0,  // 11: mgmt.v1alpha1.ApiKeyService.CreateAccountApiKey:input_type -> mgmt.v1alpha1.CreateAccountApiKeyRequest
-	7,  // 12: mgmt.v1alpha1.ApiKeyService.RegenerateAccountApiKey:input_type -> mgmt.v1alpha1.RegenerateAccountApiKeyRequest
-	9,  // 13: mgmt.v1alpha1.ApiKeyService.DeleteAccountApiKey:input_type -> mgmt.v1alpha1.DeleteAccountApiKeyRequest
-	4,  // 14: mgmt.v1alpha1.ApiKeyService.GetAccountApiKeys:output_type -> mgmt.v1alpha1.GetAccountApiKeysResponse
-	6,  // 15: mgmt.v1alpha1.ApiKeyService.GetAccountApiKey:output_type -> mgmt.v1alpha1.GetAccountApiKeyResponse
-	1,  // 16: mgmt.v1alpha1.ApiKeyService.CreateAccountApiKey:output_type -> mgmt.v1alpha1.CreateAccountApiKeyResponse
-	8,  // 17: mgmt.v1alpha1.ApiKeyService.RegenerateAccountApiKey:output_type -> mgmt.v1alpha1.RegenerateAccountApiKeyResponse
-	10, // 18: mgmt.v1alpha1.ApiKeyService.DeleteAccountApiKey:output_type -> mgmt.v1alpha1.DeleteAccountApiKeyResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	12, // 1: mgmt.v1alpha1.CreateAccountApiKeyRequest.permissions:type_name -> mgmt.v1alpha1.Permission
+	2,  // 2: mgmt.v1alpha1.CreateAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
+	11, // 3: mgmt.v1alpha1.AccountApiKey.created_at:type_name -> google.protobuf.Timestamp
+	11, // 4: mgmt.v1alpha1.AccountApiKey.updated_at:type_name -> google.protobuf.Timestamp
+	11, // 5: mgmt.v1alpha1.AccountApiKey.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 6: mgmt.v1alpha1.AccountApiKey.permissions:type_name -> mgmt.v1alpha1.Permission
+	2,  // 7: mgmt.v1alpha1.GetAccountApiKeysResponse.api_keys:type_name -> mgmt.v1alpha1.AccountApiKey
+	2,  // 8: mgmt.v1alpha1.GetAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
+	11, // 9: mgmt.v1alpha1.RegenerateAccountApiKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 10: mgmt.v1alpha1.RegenerateAccountApiKeyResponse.api_key:type_name -> mgmt.v1alpha1.AccountApiKey
+	3,  // 11: mgmt.v1alpha1.ApiKeyService.GetAccountApiKeys:input_type -> mgmt.v1alpha1.GetAccountApiKeysRequest
+	5,  // 12: mgmt.v1alpha1.ApiKeyService.GetAccountApiKey:input_type -> mgmt.v1alpha1.GetAccountApiKeyRequest
+	0,  // 13: mgmt.v1alpha1.ApiKeyService.CreateAccountApiKey:input_type -> mgmt.v1alpha1.CreateAccountApiKeyRequest
+	7,  // 14: mgmt.v1alpha1.ApiKeyService.RegenerateAccountApiKey:input_type -> mgmt.v1alpha1.RegenerateAccountApiKeyRequest
+	9,  // 15: mgmt.v1alpha1.ApiKeyService.DeleteAccountApiKey:input_type -> mgmt.v1alpha1.DeleteAccountApiKeyRequest
+	4,  // 16: mgmt.v1alpha1.ApiKeyService.GetAccountApiKeys:output_type -> mgmt.v1alpha1.GetAccountApiKeysResponse
+	6,  // 17: mgmt.v1alpha1.ApiKeyService.GetAccountApiKey:output_type -> mgmt.v1alpha1.GetAccountApiKeyResponse
+	1,  // 18: mgmt.v1alpha1.ApiKeyService.CreateAccountApiKey:output_type -> mgmt.v1alpha1.CreateAccountApiKeyResponse
+	8,  // 19: mgmt.v1alpha1.ApiKeyService.RegenerateAccountApiKey:output_type -> mgmt.v1alpha1.RegenerateAccountApiKeyResponse
+	10, // 20: mgmt.v1alpha1.ApiKeyService.DeleteAccountApiKey:output_type -> mgmt.v1alpha1.DeleteAccountApiKeyResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_mgmt_v1alpha1_api_key_proto_init() }
@@ -733,6 +763,7 @@ func file_mgmt_v1alpha1_api_key_proto_init() {
 	if File_mgmt_v1alpha1_api_key_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_api_key_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

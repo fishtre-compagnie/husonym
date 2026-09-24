@@ -5499,7 +5499,7 @@ var File_mgmt_v1alpha1_transformer_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"\n" +
-	"\x1fmgmt/v1alpha1/transformer.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x1e\n" +
+	"\x1fmgmt/v1alpha1/transformer.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\"\x1e\n" +
 	"\x1cGetSystemTransformersRequest\"e\n" +
 	"\x1dGetSystemTransformersResponse\x12D\n" +
 	"\ftransformers\x18\x01 \x03(\v2 .mgmt.v1alpha1.SystemTransformerR\ftransformers\"_\n" +
@@ -5916,20 +5916,35 @@ const file_mgmt_v1alpha1_transformer_proto_rawDesc = "" +
 	"&GENERATE_IP_ADDRESS_TYPE_V4_LINK_LOCAL\x10\x05\x12)\n" +
 	"%GENERATE_IP_ADDRESS_TYPE_V4_MULTICAST\x10\x06\x12(\n" +
 	"$GENERATE_IP_ADDRESS_TYPE_V4_LOOPBACK\x10\a\x12\x1f\n" +
-	"\x1bGENERATE_IP_ADDRESS_TYPE_V6\x10\b2\xca\f\n" +
-	"\x13TransformersService\x12w\n" +
-	"\x15GetSystemTransformers\x12+.mgmt.v1alpha1.GetSystemTransformersRequest\x1a,.mgmt.v1alpha1.GetSystemTransformersResponse\"\x03\x90\x02\x01\x12\x8c\x01\n" +
-	"\x1cGetSystemTransformerBySource\x122.mgmt.v1alpha1.GetSystemTransformerBySourceRequest\x1a3.mgmt.v1alpha1.GetSystemTransformerBySourceResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
-	"\x1aGetUserDefinedTransformers\x120.mgmt.v1alpha1.GetUserDefinedTransformersRequest\x1a1.mgmt.v1alpha1.GetUserDefinedTransformersResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
-	"\x1dGetUserDefinedTransformerById\x123.mgmt.v1alpha1.GetUserDefinedTransformerByIdRequest\x1a4.mgmt.v1alpha1.GetUserDefinedTransformerByIdResponse\"\x03\x90\x02\x01\x12\x89\x01\n" +
-	"\x1cCreateUserDefinedTransformer\x122.mgmt.v1alpha1.CreateUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.CreateUserDefinedTransformerResponse\"\x00\x12\x89\x01\n" +
-	"\x1cDeleteUserDefinedTransformer\x122.mgmt.v1alpha1.DeleteUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.DeleteUserDefinedTransformerResponse\"\x00\x12\x89\x01\n" +
-	"\x1cUpdateUserDefinedTransformer\x122.mgmt.v1alpha1.UpdateUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.UpdateUserDefinedTransformerResponse\"\x00\x12\x83\x01\n" +
-	"\x1aIsTransformerNameAvailable\x120.mgmt.v1alpha1.IsTransformerNameAvailableRequest\x1a1.mgmt.v1alpha1.IsTransformerNameAvailableResponse\"\x00\x12\x83\x01\n" +
-	"\x1aValidateUserJavascriptCode\x120.mgmt.v1alpha1.ValidateUserJavascriptCodeRequest\x1a1.mgmt.v1alpha1.ValidateUserJavascriptCodeResponse\"\x00\x12k\n" +
-	"\x12TryJavascriptRules\x12(.mgmt.v1alpha1.TryJavascriptRulesRequest\x1a).mgmt.v1alpha1.TryJavascriptRulesResponse\"\x00\x12t\n" +
-	"\x15ValidateUserRegexCode\x12+.mgmt.v1alpha1.ValidateUserRegexCodeRequest\x1a,.mgmt.v1alpha1.ValidateUserRegexCodeResponse\"\x00\x12}\n" +
-	"\x17GetTransformPiiEntities\x12-.mgmt.v1alpha1.GetTransformPiiEntitiesRequest\x1a..mgmt.v1alpha1.GetTransformPiiEntitiesResponse\"\x03\x90\x02\x01B\xd1\x01\n" +
+	"\x1bGENERATE_IP_ADDRESS_TYPE_V6\x10\b2\x9b\r\n" +
+	"\x13TransformersService\x12}\n" +
+	"\x15GetSystemTransformers\x12+.mgmt.v1alpha1.GetSystemTransformersRequest\x1a,.mgmt.v1alpha1.GetSystemTransformersResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12\x92\x01\n" +
+	"\x1cGetSystemTransformerBySource\x122.mgmt.v1alpha1.GetSystemTransformerBySourceRequest\x1a3.mgmt.v1alpha1.GetSystemTransformerBySourceResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12\x8d\x01\n" +
+	"\x1aGetUserDefinedTransformers\x120.mgmt.v1alpha1.GetUserDefinedTransformersRequest\x1a1.mgmt.v1alpha1.GetUserDefinedTransformersResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12\x96\x01\n" +
+	"\x1dGetUserDefinedTransformerById\x123.mgmt.v1alpha1.GetUserDefinedTransformerByIdRequest\x1a4.mgmt.v1alpha1.GetUserDefinedTransformerByIdResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01\x12\x90\x01\n" +
+	"\x1cCreateUserDefinedTransformer\x122.mgmt.v1alpha1.CreateUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.CreateUserDefinedTransformerResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12\x90\x01\n" +
+	"\x1cDeleteUserDefinedTransformer\x122.mgmt.v1alpha1.DeleteUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.DeleteUserDefinedTransformerResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x0e\x12\x90\x01\n" +
+	"\x1cUpdateUserDefinedTransformer\x122.mgmt.v1alpha1.UpdateUserDefinedTransformerRequest\x1a3.mgmt.v1alpha1.UpdateUserDefinedTransformerResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12\x8a\x01\n" +
+	"\x1aIsTransformerNameAvailable\x120.mgmt.v1alpha1.IsTransformerNameAvailableRequest\x1a1.mgmt.v1alpha1.IsTransformerNameAvailableResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x12\x89\x01\n" +
+	"\x1aValidateUserJavascriptCode\x120.mgmt.v1alpha1.ValidateUserJavascriptCodeRequest\x1a1.mgmt.v1alpha1.ValidateUserJavascriptCodeResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12r\n" +
+	"\x12TryJavascriptRules\x12(.mgmt.v1alpha1.TryJavascriptRulesRequest\x1a).mgmt.v1alpha1.TryJavascriptRulesResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\f\x12z\n" +
+	"\x15ValidateUserRegexCode\x12+.mgmt.v1alpha1.ValidateUserRegexCodeRequest\x1a,.mgmt.v1alpha1.ValidateUserRegexCodeResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12\x84\x01\n" +
+	"\x17GetTransformPiiEntities\x12-.mgmt.v1alpha1.GetTransformPiiEntitiesRequest\x1a..mgmt.v1alpha1.GetTransformPiiEntitiesResponse\"\n" +
+	"\x92\xb5\x18\x03\n" +
+	"\x01\n" +
+	"\x90\x02\x01B\xd1\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x10TransformerProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -6163,6 +6178,7 @@ func file_mgmt_v1alpha1_transformer_proto_init() {
 	if File_mgmt_v1alpha1_transformer_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_transformer_proto_msgTypes[18].OneofWrappers = []any{
 		(*TransformerConfig_GenerateEmailConfig)(nil),
 		(*TransformerConfig_TransformEmailConfig)(nil),

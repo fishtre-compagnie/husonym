@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 message GetUserRequest {}
 message GetUserResponse {
@@ -448,95 +449,183 @@ message HasPermissionsResponse {
 service UserAccountService {
   // Retrieves the current user.
   rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Sets the current user.
-  rpc SetUser(SetUserRequest) returns (SetUserResponse) {}
+  rpc SetUser(SetUserRequest) returns (SetUserResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Retrieves the list of accounts that the user belongs to.
   rpc GetUserAccounts(GetUserAccountsRequest) returns (GetUserAccountsResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Sets the current personal account.
-  rpc SetPersonalAccount(SetPersonalAccountRequest) returns (SetPersonalAccountResponse) {}
+  rpc SetPersonalAccount(SetPersonalAccountRequest) returns (SetPersonalAccountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_CREATE]
+    };
+  }
 
   // Convert a personal account to a team account retaining all of the jobs and connections. This will also create a new empty personal account.
-  rpc ConvertPersonalToTeamAccount(ConvertPersonalToTeamAccountRequest) returns (ConvertPersonalToTeamAccountResponse) {}
+  rpc ConvertPersonalToTeamAccount(ConvertPersonalToTeamAccountRequest) returns (ConvertPersonalToTeamAccountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Creates a new team account
-  rpc CreateTeamAccount(CreateTeamAccountRequest) returns (CreateTeamAccountResponse) {}
+  rpc CreateTeamAccount(CreateTeamAccountRequest) returns (CreateTeamAccountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_CREATE]
+    };
+  }
   // Checks if the user is in the account.
-  rpc IsUserInAccount(IsUserInAccountRequest) returns (IsUserInAccountResponse) {}
+  rpc IsUserInAccount(IsUserInAccountRequest) returns (IsUserInAccountResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
   // Retrieves the temporal config for the account.
   rpc GetAccountTemporalConfig(GetAccountTemporalConfigRequest) returns (GetAccountTemporalConfigResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Sets the temporal config for the account.
-  rpc SetAccountTemporalConfig(SetAccountTemporalConfigRequest) returns (SetAccountTemporalConfigResponse) {}
+  rpc SetAccountTemporalConfig(SetAccountTemporalConfigRequest) returns (SetAccountTemporalConfigResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Retrieves the list of members in the team account.
   rpc GetTeamAccountMembers(GetTeamAccountMembersRequest) returns (GetTeamAccountMembersResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Removes a member from the team account.
-  rpc RemoveTeamAccountMember(RemoveTeamAccountMemberRequest) returns (RemoveTeamAccountMemberResponse) {}
+  rpc RemoveTeamAccountMember(RemoveTeamAccountMemberRequest) returns (RemoveTeamAccountMemberResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Invites a user to the team account.
-  rpc InviteUserToTeamAccount(InviteUserToTeamAccountRequest) returns (InviteUserToTeamAccountResponse) {}
+  rpc InviteUserToTeamAccount(InviteUserToTeamAccountRequest) returns (InviteUserToTeamAccountResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Retrieves the list of invites for the team account.
   rpc GetTeamAccountInvites(GetTeamAccountInvitesRequest) returns (GetTeamAccountInvitesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Removes an invite from the team account.
-  rpc RemoveTeamAccountInvite(RemoveTeamAccountInviteRequest) returns (RemoveTeamAccountInviteResponse) {}
+  rpc RemoveTeamAccountInvite(RemoveTeamAccountInviteRequest) returns (RemoveTeamAccountInviteResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Accepts an invite to the team account.
-  rpc AcceptTeamAccountInvite(AcceptTeamAccountInviteRequest) returns (AcceptTeamAccountInviteResponse) {}
+  rpc AcceptTeamAccountInvite(AcceptTeamAccountInviteRequest) returns (AcceptTeamAccountInviteResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Retrieves the system information.
   rpc GetSystemInformation(GetSystemInformationRequest) returns (GetSystemInformationResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Retrieves the onboarding config for the account.
   rpc GetAccountOnboardingConfig(GetAccountOnboardingConfigRequest) returns (GetAccountOnboardingConfigResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Sets the onboarding config for the account.
-  rpc SetAccountOnboardingConfig(SetAccountOnboardingConfigRequest) returns (SetAccountOnboardingConfigResponse) {}
+  rpc SetAccountOnboardingConfig(SetAccountOnboardingConfigRequest) returns (SetAccountOnboardingConfigResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Returns different metrics on the account status for the active billing period
   rpc GetAccountStatus(GetAccountStatusRequest) returns (GetAccountStatusResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Distils the account status down to whether not it is in a valid state.
   rpc IsAccountStatusValid(IsAccountStatusValidRequest) returns (IsAccountStatusValidResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Returns a new checkout session for the account to subscribe
   rpc GetAccountBillingCheckoutSession(GetAccountBillingCheckoutSessionRequest) returns (GetAccountBillingCheckoutSessionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Returns a new billing portal session if the account has a billing customer id
   rpc GetAccountBillingPortalSession(GetAccountBillingPortalSessionRequest) returns (GetAccountBillingPortalSessionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Returns user accounts that have a billing id.
   rpc GetBillingAccounts(GetBillingAccountsRequest) returns (GetBillingAccountsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Sends a new metered event to the billing system
-  rpc SetBillingMeterEvent(SetBillingMeterEventRequest) returns (SetBillingMeterEventResponse) {}
+  rpc SetBillingMeterEvent(SetBillingMeterEventRequest) returns (SetBillingMeterEventResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Sets the users role
-  rpc SetUserRole(SetUserRoleRequest) returns (SetUserRoleResponse) {}
+  rpc SetUserRole(SetUserRoleRequest) returns (SetUserRoleResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Checks if the user has the given permission
-  rpc HasPermission(HasPermissionRequest) returns (HasPermissionResponse) {}
+  rpc HasPermission(HasPermissionRequest) returns (HasPermissionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+  }
 
   // Bulk check if a user has the given permissions
-  rpc HasPermissions(HasPermissionsRequest) returns (HasPermissionsResponse) {}
+  rpc HasPermissions(HasPermissionsRequest) returns (HasPermissionsResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+  }
 }

@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 message GetSystemTransformersRequest {}
 
@@ -691,39 +692,74 @@ message TransformUuid {}
 service TransformersService {
   // Get a list of all system transformers
   rpc GetSystemTransformers(GetSystemTransformersRequest) returns (GetSystemTransformersResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Get a system transformer by its source
   rpc GetSystemTransformerBySource(GetSystemTransformerBySourceRequest) returns (GetSystemTransformerBySourceResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Get a list of all user defined transformers
   rpc GetUserDefinedTransformers(GetUserDefinedTransformersRequest) returns (GetUserDefinedTransformersResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Get a user defined transformer by its id
   rpc GetUserDefinedTransformerById(GetUserDefinedTransformerByIdRequest) returns (GetUserDefinedTransformerByIdResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Create a user defined transformer
-  rpc CreateUserDefinedTransformer(CreateUserDefinedTransformerRequest) returns (CreateUserDefinedTransformerResponse) {}
+  rpc CreateUserDefinedTransformer(CreateUserDefinedTransformerRequest) returns (CreateUserDefinedTransformerResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Delete a user defined transformer
-  rpc DeleteUserDefinedTransformer(DeleteUserDefinedTransformerRequest) returns (DeleteUserDefinedTransformerResponse) {}
+  rpc DeleteUserDefinedTransformer(DeleteUserDefinedTransformerRequest) returns (DeleteUserDefinedTransformerResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_DELETE]
+    };
+  }
   // Update a user defined transformer
-  rpc UpdateUserDefinedTransformer(UpdateUserDefinedTransformerRequest) returns (UpdateUserDefinedTransformerResponse) {}
+  rpc UpdateUserDefinedTransformer(UpdateUserDefinedTransformerRequest) returns (UpdateUserDefinedTransformerResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Check if a transformer name is available in your account
-  rpc IsTransformerNameAvailable(IsTransformerNameAvailableRequest) returns (IsTransformerNameAvailableResponse) {}
+  rpc IsTransformerNameAvailable(IsTransformerNameAvailableRequest) returns (IsTransformerNameAvailableResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
+  }
   // Validate user provided javascript code before saving it to a user defined transformer or within a job mapping
-  rpc ValidateUserJavascriptCode(ValidateUserJavascriptCodeRequest) returns (ValidateUserJavascriptCodeResponse) {}
+  rpc ValidateUserJavascriptCode(ValidateUserJavascriptCodeRequest) returns (ValidateUserJavascriptCodeResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
   // Try JavaScript rules on a few rows, the way Athanor runs them in a job. The
   // deterministic functions (pseudo.*) derive from a key drawn for the call: their outputs
   // have the shape of a run's, never its values.
-  rpc TryJavascriptRules(TryJavascriptRulesRequest) returns (TryJavascriptRulesResponse) {}
+  rpc TryJavascriptRules(TryJavascriptRulesRequest) returns (TryJavascriptRulesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_EDIT]
+    };
+  }
   // Validate user provided regex code before saving it to a user defined transformer
-  rpc ValidateUserRegexCode(ValidateUserRegexCodeRequest) returns (ValidateUserRegexCodeResponse) {}
+  rpc ValidateUserRegexCode(ValidateUserRegexCodeRequest) returns (ValidateUserRegexCodeResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+  }
 
   // Retrieve a list of available Pii entities for use with the TransformPiiText transformer
   rpc GetTransformPiiEntities(GetTransformPiiEntitiesRequest) returns (GetTransformPiiEntitiesResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }

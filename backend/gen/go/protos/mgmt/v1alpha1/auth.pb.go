@@ -677,7 +677,7 @@ var File_mgmt_v1alpha1_auth_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x18mgmt/v1alpha1/auth.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\"Z\n" +
+	"\x18mgmt/v1alpha1/auth.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1emgmt/v1alpha1/permission.proto\"Z\n" +
 	"\x0fLoginCliRequest\x12\x1b\n" +
 	"\x04code\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04code\x12*\n" +
 	"\fredirect_uri\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vredirectUri\"Q\n" +
@@ -714,16 +714,16 @@ const file_mgmt_v1alpha1_auth_proto_rawDesc = "" +
 	"\x12RefreshCliResponse\x12=\n" +
 	"\faccess_token\x18\x01 \x01(\v2\x1a.mgmt.v1alpha1.AccessTokenR\vaccessToken\"\x13\n" +
 	"\x11CheckTokenRequest\"\x14\n" +
-	"\x12CheckTokenResponse2\xc7\x04\n" +
-	"\vAuthService\x12M\n" +
-	"\bLoginCli\x12\x1e.mgmt.v1alpha1.LoginCliRequest\x1a\x1f.mgmt.v1alpha1.LoginCliResponse\"\x00\x12S\n" +
+	"\x12CheckTokenResponse2\xeb\x04\n" +
+	"\vAuthService\x12S\n" +
+	"\bLoginCli\x12\x1e.mgmt.v1alpha1.LoginCliRequest\x1a\x1f.mgmt.v1alpha1.LoginCliResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12Y\n" +
 	"\n" +
-	"RefreshCli\x12 .mgmt.v1alpha1.RefreshCliRequest\x1a!.mgmt.v1alpha1.RefreshCliResponse\"\x00\x12S\n" +
+	"RefreshCli\x12 .mgmt.v1alpha1.RefreshCliRequest\x1a!.mgmt.v1alpha1.RefreshCliResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12Y\n" +
 	"\n" +
-	"CheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x00\x12e\n" +
-	"\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\x03\x90\x02\x01\x12w\n" +
-	"\x15GetAccountLoginMethod\x12+.mgmt.v1alpha1.GetAccountLoginMethodRequest\x1a,.mgmt.v1alpha1.GetAccountLoginMethodResponse\"\x03\x90\x02\x01\x12_\n" +
-	"\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\x03\x90\x02\x01B\xca\x01\n" +
+	"CheckToken\x12 .mgmt.v1alpha1.CheckTokenRequest\x1a!.mgmt.v1alpha1.CheckTokenResponse\"\x06\x92\xb5\x18\x02\x10\x01\x12k\n" +
+	"\x0fGetAuthorizeUrl\x12%.mgmt.v1alpha1.GetAuthorizeUrlRequest\x1a&.mgmt.v1alpha1.GetAuthorizeUrlResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12}\n" +
+	"\x15GetAccountLoginMethod\x12+.mgmt.v1alpha1.GetAccountLoginMethodRequest\x1a,.mgmt.v1alpha1.GetAccountLoginMethodResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01\x12e\n" +
+	"\rGetAuthStatus\x12#.mgmt.v1alpha1.GetAuthStatusRequest\x1a$.mgmt.v1alpha1.GetAuthStatusResponse\"\t\x92\xb5\x18\x02\x10\x01\x90\x02\x01B\xca\x01\n" +
 	"\x11com.mgmt.v1alpha1B\tAuthProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -781,6 +781,7 @@ func file_mgmt_v1alpha1_auth_proto_init() {
 	if File_mgmt_v1alpha1_auth_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_auth_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

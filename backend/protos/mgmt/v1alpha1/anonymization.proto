@@ -3,6 +3,7 @@ syntax = "proto3";
 package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "mgmt/v1alpha1/permission.proto";
 import "mgmt/v1alpha1/transformer.proto";
 
 message AnonymizeManyRequest {
@@ -79,7 +80,15 @@ message AnonymizeSingleResponse {
 // Service that transactionally anonymizes data, regardless of the connection type.
 service AnonymizationService {
   // Anonymizes many JSON strings by applying specified transformation mappings. This is the bulk version of the `AnonymizeSingle` method.
-  rpc AnonymizeMany(AnonymizeManyRequest) returns (AnonymizeManyResponse) {}
+  rpc AnonymizeMany(AnonymizeManyRequest) returns (AnonymizeManyResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+  }
   // Anonymizes a single JSON strings by applying specified transformation mappings.
-  rpc AnonymizeSingle(AnonymizeSingleRequest) returns (AnonymizeSingleResponse) {}
+  rpc AnonymizeSingle(AnonymizeSingleRequest) returns (AnonymizeSingleResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+  }
 }

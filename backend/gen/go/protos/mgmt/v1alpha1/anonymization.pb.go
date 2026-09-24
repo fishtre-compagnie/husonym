@@ -450,7 +450,7 @@ var File_mgmt_v1alpha1_anonymization_proto protoreflect.FileDescriptor
 
 const file_mgmt_v1alpha1_anonymization_proto_rawDesc = "" +
 	"\n" +
-	"!mgmt/v1alpha1/anonymization.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"\xe9\x02\n" +
+	"!mgmt/v1alpha1/anonymization.proto\x12\rmgmt.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1fmgmt/v1alpha1/transformer.proto\"\xe9\x02\n" +
 	"\x14AnonymizeManyRequest\x12/\n" +
 	"\n" +
 	"input_data\x18\x01 \x03(\tB\x10\xbaH\r\x92\x01\n" +
@@ -488,10 +488,12 @@ const file_mgmt_v1alpha1_anonymization_proto_rawDesc = "" +
 	"\x15_default_transformers\":\n" +
 	"\x17AnonymizeSingleResponse\x12\x1f\n" +
 	"\voutput_data\x18\x01 \x01(\tR\n" +
-	"outputData2\xd8\x01\n" +
-	"\x14AnonymizationService\x12\\\n" +
-	"\rAnonymizeMany\x12#.mgmt.v1alpha1.AnonymizeManyRequest\x1a$.mgmt.v1alpha1.AnonymizeManyResponse\"\x00\x12b\n" +
-	"\x0fAnonymizeSingle\x12%.mgmt.v1alpha1.AnonymizeSingleRequest\x1a&.mgmt.v1alpha1.AnonymizeSingleResponse\"\x00B\xd3\x01\n" +
+	"outputData2\xe6\x01\n" +
+	"\x14AnonymizationService\x12c\n" +
+	"\rAnonymizeMany\x12#.mgmt.v1alpha1.AnonymizeManyRequest\x1a$.mgmt.v1alpha1.AnonymizeManyResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x01\x12i\n" +
+	"\x0fAnonymizeSingle\x12%.mgmt.v1alpha1.AnonymizeSingleRequest\x1a&.mgmt.v1alpha1.AnonymizeSingleResponse\"\a\x92\xb5\x18\x03\n" +
+	"\x01\x01B\xd3\x01\n" +
 	"\x11com.mgmt.v1alpha1B\x12AnonymizationProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3"
 
 var (
@@ -543,6 +545,7 @@ func file_mgmt_v1alpha1_anonymization_proto_init() {
 	if File_mgmt_v1alpha1_anonymization_proto != nil {
 		return
 	}
+	file_mgmt_v1alpha1_permission_proto_init()
 	file_mgmt_v1alpha1_transformer_proto_init()
 	file_mgmt_v1alpha1_anonymization_proto_msgTypes[0].OneofWrappers = []any{}
 	file_mgmt_v1alpha1_anonymization_proto_msgTypes[5].OneofWrappers = []any{}

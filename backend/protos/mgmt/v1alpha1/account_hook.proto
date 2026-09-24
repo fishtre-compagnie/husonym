@@ -4,6 +4,7 @@ package mgmt.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+import "mgmt/v1alpha1/permission.proto";
 
 message AccountHook {
   // The unique identifier of this hook.
@@ -249,40 +250,92 @@ message SendSlackMessageResponse {}
 service AccountHookService {
   // Retrieves all account hooks.
   rpc GetAccountHooks(GetAccountHooksRequest) returns (GetAccountHooksResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Retrieves a specific account hook.
   rpc GetAccountHook(GetAccountHookRequest) returns (GetAccountHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Creates a new account hook.
-  rpc CreateAccountHook(CreateAccountHookRequest) returns (CreateAccountHookResponse) {}
+  rpc CreateAccountHook(CreateAccountHookRequest) returns (CreateAccountHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Updates an existing account hook.
-  rpc UpdateAccountHook(UpdateAccountHookRequest) returns (UpdateAccountHookResponse) {}
+  rpc UpdateAccountHook(UpdateAccountHookRequest) returns (UpdateAccountHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_ACCOUNT_VIEW,
+        PERMISSION_ACCOUNT_EDIT
+      ]
+    };
+  }
   // Deletes an account hook.
-  rpc DeleteAccountHook(DeleteAccountHookRequest) returns (DeleteAccountHookResponse) {}
+  rpc DeleteAccountHook(DeleteAccountHookRequest) returns (DeleteAccountHookResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
   // Checks if an account hook name is available.
-  rpc IsAccountHookNameAvailable(IsAccountHookNameAvailableRequest) returns (IsAccountHookNameAvailableResponse) {}
+  rpc IsAccountHookNameAvailable(IsAccountHookNameAvailableRequest) returns (IsAccountHookNameAvailableResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
+  }
   // Enables or disables an account hook.
-  rpc SetAccountHookEnabled(SetAccountHookEnabledRequest) returns (SetAccountHookEnabledResponse) {}
+  rpc SetAccountHookEnabled(SetAccountHookEnabledRequest) returns (SetAccountHookEnabledResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_ACCOUNT_VIEW,
+        PERMISSION_ACCOUNT_EDIT
+      ]
+    };
+  }
   // Retrieves all active account hooks for a specific event.
   rpc GetActiveAccountHooksByEvent(GetActiveAccountHooksByEventRequest) returns (GetActiveAccountHooksByEventResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Retrieves the Slack connection url that allows a user to connect their Slack workspace to Husonym.
   rpc GetSlackConnectionUrl(GetSlackConnectionUrlRequest) returns (GetSlackConnectionUrlResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Handles the Slack OAuth callback.
-  rpc HandleSlackOAuthCallback(HandleSlackOAuthCallbackRequest) returns (HandleSlackOAuthCallbackResponse) {}
+  rpc HandleSlackOAuthCallback(HandleSlackOAuthCallbackRequest) returns (HandleSlackOAuthCallbackResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
 
   // Tests the Slack connection by using the stored access token to initiate an auth test api call to slack.
   rpc TestSlackConnection(TestSlackConnectionRequest) returns (TestSlackConnectionResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_VIEW]
+    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // For sending slack messages from the worker.
-  rpc SendSlackMessage(SendSlackMessageRequest) returns (SendSlackMessageResponse) {}
+  rpc SendSlackMessage(SendSlackMessageRequest) returns (SendSlackMessageResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [
+        PERMISSION_ACCOUNT_VIEW,
+        PERMISSION_ACCOUNT_EDIT
+      ]
+    };
+  }
 }

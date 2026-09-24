@@ -8538,6 +8538,14 @@ components:
           description: >-
             The timestamp of what the API key expires and will not longer be
             usable.
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.Permission'
+          title: permissions
+          description: >-
+            What the key may do. A key can do nothing its permissions do not
+            name.
       title: AccountApiKey
       additionalProperties: false
     mgmt.v1alpha1.CreateAccountApiKeyRequest:
@@ -8561,6 +8569,16 @@ components:
             Validate between now and one year: now < x < 365 days
             timestamp.gt_now = true
             timestamp.within = 8760h0m0s
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.Permission'
+          title: permissions
+          minItems: 1
+          uniqueItems: true
+          description: >-
+            What the key may do. At least one permission, and none the caller
+            does not hold itself.
       title: CreateAccountApiKeyRequest
       required:
         - expiresAt
@@ -8630,6 +8648,29 @@ components:
           description: The list of API keys for the account.
       title: GetAccountApiKeysResponse
       additionalProperties: false
+    mgmt.v1alpha1.Permission:
+      type: string
+      title: Permission
+      enum:
+        - PERMISSION_UNSPECIFIED
+        - PERMISSION_ACCOUNT_VIEW
+        - PERMISSION_ACCOUNT_EDIT
+        - PERMISSION_ACCOUNT_CREATE
+        - PERMISSION_ACCOUNT_DELETE
+        - PERMISSION_CONNECTION_VIEW
+        - PERMISSION_CONNECTION_VIEW_SENSITIVE
+        - PERMISSION_CONNECTION_CREATE
+        - PERMISSION_CONNECTION_EDIT
+        - PERMISSION_CONNECTION_DELETE
+        - PERMISSION_JOB_VIEW
+        - PERMISSION_JOB_CREATE
+        - PERMISSION_JOB_EDIT
+        - PERMISSION_JOB_EXECUTE
+        - PERMISSION_JOB_DELETE
+      description: >-
+        A permission a caller can be granted: one action on one kind of entity,
+        as the RBAC names
+         them. An API key's scope is a list of these, and can only narrow what the key may do.
     mgmt.v1alpha1.RegenerateAccountApiKeyRequest:
       type: object
       properties:
@@ -16021,6 +16062,26 @@ components:
       enum:
         - RANGED_METRIC_NAME_UNSPECIFIED
         - RANGED_METRIC_NAME_INPUT_RECEIVED
+    mgmt.v1alpha1.ProcedurePermissions:
+      type: object
+      properties:
+        allOf:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.Permission'
+          title: all_of
+          description: The key needs every one of these.
+        none:
+          type: boolean
+          title: none
+          description: >-
+            The procedure needs no permission: it tells the caller about itself,
+            or about the
+             deployment, and holds nothing a scope restricts. Set only when that is true — a
+             procedure with neither this nor a permission is refused to every scoped key.
+      title: ProcedurePermissions
+      additionalProperties: false
+      description: What a scoped API key must be granted to call a procedure.
     mgmt.v1alpha1.CreateUserDefinedTransformerRequest:
       type: object
       properties:
