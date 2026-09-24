@@ -260,20 +260,27 @@ export function SchemaTable(props: Props): ReactElement {
     );
   };
 
-  // Verdict CONFIRMÉ par le contenu (clé de contrôle vérifiée) : appliqué comme
-  // celui du nom. Un verdict statistique ou ambigu ne l'est jamais. Ceux qui
-  // viennent du nom seul l'ont déjà été, par applyNamePiiSuggestions.
+  // Détection de contenu CONFIRMÉE (clé de contrôle vérifiée) : appliquée comme
+  // celle par nom, à toute colonne encore en passthrough — y compris une colonne
+  // que son nom a reconnue et qu'on a remise en passthrough. Une détection
+  // statistique ou ambiguë ne l'est jamais. C'est la détection brute qui décide
+  // ici, pas le verdict affiché : le comportement reste celui d'avant le verdict.
   const applyContentPiiSuggestions = (
-    verdicts: Record<string, ColumnPiiVerdict>
-  ): number =>
-    applyPiiSuggestions((colKey) => {
-      const v = verdicts[`${colKey.schema}.${colKey.table}.${colKey.column}`];
+    detections: ColumnPiiDetection[]
+  ): number => {
+    const byColumn = new Map(
+      detections.map((d) => [`${d.schema}.${d.table}.${d.column}`, d])
+    );
+    return applyPiiSuggestions((colKey) => {
+      const d = byColumn.get(
+        `${colKey.schema}.${colKey.table}.${colKey.column}`
+      );
       // UNSPECIFIED : pas de générateur adapté (IBAN, SIRET, date...).
-      return v?.piiConfidence === PiiConfidence.CONFIRMED &&
-        v.piiDetectionMethod !== PiiDetectionMethod.COLUMN_NAME
-        ? v.suggestedTransformerSource
+      return d?.piiConfidence === PiiConfidence.CONFIRMED
+        ? d.suggestedTransformerSource
         : TransformerSource.UNSPECIFIED;
     });
+  };
 
   // Tables déjà analysées, et connexion à laquelle ces détections se rapportent.
   // Sans ce suivi, le scan automatique ne couvrait que les tables présentes au
@@ -371,7 +378,7 @@ export function SchemaTable(props: Props): ReactElement {
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
       // sur un modèle statistique ou un format ambigu ne le sont jamais : elles
       // s'affichent en badge orange pour que l'utilisateur lève le doute.
-      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(next) : 0;
+      const applied = applyPiiOnLoad ? applyContentPiiSuggestions(found) : 0;
 
       const confirmed = found.filter(
         (d) => d.piiConfidence === PiiConfidence.CONFIRMED
