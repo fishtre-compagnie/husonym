@@ -380,7 +380,7 @@ func (a *mysqlAccount) current(ctx context.Context) (string, error) {
 	return a.name, a.err
 }
 
-// quoted is the account as a statement names it, 'user'@'host'; a placeholder when it
+// quoted is the account as a statement names it, `user`@`host`; a placeholder when it
 // cannot be read, which a remedy still reads right with.
 func (a *mysqlAccount) quoted(ctx context.Context) string {
 	current, err := a.current(ctx)
@@ -390,9 +390,9 @@ func (a *mysqlAccount) quoted(ctx context.Context) string {
 	// A user name may hold an @, a host may not: the account splits at the last one.
 	at := strings.LastIndex(current, "@")
 	if at < 0 {
-		return quoteMysqlString(current)
+		return quoteMysqlAccountName(current)
 	}
-	return quoteMysqlString(current[:at]) + "@" + quoteMysqlString(current[at+1:])
+	return quoteMysqlAccountName(current[:at]) + "@" + quoteMysqlAccountName(current[at+1:])
 }
 
 // mysqlGrantOnTable is the statement granting privileges on a table.
@@ -400,8 +400,10 @@ func mysqlGrantOnTable(privileges []string, t *Table, account string) string {
 	return fmt.Sprintf("GRANT %s ON %s TO %s;", strings.Join(privileges, ", "), t.mysqlName(), account)
 }
 
-// quoteMysqlString quotes a name the way an account is written in a statement. A quote is
-// doubled, which holds whether the server takes backslashes as escapes or not.
-func quoteMysqlString(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+// quoteMysqlAccountName quotes the user or the host of an account as an identifier. Quoted
+// as a string, a backslash would escape what follows unless the server runs with
+// NO_BACKSLASH_ESCAPES, and no single spelling reads the same in both modes; between
+// backticks it is an ordinary character, and only a backtick is doubled.
+func quoteMysqlAccountName(s string) string {
+	return "`" + strings.ReplaceAll(s, "`", "``") + "`"
 }
