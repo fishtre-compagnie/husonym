@@ -45,10 +45,13 @@ A client is usually configured with the command and its environment, for instanc
 | `describe_connection` | Describes one connection: host, port, database, user, tunnel, TLS and options, with every secret masked.                     |
 | `introspect_schema`   | Lists the tables of a SQL connection, or gives the columns, types and keys of up to 20 of them, foreign keys in both directions. |
 | `suggest_mappings`    | Says which columns hold personal data and which transformer fits each, with how sure the detection is and why. Key columns are flagged. |
+| `preview_column`      | Shows what a transformer makes of real values of a column, and whether it collapses distinct values together. Asks the person first. |
 
 Every tool reads; none writes.
 
-Connection credentials are write-only through this server: none of its tools reads them back. No tool returns a value read from a row either: `suggest_mappings` can have the API scan a sample of a table (`scan_content`), and reports what it found as counts and labels, never the values themselves.
+Connection credentials are write-only through this server: none of its tools reads them back.
+
+Only `preview_column` returns values read from rows, and those values reach the model — and whoever serves it, unless it runs on your machine. So the server never decides alone: before the first read on a connection, it asks you through your MCP client, and your answer holds for that connection until the session ends. Decline, and nothing is read. A client that cannot ask you gets a refusal, never a read. `suggest_mappings` can also have the API scan a sample of a table (`scan_content`), but it reports what it found as counts and labels, never the values themselves.
 
 ## Environment Variables
 

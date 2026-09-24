@@ -177,15 +177,3 @@ func keyColumns(
 	}
 	return keys
 }
-
-func transformerLabel(source mgmtv1alpha1.TransformerSource) string {
-	return enumLabel(source.String(), "TRANSFORMER_SOURCE_")
-}
-
-func confidenceLabel(confidence mgmtv1alpha1.PiiConfidence) string {
-	return enumLabel(confidence.String(), "PII_CONFIDENCE_")
-}
-
-func methodLabel(method mgmtv1alpha1.PiiDetectionMethod) string {
-	return enumLabel(method.String(), "PII_DETECTION_METHOD_")
-}

@@ -16,8 +16,9 @@ import (
 
 // The MCP surface reaches the API through its readers and through nothing else. maskedconn reads
 // connections with their secrets masked, which keeps secrets write-only there
-// (plans/mcp-husonym.md §6.1); novalues reads the structure of the data and never a row. A rule
-// in prose would not hold — a Connect client is one import away — so this test holds it instead.
+// (plans/mcp-husonym.md §6.1); novalues reads the structure of the data and never a row;
+// rowvalues reads rows, and asks the person first. A rule in prose would not hold — a Connect
+// client is one import away — so this test holds it instead.
 //
 // It is an allowlist, not a denylist: a way of reading that does not exist yet is refused until
 // someone adds it here, with the reason it cannot hand back a secret.
@@ -27,6 +28,7 @@ import (
 var readers = map[string]string{
 	"maskedconn": "reads connections, and asks for every one with its secrets masked",
 	"novalues":   "reads schemas and PII detections, never a value from a row",
+	"rowvalues":  "reads values from rows, and only once the person has agreed for the connection",
 }
 
 const mcpTree = "github.com/fishtre-compagnie/husonym/cli/internal/mcp/"
@@ -35,6 +37,7 @@ var allowedImports = map[string]string{
 	"cmp":           "standard library, no I/O",
 	"context":       "standard library, no I/O",
 	"encoding/json": "standard library, no I/O",
+	"errors":        "standard library, no I/O",
 	"fmt":           "standard library, no I/O",
 	"log/slog":      "standard library, writes logs only",
 	"maps":          "standard library, no I/O",

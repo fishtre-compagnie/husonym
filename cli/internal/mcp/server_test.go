@@ -2,6 +2,7 @@ package mcp_server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -15,6 +16,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -115,7 +117,30 @@ type fakeDataService struct {
 
 	mu          sync.Mutex
 	scanned     []string
+	previews    []*mgmtv1alpha1.PreviewColumnTransformerRequest
 	scanFailure map[string]error
+}
+
+// fakeTransformersService knows one system transformer.
+type fakeTransformersService struct {
+	mgmtv1alpha1connect.UnimplementedTransformersServiceHandler
+}
+
+func (fakeTransformersService) GetSystemTransformerBySource(
+	_ context.Context,
+	req *connect.Request[mgmtv1alpha1.GetSystemTransformerBySourceRequest],
+) (*connect.Response[mgmtv1alpha1.GetSystemTransformerBySourceResponse], error) {
+	if req.Msg.GetSource() != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown transformer"))
+	}
+	return connect.NewResponse(&mgmtv1alpha1.GetSystemTransformerBySourceResponse{
+		Transformer: &mgmtv1alpha1.SystemTransformer{
+			Source: req.Msg.GetSource(),
+			Config: &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
+				GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
+			}},
+		},
+	}), nil
 }
 
 func (f *fakeDataService) GetAllSchemasAndTables(
@@ -248,6 +273,32 @@ func (f *fakeDataService) DetectPiiInConnectionData(
 	}), nil
 }
 
+func (f *fakeDataService) PreviewColumnTransformer(
+	_ context.Context,
+	req *connect.Request[mgmtv1alpha1.PreviewColumnTransformerRequest],
+) (*connect.Response[mgmtv1alpha1.PreviewColumnTransformerResponse], error) {
+	f.mu.Lock()
+	f.previews = append(f.previews, req.Msg)
+	f.mu.Unlock()
+	return connect.NewResponse(&mgmtv1alpha1.PreviewColumnTransformerResponse{
+		Values: []*mgmtv1alpha1.ColumnTransformerPreview{
+			{
+				Input:  &mgmtv1alpha1.ColumnSampleValue{Value: "jean.dupont@example.com"},
+				Output: &mgmtv1alpha1.ColumnSampleValue{Value: "kx81@anon.test"},
+			},
+			{Input: &mgmtv1alpha1.ColumnSampleValue{IsNull: true}, Output: &mgmtv1alpha1.ColumnSampleValue{IsNull: true}},
+		},
+		DistinctInputs:  1,
+		DistinctOutputs: 1,
+	}), nil
+}
+
+func (f *fakeDataService) previewRequests() []*mgmtv1alpha1.PreviewColumnTransformerRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.previews)
+}
+
 func (f *fakeDataService) scannedTables() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -262,17 +313,33 @@ func connectClient(
 	data *fakeDataService,
 ) *mcp.ClientSession {
 	t.Helper()
+	return connectClientWith(t, connections, data, nil, "")
+}
+
+// connectClientWith is connectClient with a client of the test's making, such as one that
+// answers the questions the server puts to the person, speaking a protocol revision of its
+// choosing (the latest when empty).
+func connectClientWith(
+	t *testing.T,
+	connections *fakeConnectionService,
+	data *fakeDataService,
+	clientOptions *mcp.ClientOptions,
+	protocolVersion string,
+) *mcp.ClientSession {
+	t.Helper()
 	ctx := t.Context()
 
 	mux := http.NewServeMux()
 	mux.Handle(mgmtv1alpha1connect.NewConnectionServiceHandler(connections))
 	mux.Handle(mgmtv1alpha1connect.NewConnectionDataServiceHandler(data))
+	mux.Handle(mgmtv1alpha1connect.NewTransformersServiceHandler(fakeTransformersService{}))
 	api := httptest.NewServer(mux)
 	t.Cleanup(api.Close)
 
 	server := New(Options{
 		Connections: maskedconn.New(api.Client(), api.URL),
 		Data:        novalues.New(api.Client(), api.URL),
+		Values:      rowvalues.New(api.Client(), api.URL),
 		AccountId:   accountId,
 		Version:     "test",
 	})
@@ -281,8 +348,8 @@ func connectClient(
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = serverSession.Close() })
 
-	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "test"}, nil)
-	session, err := client.Connect(ctx, clientTransport, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "test"}, clientOptions)
+	session, err := client.Connect(ctx, clientTransport, &mcp.ClientSessionOptions{ProtocolVersion: protocolVersion})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = session.Close() })
 	return session
@@ -322,6 +389,6 @@ func Test_Catalogue(t *testing.T) {
 		require.True(t, tool.Annotations.ReadOnlyHint, "%s is not read-only", tool.Name)
 	}
 	require.ElementsMatch(t, []string{
-		"describe_connection", "introspect_schema", "list_connections", "suggest_mappings",
+		"describe_connection", "introspect_schema", "list_connections", "preview_column", "suggest_mappings",
 	}, names)
 }

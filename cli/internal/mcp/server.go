@@ -2,7 +2,7 @@
 //
 // It answers for one account, with the credentials of whoever started it. What it reads, it
 // reads through the readers under this tree, never through a Connect client of its own: see
-// imports_test.go for the rule, maskedconn and novalues for why.
+// imports_test.go for the rule, and maskedconn, novalues and rowvalues for why.
 package mcp_server
 
 import (
@@ -10,6 +10,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/maskedconn"
 	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/novalues"
+	"github.com/fishtre-compagnie/husonym/cli/internal/mcp/rowvalues"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -17,6 +18,7 @@ import (
 type Options struct {
 	Connections *maskedconn.Reader
 	Data        *novalues.Reader
+	Values      *rowvalues.Reader
 	AccountId   string
 	Version     string
 	Logger      *slog.Logger
@@ -32,5 +34,6 @@ func New(opts Options) *mcp.Server {
 	addDescribeConnection(server, opts.Connections)
 	addIntrospectSchema(server, opts.Data)
 	addSuggestMappings(server, opts.Data)
+	addPreviewColumn(server, opts.Connections, opts.Data, opts.Values)
 	return server
 }

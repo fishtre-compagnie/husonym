@@ -41,13 +41,3 @@ func selectTables(asked []string, known map[string]bool) ([]string, error) {
 	}
 	return selected, nil
 }
-
-// enumLabel turns a proto enum name into the word a model reads: PII_CONFIDENCE_NEEDS_REVIEW
-// with its prefix gives needs_review. The unspecified value gives nothing.
-func enumLabel(name, prefix string) string {
-	label := strings.TrimPrefix(name, prefix)
-	if label == "UNSPECIFIED" {
-		return ""
-	}
-	return strings.ToLower(label)
-}
