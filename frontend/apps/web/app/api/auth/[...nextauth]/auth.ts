@@ -34,18 +34,18 @@ function getProviders(
       token: authConfig.tokenUrl,
 
       wellKnown: getWellKnown(authConfig.issuer),
-      // An account's provider is reached as a public client: without a secret, Auth.js
-      // would otherwise authenticate with an empty one, which providers refuse.
-      // A public client has no secret: PKCE is what binds the code to this flow, and it
-      // is required, not merely accepted.
+      // A client without a secret authenticates with none -- Auth.js would otherwise send
+      // an empty one, which providers refuse.
       ...(authConfig.clientSecret
         ? {}
-        : {
-            client: { token_endpoint_auth_method: 'none' },
-            checks: ['pkce', 'state'],
-            // Reached only over https, at public addresses (account-fetch.ts).
-            [customFetch]: accountFetch,
-          }),
+        : { client: { token_endpoint_auth_method: 'none' } }),
+      // An account's provider is a public client: PKCE is what binds the code to this
+      // flow, and it is required, not merely accepted. It is reached only over https, at
+      // public addresses (account-fetch.ts); the deployment's own provider is the
+      // operator's, and reached as configured.
+      ...(authConfig.account
+        ? { checks: ['pkce', 'state'], [customFetch]: accountFetch }
+        : {}),
     });
   }
 
@@ -173,6 +173,7 @@ function getOAuthConfig(
     userInfoUrl: accountMethod ? undefined : process.env.AUTH_USERINFO_URL,
     logoutUrl: accountMethod ? undefined : process.env.AUTH_LOGOUT_URL,
     tokenUrl: accountMethod ? undefined : process.env.AUTH_TOKEN_URL,
+    account: !!accountMethod,
   };
 }
 

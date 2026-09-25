@@ -33,8 +33,9 @@ const (
 // public https endpoint, checked at connection time for every hop (see safehttp).
 func newSafeClient(policy safehttp.Policy) *http.Client {
 	return &http.Client{
-		Timeout:   totalTimeout,
-		Transport: policy.Transport(requestTimeout),
+		Timeout: totalTimeout,
+		// A connection per request: a probe is a few requests, now and then.
+		Transport: policy.Transport(requestTimeout, false),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= maxRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxRedirects)

@@ -42,6 +42,15 @@ func Test_IsPublicAddress(t *testing.T) {
 		{"IPv4-mapped metadata", "::ffff:169.254.169.254"},
 		{"6to4 wrapping a private address", "2002:0a00:0001::"},
 		{"NAT64 wrapping metadata", "64:ff9b::a9fe:a9fe"},
+		{"this network", "0.1.2.3"},
+		{"reserved", "240.0.0.1"},
+		{"broadcast", "255.255.255.255"},
+		{"IETF protocol assignments", "192.0.0.1"},
+		{"benchmarking", "198.18.0.1"},
+		{"site-local v6", "fec0::1"},
+		{"local-use NAT64", "64:ff9b:1::1"},
+		{"IPv4-compatible loopback", "::7f00:1"},
+		{"SIIT loopback", "::ffff:0:7f00:1"},
 	}
 	for _, tc := range blocked {
 		t.Run("blocked: "+tc.name, func(t *testing.T) {
@@ -90,14 +99,14 @@ func Test_Policy_trustsTheDeploymentProvider(t *testing.T) {
 	defer server.Close()
 
 	trusted := NewPolicy(false, server.URL+"/realms/deployment")
-	client := &http.Client{Transport: trusted.Transport(time.Second)}
+	client := &http.Client{Transport: trusted.Transport(time.Second, false)}
 	resp, err := client.Get(server.URL + "/.well-known/openid-configuration")
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 
 	// The same server, not trusted: plain http is refused before anything is dialed.
 	strict := NewPolicy(false, "http://idp.deployment.internal")
-	client = &http.Client{Transport: strict.Transport(time.Second)}
+	client = &http.Client{Transport: strict.Transport(time.Second, false)}
 	_, err = client.Get(server.URL)
 	require.ErrorIs(t, err, ErrNotHTTPS)
 }
@@ -110,7 +119,7 @@ func Test_Policy_refusesPrivateAddressesAtConnectionTime(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := &http.Client{Transport: Policy{}.Transport(time.Second)}
+	client := &http.Client{Transport: Policy{}.Transport(time.Second, false)}
 	_, err := client.Get(server.URL)
 	require.ErrorIs(t, err, ErrBlockedAddress)
 }
@@ -123,7 +132,7 @@ func Test_Policy_allowPrivate(t *testing.T) {
 	defer server.Close()
 
 	policy := Policy{AllowPrivate: true}
-	client := &http.Client{Transport: policy.Transport(time.Second)}
+	client := &http.Client{Transport: policy.Transport(time.Second, false)}
 	resp, err := client.Get(server.URL)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
@@ -139,14 +148,64 @@ func Test_Policy_CheckIssuer(t *testing.T) {
 	require.ErrorIs(t, strict.CheckIssuer(ctx, "https://localhost/realms/x"), ErrBlockedAddress)
 	require.ErrorIs(t, strict.CheckIssuer(ctx, "https://169.254.169.254/"), ErrBlockedAddress)
 	require.Error(t, strict.CheckIssuer(ctx, "not a url"))
-	// The deployment's own provider is the operator's, whatever it is.
-	require.NoError(t, strict.CheckIssuer(ctx, "http://keycloak:8080/realms/deployment"))
+	// A query, fragment or credentials would steer what is fetched from the issuer.
+	for _, steered := range []string{
+		"https://93.184.216.34/metrics?",
+		"https://93.184.216.34/x?a=b",
+		"https://93.184.216.34/x#y",
+		"https://user:pass@93.184.216.34/x",
+	} {
+		require.Error(t, strict.CheckIssuer(ctx, steered), steered)
+	}
+	// An account's issuer is never trusted, not even on the deployment's own provider:
+	// another port of it least of all.
+	require.ErrorIs(t, strict.CheckIssuer(ctx, "http://keycloak:8080/realms/acme"), ErrNotHTTPS)
+	require.ErrorIs(t, strict.CheckIssuer(ctx, "http://keycloak:9000/metrics"), ErrNotHTTPS)
 	// A public literal address passes without a lookup.
 	require.NoError(t, strict.CheckIssuer(ctx, "https://93.184.216.34/realms/x"))
+	// The operator may allow private ones -- over http or https, nothing else.
+	loose := Policy{AllowPrivate: true}
+	require.NoError(t, loose.CheckIssuer(ctx, "http://keycloak:8080/realms/acme"))
+	require.ErrorIs(t, loose.CheckIssuer(ctx, "ftp://keycloak/realms/acme"), ErrNotHTTPS)
 
 	u, _ := url.Parse("http://idp.example.com")
 	require.NoError(t, Policy{AllowPrivate: true}.CheckURL(u))
 	// Only http and https, however loose the policy.
 	u, _ = url.Parse("ftp://idp.example.com")
 	require.ErrorIs(t, Policy{AllowPrivate: true}.CheckURL(u), ErrNotHTTPS)
+}
+
+// Trust is for the origin of the deployment's provider -- scheme, host and port -- and
+// only where a request starts: another port of the same host, or a redirect into the
+// trusted origin from elsewhere, is not trusted.
+func Test_Policy_trustsAnOriginWhereARequestStarts(t *testing.T) {
+	trustedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer trustedServer.Close()
+	otherPort := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer otherPort.Close()
+
+	policy := NewPolicy(false, trustedServer.URL+"/realms/deployment")
+	client := &http.Client{Transport: policy.Transport(time.Second, false)}
+
+	resp, err := client.Get(trustedServer.URL + "/x")
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	// Same host, another port: plain http refused.
+	_, err = client.Get(otherPort.URL)
+	require.ErrorIs(t, err, ErrNotHTTPS)
+
+	// A redirect into the trusted origin from another origin goes through the checked
+	// transport, whose dialer refuses the loopback address.
+	redirector := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, trustedServer.URL+"/x", http.StatusFound)
+	}))
+	defer redirector.Close()
+	redirected := &http.Client{Transport: Policy{TrustedOrigins: policy.TrustedOrigins}.Transport(time.Second, false)}
+	_, err = redirected.Get(redirector.URL)
+	require.Error(t, err)
 }

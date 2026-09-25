@@ -130,7 +130,7 @@ func (s *Service) refuseIssuerOutOfReach(
 	}
 	if err := s.cfg.IssuerPolicy.CheckIssuer(ctx, provider.OidcProvider.GetIssuer()); err != nil {
 		return husonymerrors.NewBadRequest(fmt.Sprintf(
-			"this identity provider cannot be used: %s. It must be reached over https, at an address on the internet",
+			"this identity provider cannot be used (%s): an account's provider is reached over https, at an address on the internet",
 			err,
 		))
 	}

@@ -1090,7 +1090,7 @@ func getJwtClientConfig(
 		// through the same bound as trying or saving a provider.
 		HTTPClient: &http.Client{
 			Timeout:   30 * time.Second,
-			Transport: getIssuerPolicy().Transport(10 * time.Second),
+			Transport: getIssuerPolicy().Transport(10*time.Second, true),
 		},
 	}, nil
 }

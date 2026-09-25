@@ -90,12 +90,12 @@ func (p *Probe) Run(ctx context.Context, in Input) []Check {
 	}
 
 	issuerURL, err := url.Parse(in.Issuer)
-	if err != nil || issuerURL.Host == "" || p.policy.CheckURL(issuerURL) != nil {
+	if err != nil || issuerURL.Host == "" || p.policy.CheckIssuerURL(issuerURL) != nil {
 		return append(checks, Check{
 			Check:  "issuer_is_an_https_url",
 			Level:  LevelBlocking,
-			Detail: fmt.Sprintf("%q is not an https URL", in.Issuer),
-			Remedy: "give the issuer exactly as the provider's tokens spell it, starting with https://",
+			Detail: fmt.Sprintf("%q is not an issuer this deployment may use", in.Issuer),
+			Remedy: "give the issuer exactly as the provider's tokens spell it, starting with https://, without query, fragment or credentials",
 		})
 	}
 
@@ -105,8 +105,13 @@ func (p *Probe) Run(ctx context.Context, in Input) []Check {
 	}
 
 	checks = append(checks, checkIssuerMatches(in.Issuer, doc)...)
-	checks = append(checks, checkJwksOrigin(issuerURL, doc)...)
-	checks = append(checks, p.checkKeys(ctx, doc)...)
+	originChecks := checkJwksOrigin(issuerURL, doc)
+	checks = append(checks, originChecks...)
+	// Keys published elsewhere than on the issuer are not fetched: the document would
+	// otherwise choose where this deployment sends a request.
+	if len(originChecks) == 0 {
+		checks = append(checks, p.checkKeys(ctx, doc)...)
+	}
 	checks = append(checks, checkAlgorithms(in.AcceptedAlgorithms, doc)...)
 	checks = append(checks, checkEndpoints(doc)...)
 

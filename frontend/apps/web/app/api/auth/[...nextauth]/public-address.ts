@@ -1,84 +1,90 @@
 import { isIP } from 'node:net';
 
 /**
- * Whether an address is one the internet routes to: a deny-by-default list, the same as
- * the backend's (safehttp.IsPublicAddress). IPv4 written as IPv6 is unwrapped first.
+ * Whether an address is one the internet routes to: a deny-by-default list. IPv4 written
+ * in one of IPv6's forms -- mapped, translated, NAT64, 6to4 -- is unwrapped first, or
+ * ::ffff:127.0.0.1 would walk straight past a check written for IPv4.
+ *
+ * The backend holds the same table (safehttp.IsPublicAddress); a change here is a change
+ * there.
  */
 export function isPublicAddress(address: string): boolean {
-  const v4 = toIPv4(address);
-  if (v4) {
-    const [a, b] = v4;
-    return !(
-      a === 0 || // unspecified, "this network"
-      a === 10 || // private
-      a === 127 || // loopback
-      (a === 169 && b === 254) || // link-local -- cloud metadata lives here
-      (a === 172 && b >= 16 && b <= 31) || // private
-      (a === 192 && b === 168) || // private
-      (a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
-      a >= 224 // multicast and reserved
-    );
-  }
-  const v6 = toIPv6Groups(address);
-  if (!v6) {
+  let bytes = toBytes(address);
+  if (!bytes) {
     return false;
   }
-  if (v6.every((g) => g === 0)) {
-    return false; // unspecified
+  if (bytes.length === 16) {
+    const v4 = embeddedIPv4(bytes);
+    if (v4) {
+      bytes = v4;
+    }
   }
-  if (v6.slice(0, 7).every((g) => g === 0) && v6[7] === 1) {
-    return false; // loopback
-  }
-  const first = v6[0];
-  if ((first & 0xfe00) === 0xfc00) {
-    return false; // unique local
-  }
-  if ((first & 0xffc0) === 0xfe80) {
-    return false; // link-local
-  }
-  if ((first & 0xff00) === 0xff00) {
-    return false; // multicast
-  }
-  // 2002::/16 (6to4) and 64:ff9b::/96 (NAT64) carry an IPv4 address.
-  if (first === 0x2002) {
-    return isPublicAddress(groupsToIPv4(v6[1], v6[2]));
-  }
-  if (
-    first === 0x64 &&
-    v6[1] === 0xff9b &&
-    v6.slice(2, 6).every((g) => g === 0)
-  ) {
-    return isPublicAddress(groupsToIPv4(v6[6], v6[7]));
-  }
-  return true;
+  const blocked = bytes.length === 4 ? BLOCKED_V4 : BLOCKED_V6;
+  return !blocked.some(([prefix, bits]) => matches(bytes!, prefix, bits));
 }
 
-function groupsToIPv4(high: number, low: number): string {
-  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
-}
+// The ranges that are not the public internet: this host, its networks, the cloud's
+// metadata service, and what no one routes to.
+const BLOCKED_V4: [number[], number][] = [
+  [[0, 0, 0, 0], 8], // "this network"
+  [[10, 0, 0, 0], 8], // private
+  [[100, 64, 0, 0], 10], // carrier-grade NAT, where cluster addressing ends up
+  [[127, 0, 0, 0], 8], // loopback
+  [[169, 254, 0, 0], 16], // link-local -- cloud metadata lives here
+  [[172, 16, 0, 0], 12], // private
+  [[192, 0, 0, 0], 24], // IETF protocol assignments
+  [[192, 168, 0, 0], 16], // private
+  [[198, 18, 0, 0], 15], // benchmarking
+  [[224, 0, 0, 0], 4], // multicast
+  [[240, 0, 0, 0], 4], // reserved, broadcast
+];
 
-// The four bytes of an IPv4 address, also when written as IPv4-mapped IPv6.
-function toIPv4(address: string): number[] | null {
-  const mapped = address.toLowerCase().match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  const candidate = mapped ? mapped[1] : address;
-  if (isIP(candidate) === 4) {
-    return candidate.split('.').map(Number);
-  }
-  const groups = toIPv6Groups(address);
-  // ::ffff:a.b.c.d written in hexadecimal groups.
+const BLOCKED_V6: [number[], number][] = [
+  [v6('::'), 96], // unspecified, loopback, IPv4-compatible
+  [v6('64:ff9b:1::'), 48], // local-use NAT64
+  [v6('fc00::'), 7], // unique local
+  [v6('fe80::'), 10], // link-local
+  [v6('fec0::'), 10], // site-local
+  [v6('ff00::'), 8], // multicast
+];
+
+// The IPv4 address an IPv6 one carries: mapped (::ffff:a.b.c.d), SIIT (::ffff:0:a.b.c.d),
+// NAT64 (64:ff9b::/96) and 6to4 (2002::/16).
+function embeddedIPv4(bytes: number[]): number[] | null {
   if (
-    groups &&
-    groups.slice(0, 5).every((g) => g === 0) &&
-    groups[5] === 0xffff
+    matches(bytes, v6('::ffff:0:0'), 96) ||
+    matches(bytes, v6('::ffff:0:0:0'), 96) ||
+    matches(bytes, v6('64:ff9b::'), 96)
   ) {
-    return groupsToIPv4(groups[6], groups[7]).split('.').map(Number);
+    return bytes.slice(12);
+  }
+  if (matches(bytes, v6('2002::'), 16)) {
+    return bytes.slice(2, 6);
   }
   return null;
 }
 
-// The eight 16-bit groups of an IPv6 address.
-function toIPv6Groups(address: string): number[] | null {
-  if (isIP(address) !== 6) {
+function matches(bytes: number[], prefix: number[], bits: number): boolean {
+  for (let i = 0; i < bits; i++) {
+    const bit = (b: number[]) => (b[i >> 3] >> (7 - (i & 7))) & 1;
+    if (bit(bytes) !== bit(prefix)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function v6(address: string): number[] {
+  return toBytes(address)!;
+}
+
+// The bytes of an address: 4 for IPv4, 16 for IPv6; null for anything else.
+function toBytes(address: string): number[] | null {
+  const kind = isIP(address);
+  if (kind === 4) {
+    return address.split('.').map(Number);
+  }
+  if (kind !== 6) {
     return null;
   }
   let text = address.toLowerCase();
@@ -92,11 +98,20 @@ function toIPv6Groups(address: string): number[] | null {
   }
   const [head, tail] = text.split('::');
   const headGroups = head ? head.split(':') : [];
-  const tailGroups = tail !== undefined && tail ? tail.split(':') : [];
-  const missing = 8 - headGroups.length - tailGroups.length;
-  const all =
+  const tailGroups = tail ? tail.split(':') : [];
+  const groups =
     tail === undefined
       ? headGroups
-      : [...headGroups, ...Array(missing).fill('0'), ...tailGroups];
-  return all.length === 8 ? all.map((g) => parseInt(g, 16)) : null;
+      : [
+          ...headGroups,
+          ...Array(8 - headGroups.length - tailGroups.length).fill('0'),
+          ...tailGroups,
+        ];
+  if (groups.length !== 8) {
+    return null;
+  }
+  return groups.flatMap((g) => {
+    const n = parseInt(g, 16);
+    return [n >> 8, n & 0xff];
+  });
 }

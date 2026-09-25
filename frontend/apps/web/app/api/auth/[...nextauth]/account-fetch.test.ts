@@ -26,6 +26,15 @@ describe('isPublicAddress', () => {
     '::ffff:a9fe:a9fe',
     '2002:0a00:0001::',
     '64:ff9b::a9fe:a9fe',
+    '0.1.2.3',
+    '240.0.0.1',
+    '255.255.255.255',
+    '192.0.0.1',
+    '198.18.0.1',
+    'fec0::1',
+    '64:ff9b:1::1',
+    '::7f00:1',
+    '::ffff:0:7f00:1',
     'not an address',
   ])('refuses %s', (address) => {
     expect(isPublicAddress(address)).toBe(false);
@@ -74,6 +83,15 @@ describe('accountFetch', () => {
         message: expect.stringMatching(/not on the public internet/),
       })
     );
+  });
+
+  it('does not follow a redirect its caller asked not to follow', async () => {
+    // oauth4webapi asks for the token and userinfo: a redirect there is an error.
+    process.env.AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE = '1';
+    const res = await accountFetch(`http://127.0.0.1:${port}/`, {
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(200);
   });
 
   it('reaches anything when the deployment allows it', async () => {

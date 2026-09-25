@@ -23,8 +23,16 @@ export async function accountFetch(
     return fetch(input, init);
   }
   let url = new URL(input instanceof Request ? input.url : input.toString());
-  let request: RequestInit | undefined =
-    input instanceof Request ? { ...toInit(input), ...init } : init;
+  const request: RequestInit =
+    input instanceof Request ? { ...toInit(input), ...init } : { ...init };
+  // A caller that follows no redirect -- oauth4webapi, for the token and userinfo, where
+  // a redirect is an error -- gets the response as it is. Otherwise only a request
+  // without a body is followed, as a GET, and without its credentials when the redirect
+  // leaves the origin.
+  const follows =
+    request.redirect !== 'manual' &&
+    request.redirect !== 'error' &&
+    ['GET', 'HEAD'].includes((request.method ?? 'GET').toUpperCase());
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     checkUrl(url);
     const res = (await undiciFetch(url, {
@@ -33,14 +41,19 @@ export async function accountFetch(
       dispatcher: publicOnly,
     })) as unknown as Response;
     const location = res.headers.get('location');
-    if (res.status < 300 || res.status >= 400 || !location) {
+    if (!follows || res.status < 300 || res.status >= 400 || !location) {
       return res;
     }
     // Each hop is checked again: a redirect is a request of its own.
-    url = new URL(location, url);
-    if (res.status === 303) {
-      request = { ...request, method: 'GET', body: undefined };
+    await res.body?.cancel();
+    const next = new URL(location, url);
+    if (next.origin !== url.origin) {
+      const headers = new Headers(request.headers);
+      headers.delete('authorization');
+      headers.delete('cookie');
+      request.headers = headers;
     }
+    url = next;
   }
   throw new Error(`stopped after ${MAX_REDIRECTS} redirects`);
 }
@@ -49,8 +62,12 @@ export async function accountFetch(
 // real deployments have.
 const MAX_REDIRECTS = 5;
 
+// Read the way the backend reads it (Go's strconv.ParseBool), so that both hold the same
+// bound.
 function isPrivateAllowed(): boolean {
-  return process.env.AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE === 'true';
+  return ['1', 't', 'T', 'TRUE', 'true', 'True'].includes(
+    process.env.AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE ?? ''
+  );
 }
 
 function toInit(req: Request): RequestInit {
