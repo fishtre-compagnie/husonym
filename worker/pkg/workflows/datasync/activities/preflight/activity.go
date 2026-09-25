@@ -121,7 +121,8 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 	stop := heartbeat(ctx)
 	defer stop()
 
-	report, findings, err := a.report(ctx, req.JobId, req.Tables, req.Findings, slogger)
+	// The job is read after the run brought it in step with its source.
+	report, findings, err := a.report(ctx, req.JobId, nil, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +150,9 @@ type CheckPreflightRequest struct {
 	Tables []*TableColumns
 	// Findings are what the plan of the tables tells.
 	Findings []*preflight.Finding
+	// Mappings are those a run would give the job before its start is checked: a run brings
+	// the job in step with its source first.
+	Mappings []*mgmtv1alpha1.JobMapping
 }
 
 type CheckPreflightResponse struct {
@@ -163,7 +167,7 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 	stop := heartbeat(ctx)
 	defer stop()
 
-	report, _, err := a.report(ctx, req.JobId, req.Tables, req.Findings, slogger)
+	report, _, err := a.report(ctx, req.JobId, req.Mappings, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +180,7 @@ func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightReques
 func (a *Activity) report(
 	ctx context.Context,
 	jobID string,
+	mappings []*mgmtv1alpha1.JobMapping,
 	tables []*TableColumns,
 	planned []*preflight.Finding,
 	slogger *slog.Logger,
@@ -183,6 +188,9 @@ func (a *Activity) report(
 	job, err := a.job(ctx, jobID)
 	if err != nil {
 		return nil, nil, err
+	}
+	if mappings != nil {
+		job.Mappings = mappings
 	}
 	usesAthanor := a.athanor.UsesAthanor(job)
 	findings := slices.Clone(planned)

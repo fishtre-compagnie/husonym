@@ -270,7 +270,25 @@ func (b *benthosBuilder) PlanPreflight(
 		AccountId: job.GetAccountId(),
 		Tables:    preflight_activity.TablesOf(responses),
 		Findings:  benthosManager.Findings(),
+		Mappings: mappingsOfRun(job.GetMappings(),
+			benthosManager.MappingChanges().Removed, benthosManager.MappingChanges().Added),
 	}, nil
+}
+
+// mappingsOfRun returns the mappings a run would give the job: those of columns the source
+// no longer has left out, those the strategy for new columns chose added.
+func mappingsOfRun(mappings, removedMappings, added []*mgmtv1alpha1.JobMapping) []*mgmtv1alpha1.JobMapping {
+	removed := map[string]bool{}
+	for _, mapping := range removedMappings {
+		removed[mapping.GetSchema()+"."+mapping.GetTable()+"."+mapping.GetColumn()] = true
+	}
+	kept := make([]*mgmtv1alpha1.JobMapping, 0, len(mappings)+len(added))
+	for _, mapping := range mappings {
+		if !removed[mapping.GetSchema()+"."+mapping.GetTable()+"."+mapping.GetColumn()] {
+			kept = append(kept, mapping)
+		}
+	}
+	return append(kept, added...)
 }
 
 func (b *benthosBuilder) setConnectionIdsRunContext(

@@ -14780,7 +14780,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"#JOB_MAPPING_CHANGE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dJOB_MAPPING_CHANGE_KIND_ADDED\x10\x01\x12#\n" +
 	"\x1fJOB_MAPPING_CHANGE_KIND_REMOVED\x10\x02\x12(\n" +
-	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xbc(\n" +
+	"$JOB_MAPPING_CHANGE_KIND_TYPE_CHANGED\x10\x032\xbe(\n" +
 	"\n" +
 	"JobService\x12T\n" +
 	"\aGetJobs\x12\x1d.mgmt.v1alpha1.GetJobsRequest\x1a\x1e.mgmt.v1alpha1.GetJobsResponse\"\n" +
@@ -14886,10 +14886,10 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x13ApplyMappingChanges\x12).mgmt.v1alpha1.ApplyMappingChangesRequest\x1a*.mgmt.v1alpha1.ApplyMappingChangesResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\f\x12g\n" +
 	"\x0eValidateSchema\x12$.mgmt.v1alpha1.ValidateSchemaRequest\x1a%.mgmt.v1alpha1.ValidateSchemaResponse\"\b\x92\xb5\x18\x04\n" +
-	"\x02\x05\x06\x12`\n" +
-	"\fPreflightJob\x12\".mgmt.v1alpha1.PreflightJobRequest\x1a#.mgmt.v1alpha1.PreflightJobResponse\"\a\x92\xb5\x18\x03\n" +
-	"\x01\n" +
-	"\x12c\n" +
+	"\x02\x05\x06\x12b\n" +
+	"\fPreflightJob\x12\".mgmt.v1alpha1.PreflightJobRequest\x1a#.mgmt.v1alpha1.PreflightJobResponse\"\t\x92\xb5\x18\x05\n" +
+	"\x03\n" +
+	"\x05\x06\x12c\n" +
 	"\rGetRunContext\x12#.mgmt.v1alpha1.GetRunContextRequest\x1a$.mgmt.v1alpha1.GetRunContextResponse\"\a\x92\xb5\x18\x03\n" +
 	"\x01\n" +
 	"\x12c\n" +

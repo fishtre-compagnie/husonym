@@ -27,11 +27,12 @@ var planned = &preflight.Finding{
 func Test_JobPreflight(t *testing.T) {
 	env := (&testsuite.WorkflowTestSuite{}).NewTestWorkflowEnvironment()
 	tables := []*preflight_activity.TableColumns{{Schema: "public", Table: "journal", Columns: []string{"message"}}}
+	mappings := []*mgmtv1alpha1.JobMapping{{Schema: "public", Table: "journal", Column: "message"}}
 
 	var generate *genbenthosconfigs_activity.Activity
 	env.OnActivity(generate.PlanPreflight, mock.Anything, &genbenthosconfigs_activity.PlanPreflightRequest{JobId: "job"}).
 		Return(&genbenthosconfigs_activity.PlanPreflightResponse{
-			AccountId: "account", Tables: tables, Findings: []*preflight.Finding{planned},
+			AccountId: "account", Tables: tables, Findings: []*preflight.Finding{planned}, Mappings: mappings,
 		}, nil).Once()
 	report := &mgmtv1alpha1.PreflightReport{
 		Engine: mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS,
@@ -46,6 +47,8 @@ func Test_JobPreflight(t *testing.T) {
 			assert.Equal(t, "job", req.JobId)
 			assert.Equal(t, tables, req.Tables)
 			assert.Equal(t, []*preflight.Finding{planned}, req.Findings)
+			// What the engine is asked about is what the run would map.
+			assert.Equal(t, mappings, req.Mappings)
 			return &preflight_activity.CheckPreflightResponse{Report: report}, nil
 		}).Once()
 

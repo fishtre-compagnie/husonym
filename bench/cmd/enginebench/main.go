@@ -33,6 +33,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 	"github.com/fishtre-compagnie/husonym/bench/verify"
 	"github.com/fishtre-compagnie/husonym/bench/workerctl"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
+	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
 )
 
 var errRegressions = errors.New("cases did worse than the baseline")
@@ -543,6 +545,14 @@ func (b *bench) checkBeforeRun(
 	}
 	if !updatedAfter.Equal(updatedBefore) {
 		outcome.PreflightChanges = append(outcome.PreflightChanges, "pré-vol à la demande : le job a changé")
+	}
+	// What a run keeps first, and the check must not.
+	kept, err := b.client.RunContextKept(ctx, preflight_workflow.WorkflowId(jobID), shared.GetConnectionIdsExternalId())
+	if err != nil {
+		return nil, err
+	}
+	if kept {
+		outcome.PreflightChanges = append(outcome.PreflightChanges, "pré-vol à la demande : un run context a été gardé")
 	}
 	return checked, nil
 }

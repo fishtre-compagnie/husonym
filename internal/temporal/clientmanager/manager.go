@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/serviceerror"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	workflowpb "go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	temporalclient "go.temporal.io/sdk/client"
@@ -705,7 +707,7 @@ func (m *ClientManager) RunWorkflow(
 	if err != nil {
 		return fmt.Errorf("unable to describe the task queue %q: %w", queue, err)
 	}
-	if len(described.GetPollers()) == 0 {
+	if !servedSince(described.GetPollers(), time.Now().Add(-pollerFreshness)) {
 		return ErrNoWorker
 	}
 
@@ -715,5 +717,27 @@ func (m *ClientManager) RunWorkflow(
 	if err != nil {
 		return fmt.Errorf("unable to start the workflow: %w", err)
 	}
-	return run.Get(ctx, valuePtr)
+	if err := run.Get(ctx, valuePtr); err != nil {
+		// The caller gave up: say so, rather than what the wait on the result became.
+		if ctx.Err() != nil {
+			return fmt.Errorf("the workflow did not end in time: %w", ctx.Err())
+		}
+		return err
+	}
+	return nil
+}
+
+// pollerFreshness is how recently a worker must have asked the queue for work to count as
+// serving it. A worker asks again as soon as a long poll ends, a minute at most; the server
+// keeps a stopped one in its list for minutes.
+const pollerFreshness = 90 * time.Second
+
+// servedSince reports whether a poller asked the queue for work since a time.
+func servedSince(pollers []*taskqueuepb.PollerInfo, since time.Time) bool {
+	for _, poller := range pollers {
+		if poller.GetLastAccessTime().AsTime().After(since) {
+			return true
+		}
+	}
+	return false
 }

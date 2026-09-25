@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
@@ -37,6 +38,8 @@ type PlanPreflightResponse struct {
 	Tables []*preflight_activity.TableColumns
 	// Findings are what the plan tells of a run: see internal/preflight.
 	Findings []*preflight.Finding
+	// Mappings are those a run would give the job, which the job does not hold yet.
+	Mappings []*mgmtv1alpha1.JobMapping
 }
 
 type Activity struct {

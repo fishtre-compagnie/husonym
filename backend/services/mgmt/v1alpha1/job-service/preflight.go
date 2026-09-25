@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"connectrpc.com/connect"
@@ -14,8 +15,9 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
-	"github.com/google/uuid"
+	"go.temporal.io/api/enums/v1"
 	temporalclient "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/temporal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -44,18 +46,39 @@ func (s *Service) PreflightJob(
 	if err := user.EnforceJob(ctx, userdata.NewDomainEntity(job.GetAccountId(), job.GetId()), rbac.JobAction_View); err != nil {
 		return nil, err
 	}
+	// The worker logs in to each connection of the job with what it stores: asked of those
+	// who may see it, as every other call that opens a connection is.
+	connectionIds := []string{}
+	sourceId, err := getJobSourceConnectionId(job.GetSource())
+	if err != nil {
+		return nil, err
+	}
+	if sourceId != nil && *sourceId != "" {
+		connectionIds = append(connectionIds, *sourceId)
+	}
+	for _, destination := range job.GetDestinations() {
+		connectionIds = append(connectionIds, destination.GetConnectionId())
+	}
+	for _, connectionId := range connectionIds {
+		entity := userdata.NewDomainEntity(job.GetAccountId(), connectionId)
+		if err := user.EnforceConnection(ctx, entity, rbac.ConnectionAction_ViewSensitive); err != nil {
+			return nil, err
+		}
+	}
 	if job.GetJobType().GetPiiDetect() != nil {
 		return nil, husonymerrors.NewBadRequest("a PII detection job writes nothing: it has no pre-flight check")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, preflightTimeout)
+	checkCtx, cancel := context.WithTimeout(ctx, preflightTimeout)
 	defer cancel()
 	var result preflight_workflow.Response
 	err = s.temporalmgr.RunWorkflow(
-		ctx,
+		checkCtx,
 		job.GetAccountId(),
 		&temporalclient.StartWorkflowOptions{
-			ID:                       fmt.Sprintf("preflight-%s-%s", job.GetId(), uuid.NewString()),
+			// One check of a job at a time: a call made while one runs waits for it.
+			ID:                       preflight_workflow.WorkflowId(job.GetId()),
+			WorkflowIDConflictPolicy: enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING,
 			WorkflowExecutionTimeout: preflightTimeout,
 		},
 		preflight_workflow.New().JobPreflight,
@@ -63,18 +86,32 @@ func (s *Service) PreflightJob(
 		&result,
 		logger,
 	)
-	switch {
-	case errors.Is(err, clientmanager.ErrNoWorker):
-		return nil, husonymerrors.NewFailedPrecondition(
-			"no worker serves this account: the pre-flight check runs on one, start it and check again")
-	case errors.Is(err, context.DeadlineExceeded):
-		return nil, connect.NewError(connect.CodeDeadlineExceeded,
-			fmt.Errorf("the pre-flight check did not end within %s", preflightTimeout))
-	case err != nil:
-		return nil, fmt.Errorf("the pre-flight check failed: %w", err)
+	if err != nil {
+		return nil, preflightError(checkCtx, err, logger)
 	}
 	return connect.NewResponse(&mgmtv1alpha1.PreflightJobResponse{
 		Report:    result.Report,
 		CheckedAt: timestamppb.Now(),
 	}), nil
+}
+
+// preflightError says why a check did not end, without the chain of the workflow: the
+// identifiers of the workflow and the worker are for the logs, the reason for the caller.
+func preflightError(ctx context.Context, err error, logger *slog.Logger) error {
+	logger.Warn("the pre-flight check did not end", "error", err)
+	var timeout *temporal.TimeoutError
+	var failure *temporal.ApplicationError
+	switch {
+	case errors.Is(err, clientmanager.ErrNoWorker):
+		return husonymerrors.NewFailedPrecondition(
+			"no worker serves this account: the pre-flight check runs on one, start it and check again")
+	case ctx.Err() != nil, errors.As(err, &timeout):
+		return connect.NewError(connect.CodeDeadlineExceeded,
+			fmt.Errorf("the pre-flight check did not end within %s", preflightTimeout))
+	case errors.As(err, &failure):
+		return connect.NewError(connect.CodeUnavailable,
+			fmt.Errorf("the pre-flight check could not end: %s", failure.Message()))
+	default:
+		return husonymerrors.NewInternalError("the pre-flight check could not end")
+	}
 }

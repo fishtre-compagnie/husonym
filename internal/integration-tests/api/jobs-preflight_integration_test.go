@@ -10,6 +10,7 @@ import (
 	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/api/enums/v1"
 	temporalclient "go.temporal.io/sdk/client"
 )
 
@@ -58,7 +59,10 @@ func (s *IntegrationTestSuite) Test_PreflightJob() {
 	s.Mocks.TemporalClientManager.EXPECT().
 		RunWorkflow(mock.Anything, accountId,
 			mock.MatchedBy(func(opts *temporalclient.StartWorkflowOptions) bool {
-				return opts.WorkflowExecutionTimeout > 0 && len(opts.ID) > len("preflight-"+jobId)
+				// One check of a job at a time: a second call waits for the one running.
+				return opts.ID == preflight_workflow.WorkflowId(jobId) &&
+					opts.WorkflowIDConflictPolicy == enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING &&
+					opts.WorkflowExecutionTimeout > 0
 			}),
 			mock.Anything, &preflight_workflow.Request{JobId: jobId}, mock.Anything, mock.Anything).
 		Run(func(_ context.Context, _ string, _ *temporalclient.StartWorkflowOptions, _ any, _ any, valuePtr any, _ *slog.Logger) {

@@ -527,3 +527,17 @@ func (c *Client) JobUpdatedAt(ctx context.Context, jobID string) (time.Time, err
 	}
 	return resp.Msg.GetJob().GetUpdatedAt().AsTime(), nil
 }
+
+// RunContextKept reports whether a run context is kept under a run id and a key.
+func (c *Client) RunContextKept(ctx context.Context, runID, externalID string) (bool, error) {
+	_, err := c.jobs.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{JobRunId: runID, ExternalId: externalID, AccountId: c.accountID},
+	}))
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("orchestrate: run context %s of %s: %w", externalID, runID, err)
+	}
+	return true, nil
+}

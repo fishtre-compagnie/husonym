@@ -62,3 +62,20 @@ func Test_reconcileJobMappings(t *testing.T) {
 		require.Error(t, b.reconcileJobMappings(context.Background(), job, added, nil, columns, true))
 	})
 }
+
+// The mappings a run would give the job: those of columns gone left out, the new ones added.
+func Test_mappingsOfRun(t *testing.T) {
+	mapping := func(column string) *mgmtv1alpha1.JobMapping {
+		return &mgmtv1alpha1.JobMapping{Schema: "public", Table: "users", Column: column}
+	}
+	got := mappingsOfRun(
+		[]*mgmtv1alpha1.JobMapping{mapping("id"), mapping("gone"), mapping("name")},
+		[]*mgmtv1alpha1.JobMapping{mapping("gone")},
+		[]*mgmtv1alpha1.JobMapping{mapping("email")},
+	)
+	columns := []string{}
+	for _, m := range got {
+		columns = append(columns, m.GetColumn())
+	}
+	require.Equal(t, []string{"id", "name", "email"}, columns)
+}

@@ -11,6 +11,7 @@ import (
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/sdk/client"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -73,6 +74,7 @@ func test_postgres_preflight(
 	before := getJob()
 
 	checkEnv := NewTestDataSyncWorkflowEnv(t, husonymApi, dbManagers)
+	checkEnv.TestEnv.SetStartWorkflowOptions(client.StartWorkflowOptions{ID: preflight_workflow.WorkflowId(job.GetId())})
 	checkEnv.TestEnv.ExecuteWorkflow(preflight_workflow.New().JobPreflight, &preflight_workflow.Request{JobId: job.GetId()})
 	require.True(t, checkEnv.TestEnv.IsWorkflowCompleted())
 	require.NoError(t, checkEnv.TestEnv.GetWorkflowError())
@@ -94,6 +96,12 @@ func test_postgres_preflight(
 	}))
 	require.NoError(t, err)
 	require.Empty(t, pending.Msg.GetChanges())
+	_, err = jobclient.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{
+			JobRunId: preflight_workflow.WorkflowId(job.GetId()), ExternalId: "tablesync-connectionids", AccountId: accountId,
+		},
+	}))
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "the check keeps no run context")
 	var tables int
 	require.NoError(t, postgres.Target.DB.QueryRow(ctx,
 		"SELECT count(*) FROM information_schema.tables WHERE table_schema = $1", schema).Scan(&tables))

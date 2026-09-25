@@ -25,6 +25,12 @@ type Response struct {
 	Report *mgmtv1alpha1.PreflightReport
 }
 
+// WorkflowId is the id of the check of a job: one runs at a time, and a check asked while
+// one runs waits for it.
+func WorkflowId(jobId string) string {
+	return "preflight-" + jobId
+}
+
 type Workflow struct{}
 
 func New() *Workflow {
@@ -55,6 +61,7 @@ func (w *Workflow) JobPreflight(ctx workflow.Context, req *Request) (*Response, 
 		JobId:    req.JobId,
 		Tables:   plan.Tables,
 		Findings: plan.Findings,
+		Mappings: plan.Mappings,
 	}).Get(ctx, &checked)
 	if err != nil {
 		return nil, err
