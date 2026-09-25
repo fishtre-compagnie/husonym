@@ -1,12 +1,15 @@
 package verify
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/cases"
+	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
 // PreflightChanges tells how the pre-flight report of a run differs from what the case
@@ -71,4 +74,53 @@ func kindName(kind mgmtv1alpha1.PreflightFinding_Kind) string {
 
 func levelName(level mgmtv1alpha1.PreflightFinding_Level) string {
 	return strings.ToLower(strings.TrimPrefix(level.String(), "LEVEL_"))
+}
+
+// PreflightDifferences tells how the report of the check made before the run differs from
+// the one the run kept: both compute the same plan, and must tell the same.
+func PreflightDifferences(checked, kept *mgmtv1alpha1.PreflightReport) []string {
+	if checked == nil || kept == nil {
+		return nil
+	}
+	var changes []string
+	if checked.GetEngine() != kept.GetEngine() {
+		changes = append(changes, fmt.Sprintf("pré-vol : moteur %s à la demande, %s au run",
+			checked.GetEngine(), kept.GetEngine()))
+	}
+	before, after := summaries(checked), summaries(kept)
+	for _, line := range before {
+		if !slices.Contains(after, line) {
+			changes = append(changes, "pré-vol : absent du rapport du run : "+line)
+		}
+	}
+	for _, line := range after {
+		if !slices.Contains(before, line) {
+			changes = append(changes, "pré-vol : absent du rapport à la demande : "+line)
+		}
+	}
+	return changes
+}
+
+func summaries(report *mgmtv1alpha1.PreflightReport) []string {
+	lines := make([]string, 0, len(report.GetFindings()))
+	for _, f := range report.GetFindings() {
+		lines = append(lines, fmt.Sprintf("%s %s sur %q", levelName(f.GetLevel()), kindName(f.GetKind()), f.GetTable()))
+	}
+	slices.Sort(lines)
+	return lines
+}
+
+// RowCounts counts the rows of tables of a destination.
+func RowCounts(ctx context.Context, db *sql.DB, r schema.Renderer, container string, tables []string) (map[string]int, error) {
+	counts := make(map[string]int, len(tables))
+	for _, table := range tables {
+		var n int
+		//nolint:gosec // identifiers of the case, quoted the way the database quotes them
+		query := fmt.Sprintf("SELECT count(*) FROM %s.%s", r.QuoteIdent(container), r.QuoteIdent(table))
+		if err := db.QueryRowContext(ctx, query).Scan(&n); err != nil {
+			return nil, fmt.Errorf("verify: rows of %s.%s: %w", container, table, err)
+		}
+		counts[table] = n
+	}
+	return counts, nil
 }

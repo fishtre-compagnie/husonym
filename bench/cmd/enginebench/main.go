@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/cases"
 	"github.com/fishtre-compagnie/husonym/bench/env"
 	"github.com/fishtre-compagnie/husonym/bench/gen"
@@ -398,6 +399,10 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 	if err != nil {
 		return err
 	}
+	checked, err := b.checkBeforeRun(ctx, c, engine, jobID, outcome)
+	if err != nil {
+		return err
+	}
 	if c.InterruptedRunFirst {
 		first, err := b.client.RunUntil(ctx, jobID, b.runTimeout, func(ctx context.Context) (bool, error) {
 			now, err := verify.Triggers(ctx, b.dests[engine], b.renderer, c.Schema())
@@ -471,8 +476,13 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		if err != nil {
 			return err
 		}
-		outcome.PreflightChanges = verify.PreflightChanges(
-			c.ExpectedFindings(b.env.Dialect, string(engine)), c.Schema(), preflightReport)
+		outcome.PreflightChanges = append(outcome.PreflightChanges, verify.PreflightChanges(
+			c.ExpectedFindings(b.env.Dialect, string(engine)), c.Schema(), preflightReport)...)
+		// A first run interrupted leaves the destination otherwise than the check found it.
+		if !c.InterruptedRunFirst {
+			outcome.PreflightChanges = append(outcome.PreflightChanges,
+				verify.PreflightDifferences(checked, preflightReport)...)
+		}
 	}
 	outcome.RunStatus = strings.TrimPrefix(result.Status.String(), "JOB_RUN_STATUS_")
 	outcome.DurationMs = result.Duration.Milliseconds()
@@ -490,6 +500,51 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		outcome.Verdict = report.VerdictRunFailed
 	}
 	return nil
+}
+
+// checkBeforeRun asks the pre-flight check of a job before its run, and notes in the
+// outcome whatever it wrote: nothing in the destination, nothing in the job.
+func (b *bench) checkBeforeRun(
+	ctx context.Context,
+	c *cases.Case,
+	engine env.Engine,
+	jobID string,
+	outcome *report.Outcome,
+) (*mgmtv1alpha1.PreflightReport, error) {
+	var tables []string
+	for _, t := range c.Tables {
+		tables = append(tables, t.Name)
+	}
+	rowsBefore, err := verify.RowCounts(ctx, b.dests[engine], b.renderer, c.Schema(), tables)
+	if err != nil {
+		return nil, err
+	}
+	updatedBefore, err := b.client.JobUpdatedAt(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	checked, err := b.client.Preflight(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	rowsAfter, err := verify.RowCounts(ctx, b.dests[engine], b.renderer, c.Schema(), tables)
+	if err != nil {
+		return nil, err
+	}
+	updatedAfter, err := b.client.JobUpdatedAt(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	for _, table := range tables {
+		if rowsBefore[table] != rowsAfter[table] {
+			outcome.PreflightChanges = append(outcome.PreflightChanges, fmt.Sprintf(
+				"pré-vol à la demande : %s passe de %d à %d lignes", table, rowsBefore[table], rowsAfter[table]))
+		}
+	}
+	if !updatedAfter.Equal(updatedBefore) {
+		outcome.PreflightChanges = append(outcome.PreflightChanges, "pré-vol à la demande : le job a changé")
+	}
+	return checked, nil
 }
 
 // blockRow inserts the blocking row of a case into the destination of an engine, in a
