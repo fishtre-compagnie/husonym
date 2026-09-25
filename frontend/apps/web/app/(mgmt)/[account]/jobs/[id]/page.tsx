@@ -7,6 +7,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import PreflightCard from '@/components/jobs/preflight/PreflightCard';
+import { hasPreflight } from '@/components/jobs/preflight/report';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { create } from '@bufbuild/protobuf';
 import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
@@ -76,6 +78,7 @@ export default function Page(props: PageProps): ReactElement {
             <JobNextRuns jobId={id} status={jobStatus?.status} />
           </div>
         </div>
+        {hasPreflight(data.job) ? <PreflightCard job={data.job} /> : null}
         <JobRecentRuns jobId={id} />
         <Accordion type="single" collapsible>
           <AccordionItem value="advanced-settings">

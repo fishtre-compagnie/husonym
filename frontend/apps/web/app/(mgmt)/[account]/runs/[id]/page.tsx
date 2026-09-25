@@ -1,4 +1,5 @@
 'use client';
+import JobRunPreflight from '@/components/jobs/preflight/JobRunPreflight';
 import { PageProps } from '@/components/types';
 
 import ButtonText from '@/components/ButtonText';
@@ -362,6 +363,12 @@ export default function Page(props: PageProps): ReactElement {
               <JobRunPiiDetectionTable jobRunId={id} isRunning={isRunning} />
             </div>
           </PiiDetectionJobGuard>
+          <JobRunPreflight
+            jobRunId={id}
+            jobId={jobRun?.jobId ?? ''}
+            accountId={accountId}
+            isRunning={isRunning}
+          />
           <div className="space-y-4">
             <JobRunActivityErrors
               jobRunId={id}

@@ -69,8 +69,10 @@ export function useConnectionChecks(): (
   );
 }
 
+// isBlocking tells whether a finding stops the run. A level this page does not know is
+// not taken for blocking: it would keep a job from being saved for nothing it can tell.
 export function isBlocking(check: ConnectionCheck): boolean {
-  return check.level !== ConnectionCheck_Level.WARNING;
+  return check.level === ConnectionCheck_Level.BLOCKING;
 }
 
 export interface FindingCounts {
