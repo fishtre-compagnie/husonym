@@ -10,12 +10,9 @@ import { NextRequest } from 'next/server';
  */
 
 /**
- * The cookie that carries the account across the two legs of the flow.
- *
- * The callback leg arrives with only `code` and `state`, and the configuration has to
- * resolve the same account then as it did at the start -- otherwise it presents the wrong
- * client to the token endpoint. The query parameter is only present on the first leg, so
- * something has to remember it in between; a cookie is what the browser carries anyway.
+ * The account a sign-in is asked for: set by the per-account link, read when the sign-in
+ * starts. The callback does not read it -- anyone can make a browser follow the link and
+ * rewrite it -- but the flow cookie sealed at the start (login-flow.ts).
  *
  * It holds a slug, which is public, never anything about a person.
  */
@@ -42,20 +39,6 @@ export interface AccountLoginMethod {
  */
 export function getProviderId(): string {
   return process.env.AUTH_PROVIDER_ID || 'oidc';
-}
-
-export function getAccountSlug(
-  request: NextRequest | undefined
-): string | null {
-  if (!request) {
-    return null;
-  }
-  const fromQuery = request.nextUrl.searchParams.get('account');
-  if (fromQuery) {
-    return sanitizeSlug(fromQuery);
-  }
-  const fromCookie = request.cookies.get(ACCOUNT_COOKIE)?.value;
-  return fromCookie ? sanitizeSlug(fromCookie) : null;
 }
 
 /**
@@ -94,6 +77,8 @@ export async function fetchAccountLoginMethod(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountSlug: slug }),
         cache: 'no-store',
+        // A sign-in waits on this: a backend that does not answer must not hold it.
+        signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
       }
     );
     if (!res.ok) {
@@ -112,8 +97,41 @@ export async function fetchAccountLoginMethod(
   }
 }
 
+// How long the backend may take to say which provider an account uses.
+const LOOKUP_TIMEOUT_MS = 5_000;
+
 function trimEnd(val: string, chars: string): string {
   return val.endsWith(chars)
     ? val.substring(0, val.length - chars.length)
     : val;
+}
+
+/**
+ * The deployment's public URL, as Auth.js reads it: AUTH_URL or NEXTAUTH_URL (an empty one
+ * is unset), else -- when the deployment trusts its proxy (AUTH_TRUST_HOST) -- what the
+ * proxy forwarded, else the request's own; behind a proxy, a request may carry an internal
+ * origin.
+ */
+export function getPublicBaseUrl(req: NextRequest): URL {
+  const configured = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+  if (configured) {
+    return new URL(configured);
+  }
+  const url = new URL(req.nextUrl.origin);
+  if (process.env.AUTH_TRUST_HOST === 'true') {
+    const proto = req.headers.get('x-forwarded-proto')?.split(',')[0].trim();
+    const host = req.headers.get('x-forwarded-host')?.split(',')[0].trim();
+    if (proto === 'https' || proto === 'http') {
+      url.protocol = `${proto}:`;
+    }
+    if (host) {
+      url.host = host;
+    }
+  }
+  return url;
+}
+
+// isSecureRequest tells whether the deployment is reached over https, for its cookies.
+export function isSecureRequest(req: NextRequest): boolean {
+  return getPublicBaseUrl(req).protocol === 'https:';
 }
