@@ -135,3 +135,29 @@ export function getPublicBaseUrl(req: NextRequest): URL {
 export function isSecureRequest(req: NextRequest): boolean {
   return getPublicBaseUrl(req).protocol === 'https:';
 }
+
+/**
+ * A path of this app to come back to after signing in, or null: only a path, never another
+ * origin, so that a link cannot send whoever follows it elsewhere.
+ */
+export function getSafeCallbackPath(
+  value: string | null | undefined
+): string | null {
+  if (
+    !value ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    value.startsWith('/\\')
+  ) {
+    return null;
+  }
+  const base = new URL('http://app.invalid');
+  try {
+    const url = new URL(value, base);
+    return url.origin === base.origin
+      ? `${url.pathname}${url.search}${url.hash}`
+      : null;
+  } catch {
+    return null;
+  }
+}
