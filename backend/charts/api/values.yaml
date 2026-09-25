@@ -144,6 +144,8 @@ auth:
   audience:
   # -- The base url of the auth server
   baseUrl:
+  # -- Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app.
+  accountIssuerAllowPrivate: false
   # -- The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled)
   cliClientId:
   # -- The aud that is expected to be present when the CLI auths to the backend

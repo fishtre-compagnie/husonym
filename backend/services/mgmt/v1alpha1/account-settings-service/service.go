@@ -8,6 +8,7 @@ package v1alpha1_accountsettingservice
 
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -27,6 +28,11 @@ type Config struct {
 	// with. A provider that signs with none of them is refused when it is tried, rather
 	// than after it is saved.
 	AcceptedSignatureAlgorithms []string
+
+	// IssuerPolicy says where an account's provider may be: https, on the public internet,
+	// unless the deployment allows otherwise. Checked when a provider is tried and when it
+	// is saved.
+	IssuerPolicy safehttp.Policy
 }
 
 var _ mgmtv1alpha1connect.AccountSettingServiceHandler = (*Service)(nil)

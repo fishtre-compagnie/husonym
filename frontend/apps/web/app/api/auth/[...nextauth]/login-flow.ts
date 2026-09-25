@@ -259,7 +259,7 @@ async function verify(
   }
 }
 
-// base64url without Buffer, which the edge runtime the middleware runs in lacks.
+// base64url without Buffer, so that it runs in any runtime.
 function toBase64Url(bytes: Uint8Array): string {
   let binary = '';
   bytes.forEach((b) => {

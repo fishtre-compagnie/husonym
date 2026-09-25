@@ -37,6 +37,10 @@ type ClientConfig struct {
 	// are mutually exclusive in the library, and two paths would be two behaviors.
 	IssuerResolver func(ctx context.Context) ([]string, error)
 
+	// HTTPClient fetches the issuers' discovery documents and keys. Optional; it is where
+	// the bound on what an account's issuer may make this deployment contact lives.
+	HTTPClient *http.Client
+
 	// MaxCachedProviders bounds how many providers' key sets are held at once, evicting
 	// the least recently used. Zero takes the library's default of 100.
 	MaxCachedProviders int
@@ -69,6 +73,9 @@ func New(
 		// without this an issuer chooses where this deployment sends requests. It holds
 		// for every provider, including the deployment's own.
 		jwks.WithMultiIssuerStrictJWKSURIOrigin(),
+	}
+	if cfg.HTTPClient != nil {
+		providerOpts = append(providerOpts, jwks.WithMultiIssuerHTTPClient(cfg.HTTPClient))
 	}
 	if cfg.MaxCachedProviders > 0 {
 		providerOpts = append(providerOpts, jwks.WithMaxProviders(cfg.MaxCachedProviders))

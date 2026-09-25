@@ -1,12 +1,13 @@
 import { type TokenSet } from '@auth/core/types';
 import { addSeconds, isAfter } from 'date-fns';
-import NextAuth, { NextAuthConfig } from 'next-auth';
+import NextAuth, { NextAuthConfig, customFetch } from 'next-auth';
 import { NextRequest } from 'next/server';
 import {
   AccountLoginMethod,
   getProviderId,
   fetchAccountLoginMethod,
 } from './account-provider';
+import { accountFetch } from './account-fetch';
 import { FlowAccount, getRequestAccount } from './login-flow';
 
 function getProviders(
@@ -33,16 +34,18 @@ function getProviders(
       token: authConfig.tokenUrl,
 
       wellKnown: getWellKnown(authConfig.issuer),
-      // An account's provider is reached as a public client: without a secret, Auth.js
-      // would otherwise authenticate with an empty one, which providers refuse.
-      // A public client has no secret: PKCE is what binds the code to this flow, and it
-      // is required, not merely accepted.
+      // A client without a secret authenticates with none -- Auth.js would otherwise send
+      // an empty one, which providers refuse.
       ...(authConfig.clientSecret
         ? {}
-        : {
-            client: { token_endpoint_auth_method: 'none' },
-            checks: ['pkce', 'state'],
-          }),
+        : { client: { token_endpoint_auth_method: 'none' } }),
+      // An account's provider is a public client: PKCE is what binds the code to this
+      // flow, and it is required, not merely accepted. It is reached only over https, at
+      // public addresses (account-fetch.ts); the deployment's own provider is the
+      // operator's, and reached as configured.
+      ...(authConfig.account
+        ? { checks: ['pkce', 'state'], [customFetch]: accountFetch }
+        : {}),
     });
   }
 
@@ -170,6 +173,7 @@ function getOAuthConfig(
     userInfoUrl: accountMethod ? undefined : process.env.AUTH_USERINFO_URL,
     logoutUrl: accountMethod ? undefined : process.env.AUTH_LOGOUT_URL,
     tokenUrl: accountMethod ? undefined : process.env.AUTH_TOKEN_URL,
+    account: !!accountMethod,
   };
 }
 
@@ -177,13 +181,13 @@ function getOAuthConfig(
  * The configuration is a function of the request, which is what Auth.js v5 accepts and
  * what makes a provider per account possible without forking anything.
  *
- * `request` is undefined outside a request -- `auth()` in a server component, middleware
+ * `request` is undefined outside a request -- `auth()` in a server component, the proxy
  * -- and that has to yield a valid configuration rather than throw: the absence of an
  * account is the deployment's own provider, which is the normal case.
  */
 export const {
   handlers: { GET, POST },
-  // auth function meant to be used in RSC or middleware.
+  // auth function meant to be used in RSC or the proxy.
   auth,
 } = NextAuth(async (request: NextRequest | undefined) => {
   return buildConfig(await getRequestAccount(request));
@@ -233,7 +237,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
             throw new Error('unable to find provider to refresh token');
           }
           try {
-            const response = await fetch(
+            const response = await (oauthConfig.account ? accountFetch : fetch)(
               oauthConfig.tokenUrl ??
                 (await getTokenUrl(oauthConfig.issuer, !!oauthConfig.account)),
               {
@@ -258,7 +262,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
               throw tokens;
             }
             token.accessToken = tokens.access_token;
-            // When the tokens were last obtained: the middleware keeps the session cookie
+            // When the tokens were last obtained: the proxy keeps the session cookie
             // of a call that refreshed them, and of no other.
             token.refreshedAt = Date.now();
             // the refresh token may not always be returned. If it's not, don't update
@@ -350,7 +354,7 @@ async function getOpenIdConfiguration(
   isAccountIssuer: boolean
 ): Promise<Partial<OidcConfiguration>> {
   const wellKnownUrl = getWellKnown(issuer);
-  const res = await fetch(wellKnownUrl, {
+  const res = await (isAccountIssuer ? accountFetch : fetch)(wellKnownUrl, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),

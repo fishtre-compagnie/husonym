@@ -3,8 +3,9 @@ import { getToken } from 'next-auth/jwt';
 import { auth } from './app/api/auth/[...nextauth]/auth';
 import { PUBLIC_PATHNAME, getSystemAppConfig } from './app/api/config/config';
 
-// The middleware proxies the browser's calls under PUBLIC_PATHNAME to the API, with the
-// session's access token; nothing else needs it. Run on every request, it read the session
+// The proxy (Next.js's name for middleware, which runs on Node.js) relays the browser's
+// calls under PUBLIC_PATHNAME to the API, with the session's access token; nothing else
+// needs it. Run on every request, it read the session
 // for each asset — refreshing an expired token as many times at once — and, since the
 // configuration is per account, looked the account's login method up each time too.
 // Next.js reads the matcher statically: it repeats PUBLIC_PATHNAME as a literal.
@@ -13,7 +14,7 @@ export const config = {
 };
 
 // The configuration is lazy (a function of the request): Auth.js then hands back the wrapped
-// middleware as a promise, which Next.js does not take for a middleware.
+// handler as a promise, which Next.js does not take for a proxy.
 const withAuth = auth(async (req) => {
   const target = getApiTarget(req.nextUrl);
   if (!target) {
@@ -36,17 +37,17 @@ const withAuth = auth(async (req) => {
 });
 
 /**
- * Set by the wrapped middleware when the session's access token was not refreshed on the
- * way; read, and removed, before the response leaves.
+ * Set by the wrapped handler when the session's tokens were not refreshed on the way;
+ * read, and removed, before the response leaves.
  */
 const SESSION_UNCHANGED = 'x-husonym-session-unchanged';
 
-export default async function middleware(
+export default async function proxy(
   req: NextRequest,
   event: NextFetchEvent
 ): Promise<Response> {
   const handler = await withAuth;
-  // Auth.js types its wrapper as a route handler; as a middleware it hands it the fetch
+  // Auth.js types its wrapper as a route handler; as a proxy it hands it the fetch
   // event, as Next.js gives it, and always answers.
   const res = (await handler(
     req,
@@ -55,7 +56,7 @@ export default async function middleware(
   if (!res.headers.has(SESSION_UNCHANGED)) {
     return res;
   }
-  // Auth.js sets the session cookie again on every answer. From here, a call still on its
+  // Auth.js sets the session cookie again on every answer. Through here, a call still on its
   // way when the user signs out came back after the session was cleared and set it again:
   // signed out, the user was signed back in. The session is set again only when this call
   // refreshed its access token, which must be kept; /api/auth/session keeps it from

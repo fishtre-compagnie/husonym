@@ -12,6 +12,7 @@ A Helm chart for the Husonym App
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| auth.accountIssuerAllowPrivate | bool | `false` | Let an account's identity provider be reached over plain http or at a private address. By default it must be reached over https, at an address on the internet. Set the same on the api. |
 | auth.audience | string | `nil` | The audience that should be present in the JWT token |
 | auth.clientId | string | `nil` | The client id that will be used by the app to retrieve user tokens |
 | auth.clientSecret | string | `nil` | The client secret that will be used by the app |

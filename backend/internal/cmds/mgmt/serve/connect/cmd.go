@@ -49,6 +49,7 @@ import (
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
 	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -580,6 +581,7 @@ func serve(ctx context.Context) error {
 			&v1alpha1_accountsettingservice.Config{
 				IsHusonymCloud:              ncloudlicense.IsValid(),
 				AcceptedSignatureAlgorithms: getAcceptedSignatureAlgorithms(),
+				IssuerPolicy:                getIssuerPolicy(),
 			},
 			db,
 			userdataclient,
@@ -1084,7 +1086,26 @@ func getJwtClientConfig(
 		ApiAudiences:      getAuthAudiences(),
 		Algorithms:        algorithms,
 		IssuerResolver:    resolver,
+		// Keys are fetched from each issuer a token names, an account's included: they go
+		// through the same bound as trying or saving a provider.
+		HTTPClient: &http.Client{
+			Timeout:   30 * time.Second,
+			Transport: getIssuerPolicy().Transport(10*time.Second, true),
+		},
 	}, nil
+}
+
+// getIssuerPolicy says where an account's identity provider may be, and so where this
+// deployment may be made to send requests on its behalf: over https, to an address on the
+// internet. The deployment's own provider, which the operator configured, is let through;
+// AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE lets through any provider, for a deployment whose
+// providers live on its own network, or a development environment.
+func getIssuerPolicy() safehttp.Policy {
+	return safehttp.NewPolicy(
+		viper.GetBool("AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE"),
+		getAuthBaseUrl(),
+		getDeploymentIssuer(),
+	)
 }
 
 // getAuthSignatureAlgorithms returns what signatures may be validated with: the one the

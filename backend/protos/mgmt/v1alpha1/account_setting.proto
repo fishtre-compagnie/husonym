@@ -73,7 +73,9 @@ message AnonymizationConsistency {
 // The identity provider an account's members sign in with.
 //
 // Nothing here names a product. What an account declares is what the standard defines:
-// an issuer to discover, a client to authorize as, and the audience its tokens carry.
+// an issuer to discover, a public client to authorize as, and the audience its tokens
+// carry. The issuer must be reached over https, at an address on the internet, unless the
+// deployment allows otherwise (AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE).
 // A provider that needs more than this is a provider Husonym does not claim to support.
 message OidcProvider {
   // The issuer, exactly as its tokens spell it in their iss claim.
@@ -83,18 +85,19 @@ message OidcProvider {
   // is rejected by the test below rather than accepted and puzzled over later.
   string issuer = 1 [
     (buf.validate.field).string.uri = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string.min_len = 1,
+    // It travels in the sign-in flow's cookie: a longer one would not fit.
+    (buf.validate.field).string.max_len = 512
   ];
 
   // The client the frontend authorizes as. Public information: the browser carries it in
   // the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
   string client_id = 2 [(buf.validate.field).string.min_len = 1];
 
-  // The secret of that client, for providers that require a confidential one.
-  //
-  // It plays no part in validating a token -- that needs only the public JWKS -- and is
-  // used solely in the authorization flow. Empty for a public client.
-  string client_secret = 3 [(mgmt.v1alpha1.secret) = true];
+  // An account's provider is a public client: it holds no secret, and PKCE binds its
+  // authorization code to the flow. A secret for it was accepted once and never used.
+  reserved 3;
+  reserved "client_secret";
 }
 
 // How much a finding of a setting test weighs.
