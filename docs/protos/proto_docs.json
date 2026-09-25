@@ -17363,6 +17363,66 @@
           ]
         },
         {
+          "name": "PreflightJobRequest",
+          "longName": "PreflightJobRequest",
+          "fullName": "mgmt.v1alpha1.PreflightJobRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "job_id",
+              "description": "The job to check.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "PreflightJobResponse",
+          "longName": "PreflightJobResponse",
+          "fullName": "mgmt.v1alpha1.PreflightJobResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "report",
+              "description": "What a run of the job would meet, were it started now.",
+              "label": "",
+              "type": "PreflightReport",
+              "longType": "PreflightReport",
+              "fullType": "mgmt.v1alpha1.PreflightReport",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "checked_at",
+              "description": "When the check was made.",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "PreflightReport",
           "longName": "PreflightReport",
           "fullName": "mgmt.v1alpha1.PreflightReport",
@@ -19378,6 +19438,18 @@
               "responseType": "ValidateSchemaResponse",
               "responseLongType": "ValidateSchemaResponse",
               "responseFullType": "mgmt.v1alpha1.ValidateSchemaResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "PreflightJob",
+              "description": "Tells what a run of the job would meet, before any run: the plan is computed by a worker\nthe way a run computes it, and the connections asked what their roles need. Nothing is\nread from the tables nor written, the job included. The worker logs in to each connection\nof the job: seeing what it stores is required, as for every call that opens a connection.\nA check asked while one of the same job runs waits for it. Fails with FAILED_PRECONDITION\nwhen no worker serves the account, UNAVAILABLE when the check cannot end (a connection out\nof reach), and DEADLINE_EXCEEDED when it does not end in time.",
+              "requestType": "PreflightJobRequest",
+              "requestLongType": "PreflightJobRequest",
+              "requestFullType": "mgmt.v1alpha1.PreflightJobRequest",
+              "requestStreaming": false,
+              "responseType": "PreflightJobResponse",
+              "responseLongType": "PreflightJobResponse",
+              "responseFullType": "mgmt.v1alpha1.PreflightJobResponse",
               "responseStreaming": false
             },
             {

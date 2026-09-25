@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
@@ -737,7 +736,7 @@ func runPreflightCheck(
 			JobId:     jobId,
 			JobRunId:  jobRunId,
 			AccountId: generated.AccountId,
-			Tables:    runTables(generated.BenthosConfigs),
+			Tables:    preflight_activity.TablesOf(generated.BenthosConfigs),
 			Findings:  generated.Findings,
 		},
 	).Get(ctx, &resp)
@@ -752,7 +751,7 @@ func runPrivilegeCheck(
 	jobId string,
 	configs []*benthosbuilder.BenthosConfigResponse,
 ) error {
-	tables := runTables(configs)
+	tables := preflight_activity.TablesOf(configs)
 	logger.Info("scheduling privilege check")
 	var resp *preflight_activity.CheckRunPrivilegesResponse
 	var privilegesActivity *preflight_activity.Activity
@@ -765,28 +764,6 @@ func runPrivilegeCheck(
 		privilegesActivity.CheckRunPrivileges,
 		&preflight_activity.CheckRunPrivilegesRequest{JobId: jobId, Tables: tables},
 	).Get(ctx, &resp)
-}
-
-// runTables returns the tables of the configs, with the columns the run writes into each.
-func runTables(configs []*benthosbuilder.BenthosConfigResponse) []*preflight_activity.TableColumns {
-	var tables []*preflight_activity.TableColumns
-	byName := map[string]*preflight_activity.TableColumns{}
-	for _, cfg := range configs {
-		key := cfg.TableSchema + "." + cfg.TableName
-		table, ok := byName[key]
-		if !ok {
-			table = &preflight_activity.TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
-			byName[key] = table
-			tables = append(tables, table)
-		}
-		for _, column := range cfg.Columns {
-			// A generated column is computed by the destination, never written by the run.
-			if !slices.Contains(table.Columns, column) && !slices.Contains(cfg.GeneratedColumns, column) {
-				table.Columns = append(table.Columns, column)
-			}
-		}
-	}
-	return tables
 }
 
 // suspendDestinationTriggers takes the triggers of the destinations out of the way of the

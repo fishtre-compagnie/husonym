@@ -19,6 +19,7 @@ import (
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
+	preflight_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/preflight/workflow"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -80,6 +81,11 @@ func Register(
 	w.RegisterActivity(referentialIntegrityActivity.CheckReferentialIntegrity)
 	w.RegisterActivity(preflightActivity.CheckRunPrivileges)
 	w.RegisterActivity(preflightActivity.RunPreflight)
+	w.RegisterActivity(preflightActivity.CheckPreflight)
+	w.RegisterActivity(genbenthosActivity.PlanPreflight)
+
+	// The pre-flight check of a job, before any run: the same activities as a run's start.
+	w.RegisterWorkflow(preflight_workflow.New().JobPreflight)
 	w.RegisterActivity(destinationTriggersActivity.SuspendTriggers)
 	w.RegisterActivity(destinationTriggersActivity.RestoreTriggers)
 }

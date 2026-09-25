@@ -1034,6 +1034,93 @@ func (_c *MockInterface_PauseSchedule_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
+// RunWorkflow provides a mock function for the type MockInterface
+func (_mock *MockInterface) RunWorkflow(ctx context.Context, accountId string, opts *client.StartWorkflowOptions, workflow1 any, arg any, valuePtr any, logger *slog.Logger) error {
+	ret := _mock.Called(ctx, accountId, opts, workflow1, arg, valuePtr, logger)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RunWorkflow")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *client.StartWorkflowOptions, any, any, any, *slog.Logger) error); ok {
+		r0 = returnFunc(ctx, accountId, opts, workflow1, arg, valuePtr, logger)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInterface_RunWorkflow_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunWorkflow'
+type MockInterface_RunWorkflow_Call struct {
+	*mock.Call
+}
+
+// RunWorkflow is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountId string
+//   - opts *client.StartWorkflowOptions
+//   - workflow1 any
+//   - arg any
+//   - valuePtr any
+//   - logger *slog.Logger
+func (_e *MockInterface_Expecter) RunWorkflow(ctx any, accountId any, opts any, workflow1 any, arg any, valuePtr any, logger any) *MockInterface_RunWorkflow_Call {
+	return &MockInterface_RunWorkflow_Call{Call: _e.mock.On("RunWorkflow", ctx, accountId, opts, workflow1, arg, valuePtr, logger)}
+}
+
+func (_c *MockInterface_RunWorkflow_Call) Run(run func(ctx context.Context, accountId string, opts *client.StartWorkflowOptions, workflow1 any, arg any, valuePtr any, logger *slog.Logger)) *MockInterface_RunWorkflow_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *client.StartWorkflowOptions
+		if args[2] != nil {
+			arg2 = args[2].(*client.StartWorkflowOptions)
+		}
+		var arg3 any
+		if args[3] != nil {
+			arg3 = args[3].(any)
+		}
+		var arg4 any
+		if args[4] != nil {
+			arg4 = args[4].(any)
+		}
+		var arg5 any
+		if args[5] != nil {
+			arg5 = args[5].(any)
+		}
+		var arg6 *slog.Logger
+		if args[6] != nil {
+			arg6 = args[6].(*slog.Logger)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+			arg6,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInterface_RunWorkflow_Call) Return(err error) *MockInterface_RunWorkflow_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInterface_RunWorkflow_Call) RunAndReturn(run func(ctx context.Context, accountId string, opts *client.StartWorkflowOptions, workflow1 any, arg any, valuePtr any, logger *slog.Logger) error) *MockInterface_RunWorkflow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TerminateWorkflow provides a mock function for the type MockInterface
 func (_mock *MockInterface) TerminateWorkflow(ctx context.Context, accountId string, workflowId string, logger *slog.Logger) error {
 	ret := _mock.Called(ctx, accountId, workflowId, logger)

@@ -27,6 +27,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	connectionchecks "github.com/fishtre-compagnie/husonym/internal/connection-checks"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
@@ -75,6 +76,29 @@ type TableColumns struct {
 	Columns []string
 }
 
+// TablesOf returns the tables of the configs of a run, with the columns the run writes
+// into each.
+func TablesOf(configs []*benthosbuilder.BenthosConfigResponse) []*TableColumns {
+	var tables []*TableColumns
+	byName := map[string]*TableColumns{}
+	for _, cfg := range configs {
+		key := cfg.TableSchema + "." + cfg.TableName
+		table, ok := byName[key]
+		if !ok {
+			table = &TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
+			byName[key] = table
+			tables = append(tables, table)
+		}
+		for _, column := range cfg.Columns {
+			// A generated column is computed by the destination, never written by the run.
+			if !slices.Contains(table.Columns, column) && !slices.Contains(cfg.GeneratedColumns, column) {
+				table.Columns = append(table.Columns, column)
+			}
+		}
+	}
+	return tables
+}
+
 type RunPreflightRequest struct {
 	JobId string
 	// JobRunId and AccountId key the run context the report is kept in.
@@ -97,51 +121,12 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 	stop := heartbeat(ctx)
 	defer stop()
 
-	job, err := a.job(ctx, req.JobId)
+	// The job is read after the run brought it in step with its source.
+	report, findings, err := a.report(ctx, req.JobId, nil, req.Tables, req.Findings, slogger)
 	if err != nil {
 		return nil, err
 	}
-	usesAthanor := a.athanor.UsesAthanor(job)
-	findings := slices.Clone(req.Findings)
-
-	if err := a.engineRuns(ctx, job, usesAthanor); err != nil {
-		var unsupported *shared.EngineUnsupportedError
-		if !errors.As(err, &unsupported) {
-			return nil, err
-		}
-		findings = append(findings, &preflight.Finding{
-			Kind:    mgmtv1alpha1.PreflightFinding_KIND_ENGINE_UNSUPPORTED,
-			Level:   preflight.Blocking,
-			Message: unsupported.Error(),
-		})
-	}
-
-	session := connectionmanager.NewUniqueSession(
-		connectionmanager.WithSessionGroup(activity.GetInfo(ctx).WorkflowExecution.ID),
-	)
-	defer a.sqlconnmanager.ReleaseSession(session, slogger)
-	found, err := a.connectionFindings(ctx, session, job, req.Tables, usesAthanor, slogger)
-	if err != nil {
-		return nil, err
-	}
-	// The run knows its engine: what a connection lacks stops it, as it always did. A
-	// warning is what the API gives when it cannot tell the engine.
-	for _, finding := range found {
-		finding.Level = preflight.Blocking
-	}
-	findings = append(findings, found...)
-	found, err = a.triggerFindings(ctx, session, job, req.Tables, slogger)
-	if err != nil {
-		return nil, err
-	}
-	findings = append(findings, found...)
-	preflight.Sort(findings)
-
-	engine := mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS
-	if usesAthanor {
-		engine = mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR
-	}
-	if err := a.keep(ctx, req, preflight.Report(engine, findings)); err != nil {
+	if err := a.keep(ctx, req, report); err != nil {
 		return nil, err
 	}
 	for _, finding := range findings {
@@ -157,6 +142,97 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 	}
 	logger.Debug("pre-flight check passed", "findings", len(findings))
 	return &RunPreflightResponse{}, nil
+}
+
+type CheckPreflightRequest struct {
+	JobId string
+	// Tables are the tables a run would write, with the columns it would write.
+	Tables []*TableColumns
+	// Findings are what the plan of the tables tells.
+	Findings []*preflight.Finding
+	// Mappings are those a run would give the job before its start is checked: a run brings
+	// the job in step with its source first.
+	Mappings []*mgmtv1alpha1.JobMapping
+}
+
+type CheckPreflightResponse struct {
+	Report *mgmtv1alpha1.PreflightReport
+}
+
+// CheckPreflight completes the report of a run not started, and returns it: what the
+// pre-flight check of a job asks before any run. Nothing is kept, and a blocking finding is
+// part of the report, not a failure.
+func (a *Activity) CheckPreflight(ctx context.Context, req *CheckPreflightRequest) (*CheckPreflightResponse, error) {
+	_, slogger := loggers(ctx, req.JobId)
+	stop := heartbeat(ctx)
+	defer stop()
+
+	report, _, err := a.report(ctx, req.JobId, req.Mappings, req.Tables, req.Findings, slogger)
+	if err != nil {
+		return nil, err
+	}
+	return &CheckPreflightResponse{Report: report}, nil
+}
+
+// report adds to what the plan told what the connections tell: whether the engine can run
+// the job, what each connection lacks for its role, which destination triggers the run
+// takes out of its way.
+func (a *Activity) report(
+	ctx context.Context,
+	jobID string,
+	mappings []*mgmtv1alpha1.JobMapping,
+	tables []*TableColumns,
+	planned []*preflight.Finding,
+	slogger *slog.Logger,
+) (*mgmtv1alpha1.PreflightReport, []*preflight.Finding, error) {
+	job, err := a.job(ctx, jobID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if mappings != nil {
+		job.Mappings = mappings
+	}
+	usesAthanor := a.athanor.UsesAthanor(job)
+	findings := slices.Clone(planned)
+
+	if err := a.engineRuns(ctx, job, usesAthanor); err != nil {
+		var unsupported *shared.EngineUnsupportedError
+		if !errors.As(err, &unsupported) {
+			return nil, nil, err
+		}
+		findings = append(findings, &preflight.Finding{
+			Kind:    mgmtv1alpha1.PreflightFinding_KIND_ENGINE_UNSUPPORTED,
+			Level:   preflight.Blocking,
+			Message: unsupported.Error(),
+		})
+	}
+
+	session := connectionmanager.NewUniqueSession(
+		connectionmanager.WithSessionGroup(activity.GetInfo(ctx).WorkflowExecution.ID),
+	)
+	defer a.sqlconnmanager.ReleaseSession(session, slogger)
+	found, err := a.connectionFindings(ctx, session, job, tables, usesAthanor, slogger)
+	if err != nil {
+		return nil, nil, err
+	}
+	// The run knows its engine: what a connection lacks stops it, as it always did. A
+	// warning is what the API gives when it cannot tell the engine.
+	for _, finding := range found {
+		finding.Level = preflight.Blocking
+	}
+	findings = append(findings, found...)
+	found, err = a.triggerFindings(ctx, session, job, tables, slogger)
+	if err != nil {
+		return nil, nil, err
+	}
+	findings = append(findings, found...)
+	preflight.Sort(findings)
+
+	engine := mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS
+	if usesAthanor {
+		engine = mgmtv1alpha1.JobEngine_JOB_ENGINE_ATHANOR
+	}
+	return preflight.Report(engine, findings), findings, nil
 }
 
 type CheckRunPrivilegesRequest struct {

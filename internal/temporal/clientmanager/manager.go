@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/serviceerror"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	workflowpb "go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	temporalclient "go.temporal.io/sdk/client"
@@ -126,7 +128,22 @@ type Interface interface {
 		workflowId string,
 		logger *slog.Logger,
 	) (temporalclient.HistoryEventIterator, error)
+	// RunWorkflow starts a workflow on the sync job task queue of the account and waits for
+	// its result, which it decodes into valuePtr. It returns ErrNoWorker at once when no
+	// worker serves that queue: the workflow would wait for one until it times out.
+	RunWorkflow(
+		ctx context.Context,
+		accountId string,
+		opts *temporalclient.StartWorkflowOptions,
+		workflow any,
+		arg any,
+		valuePtr any,
+		logger *slog.Logger,
+	) error
 }
+
+// ErrNoWorker says that no worker serves the task queue of an account.
+var ErrNoWorker = errors.New("no worker serves the task queue of the account")
 
 var _ Interface = (*ClientManager)(nil)
 
@@ -668,4 +685,59 @@ func isNotFoundError(err error) bool {
 	// Therefore as a last ditch, we just check for the error message since we can't cast it as a well formed Go error.
 	msg := err.Error()
 	return strings.Contains(msg, "not found")
+}
+
+func (m *ClientManager) RunWorkflow(
+	ctx context.Context,
+	accountId string,
+	opts *temporalclient.StartWorkflowOptions,
+	workflow any,
+	arg any,
+	valuePtr any,
+	logger *slog.Logger,
+) error {
+	clients, err := m.getClients(ctx, accountId, logger)
+	if err != nil {
+		return err
+	}
+	defer clients.Release()
+
+	queue := clients.config.SyncJobQueueName
+	described, err := clients.WorkflowClient().DescribeTaskQueue(ctx, queue, enums.TASK_QUEUE_TYPE_WORKFLOW)
+	if err != nil {
+		return fmt.Errorf("unable to describe the task queue %q: %w", queue, err)
+	}
+	if !servedSince(described.GetPollers(), time.Now().Add(-pollerFreshness)) {
+		return ErrNoWorker
+	}
+
+	start := *opts
+	start.TaskQueue = queue
+	run, err := clients.WorkflowClient().ExecuteWorkflow(ctx, start, workflow, arg)
+	if err != nil {
+		return fmt.Errorf("unable to start the workflow: %w", err)
+	}
+	if err := run.Get(ctx, valuePtr); err != nil {
+		// The caller gave up: say so, rather than what the wait on the result became.
+		if ctx.Err() != nil {
+			return fmt.Errorf("the workflow did not end in time: %w", ctx.Err())
+		}
+		return err
+	}
+	return nil
+}
+
+// pollerFreshness is how recently a worker must have asked the queue for work to count as
+// serving it. A worker asks again as soon as a long poll ends, a minute at most; the server
+// keeps a stopped one in its list for minutes.
+const pollerFreshness = 90 * time.Second
+
+// servedSince reports whether a poller asked the queue for work since a time.
+func servedSince(pollers []*taskqueuepb.PollerInfo, since time.Time) bool {
+	for _, poller := range pollers {
+		if poller.GetLastAccessTime().AsTime().After(since) {
+			return true
+		}
+	}
+	return false
 }

@@ -509,3 +509,35 @@ func (c *Client) Activities(ctx context.Context, runID string) ([]Activity, erro
 	}
 	return activities, nil
 }
+
+// Preflight asks the pre-flight check of a job, before any run.
+func (c *Client) Preflight(ctx context.Context, jobID string) (*mgmtv1alpha1.PreflightReport, error) {
+	resp, err := c.jobs.PreflightJob(ctx, connect.NewRequest(&mgmtv1alpha1.PreflightJobRequest{JobId: jobID}))
+	if err != nil {
+		return nil, fmt.Errorf("orchestrate: pre-flight check of job %s: %w", jobID, err)
+	}
+	return resp.Msg.GetReport(), nil
+}
+
+// JobUpdatedAt returns when a job was last changed.
+func (c *Client) JobUpdatedAt(ctx context.Context, jobID string) (time.Time, error) {
+	resp, err := c.jobs.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{Id: jobID}))
+	if err != nil {
+		return time.Time{}, fmt.Errorf("orchestrate: job %s: %w", jobID, err)
+	}
+	return resp.Msg.GetJob().GetUpdatedAt().AsTime(), nil
+}
+
+// RunContextKept reports whether a run context is kept under a run id and a key.
+func (c *Client) RunContextKept(ctx context.Context, runID, externalID string) (bool, error) {
+	_, err := c.jobs.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{JobRunId: runID, ExternalId: externalID, AccountId: c.accountID},
+	}))
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("orchestrate: run context %s of %s: %w", externalID, runID, err)
+	}
+	return true, nil
+}

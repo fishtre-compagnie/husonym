@@ -4163,6 +4163,31 @@ components:
         - LEVEL_WARNING
         - LEVEL_INFORMATION
       description: What the finding does to a run.
+    mgmt.v1alpha1.PreflightJobRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
+          title: job_id
+          format: uuid
+          description: The job to check.
+      title: PreflightJobRequest
+      additionalProperties: false
+    mgmt.v1alpha1.PreflightJobResponse:
+      type: object
+      properties:
+        report:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PreflightReport'
+          title: report
+          description: What a run of the job would meet, were it started now.
+        checkedAt:
+          allOf:
+            - $ref: '#/components/schemas/google.protobuf.Timestamp'
+          title: checked_at
+          description: When the check was made.
+      title: PreflightJobResponse
+      additionalProperties: false
     mgmt.v1alpha1.PreflightReport:
       type: object
       properties:
@@ -6990,6 +7015,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/mgmt.v1alpha1.PauseJobResponse'
+  /mgmt.v1alpha1.JobService/PreflightJob:
+    post:
+      tags:
+        - mgmt.v1alpha1.JobService
+      summary: PreflightJob
+      description: |-
+        Tells what a run of the job would meet, before any run: the plan is computed by a worker
+         the way a run computes it, and the connections asked what their roles need. Nothing is
+         read from the tables nor written, the job included. The worker logs in to each connection
+         of the job: seeing what it stores is required, as for every call that opens a connection.
+         A check asked while one of the same job runs waits for it. Fails with FAILED_PRECONDITION
+         when no worker serves the account, UNAVAILABLE when the check cannot end (a connection out
+         of reach), and DEADLINE_EXCEEDED when it does not end in time.
+      operationId: mgmt.v1alpha1.JobService.PreflightJob
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          description: Define the version of the Connect protocol
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+          example: 1
+        - name: Connect-Timeout-Ms
+          in: header
+          description: Define the timeout, in ms
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+          example: 1000
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mgmt.v1alpha1.PreflightJobRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mgmt.v1alpha1.PreflightJobResponse'
   /mgmt.v1alpha1.JobService/ReconcileJobMappings:
     post:
       tags:

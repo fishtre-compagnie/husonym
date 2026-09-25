@@ -18,6 +18,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	selectquerybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder"
+	preflight_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/preflight"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 
 	"gopkg.in/yaml.v3"
@@ -143,54 +144,7 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 		return nil, err
 	}
 
-	sourceConnection, err := shared.GetJobSourceConnection(ctx, job.GetSource(), b.connclient)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get connection by id: %w", err)
-	}
-
-	destConnections := []*mgmtv1alpha1.Connection{}
-	for _, destination := range job.Destinations {
-		destinationConnection, err := shared.GetConnectionById(
-			ctx,
-			b.connclient,
-			destination.ConnectionId,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to get destination connection (%s) by id: %w",
-				destination.ConnectionId,
-				err,
-			)
-		}
-		destConnections = append(destConnections, destinationConnection)
-	}
-
-	benthosManagerConfig := &benthosbuilder.WorkerBenthosConfig{
-		Job:                    job,
-		SourceConnection:       sourceConnection,
-		DestinationConnections: destConnections,
-		JobRunId:               b.jobRunId,
-		Logger:                 slogger,
-		Sqlmanagerclient:       b.sqlmanagerclient,
-		Transformerclient:      b.transformerclient,
-		Connectionclient:       b.connclient,
-		SelectQueryBuilder:     &selectquerybuilder.QueryMapBuilderWrapper{},
-		MetricsEnabled:         b.metricsEnabled,
-		MetricLabelKeyVals: map[string]string{
-			metrics.TemporalWorkflowId: bb_shared.WithEnvInterpolation(
-				metrics.TemporalWorkflowIdEnvKey,
-			),
-			metrics.TemporalRunId: bb_shared.WithEnvInterpolation(metrics.TemporalRunIdEnvKey),
-		},
-		PageLimit:         &b.pageLimit,
-		HasConsistencyKey: consistencyKey != "",
-		UsesAthanor:       b.athanor.UsesAthanor(job),
-	}
-	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
-	if err != nil {
-		return nil, err
-	}
-	responses, err := benthosManager.GenerateBenthosConfigs(ctx)
+	benthosManager, responses, err := b.plan(ctx, job, consistencyKey != "", slogger)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +180,115 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 		BenthosConfigs: outputConfigs,
 		Findings:       benthosManager.Findings(),
 	}, nil
+}
+
+// plan computes the configs of a run of the job, and what they tell of the run, from the
+// schemas of its connections. It writes nothing: what the run keeps, and what it brings the
+// job in step with, is up to the caller.
+func (b *benthosBuilder) plan(
+	ctx context.Context,
+	job *mgmtv1alpha1.Job,
+	hasConsistencyKey bool,
+	slogger *slog.Logger,
+) (*benthosbuilder.BenthosConfigManager, []*benthosbuilder.BenthosConfigResponse, error) {
+	sourceConnection, err := shared.GetJobSourceConnection(ctx, job.GetSource(), b.connclient)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get connection by id: %w", err)
+	}
+
+	destConnections := []*mgmtv1alpha1.Connection{}
+	for _, destination := range job.Destinations {
+		destinationConnection, err := shared.GetConnectionById(
+			ctx,
+			b.connclient,
+			destination.ConnectionId,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"unable to get destination connection (%s) by id: %w",
+				destination.ConnectionId,
+				err,
+			)
+		}
+		destConnections = append(destConnections, destinationConnection)
+	}
+
+	benthosManagerConfig := &benthosbuilder.WorkerBenthosConfig{
+		Job:                    job,
+		SourceConnection:       sourceConnection,
+		DestinationConnections: destConnections,
+		JobRunId:               b.jobRunId,
+		Logger:                 slogger,
+		Sqlmanagerclient:       b.sqlmanagerclient,
+		Transformerclient:      b.transformerclient,
+		Connectionclient:       b.connclient,
+		SelectQueryBuilder:     &selectquerybuilder.QueryMapBuilderWrapper{},
+		MetricsEnabled:         b.metricsEnabled,
+		MetricLabelKeyVals: map[string]string{
+			metrics.TemporalWorkflowId: bb_shared.WithEnvInterpolation(
+				metrics.TemporalWorkflowIdEnvKey,
+			),
+			metrics.TemporalRunId: bb_shared.WithEnvInterpolation(metrics.TemporalRunIdEnvKey),
+		},
+		PageLimit:         &b.pageLimit,
+		HasConsistencyKey: hasConsistencyKey,
+		UsesAthanor:       b.athanor.UsesAthanor(job),
+	}
+	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	responses, err := benthosManager.GenerateBenthosConfigs(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return benthosManager, responses, nil
+}
+
+// PlanPreflight computes the plan of a run of the job as GenerateBenthosConfigsNew does, and
+// returns the tables it writes and what it tells of the run. Nothing is written: not the
+// job, whose mappings the columns AutoMap would add are not added to, nor the run context,
+// nor the key of the account, which is read and never drawn.
+func (b *benthosBuilder) PlanPreflight(
+	ctx context.Context,
+	jobID string,
+	slogger *slog.Logger,
+) (*PlanPreflightResponse, error) {
+	job, err := b.getJobById(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get job by id: %w", err)
+	}
+	hasConsistencyKey, err := b.keys.HasKey(ctx, job.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
+	benthosManager, responses, err := b.plan(ctx, job, hasConsistencyKey, slogger)
+	if err != nil {
+		return nil, err
+	}
+	return &PlanPreflightResponse{
+		AccountId: job.GetAccountId(),
+		Tables:    preflight_activity.TablesOf(responses),
+		Findings:  benthosManager.Findings(),
+		Mappings: mappingsOfRun(job.GetMappings(),
+			benthosManager.MappingChanges().Removed, benthosManager.MappingChanges().Added),
+	}, nil
+}
+
+// mappingsOfRun returns the mappings a run would give the job: those of columns the source
+// no longer has left out, those the strategy for new columns chose added.
+func mappingsOfRun(mappings, removedMappings, added []*mgmtv1alpha1.JobMapping) []*mgmtv1alpha1.JobMapping {
+	removed := map[string]bool{}
+	for _, mapping := range removedMappings {
+		removed[mapping.GetSchema()+"."+mapping.GetTable()+"."+mapping.GetColumn()] = true
+	}
+	kept := make([]*mgmtv1alpha1.JobMapping, 0, len(mappings)+len(added))
+	for _, mapping := range mappings {
+		if !removed[mapping.GetSchema()+"."+mapping.GetTable()+"."+mapping.GetColumn()] {
+			kept = append(kept, mapping)
+		}
+	}
+	return append(kept, added...)
 }
 
 func (b *benthosBuilder) setConnectionIdsRunContext(
