@@ -1,12 +1,13 @@
 import { type TokenSet } from '@auth/core/types';
 import { addSeconds, isAfter } from 'date-fns';
-import NextAuth, { NextAuthConfig } from 'next-auth';
+import NextAuth, { NextAuthConfig, customFetch } from 'next-auth';
 import { NextRequest } from 'next/server';
 import {
   AccountLoginMethod,
   getProviderId,
   fetchAccountLoginMethod,
 } from './account-provider';
+import { accountFetch } from './account-fetch';
 import { FlowAccount, getRequestAccount } from './login-flow';
 
 function getProviders(
@@ -42,6 +43,8 @@ function getProviders(
         : {
             client: { token_endpoint_auth_method: 'none' },
             checks: ['pkce', 'state'],
+            // Reached only over https, at public addresses (account-fetch.ts).
+            [customFetch]: accountFetch,
           }),
     });
   }
@@ -233,7 +236,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
             throw new Error('unable to find provider to refresh token');
           }
           try {
-            const response = await fetch(
+            const response = await (oauthConfig.account ? accountFetch : fetch)(
               oauthConfig.tokenUrl ??
                 (await getTokenUrl(oauthConfig.issuer, !!oauthConfig.account)),
               {
@@ -350,7 +353,7 @@ async function getOpenIdConfiguration(
   isAccountIssuer: boolean
 ): Promise<Partial<OidcConfiguration>> {
   const wellKnownUrl = getWellKnown(issuer);
-  const res = await fetch(wellKnownUrl, {
+  const res = await (isAccountIssuer ? accountFetch : fetch)(wellKnownUrl, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),

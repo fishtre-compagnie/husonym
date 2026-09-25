@@ -110,6 +110,8 @@ auth:
   providerName:
   # -- Whether or not to trust the external host (most likely want this to be true if running behind a load balancer)
   trustHost: true
+  # -- Let an account's identity provider be reached over plain http or at a private address. By default it must be reached over https, at an address on the internet. Set the same on the api.
+  accountIssuerAllowPrivate: false
 
 # check out the ingress.yaml file to see what ither values are available for configuration on this object.
 ingress:

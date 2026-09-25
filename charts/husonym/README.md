@@ -23,6 +23,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.enabled | bool | `true` | Enable or Disable Husonym Api |
 | app.enabled | bool | `true` | Enable or Disable Husonym App |
 | worker.enabled | bool | `true` | Enable or Disable Husonym Worker |
+| api.auth.accountIssuerAllowPrivate | bool | `false` | Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app. |
 | api.auth.api.baseUrl | string | `nil` | The base url to the auth service's admin url |
 | api.auth.api.clientId | string | `nil` | The service account client id |
 | api.auth.api.clientSecret | string | `nil` | The service account client secret |
@@ -113,6 +114,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.updateStrategy | string | `nil` | The strategy to use when rolling out new replicas |
 | api.volumeMounts | list | `[]` | Volumes that will be mounted to the deployment |
 | api.volumes | list | `[]` | Volumes that will be attached to the deployment |
+| app.auth.accountIssuerAllowPrivate | bool | `false` | Let an account's identity provider be reached over plain http or at a private address. By default it must be reached over https, at an address on the internet. Set the same on the api. |
 | app.auth.audience | string | `nil` | The audience that should be present in the JWT token |
 | app.auth.clientId | string | `nil` | The client id that will be used by the app to retrieve user tokens |
 | app.auth.clientSecret | string | `nil` | The client secret that will be used by the app |

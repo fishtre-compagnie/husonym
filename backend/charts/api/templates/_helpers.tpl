@@ -93,6 +93,9 @@ AUTH_BASEURL: {{ .Values.auth.baseUrl }}
 {{- if and .Values.auth .Values.auth.expectedIss }}
 AUTH_EXPECTED_ISS: {{ .Values.auth.expectedIss }}
 {{- end }}
+{{- if and .Values.auth .Values.auth.accountIssuerAllowPrivate }}
+AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE: "true"
+{{- end }}
 {{- if and .Values.auth .Values.auth.audience }}
 AUTH_AUDIENCE: {{ .Values.auth.audience }}
 {{- end }}

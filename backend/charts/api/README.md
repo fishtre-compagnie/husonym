@@ -12,6 +12,7 @@ A Helm chart for the Husonym Backend API
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| auth.accountIssuerAllowPrivate | bool | `false` | Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app. |
 | auth.api.baseUrl | string | `nil` | The base url to the auth service's admin url |
 | auth.api.clientId | string | `nil` | The service account client id |
 | auth.api.clientSecret | string | `nil` | The service account client secret |
