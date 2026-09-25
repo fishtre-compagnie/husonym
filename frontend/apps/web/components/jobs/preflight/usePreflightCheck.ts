@@ -35,10 +35,14 @@ export function usePreflightCheck(jobId: string): PreflightCheck {
     let found: PreflightOutcome;
     try {
       const resp = await mutateAsync({ jobId });
-      found = {
-        report: resp.report,
-        checkedAt: resp.checkedAt ? timestampDate(resp.checkedAt) : new Date(),
-      };
+      found = resp.report
+        ? {
+            report: resp.report,
+            checkedAt: resp.checkedAt
+              ? timestampDate(resp.checkedAt)
+              : new Date(),
+          }
+        : { error: 'The check returned no report.' };
     } catch (err) {
       found = { error: preflightErrorMessage(err) };
     }

@@ -37,23 +37,30 @@ const levelLabels: Record<FindingLevel, string> = {
 };
 
 // FindingList shows findings one per line, the most serious first: what each is about,
-// what is missing and the statement that grants it, if any.
+// what is missing and the statement that grants it, if any. The statement can be copied
+// only when it comes from the API as it answers: one read from storage may have been
+// written by someone else than the worker, and is shown for reading.
 export default function FindingList(props: {
   findings: FindingItem[];
+  copyableRemedies?: boolean;
 }): ReactElement {
+  const copyable = props.copyableRemedies ?? true;
   const ordered = [...props.findings].sort(
     (a, b) => levelOrder[a.level] - levelOrder[b.level]
   );
   return (
     <ul className="flex flex-col divide-y rounded-lg border">
       {ordered.map((finding) => (
-        <Finding key={finding.key} finding={finding} />
+        <Finding key={finding.key} finding={finding} copyable={copyable} />
       ))}
     </ul>
   );
 }
 
-function Finding(props: { finding: FindingItem }): ReactElement {
+function Finding(props: {
+  finding: FindingItem;
+  copyable: boolean;
+}): ReactElement {
   const { level, table, columns, message, missing, remedy } = props.finding;
   return (
     <li className="flex flex-row gap-3 p-3 text-sm">
@@ -83,15 +90,18 @@ function Finding(props: { finding: FindingItem }): ReactElement {
         ) : null}
         {remedy ? (
           <div className="flex flex-row items-start gap-2">
-            <pre className="min-w-0 flex-1 overflow-x-auto rounded-md bg-muted p-2 text-xs">
+            {/* Wrapped: nothing of what would be copied is out of sight. */}
+            <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
               {remedy}
             </pre>
-            <CopyButton
-              buttonVariant="outline"
-              textToCopy={remedy}
-              onHoverText="Copy the statement"
-              onCopiedText="Copied"
-            />
+            {props.copyable ? (
+              <CopyButton
+                buttonVariant="outline"
+                textToCopy={remedy}
+                onHoverText="Copy the statement"
+                onCopiedText="Copied"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

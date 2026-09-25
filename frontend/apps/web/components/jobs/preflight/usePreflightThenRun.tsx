@@ -38,19 +38,22 @@ export function usePreflightThenRun(
   const connections = useJobConnections(job, job?.accountId);
   const [open, setOpen] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  // Set while a check started by start() is waited for: closing the dialog meanwhile means
-  // the run is not wanted any more.
-  const waiting = useRef(false);
+  // The start() whose check is waited for, none when no check is: closing the dialog
+  // meanwhile means the run is not wanted any more. Each start() has its own, so that one
+  // left behind never releases the one that followed it.
+  const waiting = useRef(0);
+  const starts = useRef(0);
 
   async function start(): Promise<void> {
-    if (waiting.current || !job) {
+    if (waiting.current !== 0 || !job) {
       return;
     }
-    waiting.current = true;
+    const current = ++starts.current;
+    waiting.current = current;
     setOpen(true);
     try {
       const found = await check();
-      if (!found || !waiting.current) {
+      if (!found || waiting.current !== current) {
         return;
       }
       if (found.report) {
@@ -61,13 +64,15 @@ export function usePreflightThenRun(
         }
       }
     } finally {
-      waiting.current = false;
+      if (waiting.current === current) {
+        waiting.current = 0;
+      }
     }
   }
 
   function onOpenChange(next: boolean): void {
     if (!next) {
-      waiting.current = false;
+      waiting.current = 0;
     }
     setOpen(next);
   }
@@ -121,7 +126,11 @@ export function usePreflightThenRun(
           ) : null}
           {!isChecking && report ? (
             <div className="flex max-h-[60vh] flex-col overflow-y-auto pr-1">
-              <PreflightReportView report={report} connections={connections} />
+              <PreflightReportView
+                report={report}
+                connections={connections}
+                copyableRemedies
+              />
             </div>
           ) : null}
           <DialogFooter className="gap-2">

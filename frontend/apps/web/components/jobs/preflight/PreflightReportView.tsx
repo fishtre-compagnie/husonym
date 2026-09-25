@@ -8,6 +8,9 @@ import { groupReport, JobConnection } from './report';
 interface Props {
   report: PreflightReport;
   connections: JobConnection[];
+  // Whether the statements that grant what is missing can be copied: only from a report
+  // the API has just made.
+  copyableRemedies: boolean;
 }
 
 // PreflightReportView shows a pre-flight report: what the plan of the run tells, then what
@@ -27,7 +30,10 @@ export default function PreflightReportView(props: Props): ReactElement {
       {groups.map((group) => (
         <div key={group.key} className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold">{group.title}</h3>
-          <FindingList findings={group.findings} />
+          <FindingList
+            findings={group.findings}
+            copyableRemedies={props.copyableRemedies}
+          />
         </div>
       ))}
     </div>

@@ -144,9 +144,11 @@ export function parseKeptReport(
   value: Uint8Array
 ): PreflightReport | undefined {
   try {
+    // A worker newer than this page may write fields it does not know.
     return fromJsonString(
       PreflightReportSchema,
-      new TextDecoder().decode(value)
+      new TextDecoder().decode(value),
+      { ignoreUnknownFields: true }
     );
   } catch {
     return undefined;

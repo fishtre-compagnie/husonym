@@ -70,7 +70,11 @@ export default function PreflightCard(props: Props): ReactElement {
           {!isChecking && report ? (
             <>
               <p className="text-sm">{summarize(countReport(report))}</p>
-              <PreflightReportView report={report} connections={connections} />
+              <PreflightReportView
+                report={report}
+                connections={connections}
+                copyableRemedies
+              />
             </>
           ) : null}
         </CardContent>

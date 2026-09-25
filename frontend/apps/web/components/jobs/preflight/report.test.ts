@@ -101,6 +101,12 @@ describe('parseKeptReport', () => {
     );
     expect(parseKeptReport(kept)?.findings).toHaveLength(4);
   });
+  it('reads a report from a newer worker, with fields it does not know', () => {
+    const json = JSON.parse(toJsonString(PreflightReportSchema, report));
+    json.fromANewerWorker = true;
+    const kept = new TextEncoder().encode(JSON.stringify(json));
+    expect(parseKeptReport(kept)?.findings).toHaveLength(4);
+  });
   it('gives nothing for what it cannot read', () => {
     expect(parseKeptReport(new TextEncoder().encode('{nope'))).toBeUndefined();
   });

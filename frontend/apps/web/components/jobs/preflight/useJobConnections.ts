@@ -12,7 +12,8 @@ export function useJobConnections(
 ): JobConnection[] {
   const { data } = useQuery(
     ConnectionService.method.getConnections,
-    { accountId },
+    // Names only: what the connections store is not needed here.
+    { accountId, excludeSensitive: true },
     { enabled: !!accountId }
   );
   const names = new Map(

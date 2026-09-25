@@ -367,6 +367,7 @@ export default function Page(props: PageProps): ReactElement {
             jobRunId={id}
             jobId={jobRun?.jobId ?? ''}
             accountId={accountId}
+            isRunning={isRunning}
           />
           <div className="space-y-4">
             <JobRunActivityErrors
