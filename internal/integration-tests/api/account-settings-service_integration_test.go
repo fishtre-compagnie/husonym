@@ -176,6 +176,13 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 	})
 }
 
+// publicIssuer is an issuer the bound on accounts' providers lets through, unique to the
+// test: https, at a public literal address -- so that saving it resolves nothing -- with
+// a path of its own.
+func publicIssuer() string {
+	return "https://93.184.216.34/" + uuid.NewString() + "/"
+}
+
 func oidcSetting(issuer, clientId string) *mgmtv1alpha1.AccountSettingConfig {
 	return &mgmtv1alpha1.AccountSettingConfig{
 		Config: &mgmtv1alpha1.AccountSettingConfig_OidcProvider{
@@ -207,7 +214,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService_OidcProvider() {
 
 	t.Run("an account declares its provider, and the generated column knows the kind", func(t *testing.T) {
 		accountId := newAccount()
-		issuer := "https://" + uuid.NewString() + ".example.com/"
+		issuer := publicIssuer()
 
 		_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
 			AccountId: accountId,
@@ -224,7 +231,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService_OidcProvider() {
 	})
 
 	t.Run("a second account cannot claim the same issuer", func(t *testing.T) {
-		issuer := "https://" + uuid.NewString() + ".example.com/"
+		issuer := publicIssuer()
 
 		first := newAccount()
 		_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
@@ -244,7 +251,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService_OidcProvider() {
 
 	t.Run("an account may replace its own declaration with the same issuer", func(t *testing.T) {
 		accountId := newAccount()
-		issuer := "https://" + uuid.NewString() + ".example.com/"
+		issuer := publicIssuer()
 
 		for _, clientId := range []string{"first-client", "second-client"} {
 			_, err := client.SetAccountSetting(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountSettingRequest{
