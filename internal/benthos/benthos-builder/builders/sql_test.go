@@ -269,3 +269,16 @@ func Test_reducedKey(t *testing.T) {
 	}
 	require.False(t, reducedKey(declared, unknownParent), "a virtual key the database does not declare is kept")
 }
+
+// The destination wins in the merged columns, and leaves those of the source as they are:
+// the builder compares the two afterwards.
+func Test_mergeSourceDestinationColumnInfo_KeepsTheSource(t *testing.T) {
+	source := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+		"public.article": {"libelle": {CharacterMaximumLength: 40}},
+	}
+	merged := mergeSourceDestinationColumnInfo(source, map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+		"public.article": {"libelle": {CharacterMaximumLength: 5}},
+	})
+	require.Equal(t, 5, merged["public.article"]["libelle"].CharacterMaximumLength)
+	require.Equal(t, 40, source["public.article"]["libelle"].CharacterMaximumLength)
+}

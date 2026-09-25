@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 
@@ -755,8 +756,10 @@ func mergeSourceDestinationColumnInfo(
 ) map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow {
 	mergedCols := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{}
 
+	// Copied, not shared: the columns of the destination must not overwrite what the builder
+	// keeps of the source.
 	for schemaTable, tableCols := range sourceCols {
-		mergedCols[schemaTable] = tableCols
+		mergedCols[schemaTable] = maps.Clone(tableCols)
 	}
 
 	for schemaTable, tableCols := range destCols {
