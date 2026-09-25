@@ -1514,6 +1514,80 @@ message SetRunContextsRequest {
 }
 message SetRunContextsResponse {}
 
+// What a run of a job will meet, found by computing its plan: nothing is read from the tables
+// nor written. A run keeps the report of its own start in its run context, under
+// "preflight-report", and stops on a blocking finding.
+message PreflightReport {
+  // The engine the run is on, as the worker resolves the deployment default.
+  JobEngine engine = 1;
+  repeated PreflightFinding findings = 2;
+}
+
+// One thing a run of a job will meet.
+message PreflightFinding {
+  // What the finding is about.
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    // 1 to 8: what a connection cannot do that its role needs, as ConnectionCheck.Kind.
+    // The table, or a column the run writes, is there.
+    KIND_TABLE_EXISTS = 1;
+    // The source can read the table.
+    KIND_READABLE = 2;
+    // The destination server accepts writes at all.
+    KIND_SERVER_WRITABLE = 3;
+    // The destination can read, insert, update and delete rows of the table.
+    KIND_WRITABLE = 4;
+    // The destination can empty the table before writing it.
+    KIND_TRUNCATE = 5;
+    // The destination can take the triggers of the table out of the way of the run.
+    KIND_TRIGGERS = 6;
+    // The destination can put a trigger back as its definer.
+    KIND_TRIGGER_DEFINER = 7;
+    // The destination can suspend foreign keys, as Athanor does on PostgreSQL.
+    KIND_FOREIGN_KEY_SUSPENSION = 8;
+    // The engine of the run cannot run what the job asks of it.
+    KIND_ENGINE_UNSUPPORTED = 20;
+    // A column the destination computes itself is given a value.
+    KIND_GENERATED_COLUMN_WRITTEN = 21;
+    // What the run writes into a column may be longer than the column takes.
+    KIND_OUTPUT_TOO_LONG = 22;
+    // A unique key is given one same value on every row.
+    KIND_CONSTANT_ON_UNIQUE = 23;
+    // The table is read in one stream, not page by page: no key the job reads identifies a row.
+    KIND_READ_IN_ONE_STREAM = 24;
+    // A retried write of a table without a key writes its rows twice.
+    KIND_RETRY_MAY_DUPLICATE = 25;
+    // Triggers of the destination are taken out of the way of the run, and put back after it.
+    KIND_DESTINATION_TRIGGERS = 26;
+    // References to rows the subset leaves out are written as NULL.
+    KIND_REFERENCE_CLEARED_BY_SUBSET = 27;
+  }
+  // What the finding does to a run.
+  enum Level {
+    LEVEL_UNSPECIFIED = 0;
+    // The run stops on it, whatever the rows.
+    LEVEL_BLOCKING = 1;
+    // The run may fail, or copy wrong, depending on the rows.
+    LEVEL_WARNING = 2;
+    // What the run does, and the person should know.
+    LEVEL_INFORMATION = 3;
+  }
+  Kind kind = 1;
+  Level level = 2;
+  // The connection concerned, when the finding is about one.
+  optional string connection_id = 3;
+  // The table concerned, as schema.table; empty for the job or a server as a whole.
+  string table = 4;
+  // The columns concerned.
+  repeated string columns = 5;
+  // What an account lacks: privileges, or the names of absent columns.
+  repeated string missing = 6;
+  // The finding in a sentence.
+  string message = 7;
+  // The statement that grants what is missing, for someone allowed to run it.
+  optional string remedy = 8;
+}
+
 message JobHook {
   // The unique identifier of this hook.
   string id = 1;

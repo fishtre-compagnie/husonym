@@ -306,6 +306,15 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 		)
 	}
 
+	if preflightDriver(b.driver) {
+		findings, err := sourceFindings(ctx, b.transformerclient, job, params.UsesAthanor,
+			sqlSourceOpts.SubsetByForeignKeyConstraints, runConfigs, tableConstraints, colTransformerMap, foreignKeys)
+		if err != nil {
+			return nil, err
+		}
+		params.Findings = append(params.Findings, findings...)
+	}
+
 	return configs, nil
 }
 
@@ -505,6 +514,16 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 		return nil, err
 	}
 	params.SourceConfig.ColumnDefaultProperties = columnDefaultProperties
+
+	if preflightDriver(b.driver) {
+		findings, err := destinationFindings(ctx, b.transformerclient, params.UsesAthanor,
+			params.DestConnection.GetId(), benthosConfig, colInfoMap,
+			b.sqlSourceSchemaColumnInfoMap[tableKey], tableColTransformers)
+		if err != nil {
+			return nil, err
+		}
+		params.Findings = append(params.Findings, findings...)
+	}
 
 	destOpts, err := getDestinationOptions(params.DestinationOpts)
 	if err != nil {

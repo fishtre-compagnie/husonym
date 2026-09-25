@@ -9,6 +9,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
@@ -88,6 +89,12 @@ type SourceParams struct {
 	// pseudonymization. The strategy for new columns reads it: it does not choose for a
 	// column an option that needs a key the run will not have.
 	HasConsistencyKey bool
+
+	// UsesAthanor says which engine runs the job: what the run meets depends on it.
+	UsesAthanor bool
+	// Findings is an output, filled by the SQL builder: what the plan of the tables tells of
+	// the run (see internal/preflight).
+	Findings []*preflight.Finding
 }
 
 // MappingChanges is what a run changes in its job's mappings.
@@ -116,6 +123,12 @@ type DestinationParams struct {
 	DestinationOpts *mgmtv1alpha1.JobDestinationOptions
 	DestConnection  *mgmtv1alpha1.Connection
 	Logger          *slog.Logger
+
+	// UsesAthanor says which engine runs the job: what the run meets depends on it.
+	UsesAthanor bool
+	// Findings is an output, filled by the SQL builder: what the destination is to receive
+	// of the table and may refuse (see internal/preflight).
+	Findings []*preflight.Finding
 }
 
 // BenthosSourceConfig represents a Benthos source configuration
