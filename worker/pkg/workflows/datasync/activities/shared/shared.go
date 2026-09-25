@@ -25,7 +25,14 @@ const (
 	runContext_ExternalId_ConnectionIds       = "tablesync-connectionids"
 	runContext_ExternalId_TablePlan           = "tableplan"
 	runContext_ExternalId_SuspendedTriggers   = "suspended-triggers"
+	runContext_ExternalId_PreflightReport     = "preflight-report"
 )
+
+// GetPreflightReportExternalId is the run context key of what the start of a run found its
+// plan tells of it: a mgmtv1alpha1.PreflightReport, in JSON.
+func GetPreflightReportExternalId() string {
+	return runContext_ExternalId_PreflightReport
+}
 
 // GetSuspendedTriggersExternalId is the run context key of the destination triggers a run
 // took out of its way, with what creates them again.

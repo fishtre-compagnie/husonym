@@ -68,11 +68,11 @@ func AthanorRuns(job *mgmtv1alpha1.Job) error {
 	case job.GetSource().GetOptions().GetPostgres() != nil:
 		source = "postgres"
 	default:
-		return fmt.Errorf("athanor copies a MySQL or PostgreSQL source, not this one: run the job with benthos")
+		return unsupported("athanor copies a MySQL or PostgreSQL source, not this one: run the job with benthos")
 	}
 	destinations := job.GetDestinations()
 	if len(destinations) != 1 {
-		return fmt.Errorf("athanor copies a source to one destination, and the job has %d: "+
+		return unsupported("athanor copies a source to one destination, and the job has %d: "+
 			"make one job per destination", len(destinations))
 	}
 	destination := ""
@@ -83,7 +83,7 @@ func AthanorRuns(job *mgmtv1alpha1.Job) error {
 		destination = "postgres"
 	}
 	if destination != source {
-		return fmt.Errorf("athanor copies a %s source to a destination of the same database: run the job with benthos",
+		return unsupported("athanor copies a %s source to a destination of the same database: run the job with benthos",
 			source)
 	}
 	return nil
@@ -97,4 +97,9 @@ func splitIDs(s string) []string {
 		}
 	}
 	return out
+}
+
+// unsupported builds the reason an engine cannot run a job.
+func unsupported(format string, args ...any) error {
+	return &EngineUnsupportedError{fmt.Sprintf(format, args...)}
 }

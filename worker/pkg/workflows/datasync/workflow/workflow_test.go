@@ -17,7 +17,7 @@ import (
 	destinationtriggers_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/destination-triggers"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
-	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
+	preflight_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/preflight"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
@@ -53,9 +53,11 @@ func Test_Workflow_BenthosConfigsFails(t *testing.T) {
 			AccountId: uuid.NewString(),
 		}, nil)
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -99,9 +101,11 @@ func Test_Workflow_Succeeds_Zero_BenthosConfigs(t *testing.T) {
 			AccountId: uuid.NewString(),
 		}, nil)
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -146,9 +150,11 @@ func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 			AccountId: uuid.NewString(),
 		}, nil)
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -204,9 +210,11 @@ func Test_Workflow_Follows_Synchronous_DependentFlow(t *testing.T) {
 	env := testSuite.NewTestWorkflowEnvironment()
 
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -310,9 +318,11 @@ func Test_Workflow_Follows_Multiple_Dependents(t *testing.T) {
 	env := testSuite.NewTestWorkflowEnvironment()
 
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -442,9 +452,11 @@ func Test_Workflow_Follows_Multiple_Dependent_Redis_Cleanup(t *testing.T) {
 	env := testSuite.NewTestWorkflowEnvironment()
 
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -669,9 +681,11 @@ func Test_Workflow_Halts_Activities_OnError(t *testing.T) {
 			},
 		}, nil)
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -784,9 +798,11 @@ func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 		}, nil)
 
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -907,9 +923,11 @@ func Test_Workflow_Cleans_Up_Redis_OnError(t *testing.T) {
 			},
 		}, nil)
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
@@ -976,9 +994,11 @@ func Test_Workflow_Max_InFlight(t *testing.T) {
 		}, nil)
 
 	var accStatsActivity *accountstatus_activity.Activity
-	var privilegesActivity *runprivileges_activity.Activity
+	var privilegesActivity *preflight_activity.Activity
 	env.OnActivity(privilegesActivity.CheckRunPrivileges, mock.Anything, mock.Anything).
-		Return(&runprivileges_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+		Return(&preflight_activity.CheckRunPrivilegesResponse{}, nil).Maybe()
+	env.OnActivity(privilegesActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil).Maybe()
 
 	var triggersActivity *destinationtriggers_activity.Activity
 	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).

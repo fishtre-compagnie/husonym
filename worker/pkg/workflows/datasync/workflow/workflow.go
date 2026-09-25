@@ -18,8 +18,8 @@ import (
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	jobhooks_by_timing_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/jobhooks-by-timing"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
+	preflight_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/preflight"
 	referentialintegrity_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/referential-integrity"
-	runprivileges_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/run-privileges"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
 	syncrediscleanup_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-redis-clean-up"
 	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"
@@ -161,7 +161,9 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 
 	// Version 2 checks the privileges once the configs are generated, on the very tables
 	// and columns the run writes; version 1 checked them before, from the job mappings.
-	privilegesVersion := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 2)
+	// Version 3 runs the pre-flight check there instead: the privileges and what the plan
+	// tells of the run, kept as the report of the run.
+	privilegesVersion := workflow.GetVersion(ctx, "run-privilege-check", workflow.DefaultVersion, 3)
 	if privilegesVersion == 1 {
 		if err := runPrivilegeCheck(ctx, logger, req.JobId, nil); err != nil {
 			return nil, err
@@ -192,8 +194,13 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 	// Generating the configs reads metadata only: nothing is read from the tables nor
 	// written yet, and the hooks, the schema init and the emptying of the destination come
 	// after the check.
-	if privilegesVersion >= 2 {
+	switch {
+	case privilegesVersion == 2:
 		if err := runPrivilegeCheck(ctx, logger, req.JobId, bcResp.BenthosConfigs); err != nil {
+			return nil, err
+		}
+	case privilegesVersion >= 3:
+		if err := runPreflightCheck(ctx, logger, req.JobId, info.WorkflowExecution.ID, bcResp); err != nil {
 			return nil, err
 		}
 	}
@@ -706,6 +713,34 @@ func runPostTableSyncActivity(
 	return nil
 }
 
+// runPreflightCheck keeps the report of what the run will meet, and stops the run before
+// anything is read or written on a blocking finding.
+func runPreflightCheck(
+	ctx workflow.Context,
+	logger log.Logger,
+	jobId, jobRunId string,
+	generated *genbenthosconfigs_activity.GenerateBenthosConfigsResponse,
+) error {
+	logger.Info("scheduling pre-flight check")
+	var resp *preflight_activity.RunPreflightResponse
+	var preflightActivity *preflight_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 2 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		preflightActivity.RunPreflight,
+		&preflight_activity.RunPreflightRequest{
+			JobId:     jobId,
+			JobRunId:  jobRunId,
+			AccountId: generated.AccountId,
+			Tables:    runTables(generated.BenthosConfigs),
+			Findings:  generated.Findings,
+		},
+	).Get(ctx, &resp)
+}
+
 // runPrivilegeCheck stops the run before anything is read or written when a connection
 // lacks what its role in the job needs, on the tables and columns of the configs. Runs of
 // version 1 pass no configs.
@@ -715,13 +750,30 @@ func runPrivilegeCheck(
 	jobId string,
 	configs []*benthosbuilder.BenthosConfigResponse,
 ) error {
-	var tables []*runprivileges_activity.TableColumns
-	byName := map[string]*runprivileges_activity.TableColumns{}
+	tables := runTables(configs)
+	logger.Info("scheduling privilege check")
+	var resp *preflight_activity.CheckRunPrivilegesResponse
+	var privilegesActivity *preflight_activity.Activity
+	return workflow.ExecuteActivity(
+		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+			StartToCloseTimeout: 2 * time.Minute,
+			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
+			HeartbeatTimeout:    1 * time.Minute,
+		}),
+		privilegesActivity.CheckRunPrivileges,
+		&preflight_activity.CheckRunPrivilegesRequest{JobId: jobId, Tables: tables},
+	).Get(ctx, &resp)
+}
+
+// runTables returns the tables of the configs, with the columns the run writes into each.
+func runTables(configs []*benthosbuilder.BenthosConfigResponse) []*preflight_activity.TableColumns {
+	var tables []*preflight_activity.TableColumns
+	byName := map[string]*preflight_activity.TableColumns{}
 	for _, cfg := range configs {
 		key := cfg.TableSchema + "." + cfg.TableName
 		table, ok := byName[key]
 		if !ok {
-			table = &runprivileges_activity.TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
+			table = &preflight_activity.TableColumns{Schema: cfg.TableSchema, Table: cfg.TableName}
 			byName[key] = table
 			tables = append(tables, table)
 		}
@@ -732,18 +784,7 @@ func runPrivilegeCheck(
 			}
 		}
 	}
-	logger.Info("scheduling privilege check")
-	var resp *runprivileges_activity.CheckRunPrivilegesResponse
-	var privilegesActivity *runprivileges_activity.Activity
-	return workflow.ExecuteActivity(
-		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-			StartToCloseTimeout: 2 * time.Minute,
-			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
-			HeartbeatTimeout:    1 * time.Minute,
-		}),
-		privilegesActivity.CheckRunPrivileges,
-		&runprivileges_activity.CheckRunPrivilegesRequest{JobId: jobId, Tables: tables},
-	).Get(ctx, &resp)
+	return tables
 }
 
 // suspendDestinationTriggers takes the triggers of the destinations out of the way of the
