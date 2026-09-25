@@ -364,9 +364,10 @@ func (b *bench) runCase(ctx context.Context, c *cases.Case, execute bool) (*repo
 				outcome.Verdict = report.VerdictGap
 			}
 		}
-		// A run failing as expected must leave the triggers as they were all the same.
-		if len(outcome.TriggerChanges) > 0 {
-			outcome.Gaps += len(outcome.TriggerChanges)
+		// A run failing as expected must leave the triggers as they were all the same, and
+		// its pre-flight report must say what the case expects whatever the run did.
+		if changes := len(outcome.TriggerChanges) + len(outcome.PreflightChanges); changes > 0 {
+			outcome.Gaps += changes
 			if outcome.Verdict == report.VerdictOK {
 				outcome.Verdict = report.VerdictGap
 			}
@@ -465,6 +466,14 @@ func (b *bench) execute(ctx context.Context, c *cases.Case, engine env.Engine, o
 		return err
 	}
 	outcome.TriggerChanges = verify.TriggerChanges(triggersBefore, triggersAfter)
+	if !result.TimedOut {
+		preflightReport, err := b.client.PreflightReport(ctx, result.RunID)
+		if err != nil {
+			return err
+		}
+		outcome.PreflightChanges = verify.PreflightChanges(
+			c.ExpectedFindings(b.env.Dialect, string(engine)), c.Schema(), preflightReport)
+	}
 	outcome.RunStatus = strings.TrimPrefix(result.Status.String(), "JOB_RUN_STATUS_")
 	outcome.DurationMs = result.Duration.Milliseconds()
 	outcome.Errors = result.Errors

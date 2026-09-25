@@ -3,6 +3,7 @@ package cases
 import (
 	"fmt"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
@@ -47,9 +48,13 @@ func destinationCases() []*Case {
 // orders fires it: the history gets rows of its own, which collide with the ones copied
 // from the source or pile up next to them.
 func destinationTriggerWritesSyncedTable() *Case {
-	return triggerWritesSyncedTable("destination-trigger-writes-synced-table",
+	c := triggerWritesSyncedTable("destination-trigger-writes-synced-table",
 		"Trigger en destination qui écrit dans une table elle aussi synchronisée",
 		historyTrigger(historyTriggerName))
+	c.ExpectFindings = []ExpectedFinding{
+		expectFinding(mgmtv1alpha1.PreflightFinding_KIND_DESTINATION_TRIGGERS, findingInformation, commandeTable),
+	}
+	return c
 }
 
 // destinationReplicaTriggerWritesSyncedTable: the same trigger, set ENABLE REPLICA. It fires

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -59,6 +60,9 @@ type Outcome struct {
 	// TriggerChanges are what the run left different among the destination triggers, which
 	// it must leave as it found them whether it succeeds or fails.
 	TriggerChanges []string `json:"triggerChanges,omitempty"`
+	// PreflightChanges are how the pre-flight report of the run differs from what the case
+	// expects.
+	PreflightChanges []string `json:"preflightChanges,omitempty"`
 }
 
 // CaseReport gathers the outcomes of one case.
@@ -167,7 +171,7 @@ func (r *Report) Markdown() string {
 			if o.Verification != nil {
 				writeVerification(&b, o.Verification)
 			}
-			for _, change := range o.TriggerChanges {
+			for _, change := range slices.Concat(o.TriggerChanges, o.PreflightChanges) {
 				fmt.Fprintf(&b, "- %s\n", strings.ReplaceAll(change, "`", "'"))
 			}
 			b.WriteString("\n")

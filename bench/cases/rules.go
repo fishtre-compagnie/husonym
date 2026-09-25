@@ -34,6 +34,9 @@ func ruleCases() []*Case {
 func pseudoOnAthanorOnly(c *Case) *Case {
 	c.ExpectRunError = sameRunError("benthos cannot run the pseudo functions")
 	c.FailingEngines = []string{"benthos"}
+	c.ExpectFindings = []ExpectedFinding{
+		expectFinding(mgmtv1alpha1.PreflightFinding_KIND_ENGINE_UNSUPPORTED, findingBlocking, "").on("benthos"),
+	}
 	return c
 }
 
