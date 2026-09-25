@@ -5,12 +5,15 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -81,8 +84,8 @@ func Test_sourceFindings_ReadInOneStream(t *testing.T) {
 	}}
 
 	t.Run("a table without key, retried under Benthos, may be written twice", func(t *testing.T) {
-		findings, err := sourceFindings(context.Background(), nil, jobWithAttempts(&three), false, true,
-			planOf(t, []string{"niveau", "message"}, keyless), keyless, transformers, nil)
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&three), false, true,
+			planOf(t, []string{"niveau", "message"}, keyless), keyless, nil, transformers, nil)
 		require.NoError(t, err)
 		require.Equal(t, []mgmtv1alpha1.PreflightFinding_Kind{
 			mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM,
@@ -104,8 +107,8 @@ func Test_sourceFindings_ReadInOneStream(t *testing.T) {
 			"one attempt":    {jobWithAttempts(&one), false},
 			"no retry given": {&mgmtv1alpha1.Job{}, false},
 		} {
-			findings, err := sourceFindings(context.Background(), nil, run.job, run.usesAthanor, true,
-				planOf(t, []string{"niveau", "message"}, keyless), keyless, transformers, nil)
+			findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), run.job, run.usesAthanor, true,
+				planOf(t, []string{"niveau", "message"}, keyless), keyless, nil, transformers, nil)
 			require.NoError(t, err, name)
 			assert.Equal(t, []mgmtv1alpha1.PreflightFinding_Kind{
 				mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM,
@@ -115,8 +118,8 @@ func Test_sourceFindings_ReadInOneStream(t *testing.T) {
 
 	t.Run("unlimited attempts retry", func(t *testing.T) {
 		zero := int32(0)
-		findings, err := sourceFindings(context.Background(), nil, jobWithAttempts(&zero), false, true,
-			planOf(t, []string{"niveau", "message"}, keyless), keyless, transformers, nil)
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&zero), false, true,
+			planOf(t, []string{"niveau", "message"}, keyless), keyless, nil, transformers, nil)
 		require.NoError(t, err)
 		assert.Contains(t, kindsOf(findings), mgmtv1alpha1.PreflightFinding_KIND_RETRY_MAY_DUPLICATE)
 	})
@@ -125,8 +128,8 @@ func Test_sourceFindings_ReadInOneStream(t *testing.T) {
 		withKey := &sqlmanager_shared.TableConstraints{
 			PrimaryKeyConstraints: map[string][]string{preflightTable: {"my_row_id"}},
 		}
-		findings, err := sourceFindings(context.Background(), nil, jobWithAttempts(&three), false, true,
-			planOf(t, []string{"niveau", "message"}, withKey), withKey, transformers, nil)
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&three), false, true,
+			planOf(t, []string{"niveau", "message"}, withKey), withKey, nil, transformers, nil)
 		require.NoError(t, err)
 		// The table has a key to collide on: a retry writes nothing twice.
 		require.Equal(t, []mgmtv1alpha1.PreflightFinding_Kind{
@@ -141,21 +144,34 @@ func Test_sourceFindings_ReadInOneStream(t *testing.T) {
 			UniqueIndexes: map[string][][]string{preflightTable: {{"message"}}},
 		}
 		configs := planOf(t, []string{"niveau", "message"}, &sqlmanager_shared.TableConstraints{})
-		findings, err := sourceFindings(context.Background(), nil, jobWithAttempts(&three), false, true,
-			configs, nullable, transformers, nil)
+		columns := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{preflightTable: {
+			"niveau": {IsNullable: false}, "message": {IsNullable: true},
+		}}
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&three), false, true,
+			configs, nullable, columns, transformers, nil)
 		require.NoError(t, err)
+		// A row holding NULL in the key collides with nothing: a retry writes it again.
 		require.Equal(t, []mgmtv1alpha1.PreflightFinding_Kind{
 			mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM,
+			mgmtv1alpha1.PreflightFinding_KIND_RETRY_MAY_DUPLICATE,
 		}, kindsOf(findings))
 		assert.Contains(t, findings[0].Message, "none of its unique keys is both read by the job and free of NULL")
+
+		notNull := &sqlmanager_shared.TableConstraints{
+			UniqueIndexes: map[string][][]string{preflightTable: {{"niveau"}}},
+		}
+		findings, err = sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&three), false, true,
+			configs, notNull, columns, transformers, nil)
+		require.NoError(t, err)
+		assert.NotContains(t, kindsOf(findings), mgmtv1alpha1.PreflightFinding_KIND_RETRY_MAY_DUPLICATE)
 	})
 
 	t.Run("a table paged on its key", func(t *testing.T) {
 		withKey := &sqlmanager_shared.TableConstraints{
 			PrimaryKeyConstraints: map[string][]string{preflightTable: {"niveau"}},
 		}
-		findings, err := sourceFindings(context.Background(), nil, jobWithAttempts(&three), false, true,
-			planOf(t, []string{"niveau", "message"}, withKey), withKey, transformers, nil)
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), jobWithAttempts(&three), false, true,
+			planOf(t, []string{"niveau", "message"}, withKey), withKey, nil, transformers, nil)
 		require.NoError(t, err)
 		assert.Empty(t, findings)
 	})
@@ -169,8 +185,8 @@ func Test_sourceFindings_ConstantOnUnique(t *testing.T) {
 	columns := []string{"id", "code", "libelle"}
 	run := func(t *testing.T, transformers map[string]*mgmtv1alpha1.JobMappingTransformer) []*preflight.Finding {
 		t.Helper()
-		findings, err := sourceFindings(context.Background(), nil, &mgmtv1alpha1.Job{}, false, true,
-			planOf(t, columns, constraints), constraints,
+		findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, true,
+			planOf(t, columns, constraints), constraints, nil,
 			map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{preflightTable: transformers}, nil)
 		require.NoError(t, err)
 		return findings
@@ -225,7 +241,7 @@ func Test_sourceFindings_ReferenceClearedBySubset(t *testing.T) {
 		// The whole parent is copied: every reference finds its row.
 		{Columns: []string{"station_id"}, NotNull: []bool{false}, ParentSchema: "public", ParentTable: "pays"},
 	}}
-	findings, err := sourceFindings(context.Background(), nil, &mgmtv1alpha1.Job{}, false, true, configs, constraints,
+	findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, true, configs, constraints, nil,
 		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
@@ -252,7 +268,7 @@ func Test_destinationFindings(t *testing.T) {
 		transformers map[string]*mgmtv1alpha1.JobMappingTransformer,
 	) []*preflight.Finding {
 		t.Helper()
-		findings, err := destinationFindings(context.Background(), nil, usesAthanor, "dest", config,
+		findings, err := destinationFindings(context.Background(), newTransformerConfigs(nil), usesAthanor, "dest", config,
 			destination, source, transformers)
 		require.NoError(t, err)
 		return findings
@@ -285,6 +301,19 @@ func Test_destinationFindings(t *testing.T) {
 		assert.Empty(t, run(t, false, config, destination, nil, map[string]*mgmtv1alpha1.JobMappingTransformer{
 			"total": mapped(defaultConfig()), "code": mapped(passthroughConfig()),
 		}))
+
+		// A transformer of the account that stands for Generate Default writes nothing either.
+		configs := newTransformerConfigs(nil)
+		configs.resolved["udt"] = defaultConfig()
+		udt, err := destinationFindings(context.Background(), configs, true, "dest", config, destination, nil,
+			map[string]*mgmtv1alpha1.JobMappingTransformer{
+				"total": mapped(&mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
+					UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: "udt"},
+				}}),
+				"code": mapped(passthroughConfig()),
+			})
+		require.NoError(t, err)
+		assert.Empty(t, udt)
 	})
 
 	t.Run("an output longer than the column", func(t *testing.T) {
@@ -374,7 +403,7 @@ func Test_sourceFindings_KeyTheSubsetJoinsOn(t *testing.T) {
 	constraints := &sqlmanager_shared.TableConstraints{
 		PrimaryKeyConstraints: map[string][]string{transfert: {"id"}, station: {"id"}},
 	}
-	findings, err := sourceFindings(context.Background(), nil, &mgmtv1alpha1.Job{}, false, true, configs, constraints,
+	findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, true, configs, constraints, nil,
 		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
@@ -382,8 +411,58 @@ func Test_sourceFindings_KeyTheSubsetJoinsOn(t *testing.T) {
 	assert.Equal(t, []string{"retour_id"}, findings[0].Columns)
 
 	// Subset by the where clause of each table alone: no key is joined, both are cleared.
-	findings, err = sourceFindings(context.Background(), nil, &mgmtv1alpha1.Job{}, false, false, configs, constraints,
+	findings, err = sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, false, configs, constraints, nil,
 		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
 	require.NoError(t, err)
 	require.Len(t, findings, 2)
+}
+
+// Each destination is compared with its own schema: two PostgreSQL destinations share the
+// builder, and only the second computes total itself.
+func Test_BuildDestinationConfig_FindingsPerDestination(t *testing.T) {
+	sqlmanagerclient := sqlmanager.NewMockSqlManagerClient(t)
+	schemaOf := func(generated bool) map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow {
+		return map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{preflightTable: {
+			"id":    {ColumnName: "id", DataType: "integer", UpdateAllowed: true},
+			"total": {ColumnName: "total", DataType: "integer", UpdateAllowed: !generated},
+		}}
+	}
+	for id, generated := range map[string]bool{"dest-a": false, "dest-b": true} {
+		db := sqlmanager.NewMockSqlDatabase(t)
+		db.EXPECT().GetSchemaColumnMap(mock.Anything).Return(schemaOf(generated), nil).Once()
+		db.EXPECT().Close().Return()
+		sqlmanagerclient.EXPECT().NewSqlConnection(mock.Anything, mock.Anything,
+			mock.MatchedBy(func(c *mgmtv1alpha1.Connection) bool { return c.GetId() == id }), mock.Anything).
+			Return(sqlmanager.NewPostgresSqlConnection(db), nil).Once()
+	}
+
+	builder := NewSqlSyncBuilder(nil, sqlmanagerclient, sqlmanager_shared.PostgresDriver, nil, 100).(*sqlSyncBuilder)
+	builder.sqlSourceSchemaColumnInfoMap = schemaOf(false)
+	builder.colTransformerMap = map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{preflightTable: {
+		"id": mapped(passthroughConfig()), "total": mapped(passthroughConfig()),
+	}}
+	source := &bb_internal.BenthosSourceConfig{
+		Name: preflightTable + ".insert", TableSchema: "public", TableName: "article",
+		RunType: rc.RunTypeInsert, Columns: []string{"id", "total"},
+	}
+	var findings []*preflight.Finding
+	for _, id := range []string{"dest-a", "dest-b"} {
+		params := &bb_internal.DestinationParams{
+			SourceConfig: source,
+			Job:          &mgmtv1alpha1.Job{},
+			DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{Config: &mgmtv1alpha1.JobDestinationOptions_PostgresOptions{
+				PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{},
+			}},
+			DestConnection: &mgmtv1alpha1.Connection{Id: id, ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{}},
+			}},
+			Logger: testutil.GetTestLogger(t),
+		}
+		_, err := builder.BuildDestinationConfig(context.Background(), params)
+		require.NoError(t, err)
+		findings = append(findings, params.Findings...)
+	}
+	require.Len(t, findings, 1)
+	assert.Equal(t, mgmtv1alpha1.PreflightFinding_KIND_GENERATED_COLUMN_WRITTEN, findings[0].Kind)
+	assert.Equal(t, "dest-b", findings[0].ConnectionID)
 }

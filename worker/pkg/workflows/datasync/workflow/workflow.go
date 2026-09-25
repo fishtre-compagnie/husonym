@@ -727,8 +727,10 @@ func runPreflightCheck(
 	return workflow.ExecuteActivity(
 		workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 			StartToCloseTimeout: 2 * time.Minute,
-			RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 1},
-			HeartbeatTimeout:    1 * time.Minute,
+			// It only reads, and keeps its report under one key: a failure to ask a
+			// connection or the API is asked again. A blocking finding is not retried.
+			RetryPolicy:      &temporal.RetryPolicy{MaximumAttempts: 3},
+			HeartbeatTimeout: 1 * time.Minute,
 		}),
 		preflightActivity.RunPreflight,
 		&preflight_activity.RunPreflightRequest{

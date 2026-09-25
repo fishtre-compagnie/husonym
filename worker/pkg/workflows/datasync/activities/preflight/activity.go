@@ -36,6 +36,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/temporal"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -123,6 +124,11 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 	if err != nil {
 		return nil, err
 	}
+	// The run knows its engine: what a connection lacks stops it, as it always did. A
+	// warning is what the API gives when it cannot tell the engine.
+	for _, finding := range found {
+		finding.Level = preflight.Blocking
+	}
 	findings = append(findings, found...)
 	found, err = a.triggerFindings(ctx, session, job, req.Tables, slogger)
 	if err != nil {
@@ -144,7 +150,10 @@ func (a *Activity) RunPreflight(ctx context.Context, req *RunPreflightRequest) (
 		}
 	}
 	if blocking := preflight.BlockingOf(findings); len(blocking) > 0 {
-		return nil, fmt.Errorf("pre-flight check stopped the run: %s", strings.Join(preflight.Messages(blocking), "; "))
+		// Asking again finds the same: the job, or the grants, have to change.
+		return nil, temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("pre-flight check stopped the run: %s", strings.Join(preflight.Messages(blocking), "; ")),
+			"PreflightBlocking", nil)
 	}
 	logger.Debug("pre-flight check passed", "findings", len(findings))
 	return &RunPreflightResponse{}, nil

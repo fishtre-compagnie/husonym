@@ -38,9 +38,12 @@ type sqlSyncBuilder struct {
 	colTransformerMap            map[string]map[string]*mgmtv1alpha1.JobMappingTransformer  // schema.table -> column -> transformer
 	sqlSourceSchemaColumnInfoMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow // schema.table -> column -> column info struct
 	// merged source and destination schema. with preference given to destination schema
-	mergedSchemaColumnMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow // schema.table -> column -> column info struct
-	configQueryMap        map[string]*sqlmanager_shared.SelectQuery                  // config id -> query info
-	tableDeferrableMap    map[string]bool                                            // schema.table -> true if table has at least one deferrable constraint
+	// per destination connection id: schema.table -> column -> column info struct
+	mergedSchemaColumnMaps map[string]map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow
+	configQueryMap         map[string]*sqlmanager_shared.SelectQuery // config id -> query info
+	tableDeferrableMap     map[string]bool                           // schema.table -> true if table has at least one deferrable constraint
+	// transformerConfigs resolves the transformers of the job for the pre-flight findings.
+	transformerConfigs *transformerConfigs
 }
 
 func NewSqlSyncBuilder(
@@ -307,8 +310,9 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	}
 
 	if preflightDriver(b.driver) {
-		findings, err := sourceFindings(ctx, b.transformerclient, job, params.UsesAthanor,
-			sqlSourceOpts.SubsetByForeignKeyConstraints, runConfigs, tableConstraints, colTransformerMap, foreignKeys)
+		findings, err := sourceFindings(ctx, b.configs(), job, params.UsesAthanor,
+			sqlSourceOpts.SubsetByForeignKeyConstraints, runConfigs, tableConstraints, groupedColumnInfo,
+			colTransformerMap, foreignKeys)
 		if err != nil {
 			return nil, err
 		}
@@ -316,6 +320,14 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	}
 
 	return configs, nil
+}
+
+// configs returns what resolves the transformers of the job, made on first use.
+func (b *sqlSyncBuilder) configs() *transformerConfigs {
+	if b.transformerConfigs == nil {
+		b.transformerConfigs = newTransformerConfigs(b.transformerclient)
+	}
+	return b.transformerConfigs
 }
 
 func splitKeyToTablePieces(key string) (schema, table string, err error) {
@@ -453,9 +465,10 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 
 	config := &bb_internal.BenthosDestinationConfig{}
 
-	// lazy load
-	if len(b.mergedSchemaColumnMap) == 0 {
-		sqlSchemaColMap := getSqlSchemaColumnMap(
+	// lazy load, once per destination: each has a schema of its own
+	mergedSchemaColumnMap, loaded := b.mergedSchemaColumnMaps[params.DestConnection.GetId()]
+	if !loaded {
+		mergedSchemaColumnMap = getSqlSchemaColumnMap(
 			ctx,
 			connectionmanager.NewUniqueSession(connectionmanager.WithSessionGroup(params.JobRunId)),
 			params.DestConnection,
@@ -463,9 +476,12 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 			b.sqlmanagerclient,
 			params.Logger,
 		)
-		b.mergedSchemaColumnMap = sqlSchemaColMap
+		if b.mergedSchemaColumnMaps == nil {
+			b.mergedSchemaColumnMaps = map[string]map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{}
+		}
+		b.mergedSchemaColumnMaps[params.DestConnection.GetId()] = mergedSchemaColumnMap
 	}
-	if len(b.mergedSchemaColumnMap) == 0 {
+	if len(mergedSchemaColumnMap) == 0 {
 		return nil, fmt.Errorf(
 			"unable to retrieve schema columns for either source or destination: %s",
 			params.DestConnection.Name,
@@ -473,7 +489,7 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 	}
 
 	var colInfoMap map[string]*sqlmanager_shared.DatabaseSchemaRow
-	colMap, ok := b.mergedSchemaColumnMap[tableKey]
+	colMap, ok := mergedSchemaColumnMap[tableKey]
 	if ok {
 		colInfoMap = colMap
 	}
@@ -516,7 +532,7 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 	params.SourceConfig.ColumnDefaultProperties = columnDefaultProperties
 
 	if preflightDriver(b.driver) {
-		findings, err := destinationFindings(ctx, b.transformerclient, params.UsesAthanor,
+		findings, err := destinationFindings(ctx, b.configs(), params.UsesAthanor,
 			params.DestConnection.GetId(), benthosConfig, colInfoMap,
 			b.sqlSourceSchemaColumnInfoMap[tableKey], tableColTransformers)
 		if err != nil {

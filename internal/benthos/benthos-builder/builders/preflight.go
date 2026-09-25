@@ -28,12 +28,13 @@ func preflightDriver(driver string) bool {
 // which values it writes, whatever the destination.
 func sourceFindings(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	transformers *transformerConfigs,
 	job *mgmtv1alpha1.Job,
 	usesAthanor bool,
 	subsetByForeignKeys bool,
 	runConfigs []*rc.RunConfig,
 	constraints *sqlmanager_shared.TableConstraints,
+	columns map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	colTransformerMap map[string]map[string]*mgmtv1alpha1.JobMappingTransformer,
 	foreignKeys map[string][]*tableplan.ForeignKey,
 ) ([]*preflight.Finding, error) {
@@ -49,17 +50,19 @@ func sourceFindings(
 		if len(config.OrderByColumns()) == 0 {
 			findings = append(findings, readInOneStream(table, constraints.PrimaryKeyConstraints[table], keys))
 		}
-		if len(keys) == 0 && !usesAthanor && retries(job) {
+		// "Do nothing" collides only on a key without NULL: a row holding one is written again.
+		keyed := len(constraints.PrimaryKeyConstraints[table]) > 0 || hasNotNullKey(keys, columns[table])
+		if !keyed && !usesAthanor && retries(job) {
 			findings = append(findings, &preflight.Finding{
 				Kind:  mgmtv1alpha1.PreflightFinding_KIND_RETRY_MAY_DUPLICATE,
 				Level: preflight.Warning,
 				Table: table,
-				Message: fmt.Sprintf("%s has no key: when Benthos retries a write of it that failed part way, "+
+				Message: fmt.Sprintf("%s has no key free of NULL: when Benthos retries a write of it that failed part way, "+
 					"it writes again the rows already written, which the destination then holds twice", table),
 			})
 		}
 
-		constant, err := constantColumns(ctx, transformerclient, colTransformerMap[table])
+		constant, err := constantColumns(ctx, transformers, colTransformerMap[table])
 		if err != nil {
 			return nil, err
 		}
@@ -163,6 +166,22 @@ func uniqueKeysOf(constraints *sqlmanager_shared.TableConstraints, table string)
 	return keys
 }
 
+// hasNotNullKey reports whether one of the keys has no nullable column.
+func hasNotNullKey(keys [][]string, columns map[string]*sqlmanager_shared.DatabaseSchemaRow) bool {
+	for _, key := range keys {
+		nullable := false
+		for _, column := range key {
+			if info, ok := columns[column]; !ok || info.IsNullable {
+				nullable = true
+			}
+		}
+		if !nullable {
+			return true
+		}
+	}
+	return false
+}
+
 func sameColumns(a, b []string) bool {
 	return len(a) == len(b) && allIn(a, b)
 }
@@ -186,12 +205,12 @@ func retries(job *mgmtv1alpha1.Job) bool {
 // constantColumns returns the columns a transformer gives one same value on every row.
 func constantColumns(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	configs *transformerConfigs,
 	transformers map[string]*mgmtv1alpha1.JobMappingTransformer,
 ) ([]string, error) {
 	var constant []string
 	for column, transformer := range transformers {
-		config, err := resolvedConfig(ctx, transformerclient, transformer)
+		config, err := configs.of(ctx, transformer)
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +225,7 @@ func constantColumns(
 // receives: values it refuses, or may not hold.
 func destinationFindings(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	configs *transformerConfigs,
 	usesAthanor bool,
 	connectionID string,
 	config *bb_internal.BenthosSourceConfig,
@@ -221,7 +240,15 @@ func destinationFindings(
 	var findings []*preflight.Finding
 	for _, column := range config.Columns {
 		transformer := transformers[column]
-		if transformer == nil || isDefaultJobMappingTransformer(transformer) {
+		if transformer == nil {
+			continue
+		}
+		transformerConfig, err := configs.of(ctx, transformer)
+		if err != nil {
+			return nil, err
+		}
+		// The destination computes a default itself: nothing is written.
+		if transformerConfig.GetGenerateDefaultConfig() != nil {
 			continue
 		}
 		destination, ok := destinationColumns[column]
@@ -235,10 +262,6 @@ func destinationFindings(
 		}
 		if destination.CharacterMaximumLength <= 0 {
 			continue
-		}
-		transformerConfig, err := resolvedConfig(ctx, transformerclient, transformer)
-		if err != nil {
-			return nil, err
 		}
 		longest, what := longestOutput(transformerConfig, sourceColumns[column])
 		if longest <= destination.CharacterMaximumLength {
@@ -336,19 +359,32 @@ func categoriesOf(config *mgmtv1alpha1.GenerateCategorical) []string {
 	return distinct
 }
 
-// resolvedConfig returns the config of a transformer, a user-defined one resolved to the
-// system transformer it configures.
-func resolvedConfig(
+// transformerConfigs gives the config a transformer of the job runs: a user-defined one
+// resolved to the system transformer it configures, asked once for the whole job.
+type transformerConfigs struct {
+	client   mgmtv1alpha1connect.TransformersServiceClient
+	resolved map[string]*mgmtv1alpha1.TransformerConfig
+}
+
+func newTransformerConfigs(client mgmtv1alpha1connect.TransformersServiceClient) *transformerConfigs {
+	return &transformerConfigs{client: client, resolved: map[string]*mgmtv1alpha1.TransformerConfig{}}
+}
+
+func (c *transformerConfigs) of(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 	transformer *mgmtv1alpha1.JobMappingTransformer,
 ) (*mgmtv1alpha1.TransformerConfig, error) {
-	if transformer.GetConfig().GetUserDefinedTransformerConfig() == nil {
+	userDefined := transformer.GetConfig().GetUserDefinedTransformerConfig()
+	if userDefined == nil {
 		return transformer.GetConfig(), nil
 	}
-	resolved, err := convertUserDefinedFunctionConfig(ctx, transformerclient, transformer)
+	if config, ok := c.resolved[userDefined.GetId()]; ok {
+		return config, nil
+	}
+	resolved, err := convertUserDefinedFunctionConfig(ctx, c.client, transformer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to resolve a user defined transformer: %w", err)
 	}
+	c.resolved[userDefined.GetId()] = resolved.GetConfig()
 	return resolved.GetConfig(), nil
 }

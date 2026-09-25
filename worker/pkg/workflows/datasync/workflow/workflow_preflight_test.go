@@ -2,7 +2,6 @@ package datasync_workflow
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
 )
@@ -73,7 +73,9 @@ func Test_Workflow_PreflightStopsTheRun(t *testing.T) {
 			assert.Equal(t, []*preflight.Finding{planned}, req.Findings)
 			// A generated column is not among the columns the run writes.
 			assert.Equal(t, []*preflight_activity.TableColumns{{Schema: "public", Table: "ligne", Columns: []string{"id"}}}, req.Tables)
-			return nil, errors.New("pre-flight check stopped the run: public.ligne.total is computed by the destination")
+			// What the activity returns on a blocking finding: asked once, never again.
+			return nil, temporal.NewNonRetryableApplicationError(
+				"pre-flight check stopped the run: public.ligne.total is computed by the destination", "PreflightBlocking", nil)
 		}).Once()
 
 	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
