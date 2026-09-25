@@ -57,7 +57,7 @@ describe('the account of a callback', () => {
     ).toBeNull();
   });
 
-  it('is never read from the account cookie', async () => {
+  it('is never read from any other cookie', async () => {
     expect(
       await getRequestAccount(callback('state-1', 'husonym.login-account=acme'))
     ).toBeNull();

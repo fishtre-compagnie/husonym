@@ -1,6 +1,5 @@
 import { NextFetchEvent, NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { isSecureRequest } from './app/api/auth/[...nextauth]/account-provider';
 import { auth } from './app/api/auth/[...nextauth]/auth';
 import { PUBLIC_PATHNAME, getSystemAppConfig } from './app/api/config/config';
 
@@ -20,7 +19,9 @@ const withAuth = auth(async (req) => {
   if (!target) {
     return new NextResponse(null, { status: 404 });
   }
-  const unchanged = (await getAccessToken(req)) === req.auth?.accessToken;
+  // The session was refreshed on the way when the tokens it holds now were obtained later
+  // than those the request came with.
+  const unchanged = (await getRefreshedAt(req)) === req.auth?.refreshedAt;
   // The session cookie is the browser's to this app: the API is given the access token, and
   // nothing more.
   req.headers.delete('cookie');
@@ -71,18 +72,24 @@ export default async function middleware(
   return out;
 }
 
-// The access token of the session the request carries, before Auth.js refreshes it.
-async function getAccessToken(req: NextRequest): Promise<string | undefined> {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) {
+// When the tokens of the session the request carries were obtained, before Auth.js
+// refreshes them; read from the session cookie the request has, with the secrets Auth.js
+// accepts.
+async function getRefreshedAt(req: NextRequest): Promise<number | undefined> {
+  const secret = [
+    process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    process.env.AUTH_SECRET_1,
+    process.env.AUTH_SECRET_2,
+    process.env.AUTH_SECRET_3,
+  ].filter((s): s is string => !!s);
+  if (secret.length === 0) {
     return undefined;
   }
-  const token = await getToken({
-    req,
-    secret,
-    secureCookie: isSecureRequest(req),
-  });
-  return typeof token?.accessToken === 'string' ? token.accessToken : undefined;
+  const secureCookie = req.cookies
+    .getAll()
+    .some((c) => c.name.startsWith('__Secure-authjs.session-token'));
+  const token = await getToken({ req, secret, secureCookie });
+  return typeof token?.refreshedAt === 'number' ? token.refreshedAt : undefined;
 }
 
 // getApiTarget is where a call under PUBLIC_PATHNAME goes on the API, or nothing when the

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import {
-  ACCOUNT_COOKIE,
   AccountLoginMethod,
   fetchAccountLoginMethod,
   isSecureRequest,
@@ -10,13 +9,13 @@ import {
 /**
  * The account a sign-in in progress is for, bound to that flow.
  *
- * The account a sign-in starts with is read from a cookie the per-account link sets, and
- * anyone can make a browser follow that link: rewritten between the start of a flow and
- * its callback, it made the callback exchange the code with another account's provider.
- * So the account is read once, when the sign-in starts, and sealed -- signed with the
- * deployment's secret -- with the `state` of the flow Auth.js started, for that flow's
- * callback to use and nothing else. A seal set in the browser by someone else, for their
- * own account, does not carry the state of the victim's flow.
+ * The account is asked for by the click that starts the sign-in, in the body of Auth.js's
+ * sign-in POST -- which its CSRF token protects: no other site can make the browser send
+ * it -- and nothing else chooses it. A cookie did before, and anyone could rewrite it by
+ * making the browser follow a link. The account is sealed -- signed with the deployment's
+ * secret -- with the `state` of the flow Auth.js started, for that flow's callback to use
+ * and nothing else. A seal set in the browser by someone else, for their own account,
+ * does not carry the state of the victim's flow.
  */
 const FLOW_COOKIE = 'husonym.login-flow';
 
@@ -116,11 +115,17 @@ export function hasFlowCookie(req: NextRequest): boolean {
   return !!req.cookies.get(flowCookieName(req))?.value;
 }
 
-// getAskedAccount is the account the per-account link asked a sign-in for, if any.
+// The field of the sign-in POST that names the account the sign-in is for.
+const ACCOUNT_FIELD = 'account';
+
+/**
+ * The account a sign-in POST asks for, given its body; null for the deployment's
+ * provider. Auth.js checks the CSRF token of the same body.
+ */
 export async function getAskedAccount(
-  req: NextRequest
+  body: URLSearchParams
 ): Promise<FlowAccount | null> {
-  const slug = sanitizeSlug(req.cookies.get(ACCOUNT_COOKIE)?.value ?? '');
+  const slug = sanitizeSlug(body.get(ACCOUNT_FIELD) ?? '');
   if (!slug) {
     return null;
   }

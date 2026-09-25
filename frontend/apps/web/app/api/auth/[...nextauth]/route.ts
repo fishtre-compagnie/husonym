@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { ACCOUNT_COOKIE, isSecureRequest } from './account-provider';
+import { isSecureRequest } from './account-provider';
 import { GET as handleGet, POST as handlePost } from './auth';
 import {
   FLOW_HEADER,
@@ -21,9 +21,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!isSignInStart(req)) {
     return handlePost(req);
   }
-  // The account is resolved once, here, and handed to the configuration sealed; whatever
-  // the browser sent under that header is dropped.
-  const account = await getAskedAccount(req);
+  // The account is resolved once, here, from the body Auth.js checks the CSRF token of,
+  // and handed to the configuration sealed; whatever the browser sent under that header is
+  // dropped.
+  const body = await req.text();
+  const account = await getAskedAccount(new URLSearchParams(body));
   const headers = new Headers(req.headers);
   headers.delete(FLOW_HEADER);
   if (account) {
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     new NextRequest(req.url, {
       method: req.method,
       headers,
-      body: await req.text(),
+      body,
     })
   );
 
@@ -69,15 +71,13 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (!isCallback(req)) {
     return res;
   }
-  // The flow this callback ends is over, and the account it was for no longer steers any
-  // sign-in. A callback for another flow -- one anybody can make the browser request --
-  // leaves the sealed flow alone.
-  if (hasFlowCookie(req) && !(await getCallbackAccount(req))) {
+  // The flow this callback ends is over. A callback for another flow -- one anybody can
+  // make the browser request -- leaves the sealed flow alone.
+  if (!hasFlowCookie(req) || !(await getCallbackAccount(req))) {
     return res;
   }
   const out = new Response(res.body, res);
   out.headers.append('Set-Cookie', cookie(req, flowCookieName(req), '', 0));
-  out.headers.append('Set-Cookie', cookie(req, ACCOUNT_COOKIE, '', 0));
   return out;
 }
 

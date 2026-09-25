@@ -33,15 +33,23 @@ export default function AccountLogin(props: Props): ReactElement {
   const router = useRouter();
   const [isBusy, setIsBusy] = useState(false);
 
-  async function run(action: () => Promise<void>): Promise<void> {
+  async function run(
+    action: () => Promise<void>,
+    failure: string
+  ): Promise<void> {
     setIsBusy(true);
     try {
       await action();
     } catch (err) {
-      toast.error('Unable to sign in', { description: getErrorMessage(err) });
+      toast.error(failure, { description: getErrorMessage(err) });
       setIsBusy(false);
     }
   }
+
+  // This page again, once signed out: the provider's logout comes back to it.
+  const thisPage = `/account-login/${slug}${
+    callbackPath ? `?${new URLSearchParams({ callbackUrl: callbackPath })}` : ''
+  }`;
 
   const signedInAs =
     status === 'authenticated'
@@ -88,7 +96,9 @@ export default function AccountLogin(props: Props): ReactElement {
               </Button>
               <Button
                 disabled={isBusy}
-                onClick={() => run(() => signOutEverywhere())}
+                onClick={() =>
+                  run(() => signOutEverywhere(thisPage), 'Unable to sign out')
+                }
               >
                 <ButtonText
                   leftIcon={isBusy ? <Spinner /> : undefined}
@@ -100,10 +110,16 @@ export default function AccountLogin(props: Props): ReactElement {
             <Button
               disabled={isBusy || !config}
               onClick={() =>
-                run(() =>
-                  signIn(config?.signInProviderId, {
-                    callbackUrl: callbackPath ?? '/',
-                  })
+                run(
+                  () =>
+                    // The account travels in the body of the sign-in, which its CSRF
+                    // token protects: it is this click, and nothing else, that
+                    // chooses the account's provider.
+                    signIn(config?.signInProviderId, {
+                      callbackUrl: callbackPath ?? '/',
+                      account: slug,
+                    }),
+                  'Unable to sign in'
                 )
               }
             >

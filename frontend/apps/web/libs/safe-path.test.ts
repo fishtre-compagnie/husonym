@@ -1,9 +1,9 @@
-import { getSafeCallbackPath } from './account-provider';
+import { getSafePath } from './safe-path';
 
 describe('the path to come back to after signing in', () => {
   it('keeps a path of this app, with its query', () => {
-    expect(getSafeCallbackPath('/invite?token=abc')).toBe('/invite?token=abc');
-    expect(getSafeCallbackPath('/personal/jobs')).toBe('/personal/jobs');
+    expect(getSafePath('/invite?token=abc')).toBe('/invite?token=abc');
+    expect(getSafePath('/personal/jobs')).toBe('/personal/jobs');
   });
 
   it('refuses anything that leads elsewhere', () => {
@@ -12,13 +12,19 @@ describe('the path to come back to after signing in', () => {
       '//evil.example/x',
       '/\\evil.example/x',
       '\\\\evil.example',
+      '/.//evil.example/x',
+      '/..//evil.example',
+      '/a/..//evil.example',
+      '/%2e//evil.example',
+      '/%2e%2e//evil.example',
+      '/./\\evil.example',
       'javascript:alert(1)',
       'evil.example',
       '',
       null,
       undefined,
     ]) {
-      expect(getSafeCallbackPath(value)).toBeNull();
+      expect(getSafePath(value)).toBeNull();
     }
   });
 });
