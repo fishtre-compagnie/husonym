@@ -5,6 +5,8 @@ import ResourceId from '@/components/ResourceId';
 import { SubNav } from '@/components/SubNav';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
+import { hasPreflight } from '@/components/jobs/preflight/report';
+import { usePreflightThenRun } from '@/components/jobs/preflight/usePreflightThenRun';
 import { isJobSubsettable } from '@/components/jobs/subsets/utils';
 import { useAccount } from '@/components/providers/account-provider';
 import { LayoutProps } from '@/components/types';
@@ -61,6 +63,10 @@ export default function JobIdLayout(props: LayoutProps) {
   const { mutateAsync: triggerJobRun } = useMutation(
     JobService.method.createJobRun
   );
+
+  // The pre-flight check goes first, when the job has one: see usePreflightThenRun.
+  const { start: startWithPreflight, dialog: preflightDialog } =
+    usePreflightThenRun(data?.job, onTriggerJobRun);
 
   async function onTriggerJobRun(): Promise<void> {
     try {
@@ -157,7 +163,13 @@ export default function JobIdLayout(props: LayoutProps) {
                     status={jobStatus?.status}
                     onNewStatus={onNewStatus}
                   />
-                  <Button onClick={() => onTriggerJobRun()}>
+                  <Button
+                    onClick={() =>
+                      hasPreflight(data.job)
+                        ? startWithPreflight()
+                        : onTriggerJobRun()
+                    }
+                  >
                     <ButtonText
                       leftIcon={<LightningBoltIcon />}
                       text="Trigger Run"
@@ -173,6 +185,7 @@ export default function JobIdLayout(props: LayoutProps) {
           <SubNav items={sidebarNavItems} />
           <div>{children}</div>
         </div>
+        {preflightDialog}
       </OverviewContainer>
     </div>
   );

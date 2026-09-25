@@ -204,6 +204,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guides/preflight',
+      label: "Pré-vol d'un job",
+    },
+    {
+      type: 'doc',
       id: 'guides/custom-code-transformers',
       label: 'Custom Code Transformers',
     },
