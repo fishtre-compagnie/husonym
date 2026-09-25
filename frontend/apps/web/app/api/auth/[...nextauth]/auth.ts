@@ -181,13 +181,13 @@ function getOAuthConfig(
  * The configuration is a function of the request, which is what Auth.js v5 accepts and
  * what makes a provider per account possible without forking anything.
  *
- * `request` is undefined outside a request -- `auth()` in a server component, middleware
+ * `request` is undefined outside a request -- `auth()` in a server component, the proxy
  * -- and that has to yield a valid configuration rather than throw: the absence of an
  * account is the deployment's own provider, which is the normal case.
  */
 export const {
   handlers: { GET, POST },
-  // auth function meant to be used in RSC or middleware.
+  // auth function meant to be used in RSC or the proxy.
   auth,
 } = NextAuth(async (request: NextRequest | undefined) => {
   return buildConfig(await getRequestAccount(request));
@@ -262,7 +262,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
               throw tokens;
             }
             token.accessToken = tokens.access_token;
-            // When the tokens were last obtained: the middleware keeps the session cookie
+            // When the tokens were last obtained: the proxy keeps the session cookie
             // of a call that refreshed them, and of no other.
             token.refreshedAt = Date.now();
             // the refresh token may not always be returned. If it's not, don't update
