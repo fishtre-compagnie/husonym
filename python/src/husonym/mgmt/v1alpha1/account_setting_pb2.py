@@ -28,7 +28,7 @@ from mgmt.v1alpha1 import permission_pb2 as mgmt_dot_v1alpha1_dot_permission__pb
 from mgmt.v1alpha1 import secret_pb2 as mgmt_dot_v1alpha1_dot_secret__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n#mgmt/v1alpha1/account_setting.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1amgmt/v1alpha1/secret.proto\"\xeb\x03\n\x0e\x41\x63\x63ountSetting\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12;\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigR\x06\x63onfig\x12\x66\n\x13secret_fingerprints\x18\x03 \x03(\x0b\x32\x35.mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntryR\x12secretFingerprints\x12\x39\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x39\n\nupdated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tupdatedAt\x12+\n\x12\x63reated_by_user_id\x18\x06 \x01(\tR\x0f\x63reatedByUserId\x12+\n\x12updated_by_user_id\x18\x07 \x01(\tR\x0fupdatedByUserId\x1a\x45\n\x17SecretFingerprintsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\xd3\x01\n\x14\x41\x63\x63ountSettingConfig\x12\x66\n\x19\x61nonymization_consistency\x18\x01 \x01(\x0b\x32\'.mgmt.v1alpha1.AnonymizationConsistencyH\x00R\x18\x61nonymizationConsistency\x12\x42\n\roidc_provider\x18\x02 \x01(\x0b\x32\x1b.mgmt.v1alpha1.OidcProviderH\x00R\x0coidcProviderB\x0f\n\x06\x63onfig\x12\x05\xbaH\x02\x08\x01\"N\n\x18\x41nonymizationConsistency\x12\x32\n\x0e\x64\x65rivation_key\x18\x01 \x01(\tB\x0b\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"\x83\x01\n\x0cOidcProvider\x12\"\n\x06issuer\x18\x01 \x01(\tB\n\xbaH\x07r\x05\x10\x01\x88\x01\x01R\x06issuer\x12$\n\tclient_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x08\x63lientId\x12)\n\rclient_secret\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\x0c\x63lientSecret\"\x8c\x01\n\x0cSettingCheck\x12\x14\n\x05\x63heck\x18\x01 \x01(\tR\x05\x63heck\x12\x36\n\x05level\x18\x02 \x01(\x0e\x32 .mgmt.v1alpha1.SettingCheckLevelR\x05level\x12\x16\n\x06\x64\x65tail\x18\x03 \x01(\tR\x06\x64\x65tail\x12\x16\n\x06remedy\x18\x04 \x01(\tR\x06remedy\"\x89\x01\n\x19TestAccountSettingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x43\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigB\x06\xbaH\x03\xc8\x01\x01R\x06\x63onfig\"a\n\x1aTestAccountSettingResponse\x12\x33\n\x06\x63hecks\x18\x01 \x03(\x0b\x32\x1b.mgmt.v1alpha1.SettingCheckR\x06\x63hecks\x12\x0e\n\x02ok\x18\x02 \x01(\x08R\x02ok\"D\n\x19GetAccountSettingsRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"W\n\x1aGetAccountSettingsResponse\x12\x39\n\x08settings\x18\x01 \x03(\x0b\x32\x1d.mgmt.v1alpha1.AccountSettingR\x08settings\"\x88\x01\n\x18SetAccountSettingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x43\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigB\x06\xbaH\x03\xc8\x01\x01R\x06\x63onfig\"T\n\x19SetAccountSettingResponse\x12\x37\n\x07setting\x18\x01 \x01(\x0b\x32\x1d.mgmt.v1alpha1.AccountSettingR\x07setting\"x\n\x1fGetAccountConsistencyKeyRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12,\n\x12generate_if_absent\x18\x02 \x01(\x08R\x10generateIfAbsent\"A\n GetAccountConsistencyKeyResponse\x12\x15\n\x03key\x18\x01 \x01(\tH\x00R\x03key\x88\x01\x01\x42\x06\n\x04_key*\x99\x01\n\x11SettingCheckLevel\x12#\n\x1fSETTING_CHECK_LEVEL_UNSPECIFIED\x10\x00\x12 \n\x1cSETTING_CHECK_LEVEL_BLOCKING\x10\x01\x12\x1f\n\x1bSETTING_CHECK_LEVEL_WARNING\x10\x02\x12\x1c\n\x18SETTING_CHECK_LEVEL_INFO\x10\x03\x32\xfd\x03\n\x15\x41\x63\x63ountSettingService\x12u\n\x12GetAccountSettings\x12(.mgmt.v1alpha1.GetAccountSettingsRequest\x1a).mgmt.v1alpha1.GetAccountSettingsResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12o\n\x11SetAccountSetting\x12\'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\x07\x92\xb5\x18\x03\n\x01\x02\x12u\n\x12TestAccountSetting\x12(.mgmt.v1alpha1.TestAccountSettingRequest\x1a).mgmt.v1alpha1.TestAccountSettingResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x02\x12\x84\x01\n\x18GetAccountConsistencyKey\x12..mgmt.v1alpha1.GetAccountConsistencyKeyRequest\x1a/.mgmt.v1alpha1.GetAccountConsistencyKeyResponse\"\x07\x92\xb5\x18\x03\n\x01\x02\x42\xd4\x01\n\x11\x63om.mgmt.v1alpha1B\x13\x41\x63\x63ountSettingProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n#mgmt/v1alpha1/account_setting.proto\x12\rmgmt.v1alpha1\x1a\x1b\x62uf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emgmt/v1alpha1/permission.proto\x1a\x1amgmt/v1alpha1/secret.proto\"\xeb\x03\n\x0e\x41\x63\x63ountSetting\x12\x1d\n\naccount_id\x18\x01 \x01(\tR\taccountId\x12;\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigR\x06\x63onfig\x12\x66\n\x13secret_fingerprints\x18\x03 \x03(\x0b\x32\x35.mgmt.v1alpha1.AccountSetting.SecretFingerprintsEntryR\x12secretFingerprints\x12\x39\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x39\n\nupdated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tupdatedAt\x12+\n\x12\x63reated_by_user_id\x18\x06 \x01(\tR\x0f\x63reatedByUserId\x12+\n\x12updated_by_user_id\x18\x07 \x01(\tR\x0fupdatedByUserId\x1a\x45\n\x17SecretFingerprintsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\xd3\x01\n\x14\x41\x63\x63ountSettingConfig\x12\x66\n\x19\x61nonymization_consistency\x18\x01 \x01(\x0b\x32\'.mgmt.v1alpha1.AnonymizationConsistencyH\x00R\x18\x61nonymizationConsistency\x12\x42\n\roidc_provider\x18\x02 \x01(\x0b\x32\x1b.mgmt.v1alpha1.OidcProviderH\x00R\x0coidcProviderB\x0f\n\x06\x63onfig\x12\x05\xbaH\x02\x08\x01\"N\n\x18\x41nonymizationConsistency\x12\x32\n\x0e\x64\x65rivation_key\x18\x01 \x01(\tB\x0b\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"p\n\x0cOidcProvider\x12%\n\x06issuer\x18\x01 \x01(\tB\r\xbaH\nr\x08\x10\x01\x18\x80\x04\x88\x01\x01R\x06issuer\x12$\n\tclient_id\x18\x02 \x01(\tB\x07\xbaH\x04r\x02\x10\x01R\x08\x63lientIdJ\x04\x08\x03\x10\x04R\rclient_secret\"\x8c\x01\n\x0cSettingCheck\x12\x14\n\x05\x63heck\x18\x01 \x01(\tR\x05\x63heck\x12\x36\n\x05level\x18\x02 \x01(\x0e\x32 .mgmt.v1alpha1.SettingCheckLevelR\x05level\x12\x16\n\x06\x64\x65tail\x18\x03 \x01(\tR\x06\x64\x65tail\x12\x16\n\x06remedy\x18\x04 \x01(\tR\x06remedy\"\x89\x01\n\x19TestAccountSettingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x43\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigB\x06\xbaH\x03\xc8\x01\x01R\x06\x63onfig\"a\n\x1aTestAccountSettingResponse\x12\x33\n\x06\x63hecks\x18\x01 \x03(\x0b\x32\x1b.mgmt.v1alpha1.SettingCheckR\x06\x63hecks\x12\x0e\n\x02ok\x18\x02 \x01(\x08R\x02ok\"D\n\x19GetAccountSettingsRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\"W\n\x1aGetAccountSettingsResponse\x12\x39\n\x08settings\x18\x01 \x03(\x0b\x32\x1d.mgmt.v1alpha1.AccountSettingR\x08settings\"\x88\x01\n\x18SetAccountSettingRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12\x43\n\x06\x63onfig\x18\x02 \x01(\x0b\x32#.mgmt.v1alpha1.AccountSettingConfigB\x06\xbaH\x03\xc8\x01\x01R\x06\x63onfig\"T\n\x19SetAccountSettingResponse\x12\x37\n\x07setting\x18\x01 \x01(\x0b\x32\x1d.mgmt.v1alpha1.AccountSettingR\x07setting\"x\n\x1fGetAccountConsistencyKeyRequest\x12\'\n\naccount_id\x18\x01 \x01(\tB\x08\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x12,\n\x12generate_if_absent\x18\x02 \x01(\x08R\x10generateIfAbsent\"A\n GetAccountConsistencyKeyResponse\x12\x15\n\x03key\x18\x01 \x01(\tH\x00R\x03key\x88\x01\x01\x42\x06\n\x04_key*\x99\x01\n\x11SettingCheckLevel\x12#\n\x1fSETTING_CHECK_LEVEL_UNSPECIFIED\x10\x00\x12 \n\x1cSETTING_CHECK_LEVEL_BLOCKING\x10\x01\x12\x1f\n\x1bSETTING_CHECK_LEVEL_WARNING\x10\x02\x12\x1c\n\x18SETTING_CHECK_LEVEL_INFO\x10\x03\x32\xfd\x03\n\x15\x41\x63\x63ountSettingService\x12u\n\x12GetAccountSettings\x12(.mgmt.v1alpha1.GetAccountSettingsRequest\x1a).mgmt.v1alpha1.GetAccountSettingsResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x01\x12o\n\x11SetAccountSetting\x12\'.mgmt.v1alpha1.SetAccountSettingRequest\x1a(.mgmt.v1alpha1.SetAccountSettingResponse\"\x07\x92\xb5\x18\x03\n\x01\x02\x12u\n\x12TestAccountSetting\x12(.mgmt.v1alpha1.TestAccountSettingRequest\x1a).mgmt.v1alpha1.TestAccountSettingResponse\"\n\x90\x02\x01\x92\xb5\x18\x03\n\x01\x02\x12\x84\x01\n\x18GetAccountConsistencyKey\x12..mgmt.v1alpha1.GetAccountConsistencyKeyRequest\x1a/.mgmt.v1alpha1.GetAccountConsistencyKeyResponse\"\x07\x92\xb5\x18\x03\n\x01\x02\x42\xd4\x01\n\x11\x63om.mgmt.v1alpha1B\x13\x41\x63\x63ountSettingProtoP\x01ZUgithub.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1;mgmtv1alpha1\xa2\x02\x03MXX\xaa\x02\rMgmt.V1alpha1\xca\x02\rMgmt\\V1alpha1\xe2\x02\x19Mgmt\\V1alpha1\\GPBMetadata\xea\x02\x0eMgmt::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -43,11 +43,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ANONYMIZATIONCONSISTENCY'].fields_by_name['derivation_key']._loaded_options = None
   _globals['_ANONYMIZATIONCONSISTENCY'].fields_by_name['derivation_key']._serialized_options = b'\272H\004r\002\020\001\210\265\030\001'
   _globals['_OIDCPROVIDER'].fields_by_name['issuer']._loaded_options = None
-  _globals['_OIDCPROVIDER'].fields_by_name['issuer']._serialized_options = b'\272H\007r\005\020\001\210\001\001'
+  _globals['_OIDCPROVIDER'].fields_by_name['issuer']._serialized_options = b'\272H\nr\010\020\001\030\200\004\210\001\001'
   _globals['_OIDCPROVIDER'].fields_by_name['client_id']._loaded_options = None
   _globals['_OIDCPROVIDER'].fields_by_name['client_id']._serialized_options = b'\272H\004r\002\020\001'
-  _globals['_OIDCPROVIDER'].fields_by_name['client_secret']._loaded_options = None
-  _globals['_OIDCPROVIDER'].fields_by_name['client_secret']._serialized_options = b'\210\265\030\001'
   _globals['_TESTACCOUNTSETTINGREQUEST'].fields_by_name['account_id']._loaded_options = None
   _globals['_TESTACCOUNTSETTINGREQUEST'].fields_by_name['account_id']._serialized_options = b'\272H\005r\003\260\001\001'
   _globals['_TESTACCOUNTSETTINGREQUEST'].fields_by_name['config']._loaded_options = None
@@ -68,8 +66,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ACCOUNTSETTINGSERVICE'].methods_by_name['TestAccountSetting']._serialized_options = b'\220\002\001\222\265\030\003\n\001\002'
   _globals['_ACCOUNTSETTINGSERVICE'].methods_by_name['GetAccountConsistencyKey']._loaded_options = None
   _globals['_ACCOUNTSETTINGSERVICE'].methods_by_name['GetAccountConsistencyKey']._serialized_options = b'\222\265\030\003\n\001\002'
-  _globals['_SETTINGCHECKLEVEL']._serialized_start=2054
-  _globals['_SETTINGCHECKLEVEL']._serialized_end=2207
+  _globals['_SETTINGCHECKLEVEL']._serialized_start=2034
+  _globals['_SETTINGCHECKLEVEL']._serialized_end=2187
   _globals['_ACCOUNTSETTING']._serialized_start=177
   _globals['_ACCOUNTSETTING']._serialized_end=668
   _globals['_ACCOUNTSETTING_SECRETFINGERPRINTSENTRY']._serialized_start=599
@@ -78,26 +76,26 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ACCOUNTSETTINGCONFIG']._serialized_end=882
   _globals['_ANONYMIZATIONCONSISTENCY']._serialized_start=884
   _globals['_ANONYMIZATIONCONSISTENCY']._serialized_end=962
-  _globals['_OIDCPROVIDER']._serialized_start=965
-  _globals['_OIDCPROVIDER']._serialized_end=1096
-  _globals['_SETTINGCHECK']._serialized_start=1099
-  _globals['_SETTINGCHECK']._serialized_end=1239
-  _globals['_TESTACCOUNTSETTINGREQUEST']._serialized_start=1242
-  _globals['_TESTACCOUNTSETTINGREQUEST']._serialized_end=1379
-  _globals['_TESTACCOUNTSETTINGRESPONSE']._serialized_start=1381
-  _globals['_TESTACCOUNTSETTINGRESPONSE']._serialized_end=1478
-  _globals['_GETACCOUNTSETTINGSREQUEST']._serialized_start=1480
-  _globals['_GETACCOUNTSETTINGSREQUEST']._serialized_end=1548
-  _globals['_GETACCOUNTSETTINGSRESPONSE']._serialized_start=1550
-  _globals['_GETACCOUNTSETTINGSRESPONSE']._serialized_end=1637
-  _globals['_SETACCOUNTSETTINGREQUEST']._serialized_start=1640
-  _globals['_SETACCOUNTSETTINGREQUEST']._serialized_end=1776
-  _globals['_SETACCOUNTSETTINGRESPONSE']._serialized_start=1778
-  _globals['_SETACCOUNTSETTINGRESPONSE']._serialized_end=1862
-  _globals['_GETACCOUNTCONSISTENCYKEYREQUEST']._serialized_start=1864
-  _globals['_GETACCOUNTCONSISTENCYKEYREQUEST']._serialized_end=1984
-  _globals['_GETACCOUNTCONSISTENCYKEYRESPONSE']._serialized_start=1986
-  _globals['_GETACCOUNTCONSISTENCYKEYRESPONSE']._serialized_end=2051
-  _globals['_ACCOUNTSETTINGSERVICE']._serialized_start=2210
-  _globals['_ACCOUNTSETTINGSERVICE']._serialized_end=2719
+  _globals['_OIDCPROVIDER']._serialized_start=964
+  _globals['_OIDCPROVIDER']._serialized_end=1076
+  _globals['_SETTINGCHECK']._serialized_start=1079
+  _globals['_SETTINGCHECK']._serialized_end=1219
+  _globals['_TESTACCOUNTSETTINGREQUEST']._serialized_start=1222
+  _globals['_TESTACCOUNTSETTINGREQUEST']._serialized_end=1359
+  _globals['_TESTACCOUNTSETTINGRESPONSE']._serialized_start=1361
+  _globals['_TESTACCOUNTSETTINGRESPONSE']._serialized_end=1458
+  _globals['_GETACCOUNTSETTINGSREQUEST']._serialized_start=1460
+  _globals['_GETACCOUNTSETTINGSREQUEST']._serialized_end=1528
+  _globals['_GETACCOUNTSETTINGSRESPONSE']._serialized_start=1530
+  _globals['_GETACCOUNTSETTINGSRESPONSE']._serialized_end=1617
+  _globals['_SETACCOUNTSETTINGREQUEST']._serialized_start=1620
+  _globals['_SETACCOUNTSETTINGREQUEST']._serialized_end=1756
+  _globals['_SETACCOUNTSETTINGRESPONSE']._serialized_start=1758
+  _globals['_SETACCOUNTSETTINGRESPONSE']._serialized_end=1842
+  _globals['_GETACCOUNTCONSISTENCYKEYREQUEST']._serialized_start=1844
+  _globals['_GETACCOUNTCONSISTENCYKEYREQUEST']._serialized_end=1964
+  _globals['_GETACCOUNTCONSISTENCYKEYRESPONSE']._serialized_start=1966
+  _globals['_GETACCOUNTCONSISTENCYKEYRESPONSE']._serialized_end=2031
+  _globals['_ACCOUNTSETTINGSERVICE']._serialized_start=2190
+  _globals['_ACCOUNTSETTINGSERVICE']._serialized_end=2699
 # @@protoc_insertion_point(module_scope)

@@ -64,14 +64,12 @@ class AnonymizationConsistency(_message.Message):
     def __init__(self, derivation_key: _Optional[str] = ...) -> None: ...
 
 class OidcProvider(_message.Message):
-    __slots__ = ("issuer", "client_id", "client_secret")
+    __slots__ = ("issuer", "client_id")
     ISSUER_FIELD_NUMBER: _ClassVar[int]
     CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
-    CLIENT_SECRET_FIELD_NUMBER: _ClassVar[int]
     issuer: str
     client_id: str
-    client_secret: str
-    def __init__(self, issuer: _Optional[str] = ..., client_id: _Optional[str] = ..., client_secret: _Optional[str] = ...) -> None: ...
+    def __init__(self, issuer: _Optional[str] = ..., client_id: _Optional[str] = ...) -> None: ...
 
 class SettingCheck(_message.Message):
     __slots__ = ("check", "level", "detail", "remedy")

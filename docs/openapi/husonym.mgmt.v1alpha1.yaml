@@ -6757,6 +6757,7 @@ components:
         issuer:
           type: string
           title: issuer
+          maxLength: 512
           minLength: 1
           format: uri
           description: |-
@@ -6773,22 +6774,15 @@ components:
             The client the frontend authorizes as. Public information: the
             browser carries it in
              the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
-        clientSecret:
-          type: string
-          title: client_secret
-          description: >-
-            The secret of that client, for providers that require a confidential
-            one.
-
-             It plays no part in validating a token -- that needs only the public JWKS -- and is
-             used solely in the authorization flow. Empty for a public client.
       title: OidcProvider
       additionalProperties: false
       description: |-
         The identity provider an account's members sign in with.
 
          Nothing here names a product. What an account declares is what the standard defines:
-         an issuer to discover, a client to authorize as, and the audience its tokens carry.
+         an issuer to discover, a public client to authorize as, and the audience its tokens
+         carry. The issuer must be reached over https, at an address on the internet, unless the
+         deployment allows otherwise (AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE).
          A provider that needs more than this is a provider Husonym does not claim to support.
     mgmt.v1alpha1.SetAccountSettingRequest:
       type: object

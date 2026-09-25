@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+
+	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 )
 
 // Level is how much a finding weighs.
@@ -47,10 +49,13 @@ type Input struct {
 // members can no longer sign in.
 type Probe struct {
 	client *http.Client
+	policy safehttp.Policy
 }
 
-func New() *Probe {
-	return &Probe{client: newSafeClient()}
+// New returns a probe that fetches only where the policy lets it: by default a public
+// https endpoint (see safehttp).
+func New(policy safehttp.Policy) *Probe {
+	return &Probe{client: newSafeClient(policy), policy: policy}
 }
 
 // discovery is the part of the OpenID Provider Metadata this needs.
@@ -85,7 +90,7 @@ func (p *Probe) Run(ctx context.Context, in Input) []Check {
 	}
 
 	issuerURL, err := url.Parse(in.Issuer)
-	if err != nil || issuerURL.Scheme != "https" || issuerURL.Host == "" {
+	if err != nil || issuerURL.Host == "" || p.policy.CheckURL(issuerURL) != nil {
 		return append(checks, Check{
 			Check:  "issuer_is_an_https_url",
 			Level:  LevelBlocking,
@@ -115,7 +120,7 @@ func discoveryURL(issuer string) string {
 }
 
 func (p *Probe) fetchDiscovery(ctx context.Context, issuer string) (*discovery, *Check) {
-	resp, err := get(ctx, p.client, discoveryURL(issuer))
+	resp, err := get(ctx, p.client, p.policy, discoveryURL(issuer))
 	if err != nil {
 		return nil, &Check{
 			Check:  "discovery_document_reachable",
@@ -208,7 +213,7 @@ func (p *Probe) checkKeys(ctx context.Context, doc *discovery) []Check {
 	if doc.JwksURI == "" {
 		return nil // already reported
 	}
-	resp, err := get(ctx, p.client, doc.JwksURI)
+	resp, err := get(ctx, p.client, p.policy, doc.JwksURI)
 	if err != nil {
 		return []Check{{
 			Check:  "keys_readable",
@@ -304,7 +309,7 @@ func (p *Probe) AuthorizationEndpoint(ctx context.Context, issuer string) (strin
 	if doc.AuthorizationEndpoint == "" {
 		return "", fmt.Errorf("the provider names no authorization endpoint")
 	}
-	if err := requireHTTPS(mustParse(doc.AuthorizationEndpoint)); err != nil {
+	if err := p.policy.CheckURL(mustParse(doc.AuthorizationEndpoint)); err != nil {
 		return "", err
 	}
 	return doc.AuthorizationEndpoint, nil

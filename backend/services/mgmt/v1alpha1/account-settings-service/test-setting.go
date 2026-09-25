@@ -2,6 +2,7 @@ package v1alpha1_accountsettingservice
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -28,7 +29,7 @@ func (s *Service) TestAccountSetting(
 
 	switch config := req.Msg.GetConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.AccountSettingConfig_OidcProvider:
-		checks := oidcprobe.New().Run(ctx, oidcprobe.Input{
+		checks := oidcprobe.New(s.cfg.IssuerPolicy).Run(ctx, oidcprobe.Input{
 			Issuer:             config.OidcProvider.GetIssuer(),
 			ClientID:           config.OidcProvider.GetClientId(),
 			AcceptedAlgorithms: s.cfg.AcceptedSignatureAlgorithms,
@@ -109,6 +110,29 @@ func (s *Service) refuseIssuerClaimedElsewhere(
 		return husonymerrors.NewBadRequest(
 			"this identity provider is already declared by another account. Two accounts cannot share one, because they would share the identities it issues",
 		)
+	}
+	return nil
+}
+
+// refuseIssuerOutOfReach stops an account from declaring a provider this deployment must
+// not be made to contact: one not on https, or whose host resolves inside the deployment's
+// network -- the deployment itself, its neighbors, or the cloud's metadata service. The
+// deployment fetches what that provider publishes, so the account would otherwise choose
+// where it sends requests. Trying the setting reports the same; saving it without trying
+// must not get around it.
+func (s *Service) refuseIssuerOutOfReach(
+	ctx context.Context,
+	config *mgmtv1alpha1.AccountSettingConfig,
+) error {
+	provider, ok := config.GetConfig().(*mgmtv1alpha1.AccountSettingConfig_OidcProvider)
+	if !ok {
+		return nil
+	}
+	if err := s.cfg.IssuerPolicy.CheckIssuer(ctx, provider.OidcProvider.GetIssuer()); err != nil {
+		return husonymerrors.NewBadRequest(fmt.Sprintf(
+			"this identity provider cannot be used: %s. It must be reached over https, at an address on the internet",
+			err,
+		))
 	}
 	return nil
 }

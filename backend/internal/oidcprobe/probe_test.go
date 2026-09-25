@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -153,7 +154,7 @@ func Test_discoveryURL(t *testing.T) {
 }
 
 func Test_Run_refusesWhatCannotBeAnIssuer(t *testing.T) {
-	probe := New()
+	probe := New(safehttp.Policy{})
 
 	for _, issuer := range []string{"", "not a url", "http://idp.example.com", "ftp://idp.example.com"} {
 		t.Run(issuer, func(t *testing.T) {
@@ -165,7 +166,7 @@ func Test_Run_refusesWhatCannotBeAnIssuer(t *testing.T) {
 }
 
 func Test_Run_reportsAMissingClientId(t *testing.T) {
-	checks := New().Run(t.Context(), Input{Issuer: "nonsense", ClientID: ""})
+	checks := New(safehttp.Policy{}).Run(t.Context(), Input{Issuer: "nonsense", ClientID: ""})
 
 	require.True(t, HasBlocking(checks))
 	require.Equal(t, "client_id_present", checks[0].Check)

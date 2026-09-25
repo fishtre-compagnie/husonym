@@ -325,3 +325,34 @@ func TestGetAccountConsistencyKeyIsForTheRunAlone(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 }
+
+// A provider this deployment must not be made to contact is refused when it is saved, not
+// only when it is tried: saving without trying must not get around the bound. The mock
+// querier holds the proof that nothing is written -- an unexpected call fails the test.
+func TestSetAccountSettingRefusesAnIssuerOutOfReach(t *testing.T) {
+	for _, issuer := range []string{
+		"http://idp.example.com/realms/acme",
+		"https://127.0.0.1/realms/acme",
+		"https://169.254.169.254/latest",
+		"https://10.0.3.12/realms/acme",
+	} {
+		t.Run(issuer, func(t *testing.T) {
+			f := newFixture(t, &Config{})
+			f.allowUser(t, true)
+			f.querier.On("CountOtherAccountsDeclaringIssuer", mock.Anything, mock.Anything, mock.Anything).
+				Once().Return(int64(0), nil)
+
+			_, err := f.svc.SetAccountSetting(context.Background(), connect.NewRequest(
+				&mgmtv1alpha1.SetAccountSettingRequest{
+					AccountId: anAccountId,
+					Config: &mgmtv1alpha1.AccountSettingConfig{
+						Config: &mgmtv1alpha1.AccountSettingConfig_OidcProvider{
+							OidcProvider: &mgmtv1alpha1.OidcProvider{Issuer: issuer, ClientId: "husonym"},
+						},
+					},
+				},
+			))
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), err)
+		})
+	}
+}

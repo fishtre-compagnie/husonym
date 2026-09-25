@@ -332,7 +332,9 @@ func (x *AnonymizationConsistency) GetDerivationKey() string {
 // The identity provider an account's members sign in with.
 //
 // Nothing here names a product. What an account declares is what the standard defines:
-// an issuer to discover, a client to authorize as, and the audience its tokens carry.
+// an issuer to discover, a public client to authorize as, and the audience its tokens
+// carry. The issuer must be reached over https, at an address on the internet, unless the
+// deployment allows otherwise (AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE).
 // A provider that needs more than this is a provider Husonym does not claim to support.
 type OidcProvider struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -344,12 +346,7 @@ type OidcProvider struct {
 	Issuer string `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	// The client the frontend authorizes as. Public information: the browser carries it in
 	// the authorization URL, and the tenant discovery endpoint serves it unauthenticated.
-	ClientId string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	// The secret of that client, for providers that require a confidential one.
-	//
-	// It plays no part in validating a token -- that needs only the public JWKS -- and is
-	// used solely in the authorization flow. Empty for a public client.
-	ClientSecret  string `protobuf:"bytes,3,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
+	ClientId      string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -394,13 +391,6 @@ func (x *OidcProvider) GetIssuer() string {
 func (x *OidcProvider) GetClientId() string {
 	if x != nil {
 		return x.ClientId
-	}
-	return ""
-}
-
-func (x *OidcProvider) GetClientSecret() string {
-	if x != nil {
-		return x.ClientSecret
 	}
 	return ""
 }
@@ -908,12 +898,11 @@ const file_mgmt_v1alpha1_account_setting_proto_rawDesc = "" +
 	"\roidc_provider\x18\x02 \x01(\v2\x1b.mgmt.v1alpha1.OidcProviderH\x00R\foidcProviderB\x0f\n" +
 	"\x06config\x12\x05\xbaH\x02\b\x01\"N\n" +
 	"\x18AnonymizationConsistency\x122\n" +
-	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"\x83\x01\n" +
-	"\fOidcProvider\x12\"\n" +
-	"\x06issuer\x18\x01 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x88\x01\x01R\x06issuer\x12$\n" +
-	"\tclient_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bclientId\x12)\n" +
-	"\rclient_secret\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\fclientSecret\"\x8c\x01\n" +
+	"\x0ederivation_key\x18\x01 \x01(\tB\v\xbaH\x04r\x02\x10\x01\x88\xb5\x18\x01R\rderivationKey\"p\n" +
+	"\fOidcProvider\x12%\n" +
+	"\x06issuer\x18\x01 \x01(\tB\r\xbaH\n" +
+	"r\b\x10\x01\x18\x80\x04\x88\x01\x01R\x06issuer\x12$\n" +
+	"\tclient_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bclientIdJ\x04\b\x03\x10\x04R\rclient_secret\"\x8c\x01\n" +
 	"\fSettingCheck\x12\x14\n" +
 	"\x05check\x18\x01 \x01(\tR\x05check\x126\n" +
 	"\x05level\x18\x02 \x01(\x0e2 .mgmt.v1alpha1.SettingCheckLevelR\x05level\x12\x16\n" +
