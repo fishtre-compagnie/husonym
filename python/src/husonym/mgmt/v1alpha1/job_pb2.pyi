@@ -1579,6 +1579,20 @@ class PreflightReport(_message.Message):
     findings: _containers.RepeatedCompositeFieldContainer[PreflightFinding]
     def __init__(self, engine: _Optional[_Union[JobEngine, str]] = ..., findings: _Optional[_Iterable[_Union[PreflightFinding, _Mapping]]] = ...) -> None: ...
 
+class PreflightJobRequest(_message.Message):
+    __slots__ = ("job_id",)
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
+    job_id: str
+    def __init__(self, job_id: _Optional[str] = ...) -> None: ...
+
+class PreflightJobResponse(_message.Message):
+    __slots__ = ("report", "checked_at")
+    REPORT_FIELD_NUMBER: _ClassVar[int]
+    CHECKED_AT_FIELD_NUMBER: _ClassVar[int]
+    report: PreflightReport
+    checked_at: _timestamp_pb2.Timestamp
+    def __init__(self, report: _Optional[_Union[PreflightReport, _Mapping]] = ..., checked_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
 class PreflightFinding(_message.Message):
     __slots__ = ("kind", "level", "connection_id", "table", "columns", "missing", "message", "remedy")
     class Kind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):

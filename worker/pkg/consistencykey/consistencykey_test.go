@@ -109,3 +109,32 @@ func TestAnUnreachableApiFailsTheActivity(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), anAccountId)
 }
+
+// HasKey never draws a key: computing the plan of a run without running it leaves the
+// account as it was.
+func TestHasKeyDrawsNothing(t *testing.T) {
+	client := mgmtv1alpha1connect.NewMockAccountSettingServiceClient(t)
+	client.On("GetAccountConsistencyKey", mock.Anything, mock.Anything).
+		Once().
+		Run(func(args mock.Arguments) {
+			req, ok := args.Get(1).(*connect.Request[mgmtv1alpha1.GetAccountConsistencyKeyRequest])
+			require.True(t, ok)
+			require.False(t, req.Msg.GetGenerateIfAbsent())
+		}).
+		Return(connect.NewResponse(&mgmtv1alpha1.GetAccountConsistencyKeyResponse{}), nil)
+	has, err := NewResolver(client, "").HasKey(context.Background(), anAccountId)
+	require.NoError(t, err)
+	require.True(t, has, "a run of the account would draw one")
+
+	unimplemented := mgmtv1alpha1connect.NewMockAccountSettingServiceClient(t)
+	unimplemented.On("GetAccountConsistencyKey", mock.Anything, mock.Anything).
+		Once().Return(nil, connect.NewError(connect.CodeUnimplemented, errors.New("no secret")))
+	has, err = NewResolver(unimplemented, "").HasKey(context.Background(), anAccountId)
+	require.NoError(t, err)
+	require.False(t, has, "an API that keeps no secret gives no key")
+
+	has, err = NewResolver(mgmtv1alpha1connect.NewMockAccountSettingServiceClient(t), "the-deployments-key").
+		HasKey(context.Background(), anAccountId)
+	require.NoError(t, err)
+	require.True(t, has, "the variable gives one, and the API is not asked")
+}

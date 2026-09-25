@@ -64,3 +64,24 @@ func (r *Resolver) ForAccount(ctx context.Context, accountId string) (string, er
 	}
 	return r.deploymentKey, nil
 }
+
+// HasKey tells whether a run of this account would derive from a key, without drawing one:
+// what computes the plan of a run without running it must not give the account a key.
+// An account without a key of its own gets one on its first run, where the API can keep a
+// secret; that the API cannot is only found out by drawing, so it counts as having one.
+func (r *Resolver) HasKey(ctx context.Context, accountId string) (bool, error) {
+	if r.deploymentKey != "" {
+		return true, nil
+	}
+	_, err := r.client.GetAccountConsistencyKey(
+		ctx,
+		connect.NewRequest(&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: accountId}),
+	)
+	if connect.CodeOf(err) == connect.CodeUnimplemented {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("unable to read the consistency key of account %s: %w", accountId, err)
+	}
+	return true, nil
+}

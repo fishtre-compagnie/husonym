@@ -1523,6 +1523,18 @@ message PreflightReport {
   repeated PreflightFinding findings = 2;
 }
 
+message PreflightJobRequest {
+  // The job to check.
+  string job_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message PreflightJobResponse {
+  // What a run of the job would meet, were it started now.
+  PreflightReport report = 1;
+  // When the check was made.
+  google.protobuf.Timestamp checked_at = 2;
+}
+
 // One thing a run of a job will meet.
 message PreflightFinding {
   // What the finding is about.
@@ -2238,6 +2250,16 @@ service JobService {
         PERMISSION_CONNECTION_VIEW,
         PERMISSION_CONNECTION_VIEW_SENSITIVE
       ]
+    };
+  }
+
+  // Tells what a run of the job would meet, before any run: the plan is computed by a worker
+  // the way a run computes it, and the connections asked what their roles need. Nothing is
+  // read from the tables nor written, the job included. Fails with FAILED_PRECONDITION when
+  // no worker serves the account, and DEADLINE_EXCEEDED when the check does not end in time.
+  rpc PreflightJob(PreflightJobRequest) returns (PreflightJobResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_JOB_VIEW]
     };
   }
 

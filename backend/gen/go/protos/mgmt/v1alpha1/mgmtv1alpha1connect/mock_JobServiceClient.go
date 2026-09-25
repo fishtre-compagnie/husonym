@@ -2088,6 +2088,74 @@ func (_c *MockJobServiceClient_PauseJob_Call) RunAndReturn(run func(context1 con
 	return _c
 }
 
+// PreflightJob provides a mock function for the type MockJobServiceClient
+func (_mock *MockJobServiceClient) PreflightJob(context1 context.Context, request *connect.Request[mgmtv1alpha1.PreflightJobRequest]) (*connect.Response[mgmtv1alpha1.PreflightJobResponse], error) {
+	ret := _mock.Called(context1, request)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PreflightJob")
+	}
+
+	var r0 *connect.Response[mgmtv1alpha1.PreflightJobResponse]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.PreflightJobRequest]) (*connect.Response[mgmtv1alpha1.PreflightJobResponse], error)); ok {
+		return returnFunc(context1, request)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *connect.Request[mgmtv1alpha1.PreflightJobRequest]) *connect.Response[mgmtv1alpha1.PreflightJobResponse]); ok {
+		r0 = returnFunc(context1, request)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*connect.Response[mgmtv1alpha1.PreflightJobResponse])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *connect.Request[mgmtv1alpha1.PreflightJobRequest]) error); ok {
+		r1 = returnFunc(context1, request)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockJobServiceClient_PreflightJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreflightJob'
+type MockJobServiceClient_PreflightJob_Call struct {
+	*mock.Call
+}
+
+// PreflightJob is a helper method to define mock.On call
+//   - context1 context.Context
+//   - request *connect.Request[mgmtv1alpha1.PreflightJobRequest]
+func (_e *MockJobServiceClient_Expecter) PreflightJob(context1 any, request any) *MockJobServiceClient_PreflightJob_Call {
+	return &MockJobServiceClient_PreflightJob_Call{Call: _e.mock.On("PreflightJob", context1, request)}
+}
+
+func (_c *MockJobServiceClient_PreflightJob_Call) Run(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.PreflightJobRequest])) *MockJobServiceClient_PreflightJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *connect.Request[mgmtv1alpha1.PreflightJobRequest]
+		if args[1] != nil {
+			arg1 = args[1].(*connect.Request[mgmtv1alpha1.PreflightJobRequest])
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockJobServiceClient_PreflightJob_Call) Return(response *connect.Response[mgmtv1alpha1.PreflightJobResponse], err error) *MockJobServiceClient_PreflightJob_Call {
+	_c.Call.Return(response, err)
+	return _c
+}
+
+func (_c *MockJobServiceClient_PreflightJob_Call) RunAndReturn(run func(context1 context.Context, request *connect.Request[mgmtv1alpha1.PreflightJobRequest]) (*connect.Response[mgmtv1alpha1.PreflightJobResponse], error)) *MockJobServiceClient_PreflightJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReconcileJobMappings provides a mock function for the type MockJobServiceClient
 func (_mock *MockJobServiceClient) ReconcileJobMappings(context1 context.Context, request *connect.Request[mgmtv1alpha1.ReconcileJobMappingsRequest]) (*connect.Response[mgmtv1alpha1.ReconcileJobMappingsResponse], error) {
 	ret := _mock.Called(context1, request)

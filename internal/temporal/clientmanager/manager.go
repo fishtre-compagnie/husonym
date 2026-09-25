@@ -126,7 +126,22 @@ type Interface interface {
 		workflowId string,
 		logger *slog.Logger,
 	) (temporalclient.HistoryEventIterator, error)
+	// RunWorkflow starts a workflow on the sync job task queue of the account and waits for
+	// its result, which it decodes into valuePtr. It returns ErrNoWorker at once when no
+	// worker serves that queue: the workflow would wait for one until it times out.
+	RunWorkflow(
+		ctx context.Context,
+		accountId string,
+		opts *temporalclient.StartWorkflowOptions,
+		workflow any,
+		arg any,
+		valuePtr any,
+		logger *slog.Logger,
+	) error
 }
+
+// ErrNoWorker says that no worker serves the task queue of an account.
+var ErrNoWorker = errors.New("no worker serves the task queue of the account")
 
 var _ Interface = (*ClientManager)(nil)
 
@@ -668,4 +683,37 @@ func isNotFoundError(err error) bool {
 	// Therefore as a last ditch, we just check for the error message since we can't cast it as a well formed Go error.
 	msg := err.Error()
 	return strings.Contains(msg, "not found")
+}
+
+func (m *ClientManager) RunWorkflow(
+	ctx context.Context,
+	accountId string,
+	opts *temporalclient.StartWorkflowOptions,
+	workflow any,
+	arg any,
+	valuePtr any,
+	logger *slog.Logger,
+) error {
+	clients, err := m.getClients(ctx, accountId, logger)
+	if err != nil {
+		return err
+	}
+	defer clients.Release()
+
+	queue := clients.config.SyncJobQueueName
+	described, err := clients.WorkflowClient().DescribeTaskQueue(ctx, queue, enums.TASK_QUEUE_TYPE_WORKFLOW)
+	if err != nil {
+		return fmt.Errorf("unable to describe the task queue %q: %w", queue, err)
+	}
+	if len(described.GetPollers()) == 0 {
+		return ErrNoWorker
+	}
+
+	start := *opts
+	start.TaskQueue = queue
+	run, err := clients.WorkflowClient().ExecuteWorkflow(ctx, start, workflow, arg)
+	if err != nil {
+		return fmt.Errorf("unable to start the workflow: %w", err)
+	}
+	return run.Get(ctx, valuePtr)
 }

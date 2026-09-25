@@ -10,6 +10,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
+	preflight_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/preflight"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
@@ -23,6 +24,18 @@ type GenerateBenthosConfigsResponse struct {
 	BenthosConfigs []*benthosbuilder.BenthosConfigResponse
 	AccountId      string
 	// Findings are what the plan of the tables tells of the run: see internal/preflight.
+	Findings []*preflight.Finding
+}
+
+type PlanPreflightRequest struct {
+	JobId string
+}
+
+type PlanPreflightResponse struct {
+	AccountId string
+	// Tables are the tables a run would write, with the columns it would write into each.
+	Tables []*preflight_activity.TableColumns
+	// Findings are what the plan tells of a run: see internal/preflight.
 	Findings []*preflight.Finding
 }
 
@@ -117,4 +130,35 @@ func (a *Activity) GenerateBenthosConfigs(
 		},
 		slogger,
 	)
+}
+
+// PlanPreflight computes the plan of a run of the job without running it: what the
+// pre-flight check of a job asks before any run. Nothing is read from the tables nor
+// written anywhere.
+func (a *Activity) PlanPreflight(ctx context.Context, req *PlanPreflightRequest) (*PlanPreflightResponse, error) {
+	info := activity.GetInfo(ctx)
+	logger := log.With(activity.GetLogger(ctx),
+		"jobId", req.JobId,
+		"WorkflowID", info.WorkflowExecution.ID,
+		"RunID", info.WorkflowExecution.RunID,
+	)
+	go func() {
+		for {
+			select {
+			case <-time.After(1 * time.Second):
+				activity.RecordHeartbeat(ctx)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	bbuilder := newBenthosBuilder(
+		a.sqlmanager, a.jobclient, a.connclient, a.transformerclient,
+		req.JobId,
+		// No run: the plan is keyed by the check itself, and nothing is kept under it.
+		info.WorkflowExecution.ID,
+		info.WorkflowExecution.RunID,
+		a.metricsEnabled, a.pageLimit, a.keys, a.athanor,
+	)
+	return bbuilder.PlanPreflight(ctx, req.JobId, temporallogger.NewSlogger(logger))
 }

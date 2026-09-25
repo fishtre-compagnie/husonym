@@ -121,6 +121,8 @@ const (
 	// JobServiceValidateSchemaProcedure is the fully-qualified name of the JobService's ValidateSchema
 	// RPC.
 	JobServiceValidateSchemaProcedure = "/mgmt.v1alpha1.JobService/ValidateSchema"
+	// JobServicePreflightJobProcedure is the fully-qualified name of the JobService's PreflightJob RPC.
+	JobServicePreflightJobProcedure = "/mgmt.v1alpha1.JobService/PreflightJob"
 	// JobServiceGetRunContextProcedure is the fully-qualified name of the JobService's GetRunContext
 	// RPC.
 	JobServiceGetRunContextProcedure = "/mgmt.v1alpha1.JobService/GetRunContext"
@@ -230,6 +232,11 @@ type JobServiceClient interface {
 	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
+	// Tells what a run of the job would meet, before any run: the plan is computed by a worker
+	// the way a run computes it, and the connections asked what their roles need. Nothing is
+	// read from the tables nor written, the job included. Fails with FAILED_PRECONDITION when
+	// no worker serves the account, and DEADLINE_EXCEEDED when the check does not end in time.
+	PreflightJob(context.Context, *connect.Request[v1alpha1.PreflightJobRequest]) (*connect.Response[v1alpha1.PreflightJobResponse], error)
 	// Gets a run context to be used by a workflow run
 	GetRunContext(context.Context, *connect.Request[v1alpha1.GetRunContextRequest]) (*connect.Response[v1alpha1.GetRunContextResponse], error)
 	// Sets a run context to be used by a workflow run
@@ -475,6 +482,12 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(jobServiceMethods.ByName("ValidateSchema")),
 			connect.WithClientOptions(opts...),
 		),
+		preflightJob: connect.NewClient[v1alpha1.PreflightJobRequest, v1alpha1.PreflightJobResponse](
+			httpClient,
+			baseURL+JobServicePreflightJobProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("PreflightJob")),
+			connect.WithClientOptions(opts...),
+		),
 		getRunContext: connect.NewClient[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse](
 			httpClient,
 			baseURL+JobServiceGetRunContextProcedure,
@@ -589,6 +602,7 @@ type jobServiceClient struct {
 	reviewMappingChanges             *connect.Client[v1alpha1.ReviewMappingChangesRequest, v1alpha1.ReviewMappingChangesResponse]
 	applyMappingChanges              *connect.Client[v1alpha1.ApplyMappingChangesRequest, v1alpha1.ApplyMappingChangesResponse]
 	validateSchema                   *connect.Client[v1alpha1.ValidateSchemaRequest, v1alpha1.ValidateSchemaResponse]
+	preflightJob                     *connect.Client[v1alpha1.PreflightJobRequest, v1alpha1.PreflightJobResponse]
 	getRunContext                    *connect.Client[v1alpha1.GetRunContextRequest, v1alpha1.GetRunContextResponse]
 	setRunContext                    *connect.Client[v1alpha1.SetRunContextRequest, v1alpha1.SetRunContextResponse]
 	setRunContexts                   *connect.Client[v1alpha1.SetRunContextsRequest, v1alpha1.SetRunContextsResponse]
@@ -768,6 +782,11 @@ func (c *jobServiceClient) ValidateSchema(ctx context.Context, req *connect.Requ
 	return c.validateSchema.CallUnary(ctx, req)
 }
 
+// PreflightJob calls mgmt.v1alpha1.JobService.PreflightJob.
+func (c *jobServiceClient) PreflightJob(ctx context.Context, req *connect.Request[v1alpha1.PreflightJobRequest]) (*connect.Response[v1alpha1.PreflightJobResponse], error) {
+	return c.preflightJob.CallUnary(ctx, req)
+}
+
 // GetRunContext calls mgmt.v1alpha1.JobService.GetRunContext.
 func (c *jobServiceClient) GetRunContext(ctx context.Context, req *connect.Request[v1alpha1.GetRunContextRequest]) (*connect.Response[v1alpha1.GetRunContextResponse], error) {
 	return c.getRunContext.CallUnary(ctx, req)
@@ -901,6 +920,11 @@ type JobServiceHandler interface {
 	ApplyMappingChanges(context.Context, *connect.Request[v1alpha1.ApplyMappingChangesRequest]) (*connect.Response[v1alpha1.ApplyMappingChangesResponse], error)
 	// Validates that the schema is compatible with the job mappings
 	ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error)
+	// Tells what a run of the job would meet, before any run: the plan is computed by a worker
+	// the way a run computes it, and the connections asked what their roles need. Nothing is
+	// read from the tables nor written, the job included. Fails with FAILED_PRECONDITION when
+	// no worker serves the account, and DEADLINE_EXCEEDED when the check does not end in time.
+	PreflightJob(context.Context, *connect.Request[v1alpha1.PreflightJobRequest]) (*connect.Response[v1alpha1.PreflightJobResponse], error)
 	// Gets a run context to be used by a workflow run
 	GetRunContext(context.Context, *connect.Request[v1alpha1.GetRunContextRequest]) (*connect.Response[v1alpha1.GetRunContextResponse], error)
 	// Sets a run context to be used by a workflow run
@@ -1142,6 +1166,12 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(jobServiceMethods.ByName("ValidateSchema")),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServicePreflightJobHandler := connect.NewUnaryHandler(
+		JobServicePreflightJobProcedure,
+		svc.PreflightJob,
+		connect.WithSchema(jobServiceMethods.ByName("PreflightJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	jobServiceGetRunContextHandler := connect.NewUnaryHandler(
 		JobServiceGetRunContextProcedure,
 		svc.GetRunContext,
@@ -1286,6 +1316,8 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceApplyMappingChangesHandler.ServeHTTP(w, r)
 		case JobServiceValidateSchemaProcedure:
 			jobServiceValidateSchemaHandler.ServeHTTP(w, r)
+		case JobServicePreflightJobProcedure:
+			jobServicePreflightJobHandler.ServeHTTP(w, r)
 		case JobServiceGetRunContextProcedure:
 			jobServiceGetRunContextHandler.ServeHTTP(w, r)
 		case JobServiceSetRunContextProcedure:
@@ -1449,6 +1481,10 @@ func (UnimplementedJobServiceHandler) ApplyMappingChanges(context.Context, *conn
 
 func (UnimplementedJobServiceHandler) ValidateSchema(context.Context, *connect.Request[v1alpha1.ValidateSchemaRequest]) (*connect.Response[v1alpha1.ValidateSchemaResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.ValidateSchema is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) PreflightJob(context.Context, *connect.Request[v1alpha1.PreflightJobRequest]) (*connect.Response[v1alpha1.PreflightJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.JobService.PreflightJob is not implemented"))
 }
 
 func (UnimplementedJobServiceHandler) GetRunContext(context.Context, *connect.Request[v1alpha1.GetRunContextRequest]) (*connect.Response[v1alpha1.GetRunContextResponse], error) {

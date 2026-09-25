@@ -179,6 +179,11 @@ class JobServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaResponse.FromString,
                 _registered_method=True)
+        self.PreflightJob = channel.unary_unary(
+                '/mgmt.v1alpha1.JobService/PreflightJob',
+                request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobResponse.FromString,
+                _registered_method=True)
         self.GetRunContext = channel.unary_unary(
                 '/mgmt.v1alpha1.JobService/GetRunContext',
                 request_serializer=mgmt_dot_v1alpha1_dot_job__pb2.GetRunContextRequest.SerializeToString,
@@ -480,6 +485,16 @@ class JobServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PreflightJob(self, request, context):
+        """Tells what a run of the job would meet, before any run: the plan is computed by a worker
+        the way a run computes it, and the connections asked what their roles need. Nothing is
+        read from the tables nor written, the job included. Fails with FAILED_PRECONDITION when
+        no worker serves the account, and DEADLINE_EXCEEDED when the check does not end in time.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetRunContext(self, request, context):
         """Gets a run context to be used by a workflow run
         """
@@ -730,6 +745,11 @@ def add_JobServiceServicer_to_server(servicer, server):
                     servicer.ValidateSchema,
                     request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaResponse.SerializeToString,
+            ),
+            'PreflightJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.PreflightJob,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobResponse.SerializeToString,
             ),
             'GetRunContext': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRunContext,
@@ -1683,6 +1703,33 @@ class JobService:
             '/mgmt.v1alpha1.JobService/ValidateSchema',
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_job__pb2.ValidateSchemaResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PreflightJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.JobService/PreflightJob',
+            mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_job__pb2.PreflightJobResponse.FromString,
             options,
             channel_credentials,
             insecure,

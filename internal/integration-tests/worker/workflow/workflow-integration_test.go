@@ -237,6 +237,20 @@ func Test_Workflow(t *testing.T) {
 			)
 		})
 
+		t.Run("preflight", func(t *testing.T) {
+			t.Parallel()
+			test_postgres_preflight(
+				t,
+				ctx,
+				postgres,
+				husonymApi,
+				dbManagers,
+				accountId,
+				sourceConn,
+				destConn,
+			)
+		})
+
 		t.Run("automap_review", func(t *testing.T) {
 			t.Parallel()
 			test_postgres_automap_review(
