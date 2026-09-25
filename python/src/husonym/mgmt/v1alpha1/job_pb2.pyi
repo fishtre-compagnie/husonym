@@ -1571,6 +1571,80 @@ class SetRunContextsResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
+class PreflightReport(_message.Message):
+    __slots__ = ("engine", "findings")
+    ENGINE_FIELD_NUMBER: _ClassVar[int]
+    FINDINGS_FIELD_NUMBER: _ClassVar[int]
+    engine: JobEngine
+    findings: _containers.RepeatedCompositeFieldContainer[PreflightFinding]
+    def __init__(self, engine: _Optional[_Union[JobEngine, str]] = ..., findings: _Optional[_Iterable[_Union[PreflightFinding, _Mapping]]] = ...) -> None: ...
+
+class PreflightFinding(_message.Message):
+    __slots__ = ("kind", "level", "connection_id", "table", "columns", "missing", "message", "remedy")
+    class Kind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        KIND_UNSPECIFIED: _ClassVar[PreflightFinding.Kind]
+        KIND_TABLE_EXISTS: _ClassVar[PreflightFinding.Kind]
+        KIND_READABLE: _ClassVar[PreflightFinding.Kind]
+        KIND_SERVER_WRITABLE: _ClassVar[PreflightFinding.Kind]
+        KIND_WRITABLE: _ClassVar[PreflightFinding.Kind]
+        KIND_TRUNCATE: _ClassVar[PreflightFinding.Kind]
+        KIND_TRIGGERS: _ClassVar[PreflightFinding.Kind]
+        KIND_TRIGGER_DEFINER: _ClassVar[PreflightFinding.Kind]
+        KIND_FOREIGN_KEY_SUSPENSION: _ClassVar[PreflightFinding.Kind]
+        KIND_ENGINE_UNSUPPORTED: _ClassVar[PreflightFinding.Kind]
+        KIND_GENERATED_COLUMN_WRITTEN: _ClassVar[PreflightFinding.Kind]
+        KIND_OUTPUT_TOO_LONG: _ClassVar[PreflightFinding.Kind]
+        KIND_CONSTANT_ON_UNIQUE: _ClassVar[PreflightFinding.Kind]
+        KIND_READ_IN_ONE_STREAM: _ClassVar[PreflightFinding.Kind]
+        KIND_RETRY_MAY_DUPLICATE: _ClassVar[PreflightFinding.Kind]
+        KIND_DESTINATION_TRIGGERS: _ClassVar[PreflightFinding.Kind]
+        KIND_REFERENCE_CLEARED_BY_SUBSET: _ClassVar[PreflightFinding.Kind]
+    KIND_UNSPECIFIED: PreflightFinding.Kind
+    KIND_TABLE_EXISTS: PreflightFinding.Kind
+    KIND_READABLE: PreflightFinding.Kind
+    KIND_SERVER_WRITABLE: PreflightFinding.Kind
+    KIND_WRITABLE: PreflightFinding.Kind
+    KIND_TRUNCATE: PreflightFinding.Kind
+    KIND_TRIGGERS: PreflightFinding.Kind
+    KIND_TRIGGER_DEFINER: PreflightFinding.Kind
+    KIND_FOREIGN_KEY_SUSPENSION: PreflightFinding.Kind
+    KIND_ENGINE_UNSUPPORTED: PreflightFinding.Kind
+    KIND_GENERATED_COLUMN_WRITTEN: PreflightFinding.Kind
+    KIND_OUTPUT_TOO_LONG: PreflightFinding.Kind
+    KIND_CONSTANT_ON_UNIQUE: PreflightFinding.Kind
+    KIND_READ_IN_ONE_STREAM: PreflightFinding.Kind
+    KIND_RETRY_MAY_DUPLICATE: PreflightFinding.Kind
+    KIND_DESTINATION_TRIGGERS: PreflightFinding.Kind
+    KIND_REFERENCE_CLEARED_BY_SUBSET: PreflightFinding.Kind
+    class Level(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        LEVEL_UNSPECIFIED: _ClassVar[PreflightFinding.Level]
+        LEVEL_BLOCKING: _ClassVar[PreflightFinding.Level]
+        LEVEL_WARNING: _ClassVar[PreflightFinding.Level]
+        LEVEL_INFORMATION: _ClassVar[PreflightFinding.Level]
+    LEVEL_UNSPECIFIED: PreflightFinding.Level
+    LEVEL_BLOCKING: PreflightFinding.Level
+    LEVEL_WARNING: PreflightFinding.Level
+    LEVEL_INFORMATION: PreflightFinding.Level
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    LEVEL_FIELD_NUMBER: _ClassVar[int]
+    CONNECTION_ID_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    COLUMNS_FIELD_NUMBER: _ClassVar[int]
+    MISSING_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    REMEDY_FIELD_NUMBER: _ClassVar[int]
+    kind: PreflightFinding.Kind
+    level: PreflightFinding.Level
+    connection_id: str
+    table: str
+    columns: _containers.RepeatedScalarFieldContainer[str]
+    missing: _containers.RepeatedScalarFieldContainer[str]
+    message: str
+    remedy: str
+    def __init__(self, kind: _Optional[_Union[PreflightFinding.Kind, str]] = ..., level: _Optional[_Union[PreflightFinding.Level, str]] = ..., connection_id: _Optional[str] = ..., table: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., missing: _Optional[_Iterable[str]] = ..., message: _Optional[str] = ..., remedy: _Optional[str] = ...) -> None: ...
+
 class JobHook(_message.Message):
     __slots__ = ("id", "name", "description", "job_id", "config", "created_by_user_id", "created_at", "updated_by_user_id", "updated_at", "enabled", "priority")
     ID_FIELD_NUMBER: _ClassVar[int]

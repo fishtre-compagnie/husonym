@@ -15312,6 +15312,109 @@ components:
           description: Whether to cascade the truncate to child tables
       title: PostgresTruncateTableConfig
       additionalProperties: false
+    mgmt.v1alpha1.PreflightFinding:
+      type: object
+      properties:
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PreflightFinding.Kind'
+          title: kind
+        level:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.PreflightFinding.Level'
+          title: level
+        connectionId:
+          type:
+            - string
+            - 'null'
+          title: connection_id
+          description: The connection concerned, when the finding is about one.
+        table:
+          type: string
+          title: table
+          description: >-
+            The table concerned, as schema.table; empty for the job or a server
+            as a whole.
+        columns:
+          type: array
+          items:
+            type: string
+          title: columns
+          description: The columns concerned.
+        missing:
+          type: array
+          items:
+            type: string
+          title: missing
+          description: 'What an account lacks: privileges, or the names of absent columns.'
+        message:
+          type: string
+          title: message
+          description: The finding in a sentence.
+        remedy:
+          type:
+            - string
+            - 'null'
+          title: remedy
+          description: >-
+            The statement that grants what is missing, for someone allowed to
+            run it.
+      title: PreflightFinding
+      additionalProperties: false
+      description: One thing a run of a job will meet.
+    mgmt.v1alpha1.PreflightFinding.Kind:
+      type: string
+      title: Kind
+      enum:
+        - KIND_UNSPECIFIED
+        - KIND_TABLE_EXISTS
+        - KIND_READABLE
+        - KIND_SERVER_WRITABLE
+        - KIND_WRITABLE
+        - KIND_TRUNCATE
+        - KIND_TRIGGERS
+        - KIND_TRIGGER_DEFINER
+        - KIND_FOREIGN_KEY_SUSPENSION
+        - KIND_ENGINE_UNSUPPORTED
+        - KIND_GENERATED_COLUMN_WRITTEN
+        - KIND_OUTPUT_TOO_LONG
+        - KIND_CONSTANT_ON_UNIQUE
+        - KIND_READ_IN_ONE_STREAM
+        - KIND_RETRY_MAY_DUPLICATE
+        - KIND_DESTINATION_TRIGGERS
+        - KIND_REFERENCE_CLEARED_BY_SUBSET
+      description: What the finding is about.
+    mgmt.v1alpha1.PreflightFinding.Level:
+      type: string
+      title: Level
+      enum:
+        - LEVEL_UNSPECIFIED
+        - LEVEL_BLOCKING
+        - LEVEL_WARNING
+        - LEVEL_INFORMATION
+      description: What the finding does to a run.
+    mgmt.v1alpha1.PreflightReport:
+      type: object
+      properties:
+        engine:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobEngine'
+          title: engine
+          description: >-
+            The engine the run is on, as the worker resolves the deployment
+            default.
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/mgmt.v1alpha1.PreflightFinding'
+          title: findings
+      title: PreflightReport
+      additionalProperties: false
+      description: >-
+        What a run of a job will meet, found by computing its plan: nothing is
+        read from the tables
+         nor written. A run keeps the report of its own start in its run context, under
+         "preflight-report", and stops on a blocking finding.
     mgmt.v1alpha1.ReconcileJobMappingsRequest:
       type: object
       properties:

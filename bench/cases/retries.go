@@ -3,6 +3,8 @@ package cases
 import (
 	"fmt"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
@@ -41,6 +43,9 @@ func retryInsertIgnoreMasksTruncation() *Case {
 			schema.Postgres: {"ALTER TABLE {db}.{q:ARTICLE} ALTER COLUMN {q:libelle} TYPE varchar(5)"},
 		},
 		Job: Job{SyncAttempts: 3},
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_OUTPUT_TOO_LONG, findingWarning, "ARTICLE"),
+		},
 		ExpectRunError: map[schema.Dialect]string{
 			schema.MySQL:    "Data too long",
 			schema.Postgres: "value too long for type character varying(5)",
@@ -88,6 +93,10 @@ func retryKeylessTableDuplicates() *Case {
 		}},
 		// Batches smaller than the table, so that some are committed before the failure.
 		Job: Job{SyncAttempts: 3, BatchCount: 10},
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM, findingInformation, "JOURNAL"),
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_RETRY_MAY_DUPLICATE, findingWarning, "JOURNAL").on("benthos"),
+		},
 		Seed: func(p Params, emit Emitter) {
 			for i := 1; i < p.PageLimit; i++ {
 				emit.Row("JOURNAL", []any{int64(1), fmt.Sprintf("m%07d", i)}, Kept())

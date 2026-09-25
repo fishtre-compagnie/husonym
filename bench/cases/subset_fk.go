@@ -3,6 +3,7 @@ package cases
 import (
 	"fmt"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
@@ -72,6 +73,9 @@ func fkSelfReferenceNullable() *Case {
 		ID:       "fk-self-reference-nullable",
 		Priority: P1,
 		Title:    "FK auto-référencée nullable vers des lignes hors subset",
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_REFERENCE_CLEARED_BY_SUBSET, findingInformation, commandeTable),
+		},
 		Tables: []*schema.Table{
 			stationTable(),
 			{
@@ -270,6 +274,11 @@ func fkSeveralToSameParent() *Case {
 		ID:       "fk-several-to-same-parent",
 		Priority: P1,
 		Title:    "Plusieurs FK vers le même parent : seule la première sert au subset",
+		// station_retour_id only: the subset joins on station_arrivee_id, and
+		// station_depart_id is mandatory.
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_REFERENCE_CLEARED_BY_SUBSET, findingInformation, "TRANSFERT"),
+		},
 		Tables: []*schema.Table{
 			stationTable(),
 			{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
@@ -65,6 +66,9 @@ func pageNullOrderValues() *Case {
 			},
 			Indexes: []schema.Index{{Name: "uq_badge_code", Columns: []string{"code"}, Unique: true}},
 		}},
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM, findingInformation, "BADGE"),
+		},
 		Seed: func(p Params, emit Emitter) {
 			for i := 1; i <= p.PageLimit+p.PageLimit/2; i++ {
 				emit.Row("BADGE", []any{nil, fmt.Sprintf("sans code %d", i)}, Kept())
@@ -91,6 +95,10 @@ func pageDuplicateRows() *Case {
 				{Name: "message", Type: schema.Varchar(60)},
 			},
 		}},
+		// Read in one stream; a single attempt, so nothing is written twice.
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM, findingInformation, "JOURNAL"),
+		},
 		Seed: func(p Params, emit Emitter) {
 			// Sorted by (message, niveau): "a…" rows fill the first page but five, then ten
 			// identical "m" rows straddle the boundary, then "z…" rows follow.

@@ -3,12 +3,13 @@ package cases
 import (
 	"strings"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/bench/schema"
 )
 
 // rightsCases run with accounts that lack what their role needs. The decision is that a
-// run stops at its start on a blocking privilege check, with a message saying which
-// privilege is missing; failing later on the first refused statement, or retrying it for
+// run stops at its start on a blocking finding of its pre-flight check, with a message
+// saying which privilege is missing; failing later on the first refused statement, or retrying it for
 // minutes, is a gap. (The read-only source is not a case: every run of the bench reads a
 // source set to refuse writes.)
 func rightsCases() []*Case {
@@ -176,9 +177,10 @@ func rightsDestinationReadOnlyAccount() *Case {
 				"GRANT SELECT ON ALL TABLES IN SCHEMA {db} TO {user}",
 			},
 		},
-		ExpectRunError: map[schema.Dialect]string{
-			schema.MySQL:    "privilege check",
-			schema.Postgres: "privilege check",
+		ExpectRunError: map[schema.Dialect]string{schema.MySQL: preflightStop, schema.Postgres: preflightStop},
+		// The report the run keeps names what is missing on the table, as the run says it.
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_WRITABLE, findingBlocking, "ARTICLE"),
 		},
 		Seed: seed,
 	}

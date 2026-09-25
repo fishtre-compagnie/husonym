@@ -8,6 +8,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
@@ -29,6 +30,7 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		Logger:           b.logger,
 
 		HasConsistencyKey: b.hasConsistencyKey,
+		UsesAthanor:       b.usesAthanor,
 	}
 
 	sourceConfigs, err := dbBuilder.BuildSourceConfigs(ctx, sourceParams)
@@ -36,6 +38,7 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		return nil, err
 	}
 	b.mappingChanges = sourceParams.MappingChanges
+	b.findings = sourceParams.Findings
 	b.logger.Debug(fmt.Sprintf("built %d source configs", len(sourceConfigs)))
 
 	destinationOpts := buildDestinationOptionsMap(b.job.GetDestinations())
@@ -65,12 +68,14 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 				DestinationOpts: destOpts,
 				DestConnection:  destConnection,
 				Logger:          b.logger,
+				UsesAthanor:     b.usesAthanor,
 			}
 
 			destConfig, err := destBuilder.BuildDestinationConfig(ctx, destParams)
 			if err != nil {
 				return nil, err
 			}
+			b.findings = append(b.findings, destParams.Findings...)
 			sourceConfig.Config.Output.Broker.Outputs = append(
 				sourceConfig.Config.Output.Broker.Outputs,
 				destConfig.Outputs...)
@@ -118,6 +123,7 @@ func (b *BenthosConfigManager) GenerateBenthosConfigs(
 		responses = append(responses, response)
 	}
 
+	preflight.Sort(b.findings)
 	b.logger.Info(fmt.Sprintf("successfully built %d benthos configs", len(responses)))
 	return responses, nil
 }

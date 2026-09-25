@@ -39,6 +39,8 @@ type benthosBuilder struct {
 	pageLimit int
 
 	keys *consistencykey.Resolver
+
+	athanor shared.AthanorPolicy
 }
 
 func newBenthosBuilder(
@@ -55,6 +57,7 @@ func newBenthosBuilder(
 	pageLimit int,
 
 	keys *consistencykey.Resolver,
+	athanor shared.AthanorPolicy,
 ) *benthosBuilder {
 	return &benthosBuilder{
 		sqlmanagerclient:  sqlmanagerclient,
@@ -67,6 +70,7 @@ func newBenthosBuilder(
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
 		keys:              keys,
+		athanor:           athanor,
 	}
 }
 
@@ -180,6 +184,7 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 		},
 		PageLimit:         &b.pageLimit,
 		HasConsistencyKey: consistencyKey != "",
+		UsesAthanor:       b.athanor.UsesAthanor(job),
 	}
 	benthosManager, err := benthosbuilder.NewWorkerBenthosConfigManager(benthosManagerConfig)
 	if err != nil {
@@ -219,6 +224,7 @@ func (b *benthosBuilder) GenerateBenthosConfigsNew(
 	return &GenerateBenthosConfigsResponse{
 		AccountId:      job.AccountId,
 		BenthosConfigs: outputConfigs,
+		Findings:       benthosManager.Findings(),
 	}, nil
 }
 

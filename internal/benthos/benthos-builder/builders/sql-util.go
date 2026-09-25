@@ -1134,7 +1134,7 @@ var noParentNumeric = regexp.MustCompile(`^[+-]?\d+(\.\d+)?$`)
 func generatedColumns(columns map[string]*sqlmanager_shared.DatabaseSchemaRow) []string {
 	var generated []string
 	for name, info := range columns {
-		if !info.UpdateAllowed && info.IdentityGeneration == nil {
+		if isGenerated(info) {
 			generated = append(generated, name)
 		}
 	}

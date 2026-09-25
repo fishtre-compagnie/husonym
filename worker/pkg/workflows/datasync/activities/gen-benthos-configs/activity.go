@@ -7,8 +7,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
+	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
@@ -20,6 +22,8 @@ type GenerateBenthosConfigsRequest struct {
 type GenerateBenthosConfigsResponse struct {
 	BenthosConfigs []*benthosbuilder.BenthosConfigResponse
 	AccountId      string
+	// Findings are what the plan of the tables tells of the run: see internal/preflight.
+	Findings []*preflight.Finding
 }
 
 type Activity struct {
@@ -38,6 +42,9 @@ type Activity struct {
 	// when the account has none. Asking here is also what gives an account its own key on
 	// its first run, before any mapping is decided.
 	keys *consistencykey.Resolver
+
+	// athanor tells which engine runs the job: what the plan tells of the run depends on it.
+	athanor shared.AthanorPolicy
 }
 
 func New(
@@ -48,6 +55,7 @@ func New(
 	metricsEnabled bool,
 	pageLimit int,
 	keys *consistencykey.Resolver,
+	athanor shared.AthanorPolicy,
 ) *Activity {
 	return &Activity{
 		jobclient:         jobclient,
@@ -57,6 +65,7 @@ func New(
 		metricsEnabled:    metricsEnabled,
 		pageLimit:         pageLimit,
 		keys:              keys,
+		athanor:           athanor,
 	}
 }
 
@@ -96,6 +105,7 @@ func (a *Activity) GenerateBenthosConfigs(
 		a.metricsEnabled,
 		a.pageLimit,
 		a.keys,
+		a.athanor,
 	)
 	slogger := temporallogger.NewSlogger(logger)
 	return bbuilder.GenerateBenthosConfigsNew(

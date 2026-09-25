@@ -12,6 +12,7 @@ import (
 	bb_conns "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/builders"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
+	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
@@ -281,8 +282,16 @@ type BenthosConfigManager struct {
 
 	// Filled by GenerateBenthosConfigs from what the source builder reported.
 	hasConsistencyKey bool
+	usesAthanor       bool
 
 	mappingChanges bb_internal.MappingChanges
+	findings       []*preflight.Finding
+}
+
+// Findings returns what the last GenerateBenthosConfigs call found the plan tells of the run,
+// in the order they are read.
+func (b *BenthosConfigManager) Findings() []*preflight.Finding {
+	return b.findings
 }
 
 // MappingChanges returns how the last GenerateBenthosConfigs call found the job's mappings to
@@ -310,6 +319,8 @@ type WorkerBenthosConfig struct {
 	// HasConsistencyKey says whether the deployment can derive a key for deterministic
 	// pseudonymization (ANONYMIZATION_CONSISTENCY_KEY).
 	HasConsistencyKey bool
+	// UsesAthanor says which engine runs the job, as the worker resolves it.
+	UsesAthanor bool
 }
 
 // Creates a new BenthosConfigManager configured for worker
@@ -351,6 +362,7 @@ func NewWorkerBenthosConfigManager(
 		destinationConnections: config.DestinationConnections,
 		jobRunId:               config.JobRunId,
 		hasConsistencyKey:      config.HasConsistencyKey,
+		usesAthanor:            config.UsesAthanor,
 	}, nil
 }
 

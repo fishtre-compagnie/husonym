@@ -56,7 +56,17 @@ func generatedColumns(id, title string, transformer *mgmtv1alpha1.TransformerCon
 	if transformer != nil {
 		spec := ColumnSpec{Transformer: transformer, Rules: []Rule{RuleUnchanged}}
 		c.Job.Columns = map[string]map[string]ColumnSpec{"LIGNE": {"total_virtuel": spec, "total_stocke": spec}}
+		return c
 	}
+	// Given a value: Benthos writes it and the destination refuses it, so the run stops at
+	// its start; Athanor leaves the columns out of what it writes.
+	written := mgmtv1alpha1.PreflightFinding_KIND_GENERATED_COLUMN_WRITTEN
+	c.ExpectFindings = []ExpectedFinding{
+		expectFinding(written, findingBlocking, "LIGNE").on("benthos"),
+		expectFinding(written, findingInformation, "LIGNE").on("athanor"),
+	}
+	c.ExpectRunError = map[schema.Dialect]string{schema.MySQL: preflightStop, schema.Postgres: preflightStop}
+	c.FailingEngines = []string{"benthos"}
 	return c
 }
 
@@ -172,6 +182,9 @@ func tableGeneratedInvisiblePrimaryKey() *Case {
 				{Name: "message", Type: schema.Varchar(60)},
 			},
 		}},
+		ExpectFindings: []ExpectedFinding{
+			expectFinding(mgmtv1alpha1.PreflightFinding_KIND_READ_IN_ONE_STREAM, findingInformation, "JOURNAL"),
+		},
 		Seed: func(p Params, emit Emitter) {
 			for i := 1; i <= 2*p.PageLimit+p.PageLimit/2; i++ {
 				emit.Row("JOURNAL", []any{int64(i % 7), fmt.Sprintf("événement %05d", i)}, Kept())

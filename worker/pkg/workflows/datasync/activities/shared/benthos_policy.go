@@ -15,6 +15,15 @@ type UserDefinedTransformerResolver interface {
 	GetUserDefinedTransformer(ctx context.Context, id string) (*mgmtv1alpha1.TransformerConfig, error)
 }
 
+// EngineUnsupportedError says the engine of a run cannot run what the job asks of it: the
+// job, not the run, has to change. Any other error of AthanorRuns and BenthosRuns is one of
+// finding out.
+type EngineUnsupportedError struct {
+	reason string
+}
+
+func (e *EngineUnsupportedError) Error() string { return e.reason }
+
 // BenthosRuns tells whether Benthos can run the JavaScript rules of a job, user-defined
 // transformers included. The deterministic functions offered to rules (pseudo.*) derive
 // from the consistency scope of Athanor, which Benthos does not have: the run is stopped
@@ -43,8 +52,9 @@ func BenthosRuns(ctx context.Context, job *mgmtv1alpha1.Job, resolver UserDefine
 			continue // code that does not compile fails its table, as it always did
 		}
 		if analysis.UsesPseudo {
-			return fmt.Errorf("benthos cannot run the pseudo functions of the rule of %s.%s.%s: run the job with athanor",
-				mapping.GetSchema(), mapping.GetTable(), mapping.GetColumn())
+			return &EngineUnsupportedError{fmt.Sprintf(
+				"benthos cannot run the pseudo functions of the rule of %s.%s.%s: run the job with athanor",
+				mapping.GetSchema(), mapping.GetTable(), mapping.GetColumn())}
 		}
 	}
 	return nil

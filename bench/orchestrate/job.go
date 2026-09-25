@@ -14,6 +14,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -454,6 +455,29 @@ func (c *Client) PlanPageLimit(ctx context.Context, runID, database, table strin
 		return 0, err
 	}
 	return plan.PageLimit, nil
+}
+
+// PreflightReport returns the report of the pre-flight check a run kept at its start, or
+// nil when it kept none: a run stopped before the check, or started by a worker without it.
+func (c *Client) PreflightReport(ctx context.Context, runID string) (*mgmtv1alpha1.PreflightReport, error) {
+	resp, err := c.jobs.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{
+			JobRunId:   runID,
+			ExternalId: shared.GetPreflightReportExternalId(),
+			AccountId:  c.accountID,
+		},
+	}))
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("orchestrate: pre-flight report of run %s: %w", runID, err)
+	}
+	report := &mgmtv1alpha1.PreflightReport{}
+	if err := protojson.Unmarshal(resp.Msg.GetValue(), report); err != nil {
+		return nil, fmt.Errorf("orchestrate: pre-flight report of run %s: %w", runID, err)
+	}
+	return report, nil
 }
 
 // Activity is one activity of a run, as the event history tells it.

@@ -6,7 +6,7 @@
     },
     "columns-generated-passthrough": {
       "athanor": "ok",
-      "benthos": "run_failed"
+      "benthos": "ok"
     },
     "columns-invisible": {
       "athanor": "ok",
@@ -241,7 +241,7 @@
     },
     "columns-generated-passthrough": {
       "athanor": "ok",
-      "benthos": "run_failed"
+      "benthos": "ok"
     },
     "destination-replica-trigger-writes-synced-table": {
       "athanor": "ok",

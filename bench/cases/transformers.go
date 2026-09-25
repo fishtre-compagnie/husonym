@@ -27,6 +27,23 @@ func transformerCases() []*Case {
 				schema.MySQL:    "Data too long",
 				schema.Postgres: "value too long for type character varying",
 			}),
+		// The same two, with transformers of the product: the pre-flight check says it before
+		// the run, which a rule's code cannot tell.
+		expectingFinding(transformerFailure("tr-uuid-longer-than-column",
+			"UUID généré dans une colonne de 10 caractères : avertissement au pré-vol, puis échec explicite",
+			"code", &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateUuidConfig{
+				GenerateUuidConfig: &mgmtv1alpha1.GenerateUuid{},
+			}},
+			map[schema.Dialect]string{
+				schema.MySQL:    "Data too long",
+				schema.Postgres: "value too long for type character varying",
+			}), mgmtv1alpha1.PreflightFinding_KIND_OUTPUT_TOO_LONG),
+		expectingFinding(transformerFailure("tr-single-category-on-unique-column",
+			"Catégorie unique sur une colonne unique : avertissement au pré-vol, puis échec explicite",
+			"code", categorical("constante"), map[schema.Dialect]string{
+				schema.MySQL:    "Duplicate entry",
+				schema.Postgres: "duplicate key value violates unique constraint",
+			}), mgmtv1alpha1.PreflightFinding_KIND_CONSTANT_ON_UNIQUE),
 		transformerFailure("tr-null-on-not-null-column",
 			"Transformer Null sur une colonne NOT NULL : échec explicite, jamais de valeur par défaut implicite",
 			"libelle", nullTransformer(), map[schema.Dialect]string{
@@ -51,6 +68,19 @@ func transformJavascript(code string) *mgmtv1alpha1.TransformerConfig {
 	return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
 		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{Code: code},
 	}}
+}
+
+func categorical(categories string) *mgmtv1alpha1.TransformerConfig {
+	return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateCategoricalConfig{
+		GenerateCategoricalConfig: &mgmtv1alpha1.GenerateCategorical{Categories: &categories},
+	}}
+}
+
+// expectingFinding has a case of transformerFailure expect a warning of the pre-flight
+// check on the column it transforms.
+func expectingFinding(c *Case, kind mgmtv1alpha1.PreflightFinding_Kind) *Case {
+	c.ExpectFindings = []ExpectedFinding{expectFinding(kind, findingWarning, "ARTICLE")}
+	return c
 }
 
 func nullTransformer() *mgmtv1alpha1.TransformerConfig {

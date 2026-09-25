@@ -194,6 +194,40 @@ type Case struct {
 	// others must complete and are verified like any case. It is for what one engine needs
 	// and the other does not: a check that stops Athanor must not stop Benthos with it.
 	FailingEngines []string
+	// ExpectFindings are what the pre-flight check of the run must report: the report the
+	// run keeps in its run context. Every blocking finding and every warning about the plan
+	// must be expected, so that none shows where the run goes well; the findings about the
+	// rights of a connection are left to ExpectRunError, and the information unlisted is
+	// not checked.
+	ExpectFindings []ExpectedFinding
+}
+
+// ExpectedFinding is one finding the pre-flight check of a run must report.
+type ExpectedFinding struct {
+	Kind  mgmtv1alpha1.PreflightFinding_Kind
+	Level mgmtv1alpha1.PreflightFinding_Level
+	// Table is a table of the case; empty for a finding about the job as a whole.
+	Table string
+	// Engine, when set, is the only engine the finding is expected on.
+	Engine string
+	// Dialects, when set, are the only databases the finding is expected on.
+	Dialects []schema.Dialect
+}
+
+// ExpectedFindings returns the findings a run of the case must report on a database and
+// an engine.
+func (c *Case) ExpectedFindings(dialect schema.Dialect, engine string) []ExpectedFinding {
+	var expected []ExpectedFinding
+	for _, f := range c.ExpectFindings {
+		if f.Engine != "" && f.Engine != engine {
+			continue
+		}
+		if len(f.Dialects) > 0 && !slices.Contains(f.Dialects, dialect) {
+			continue
+		}
+		expected = append(expected, f)
+	}
+	return expected
 }
 
 // WorkerKill stops a run in the middle of a page, deterministically: before the run, the
