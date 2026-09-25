@@ -198,6 +198,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
         session.accessToken = (token as any).accessToken; // eslint-disable-line @typescript-eslint/no-explicit-any
         session.idToken = (token as any).idToken; // eslint-disable-line @typescript-eslint/no-explicit-any
         session.accountIssuer = (token as any).accountIssuer; // eslint-disable-line @typescript-eslint/no-explicit-any
+        session.refreshedAt = (token as any).refreshedAt; // eslint-disable-line @typescript-eslint/no-explicit-any
         return session;
       },
       jwt: async ({ token, account }) => {
@@ -208,6 +209,7 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
           token.refreshToken = account.refresh_token;
           token.expiresAt = account.expires_at;
           token.provider = account.provider;
+          token.refreshedAt = Date.now();
           // The provider that issued these tokens, when it is an account's: refreshing them
           // and ending the session go to it, whatever account a later request names. Held
           // in the session token, which only this server can read or write.
@@ -256,6 +258,9 @@ function buildConfig(accountMethod: FlowAccount | null): NextAuthConfig {
               throw tokens;
             }
             token.accessToken = tokens.access_token;
+            // When the tokens were last obtained: the middleware keeps the session cookie
+            // of a call that refreshed them, and of no other.
+            token.refreshedAt = Date.now();
             // the refresh token may not always be returned. If it's not, don't update
             if (tokens.refresh_token) {
               token.refreshToken = tokens.refresh_token;
@@ -369,6 +374,8 @@ declare module 'next-auth' {
     // The issuer of the account's provider the session came from; unset for the
     // deployment's.
     accountIssuer?: string;
+    // When the session's tokens were last obtained, in milliseconds since the epoch.
+    refreshedAt?: number;
   }
 }
 

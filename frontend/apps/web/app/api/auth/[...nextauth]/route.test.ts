@@ -27,10 +27,18 @@ beforeEach(() => {
   jest.mocked(handlePost).mockReset();
 });
 
-function signIn(cookie: string, extra: Record<string, string> = {}) {
+function signIn(account: string | null, extra: Record<string, string> = {}) {
+  const body = new URLSearchParams({ csrfToken: 't', callbackUrl: '/' });
+  if (account) {
+    body.set('account', account);
+  }
   return new NextRequest('http://app.example/api/auth/signin/oidc', {
     method: 'POST',
-    headers: { cookie, ...extra },
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      ...extra,
+    },
+    body: body.toString(),
   });
 }
 
@@ -42,17 +50,19 @@ describe('the start of a sign-in', () => {
   it('hands the configuration the account, and seals it for the flow', async () => {
     jest.mocked(fetchAccountLoginMethod).mockResolvedValue(acme);
     let seen: unknown;
+    let body = '';
     jest.mocked(handlePost).mockImplementation(async (req) => {
       seen = await getRequestAccount(req as NextRequest);
+      body = await (req as NextRequest).text();
       return Response.json({ url: authorize('st') });
     });
 
-    const res = await POST(
-      signIn('husonym.login-account=acme', { [FLOW_HEADER]: 'forged' })
-    );
+    const res = await POST(signIn('acme', { [FLOW_HEADER]: 'forged' }));
 
     expect(fetchAccountLoginMethod).toHaveBeenCalledTimes(1);
     expect(seen).toEqual({ ...acme, slug: 'acme' });
+    // Auth.js gets the body it checks the CSRF token of.
+    expect(new URLSearchParams(body).get('csrfToken')).toBe('t');
     const flow = setCookies(res).find((c) =>
       c.startsWith('husonym.login-flow=')
     );
@@ -76,7 +86,7 @@ describe('the start of a sign-in', () => {
           302
         )
       );
-    const res = await POST(signIn('husonym.login-account=acme'));
+    const res = await POST(signIn('acme'));
     expect(setCookies(res)).toEqual([]);
   });
 
@@ -84,7 +94,7 @@ describe('the start of a sign-in', () => {
     jest
       .mocked(handlePost)
       .mockResolvedValue(Response.json({ url: authorize(null) }));
-    const res = await POST(signIn(''));
+    const res = await POST(signIn(null));
     expect(setCookies(res)).toEqual([
       expect.stringMatching(/^husonym\.login-flow=; .*Max-Age=0/),
     ]);
@@ -97,7 +107,7 @@ describe('the start of a sign-in', () => {
     jest
       .mocked(handlePost)
       .mockResolvedValue(Response.json({ url: authorize('st') }));
-    const res = await POST(signIn('husonym.login-account=acme'));
+    const res = await POST(signIn('acme'));
     expect(setCookies(res)[0]).toMatch(
       /^__Host-husonym\.login-flow=.*; Path=\/; .*; Secure$/
     );
@@ -119,7 +129,6 @@ describe('a callback', () => {
     );
     expect(setCookies(res)).toEqual([
       expect.stringMatching(/^husonym\.login-flow=; /),
-      expect.stringMatching(/^husonym\.login-account=; /),
     ]);
   });
 

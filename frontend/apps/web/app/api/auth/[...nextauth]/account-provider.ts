@@ -9,15 +9,6 @@ import { NextRequest } from 'next/server';
  * only one that asks nobody to prove ownership of an email domain.
  */
 
-/**
- * The account a sign-in is asked for: set by the per-account link, read when the sign-in
- * starts. The callback does not read it -- anyone can make a browser follow the link and
- * rewrite it -- but the flow cookie sealed at the start (login-flow.ts).
- *
- * It holds a slug, which is public, never anything about a person.
- */
-export const ACCOUNT_COOKIE = 'husonym.login-account';
-
 export interface AccountLoginMethod {
   issuer: string;
   clientId: string;
