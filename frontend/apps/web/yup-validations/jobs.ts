@@ -1,6 +1,8 @@
 import { TransformerConfigFormValue } from '@/yup-validations/transformer-validations';
 import { create, fromJson, JsonObject, toJson } from '@bufbuild/protobuf';
 import {
+  JobMapping,
+  JobMappingSchema,
   JobMappingTransformer,
   JobMappingTransformerSchema,
   MssqlSourceConnectionOptions_ColumnRemovalStrategy,
@@ -98,6 +100,19 @@ export const JobMappingFormValues = Yup.object({
   transformer: JobMappingTransformerForm,
 }).required('Job mapping values are required.');
 export type JobMappingFormValues = Yup.InferType<typeof JobMappingFormValues>;
+
+export function convertJobMappingFormToJobMapping(
+  form: JobMappingFormValues
+): JobMapping {
+  return create(JobMappingSchema, {
+    schema: form.schema,
+    table: form.table,
+    column: form.column,
+    transformer: convertJobMappingTransformerFormToJobMappingTransformer(
+      form.transformer
+    ),
+  });
+}
 
 const VIRTUAL_FOREIGN_KEY_SCHEMA = Yup.object({
   schema: Yup.string().required('A schema is required'),

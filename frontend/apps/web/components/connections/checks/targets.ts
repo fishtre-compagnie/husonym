@@ -26,7 +26,7 @@ export interface ConnectionCheckTarget {
 export type CheckedJob = {
   source?: JobSource;
   destinations: { connectionId: string; options?: JobDestinationOptions }[];
-  mappings: Pick<JobMapping, 'schema' | 'table' | 'column'>[];
+  mappings: Pick<JobMapping, 'schema' | 'table' | 'column' | 'transformer'>[];
   workflowOptions?: { engine: JobEngine };
 };
 
@@ -38,6 +38,8 @@ export interface JobCheckOptions {
   // The columns the source has, as schema.table.column: a mapping whose column the source no
   // longer has is left out, as a run leaves it out.
   sourceColumns?: Set<string>;
+  // The user defined transformers of the mappings that are made from Generate Default.
+  defaultTransformerIds?: Set<string>;
 }
 
 // getCheckTargetsOfJob gives the MySQL and PostgreSQL connections of a job to check, each in
@@ -55,6 +57,20 @@ export function getCheckTargetsOfJob(
   const tables = options.serverOnly
     ? []
     : toCheckedTables(job.mappings, options.sourceColumns);
+  // A column mapped to Generate Default is written by Benthos (DEFAULT), and must be at the
+  // destination; Athanor leaves it out of its INSERT. When the engine is the deployment's
+  // own, which the page does not know, it is left out here rather than refuse a save the
+  // run may accept: the run checks it at its start, on the engine it is on.
+  const written = options.serverOnly
+    ? []
+    : toCheckedTables(
+        engine === JobEngine.BENTHOS
+          ? job.mappings
+          : job.mappings.filter(
+              (m) => !generatesDefault(m, options.defaultTransformerIds)
+            ),
+        options.sourceColumns
+      );
   const targets: ConnectionCheckTarget[] = [];
   const sourceId = getSqlSourceConnectionId(job.source);
   if (sourceId && options.checkSource !== false) {
@@ -82,7 +98,7 @@ export function getCheckTargetsOfJob(
       scope: create(ConnectionCheckScopeSchema, {
         role: ConnectionRole.DESTINATION,
         engine,
-        tables,
+        tables: written,
         initTableSchema: config.value.initTableSchema,
         truncateBeforeInsert:
           config.value.truncateTable?.truncateBeforeInsert ?? false,
@@ -114,6 +130,31 @@ export function getSqlSourceConnectionId(
     return config.value.connectionId || undefined;
   }
   return undefined;
+}
+
+function generatesDefault(
+  mapping: Pick<JobMapping, 'transformer'>,
+  defaultTransformerIds?: Set<string>
+): boolean {
+  const config = mapping.transformer?.config?.config;
+  if (config?.case === 'userDefinedTransformerConfig') {
+    return defaultTransformerIds?.has(config.value.id) ?? false;
+  }
+  return config?.case === 'generateDefaultConfig';
+}
+
+// getUserDefinedTransformerIds lists the user defined transformers the mappings use.
+export function getUserDefinedTransformerIds(
+  mappings: Pick<JobMapping, 'transformer'>[]
+): string[] {
+  const ids = new Set<string>();
+  for (const mapping of mappings) {
+    const config = mapping.transformer?.config?.config;
+    if (config?.case === 'userDefinedTransformerConfig' && config.value.id) {
+      ids.add(config.value.id);
+    }
+  }
+  return [...ids];
 }
 
 // toCheckedTables groups the mappings of a job by table, with the columns each maps, leaving

@@ -32,7 +32,7 @@ import { useGetTransformersHandler } from '@/libs/hooks/useGetTransformersHandle
 import { getErrorMessage, getTransformerFromField } from '@/util/util';
 import {
   JobMappingTransformerForm,
-  convertJobMappingTransformerFormToJobMappingTransformer,
+  convertJobMappingFormToJobMapping,
   convertJobMappingTransformerToForm,
 } from '@/yup-validations/jobs';
 import { create } from '@bufbuild/protobuf';
@@ -48,7 +48,6 @@ import {
   GetConnectionResponse,
   GetConnectionSchemaMapResponse,
   Job,
-  JobMappingSchema,
   JobMappingTransformerSchema,
   JobService,
   ValidateJobMappingsResponse,
@@ -333,7 +332,7 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
       {
         ...job,
         source: toSingleTableEditGenerateJobSource(values),
-        mappings: values.mappings,
+        mappings: values.mappings.map(convertJobMappingFormToJobMapping),
       },
       () => saveSource(values, job)
     );
@@ -346,17 +345,7 @@ export default function DataGenConnectionCard({ jobId }: Props): ReactElement {
     try {
       await updateJobSrcConnection({
         id: job.id,
-        mappings: values.mappings.map((m) => {
-          return create(JobMappingSchema, {
-            schema: m.schema,
-            table: m.table,
-            column: m.column,
-            transformer:
-              convertJobMappingTransformerFormToJobMappingTransformer(
-                m.transformer
-              ),
-          });
-        }),
+        mappings: values.mappings.map(convertJobMappingFormToJobMapping),
         source: toSingleTableEditGenerateJobSource(values),
       });
       toast.success('Successfully updated job source connection!');

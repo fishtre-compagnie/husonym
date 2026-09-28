@@ -32,6 +32,7 @@ import (
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
@@ -321,6 +322,10 @@ func (a *Activity) connectionFindings(
 		}
 		findings = append(findings, preflight.FromConnectionChecks(sourceID, found)...)
 	}
+	written, err := a.writtenTables(ctx, job, tables, usesAthanor)
+	if err != nil {
+		return nil, err
+	}
 	for _, destination := range job.GetDestinations() {
 		mysqlOptions := destination.GetOptions().GetMysqlOptions()
 		postgresOptions := destination.GetOptions().GetPostgresOptions()
@@ -336,7 +341,7 @@ func (a *Activity) connectionFindings(
 		}
 		found, err := a.check(ctx, session, destination.GetConnectionId(), slogger,
 			func(name string, db connectionchecks.Db, dialect connectionchecks.Dialect) ([]*connectionchecks.Finding, error) {
-				return connectionchecks.Destination(ctx, db, dialect, name, tables, options)
+				return connectionchecks.Destination(ctx, db, dialect, name, written, options)
 			})
 		if err != nil {
 			return nil, err
@@ -344,6 +349,36 @@ func (a *Activity) connectionFindings(
 		findings = append(findings, preflight.FromConnectionChecks(destination.GetConnectionId(), found)...)
 	}
 	return findings, nil
+}
+
+// writtenTables are the tables a destination is checked on: with the columns the run writes
+// into them. Athanor leaves a column mapped to GenerateDefault out of its INSERT, and the
+// destination need not have it; Benthos writes DEFAULT into it, and it must.
+func (a *Activity) writtenTables(
+	ctx context.Context,
+	job *mgmtv1alpha1.Job,
+	tables []*connectionchecks.Table,
+	usesAthanor bool,
+) ([]*connectionchecks.Table, error) {
+	if !usesAthanor {
+		return tables, nil
+	}
+	omitted, err := runner.OmittedColumns(ctx, job.GetMappings(), a.transformers)
+	if err != nil {
+		return nil, err
+	}
+	written := make([]*connectionchecks.Table, len(tables))
+	for i, t := range tables {
+		left := omitted[t.String()]
+		written[i] = &connectionchecks.Table{
+			Schema: t.Schema,
+			Table:  t.Table,
+			Columns: slices.DeleteFunc(slices.Clone(t.Columns), func(column string) bool {
+				return slices.Contains(left, column)
+			}),
+		}
+	}
+	return written, nil
 }
 
 // check asks one connection of the job, through a plain SQL connection. A connection that

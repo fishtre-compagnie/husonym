@@ -48,6 +48,7 @@ stockent : il s'y connecte avec leurs identifiants.
 | Constat                                                                                                                             | Niveau                                                        |
 | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Droit manquant sur une connexion (lecture, écriture, vidage, triggers, suspension des FK), avec l'instruction `GRANT` qui l'accorde | Bloquant                                                      |
+| Table, ou colonne que le run écrit, absente d'une connexion (la destination, quand le run ne crée pas le schéma)                    | Bloquant                                                      |
 | Le moteur ne sait pas exécuter le job (fonctions `pseudo.*` sous Benthos, cas refusés par Athanor)                                  | Bloquant                                                      |
 | Colonne calculée par la destination qui recevrait une valeur                                                                        | Bloquant sous Benthos ; note sous Athanor, qui ne l'écrit pas |
 | Valeur plus longue que la colonne de destination (colonne source plus large, UUID, SHA-256, catégories)                             | Avertissement                                                 |
