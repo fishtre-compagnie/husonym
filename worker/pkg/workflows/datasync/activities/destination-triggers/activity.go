@@ -85,7 +85,7 @@ func (a *Activity) SuspendTriggers(
 	session := a.session(ctx)
 	defer a.sqlconnmanager.ReleaseSession(session, logger)
 	for _, connectionID := range destinations {
-		triggers, err := a.readTriggers(ctx, session, connectionID, req.Tables, logger)
+		triggers, err := a.readTriggers(ctx, session, req.AccountId, connectionID, req.Tables, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +100,7 @@ func (a *Activity) SuspendTriggers(
 		if !slices.Contains(destinations, destination.ConnectionID) {
 			continue // left by an earlier run on a destination the job no longer has
 		}
-		db, err := a.open(ctx, session, destination.ConnectionID, logger)
+		db, err := a.open(ctx, session, req.AccountId, destination.ConnectionID, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func (a *Activity) RestoreTriggers(
 			remaining = append(remaining, destination)
 			continue
 		}
-		restored, err := a.restoreDestination(ctx, session, destination, logger)
+		restored, err := a.restoreDestination(ctx, session, req.AccountId, destination, logger)
 		response.Restored += restored
 		if err != nil {
 			restoreErr = err
@@ -164,10 +164,11 @@ func (a *Activity) RestoreTriggers(
 func (a *Activity) restoreDestination(
 	ctx context.Context,
 	session connectionmanager.SessionInterface,
+	accountID string,
 	destination *suspended,
 	logger *slog.Logger,
 ) (int, error) {
-	db, err := a.open(ctx, session, destination.ConnectionID, logger)
+	db, err := a.open(ctx, session, accountID, destination.ConnectionID, logger)
 	if err != nil {
 		return 0, err
 	}
@@ -233,11 +234,12 @@ func (a *Activity) destinations(ctx context.Context, jobID string) ([]string, er
 func (a *Activity) readTriggers(
 	ctx context.Context,
 	session connectionmanager.SessionInterface,
+	accountID string,
 	connectionID string,
 	tables []TableRef,
 	logger *slog.Logger,
 ) ([]*Trigger, error) {
-	connection, err := a.connection(ctx, connectionID)
+	connection, err := a.connection(ctx, accountID, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,10 +261,11 @@ func (a *Activity) readTriggers(
 func (a *Activity) open(
 	ctx context.Context,
 	session connectionmanager.SessionInterface,
+	accountID string,
 	connectionID string,
 	logger *slog.Logger,
 ) (husonym_benthos_sql.SqlDbtx, error) {
-	connection, err := a.connection(ctx, connectionID)
+	connection, err := a.connection(ctx, accountID, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -274,14 +277,14 @@ func (a *Activity) open(
 	return db, nil
 }
 
-func (a *Activity) connection(ctx context.Context, connectionID string) (*mgmtv1alpha1.Connection, error) {
-	resp, err := a.connclient.GetConnection(ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{
-		Id: connectionID,
-	}))
+// connection reads a destination of the run's account: the ids of the triggers to put back come
+// from a run context, and statements are run on them.
+func (a *Activity) connection(ctx context.Context, accountID, connectionID string) (*mgmtv1alpha1.Connection, error) {
+	connection, err := shared.GetConnectionOfAccount(ctx, a.connclient, connectionID, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve destination connection: %w", err)
 	}
-	return resp.Msg.GetConnection(), nil
+	return connection, nil
 }
 
 func (a *Activity) session(ctx context.Context) connectionmanager.SessionInterface {

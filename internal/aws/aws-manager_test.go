@@ -16,6 +16,7 @@ func Test_ClientsPreferTheEndpointOfTheConnection(t *testing.T) {
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", t.TempDir()+"/credentials")
 	t.Setenv("AWS_PROFILE", "")
 	t.Setenv("AWS_ENDPOINT_URL", "")
+	t.Setenv("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS", "")
 	t.Setenv("AWS_ENDPOINT_URL_S3", "http://from-the-environment:1")
 	t.Setenv("AWS_ENDPOINT_URL_DYNAMODB", "http://from-the-environment:2")
 	ctx := context.Background()

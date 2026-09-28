@@ -100,6 +100,11 @@ func Test_Activity_Success(t *testing.T) {
 	res := &RunPostTableSyncResponse{}
 	err = val.Get(res)
 	require.NoError(t, err)
+	// The destination was read and its statement run: the test server has no database, so the
+	// statement's failure is what the run reports.
+	require.Len(t, res.Errors, 1)
+	require.Equal(t, destConnId, res.Errors[0].ConnectionId)
+	require.Equal(t, "reset-sequence", res.Errors[0].Errors[0].Statement)
 }
 
 func Test_Activity_RunContextNotFound(t *testing.T) {
