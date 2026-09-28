@@ -46,6 +46,9 @@ type LokiRunLogConfig struct {
 type Config struct {
 	IsAuthEnabled  bool
 	IsHusonymCloud bool
+	// HasWorkerApiKeys: authentication is on and the worker has a key of its own, which is then
+	// the only caller allowed to write the context of a run.
+	HasWorkerApiKeys bool
 
 	RunLogConfig *RunLogConfig
 }

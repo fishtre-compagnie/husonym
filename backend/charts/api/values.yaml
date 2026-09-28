@@ -144,6 +144,8 @@ auth:
   audience:
   # -- The base url of the auth server
   baseUrl:
+  # -- Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Once one is set, only the worker may write the context of a run; without one, any account key allowed to edit jobs may. Not used on HusonymCloud, which has husonymCloud.workerApiKeys.
+  workerApiKeys: []
   # -- Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app.
   accountIssuerAllowPrivate: false
   # -- The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled)

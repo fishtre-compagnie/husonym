@@ -95,6 +95,18 @@ A key can do only what its permissions name, whatever the rest of the configurat
 - The worker needs its worker key, or an account key holding every permission.
 - Rolling the migration that added permissions back and forth gives every key every permission again: narrow keys again afterwards.
 
+### The worker's key
+
+The worker keeps, in the context of each run, what the run executes and reads it back as it goes: whoever writes that context decides what the run does. So only the worker writes it, never the session of a person.
+
+Give the worker a worker key of its own. It opens only the calls the worker makes, and once it is set, it alone may write the context of a run.
+
+1. Generate one: it has the form `neo_wt_v1_` followed by a version 4 UUID, for instance `echo "neo_wt_v1_$(uuidgen | tr A-Z a-z)"`.
+2. Allow it on the API, in `HUSONYM_ALLOWED_WORKER_API_KEYS` (several keys, comma-separated, let you rotate it), or in the chart's `auth.workerApiKeys`.
+3. Give it to the worker, in `HUSONYM_API_KEY`, or in the chart's `husonym.apiKey`.
+
+Without a worker key, the worker authenticates with an account key, which cannot be told from another one: any account key allowed to edit jobs may then write the context of a run, and the API warns of it at startup.
+
 ## Temporal mTLS Authentication
 
 Husonym API and Husonym Worker both require mTLS authentication when interfacing with Temporal (if this is enabled in Temporal).

@@ -147,6 +147,8 @@ AUTH_API_PROVIDER: {{ .Values.auth.api.provider }}
 HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
 {{- if .Values.husonymCloud.enabled }}
 HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS: {{ join "," .Values.husonymCloud.workerApiKeys }}
+{{- else if and .Values.auth .Values.auth.workerApiKeys }}
+HUSONYM_ALLOWED_WORKER_API_KEYS: {{ join "," .Values.auth.workerApiKeys }}
 {{- end }}
 KUBERNETES_ENABLED: {{ .Values.kubernetes.enabled | default "true" | quote }}
 KUBERNETES_NAMESPACE: {{ .Values.kubernetes.namespace | default .Release.Namespace }}

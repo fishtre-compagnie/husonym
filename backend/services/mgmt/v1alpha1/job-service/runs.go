@@ -1086,6 +1086,25 @@ func (s *Service) GetRunContext(
 	}), nil
 }
 
+// mayWriteRunContext says whether a caller may write the context of a run. The worker keeps
+// there what a run executes — its configs, its plan, the connections it writes to — and reads
+// it back as it goes: whoever writes it decides what the run does. So only the worker writes
+// it: its own key when it has one; otherwise, with authentication on, an API key, never the
+// session of a person, since no page writes it. Without authentication, every caller may do
+// anything and nothing is told apart.
+func (s *Service) mayWriteRunContext(user *userdata.User) error {
+	switch {
+	case user.IsWorkerApiKey():
+		return nil
+	case s.cfg.IsHusonymCloud, s.cfg.HasWorkerApiKeys:
+		return husonymerrors.NewForbidden("the context of a run is written by the worker, with its key")
+	case s.cfg.IsAuthEnabled && !user.IsApiKey():
+		return husonymerrors.NewForbidden("the context of a run is written by the worker, not from a session")
+	default:
+		return nil
+	}
+}
+
 func (s *Service) SetRunContext(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.SetRunContextRequest],
@@ -1099,11 +1118,8 @@ func (s *Service) SetRunContext(
 	if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(id.GetAccountId()), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
-
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthenticated(
-			"must provide valid authentication credentials for this endpoint",
-		)
+	if err := s.mayWriteRunContext(user); err != nil {
+		return nil, err
 	}
 
 	accountUuid, err := husonymdb.ToUuid(id.GetAccountId())
@@ -1140,11 +1156,8 @@ func (s *Service) SetRunContexts(
 		if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(id.GetAccountId()), rbac.JobAction_Edit); err != nil {
 			return nil, err
 		}
-
-		if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-			return nil, husonymerrors.NewUnauthenticated(
-				"must provide valid authentication credentials for this endpoint",
-			)
+		if err := s.mayWriteRunContext(user); err != nil {
+			return nil, err
 		}
 
 		accountUuid, err := husonymdb.ToUuid(id.GetAccountId())

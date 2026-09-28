@@ -68,6 +68,7 @@ import (
 	v1alpha1_metricsservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/metrics-service"
 	v1alpha1_transformerservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/auth0"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
@@ -395,8 +396,15 @@ func serve(ctx context.Context) error {
 	authSvcInterceptors = append(authSvcInterceptors, stdAuthInterceptors...)
 
 	isAuthEnabled := viper.GetBool("AUTH_ENABLED")
+	workerApiKeys := getAllowedWorkerApiKeys(ncloudlicense.IsValid())
 	if isAuthEnabled {
 		slogger.Debug("auth is enabled")
+		if len(workerApiKeys) == 0 {
+			slogger.Warn("auth is enabled and no worker key is set (HUSONYM_ALLOWED_WORKER_API_KEYS): " +
+				"the worker authenticates with an account key, which cannot be told from another one, " +
+				"so any account key allowed to edit jobs may write the context of a run. Give the worker " +
+				"a worker key of its own")
+		}
 		if !cascadelicense.IsValid() {
 			return errors.New("auth is enabled but no license is present")
 		}
@@ -422,27 +430,8 @@ func serve(ctx context.Context) error {
 		apikeyClient := auth_apikey.New(
 			db.Q,
 			db.Db,
-			getAllowedWorkerApiKeys(ncloudlicense.IsValid()),
-			[]string{
-				mgmtv1alpha1connect.JobServiceGetJobProcedure,
-				mgmtv1alpha1connect.JobServiceGetRunContextProcedure,
-				mgmtv1alpha1connect.JobServiceSetRunContextProcedure,
-				mgmtv1alpha1connect.JobServiceSetRunContextsProcedure,
-				mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
-				mgmtv1alpha1connect.TransformersServiceGetUserDefinedTransformerByIdProcedure,
-				mgmtv1alpha1connect.ConnectionDataServiceGetConnectionInitStatementsProcedure,
-				mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
-				mgmtv1alpha1connect.UserAccountServiceGetBillingAccountsProcedure,
-				mgmtv1alpha1connect.UserAccountServiceSetBillingMeterEventProcedure,
-				mgmtv1alpha1connect.MetricsServiceGetDailyMetricCountProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
-				mgmtv1alpha1connect.JobServiceGetActiveJobHooksByTimingProcedure,
-				mgmtv1alpha1connect.AccountHookServiceGetActiveAccountHooksByEventProcedure,
-				mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure,
-				mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeSingleProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
-			},
+			workerApiKeys,
+			apikey.WorkerProcedures,
 		)
 		stdAuthInterceptors = append(
 			stdAuthInterceptors,
@@ -735,9 +724,10 @@ func serve(ctx context.Context) error {
 	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
-		RunLogConfig:   runLogConfig,
+		IsAuthEnabled:    isAuthEnabled,
+		IsHusonymCloud:   ncloudlicense.IsValid(),
+		HasWorkerApiKeys: isAuthEnabled && len(workerApiKeys) > 0,
+		RunLogConfig:     runLogConfig,
 	}
 	jobService := v1alpha1_jobservice.New(
 		jobServiceConfig,
@@ -1212,11 +1202,14 @@ func getAuthApiProvider() string {
 	return viper.GetString("AUTH_API_PROVIDER")
 }
 
+// getAllowedWorkerApiKeys are the keys a worker authenticates with. A worker key opens only
+// what the worker calls, passes no RBAC, and is the only caller allowed to write the context of
+// a run once one is set.
 func getAllowedWorkerApiKeys(isHusonymCloud bool) []string {
 	if isHusonymCloud {
 		return viper.GetStringSlice("HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS")
 	}
-	return []string{}
+	return viper.GetStringSlice("HUSONYM_ALLOWED_WORKER_API_KEYS")
 }
 
 func getAuthAdminClient(
