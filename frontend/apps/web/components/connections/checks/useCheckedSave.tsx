@@ -1,7 +1,11 @@
 'use client';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
-import { ConnectionDataService } from '@husonym/sdk';
+import {
+  ConnectionDataService,
+  TransformerSource,
+  TransformersService,
+} from '@husonym/sdk';
 import { ReactElement, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import ConnectionChecksDialog from './ConnectionChecksDialog';
@@ -10,6 +14,7 @@ import {
   ConnectionCheckTarget,
   getCheckTargetsOfJob,
   getSqlSourceConnectionId,
+  getUserDefinedTransformerIds,
   JobCheckOptions,
 } from './targets';
 import {
@@ -18,13 +23,19 @@ import {
   useConnectionChecks,
 } from './useConnectionChecks';
 
+// What a page asks of a check; the rest, the hook reads itself.
+type SaveCheckOptions = Omit<
+  JobCheckOptions,
+  'sourceColumns' | 'defaultTransformerIds'
+>;
+
 interface CheckedSave {
   // checkThenSave checks the connections of the job, then saves it when nothing is found;
   // otherwise it opens the dialog, from which the job is saved unless a finding blocks it.
   checkThenSave(
     job: CheckedJob,
     save: () => Promise<void>,
-    options?: Omit<JobCheckOptions, 'sourceColumns'>
+    options?: SaveCheckOptions
   ): Promise<void>;
   // The dialog, to render in the page.
   dialog: ReactElement;
@@ -32,7 +43,7 @@ interface CheckedSave {
 
 interface PendingSave {
   job: CheckedJob;
-  options?: Omit<JobCheckOptions, 'sourceColumns'>;
+  options?: SaveCheckOptions;
   save: () => Promise<void>;
 }
 
@@ -45,6 +56,9 @@ export function useCheckedSave(): CheckedSave {
   const check = useConnectionChecks();
   const { mutateAsync: getSchemaMap } = useMutation(
     ConnectionDataService.method.getConnectionSchemaMap
+  );
+  const { mutateAsync: getUserDefinedTransformer } = useMutation(
+    TransformersService.method.getUserDefinedTransformerById
   );
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<ConnectionCheckResult[]>([]);
@@ -59,10 +73,12 @@ export function useCheckedSave(): CheckedSave {
 
   // getTargets reads the columns the source has, so that the mappings of columns it no
   // longer has are left out as a run leaves them out. Unreadable, the mappings are taken as
-  // they are: the source's own check then says it cannot be reached.
+  // they are: the source's own check then says it cannot be reached. It also reads the user
+  // defined transformers of the mappings, to know those made from Generate Default; one it
+  // cannot read is taken as writing its column.
   async function getTargets(
     job: CheckedJob,
-    options?: Omit<JobCheckOptions, 'sourceColumns'>
+    options?: SaveCheckOptions
   ): Promise<ConnectionCheckTarget[]> {
     const sourceId = getSqlSourceConnectionId(job.source);
     let sourceColumns: Set<string> | undefined;
@@ -78,7 +94,30 @@ export function useCheckedSave(): CheckedSave {
         sourceColumns = undefined;
       }
     }
-    return getCheckTargetsOfJob(job, { ...options, sourceColumns });
+    const defaultTransformerIds = new Set<string>();
+    if (!options?.serverOnly) {
+      await Promise.all(
+        getUserDefinedTransformerIds(job.mappings).map(
+          async (transformerId) => {
+            try {
+              const res = await getUserDefinedTransformer({ transformerId });
+              if (
+                res.transformer?.source === TransformerSource.GENERATE_DEFAULT
+              ) {
+                defaultTransformerIds.add(transformerId);
+              }
+            } catch {
+              // taken as writing its column
+            }
+          }
+        )
+      );
+    }
+    return getCheckTargetsOfJob(job, {
+      ...options,
+      sourceColumns,
+      defaultTransformerIds,
+    });
   }
 
   // run checks the pending job, and tells whether this check is still the last one asked.
@@ -104,7 +143,7 @@ export function useCheckedSave(): CheckedSave {
   async function checkThenSave(
     job: CheckedJob,
     save: () => Promise<void>,
-    options?: Omit<JobCheckOptions, 'sourceColumns'>
+    options?: SaveCheckOptions
   ): Promise<void> {
     if (inFlight.current) {
       return;

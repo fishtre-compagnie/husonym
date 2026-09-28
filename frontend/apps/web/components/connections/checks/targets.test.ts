@@ -8,7 +8,11 @@ import {
   JobMappingTransformerSchema,
   JobSourceSchema,
 } from '@husonym/sdk';
-import { getCheckTargetsOfJob, splitScope } from './targets';
+import {
+  getCheckTargetsOfJob,
+  getUserDefinedTransformerIds,
+  splitScope,
+} from './targets';
 
 function mysqlSource(connectionId: string) {
   return create(JobSourceSchema, {
@@ -105,6 +109,46 @@ describe('getCheckTargetsOfJob', () => {
     for (const engine of [JobEngine.ATHANOR, JobEngine.UNSPECIFIED]) {
       expect(columnsOf(engine)).toEqual([['id', 'created_at'], ['id']]);
     }
+  });
+
+  it('takes a user defined transformer made from Generate Default as one', () => {
+    const udt = (id: string) =>
+      create(JobMappingTransformerSchema, {
+        config: {
+          config: { case: 'userDefinedTransformerConfig', value: { id } },
+        },
+      });
+    const mappings = [
+      {
+        schema: 'public',
+        table: 'users',
+        column: 'id',
+        transformer: udt('other'),
+      },
+      {
+        schema: 'public',
+        table: 'users',
+        column: 'created_at',
+        transformer: udt('default'),
+      },
+    ];
+    expect(getUserDefinedTransformerIds(mappings)).toEqual([
+      'other',
+      'default',
+    ]);
+
+    const [, destination] = getCheckTargetsOfJob(
+      {
+        source: mysqlSource('src'),
+        destinations: [
+          { connectionId: 'dst', options: postgresDestination(false, false) },
+        ],
+        mappings,
+        workflowOptions: { engine: JobEngine.ATHANOR },
+      },
+      { defaultTransformerIds: new Set(['default']) }
+    );
+    expect(destination.scope.tables[0].columns).toEqual(['id']);
   });
 
   it('leaves the engine unspecified when the job does not choose one', () => {

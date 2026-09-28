@@ -38,6 +38,8 @@ export interface JobCheckOptions {
   // The columns the source has, as schema.table.column: a mapping whose column the source no
   // longer has is left out, as a run leaves it out.
   sourceColumns?: Set<string>;
+  // The user defined transformers of the mappings that are made from Generate Default.
+  defaultTransformerIds?: Set<string>;
 }
 
 // getCheckTargetsOfJob gives the MySQL and PostgreSQL connections of a job to check, each in
@@ -64,7 +66,9 @@ export function getCheckTargetsOfJob(
     : toCheckedTables(
         engine === JobEngine.BENTHOS
           ? job.mappings
-          : job.mappings.filter((m) => !generatesDefault(m)),
+          : job.mappings.filter(
+              (m) => !generatesDefault(m, options.defaultTransformerIds)
+            ),
         options.sourceColumns
       );
   const targets: ConnectionCheckTarget[] = [];
@@ -128,8 +132,29 @@ export function getSqlSourceConnectionId(
   return undefined;
 }
 
-function generatesDefault(mapping: Pick<JobMapping, 'transformer'>): boolean {
-  return mapping.transformer?.config?.config.case === 'generateDefaultConfig';
+function generatesDefault(
+  mapping: Pick<JobMapping, 'transformer'>,
+  defaultTransformerIds?: Set<string>
+): boolean {
+  const config = mapping.transformer?.config?.config;
+  if (config?.case === 'userDefinedTransformerConfig') {
+    return defaultTransformerIds?.has(config.value.id) ?? false;
+  }
+  return config?.case === 'generateDefaultConfig';
+}
+
+// getUserDefinedTransformerIds lists the user defined transformers the mappings use.
+export function getUserDefinedTransformerIds(
+  mappings: Pick<JobMapping, 'transformer'>[]
+): string[] {
+  const ids = new Set<string>();
+  for (const mapping of mappings) {
+    const config = mapping.transformer?.config?.config;
+    if (config?.case === 'userDefinedTransformerConfig' && config.value.id) {
+      ids.add(config.value.id);
+    }
+  }
+  return [...ids];
 }
 
 // toCheckedTables groups the mappings of a job by table, with the columns each maps, leaving
