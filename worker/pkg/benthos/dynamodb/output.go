@@ -48,7 +48,7 @@ type ddboConfig struct {
 	TTLKey         string
 
 	backoffCtor func() backoff.BackOff
-	awsConfig   aws.Config
+	connection  dynamoDbConnection
 }
 
 func ddboConfigFromParsed(
@@ -74,11 +74,9 @@ func ddboConfigFromParsed(
 	if c.backoffCtor, err = commonRetryBackOffCtorFromParsed(pConf); err != nil {
 		return
 	}
-	awsConfig, err := dynamoDbAwsConfig(pConf, getConnection)
-	if err != nil {
+	if c.connection, err = resolveDynamoDbConnection(pConf, getConnection); err != nil {
 		return
 	}
-	c.awsConfig = *awsConfig
 	return c, nil
 }
 
@@ -229,7 +227,7 @@ func (d *dynamoDBWriter) Connect(ctx context.Context) error {
 		return nil
 	}
 
-	client := dynamodb.NewFromConfig(d.conf.awsConfig)
+	client := d.conf.connection.client()
 	out, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: d.table,
 	})

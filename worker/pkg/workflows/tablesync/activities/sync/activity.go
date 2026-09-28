@@ -303,7 +303,7 @@ func (a *Activity) getConnectionByIdFn(
 		return nil, err
 	}
 
-	connections, err := a.getConnectionsFromConnectionIds(ctx, connectionIds)
+	connections, err := a.getConnectionsFromConnectionIds(ctx, rcKey.GetAccountId(), connectionIds)
 	if err != nil {
 		return nil, err
 	}
@@ -590,8 +590,11 @@ func (a *Activity) getConnectionIds(
 	return connectionIds, nil
 }
 
+// getConnectionsFromConnectionIds reads the connections of the run. The worker's key reads any
+// account's: a connection of another account than the run's is refused, whoever wrote its id.
 func (a *Activity) getConnectionsFromConnectionIds(
 	ctx context.Context,
+	accountId string,
 	connectionIds []string,
 ) ([]*mgmtv1alpha1.Connection, error) {
 	connections := make([]*mgmtv1alpha1.Connection, len(connectionIds))
@@ -607,6 +610,9 @@ func (a *Activity) getConnectionsFromConnectionIds(
 			)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve connection: %w", err)
+			}
+			if resp.Msg.GetConnection().GetAccountId() != accountId {
+				return fmt.Errorf("connection %q does not belong to the account of the run", connectionId)
 			}
 			connections[idx] = resp.Msg.Connection
 			return nil

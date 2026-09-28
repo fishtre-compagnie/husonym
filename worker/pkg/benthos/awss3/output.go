@@ -79,6 +79,7 @@ type putObjectAPI interface {
 
 type s3Writer struct {
 	awsConfig    aws.Config
+	endpoint     string
 	bucket       string
 	path         *service.InterpolatedString
 	contentType  string
@@ -130,6 +131,7 @@ func newS3Writer(
 	}
 	return &s3Writer{
 		awsConfig:    *awsConfig,
+		endpoint:     s3Config.GetEndpoint(),
 		bucket:       s3Config.GetBucket(),
 		path:         path,
 		contentType:  contentType,
@@ -144,7 +146,7 @@ func (w *s3Writer) Connect(ctx context.Context) error {
 	if w.client != nil {
 		return nil
 	}
-	w.client = s3.NewFromConfig(w.awsConfig)
+	w.client = awsmanager.NewS3ClientFromConfig(w.awsConfig, w.endpoint)
 	return nil
 }
 

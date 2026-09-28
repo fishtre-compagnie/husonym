@@ -61,14 +61,12 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 			StreamConfig: husonym_benthos.StreamConfig{
 				Input: &husonym_benthos.InputConfig{
 					Inputs: husonym_benthos.Inputs{
-						AwsDynamoDB: &husonym_benthos.InputAwsDynamoDB{
-							Table: tableMapping.Table,
-							Where: getWhereFromSourceTableOption(
-								tableOptsMap[tableMapping.Table],
-							),
-							ConsistentRead: dynamoJobSourceOpts.GetEnableConsistentRead(),
-							ConnectionId:   sourceConnection.GetId(),
-						},
+						AwsDynamoDB: dynamoDbInput(
+							tableMapping.Table,
+							getWhereFromSourceTableOption(tableOptsMap[tableMapping.Table]),
+							dynamoJobSourceOpts.GetEnableConsistentRead(),
+							sourceConnection.GetId(),
+						),
 					},
 				},
 				Pipeline: &husonym_benthos.PipelineConfig{
@@ -213,6 +211,22 @@ func (b *dyanmodbSyncBuilder) BuildDestinationConfig(
 	})
 
 	return config, nil
+}
+
+// dynamoDbInput reads a table of a DynamoDB source. It names the connection, whose region,
+// endpoint and credentials the worker reads when the stream is built.
+func dynamoDbInput(
+	table string,
+	where *string,
+	consistentRead bool,
+	connectionId string,
+) *husonym_benthos.InputAwsDynamoDB {
+	return &husonym_benthos.InputAwsDynamoDB{
+		Table:          table,
+		Where:          where,
+		ConsistentRead: consistentRead,
+		ConnectionId:   connectionId,
+	}
 }
 
 func getWhereFromSourceTableOption(opt *mgmtv1alpha1.DynamoDBSourceTableOption) *string {

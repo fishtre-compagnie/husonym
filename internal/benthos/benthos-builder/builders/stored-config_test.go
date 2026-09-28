@@ -19,18 +19,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const sentinelSecret = "sentinel-secret"
+
 // The config of a run is stored where job:view reads it: it names its connections and never
-// carries what they hold. Every credential of the connection is a sentinel the config must
-// not contain.
+// carries what they hold. Every credential of the connections is a sentinel the config must not
+// contain, and what the builders write is linted by the worker's own Benthos environment.
 func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
-	const secret = "sentinel-secret"
 	credentials := &mgmtv1alpha1.AwsS3Credentials{
-		Profile:         ptr(secret + "-profile"),
-		AccessKeyId:     ptr(secret + "-access-key-id"),
-		SecretAccessKey: ptr(secret + "-secret-access-key"),
-		SessionToken:    ptr(secret + "-session-token"),
-		RoleArn:         ptr(secret + "-role-arn"),
-		RoleExternalId:  ptr(secret + "-role-external-id"),
+		Profile:         ptr(sentinelSecret + "-profile"),
+		AccessKeyId:     ptr(sentinelSecret + "-access-key-id"),
+		SecretAccessKey: ptr(sentinelSecret + "-secret-access-key"),
+		SessionToken:    ptr(sentinelSecret + "-session-token"),
+		RoleArn:         ptr(sentinelSecret + "-role-arn"),
+		RoleExternalId:  ptr(sentinelSecret + "-role-external-id"),
+	}
+	s3Connection := &mgmtv1alpha1.Connection{
+		Id: "s3-connection",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_AwsS3Config{
+				AwsS3Config: &mgmtv1alpha1.AwsS3ConnectionConfig{
+					Bucket:      sentinelSecret + "-bucket",
+					Region:      ptr(sentinelSecret + "-region"),
+					Endpoint:    ptr(sentinelSecret + "-endpoint"),
+					Credentials: credentials,
+				},
+			},
+		},
+	}
+	dynamoConnection := &mgmtv1alpha1.Connection{
+		Id: "dynamodb-connection",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_DynamodbConfig{
+				DynamodbConfig: &mgmtv1alpha1.DynamoDBConnectionConfig{
+					Region:      ptr(sentinelSecret + "-region"),
+					Endpoint:    ptr(sentinelSecret + "-endpoint"),
+					Credentials: credentials,
+				},
+			},
+		},
 	}
 	sourceConfig := &bb_internal.BenthosSourceConfig{
 		TableSchema: "public",
@@ -38,84 +64,56 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 		RunType:     runconfigs.RunTypeInsert,
 	}
 
-	sources := []*husonym_benthos.BenthosConfig{}
-	outputs := []husonym_benthos.Outputs{}
+	aiSources := buildBenthosAiGenerateSourceConfigResponses("openai-connection", []*aiGenerateMappings{{
+		Schema:  "public",
+		Table:   "users",
+		Columns: []*aiGenerateColumn{{Column: "name", DataType: "text"}},
+		Count:   1,
+	}}, "gpt", nil, nil)
+	require.Len(t, aiSources, 1)
+
+	s3Destination, err := NewAwsS3SyncBuilder().BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
+		SourceConfig: sourceConfig,
+		JobRunId:     "run",
+		DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
+			Config: &mgmtv1alpha1.JobDestinationOptions_AwsS3Options{
+				AwsS3Options: &mgmtv1alpha1.AwsS3DestinationConnectionOptions{},
+			},
+		},
+		DestConnection: s3Connection,
+	})
+	require.NoError(t, err)
+
+	dynamoDestination, err := NewDynamoDbSyncBuilder(nil).BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
+		SourceConfig: sourceConfig,
+		DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
+			Config: &mgmtv1alpha1.JobDestinationOptions_DynamodbOptions{
+				DynamodbOptions: &mgmtv1alpha1.DynamoDBDestinationConnectionOptions{
+					TableMappings: []*mgmtv1alpha1.DynamoDBDestinationTableMapping{
+						{SourceTable: "users", DestinationTable: "users"},
+					},
+				},
+			},
+		},
+		DestConnection: dynamoConnection,
+	})
+	require.NoError(t, err)
 
 	t.Run("openai generate source", func(t *testing.T) {
-		configs := buildBenthosAiGenerateSourceConfigResponses("openai-connection", []*aiGenerateMappings{{
-			Schema:  "public",
-			Table:   "users",
-			Columns: []*aiGenerateColumn{{Column: "name", DataType: "text"}},
-			Count:   1,
-		}}, "gpt", nil, nil)
-		require.Len(t, configs, 1)
-		require.Equal(t, "openai-connection", configs[0].BenthosDsns[0].ConnectionId,
+		require.Equal(t, "openai-connection", aiSources[0].BenthosDsns[0].ConnectionId,
 			"the worker only resolves the connections a config declares")
-		sources = append(sources, configs[0].Config)
+		requireHoldsNoSecret(t, aiSources[0].Config)
 	})
-
+	t.Run("dynamodb source", func(t *testing.T) {
+		requireHoldsNoSecret(t, dynamoDbInput("users", nil, false, dynamoConnection.GetId()))
+	})
 	t.Run("aws s3 destination", func(t *testing.T) {
-		connection := &mgmtv1alpha1.Connection{
-			Id: "s3-connection",
-			ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
-				Config: &mgmtv1alpha1.ConnectionConfig_AwsS3Config{
-					AwsS3Config: &mgmtv1alpha1.AwsS3ConnectionConfig{
-						Bucket:      secret + "-bucket",
-						Region:      ptr(secret + "-region"),
-						Endpoint:    ptr(secret + "-endpoint"),
-						Credentials: credentials,
-					},
-				},
-			},
-		}
-		config, err := NewAwsS3SyncBuilder().BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
-			SourceConfig: sourceConfig,
-			JobRunId:     "run",
-			DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
-				Config: &mgmtv1alpha1.JobDestinationOptions_AwsS3Options{
-					AwsS3Options: &mgmtv1alpha1.AwsS3DestinationConnectionOptions{},
-				},
-			},
-			DestConnection: connection,
-		})
-		require.NoError(t, err)
-		requireNamesWithoutHolding(t, config, connection.GetId(), secret)
-		outputs = append(outputs, config.Outputs...)
+		requireNamesWithoutHolding(t, s3Destination, s3Connection.GetId())
 	})
-
 	t.Run("dynamodb destination", func(t *testing.T) {
-		connection := &mgmtv1alpha1.Connection{
-			Id: "dynamodb-connection",
-			ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
-				Config: &mgmtv1alpha1.ConnectionConfig_DynamodbConfig{
-					DynamodbConfig: &mgmtv1alpha1.DynamoDBConnectionConfig{
-						Region:      ptr(secret + "-region"),
-						Endpoint:    ptr(secret + "-endpoint"),
-						Credentials: credentials,
-					},
-				},
-			},
-		}
-		config, err := NewDynamoDbSyncBuilder(nil).BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
-			SourceConfig: sourceConfig,
-			DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
-				Config: &mgmtv1alpha1.JobDestinationOptions_DynamodbOptions{
-					DynamodbOptions: &mgmtv1alpha1.DynamoDBDestinationConnectionOptions{
-						TableMappings: []*mgmtv1alpha1.DynamoDBDestinationTableMapping{
-							{SourceTable: "users", DestinationTable: "users"},
-						},
-					},
-				},
-			},
-			DestConnection: connection,
-		})
-		require.NoError(t, err)
-		requireNamesWithoutHolding(t, config, connection.GetId(), secret)
-		outputs = append(outputs, config.Outputs...)
+		requireNamesWithoutHolding(t, dynamoDestination, dynamoConnection.GetId())
 	})
 
-	// What the builders write is what the worker's plugins accept: every config is linted as the
-	// worker builds its stream, by the worker's own Benthos environment.
 	t.Run("the plugins accept what the builders write", func(t *testing.T) {
 		env, err := benthos_environment.NewEnvironment(
 			testutil.GetTestLogger(t),
@@ -126,42 +124,54 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 			benthos_environment.WithBlobEnv(bloblang.NewEnvironment()),
 		)
 		require.NoError(t, err)
-		require.Len(t, sources, 1)
-		require.Len(t, outputs, 2)
 
-		// As the generator does: the destinations' outputs go into the broker of the source's.
-		stream := sources[0]
-		stream.Output.Broker.Outputs = append(stream.Output.Broker.Outputs, outputs...)
-		configs := []*husonym_benthos.BenthosConfig{stream}
-		for _, config := range configs {
-			stored, err := yaml.Marshal(config)
+		// As the generator does: the destinations' outputs go into the broker of a source.
+		outputs := []husonym_benthos.Outputs{}
+		outputs = append(outputs, s3Destination.Outputs...)
+		outputs = append(outputs, dynamoDestination.Outputs...)
+		aiStream := *aiSources[0].Config
+		output := *aiStream.Output
+		broker := *output.Broker
+		broker.Outputs = outputs
+		output.Broker = &broker
+		aiStream.Output = &output
+
+		dynamoStream := aiStream
+		dynamoStream.Input = &husonym_benthos.InputConfig{Inputs: husonym_benthos.Inputs{
+			AwsDynamoDB: dynamoDbInput("users", ptr("id = '1'"), true, dynamoConnection.GetId()),
+		}}
+
+		for _, stream := range []husonym_benthos.BenthosConfig{aiStream, dynamoStream} {
+			stored, err := yaml.Marshal(stream)
 			require.NoError(t, err)
 			require.NoError(t, env.NewStreamBuilder().SetYAML(string(stored)), "%s", stored)
 		}
 	})
 }
 
-// requireNamesWithoutHolding checks that the stored form of a destination config names its
-// connection, so that the worker resolves it, and holds nothing of it.
-func requireNamesWithoutHolding(
-	t *testing.T,
-	config *bb_internal.BenthosDestinationConfig,
-	connectionId string,
-	secret string,
-) {
+// requireNamesWithoutHolding checks that a destination config names its connection, so that the
+// worker resolves it, and holds nothing of it.
+func requireNamesWithoutHolding(t *testing.T, config *bb_internal.BenthosDestinationConfig, connectionId string) {
 	t.Helper()
-	stored, err := yaml.Marshal(husonym_benthos.OutputConfig{
+	stored := requireHoldsNoSecret(t, husonym_benthos.OutputConfig{
 		Outputs: husonym_benthos.Outputs{Broker: &husonym_benthos.OutputBrokerConfig{Outputs: config.Outputs}},
 	})
-	require.NoError(t, err)
-	require.False(t, strings.Contains(string(stored), secret), "the stored config holds a secret:\n%s", stored)
-	require.Contains(t, string(stored), "connection_id: "+connectionId)
+	require.Contains(t, stored, "connection_id: "+connectionId)
 
 	named := []string{}
 	for _, dsn := range config.BenthosDsns {
 		named = append(named, dsn.ConnectionId)
 	}
 	require.Contains(t, named, connectionId, "the worker only resolves the connections a config declares")
+}
+
+// requireHoldsNoSecret checks the stored form of a config, and returns it.
+func requireHoldsNoSecret(t *testing.T, config any) string {
+	t.Helper()
+	stored, err := yaml.Marshal(config)
+	require.NoError(t, err)
+	require.False(t, strings.Contains(string(stored), sentinelSecret), "the stored config holds a secret:\n%s", stored)
+	return string(stored)
 }
 
 func ptr[T any](v T) *T { return &v }

@@ -81,14 +81,14 @@ func newDynamoDbBatchInput(
 		return nil, err
 	}
 
-	awsConfig, err := dynamoDbAwsConfig(conf, getConnection)
+	connection, err := resolveDynamoDbConnection(conf, getConnection)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dynamodbInput{
-		awsConfig: *awsConfig,
-		logger:    logger,
+		connection: connection,
+		logger:     logger,
 
 		recordMapper: dynamodbmapper.NewDynamoBuilder(),
 
@@ -99,10 +99,10 @@ func newDynamoDbBatchInput(
 }
 
 type dynamodbInput struct {
-	client    dynamoDBAPIV2 // lazy
-	awsConfig aws.Config
-	logger    *service.Logger
-	readMu    sync.Mutex
+	client     dynamoDBAPIV2 // lazy
+	connection dynamoDbConnection
+	logger     *service.Logger
+	readMu     sync.Mutex
 
 	table string
 	where *string
@@ -125,7 +125,7 @@ func (d *dynamodbInput) Connect(ctx context.Context) error {
 		return nil
 	}
 
-	client := dynamodb.NewFromConfig(d.awsConfig)
+	client := d.connection.client()
 
 	tableOutput, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: &d.table,

@@ -201,7 +201,7 @@ func Test_Input_ReadsTheConnection(t *testing.T) {
 
 	input, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, nil)
 	require.NoError(t, err)
-	require.Equal(t, "us-west-2", input.(*dynamodbInput).awsConfig.Region)
+	require.Equal(t, "us-west-2", input.(*dynamodbInput).connection.awsConfig.Region)
 
 	_, err = newDynamoDbBatchInput(parseInputConfig(t, "unknown"), getConnection, nil)
 	require.ErrorContains(t, err, "unknown")
