@@ -313,17 +313,17 @@ func TestGetAccountConsistencyKeyKeepsTheKeyThatLandedFirst(t *testing.T) {
 	require.Equal(t, "the-key-that-won", resp.Msg.GetKey())
 }
 
-// TestGetAccountConsistencyKeyIsForTheRunAlone: in Husonym Cloud the key in clear only
-// leaves towards a run, the lock ReconcileJobMappings applies.
+// TestGetAccountConsistencyKeyIsForTheRunAlone: once the worker has a key of its own, the key
+// in clear only leaves towards a run, the lock ReconcileJobMappings applies.
 func TestGetAccountConsistencyKeyIsForTheRunAlone(t *testing.T) {
-	f := newFixture(t, &Config{IsHusonymCloud: true})
+	f := newFixture(t, &Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: true, HasWorkerApiKeys: true}})
 	f.allowUser(t, true)
 
 	_, err := f.svc.GetAccountConsistencyKey(context.Background(), connect.NewRequest(
 		&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: anAccountId},
 	))
 	require.Error(t, err)
-	require.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 }
 
 // A provider this deployment must not be made to contact is refused when it is saved, not

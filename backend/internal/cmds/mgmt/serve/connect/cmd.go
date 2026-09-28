@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -68,6 +69,7 @@ import (
 	v1alpha1_metricsservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/metrics-service"
 	v1alpha1_transformerservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
 	v1alpha1_useraccountservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/user-account-service"
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/auth0"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
@@ -395,8 +397,23 @@ func serve(ctx context.Context) error {
 	authSvcInterceptors = append(authSvcInterceptors, stdAuthInterceptors...)
 
 	isAuthEnabled := viper.GetBool("AUTH_ENABLED")
+	workerApiKeys, err := getAllowedWorkerApiKeys(ncloudlicense.IsValid())
+	if err != nil {
+		return err
+	}
+	workerOnly := userdata.WorkerOnly{
+		IsAuthEnabled:    isAuthEnabled,
+		IsHusonymCloud:   ncloudlicense.IsValid(),
+		HasWorkerApiKeys: isAuthEnabled && len(workerApiKeys) > 0,
+	}
 	if isAuthEnabled {
 		slogger.Debug("auth is enabled")
+		if len(workerApiKeys) == 0 && !ncloudlicense.IsValid() {
+			slogger.Warn("auth is enabled and no worker key is set (HUSONYM_ALLOWED_WORKER_API_KEYS): " +
+				"the worker authenticates with an account key, which cannot be told from another one, " +
+				"so any account key allowed to edit jobs may write the context of a run. Give the worker " +
+				"a worker key of its own")
+		}
 		if !cascadelicense.IsValid() {
 			return errors.New("auth is enabled but no license is present")
 		}
@@ -422,27 +439,8 @@ func serve(ctx context.Context) error {
 		apikeyClient := auth_apikey.New(
 			db.Q,
 			db.Db,
-			getAllowedWorkerApiKeys(ncloudlicense.IsValid()),
-			[]string{
-				mgmtv1alpha1connect.JobServiceGetJobProcedure,
-				mgmtv1alpha1connect.JobServiceGetRunContextProcedure,
-				mgmtv1alpha1connect.JobServiceSetRunContextProcedure,
-				mgmtv1alpha1connect.JobServiceSetRunContextsProcedure,
-				mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
-				mgmtv1alpha1connect.TransformersServiceGetUserDefinedTransformerByIdProcedure,
-				mgmtv1alpha1connect.ConnectionDataServiceGetConnectionInitStatementsProcedure,
-				mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
-				mgmtv1alpha1connect.UserAccountServiceGetBillingAccountsProcedure,
-				mgmtv1alpha1connect.UserAccountServiceSetBillingMeterEventProcedure,
-				mgmtv1alpha1connect.MetricsServiceGetDailyMetricCountProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
-				mgmtv1alpha1connect.JobServiceGetActiveJobHooksByTimingProcedure,
-				mgmtv1alpha1connect.AccountHookServiceGetActiveAccountHooksByEventProcedure,
-				mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure,
-				mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeSingleProcedure,
-				mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
-			},
+			workerApiKeys,
+			apikey.WorkerProcedures,
 		)
 		stdAuthInterceptors = append(
 			stdAuthInterceptors,
@@ -580,6 +578,7 @@ func serve(ctx context.Context) error {
 		accountSettingHandler = v1alpha1_accountsettingservice.New(
 			&v1alpha1_accountsettingservice.Config{
 				IsHusonymCloud:              ncloudlicense.IsValid(),
+				WorkerOnly:                  workerOnly,
 				AcceptedSignatureAlgorithms: getAcceptedSignatureAlgorithms(),
 				IssuerPolicy:                getIssuerPolicy(),
 			},
@@ -607,7 +606,10 @@ func serve(ctx context.Context) error {
 	if cascadelicense.IsValid() {
 		slogger.Debug("enabling account hooks service")
 
-		accountHookOptions := []accounthooks.Option{accounthooks.WithAppBaseUrl(getAppBaseUrl())}
+		accountHookOptions := []accounthooks.Option{
+			accounthooks.WithAppBaseUrl(getAppBaseUrl()),
+			accounthooks.WithWorkerOnly(workerOnly),
+		}
 		var slackClient ee_slack.Interface
 		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
 			encryptor, err := getSymEncryptor()
@@ -737,6 +739,7 @@ func serve(ctx context.Context) error {
 	jobServiceConfig := &v1alpha1_jobservice.Config{
 		IsAuthEnabled:  isAuthEnabled,
 		IsHusonymCloud: ncloudlicense.IsValid(),
+		WorkerOnly:     workerOnly,
 		RunLogConfig:   runLogConfig,
 	}
 	jobService := v1alpha1_jobservice.New(
@@ -1212,11 +1215,42 @@ func getAuthApiProvider() string {
 	return viper.GetString("AUTH_API_PROVIDER")
 }
 
-func getAllowedWorkerApiKeys(isHusonymCloud bool) []string {
+// workerApiKeysVariable names where the keys a worker authenticates with are set.
+func workerApiKeysVariable(isHusonymCloud bool) string {
 	if isHusonymCloud {
-		return viper.GetStringSlice("HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS")
+		return "HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS"
 	}
-	return []string{}
+	return "HUSONYM_ALLOWED_WORKER_API_KEYS"
+}
+
+// getAllowedWorkerApiKeys are the keys a worker authenticates with. A worker key opens only
+// what the worker calls, passes no RBAC, and is the only caller allowed to call what only the
+// worker calls once one is set.
+func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
+	variable := workerApiKeysVariable(isHusonymCloud)
+	keys, err := parseWorkerApiKeys(viper.GetString(variable))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", variable, err)
+	}
+	return keys, nil
+}
+
+// parseWorkerApiKeys reads keys separated by commas, as the chart joins them — a list read
+// from the environment would split on spaces only. A value that is not a worker key is
+// refused: it would authenticate nothing, and once set, only the worker's key is let through.
+func parseWorkerApiKeys(raw string) ([]string, error) {
+	var keys []string
+	for _, key := range strings.Split(raw, ",") {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		if !apikey.IsValidV1WorkerKey(key) {
+			return nil, errors.New("a value is not a worker key, of the form neo_wt_v1_<uuid v4>")
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
 func getAuthAdminClient(

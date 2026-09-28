@@ -10,7 +10,6 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,8 +23,9 @@ const derivationKeyBytes = 32
 // derives from, in clear, and generates one when asked and the account has none.
 //
 // Only a run reads it: it already holds the passwords of the databases it synchronizes, so
-// the key of the account it runs for adds no surface. The same lock ReconcileJobMappings
-// applies keeps anyone else out.
+// the key of the account it runs for adds no surface. Whoever else holds it can replay the
+// pseudonyms of the account, so it is guarded as the worker's alone (userdata.WorkerOnly),
+// as ReconcileJobMappings is.
 func (s *Service) GetAccountConsistencyKey(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountConsistencyKeyRequest],
@@ -34,10 +34,8 @@ func (s *Service) GetAccountConsistencyKey(
 	if err != nil {
 		return nil, err
 	}
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthenticated(
-			"must provide valid authentication credentials for this endpoint",
-		)
+	if err := s.cfg.WorkerOnly.Allow(user); err != nil {
+		return nil, err
 	}
 
 	key, err := s.consistencyKey(ctx, accountUuid)

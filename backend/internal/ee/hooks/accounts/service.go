@@ -84,6 +84,8 @@ type config struct {
 	isSlackEnabled bool
 	slackClient    ee_slack.Interface
 	appBaseUrl     string
+	// workerOnly guards what only the worker calls: sending the message of an event.
+	workerOnly userdata.WorkerOnly
 }
 
 type Option func(*config)
@@ -92,6 +94,13 @@ func WithSlackClient(slackClient ee_slack.Interface) Option {
 	return func(c *config) {
 		c.slackClient = slackClient
 		c.isSlackEnabled = true
+	}
+}
+
+// WithWorkerOnly guards what only the worker calls, as userdata.WorkerOnly says.
+func WithWorkerOnly(workerOnly userdata.WorkerOnly) Option {
+	return func(c *config) {
+		c.workerOnly = workerOnly
 	}
 }
 
@@ -769,6 +778,10 @@ func (s *Service) SendSlackMessage(
 		return nil, err
 	}
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(hook.GetHook().GetAccountId()), rbac.AccountAction_Edit); err != nil {
+		return nil, err
+	}
+	// The worker sends the message of an event that happened; no one else speaks for it.
+	if err := s.cfg.workerOnly.Allow(user); err != nil {
 		return nil, err
 	}
 

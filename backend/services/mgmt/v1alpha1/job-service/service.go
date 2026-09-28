@@ -46,6 +46,9 @@ type LokiRunLogConfig struct {
 type Config struct {
 	IsAuthEnabled  bool
 	IsHusonymCloud bool
+	// WorkerOnly guards what only the worker calls: the context of a run, the mappings it
+	// reconciles.
+	WorkerOnly userdata.WorkerOnly
 
 	RunLogConfig *RunLogConfig
 }

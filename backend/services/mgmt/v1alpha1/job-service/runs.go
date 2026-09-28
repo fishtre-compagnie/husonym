@@ -1099,11 +1099,8 @@ func (s *Service) SetRunContext(
 	if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(id.GetAccountId()), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
-
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthenticated(
-			"must provide valid authentication credentials for this endpoint",
-		)
+	if err := s.cfg.WorkerOnly.Allow(user); err != nil {
+		return nil, err
 	}
 
 	accountUuid, err := husonymdb.ToUuid(id.GetAccountId())
@@ -1140,11 +1137,8 @@ func (s *Service) SetRunContexts(
 		if err := user.EnforceJob(ctx, userdata.NewWildcardDomainEntity(id.GetAccountId()), rbac.JobAction_Edit); err != nil {
 			return nil, err
 		}
-
-		if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-			return nil, husonymerrors.NewUnauthenticated(
-				"must provide valid authentication credentials for this endpoint",
-			)
+		if err := s.cfg.WorkerOnly.Allow(user); err != nil {
+			return nil, err
 		}
 
 		accountUuid, err := husonymdb.ToUuid(id.GetAccountId())

@@ -23,6 +23,8 @@ type Service struct {
 
 type Config struct {
 	IsHusonymCloud bool
+	// WorkerOnly guards what only the worker calls: the consistency key of an account.
+	WorkerOnly userdata.WorkerOnly
 
 	// AcceptedSignatureAlgorithms is what this deployment validates token signatures
 	// with. A provider that signs with none of them is refused when it is tried, rather
