@@ -26,7 +26,7 @@ export interface ConnectionCheckTarget {
 export type CheckedJob = {
   source?: JobSource;
   destinations: { connectionId: string; options?: JobDestinationOptions }[];
-  mappings: Pick<JobMapping, 'schema' | 'table' | 'column'>[];
+  mappings: Pick<JobMapping, 'schema' | 'table' | 'column' | 'transformer'>[];
   workflowOptions?: { engine: JobEngine };
 };
 
@@ -55,6 +55,18 @@ export function getCheckTargetsOfJob(
   const tables = options.serverOnly
     ? []
     : toCheckedTables(job.mappings, options.sourceColumns);
+  // A column mapped to Generate Default is written by Benthos (DEFAULT), and must be at the
+  // destination; Athanor leaves it out of its INSERT. When the engine is the deployment's
+  // own, which the page does not know, it is left out here rather than refuse a save the
+  // run may accept: the run checks it at its start, on the engine it is on.
+  const written = options.serverOnly
+    ? []
+    : toCheckedTables(
+        engine === JobEngine.BENTHOS
+          ? job.mappings
+          : job.mappings.filter((m) => !generatesDefault(m)),
+        options.sourceColumns
+      );
   const targets: ConnectionCheckTarget[] = [];
   const sourceId = getSqlSourceConnectionId(job.source);
   if (sourceId && options.checkSource !== false) {
@@ -82,7 +94,7 @@ export function getCheckTargetsOfJob(
       scope: create(ConnectionCheckScopeSchema, {
         role: ConnectionRole.DESTINATION,
         engine,
-        tables,
+        tables: written,
         initTableSchema: config.value.initTableSchema,
         truncateBeforeInsert:
           config.value.truncateTable?.truncateBeforeInsert ?? false,
@@ -114,6 +126,10 @@ export function getSqlSourceConnectionId(
     return config.value.connectionId || undefined;
   }
   return undefined;
+}
+
+function generatesDefault(mapping: Pick<JobMapping, 'transformer'>): boolean {
+  return mapping.transformer?.config?.config.case === 'generateDefaultConfig';
 }
 
 // toCheckedTables groups the mappings of a job by table, with the columns each maps, leaving

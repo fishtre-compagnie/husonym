@@ -53,9 +53,7 @@ func SpecForTable(
 		if err != nil {
 			return nil, engine.Spec{}, fmt.Errorf("runner: colonne %q: %w", col, err)
 		}
-		if cfg.GetGenerateDefaultConfig() != nil {
-			// Ni lue ni écrite : l'omettre de l'INSERT laisse la destination appliquer
-			// la valeur par défaut de la colonne.
+		if Omitted(cfg) {
 			continue
 		}
 		cols = append(cols, col)
@@ -100,6 +98,37 @@ func SpecForTable(
 
 // resolveTransformerConfig replaces a user-defined transformer by the configuration it
 // points to, like the Benthos builder does before building the pipeline.
+// Omitted dit si Athanor laisse hors de l'INSERT une colonne de configuration cfg, une fois
+// résolue : une colonne en GenerateDefault n'est ni lue ni écrite, la destination y applique
+// sa valeur par défaut. Benthos, lui, l'écrit (DEFAULT) : la colonne doit alors exister.
+func Omitted(cfg *mgmtv1alpha1.TransformerConfig) bool {
+	return cfg.GetGenerateDefaultConfig() != nil
+}
+
+// OmittedColumns renvoie, par table (schema.table), les colonnes des mappings qu'Athanor
+// laisse hors de l'INSERT.
+func OmittedColumns(
+	ctx context.Context,
+	mappings []*mgmtv1alpha1.JobMapping,
+	resolver te.UserDefinedTransformerResolver,
+) (map[string][]string, error) {
+	omitted := map[string][]string{}
+	for _, m := range mappings {
+		if m.GetTransformer() == nil {
+			continue
+		}
+		cfg, err := resolveTransformerConfig(ctx, m.GetTransformer().GetConfig(), resolver)
+		if err != nil {
+			return nil, fmt.Errorf("runner: colonne %q: %w", m.GetColumn(), err)
+		}
+		if Omitted(cfg) {
+			key := m.GetSchema() + "." + m.GetTable()
+			omitted[key] = append(omitted[key], m.GetColumn())
+		}
+	}
+	return omitted, nil
+}
+
 func resolveTransformerConfig(
 	ctx context.Context,
 	cfg *mgmtv1alpha1.TransformerConfig,

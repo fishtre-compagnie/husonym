@@ -40,6 +40,7 @@ import {
   JobMappingFormValues,
   JobMappingTransformerForm,
   VirtualForeignConstraintFormValues,
+  convertJobMappingFormToJobMapping,
   convertJobMappingTransformerFormToJobMappingTransformer,
   convertJobMappingTransformerToForm,
   toColumnRemovalStrategy,
@@ -75,7 +76,6 @@ import {
   GetConnectionSchemaMapsResponseSchema,
   GetConnectionSchemaResponse,
   Job,
-  JobMappingSchema,
   JobMappingTransformerSchema,
   JobService,
   JobSource,
@@ -322,8 +322,13 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     const source = create(JobSourceSchema, {
       options: toJobSourceOptions(values, job, connection, values.sourceId),
     });
-    await checkThenSave({ ...job, source, mappings: values.mappings }, () =>
-      saveSource(values, job, connection)
+    await checkThenSave(
+      {
+        ...job,
+        source,
+        mappings: values.mappings.map(convertJobMappingFormToJobMapping),
+      },
+      () => saveSource(values, job, connection)
     );
   }
 
@@ -335,17 +340,7 @@ export default function DataSyncConnectionCard({ jobId }: Props): ReactElement {
     try {
       await updateJobSrcConnection({
         id: job.id,
-        mappings: values.mappings.map((m) => {
-          return create(JobMappingSchema, {
-            schema: m.schema,
-            table: m.table,
-            column: m.column,
-            transformer:
-              convertJobMappingTransformerFormToJobMappingTransformer(
-                m.transformer
-              ),
-          });
-        }),
+        mappings: values.mappings.map(convertJobMappingFormToJobMapping),
         virtualForeignKeys:
           values.virtualForeignKeys?.map((v) => {
             return create(VirtualForeignConstraintSchema, {

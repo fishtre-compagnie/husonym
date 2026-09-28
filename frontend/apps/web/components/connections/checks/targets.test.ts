@@ -5,6 +5,7 @@ import {
   ConnectionRole,
   JobDestinationOptionsSchema,
   JobEngine,
+  JobMappingTransformerSchema,
   JobSourceSchema,
 } from '@husonym/sdk';
 import { getCheckTargetsOfJob, splitScope } from './targets';
@@ -65,6 +66,45 @@ describe('getCheckTargetsOfJob', () => {
     expect(destination.scope.truncateBeforeInsert).toBe(true);
     expect(destination.scope.initTableSchema).toBe(false);
     expect(destination.scope.engine).toBe(JobEngine.ATHANOR);
+  });
+
+  it('checks a destination on the columns the run writes into it', () => {
+    const generateDefault = create(JobMappingTransformerSchema, {
+      config: { config: { case: 'generateDefaultConfig', value: {} } },
+    });
+    const columnsOf = (engine: JobEngine) => {
+      const [source, destination] = getCheckTargetsOfJob({
+        source: mysqlSource('src'),
+        destinations: [
+          { connectionId: 'dst', options: postgresDestination(false, false) },
+        ],
+        mappings: [
+          { schema: 'public', table: 'users', column: 'id' },
+          {
+            schema: 'public',
+            table: 'users',
+            column: 'created_at',
+            transformer: generateDefault,
+          },
+        ],
+        workflowOptions: { engine },
+      });
+      return [
+        source.scope.tables[0].columns,
+        destination.scope.tables[0].columns,
+      ];
+    };
+
+    // Benthos writes DEFAULT into the column: the destination must have it.
+    expect(columnsOf(JobEngine.BENTHOS)).toEqual([
+      ['id', 'created_at'],
+      ['id', 'created_at'],
+    ]);
+    // Athanor leaves it out of its INSERT; so does the page when the engine is the
+    // deployment's own, and the run checks it at its start. The source is read as is.
+    for (const engine of [JobEngine.ATHANOR, JobEngine.UNSPECIFIED]) {
+      expect(columnsOf(engine)).toEqual([['id', 'created_at'], ['id']]);
+    }
   });
 
   it('leaves the engine unspecified when the job does not choose one', () => {
