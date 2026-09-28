@@ -146,18 +146,12 @@ func WithJobType(jobType mgmtv1alpha1.SupportedJobType) Option {
 	}
 }
 
-// ValidateTransformers reports each mapping whose system transformer does not fit its column:
-// a value the database refuses, a foreign key sent nowhere, a type the transformer does not
-// take. A user-defined transformer, and a column missing from the source, are left to the
-// other checks.
-func (j *JobMappingsValidator) ValidateTransformers(
-	tableColumnMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+// ForeignKeyColumns marks, per table (schema.table), the columns a foreign key starts from,
+// real or virtual.
+func ForeignKeyColumns(
 	foreignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
 	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
-) {
-	if j.jobType == mgmtv1alpha1.SupportedJobType_SUPPORTED_JOB_TYPE_UNSPECIFIED {
-		return
-	}
+) map[string]map[string]bool {
 	isForeignKey := map[string]map[string]bool{}
 	mark := func(table, column string) {
 		if isForeignKey[table] == nil {
@@ -177,26 +171,55 @@ func (j *JobMappingsValidator) ValidateTransformers(
 			mark(sqlmanager_shared.BuildTable(vfk.GetSchema(), vfk.GetTable()), column)
 		}
 	}
+	return isForeignKey
+}
 
-	transformers := catalog.BySource(true)
+// Misfit says why the system transformer of config does not fit a column in a job of a type,
+// naming those that do; it returns false when it fits, or when config is not a system
+// transformer's. The job builder offers a column only the transformers that fit it.
+func Misfit(
+	config *mgmtv1alpha1.TransformerConfig,
+	row *sqlmanager_shared.DatabaseSchemaRow,
+	foreignKey bool,
+	jobType mgmtv1alpha1.SupportedJobType,
+) (string, bool) {
+	source, ok := catalog.SourceOf(config)
+	if !ok {
+		return "", false
+	}
+	traits := traitsOf(row, foreignKey)
+	if transformerFits(catalog.BySource(true)[source], traits, jobType) {
+		return "", false
+	}
+	return fmt.Sprintf(
+		"%s does not fit this column; it takes %s",
+		transformerName(source), strings.Join(fittingTransformers(traits, jobType), ", "),
+	), true
+}
+
+// ValidateTransformers reports each mapping whose system transformer does not fit its column:
+// a value the database refuses, a foreign key sent nowhere, a type the transformer does not
+// take. A user-defined transformer, and a column missing from the source, are left to the
+// other checks.
+func (j *JobMappingsValidator) ValidateTransformers(
+	tableColumnMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	foreignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
+	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
+) {
+	if j.jobType == mgmtv1alpha1.SupportedJobType_SUPPORTED_JOB_TYPE_UNSPECIFIED {
+		return
+	}
+	isForeignKey := ForeignKeyColumns(foreignKeys, virtualForeignKeys)
 	for table, mappings := range j.jobMappings {
 		for column, mapping := range mappings {
 			row, ok := tableColumnMap[table][column]
 			if !ok {
 				continue
 			}
-			source, ok := catalog.SourceOf(mapping.GetTransformer().GetConfig())
-			if !ok {
-				continue
+			message, misfit := Misfit(mapping.GetTransformer().GetConfig(), row, isForeignKey[table][column], j.jobType)
+			if misfit {
+				j.addColumnError(table, column, message, mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED)
 			}
-			traits := traitsOf(row, isForeignKey[table][column])
-			if transformerFits(transformers[source], traits, j.jobType) {
-				continue
-			}
-			j.addColumnError(table, column, fmt.Sprintf(
-				"%s does not fit this column; it takes %s",
-				transformerName(source), strings.Join(fittingTransformers(traits, j.jobType), ", "),
-			), mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED)
 		}
 	}
 }

@@ -15433,6 +15433,7 @@ components:
         - KIND_RETRY_MAY_DUPLICATE
         - KIND_DESTINATION_TRIGGERS
         - KIND_REFERENCE_CLEARED_BY_SUBSET
+        - KIND_TRANSFORMER_DOES_NOT_FIT
       description: What the finding is about.
     mgmt.v1alpha1.PreflightFinding.Level:
       type: string
