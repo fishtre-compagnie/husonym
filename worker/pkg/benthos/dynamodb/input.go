@@ -6,10 +6,9 @@ import (
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	database_record_mapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/builder"
 	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
 	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
@@ -27,20 +26,20 @@ func dynamoInputConfigSpec() *service.ConfigSpec {
 			Optional()).
 		Field(service.NewBoolField("consistent_read").
 			Description("Optional field that enforces strong read consistency. Default is eventually consistent reads").
-			Default(false))
-
-	for _, f := range awsSessionFields() {
-		spec = spec.Field(f)
-	}
+			Default(false)).
+		Field(connectionIdField())
 
 	return spec
 }
 
-func RegisterDynamoDbInput(env *service.Environment) error {
+func RegisterDynamoDbInput(
+	env *service.Environment,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+) error {
 	return env.RegisterBatchInput(
 		"aws_dynamodb", dynamoInputConfigSpec(),
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
-			return newDynamoDbBatchInput(conf, mgr.Logger())
+			return newDynamoDbBatchInput(conf, getConnection, mgr.Logger())
 		},
 	)
 }
@@ -60,6 +59,7 @@ type dynamoDBAPIV2 interface {
 
 func newDynamoDbBatchInput(
 	conf *service.ParsedConfig,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
 	logger *service.Logger,
 ) (service.BatchInput, error) {
 	table, err := conf.FieldString("table")
@@ -81,14 +81,14 @@ func newDynamoDbBatchInput(
 		return nil, err
 	}
 
-	sess, err := getAwsSession(context.Background(), conf)
+	connection, err := resolveDynamoDbConnection(conf, getConnection)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dynamodbInput{
-		awsConfig: *sess,
-		logger:    logger,
+		connection: connection,
+		logger:     logger,
 
 		recordMapper: dynamodbmapper.NewDynamoBuilder(),
 
@@ -99,10 +99,10 @@ func newDynamoDbBatchInput(
 }
 
 type dynamodbInput struct {
-	client    dynamoDBAPIV2 // lazy
-	awsConfig aws.Config
-	logger    *service.Logger
-	readMu    sync.Mutex
+	client     dynamoDBAPIV2 // lazy
+	connection dynamoDbConnection
+	logger     *service.Logger
+	readMu     sync.Mutex
 
 	table string
 	where *string
@@ -125,7 +125,7 @@ func (d *dynamodbInput) Connect(ctx context.Context) error {
 		return nil
 	}
 
-	client := dynamodb.NewFromConfig(d.awsConfig)
+	client := d.connection.client()
 
 	tableOutput, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: &d.table,
@@ -209,99 +209,4 @@ func (d *dynamodbInput) Close(ctx context.Context) error {
 	}
 	d.client = nil
 	return nil
-}
-
-func getAwsSession(
-	ctx context.Context,
-	parsedConf *service.ParsedConfig,
-	opts ...func(*config.LoadOptions) error,
-) (*aws.Config, error) {
-	awsCfg, err := awsmanager.GetAwsConfig(
-		ctx,
-		getAwsCredentialsConfigFromParsedConf(parsedConf),
-		opts...)
-	if err != nil {
-		return aws.NewConfig(), err
-	}
-	return awsCfg, nil
-}
-
-func getAwsCredentialsConfigFromParsedConf(
-	parsedConf *service.ParsedConfig,
-) *awsmanager.AwsCredentialsConfig {
-	output := &awsmanager.AwsCredentialsConfig{}
-	if parsedConf == nil {
-		return output
-	}
-	region, _ := parsedConf.FieldString("region")
-	output.Region = region
-
-	endpoint, _ := parsedConf.FieldString("endpoint")
-	output.Endpoint = endpoint
-
-	credsConf := parsedConf.Namespace("credentials")
-	profile, _ := credsConf.FieldString("profile")
-	output.Profile = profile
-
-	id, _ := credsConf.FieldString("id")
-	output.Id = id
-
-	secret, _ := credsConf.FieldString("secret")
-	output.Secret = secret
-
-	token, _ := credsConf.FieldString("token")
-	output.Token = token
-
-	useEc2, _ := credsConf.FieldBool("from_ec2_role")
-	output.UseEc2 = useEc2
-
-	role, _ := credsConf.FieldString("role")
-	output.Role = role
-
-	roleExternalId, _ := credsConf.FieldString("role_external_id")
-	output.RoleExternalId = roleExternalId
-
-	output.RoleSessionName = "husonym"
-
-	return output
-}
-
-// SessionFields defines a re-usable set of config fields for an AWS session
-// that is compatible with the public service APIs and avoids importing the full
-// AWS dependencies.
-func awsSessionFields() []*service.ConfigField {
-	return []*service.ConfigField{
-		service.NewStringField("region").
-			Description("The AWS region to target.").
-			Default("").
-			Advanced(),
-		service.NewStringField("endpoint").
-			Description("Allows you to specify a custom endpoint for the AWS API.").
-			Default("").
-			Advanced(),
-		service.NewObjectField("credentials",
-			service.NewStringField("profile").
-				Description("A profile from `~/.aws/credentials` to use.").
-				Default(""),
-			service.NewStringField("id").
-				Description("The ID of credentials to use.").
-				Default("").Advanced(),
-			service.NewStringField("secret").
-				Description("The secret for the credentials being used.").
-				Default("").Advanced().Secret(),
-			service.NewStringField("token").
-				Description("The token for the credentials being used, required when using short term credentials.").
-				Default("").Advanced(),
-			service.NewBoolField("from_ec2_role").
-				Description("Use the credentials of a host EC2 machine configured to assume [an IAM role associated with the instance](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).").
-				Default(false).Version("4.2.0"),
-			service.NewStringField("role").
-				Description("A role ARN to assume.").
-				Default("").Advanced(),
-			service.NewStringField("role_external_id").
-				Description("An external ID to provide when assuming a role.").
-				Default("").Advanced()).
-			Advanced().
-			Description("Optional manual configuration of AWS credentials to use. More information can be found [in this document](/docs/guides/cloud/aws)."),
-	}
 }

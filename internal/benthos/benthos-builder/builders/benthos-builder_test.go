@@ -13,13 +13,11 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	"github.com/google/uuid"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	husonym_benthos_transformers "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
@@ -617,76 +615,6 @@ func Test_buildPlainColumns(t *testing.T) {
 			{Column: "baz"},
 		}),
 		[]string{"foo", "bar", "baz"},
-	)
-}
-
-func Test_buildBenthosS3Credentials(t *testing.T) {
-	require.Nil(t, buildBenthosS3Credentials(nil))
-
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{}),
-		&husonym_benthos.AwsCredentials{},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{Profile: shared.Ptr("foo")}),
-		&husonym_benthos.AwsCredentials{Profile: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{AccessKeyId: shared.Ptr("foo")}),
-		&husonym_benthos.AwsCredentials{Id: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(
-			&mgmtv1alpha1.AwsS3Credentials{SecretAccessKey: shared.Ptr("foo")},
-		),
-		&husonym_benthos.AwsCredentials{Secret: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{SessionToken: shared.Ptr("foo")}),
-		&husonym_benthos.AwsCredentials{Token: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{FromEc2Role: shared.Ptr(true)}),
-		&husonym_benthos.AwsCredentials{FromEc2Role: true},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{RoleArn: shared.Ptr("foo")}),
-		&husonym_benthos.AwsCredentials{Role: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(
-			&mgmtv1alpha1.AwsS3Credentials{RoleExternalId: shared.Ptr("foo")},
-		),
-		&husonym_benthos.AwsCredentials{RoleExternalId: "foo"},
-	)
-	require.Equal(
-		t,
-		buildBenthosS3Credentials(&mgmtv1alpha1.AwsS3Credentials{
-			Profile:         shared.Ptr("profile"),
-			AccessKeyId:     shared.Ptr("access-key"),
-			SecretAccessKey: shared.Ptr("secret"),
-			SessionToken:    shared.Ptr("session"),
-			FromEc2Role:     shared.Ptr(false),
-			RoleArn:         shared.Ptr("role"),
-			RoleExternalId:  shared.Ptr("foo"),
-		}),
-		&husonym_benthos.AwsCredentials{
-			Profile:        "profile",
-			Id:             "access-key",
-			Secret:         "secret",
-			Token:          "session",
-			FromEc2Role:    false,
-			Role:           "role",
-			RoleExternalId: "foo",
-		},
 	)
 }
 

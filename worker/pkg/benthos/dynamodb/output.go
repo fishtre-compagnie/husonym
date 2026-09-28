@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cenkalti/backoff/v7"
 
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	husonym_benthos_metadata "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/metadata"
 	"github.com/redpanda-data/benthos/v4/public/service"
@@ -47,10 +48,13 @@ type ddboConfig struct {
 	TTLKey         string
 
 	backoffCtor func() backoff.BackOff
-	awsConfig   aws.Config
+	connection  dynamoDbConnection
 }
 
-func ddboConfigFromParsed(pConf *service.ParsedConfig) (conf *ddboConfig, err error) {
+func ddboConfigFromParsed(
+	pConf *service.ParsedConfig,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+) (conf *ddboConfig, err error) {
 	c := &ddboConfig{}
 	if c.Table, err = pConf.FieldString(ddboFieldTable); err != nil {
 		return
@@ -70,11 +74,9 @@ func ddboConfigFromParsed(pConf *service.ParsedConfig) (conf *ddboConfig, err er
 	if c.backoffCtor, err = commonRetryBackOffCtorFromParsed(pConf); err != nil {
 		return
 	}
-	sess, err := getAwsSession(context.Background(), pConf)
-	if err != nil {
+	if c.connection, err = resolveDynamoDbConnection(pConf, getConnection); err != nil {
 		return
 	}
-	c.awsConfig = *sess
 	return c, nil
 }
 
@@ -116,15 +118,16 @@ func dynamoOutputConfigSpec() *service.ConfigSpec {
 				Advanced(),
 			service.NewOutputMaxInFlightField(),
 			service.NewBatchPolicyField(ddboFieldBatching),
+			connectionIdField(),
 		).
 		Fields(commonRetryBackOffFields(3, "1s", "5s", "30s")...)
-	for _, f := range awsSessionFields() {
-		spec = spec.Field(f)
-	}
 	return spec
 }
 
-func RegisterDynamoDbOutput(env *service.Environment) error {
+func RegisterDynamoDbOutput(
+	env *service.Environment,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+) error {
 	return env.RegisterBatchOutput(
 		"aws_dynamodb",
 		dynamoOutputConfigSpec(),
@@ -136,7 +139,7 @@ func RegisterDynamoDbOutput(env *service.Environment) error {
 				return
 			}
 			var wConf *ddboConfig
-			if wConf, err = ddboConfigFromParsed(conf); err != nil {
+			if wConf, err = ddboConfigFromParsed(conf, getConnection); err != nil {
 				return
 			}
 			out, err = newDynamoDBWriter(wConf, mgr)
@@ -224,7 +227,7 @@ func (d *dynamoDBWriter) Connect(ctx context.Context) error {
 		return nil
 	}
 
-	client := dynamodb.NewFromConfig(d.conf.awsConfig)
+	client := d.conf.connection.client()
 	out, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: d.table,
 	})

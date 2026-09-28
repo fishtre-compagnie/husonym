@@ -142,6 +142,31 @@ func test_dynamodb_alltypes(
 	})
 	require.NoError(t, err)
 	require.Equal(t, int32(4), out.Count)
+
+	// The config the run stored, which job:view reads, names its connections and holds none
+	// of their credentials: the worker read them from the connections to sync the table.
+	stored, err := jobclient.GetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.GetRunContextRequest{
+		Id: &mgmtv1alpha1.RunContextKey{
+			JobRunId:   job.GetId(),
+			ExternalId: "benthosconfig-aws." + tableName,
+			AccountId:  accountId,
+		},
+	}))
+	require.NoError(t, err)
+	storedConfig := string(stored.Msg.GetValue())
+	require.Contains(t, storedConfig, "connection_id: "+sourceConn.GetId())
+	require.Contains(t, storedConfig, "connection_id: "+destConn.GetId())
+	for _, credentials := range []*mgmtv1alpha1.AwsS3Credentials{dynamo.Source.Credentials, dynamo.Target.Credentials} {
+		for _, value := range []string{
+			credentials.GetAccessKeyId(),
+			credentials.GetSecretAccessKey(),
+			credentials.GetSessionToken(),
+		} {
+			require.NotEmpty(t, value)
+			require.NotContains(t, storedConfig, value)
+		}
+	}
+
 	err = cleanupDynamodbTables(ctx, dynamo, tableName)
 	require.NoError(t, err)
 }

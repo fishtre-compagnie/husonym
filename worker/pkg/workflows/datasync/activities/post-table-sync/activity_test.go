@@ -41,7 +41,7 @@ func Test_Activity_Success(t *testing.T) {
 	accountId := uuid.NewString()
 	name := "public.users.insert"
 	destConnId := "c9b6ce58-5c8e-4dce-870d-96841b19d988"
-	configs := mockPostTableSyncConfigs(name, destConnId)
+	configs := mockPostTableSyncConfigs(destConnId)
 	configBits, err := json.Marshal(configs)
 	require.NoError(t, err)
 
@@ -64,8 +64,9 @@ func Test_Activity_Success(t *testing.T) {
 			if r.Msg.GetId() == destConnId {
 				return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 					Connection: &mgmtv1alpha1.Connection{
-						Id:   destConnId,
-						Name: "source",
+						Id:        destConnId,
+						AccountId: accountId,
+						Name:      "source",
 						ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
 							Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 								PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
@@ -99,6 +100,11 @@ func Test_Activity_Success(t *testing.T) {
 	res := &RunPostTableSyncResponse{}
 	err = val.Get(res)
 	require.NoError(t, err)
+	// The destination was read and its statement run: the test server has no database, so the
+	// statement's failure is what the run reports.
+	require.Len(t, res.Errors, 1)
+	require.Equal(t, destConnId, res.Errors[0].ConnectionId)
+	require.Equal(t, "reset-sequence", res.Errors[0].Errors[0].Statement)
 }
 
 func Test_Activity_RunContextNotFound(t *testing.T) {
@@ -124,8 +130,9 @@ func Test_Activity_RunContextNotFound(t *testing.T) {
 			if r.Msg.GetId() == destConnId {
 				return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 					Connection: &mgmtv1alpha1.Connection{
-						Id:   destConnId,
-						Name: "source",
+						Id:        destConnId,
+						AccountId: accountId,
+						Name:      "source",
 						ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
 							Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 								PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
@@ -180,8 +187,9 @@ func Test_Activity_Error(t *testing.T) {
 			if r.Msg.GetId() == destConnId {
 				return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 					Connection: &mgmtv1alpha1.Connection{
-						Id:   destConnId,
-						Name: "source",
+						Id:        destConnId,
+						AccountId: accountId,
+						Name:      "source",
 						ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
 							Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
 								PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{
@@ -214,16 +222,13 @@ func Test_Activity_Error(t *testing.T) {
 	require.Error(t, err)
 }
 
-func mockPostTableSyncConfigs(name, destConnId string) map[string]*shared.PostTableSyncConfig {
-	configs := map[string]*shared.PostTableSyncConfig{}
-	destConfigs := map[string]*shared.PostTableSyncDestConfig{}
-	destConfigs[destConnId] = &shared.PostTableSyncDestConfig{
-		Statements: []string{"reset-sequence"},
+// mockPostTableSyncConfigs is the run context of a table, as the worker writes it: one config.
+func mockPostTableSyncConfigs(destConnId string) *shared.PostTableSyncConfig {
+	return &shared.PostTableSyncConfig{
+		DestinationConfigs: map[string]*shared.PostTableSyncDestConfig{
+			destConnId: {Statements: []string{"reset-sequence"}},
+		},
 	}
-	configs[name] = &shared.PostTableSyncConfig{
-		DestinationConfigs: destConfigs,
-	}
-	return configs
 }
 
 func mockSqlManager() *sqlmanager.SqlManager {
@@ -239,4 +244,48 @@ func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
 	srv.Start()
 	tb.Cleanup(srv.Close)
 	return srv
+}
+
+// The worker's key reads the connections of any account: a connection another account owns,
+// named by the run context, is refused before any statement runs on it.
+func Test_Activity_RefusesAConnectionOfAnotherAccount(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
+	env := testSuite.NewTestActivityEnvironment()
+
+	accountId := uuid.NewString()
+	name := "public.users.insert"
+	destConnId := "c9b6ce58-5c8e-4dce-870d-96841b19d988"
+	configBits, err := json.Marshal(mockPostTableSyncConfigs(destConnId))
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.Handle(mgmtv1alpha1connect.JobServiceGetRunContextProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.JobServiceGetRunContextProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetRunContextRequest]) (*connect.Response[mgmtv1alpha1.GetRunContextResponse], error) {
+			return connect.NewResponse(&mgmtv1alpha1.GetRunContextResponse{Value: configBits}), nil
+		},
+	))
+	mux.Handle(mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
+			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
+				Connection: &mgmtv1alpha1.Connection{Id: destConnId, AccountId: uuid.NewString()},
+			}), nil
+		},
+	))
+	srv := startHTTPServer(t, mux)
+
+	activity := New(
+		mgmtv1alpha1connect.NewJobServiceClient(srv.Client(), srv.URL),
+		mockSqlManager(),
+		mgmtv1alpha1connect.NewConnectionServiceClient(srv.Client(), srv.URL),
+	)
+	env.RegisterActivity(activity)
+
+	_, err = env.ExecuteActivity(
+		activity.RunPostTableSync,
+		&RunPostTableSyncRequest{Name: name, AccountId: accountId},
+	)
+	require.ErrorContains(t, err, "does not belong to the account of the run")
 }

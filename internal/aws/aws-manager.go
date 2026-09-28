@@ -65,30 +65,44 @@ func (n *HusonymAwsManager) newDynamoDbClient(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*dynamodb.Client, error) {
-	cfg, err := getDynamoAwsConfig(ctx, connCfg)
+	cfg, err := DynamoDbAwsConfig(ctx, connCfg)
 	if err != nil {
 		return nil, err
 	}
+	return NewDynamoDbClientFromConfig(cfg, connCfg.GetEndpoint()), nil
+}
+
+// NewDynamoDbClientFromConfig returns the DynamoDB client of a resolved config. The endpoint of
+// the connection, when it has one, prevails over one the worker's environment sets for the
+// service (AWS_ENDPOINT_URL_DYNAMODB, a profile's services section).
+func NewDynamoDbClientFromConfig(cfg *aws.Config, endpoint string) *dynamodb.Client {
 	return dynamodb.NewFromConfig(*cfg, func(o *dynamodb.Options) {
-		if connCfg.GetEndpoint() != "" {
-			o.BaseEndpoint = aws.String(connCfg.GetEndpoint())
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
 		}
-	}), nil
+	})
 }
 
 func (n *HusonymAwsManager) NewS3Client(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*s3.Client, error) {
-	cfg, err := getS3AwsConfig(ctx, connCfg)
+	cfg, err := S3AwsConfig(ctx, connCfg)
 	if err != nil {
 		return nil, err
 	}
+	return NewS3ClientFromConfig(cfg, connCfg.GetEndpoint()), nil
+}
+
+// NewS3ClientFromConfig returns the S3 client of a resolved config. The endpoint of the
+// connection, when it has one, prevails over one the worker's environment sets for the service
+// (AWS_ENDPOINT_URL_S3, a profile's services section).
+func NewS3ClientFromConfig(cfg *aws.Config, endpoint string) *s3.Client {
 	return s3.NewFromConfig(*cfg, func(o *s3.Options) {
-		if connCfg.GetEndpoint() != "" {
-			o.BaseEndpoint = aws.String(connCfg.GetEndpoint())
+		if endpoint != "" {
+			o.BaseEndpoint = aws.String(endpoint)
 		}
-	}), nil
+	})
 }
 
 func (n *HusonymAwsManager) ListObjectsV2(
@@ -128,7 +142,8 @@ func withS3Region(region *string) func(o *s3.Options) {
 	}
 }
 
-func getS3AwsConfig(
+// S3AwsConfig resolves the AWS config of an S3 connection: region, endpoint and credentials.
+func S3AwsConfig(
 	ctx context.Context,
 	s3ConnConfig *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*aws.Config, error) {
@@ -146,7 +161,9 @@ func getS3AwsConfig(
 	})
 }
 
-func getDynamoAwsConfig(
+// DynamoDbAwsConfig resolves the AWS config of a DynamoDB connection: region, endpoint and
+// credentials.
+func DynamoDbAwsConfig(
 	ctx context.Context,
 	dynConnConfig *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*aws.Config, error) {

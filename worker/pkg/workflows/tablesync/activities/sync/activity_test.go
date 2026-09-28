@@ -75,7 +75,8 @@ output:
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -167,7 +168,8 @@ output:
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -301,7 +303,8 @@ metrics:
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -397,7 +400,8 @@ func Test_Sync_Run_Processor_Error(t *testing.T) {
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -484,7 +488,8 @@ output:
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -592,7 +597,8 @@ output:
 		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
 			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 				Connection: &mgmtv1alpha1.Connection{
-					Id: "conn-id-1",
+					Id:        "conn-id-1",
+					AccountId: accountId,
 				},
 			}), nil
 		},
@@ -680,4 +686,29 @@ func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
 	srv.Start()
 	tb.Cleanup(srv.Close)
 	return srv
+}
+
+// The worker's key reads connections of any account: the ids of a run's connections come from a
+// run context, so a connection of another account than the run's is refused, whoever wrote them.
+func Test_getConnectionsFromConnectionIds_RefusesAnotherAccount(t *testing.T) {
+	accountId := uuid.NewString()
+	owners := map[string]string{"own": accountId, "foreign": uuid.NewString()}
+	mux := http.NewServeMux()
+	mux.Handle(mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure, connect.NewUnaryHandler(
+		mgmtv1alpha1connect.ConnectionServiceGetConnectionProcedure,
+		func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetConnectionRequest]) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error) {
+			return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
+				Connection: &mgmtv1alpha1.Connection{Id: r.Msg.GetId(), AccountId: owners[r.Msg.GetId()]},
+			}), nil
+		},
+	))
+	srv := startHTTPServer(t, mux)
+	activity := &Activity{connclient: mgmtv1alpha1connect.NewConnectionServiceClient(srv.Client(), srv.URL)}
+
+	connections, err := activity.getConnectionsFromConnectionIds(context.Background(), accountId, []string{"own"})
+	require.NoError(t, err)
+	require.Len(t, connections, 1)
+
+	_, err = activity.getConnectionsFromConnectionIds(context.Background(), accountId, []string{"own", "foreign"})
+	require.ErrorContains(t, err, `connection "foreign" does not belong to the account of the run`)
 }
