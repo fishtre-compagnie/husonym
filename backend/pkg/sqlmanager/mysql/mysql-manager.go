@@ -136,20 +136,18 @@ func (m *MysqlManager) GetDatabaseSchema(
 			NumericScale:           numericScale,
 			OrdinalPosition:        int(row.OrdinalPosition),
 			IdentityGeneration:     identityGeneration,
-			UpdateAllowed:          isColumnUpdateAllowed(row.Extra),
+			UpdateAllowed:          isColumnUpdateAllowed(generatedType),
 			Comment:                nullStringToPtr(row.Comment),
 		})
 	}
 	return result, nil
 }
 
-func isColumnUpdateAllowed(generatedType sql.NullString) bool {
-	// generated always stored columns cannot be updated
-	if generatedType.Valid &&
-		(strings.EqualFold(generatedType.String, "STORED GENERATED") || strings.EqualFold(generatedType.String, "VIRTUAL GENERATED")) {
-		return false
-	}
-	return true
+// isColumnUpdateAllowed says whether a value may be written into a column: not into one the
+// database generates, stored or virtual, invisible or not — the same test that sets its
+// GeneratedType, so that the two never disagree.
+func isColumnUpdateAllowed(generatedType *string) bool {
+	return generatedType == nil
 }
 
 func (m *MysqlManager) GetDatabaseTableSchemasBySchemasAndTables(
@@ -260,7 +258,7 @@ func (m *MysqlManager) GetDatabaseTableSchemasBySchemasAndTables(
 				NumericScale:           int(row.NumericScale),
 				OrdinalPosition:        int(row.OrdinalPosition),
 				IdentityGeneration:     identityGeneration,
-				UpdateAllowed:          isColumnUpdateAllowed(row.IdentityGeneration),
+				UpdateAllowed:          isColumnUpdateAllowed(generatedType),
 				Comment:                nullStringToPtr(row.Comment),
 			})
 		}

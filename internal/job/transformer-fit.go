@@ -174,27 +174,28 @@ func ForeignKeyColumns(
 	return isForeignKey
 }
 
-// Misfit says why the system transformer of config does not fit a column in a job of a type,
-// naming those that do; it returns false when it fits, or when config is not a system
-// transformer's. The job builder offers a column only the transformers that fit it.
+// Misfit says whether the system transformer of config does not fit a column in a job of a
+// type, and then names it and, sorted, the transformers that do. It says nothing of a
+// transformer that is not a system one, nor when the type of job is unknown. The job builder
+// offers a column only the transformers that fit it.
 func Misfit(
 	config *mgmtv1alpha1.TransformerConfig,
 	row *sqlmanager_shared.DatabaseSchemaRow,
 	foreignKey bool,
 	jobType mgmtv1alpha1.SupportedJobType,
-) (string, bool) {
+) (transformer string, fitting []string, misfit bool) {
+	if jobType == mgmtv1alpha1.SupportedJobType_SUPPORTED_JOB_TYPE_UNSPECIFIED {
+		return "", nil, false
+	}
 	source, ok := catalog.SourceOf(config)
 	if !ok {
-		return "", false
+		return "", nil, false
 	}
 	traits := traitsOf(row, foreignKey)
 	if transformerFits(catalog.BySource(true)[source], traits, jobType) {
-		return "", false
+		return "", nil, false
 	}
-	return fmt.Sprintf(
-		"%s does not fit this column; it takes %s",
-		transformerName(source), strings.Join(fittingTransformers(traits, jobType), ", "),
-	), true
+	return transformerName(source), fittingTransformers(traits, jobType), true
 }
 
 // ValidateTransformers reports each mapping whose system transformer does not fit its column:
@@ -206,9 +207,6 @@ func (j *JobMappingsValidator) ValidateTransformers(
 	foreignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
 	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
 ) {
-	if j.jobType == mgmtv1alpha1.SupportedJobType_SUPPORTED_JOB_TYPE_UNSPECIFIED {
-		return
-	}
 	isForeignKey := ForeignKeyColumns(foreignKeys, virtualForeignKeys)
 	for table, mappings := range j.jobMappings {
 		for column, mapping := range mappings {
@@ -216,9 +214,11 @@ func (j *JobMappingsValidator) ValidateTransformers(
 			if !ok {
 				continue
 			}
-			message, misfit := Misfit(mapping.GetTransformer().GetConfig(), row, isForeignKey[table][column], j.jobType)
+			transformer, fitting, misfit := Misfit(mapping.GetTransformer().GetConfig(), row, isForeignKey[table][column], j.jobType)
 			if misfit {
-				j.addColumnError(table, column, message, mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED)
+				j.addColumnError(table, column, fmt.Sprintf(
+					"%s does not fit this column; it takes %s", transformer, strings.Join(fitting, ", "),
+				), mgmtv1alpha1.ColumnError_COLUMN_ERROR_CODE_TRANSFORMER_NOT_ALLOWED)
 			}
 		}
 	}

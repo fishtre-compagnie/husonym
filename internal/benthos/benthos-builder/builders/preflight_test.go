@@ -553,12 +553,24 @@ func Test_sourceFindings_TransformerDoesNotFit(t *testing.T) {
 			misfits = append(misfits, f)
 		}
 	}
-	require.Len(t, misfits, 3)
-	for i, column := range []string{"pays_id", "quantite", "station_id"} {
-		assert.Equal(t, preflight.Warning, misfits[i].Level)
-		assert.Equal(t, preflightTable, misfits[i].Table)
-		assert.Equal(t, []string{column}, misfits[i].Columns)
-		assert.Contains(t, misfits[i].Message, preflightTable+"."+column+": generate_email does not fit this column; it takes ")
-	}
-	assert.Contains(t, misfits[2].Message, "passthrough", "a foreign key keeps its value")
+	require.Len(t, misfits, 2)
+	// Two foreign keys given the same transformer, taking the same others: one finding.
+	assert.Equal(t, preflight.Warning, misfits[0].Level)
+	assert.Equal(t, preflightTable, misfits[0].Table)
+	assert.Equal(t, []string{"pays_id", "station_id"}, misfits[0].Columns)
+	assert.Contains(t, misfits[0].Message,
+		preflightTable+": generate_email does not fit the columns pays_id, station_id; they take ")
+	assert.Contains(t, misfits[0].Message, "passthrough", "a foreign key keeps its value")
+	assert.Equal(t, []string{"quantite"}, misfits[1].Columns)
+	assert.Contains(t, misfits[1].Message,
+		preflightTable+".quantite: generate_email does not fit this column; it takes ")
+
+	// Without a source, the type of job is unknown, and nothing is said of the transformers.
+	unknown, err := sourceFindings(context.Background(), configs, &mgmtv1alpha1.Job{}, false, true,
+		planOf(t, []string{"id", "quantite"}, constraints), constraints, columns,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{preflightTable: {
+			"id": mapped(passthroughConfig()), "quantite": mapped(email),
+		}}, nil)
+	require.NoError(t, err)
+	assert.NotContains(t, kindsOf(unknown), mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT)
 }

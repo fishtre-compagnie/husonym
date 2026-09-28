@@ -36,7 +36,8 @@ func postgresDataType(dataType string) mgmtv1alpha1.TransformerDataType {
 	switch baseType(dataType) {
 	case "bigint", "integer", "smallint", "bigserial", "serial":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64
-	case "text", "varchar", "char", "citext", "character varying":
+	// char(n) reads "character(n)" from format_type, and bpchar in the catalog.
+	case "text", "varchar", "char", "citext", "character varying", "character", "bpchar":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING
 	case "boolean":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_BOOLEAN
@@ -64,7 +65,7 @@ func mysqlDataType(dataType string) mgmtv1alpha1.TransformerDataType {
 	switch baseType(dataType) {
 	case "int", "integer", "smallint", "mediumint", "bigint", "tinyint":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_INT64
-	case "varchar", "text", "char", "enum", "set", "mediumtext", "longtext":
+	case "varchar", "text", "char", "enum", "set", "tinytext", "mediumtext", "longtext":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING
 	case "float", "double", "decimal":
 		return mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_FLOAT64

@@ -216,8 +216,10 @@ func retries(job *mgmtv1alpha1.Job) bool {
 // transformerMisfits reports the columns of a table mapped to a transformer the job builder
 // would not offer them, as ValidateJobMappings refuses it: a job written through the API or
 // changed since is held to the same rule at its run. A warning: the rule is what the builder
-// offers, stricter than what makes a run fail. A generated column is left out, reported as
-// generated_column_written with what the engine does with it.
+// offers, stricter than what makes a run fail. The columns given one same transformer and
+// taking the same others make one finding, so that a report stays small on a wide table. A
+// generated column is left out, reported as generated_column_written with what the engine
+// does with it.
 func transformerMisfits(
 	ctx context.Context,
 	configs *transformerConfigs,
@@ -227,7 +229,12 @@ func transformerMisfits(
 	isForeignKey map[string]bool,
 	jobType mgmtv1alpha1.SupportedJobType,
 ) ([]*preflight.Finding, error) {
-	var findings []*preflight.Finding
+	type misfit struct {
+		transformer string
+		fitting     []string
+		columns     []string
+	}
+	var misfits []*misfit
 	for _, column := range slices.Sorted(maps.Keys(transformers)) {
 		row, ok := columns[column]
 		if !ok || isGenerated(row) {
@@ -237,16 +244,33 @@ func transformerMisfits(
 		if err != nil {
 			return nil, err
 		}
-		message, misfit := job_util.Misfit(config, row, isForeignKey[column], jobType)
-		if !misfit {
+		transformer, fitting, ok := job_util.Misfit(config, row, isForeignKey[column], jobType)
+		if !ok {
 			continue
+		}
+		i := slices.IndexFunc(misfits, func(m *misfit) bool {
+			return m.transformer == transformer && slices.Equal(m.fitting, fitting)
+		})
+		if i < 0 {
+			misfits = append(misfits, &misfit{transformer: transformer, fitting: fitting})
+			i = len(misfits) - 1
+		}
+		misfits[i].columns = append(misfits[i].columns, column)
+	}
+	findings := make([]*preflight.Finding, 0, len(misfits))
+	for _, m := range misfits {
+		message := fmt.Sprintf("%s.%s: %s does not fit this column; it takes %s",
+			table, m.columns[0], m.transformer, strings.Join(m.fitting, ", "))
+		if len(m.columns) > 1 {
+			message = fmt.Sprintf("%s: %s does not fit the columns %s; they take %s",
+				table, m.transformer, strings.Join(m.columns, ", "), strings.Join(m.fitting, ", "))
 		}
 		findings = append(findings, &preflight.Finding{
 			Kind:    mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT,
 			Level:   preflight.Warning,
 			Table:   table,
-			Columns: []string{column},
-			Message: fmt.Sprintf("%s.%s: %s", table, column, message),
+			Columns: m.columns,
+			Message: message,
 		})
 	}
 	return findings, nil

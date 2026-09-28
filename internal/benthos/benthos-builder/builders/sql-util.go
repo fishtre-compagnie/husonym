@@ -154,7 +154,7 @@ func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
 // catalogue — the mapping the UI would propose for the column.
 //
 // The passthrough stays when nothing is suggested, and when the column carries a primary key, a
-// foreign key or a unique constraint, or is referenced by one: a transformer there could break
+// foreign key — real or virtual — or a unique constraint, or is referenced by one: a transformer there could break
 // the constraint and fail the run, while the strategy never stops one. Choosing a transformer
 // that keeps a constraint is another matter. Generated columns keep their GenerateDefault.
 //
@@ -167,9 +167,10 @@ func autoMapNewColumns(
 	mappings []*mgmtv1alpha1.JobMapping,
 	columnInfo map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	constraints *sqlmanager_shared.TableConstraints,
+	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
 	hasConsistencyKey bool,
 ) (out []*mgmtv1alpha1.JobMapping, anonymized, passedThrough []string) {
-	constrained := constrainedColumns(constraints)
+	constrained := constrainedColumns(constraints, virtualForeignKeys)
 	out = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
 	for _, m := range mappings {
 		if m.GetTransformer().GetConfig().GetPassthroughConfig() == nil {
@@ -232,9 +233,12 @@ func withinReach(
 	return config
 }
 
-// constrainedColumns are the columns, by schema.table, that a primary key, a foreign key or a
-// unique constraint or index covers, on either side of a foreign key.
-func constrainedColumns(constraints *sqlmanager_shared.TableConstraints) map[string]map[string]struct{} {
+// constrainedColumns are the columns, by schema.table, that a primary key, a foreign key — real
+// or virtual — or a unique constraint or index covers, on either side of a foreign key.
+func constrainedColumns(
+	constraints *sqlmanager_shared.TableConstraints,
+	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
+) map[string]map[string]struct{} {
 	out := map[string]map[string]struct{}{}
 	add := func(table string, columns ...string) {
 		if out[table] == nil {
@@ -242,6 +246,12 @@ func constrainedColumns(constraints *sqlmanager_shared.TableConstraints) map[str
 		}
 		for _, column := range columns {
 			out[table][column] = struct{}{}
+		}
+	}
+	for _, vfk := range virtualForeignKeys {
+		add(sqlmanager_shared.BuildTable(vfk.GetSchema(), vfk.GetTable()), vfk.GetColumns()...)
+		if parent := vfk.GetForeignKey(); parent != nil {
+			add(sqlmanager_shared.BuildTable(parent.GetSchema(), parent.GetTable()), parent.GetColumns()...)
 		}
 	}
 	if constraints == nil {

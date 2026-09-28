@@ -69,8 +69,9 @@ func (p *PostgresManager) GetDatabaseSchema(
 }
 
 func isColumnUpdateAllowed(identityGeneration, generatedType string) bool {
-	// generated always columns cannot be updated, generated always as identity columns cannot be updated
-	if identityGeneration == "a" || generatedType == "s" {
+	// generated columns, stored ("s") or virtual ("v", from PostgreSQL 18), cannot be
+	// updated; generated always as identity columns cannot be updated
+	if identityGeneration == "a" || generatedType != "" {
 		return false
 	}
 	return true
