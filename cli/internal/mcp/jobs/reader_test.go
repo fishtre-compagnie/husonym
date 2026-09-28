@@ -13,8 +13,9 @@ import (
 )
 
 // A method that answers with a run must have its failures emptied at its call site, and a
-// method that makes a job run, now or on a schedule, must ask the person first. Before adding
-// one, make sure its call site does.
+// method that makes a job run, now or on a schedule, must ask the person first, and a method
+// that fails with the error of a database driver must have it replaced. Before adding one,
+// make sure its call site does.
 func Test_JobClient_MethodsArePinned(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, []string{
@@ -26,6 +27,7 @@ func Test_JobClient_MethodsArePinned(t *testing.T) {
 		"GetJobRunEvents",
 		"GetJobRuns",
 		"GetJobStatus",
+		"PreflightJob",
 		"UpdateJobSourceConnection",
 	}, testutil.MethodNames(reflect.TypeFor[jobClient]()))
 }

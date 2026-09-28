@@ -16,8 +16,8 @@ The server answers for the account of the API key it is given, with that key's r
 
 Give the server a key of its own, with only the permissions it needs:
 
-- reading connections: `connection:view` lists and describes them, and `connection:view_sensitive` is needed to use one — introspect its schema, suggest mappings, preview a column, configure a job on it — since that takes its secrets. The server never hands those secrets to the agent: it reads connections with them masked.
-- configuring jobs: `job:create` to create one, `job:view` and `job:edit` to change its mappings.
+- reading connections: `connection:view` lists and describes them, and `connection:view_sensitive` is needed to use one — check it, introspect its schema, suggest mappings, preview a column, configure a job on it — since that takes its secrets. The server never hands those secrets to the agent: it reads connections with them masked.
+- configuring jobs: `job:create` to create one, `job:view` and `job:edit` to change its mappings, `job:view` with `connection:view` and `connection:view_sensitive` to check one before it runs.
 - running jobs: `job:execute`. Leave it out, and the agent prepares jobs that only a person can run.
 
 A tool the key does not allow is refused by the API, which names the permission missing. See [API key permissions](/deploy/authentication#permissions).
@@ -51,11 +51,13 @@ A client is usually configured with the command and its environment, for instanc
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `list_connections`    | Lists the connections of the account: id, name and category.                                                                             |
 | `describe_connection` | Describes one connection: host, port, database, user, tunnel, TLS and options, with every secret masked.                                 |
+| `check_connection`    | Says what a connection lacks to play its role in a job — read its tables as a source, write, empty or create them as a destination.      |
 | `introspect_schema`   | Lists the tables of a SQL connection, or gives the columns, types and keys of up to 20 of them, foreign keys in both directions.         |
 | `suggest_mappings`    | Says which columns hold personal data and which transformer fits each, with how sure the detection is and why. Key columns are flagged.  |
 | `preview_column`      | Shows what a transformer makes of real values of a column, and whether it collapses distinct values together. Asks the person first.     |
 | `create_job`          | Creates a job from a PostgreSQL or MySQL source to PostgreSQL or MySQL destinations, with a mapping for every column of every table.     |
 | `update_job_mappings` | Maps columns of a job anew, or maps a table it did not read yet; the other mappings stay. Asks the person first if the job is scheduled. |
+| `preflight_job`       | Says what a run of a job would meet, without running it: what stops it, what may go wrong, and what it does to the destination.          |
 | `run_job`             | Runs one job now. Asks the person first, every time.                                                                                     |
 | `get_run_status`      | Gives the latest runs of a job and what the most recent one is doing, without failure messages.                                          |
 | `get_run_failure`     | Says why a run failed, in the words of the databases and of the engine. Asks the person first.                                           |
@@ -73,6 +75,12 @@ Running a job writes into real databases, so the agent never runs one alone. Bef
 The mappings of a job are not changed while a run of it is going or starting, since the run reads them when it begins; and they are written only if the job is still as the agent read it — a change made meanwhile, in the job builder or by a run mapping a new column, is not overwritten.
 
 The API does not say which run a trigger starts, so `run_job` refuses while a run of the job is in progress, or while the run it just triggered has not shown yet — `get_run_status` then answers `starting` — and `get_run_status` follows a job, not a run. It names the tables whose sync recorded an error (`failing_tables`); `get_run_failure` says why.
+
+### Checks before a run
+
+`check_connection` and `preflight_job` log in to the connections and read what the account may do there, never a row, and write nothing. The first checks one connection in the role it will play, before the job exists; the second checks a job whole, the way its run checks it at its start ([pre-flight check](/guides/preflight)) — its connections, its engine, and what its mappings do to the destination — and takes up to three minutes, since a worker computes the plan of the run. A run stops on the same blocking findings, so checking first spares a run that would stop anyway; `run_job` does not check by itself.
+
+A finding may come with the statement that grants what the account lacks, and nothing more. The agent is told to show it to you, never to run it. Why a connection could not be reached is not handed to the agent, since the database driver can quote where and how it connects: testing the connection in the UI shows it. The names in the findings — tables, columns, connections — come from the databases, and the agent is told to read them as data.
 
 ### Values from rows
 
