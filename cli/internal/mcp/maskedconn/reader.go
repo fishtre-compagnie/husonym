@@ -8,10 +8,16 @@
 // Secrets are write-only on the MCP surface: they may be set, never read back. This package
 // holds the connection client so that nothing else under cli/internal/mcp has to — the
 // import test at the root of that tree refuses any other way in.
+//
+// It also has the API check a connection, which returns no configuration at all, but the
+// error of the database driver when the connection fails: that error may quote where and how
+// it connects, and is left out here.
 package maskedconn
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -19,8 +25,9 @@ import (
 )
 
 // connectionClient is the part of the connection service this package may call. Each
-// method here must be sent with exclude_sensitive; reader_test.go pins the list, so that
-// widening it is a decision someone takes, not an accident.
+// method here that answers with a connection must be sent with exclude_sensitive, and one
+// that answers with the error of a database driver must have it left out; reader_test.go pins
+// the list, so that widening it is a decision someone takes, not an accident.
 type connectionClient interface {
 	GetConnections(
 		context.Context,
@@ -30,6 +37,10 @@ type connectionClient interface {
 		context.Context,
 		*connect.Request[mgmtv1alpha1.GetConnectionRequest],
 	) (*connect.Response[mgmtv1alpha1.GetConnectionResponse], error)
+	CheckConnectionConfigById(
+		context.Context,
+		*connect.Request[mgmtv1alpha1.CheckConnectionConfigByIdRequest],
+	) (*connect.Response[mgmtv1alpha1.CheckConnectionConfigByIdResponse], error)
 }
 
 // Reader reads the connections of an account, with their secrets masked by the API.
@@ -64,4 +75,50 @@ func (r *Reader) Get(ctx context.Context, connectionId string) (*mgmtv1alpha1.Co
 		return nil, err
 	}
 	return res.Msg.GetConnection(), nil
+}
+
+// Check is what the API found when it logged in to a connection.
+type Check struct {
+	// Connected says whether the API could log in and read what the account may do.
+	Connected bool
+	// Findings are what the connection cannot do that the role asked about needs.
+	Findings []*mgmtv1alpha1.ConnectionCheck
+}
+
+// Check has the API log in to a connection and, given a scope, say what the connection
+// cannot do that its role in a job needs. Why a connection failed is left out: the API
+// hands back the error of the database driver, which may quote where and how it connects.
+func (r *Reader) Check(ctx context.Context, connectionId string, scope *mgmtv1alpha1.ConnectionCheckScope) (Check, error) {
+	res, err := r.client.CheckConnectionConfigById(ctx, connect.NewRequest(&mgmtv1alpha1.CheckConnectionConfigByIdRequest{
+		Id:    connectionId,
+		Scope: scope,
+	}))
+	if err != nil {
+		return Check{}, checkError(err)
+	}
+	return Check{Connected: res.Msg.GetIsConnected(), Findings: res.Msg.GetChecks()}, nil
+}
+
+// checkError keeps the error of a check where the API writes it itself, and replaces the
+// others, which may carry the error of the database driver.
+func checkError(err error) error {
+	// Cut short here or at the API, a call may carry the error it was cut in.
+	if connect.CodeOf(err) == connect.CodeDeadlineExceeded {
+		return errors.New("the check of the connection did not end in time")
+	}
+	if !connect.IsWireError(err) {
+		return fmt.Errorf("the API could not be reached (%s)", connect.CodeOf(err))
+	}
+	switch connect.CodeOf(err) {
+	case connect.CodeInvalidArgument,
+		connect.CodeNotFound,
+		connect.CodePermissionDenied,
+		connect.CodeUnauthenticated:
+		return err
+	default:
+		return fmt.Errorf(
+			"the check of the connection could not end (%s): testing the connection in the UI shows why",
+			connect.CodeOf(err),
+		)
+	}
 }

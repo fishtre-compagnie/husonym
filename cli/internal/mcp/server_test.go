@@ -43,9 +43,14 @@ type fakeConnectionService struct {
 
 	err error
 
-	mu           sync.Mutex
-	listRequests []*mgmtv1alpha1.GetConnectionsRequest
-	getRequests  []*mgmtv1alpha1.GetConnectionRequest
+	// check answers CheckConnectionConfigById, and checkErr fails it.
+	check    *mgmtv1alpha1.CheckConnectionConfigByIdResponse
+	checkErr error
+
+	mu            sync.Mutex
+	listRequests  []*mgmtv1alpha1.GetConnectionsRequest
+	getRequests   []*mgmtv1alpha1.GetConnectionRequest
+	checkRequests []*mgmtv1alpha1.CheckConnectionConfigByIdRequest
 }
 
 func (f *fakeConnectionService) GetConnections(
@@ -91,6 +96,19 @@ func (f *fakeConnectionService) GetConnection(
 	return connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{
 		Connection: postgresConnection(req.Msg.GetId(), name, req.Msg.GetExcludeSensitive()),
 	}), nil
+}
+
+func (f *fakeConnectionService) CheckConnectionConfigById(
+	_ context.Context,
+	req *connect.Request[mgmtv1alpha1.CheckConnectionConfigByIdRequest],
+) (*connect.Response[mgmtv1alpha1.CheckConnectionConfigByIdResponse], error) {
+	f.mu.Lock()
+	f.checkRequests = append(f.checkRequests, req.Msg)
+	f.mu.Unlock()
+	if f.checkErr != nil {
+		return nil, f.checkErr
+	}
+	return connect.NewResponse(f.check), nil
 }
 
 func postgresConnection(id, name string, excludeSensitive bool) *mgmtv1alpha1.Connection {
@@ -433,8 +451,8 @@ func Test_Catalogue(t *testing.T) {
 		}
 	}
 	require.ElementsMatch(t, []string{
-		"describe_connection", "get_run_failure", "get_run_status", "introspect_schema", "list_connections",
-		"preview_column", "suggest_mappings",
+		"check_connection", "describe_connection", "get_run_failure", "get_run_status", "introspect_schema",
+		"list_connections", "preflight_job", "preview_column", "suggest_mappings",
 	}, reading)
 	// Each of these is held by the scope of the API key (plans/mcp-husonym.md §5.1): the API
 	// refuses what the key does not grant, and names the permission missing.

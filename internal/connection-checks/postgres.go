@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/sqlio"
 )
@@ -27,6 +29,9 @@ var (
 
 // usageOnSchema is how a missing USAGE on the schema of a table is named.
 const usageOnSchema = "USAGE on its schema"
+
+// pgInsufficientPrivilege is the SQLSTATE of a statement refused for lack of privilege.
+const pgInsufficientPrivilege = "42501"
 
 // absentTable marks, among the privileges missing, a table that is not there.
 const absentTable = "(absent)"
@@ -87,13 +92,13 @@ func checkPostgresDestination(
 	if err != nil {
 		return nil, err
 	}
-	var foreignKeys error
+	foreignKeysRefused := false
 	if options.SuspendsForeignKeys {
-		if foreignKeys, err = probeForeignKeySuspension(ctx, db, name); err != nil {
+		if foreignKeysRefused, err = probeForeignKeySuspension(ctx, db, name); err != nil {
 			return nil, err
 		}
 	}
-	if len(missing) == 0 && len(truncate) == 0 && len(triggers) == 0 && foreignKeys == nil {
+	if len(missing) == 0 && len(truncate) == 0 && len(triggers) == 0 && !foreignKeysRefused {
 		return nil, nil
 	}
 
@@ -112,7 +117,7 @@ func checkPostgresDestination(
 				"the run: disabling a trigger takes the owner of the table (%s), a member of its role, or a superuser",
 				name, trigger.table, trigger.owner)))
 	}
-	if foreignKeys != nil {
+	if foreignKeysRefused {
 		remedy := ""
 		if postgresVersion(ctx, db) >= 150000 {
 			// GRANT SET ON PARAMETER came with PostgreSQL 15; before, only a superuser may.
@@ -121,9 +126,9 @@ func checkPostgresDestination(
 		findings = append(findings, blocking(CheckForeignKeySuspension, "", []string{"SET on session_replication_role"},
 			remedy,
 			fmt.Sprintf("destination %q cannot suspend foreign keys, which Athanor writes each table in one "+
-				"pass with (%v): from PostgreSQL 15 on, GRANT SET ON PARAMETER session_replication_role TO %s "+
+				"pass with. From PostgreSQL 15 on, GRANT SET ON PARAMETER session_replication_role TO %s "+
 				"allows it, and lets the account suspend foreign keys and triggers on every table it writes; "+
-				"before, only a superuser can. A job run with Benthos does not need it", name, foreignKeys, account)))
+				"before, only a superuser can. A job run with Benthos does not need it", name, account)))
 	}
 	sortFindings(findings)
 	return findings, nil
@@ -307,19 +312,28 @@ func postgresAccount(ctx context.Context, db Db) string {
 }
 
 // probeForeignKeySuspension tries, in a transaction rolled back at once, the statement
-// Athanor writes each page with, and returns why it was refused, or nil. Whether an account
-// may set session_replication_role depends on SUPERUSER, or from PostgreSQL 15 on on GRANT
-// SET ON PARAMETER; a managed service has no real superuser, and reading rolsuper would say
-// no where the grant says yes. Trying it is the one answer that holds everywhere.
-func probeForeignKeySuspension(ctx context.Context, db Db, name string) (refused, err error) {
+// Athanor writes each page with, and says whether the server refused it for lack of
+// privilege. Whether an account may set session_replication_role depends on SUPERUSER, or
+// from PostgreSQL 15 on on GRANT SET ON PARAMETER; a managed service has no real superuser,
+// and reading rolsuper would say no where the grant says yes. Trying it is the one answer
+// that holds everywhere. Any other failure — the connection lost, a timeout, a pooler — is
+// not a finding: it is returned as an error, and never quoted in a message.
+func probeForeignKeySuspension(ctx context.Context, db Db, name string) (refused bool, err error) {
 	disable, _, _ := sqlio.PostgresDialect{}.ForeignKeyChecksStatements()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open a transaction on destination %q: %w", name, err)
+		return false, fmt.Errorf("unable to open a transaction on destination %q: %w", name, err)
 	}
 	_, probeErr := tx.ExecContext(ctx, disable)
 	if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
-		return nil, fmt.Errorf("unable to roll back the probe on destination %q: %w", name, err)
+		return false, fmt.Errorf("unable to roll back the probe on destination %q: %w", name, err)
 	}
-	return probeErr, nil
+	if probeErr == nil {
+		return false, nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(probeErr, &pgErr) && pgErr.Code == pgInsufficientPrivilege {
+		return true, nil
+	}
+	return false, fmt.Errorf("unable to try suspending foreign keys on destination %q: %w", name, probeErr)
 }

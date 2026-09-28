@@ -8,11 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Every method of connectionClient must be sent with exclude_sensitive. Adding one is fine,
-// once its call site sets the flag: this list is here so that it is added on purpose.
+// Every method of connectionClient that answers with a connection must be sent with
+// exclude_sensitive, and one that answers with the error of a database driver must leave it
+// out. Adding one is fine, once its call site does: this list is here so that it is added on
+// purpose.
 func Test_ConnectionClient_MethodsArePinned(t *testing.T) {
 	t.Parallel()
-	require.Equal(t, []string{"GetConnection", "GetConnections"}, testutil.MethodNames(reflect.TypeFor[connectionClient]()))
+	require.Equal(
+		t,
+		[]string{"CheckConnectionConfigById", "GetConnection", "GetConnections"},
+		testutil.MethodNames(reflect.TypeFor[connectionClient]()),
+	)
 }
 
 // The Reader holds its clients through the pinned interfaces and through nothing else: a second

@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -13,8 +14,9 @@ import (
 )
 
 // A method that answers with a run must have its failures emptied at its call site, and a
-// method that makes a job run, now or on a schedule, must ask the person first. Before adding
-// one, make sure its call site does.
+// method that makes a job run, now or on a schedule, must ask the person first, and a method
+// that fails with the error of a database driver must have it replaced. Before adding one,
+// make sure its call site does.
 func Test_JobClient_MethodsArePinned(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, []string{
@@ -26,6 +28,7 @@ func Test_JobClient_MethodsArePinned(t *testing.T) {
 		"GetJobRunEvents",
 		"GetJobRuns",
 		"GetJobStatus",
+		"PreflightJob",
 		"UpdateJobSourceConnection",
 	}, testutil.MethodNames(reflect.TypeFor[jobClient]()))
 }
@@ -119,4 +122,41 @@ func Test_Reader_StartingEndsWhenTheRunShows(t *testing.T) {
 
 	require.False(t, reader.Starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "new"}}))
 	require.False(t, reader.Starting("other", nil))
+}
+
+// A driver's error may quote where and how it connects. The API writes its own words under
+// some codes; the reason a worker failed, and a call cut short, may carry a driver's instead.
+func Test_preflightError(t *testing.T) {
+	t.Parallel()
+	const driver = "failed to connect to `user=shop database=bench`: dial tcp db.internal:5432: i/o timeout"
+	// fromAPI is an error as the client reads it off the wire.
+	fromAPI := func(code connect.Code, message string) error {
+		return connect.NewWireError(code, errors.New(message))
+	}
+
+	for name, tc := range map[string]struct {
+		err  error
+		kept bool
+	}{
+		"no worker":                {fromAPI(connect.CodeFailedPrecondition, "no worker serves this account"), true},
+		"job not found":            {fromAPI(connect.CodeNotFound, "unable to find job"), true},
+		"permission":               {fromAPI(connect.CodePermissionDenied, "missing connection:view_sensitive"), true},
+		"the worker failed":        {fromAPI(connect.CodeUnavailable, "the pre-flight check could not end: " + driver), false},
+		"cut short at the API":     {fromAPI(connect.CodeDeadlineExceeded, "unable to get job: " + driver), false},
+		"cut short here":           {connect.NewError(connect.CodeDeadlineExceeded, context.DeadlineExceeded), false},
+		"the API out of reach":     {connect.NewError(connect.CodeUnavailable, errors.New("dial tcp api.internal:8080")), false},
+		"an error the API did not": {fromAPI(connect.CodeUnknown, driver), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := preflightError(tc.err)
+			if tc.kept {
+				require.Equal(t, tc.err, got)
+				return
+			}
+			require.NotContains(t, got.Error(), "db.internal")
+			require.NotContains(t, got.Error(), "api.internal")
+			require.NotContains(t, got.Error(), "user=")
+		})
+	}
 }

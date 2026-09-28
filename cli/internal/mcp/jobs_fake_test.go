@@ -41,6 +41,10 @@ type fakeJobService struct {
 	created   []*mgmtv1alpha1.CreateJobRequest
 	updated   []*mgmtv1alpha1.UpdateJobSourceConnectionRequest
 	triggered []string
+
+	// preflight answers PreflightJob, and preflightErr fails it.
+	preflight    *mgmtv1alpha1.PreflightJobResponse
+	preflightErr error
 }
 
 func newFakeJobService() *fakeJobService {
@@ -318,4 +322,19 @@ func connectJobs(t *testing.T, jobService *fakeJobService, clientOptions *mcp.Cl
 		data:        &fakeDataService{},
 		jobs:        jobService,
 	}, clientOptions, "")
+}
+
+func (f *fakeJobService) PreflightJob(
+	_ context.Context,
+	req *connect.Request[mgmtv1alpha1.PreflightJobRequest],
+) (*connect.Response[mgmtv1alpha1.PreflightJobResponse], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.job == nil || f.job.GetId() != req.Msg.GetJobId() {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("unable to find job"))
+	}
+	if f.preflightErr != nil {
+		return nil, f.preflightErr
+	}
+	return connect.NewResponse(proto.CloneOf(f.preflight)), nil
 }

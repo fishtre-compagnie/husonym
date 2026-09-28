@@ -34,7 +34,8 @@ import (
 
 // jobClient is the part of the job service this package may call. reader_test.go pins the
 // list, so that widening it is a decision someone takes: a method that answers with a run's
-// failure must have it removed here, and a method that makes a job run must ask first.
+// failure must have it removed here, a method that makes a job run must ask first, and a
+// method that fails with the error of a database driver must have it replaced.
 type jobClient interface {
 	GetJob(
 		context.Context,
@@ -72,6 +73,10 @@ type jobClient interface {
 		context.Context,
 		*connect.Request[mgmtv1alpha1.CreateJobRunRequest],
 	) (*connect.Response[mgmtv1alpha1.CreateJobRunResponse], error)
+	PreflightJob(
+		context.Context,
+		*connect.Request[mgmtv1alpha1.PreflightJobRequest],
+	) (*connect.Response[mgmtv1alpha1.PreflightJobResponse], error)
 }
 
 // ErrDeclined is returned when the person declined, or dismissed the question.
