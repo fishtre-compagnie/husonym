@@ -39,10 +39,8 @@ func (s *Service) ReconcileJobMappings(
 		return nil, err
 	}
 	// Only a run reconciles: it is the one that read the source.
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthenticated(
-			"must provide valid authentication credentials for this endpoint",
-		)
+	if err := s.cfg.WorkerOnly.Allow(user); err != nil {
+		return nil, err
 	}
 
 	jobUuid, err := husonymdb.ToUuid(req.Msg.GetJobId())

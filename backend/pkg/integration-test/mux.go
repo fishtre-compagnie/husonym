@@ -317,7 +317,11 @@ func (s *HusonymApiTestClient) setupMux(
 	)
 
 	jobService := v1alpha1_jobservice.New(
-		&v1alpha1_jobservice.Config{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+		&v1alpha1_jobservice.Config{
+			IsAuthEnabled:  isAuthEnabled,
+			IsHusonymCloud: isHusonymCloud,
+			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+		},
 		husonymDb,
 		s.Mocks.TemporalClientManager,
 		connectionService,
@@ -371,7 +375,10 @@ func (s *HusonymApiTestClient) setupMux(
 		return nil, err
 	}
 	accountSettingService := v1alpha1_accountsettingservice.New(
-		&v1alpha1_accountsettingservice.Config{IsHusonymCloud: isHusonymCloud},
+		&v1alpha1_accountsettingservice.Config{
+			IsHusonymCloud: isHusonymCloud,
+			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+		},
 		husonymDb,
 		userclient,
 		settingsEncryptor,

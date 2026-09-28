@@ -23,7 +23,7 @@ A Helm chart for the Husonym Backend API
 | auth.cliClientId | string | `nil` | The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled) |
 | auth.clientMap | string | `nil` | A map of clientId->clientSecret of allowed clients |
 | auth.enabled | bool | `false` | Enable/Disable authentication |
-| auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Once one is set, only the worker may write the context of a run; without one, any account key allowed to edit jobs may. Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
+| auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Once one is set, only the worker makes the calls that are its alone (the context of a run, the consistency key of an account); without one, any account key allowed to may. Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
 | autoscaling.behavior | string | `nil` | The behavior of the HPA autoscaler |
 | autoscaling.enabled | bool | `false` | Whether or not to install the HPA autoscaler |
 | autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |

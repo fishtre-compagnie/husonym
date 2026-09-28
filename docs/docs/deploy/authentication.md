@@ -97,15 +97,15 @@ A key can do only what its permissions name, whatever the rest of the configurat
 
 ### The worker's key
 
-The worker keeps, in the context of each run, what the run executes and reads it back as it goes: whoever writes that context decides what the run does. So only the worker writes it, never the session of a person.
+Some calls are the worker's alone: writing the context of a run, which holds what the run executes; reading the consistency key of an account, with which its pseudonyms can be replayed; recording the mappings a run reconciled. None of them is ever made from the session of a person.
 
-Give the worker a worker key of its own. It opens only the calls the worker makes, and once it is set, it alone may write the context of a run.
+Give the worker a worker key of its own. It opens only the calls the worker makes, and once it is set, it alone may make those. It passes no role and belongs to no account: keep it as a secret of the infrastructure, never outside the worker.
 
 1. Generate one: it has the form `neo_wt_v1_` followed by a version 4 UUID, for instance `echo "neo_wt_v1_$(uuidgen | tr A-Z a-z)"`.
-2. Allow it on the API, in `HUSONYM_ALLOWED_WORKER_API_KEYS` (several keys, comma-separated, let you rotate it), or in the chart's `auth.workerApiKeys`.
-3. Give it to the worker, in `HUSONYM_API_KEY`, or in the chart's `husonym.apiKey`.
+2. Give it to the worker first, in `HUSONYM_API_KEY`, or in the chart's `husonym.apiKey`.
+3. Then allow it on the API, in `HUSONYM_ALLOWED_WORKER_API_KEYS`, or in the chart's `auth.workerApiKeys`. Several keys, separated by commas, let you rotate it: allow the new one alongside the old, move the worker to it, then drop the old one. The API does not start if a value is not a worker key.
 
-Without a worker key, the worker authenticates with an account key, which cannot be told from another one: any account key allowed to edit jobs may then write the context of a run, and the API warns of it at startup.
+Without a worker key, the worker authenticates with an account key, which cannot be told from another one: any account key allowed to edit jobs may then make those calls, and the API warns of it at startup.
 
 ## Temporal mTLS Authentication
 

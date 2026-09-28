@@ -3,6 +3,8 @@ package integrationtests_test
 import (
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/apikey"
+
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
@@ -34,6 +36,10 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 	)
 	s.setUser(ctx, userclient)
 	s.createPersonalAccount(ctx, userclient)
+	// The consistency key in clear is the worker's alone: a run reads it with the worker's key.
+	worker := s.OSSAuthenticatedLicensedClients.AccountSettings(
+		integrationtests_test.WithUserId(apikey.NewV1WorkerKey()),
+	)
 
 	// One account per sub-test: a setting is held per account, so two sub-tests sharing one
 	// would read each other's.
@@ -74,8 +80,14 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 			setting.GetSecretFingerprints()["anonymization_consistency.derivation_key"],
 		)
 
+		// A person does not read it in clear, even one who may set it.
+		_, err = client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: accountId},
+		))
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+
 		// The run reads it in clear, and it is the key that was given.
-		key, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+		key, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: accountId},
 		))
 		require.NoError(t, err)
@@ -101,7 +113,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 		require.NoError(t, err)
 		require.Len(t, resp.Msg.GetSettings(), 1, "one row per account and kind of setting")
 
-		key, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+		key, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: accountId},
 		))
 		require.NoError(t, err)
@@ -111,7 +123,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 	t.Run("nothing is drawn for an account that was not asked to have one", func(t *testing.T) {
 		accountId := newAccount()
 
-		resp, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+		resp, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{AccountId: accountId},
 		))
 		require.NoError(t, err)
@@ -127,7 +139,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 	t.Run("a key drawn for an account is the one it keeps", func(t *testing.T) {
 		accountId := newAccount()
 
-		first, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+		first, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{
 				AccountId:        accountId,
 				GenerateIfAbsent: true,
@@ -138,7 +150,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 
 		// Asking again — the next run, or the next table of this one — gives the same key,
 		// or the outputs of two runs would not match.
-		second, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+		second, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 			&mgmtv1alpha1.GetAccountConsistencyKeyRequest{
 				AccountId:        accountId,
 				GenerateIfAbsent: true,
@@ -163,7 +175,7 @@ func (s *IntegrationTestSuite) Test_AccountSettingsService() {
 		keys := map[string]struct{}{}
 		for range 2 {
 			accountId := newAccount()
-			resp, err := client.GetAccountConsistencyKey(ctx, connect.NewRequest(
+			resp, err := worker.GetAccountConsistencyKey(ctx, connect.NewRequest(
 				&mgmtv1alpha1.GetAccountConsistencyKeyRequest{
 					AccountId:        accountId,
 					GenerateIfAbsent: true,
