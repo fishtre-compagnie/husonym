@@ -174,7 +174,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 			return nil, err
 		}
 		extraMappings, anonymized, passedThrough := autoMapNewColumns(
-			extraMappings, groupedColumnInfo, tableConstraints, params.HasConsistencyKey,
+			extraMappings, groupedColumnInfo, tableConstraints, job.GetVirtualForeignKeys(), params.HasConsistencyKey,
 		)
 		if len(anonymized) > 0 {
 			logger.Info(fmt.Sprintf(

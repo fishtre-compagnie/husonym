@@ -262,6 +262,9 @@ function postgresTypeToTransformerDataType(
     case 'char':
     case 'citext':
     case 'character varying':
+    // char(n) reads « character(n) » from format_type, and bpchar in the catalog.
+    case 'character':
+    case 'bpchar':
       return TransformerDataType.STRING;
     case 'boolean':
       return TransformerDataType.BOOLEAN;
@@ -311,6 +314,7 @@ function mysqlTypeToTransformerDataType(
     case 'char':
     case 'enum':
     case 'set':
+    case 'tinytext':
     case 'mediumtext':
     case 'longtext':
       return TransformerDataType.STRING;

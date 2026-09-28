@@ -1573,6 +1573,9 @@ message PreflightFinding {
     KIND_DESTINATION_TRIGGERS = 26;
     // References to rows the subset leaves out are written as NULL.
     KIND_REFERENCE_CLEARED_BY_SUBSET = 27;
+    // A column is mapped to a transformer the job builder does not offer for it: one that may
+    // fail on it, or break what it holds, such as a key other rows reference.
+    KIND_TRANSFORMER_DOES_NOT_FIT = 28;
   }
   // What the finding does to a run.
   enum Level {

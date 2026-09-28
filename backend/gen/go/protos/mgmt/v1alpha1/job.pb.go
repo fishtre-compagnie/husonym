@@ -852,6 +852,9 @@ const (
 	PreflightFinding_KIND_DESTINATION_TRIGGERS PreflightFinding_Kind = 26
 	// References to rows the subset leaves out are written as NULL.
 	PreflightFinding_KIND_REFERENCE_CLEARED_BY_SUBSET PreflightFinding_Kind = 27
+	// A column is mapped to a transformer the job builder does not offer for it: one that may
+	// fail on it, or break what it holds, such as a key other rows reference.
+	PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT PreflightFinding_Kind = 28
 )
 
 // Enum value maps for PreflightFinding_Kind.
@@ -874,6 +877,7 @@ var (
 		25: "KIND_RETRY_MAY_DUPLICATE",
 		26: "KIND_DESTINATION_TRIGGERS",
 		27: "KIND_REFERENCE_CLEARED_BY_SUBSET",
+		28: "KIND_TRANSFORMER_DOES_NOT_FIT",
 	}
 	PreflightFinding_Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":                 0,
@@ -893,6 +897,7 @@ var (
 		"KIND_RETRY_MAY_DUPLICATE":         25,
 		"KIND_DESTINATION_TRIGGERS":        26,
 		"KIND_REFERENCE_CLEARED_BY_SUBSET": 27,
+		"KIND_TRANSFORMER_DOES_NOT_FIT":    28,
 	}
 )
 
@@ -14528,7 +14533,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x14PreflightJobResponse\x126\n" +
 	"\x06report\x18\x01 \x01(\v2\x1e.mgmt.v1alpha1.PreflightReportR\x06report\x129\n" +
 	"\n" +
-	"checked_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\"\xfd\x06\n" +
+	"checked_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\"\xa0\a\n" +
 	"\x10PreflightFinding\x128\n" +
 	"\x04kind\x18\x01 \x01(\x0e2$.mgmt.v1alpha1.PreflightFinding.KindR\x04kind\x12;\n" +
 	"\x05level\x18\x02 \x01(\x0e2%.mgmt.v1alpha1.PreflightFinding.LevelR\x05level\x12(\n" +
@@ -14537,7 +14542,7 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\acolumns\x18\x05 \x03(\tR\acolumns\x12\x18\n" +
 	"\amissing\x18\x06 \x03(\tR\amissing\x12\x18\n" +
 	"\amessage\x18\a \x01(\tR\amessage\x12\x1b\n" +
-	"\x06remedy\x18\b \x01(\tH\x01R\x06remedy\x88\x01\x01\"\xcb\x03\n" +
+	"\x06remedy\x18\b \x01(\tH\x01R\x06remedy\x88\x01\x01\"\xee\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11KIND_TABLE_EXISTS\x10\x01\x12\x11\n" +
@@ -14555,7 +14560,8 @@ const file_mgmt_v1alpha1_job_proto_rawDesc = "" +
 	"\x17KIND_READ_IN_ONE_STREAM\x10\x18\x12\x1c\n" +
 	"\x18KIND_RETRY_MAY_DUPLICATE\x10\x19\x12\x1d\n" +
 	"\x19KIND_DESTINATION_TRIGGERS\x10\x1a\x12$\n" +
-	" KIND_REFERENCE_CLEARED_BY_SUBSET\x10\x1b\"\\\n" +
+	" KIND_REFERENCE_CLEARED_BY_SUBSET\x10\x1b\x12!\n" +
+	"\x1dKIND_TRANSFORMER_DOES_NOT_FIT\x10\x1c\"\\\n" +
 	"\x05Level\x12\x15\n" +
 	"\x11LEVEL_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eLEVEL_BLOCKING\x10\x01\x12\x11\n" +

@@ -44,12 +44,13 @@ func transformerCases() []*Case {
 				schema.MySQL:    "Duplicate entry",
 				schema.Postgres: "duplicate key value violates unique constraint",
 			}), mgmtv1alpha1.PreflightFinding_KIND_CONSTANT_ON_UNIQUE),
-		transformerFailure("tr-null-on-not-null-column",
-			"Transformer Null sur une colonne NOT NULL : échec explicite, jamais de valeur par défaut implicite",
+		expectingFinding(transformerFailure("tr-null-on-not-null-column",
+			"Transformer Null sur une colonne NOT NULL : avertissement au pré-vol, puis échec explicite, "+
+				"jamais de valeur par défaut implicite",
 			"libelle", nullTransformer(), map[schema.Dialect]string{
 				schema.MySQL:    "cannot be null",
 				schema.Postgres: "violates not-null constraint",
-			}),
+			}), mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT),
 		transformerOnOrderColumn(),
 		transformerOnPrimaryKey(),
 		transformedKeyOfDiscardedRow(),

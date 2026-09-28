@@ -3,6 +3,7 @@ package benthosbuilder_builders
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -39,6 +41,8 @@ func sourceFindings(
 	foreignKeys map[string][]*tableplan.ForeignKey,
 ) ([]*preflight.Finding, error) {
 	var findings []*preflight.Finding
+	isForeignKey := job_util.ForeignKeyColumns(constraints.ForeignKeyConstraints, job.GetVirtualForeignKeys())
+	jobType := job_util.SupportedJobTypeOf(job.GetSource())
 	for _, config := range runConfigs {
 		// Every pass of a table reads it the same way: the insert pass speaks for them.
 		if config.RunType() != rc.RunTypeInsert {
@@ -61,6 +65,13 @@ func sourceFindings(
 					"it writes again the rows already written, which the destination then holds twice", table),
 			})
 		}
+
+		misfits, err := transformerMisfits(ctx, transformers, table, columns[table], colTransformerMap[table],
+			isForeignKey[table], jobType)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, misfits...)
 
 		constant, err := constantColumns(ctx, transformers, colTransformerMap[table])
 		if err != nil {
@@ -200,6 +211,69 @@ func allIn(columns, set []string) bool {
 func retries(job *mgmtv1alpha1.Job) bool {
 	policy := job.GetSyncOptions().GetRetryPolicy()
 	return policy != nil && policy.MaximumAttempts != nil && *policy.MaximumAttempts != 1
+}
+
+// transformerMisfits reports the columns of a table mapped to a transformer the job builder
+// would not offer them, as ValidateJobMappings refuses it: a job written through the API or
+// changed since is held to the same rule at its run. A warning: the rule is what the builder
+// offers, stricter than what makes a run fail. The columns given one same transformer and
+// taking the same others make one finding, so that a report stays small on a wide table. A
+// generated column is left out, reported as generated_column_written with what the engine
+// does with it.
+func transformerMisfits(
+	ctx context.Context,
+	configs *transformerConfigs,
+	table string,
+	columns map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	transformers map[string]*mgmtv1alpha1.JobMappingTransformer,
+	isForeignKey map[string]bool,
+	jobType mgmtv1alpha1.SupportedJobType,
+) ([]*preflight.Finding, error) {
+	type misfit struct {
+		transformer string
+		fitting     []string
+		columns     []string
+	}
+	var misfits []*misfit
+	for _, column := range slices.Sorted(maps.Keys(transformers)) {
+		row, ok := columns[column]
+		if !ok || isGenerated(row) {
+			continue
+		}
+		config, err := configs.of(ctx, transformers[column])
+		if err != nil {
+			return nil, err
+		}
+		transformer, fitting, ok := job_util.Misfit(config, row, isForeignKey[column], jobType)
+		if !ok {
+			continue
+		}
+		i := slices.IndexFunc(misfits, func(m *misfit) bool {
+			return m.transformer == transformer && slices.Equal(m.fitting, fitting)
+		})
+		if i < 0 {
+			misfits = append(misfits, &misfit{transformer: transformer, fitting: fitting})
+			i = len(misfits) - 1
+		}
+		misfits[i].columns = append(misfits[i].columns, column)
+	}
+	findings := make([]*preflight.Finding, 0, len(misfits))
+	for _, m := range misfits {
+		message := fmt.Sprintf("%s.%s: %s does not fit this column; it takes %s",
+			table, m.columns[0], m.transformer, strings.Join(m.fitting, ", "))
+		if len(m.columns) > 1 {
+			message = fmt.Sprintf("%s: %s does not fit the columns %s; they take %s",
+				table, m.transformer, strings.Join(m.columns, ", "), strings.Join(m.fitting, ", "))
+		}
+		findings = append(findings, &preflight.Finding{
+			Kind:    mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT,
+			Level:   preflight.Warning,
+			Table:   table,
+			Columns: m.columns,
+			Message: message,
+		})
+	}
+	return findings, nil
 }
 
 // constantColumns returns the columns a transformer gives one same value on every row.

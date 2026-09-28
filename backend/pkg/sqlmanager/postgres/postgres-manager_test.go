@@ -91,3 +91,13 @@ func Test_BuildPgInsertIdentityAlwaysSql(t *testing.T) {
 		require.Equal(t, expected, result)
 	})
 }
+
+// A generated column takes no value, stored or virtual (PostgreSQL 18); nor does an identity
+// generated always. An identity by default does.
+func Test_isColumnUpdateAllowed(t *testing.T) {
+	require.True(t, isColumnUpdateAllowed("", ""))
+	require.True(t, isColumnUpdateAllowed("d", ""))
+	require.False(t, isColumnUpdateAllowed("a", ""))
+	require.False(t, isColumnUpdateAllowed("", "s"))
+	require.False(t, isColumnUpdateAllowed("", "v"))
+}

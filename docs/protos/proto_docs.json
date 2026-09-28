@@ -10661,6 +10661,11 @@
               "name": "KIND_REFERENCE_CLEARED_BY_SUBSET",
               "number": "27",
               "description": "References to rows the subset leaves out are written as NULL."
+            },
+            {
+              "name": "KIND_TRANSFORMER_DOES_NOT_FIT",
+              "number": "28",
+              "description": "A column is mapped to a transformer the job builder does not offer for it: one that may\nfail on it, or break what it holds, such as a key other rows reference."
             }
           ]
         },

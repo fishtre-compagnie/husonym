@@ -241,8 +241,18 @@ func Test_sourceFindings_ReferenceClearedBySubset(t *testing.T) {
 		// The whole parent is copied: every reference finds its row.
 		{Columns: []string{"station_id"}, NotNull: []bool{false}, ParentSchema: "public", ParentTable: "pays"},
 	}}
-	findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, true, configs, constraints, nil,
-		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
+	findings, err := sourceFindings(
+		context.Background(),
+		newTransformerConfigs(nil),
+		&mgmtv1alpha1.Job{},
+		false,
+		true,
+		configs,
+		constraints,
+		nil,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{},
+		foreignKeys,
+	)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	assert.Equal(t, mgmtv1alpha1.PreflightFinding_KIND_REFERENCE_CLEARED_BY_SUBSET, findings[0].Kind)
@@ -403,16 +413,36 @@ func Test_sourceFindings_KeyTheSubsetJoinsOn(t *testing.T) {
 	constraints := &sqlmanager_shared.TableConstraints{
 		PrimaryKeyConstraints: map[string][]string{transfert: {"id"}, station: {"id"}},
 	}
-	findings, err := sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, true, configs, constraints, nil,
-		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
+	findings, err := sourceFindings(
+		context.Background(),
+		newTransformerConfigs(nil),
+		&mgmtv1alpha1.Job{},
+		false,
+		true,
+		configs,
+		constraints,
+		nil,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{},
+		foreignKeys,
+	)
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	assert.Equal(t, mgmtv1alpha1.PreflightFinding_KIND_REFERENCE_CLEARED_BY_SUBSET, findings[0].Kind)
 	assert.Equal(t, []string{"retour_id"}, findings[0].Columns)
 
 	// Subset by the where clause of each table alone: no key is joined, both are cleared.
-	findings, err = sourceFindings(context.Background(), newTransformerConfigs(nil), &mgmtv1alpha1.Job{}, false, false, configs, constraints, nil,
-		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{}, foreignKeys)
+	findings, err = sourceFindings(
+		context.Background(),
+		newTransformerConfigs(nil),
+		&mgmtv1alpha1.Job{},
+		false,
+		false,
+		configs,
+		constraints,
+		nil,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{},
+		foreignKeys,
+	)
 	require.NoError(t, err)
 	require.Len(t, findings, 2)
 }
@@ -465,4 +495,82 @@ func Test_BuildDestinationConfig_FindingsPerDestination(t *testing.T) {
 	require.Len(t, findings, 1)
 	assert.Equal(t, mgmtv1alpha1.PreflightFinding_KIND_GENERATED_COLUMN_WRITTEN, findings[0].Kind)
 	assert.Equal(t, "dest-b", findings[0].ConnectionID)
+}
+
+// A column mapped to a transformer the job builder would not offer it is a warning of the
+// run, with the message ValidateJobMappings gives: the rule is the same, held at the run for
+// a job written through the API. A user defined transformer is held to the rule of the one it
+// is made from; a generated column is left to generated_column_written.
+func Test_sourceFindings_TransformerDoesNotFit(t *testing.T) {
+	constraints := &sqlmanager_shared.TableConstraints{
+		PrimaryKeyConstraints: map[string][]string{preflightTable: {"id"}},
+		ForeignKeyConstraints: map[string][]*sqlmanager_shared.ForeignConstraint{
+			preflightTable: {{Columns: []string{"station_id"}, NotNullable: []bool{true}}},
+		},
+	}
+	stored := "STORED GENERATED"
+	columns := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{preflightTable: {
+		"id":         {ColumnName: "id", DataType: "bigint", UpdateAllowed: true},
+		"station_id": {ColumnName: "station_id", DataType: "bigint", UpdateAllowed: true},
+		"pays_id":    {ColumnName: "pays_id", DataType: "bigint", UpdateAllowed: true},
+		"libelle":    {ColumnName: "libelle", DataType: "text", UpdateAllowed: true},
+		"quantite":   {ColumnName: "quantite", DataType: "integer", UpdateAllowed: true},
+		"total":      {ColumnName: "total", DataType: "integer", GeneratedType: &stored},
+	}}
+	email := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateEmailConfig{
+		GenerateEmailConfig: &mgmtv1alpha1.GenerateEmail{},
+	}}
+	udt := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
+		UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: "udt-email"},
+	}}
+	job := &mgmtv1alpha1.Job{
+		Source: &mgmtv1alpha1.JobSource{Options: &mgmtv1alpha1.JobSourceOptions{
+			Config: &mgmtv1alpha1.JobSourceOptions_Postgres{Postgres: &mgmtv1alpha1.PostgresSourceConnectionOptions{}},
+		}},
+		VirtualForeignKeys: []*mgmtv1alpha1.VirtualForeignConstraint{
+			{Schema: "public", Table: "article", Columns: []string{"pays_id"}},
+		},
+	}
+	configs := newTransformerConfigs(nil)
+	configs.resolved["udt-email"] = email
+
+	findings, err := sourceFindings(context.Background(), configs, job, false, true,
+		planOf(t, []string{"id", "station_id", "pays_id", "libelle", "quantite", "total"}, constraints),
+		constraints, columns,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{preflightTable: {
+			"id":         mapped(passthroughConfig()),
+			"station_id": mapped(email), // a foreign key sent nowhere
+			"pays_id":    mapped(udt),   // a virtual foreign key, through a user defined transformer
+			"libelle":    mapped(email),
+			"quantite":   mapped(email), // a type the transformer does not take
+			"total":      mapped(passthroughConfig()),
+		}}, nil)
+	require.NoError(t, err)
+
+	var misfits []*preflight.Finding
+	for _, f := range findings {
+		if f.Kind == mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT {
+			misfits = append(misfits, f)
+		}
+	}
+	require.Len(t, misfits, 2)
+	// Two foreign keys given the same transformer, taking the same others: one finding.
+	assert.Equal(t, preflight.Warning, misfits[0].Level)
+	assert.Equal(t, preflightTable, misfits[0].Table)
+	assert.Equal(t, []string{"pays_id", "station_id"}, misfits[0].Columns)
+	assert.Contains(t, misfits[0].Message,
+		preflightTable+": generate_email does not fit the columns pays_id, station_id; they take ")
+	assert.Contains(t, misfits[0].Message, "passthrough", "a foreign key keeps its value")
+	assert.Equal(t, []string{"quantite"}, misfits[1].Columns)
+	assert.Contains(t, misfits[1].Message,
+		preflightTable+".quantite: generate_email does not fit this column; it takes ")
+
+	// Without a source, the type of job is unknown, and nothing is said of the transformers.
+	unknown, err := sourceFindings(context.Background(), configs, &mgmtv1alpha1.Job{}, false, true,
+		planOf(t, []string{"id", "quantite"}, constraints), constraints, columns,
+		map[string]map[string]*mgmtv1alpha1.JobMappingTransformer{preflightTable: {
+			"id": mapped(passthroughConfig()), "quantite": mapped(email),
+		}}, nil)
+	require.NoError(t, err)
+	assert.NotContains(t, kindsOf(unknown), mgmtv1alpha1.PreflightFinding_KIND_TRANSFORMER_DOES_NOT_FIT)
 }

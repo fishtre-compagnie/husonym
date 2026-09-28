@@ -1614,6 +1614,7 @@ class PreflightFinding(_message.Message):
         KIND_RETRY_MAY_DUPLICATE: _ClassVar[PreflightFinding.Kind]
         KIND_DESTINATION_TRIGGERS: _ClassVar[PreflightFinding.Kind]
         KIND_REFERENCE_CLEARED_BY_SUBSET: _ClassVar[PreflightFinding.Kind]
+        KIND_TRANSFORMER_DOES_NOT_FIT: _ClassVar[PreflightFinding.Kind]
     KIND_UNSPECIFIED: PreflightFinding.Kind
     KIND_TABLE_EXISTS: PreflightFinding.Kind
     KIND_READABLE: PreflightFinding.Kind
@@ -1631,6 +1632,7 @@ class PreflightFinding(_message.Message):
     KIND_RETRY_MAY_DUPLICATE: PreflightFinding.Kind
     KIND_DESTINATION_TRIGGERS: PreflightFinding.Kind
     KIND_REFERENCE_CLEARED_BY_SUBSET: PreflightFinding.Kind
+    KIND_TRANSFORMER_DOES_NOT_FIT: PreflightFinding.Kind
     class Level(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
         LEVEL_UNSPECIFIED: _ClassVar[PreflightFinding.Level]
