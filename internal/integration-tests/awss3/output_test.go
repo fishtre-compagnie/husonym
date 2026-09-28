@@ -106,17 +106,24 @@ logger:
 	defer cancel()
 	require.NoError(t, stream.Run(runCtx))
 
-	for i, want := range []string{"row 1", "row 2"} {
-		object, err := client.GetObject(ctx, &s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(fmt.Sprintf("workflows/run/%d.txt", i+1)),
-		})
+	// The keys are not asserted: count() is evaluated again when a write is retried, as it
+	// was by the native aws_s3 output, so a retry while the gateway warms up moves them on.
+	listed, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String("workflows/run/"),
+	})
+	require.NoError(t, err)
+	bodies, keys := []string{}, []string{}
+	for _, item := range listed.Contents {
+		keys = append(keys, aws.ToString(item.Key))
+		object, err := client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(bucket), Key: item.Key})
 		require.NoError(t, err)
 		body, err := io.ReadAll(object.Body)
 		require.NoError(t, err)
-		require.Equal(t, want, string(body))
 		require.Equal(t, "text/plain", aws.ToString(object.ContentType))
+		bodies = append(bodies, string(body))
 	}
+	require.ElementsMatch(t, []string{"row 1", "row 2"}, bodies, "objects written: %v", keys)
 }
 
 // startS3 starts a SeaweedFS S3 gateway which knows one identity, that of the connection.
