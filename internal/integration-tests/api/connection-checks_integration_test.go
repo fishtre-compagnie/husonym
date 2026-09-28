@@ -94,6 +94,26 @@ func (s *IntegrationTestSuite) Test_CheckConnectionConfigById_Role() {
 		Tables: orders,
 	}).GetChecks())
 
+	// A column the run writes and the table lacks stops it at its first INSERT, unless the
+	// run adds the columns it lacks. The names are compared exactly, as the run quotes them.
+	withColumns := func(initTableSchema bool, columns ...string) []*mgmtv1alpha1.ConnectionCheck {
+		return check(&mgmtv1alpha1.ConnectionCheckScope{
+			Role:            mgmtv1alpha1.ConnectionRole_CONNECTION_ROLE_DESTINATION,
+			Engine:          mgmtv1alpha1.JobEngine_JOB_ENGINE_BENTHOS,
+			Tables:          []*mgmtv1alpha1.ConnectionCheckTable{{Schema: schema, Table: "orders", Columns: columns}},
+			InitTableSchema: initTableSchema,
+		}).GetChecks()
+	}
+	require.Empty(t, withColumns(false, "id", "note"))
+	absent := withColumns(false, "id", "total", "note", "Note")
+	require.Len(t, absent, 1)
+	require.Equal(t, mgmtv1alpha1.ConnectionCheck_KIND_TABLE_EXISTS, absent[0].GetKind())
+	require.Equal(t, mgmtv1alpha1.ConnectionCheck_LEVEL_BLOCKING, absent[0].GetLevel())
+	require.Equal(t, schema+".orders", absent[0].GetTable())
+	require.Equal(t, []string{"total", "Note"}, absent[0].GetMissing())
+	require.Empty(t, absent[0].GetRemedy(), "no grant adds a column")
+	require.Empty(t, withColumns(true, "id", "total"), "the run adds the columns it lacks")
+
 	// Suspending foreign keys is Athanor's: required of it, a warning when the engine is the
 	// deployment's own, which the API does not know. The server as a whole is checked
 	// without tables.

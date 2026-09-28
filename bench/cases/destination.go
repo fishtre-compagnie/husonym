@@ -39,6 +39,20 @@ func destinationCases() []*Case {
 				schema.MySQL:    "doesn't have a default value",
 				schema.Postgres: `null value in column "obligatoire"`,
 			}),
+		// The run stops at its start, naming the column, rather than on its first INSERT in
+		// the database's words: on MySQL since the check asked about columns, on PostgreSQL
+		// since the check reads them from the catalog.
+		destinationDiffers("destination-missing-column",
+			//nolint:misspell // titre du rapport, rédigé en français
+			"Destination à laquelle manque une colonne que le job écrit : arrêt au démarrage du run",
+			map[schema.Dialect][]string{
+				schema.MySQL:    {"ALTER TABLE {db}.{q:ARTICLE} DROP COLUMN {q:libelle}"},
+				schema.Postgres: {"ALTER TABLE {db}.{q:ARTICLE} DROP COLUMN {q:libelle}"},
+			},
+			map[schema.Dialect]string{
+				schema.MySQL:    "has no column libelle",
+				schema.Postgres: "has no column libelle",
+			}),
 		onConflictUpdateOnUniqueKey(),
 	}
 }

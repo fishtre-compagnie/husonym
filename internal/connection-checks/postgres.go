@@ -76,6 +76,12 @@ func checkPostgresDestination(
 	if err != nil {
 		return nil, fmt.Errorf("unable to read the privileges of destination %q: %w", name, err)
 	}
+	var absentColumns map[postgresTable][]string
+	if !options.CreatesTables {
+		if absentColumns, err = postgresAbsentColumns(ctx, db, tables); err != nil {
+			return nil, fmt.Errorf("unable to read the columns of destination %q: %w", name, err)
+		}
+	}
 	var truncate []postgresTable
 	if options.Truncates {
 		missingTruncate, err := postgresMissingPrivileges(ctx, db, tables, []string{"TRUNCATE"}, options.CreatesTables)
@@ -98,12 +104,17 @@ func checkPostgresDestination(
 			return nil, err
 		}
 	}
-	if len(missing) == 0 && len(truncate) == 0 && len(triggers) == 0 && !foreignKeysRefused {
+	if len(missing) == 0 && len(absentColumns) == 0 && len(truncate) == 0 && len(triggers) == 0 &&
+		!foreignKeysRefused {
 		return nil, nil
 	}
 
 	account := postgresAccount(ctx, db)
 	findings := describeMissing(CheckWritable, "destination", name, "write", missing, account)
+	for table, columns := range absentColumns {
+		findings = append(findings, blocking(CheckTableExists, table.String(), columns, "",
+			fmt.Sprintf("destination %q has no column %s in %s", name, strings.Join(columns, ", "), table)))
+	}
 	for _, table := range truncate {
 		findings = append(findings, blocking(CheckTruncate, table.String(), []string{"TRUNCATE"},
 			postgresGrantOnTable([]string{"TRUNCATE"}, table, account),
@@ -146,16 +157,17 @@ func (t postgresTable) quoted() string {
 	return sqlmanager_postgres.EscapePgColumn(t.schema) + "." + sqlmanager_postgres.EscapePgColumn(t.table)
 }
 
-// tablesJSON lists tables as JSON, which PostgreSQL unfolds itself: an array parameter is
-// something only some drivers bind.
+// tablesJSON lists tables, with the columns a run writes, as JSON, which PostgreSQL unfolds
+// itself: an array parameter is something only some drivers bind.
 func tablesJSON(tables []*Table) (string, error) {
 	type tableRef struct {
-		Schema string `json:"schema_name"`
-		Table  string `json:"table_name"`
+		Schema  string   `json:"schema_name"`
+		Table   string   `json:"table_name"`
+		Columns []string `json:"columns"`
 	}
 	refs := make([]tableRef, len(tables))
 	for i, t := range tables {
-		refs[i] = tableRef{Schema: t.Schema, Table: t.Table}
+		refs[i] = tableRef{Schema: t.Schema, Table: t.Table, Columns: t.Columns}
 	}
 	bits, err := json.Marshal(refs)
 	return string(bits), err
@@ -215,6 +227,48 @@ ORDER BY 1, 2, 3`, tablesList, string(privilegesJSON), createsTables)
 		missing[table] = append(missing[table], privilege)
 	}
 	return missing, rows.Err()
+}
+
+// postgresAbsentColumns returns, per table the destination has, the columns a run writes
+// that the table lacks, in the order they were given. A table that is not there is left
+// out: postgresMissingPrivileges reports it. PostgreSQL shows the columns of every table in
+// its catalog, whatever the account may do with them, and compares their names exactly, as
+// the run quotes them.
+func postgresAbsentColumns(ctx context.Context, db Db, tables []*Table) (map[postgresTable][]string, error) {
+	if !slices.ContainsFunc(tables, func(t *Table) bool { return len(t.Columns) > 0 }) {
+		return nil, nil
+	}
+	tablesList, err := tablesJSON(tables)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.QueryContext(ctx, `
+SELECT t.schema_name, t.table_name, c.column_name
+FROM jsonb_to_recordset($1::jsonb) AS t(schema_name text, table_name text, columns jsonb)
+CROSS JOIN LATERAL jsonb_array_elements_text(coalesce(t.columns, '[]'::jsonb))
+  WITH ORDINALITY AS c(column_name, position)
+CROSS JOIN LATERAL (
+  SELECT to_regclass(quote_ident(t.schema_name) || '.' || quote_ident(t.table_name)) AS rel
+) r
+WHERE r.rel IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM pg_catalog.pg_attribute a
+  WHERE a.attrelid = r.rel AND a.attname = c.column_name AND a.attnum > 0 AND NOT a.attisdropped
+)
+ORDER BY 1, 2, c.position`, tablesList)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	absent := map[postgresTable][]string{}
+	for rows.Next() {
+		var table postgresTable
+		var column string
+		if err := rows.Scan(&table.schema, &table.table, &column); err != nil {
+			return nil, err
+		}
+		absent[table] = append(absent[table], column)
+	}
+	return absent, rows.Err()
 }
 
 // triggerNotOwned is a table holding a trigger the account cannot disable, and its owner.
