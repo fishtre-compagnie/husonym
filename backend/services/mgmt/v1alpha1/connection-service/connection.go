@@ -61,6 +61,15 @@ func (s *Service) checkConnection(
 ) (*connect.Response[mgmtv1alpha1.CheckConnectionConfigResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
+	// A role is checked on MySQL and PostgreSQL only: on another kind, answering with no
+	// finding would say that nothing is missing, when nothing was checked.
+	config := msg.GetConnectionConfig()
+	if msg.Scope != nil && config.GetPgConfig() == nil && config.GetMysqlConfig() == nil {
+		return nil, husonymerrors.NewBadRequest(
+			"a connection is checked in a role on MySQL and PostgreSQL only: test it without a scope",
+		)
+	}
+
 	switch msg.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_PgConfig, *mgmtv1alpha1.ConnectionConfig_MysqlConfig, *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
 		role, err := getDbRoleFromConnectionConfig(msg.GetConnectionConfig(), logger)
@@ -220,6 +229,20 @@ func (s *Service) CheckConnectionConfigById(
 		Id: req.Msg.Id,
 	}))
 	if err != nil {
+		return nil, err
+	}
+	// The check logs in with what the connection stores: asked of those who may see it. For
+	// anyone else, GetConnection masks the secrets, and the check would log in with the mask.
+	user, err := s.userclient.GetUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn := connResp.Msg.GetConnection()
+	if err := user.EnforceConnection(
+		ctx,
+		userdata.NewDomainEntity(conn.GetAccountId(), conn.GetId()),
+		rbac.ConnectionAction_ViewSensitive,
+	); err != nil {
 		return nil, err
 	}
 

@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +84,10 @@ func Test_checkPostgresDestination_cannotSuspendForeignKeys(t *testing.T) {
 	mock.ExpectQuery("pg_has_role").WillReturnRows(sqlmock.NewRows([]string{"t", "o"}))
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta("SET LOCAL session_replication_role = replica")).
-		WillReturnError(errors.New(`permission denied to set parameter "session_replication_role"`))
+		WillReturnError(&pgconn.PgError{
+			Code:    pgInsufficientPrivilege,
+			Message: `permission denied to set parameter "session_replication_role"`,
+		})
 	mock.ExpectRollback()
 	expectAccount(mock, "SELECT current_user", "husonym")
 	mock.ExpectQuery(regexp.QuoteMeta("server_version_num")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(160004))
@@ -93,9 +98,31 @@ func Test_checkPostgresDestination_cannotSuspendForeignKeys(t *testing.T) {
 	require.Len(t, findings, 1)
 	require.Equal(t, CheckForeignKeySuspension, findings[0].Check)
 	require.Contains(t, findings[0].Message, "cannot suspend foreign keys")
+	require.NotContains(t, findings[0].Message, "permission denied", "the server's words are never quoted")
 	require.NotContains(t, findings[0].Message, "make the account a superuser", "no remedy hands out more than asked")
 	require.Contains(t, findings[0].Message, `GRANT SET ON PARAMETER session_replication_role TO "husonym"`)
 	require.Equal(t, `GRANT SET ON PARAMETER session_replication_role TO "husonym";`, findings[0].Remedy)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A probe that fails for another reason than a privilege — the connection lost, a timeout,
+// a pooler — says nothing of the account: it is an error, never a finding quoting the driver.
+func Test_checkPostgresDestination_foreignKeysProbeFails(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	mock.ExpectQuery(regexp.QuoteMeta(readOnlyQuery)).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow("off"))
+	mock.ExpectQuery("has_table_privilege").WillReturnRows(sqlmock.NewRows([]string{"s", "t", "p"}))
+	mock.ExpectQuery("pg_has_role").WillReturnRows(sqlmock.NewRows([]string{"t", "o"}))
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("SET LOCAL session_replication_role = replica")).
+		WillReturnError(errors.New("write tcp 10.0.3.4:41234->10.0.9.12:5432: broken pipe"))
+	mock.ExpectRollback()
+
+	findings, err := checkPostgresDestination(context.Background(), db, "dest", articles,
+		DestinationOptions{SuspendsForeignKeys: true})
+	require.Error(t, err)
+	require.Empty(t, findings)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -155,7 +182,7 @@ func Test_checkPostgresDestination_foreignKeysBefore15(t *testing.T) {
 	mock.ExpectQuery("pg_has_role").WillReturnRows(sqlmock.NewRows([]string{"t", "o"}))
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta("SET LOCAL session_replication_role = replica")).
-		WillReturnError(errors.New("permission denied"))
+		WillReturnError(&pgconn.PgError{Code: pgInsufficientPrivilege, Message: "permission denied"})
 	mock.ExpectRollback()
 	expectAccount(mock, "SELECT current_user", "husonym")
 	mock.ExpectQuery(regexp.QuoteMeta("server_version_num")).WillReturnRows(sqlmock.NewRows([]string{"v"}).AddRow(140011))

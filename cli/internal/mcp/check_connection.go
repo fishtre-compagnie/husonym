@@ -14,7 +14,7 @@ import (
 type checkConnectionInput struct {
 	ConnectionId         string            `json:"connection_id"                    jsonschema:"the id of the connection, as list_connections gives it"`
 	Role                 string            `json:"role"                             jsonschema:"source: a job reads it; destination: a job writes into it"`
-	Tables               []checkTableInput `json:"tables,omitempty"                 jsonschema:"the tables of the job; leave out to check the server as a whole"`
+	Tables               []checkTableInput `json:"tables,omitempty"                 jsonschema:"the tables of the job, at most 1000; leave out to check the server as a whole"`
 	Engine               string            `json:"engine,omitempty"                 jsonschema:"athanor or benthos; leave out for the deployment default, which only a worker knows: what only Athanor needs is then a warning"`
 	InitTableSchema      bool              `json:"init_table_schema,omitempty"      jsonschema:"destination only: the run creates the tables and columns it lacks"`
 	TruncateBeforeInsert bool              `json:"truncate_before_insert,omitempty" jsonschema:"destination only: the run empties each table before writing it"`
@@ -39,7 +39,7 @@ func addCheckConnection(server *mcp.Server, reader *maskedconn.Reader) {
 		Description: "Check that a PostgreSQL or MySQL connection can do what a job will ask of it, before the job " +
 			"exists: the API logs in, and says what the account lacks to read the tables as a source, or to " +
 			"write, empty and create them as a destination. No row is read and nothing is written. Once the " +
-			"job exists, preflight_job checks it whole. " + namesAreData,
+			"job exists, preflight_job checks it whole. Other kinds of connection are refused. " + namesAreData,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
 	}, checkConnection(reader))
 }

@@ -29,7 +29,8 @@ func addPreflightJob(server *mcp.Server, jobReader *jobs.Reader) {
 			"connections cannot do that the job needs, what its engine cannot run, and what its mappings " +
 			"would do to the destination. The plan of the run is computed by a worker, which logs in to the " +
 			"connections; no row is read and nothing is written. A run stops on the same blocking findings. " +
-			"Takes up to three minutes. " + namesAreData,
+			"The connections are checked on MySQL and PostgreSQL only. Takes up to three minutes; a call made " +
+			"while a check of the same job is going waits for it. " + namesAreData,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
 	}, preflightJob(jobReader))
 }

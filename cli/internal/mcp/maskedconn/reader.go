@@ -16,6 +16,7 @@ package maskedconn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -98,9 +99,16 @@ func (r *Reader) Check(ctx context.Context, connectionId string, scope *mgmtv1al
 	return Check{Connected: res.Msg.GetIsConnected(), Findings: res.Msg.GetChecks()}, nil
 }
 
-// checkError keeps the error of a check when the API wrote it, and replaces the others, which
-// may carry the error of the database driver.
+// checkError keeps the error of a check where the API writes it itself, and replaces the
+// others, which may carry the error of the database driver.
 func checkError(err error) error {
+	// Cut short here or at the API, a call may carry the error it was cut in.
+	if connect.CodeOf(err) == connect.CodeDeadlineExceeded {
+		return errors.New("the check of the connection did not end in time")
+	}
+	if !connect.IsWireError(err) {
+		return fmt.Errorf("the API could not be reached (%s)", connect.CodeOf(err))
+	}
 	switch connect.CodeOf(err) {
 	case connect.CodeInvalidArgument,
 		connect.CodeNotFound,
