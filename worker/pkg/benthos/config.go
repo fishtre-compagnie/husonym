@@ -54,20 +54,17 @@ type InputAwsDynamoDB struct {
 	Where          *string `json:"where,omitempty" yaml:"where,omitempty"`
 	ConsistentRead bool    `json:"consistent_read" yaml:"consistent_read"`
 
-	Region   string `json:"region,omitempty"   yaml:"region,omitempty"`
-	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-
-	Credentials *AwsCredentials `json:"credentials,omitempty" yaml:"credentials,omitempty"`
+	// The region, endpoint and credentials are read from the connection when the stream runs,
+	// so that no secret is written to the stored config of a run.
+	ConnectionId string `json:"connection_id" yaml:"connection_id"`
 }
 
 type OutputAwsDynamoDB struct {
 	Table          string            `json:"table"                      yaml:"table"`
 	JsonMapColumns map[string]string `json:"json_map_columns,omitempty" yaml:"json_map_columns,omitempty"`
 
-	Region   string `json:"region,omitempty"   yaml:"region,omitempty"`
-	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-
-	Credentials *AwsCredentials `json:"credentials,omitempty" yaml:"credentials,omitempty"`
+	// The region, endpoint and credentials are read from the connection when the stream runs.
+	ConnectionId string `json:"connection_id" yaml:"connection_id"`
 
 	MaxInFlight *int      `json:"max_in_flight,omitempty" yaml:"max_in_flight,omitempty"`
 	Batching    *Batching `json:"batching,omitempty"      yaml:"batching,omitempty"`
@@ -111,8 +108,9 @@ type MongoWriteConcern struct {
 }
 
 type OpenAiGenerate struct {
-	ApiUrl     string   `json:"api_url"               yaml:"api_url"`
-	ApiKey     string   `json:"api_key"               yaml:"api_key"`
+	// The API url and key are read from the connection when the stream runs.
+	ConnectionId string `json:"connection_id" yaml:"connection_id"`
+
 	UserPrompt *string  `json:"user_prompt,omitempty" yaml:"user_prompt,omitempty"`
 	Columns    []string `json:"columns"               yaml:"columns"`
 	DataTypes  []string `json:"data_types"            yaml:"data_types"`
@@ -187,7 +185,7 @@ type OutputConfig struct {
 type Outputs struct {
 	PooledSqlInsert *PooledSqlInsert       `json:"pooled_sql_insert,omitempty" yaml:"pooled_sql_insert,omitempty"`
 	PooledSqlUpdate *PooledSqlUpdate       `json:"pooled_sql_update,omitempty" yaml:"pooled_sql_update,omitempty"`
-	AwsS3           *AwsS3Insert           `json:"aws_s3,omitempty"            yaml:"aws_s3,omitempty"`
+	HusonymAwsS3    *HusonymAwsS3Insert    `json:"husonym_aws_s3,omitempty"    yaml:"husonym_aws_s3,omitempty"`
 	GcpCloudStorage *GcpCloudStorageOutput `json:"gcp_cloud_storage,omitempty" yaml:"gcp_cloud_storage,omitempty"`
 	Retry           *RetryConfig           `json:"retry,omitempty"             yaml:"retry,omitempty"`
 	Broker          *OutputBrokerConfig    `json:"broker,omitempty"            yaml:"broker,omitempty"`
@@ -262,29 +260,16 @@ type PooledSqlInsert struct {
 	MaxInFlight                 int       `json:"max_in_flight,omitempty"        yaml:"max_in_flight,omitempty"`
 }
 
-type AwsS3Insert struct {
-	Bucket       string    `json:"bucket"                  yaml:"bucket"`
+type HusonymAwsS3Insert struct {
+	// The bucket, region, endpoint and credentials are read from the connection when the
+	// stream runs.
+	ConnectionId string    `json:"connection_id"           yaml:"connection_id"`
 	MaxInFlight  int       `json:"max_in_flight"           yaml:"max_in_flight"`
 	Path         string    `json:"path"                    yaml:"path"`
 	Batching     *Batching `json:"batching,omitempty"      yaml:"batching,omitempty"`
 	Timeout      string    `json:"timeout,omitempty"       yaml:"timeout,omitempty"`
 	StorageClass string    `json:"storage_class,omitempty" yaml:"storage_class,omitempty"`
 	ContentType  string    `json:"content_type,omitempty"  yaml:"content_type,omitempty"`
-
-	Region   string `json:"region,omitempty"   yaml:"region,omitempty"`
-	Endpoint string `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-
-	Credentials *AwsCredentials `json:"credentials,omitempty" yaml:"credentials,omitempty"`
-}
-
-type AwsCredentials struct {
-	Profile        string `json:"profile,omitempty"          yaml:"profile,omitempty"`
-	Id             string `json:"id,omitempty"               yaml:"id,omitempty"`
-	Secret         string `json:"secret,omitempty"           yaml:"secret,omitempty"`
-	Token          string `json:"token,omitempty"            yaml:"token,omitempty"`
-	FromEc2Role    bool   `json:"from_ec2_role,omitempty"    yaml:"from_ec2_role,omitempty"`
-	Role           string `json:"role,omitempty"             yaml:"role,omitempty"`
-	RoleExternalId string `json:"role_external_id,omitempty" yaml:"role_external_id,omitempty"`
 }
 
 type GcpCloudStorageOutput struct {

@@ -343,6 +343,7 @@ func (c *clisync) configureAndRunSync() error {
 		benthos_environment.WithConnectionDataConfig(&benthos_environment.ConnectionDataConfig{
 			HusonymConnectionDataApi: c.connectiondataclient,
 		}),
+		benthos_environment.WithConnections(getConnectionById),
 		benthos_environment.WithStopChannel(stopChan),
 		benthos_environment.WithBlobEnv(bloblang.NewEnvironment()),
 	)

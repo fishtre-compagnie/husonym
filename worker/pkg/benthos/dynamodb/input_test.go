@@ -2,11 +2,14 @@ package husonym_benthos_dynamodb
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	dynamodbmapper "github.com/fishtre-compagnie/husonym/internal/database-record-mapper/dynamodb"
 	"github.com/redpanda-data/benthos/v4/public/service"
 	"github.com/stretchr/testify/mock"
@@ -168,13 +171,14 @@ func Test_buildExecStatement(t *testing.T) {
 }
 
 func Test_RegisterDynamoDBInput(t *testing.T) {
-	err := RegisterDynamoDbInput(service.NewEmptyEnvironment())
+	err := RegisterDynamoDbInput(service.NewEmptyEnvironment(), connectionsOf())
 	require.NoError(t, err)
 }
 
 func Test_InputBasic_Config(t *testing.T) {
 	conf, err := dynamoInputConfigSpec().ParseYAML(`
 table: test-table
+connection_id: dynamo
 `, service.NewEmptyEnvironment())
 	require.NoError(t, err)
 	require.NotNil(t, conf)
@@ -185,56 +189,86 @@ func Test_InputBasic_Config_Opts(t *testing.T) {
 table: test-table
 where: foo = '123'
 consistent_read: true
+connection_id: dynamo
 `, service.NewEmptyEnvironment())
 	require.NoError(t, err)
 	require.NotNil(t, conf)
 }
 
-func Test_InputBasic_Config_Creds(t *testing.T) {
-	conf, err := dynamoInputConfigSpec().ParseYAML(`
-table: test-table
-region: us-west-2
-endpoint: http://localhost:8000
-credentials:
-  profile: default
-  id: dummyid
-  secret: dummysecret
-  token: dummytoken
-  from_ec2_role: true
-  role: my-role
-  role_external_id: 123
-`, service.NewEmptyEnvironment())
+func Test_Input_ReadsTheConnection(t *testing.T) {
+	dynamoConfig := &mgmtv1alpha1.DynamoDBConnectionConfig{Region: aws.String("us-west-2")}
+	getConnection := connectionsOf(dynamoConnection("dynamo", dynamoConfig))
+
+	input, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, nil)
 	require.NoError(t, err)
-	require.NotNil(t, conf)
+	require.Equal(t, "us-west-2", input.(*dynamodbInput).awsConfig.Region)
+
+	_, err = newDynamoDbBatchInput(parseInputConfig(t, "unknown"), getConnection, nil)
+	require.ErrorContains(t, err, "unknown")
+
+	getConnection = connectionsOf(&mgmtv1alpha1.Connection{
+		Id: "pg",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{}},
+		},
+	})
+	_, err = newDynamoDbBatchInput(parseInputConfig(t, "pg"), getConnection, nil)
+	require.ErrorContains(t, err, "not a DynamoDB connection")
 }
 
-func Test_Input_AwsCreds(t *testing.T) {
+func parseInputConfig(t *testing.T, connectionId string) *service.ParsedConfig {
+	t.Helper()
 	conf, err := dynamoInputConfigSpec().ParseYAML(`
 table: test-table
-region: us-west-2
-endpoint: http://localhost:8000
-credentials:
-  profile: default
-  id: dummyid
-  secret: dummysecret
-  token: dummytoken
-  from_ec2_role: true
-  role: my-role
-  role_external_id: 123
+connection_id: `+connectionId+`
 `, service.NewEmptyEnvironment())
 	require.NoError(t, err)
-	require.NotNil(t, conf)
+	return conf
+}
 
-	credsConfig := getAwsCredentialsConfigFromParsedConf(conf)
-	require.NotNil(t, credsConfig)
-	require.Equal(t, "us-west-2", credsConfig.Region)
-	require.Equal(t, "http://localhost:8000", credsConfig.Endpoint)
-	require.Equal(t, "default", credsConfig.Profile)
-	require.Equal(t, "dummyid", credsConfig.Id)
-	require.Equal(t, "dummysecret", credsConfig.Secret)
-	require.Equal(t, "dummytoken", credsConfig.Token)
-	require.True(t, credsConfig.UseEc2)
-	require.Equal(t, "my-role", credsConfig.Role)
-	require.Equal(t, "123", credsConfig.RoleExternalId)
-	require.Equal(t, "husonym", credsConfig.RoleSessionName)
+func dynamoConnection(id string, config *mgmtv1alpha1.DynamoDBConnectionConfig) *mgmtv1alpha1.Connection {
+	return &mgmtv1alpha1.Connection{
+		Id: id,
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_DynamodbConfig{DynamodbConfig: config},
+		},
+	}
+}
+
+// connectionsOf resolves connections the way the worker does: by id, among those of the run.
+func connectionsOf(
+	connections ...*mgmtv1alpha1.Connection,
+) func(connectionId string) (connectionmanager.ConnectionInput, error) {
+	return func(connectionId string) (connectionmanager.ConnectionInput, error) {
+		for _, connection := range connections {
+			if connection.GetId() == connectionId {
+				return connection, nil
+			}
+		}
+		return nil, fmt.Errorf("unable to find connection by id: %q", connectionId)
+	}
+}
+
+// A connection whose AWS config cannot be resolved fails the stream when it is built, not in a
+// Connect that would be retried forever.
+func Test_UnresolvableAwsConfigFailsTheBuild(t *testing.T) {
+	t.Setenv("AWS_CONFIG_FILE", t.TempDir()+"/config")
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", t.TempDir()+"/credentials")
+	profile := "husonym-absent-profile"
+	getConnection := connectionsOf(dynamoConnection("dynamo", &mgmtv1alpha1.DynamoDBConnectionConfig{
+		Credentials: &mgmtv1alpha1.AwsS3Credentials{Profile: &profile},
+	}))
+
+	_, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, nil)
+	require.ErrorContains(t, err, profile)
+
+	outputConf, err := dynamoOutputConfigSpec().ParseYAML(`
+table: FooTable
+connection_id: dynamo
+string_columns:
+  id: ${!json("id")}
+`, nil)
+	require.NoError(t, err)
+	_, err = ddboConfigFromParsed(outputConf, getConnection)
+	require.ErrorContains(t, err, profile)
 }

@@ -6,7 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	husonym_benthos_awss3 "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/awss3"
 	husonym_benthos_defaulttransform "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/default_transform"
 	husonym_benthos_dynamodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/dynamodb"
 	husonym_benthos_error "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/error"
@@ -33,6 +35,10 @@ type RegisterConfig struct {
 	mongoConfig *MongoConfig // nil to disable
 
 	connectionDataConfig *ConnectionDataConfig // nil to diable
+
+	// Resolves the connections of the run for the DynamoDB, S3 and OpenAI plugins, which
+	// read their credentials from the connection when the stream runs. nil to disable.
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error)
 
 	stopChannel chan<- error
 
@@ -74,6 +80,13 @@ func WithRedisConfig(redisConfig *RedisConfig) Option {
 func WithConnectionDataConfig(connectionDataCfg *ConnectionDataConfig) Option {
 	return func(cfg *RegisterConfig) {
 		cfg.connectionDataConfig = connectionDataCfg
+	}
+}
+func WithConnections(
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+) Option {
+	return func(cfg *RegisterConfig) {
+		cfg.getConnection = getConnection
 	}
 }
 func WithBlobEnv(b *bloblang.Environment) Option {
@@ -219,15 +232,29 @@ func NewWithEnvironment(
 		}
 	}
 
-	err := openaigenerate.RegisterOpenaiGenerate(env)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"unable to register openai_generate input to benthos instance: %w",
-			err,
-		)
+	if config.getConnection != nil {
+		err := openaigenerate.RegisterOpenaiGenerate(env, config.getConnection)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"unable to register openai_generate input to benthos instance: %w",
+				err,
+			)
+		}
+		err = husonym_benthos_dynamodb.RegisterDynamoDbInput(env, config.getConnection)
+		if err != nil {
+			return nil, fmt.Errorf("unable to register dynamodb input to benthos instance: %w", err)
+		}
+		err = husonym_benthos_dynamodb.RegisterDynamoDbOutput(env, config.getConnection)
+		if err != nil {
+			return nil, fmt.Errorf("unable to register dynamodb output to benthos instance: %w", err)
+		}
+		err = husonym_benthos_awss3.RegisterAwsS3Output(env, config.getConnection)
+		if err != nil {
+			return nil, fmt.Errorf("unable to register husonym_aws_s3 output to benthos instance: %w", err)
+		}
 	}
 
-	err = husonym_benthos_error.RegisterErrorProcessor(env, config.stopChannel)
+	err := husonym_benthos_error.RegisterErrorProcessor(env, config.stopChannel)
 	if err != nil {
 		return nil, fmt.Errorf("unable to register error processor to benthos instance: %w", err)
 	}
@@ -235,16 +262,6 @@ func NewWithEnvironment(
 	err = husonym_benthos_error.RegisterErrorOutput(env, config.stopChannel)
 	if err != nil {
 		return nil, fmt.Errorf("unable to register error output to benthos instance: %w", err)
-	}
-
-	err = husonym_benthos_dynamodb.RegisterDynamoDbInput(env)
-	if err != nil {
-		return nil, fmt.Errorf("unable to register dynamodb input to benthos instance: %w", err)
-	}
-
-	err = husonym_benthos_dynamodb.RegisterDynamoDbOutput(env)
-	if err != nil {
-		return nil, fmt.Errorf("unable to register dynamodb output to benthos instance: %w", err)
 	}
 
 	err = husonym_benthos_defaulttransform.ReisterDefaultTransformerProcessor(env)

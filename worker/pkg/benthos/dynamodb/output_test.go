@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cenkalti/backoff/v7"
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	husonym_types "github.com/fishtre-compagnie/husonym/internal/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,10 @@ func testDDBOWriter(t *testing.T, conf string) *dynamoDBWriter {
 	pConf, err := dynamoOutputConfigSpec().ParseYAML(conf, nil)
 	require.NoError(t, err)
 
-	dConf, err := ddboConfigFromParsed(pConf)
+	dConf, err := ddboConfigFromParsed(
+		pConf,
+		connectionsOf(dynamoConnection("dynamo", &mgmtv1alpha1.DynamoDBConnectionConfig{})),
+	)
 	require.NoError(t, err)
 
 	w, err := newDynamoDBWriter(dConf, service.MockResources())
@@ -58,6 +62,7 @@ func testDDBOWriter(t *testing.T, conf string) *dynamoDBWriter {
 func TestDynamoDBHappy(t *testing.T) {
 	db := testDDBOWriter(t, `
 table: FooTable
+connection_id: dynamo
 string_columns:
   id: ${!json("id")}
   content: ${!json("content")}
@@ -118,6 +123,7 @@ func TestDynamoDBSadToGood(t *testing.T) {
 
 	db := testDDBOWriter(t, `
 table: FooTable
+connection_id: dynamo
 string_columns:
   id: ${!json("id")}
   content: ${!json("content")}
@@ -216,6 +222,7 @@ func TestDynamoDBSadToGoodBatch(t *testing.T) {
 
 	db := testDDBOWriter(t, `
 table: FooTable
+connection_id: dynamo
 string_columns:
   id: ${!json("id")}
   content: ${!json("content")}
@@ -311,6 +318,7 @@ func TestDynamoDBSad(t *testing.T) {
 
 	db := testDDBOWriter(t, `
 table: FooTable
+connection_id: dynamo
 string_columns:
   id: ${!json("id")}
   content: ${!json("content")}
@@ -419,6 +427,7 @@ func TestDynamoDBSadBatch(t *testing.T) {
 
 	db := testDDBOWriter(t, `
 table: FooTable
+connection_id: dynamo
 string_columns:
   id: ${!json("id")}
   content: ${!json("content")}

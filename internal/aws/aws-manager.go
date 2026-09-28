@@ -65,7 +65,7 @@ func (n *HusonymAwsManager) newDynamoDbClient(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*dynamodb.Client, error) {
-	cfg, err := getDynamoAwsConfig(ctx, connCfg)
+	cfg, err := DynamoDbAwsConfig(ctx, connCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (n *HusonymAwsManager) NewS3Client(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*s3.Client, error) {
-	cfg, err := getS3AwsConfig(ctx, connCfg)
+	cfg, err := S3AwsConfig(ctx, connCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,8 @@ func withS3Region(region *string) func(o *s3.Options) {
 	}
 }
 
-func getS3AwsConfig(
+// S3AwsConfig resolves the AWS config of an S3 connection: region, endpoint and credentials.
+func S3AwsConfig(
 	ctx context.Context,
 	s3ConnConfig *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*aws.Config, error) {
@@ -146,7 +147,9 @@ func getS3AwsConfig(
 	})
 }
 
-func getDynamoAwsConfig(
+// DynamoDbAwsConfig resolves the AWS config of a DynamoDB connection: region, endpoint and
+// credentials.
+func DynamoDbAwsConfig(
 	ctx context.Context,
 	dynConnConfig *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*aws.Config, error) {

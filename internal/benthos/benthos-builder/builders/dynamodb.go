@@ -12,6 +12,7 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
@@ -66,11 +67,7 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 								tableOptsMap[tableMapping.Table],
 							),
 							ConsistentRead: dynamoJobSourceOpts.GetEnableConsistentRead(),
-							Region:         dynamoSourceConfig.GetRegion(),
-							Endpoint:       dynamoSourceConfig.GetEndpoint(),
-							Credentials: buildBenthosS3Credentials(
-								dynamoSourceConfig.GetCredentials(),
-							),
+							ConnectionId:   sourceConnection.GetId(),
 						},
 					},
 				},
@@ -150,6 +147,7 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 			RunType:     runconfigs.RunTypeInsert,
 			DependsOn:   []*runconfigs.DependsOn{},
 			Columns:     columns,
+			BenthosDsns: []*bb_shared.BenthosDsn{{ConnectionId: sourceConnection.GetId()}},
 
 			Metriclabels: metrics.MetricLabels{
 				metrics.NewEqLabel(metrics.TableSchemaLabel, tableMapping.Schema),
@@ -190,6 +188,10 @@ func (b *dyanmodbSyncBuilder) BuildDestinationConfig(
 			benthosConfig.TableName,
 		)
 	}
+	config.BenthosDsns = append(
+		config.BenthosDsns,
+		&bb_shared.BenthosDsn{ConnectionId: params.DestConnection.GetId()},
+	)
 	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
 		AwsDynamoDB: &husonym_benthos.OutputAwsDynamoDB{
 			Table: mappedTable,
@@ -206,9 +208,7 @@ func (b *dyanmodbSyncBuilder) BuildDestinationConfig(
 				Count:  25,
 			},
 
-			Region:      dynamoConfig.GetRegion(),
-			Endpoint:    dynamoConfig.GetEndpoint(),
-			Credentials: buildBenthosS3Credentials(dynamoConfig.GetCredentials()),
+			ConnectionId: params.DestConnection.GetId(),
 		},
 	})
 
@@ -230,36 +230,4 @@ func toDynamoDbSourceTableOptionMap(
 		output[opt.Table] = opt
 	}
 	return output
-}
-
-func buildBenthosS3Credentials(
-	mgmtCreds *mgmtv1alpha1.AwsS3Credentials,
-) *husonym_benthos.AwsCredentials {
-	if mgmtCreds == nil {
-		return nil
-	}
-	creds := &husonym_benthos.AwsCredentials{}
-	if mgmtCreds.Profile != nil {
-		creds.Profile = *mgmtCreds.Profile
-	}
-	if mgmtCreds.AccessKeyId != nil {
-		creds.Id = *mgmtCreds.AccessKeyId
-	}
-	if mgmtCreds.SecretAccessKey != nil {
-		creds.Secret = *mgmtCreds.SecretAccessKey
-	}
-	if mgmtCreds.SessionToken != nil {
-		creds.Token = *mgmtCreds.SessionToken
-	}
-	if mgmtCreds.FromEc2Role != nil {
-		creds.FromEc2Role = *mgmtCreds.FromEc2Role
-	}
-	if mgmtCreds.RoleArn != nil {
-		creds.Role = *mgmtCreds.RoleArn
-	}
-	if mgmtCreds.RoleExternalId != nil {
-		creds.RoleExternalId = *mgmtCreds.RoleExternalId
-	}
-
-	return creds
 }

@@ -62,8 +62,7 @@ func (b *generateAIBuilder) BuildSourceConfigs(
 	}
 	sourceConnection := params.SourceConnection
 
-	openaiConfig := sourceConnection.GetConnectionConfig().GetOpenaiConfig()
-	if openaiConfig == nil {
+	if sourceConnection.GetConnectionConfig().GetOpenaiConfig() == nil {
 		return nil, errors.New("configured source connection is not an openai configuration")
 	}
 	constraintConnection, err := getConstraintConnection(
@@ -136,7 +135,7 @@ func (b *generateAIBuilder) BuildSourceConfigs(
 		userBatchSize = &ubs
 	}
 	sourceResponses := buildBenthosAiGenerateSourceConfigResponses(
-		openaiConfig,
+		sourceConnection.GetId(),
 		mappings,
 		sourceOptions.GetModelName(),
 		userPrompt,
@@ -147,7 +146,7 @@ func (b *generateAIBuilder) BuildSourceConfigs(
 }
 
 func buildBenthosAiGenerateSourceConfigResponses(
-	openaiconfig *mgmtv1alpha1.OpenAiConnectionConfig,
+	openaiConnectionId string,
 	mappings []*aiGenerateMappings,
 	model string,
 	userPrompt *string,
@@ -174,14 +173,13 @@ func buildBenthosAiGenerateSourceConfigResponses(
 				Input: &husonym_benthos.InputConfig{
 					Inputs: husonym_benthos.Inputs{
 						OpenAiGenerate: &husonym_benthos.OpenAiGenerate{
-							ApiUrl:     openaiconfig.ApiUrl,
-							ApiKey:     openaiconfig.ApiKey,
-							UserPrompt: userPrompt,
-							Columns:    columns,
-							DataTypes:  dataTypes,
-							Model:      model,
-							Count:      tableMapping.Count,
-							BatchSize:  batchSize,
+							ConnectionId: openaiConnectionId,
+							UserPrompt:   userPrompt,
+							Columns:      columns,
+							DataTypes:    dataTypes,
+							Model:        model,
+							Count:        tableMapping.Count,
+							BatchSize:    batchSize,
 						},
 					},
 				},
@@ -205,8 +203,9 @@ func buildBenthosAiGenerateSourceConfigResponses(
 				tableMapping.Schema,
 				tableMapping.Table,
 			), // todo: may need to expand on this
-			Config:    bc,
-			DependsOn: []*runconfigs.DependsOn{},
+			Config:      bc,
+			DependsOn:   []*runconfigs.DependsOn{},
+			BenthosDsns: []*bb_shared.BenthosDsn{{ConnectionId: openaiConnectionId}},
 
 			TableSchema: tableMapping.Schema,
 			TableName:   tableMapping.Table,

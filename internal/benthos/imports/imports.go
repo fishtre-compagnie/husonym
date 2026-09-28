@@ -5,7 +5,6 @@ import (
 	_ "github.com/redpanda-data/benthos/v4/public/components/pure"
 	_ "github.com/redpanda-data/benthos/v4/public/components/pure/extended"
 
-	_ "github.com/redpanda-data/connect/v4/public/components/aws"
 	_ "github.com/redpanda-data/connect/v4/public/components/gcp"
 
 	_ "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"

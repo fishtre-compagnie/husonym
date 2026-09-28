@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/redpanda-data/benthos/v4/public/service"
@@ -22,8 +23,8 @@ const (
 
 func getSpec() *service.ConfigSpec {
 	return service.NewConfigSpec().
-		Field(service.NewStringField("api_url").Default(openaiApiUrl)).
-		Field(service.NewStringField("api_key")).
+		Field(service.NewStringField("connection_id").
+			Description("The Husonym connection whose API url and key are used.")).
 		Field(service.NewStringField("user_prompt").Optional()).
 		Field(service.NewStringListField("columns")).
 		Field(service.NewStringListField("data_types")).
@@ -32,12 +33,15 @@ func getSpec() *service.ConfigSpec {
 		Field(service.NewIntField("batch_size"))
 }
 
-func RegisterOpenaiGenerate(env *service.Environment) error {
+func RegisterOpenaiGenerate(
+	env *service.Environment,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+) error {
 	return env.RegisterBatchInput(
 		"openai_generate",
 		getSpec(),
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
-			rdr, err := newGenerateReader(conf, mgr)
+			rdr, err := newGenerateReader(conf, getConnection, mgr)
 			if err != nil {
 				return nil, err
 			}
@@ -69,16 +73,28 @@ type generateReader struct {
 
 func newGenerateReader(
 	conf *service.ParsedConfig,
+	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
 	mgr *service.Resources,
 ) (*generateReader, error) {
-	apiUrl, err := conf.FieldString("api_url")
+	// The API url and key live in the connection only, so that the stored config of a run
+	// holds no secret.
+	connectionId, err := conf.FieldString("connection_id")
 	if err != nil {
 		return nil, err
 	}
-	apikey, err := conf.FieldString("api_key")
+	connection, err := getConnection(connectionId)
 	if err != nil {
 		return nil, err
 	}
+	openaiConfig := connection.GetConnectionConfig().GetOpenaiConfig()
+	if openaiConfig == nil {
+		return nil, fmt.Errorf("connection %q is not an OpenAI connection", connectionId)
+	}
+	apiUrl := openaiConfig.GetApiUrl()
+	if apiUrl == "" {
+		apiUrl = openaiApiUrl
+	}
+	apikey := openaiConfig.GetApiKey()
 	var userPrompt *string
 	if conf.Contains("user_prompt") {
 		p, err := conf.FieldString("user_prompt")

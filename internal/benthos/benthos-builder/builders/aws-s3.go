@@ -9,6 +9,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 )
@@ -81,11 +82,15 @@ func (b *awsS3SyncBuilder) BuildDestinationConfig(
 		storageClass = convertToS3StorageClass(destinationOpts.GetStorageClass()).String()
 	}
 
+	config.BenthosDsns = append(
+		config.BenthosDsns,
+		&bb_shared.BenthosDsn{ConnectionId: params.DestConnection.GetId()},
+	)
 	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
 		Fallback: []husonym_benthos.Outputs{
 			{
-				AwsS3: &husonym_benthos.AwsS3Insert{
-					Bucket:       connAwsS3Config.Bucket,
+				HusonymAwsS3: &husonym_benthos.HusonymAwsS3Insert{
+					ConnectionId: params.DestConnection.GetId(),
 					MaxInFlight:  int(batchingConfig.MaxInFlight),
 					Timeout:      timeout,
 					StorageClass: storageClass,
@@ -100,9 +105,6 @@ func (b *awsS3SyncBuilder) BuildDestinationConfig(
 							{Compress: &husonym_benthos.CompressProcessor{Algorithm: "gzip"}},
 						},
 					},
-					Credentials: buildBenthosS3Credentials(connAwsS3Config.Credentials),
-					Region:      connAwsS3Config.GetRegion(),
-					Endpoint:    connAwsS3Config.GetEndpoint(),
 				},
 			},
 			// kills activity depending on error
