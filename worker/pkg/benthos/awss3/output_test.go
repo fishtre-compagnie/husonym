@@ -168,6 +168,7 @@ func Test_RegisterAwsS3Output(t *testing.T) {
 func Test_S3Writer_FailsToBuildOnAnUnresolvableAwsConfig(t *testing.T) {
 	t.Setenv("AWS_CONFIG_FILE", t.TempDir()+"/config")
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", t.TempDir()+"/credentials")
+	t.Setenv("AWS_PROFILE", "")
 	profile := "husonym-absent-profile"
 	connection := s3Connection("s3", "the-bucket")
 	connection.GetConnectionConfig().GetAwsS3Config().Credentials = &mgmtv1alpha1.AwsS3Credentials{Profile: &profile}

@@ -288,6 +288,25 @@ func GetConnectionById(
 	return getConnResp.Msg.Connection, nil
 }
 
+// GetConnectionOfAccount reads a connection of the run's account. The worker's key reads the
+// connections of any account: an id read from a run context, which whoever wrote it chose, must
+// not reach another account's.
+func GetConnectionOfAccount(
+	ctx context.Context,
+	connclient mgmtv1alpha1connect.ConnectionServiceClient,
+	connectionId string,
+	accountId string,
+) (*mgmtv1alpha1.Connection, error) {
+	connection, err := GetConnectionById(ctx, connclient, connectionId)
+	if err != nil {
+		return nil, err
+	}
+	if connection.GetAccountId() != accountId {
+		return nil, fmt.Errorf("connection %q does not belong to the account of the run", connectionId)
+	}
+	return connection, nil
+}
+
 type SqlJobDestinationOpts struct {
 	TruncateBeforeInsert bool
 	TruncateCascade      bool

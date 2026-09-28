@@ -21,7 +21,7 @@ func connectionIdField() *service.ConfigField {
 // dynamoDbConnection is what a component holds of its connection: the resolved AWS config and
 // the endpoint, which prevails over one the worker's environment sets for the service.
 type dynamoDbConnection struct {
-	awsConfig aws.Config
+	awsConfig *aws.Config
 	endpoint  string
 }
 
@@ -53,5 +53,5 @@ func resolveDynamoDbConnection(
 	if err != nil {
 		return dynamoDbConnection{}, fmt.Errorf("unable to resolve the aws config of connection %q: %w", connectionId, err)
 	}
-	return dynamoDbConnection{awsConfig: *awsConfig, endpoint: dynamoConfig.GetEndpoint()}, nil
+	return dynamoDbConnection{awsConfig: awsConfig, endpoint: dynamoConfig.GetEndpoint()}, nil
 }

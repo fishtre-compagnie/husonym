@@ -131,7 +131,7 @@ func (a *Activity) RunPostTableSync(
 		if len(destCfg.Statements) == 0 {
 			continue
 		}
-		destinationConnection, err := shared.GetConnectionById(ctx, a.connclient, destConnectionId)
+		destinationConnection, err := shared.GetConnectionOfAccount(ctx, a.connclient, destConnectionId, req.AccountId)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"unable to get destination connection (%s) by id: %w",

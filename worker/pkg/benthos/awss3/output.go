@@ -78,7 +78,7 @@ type putObjectAPI interface {
 }
 
 type s3Writer struct {
-	awsConfig    aws.Config
+	awsConfig    *aws.Config
 	endpoint     string
 	bucket       string
 	path         *service.InterpolatedString
@@ -130,7 +130,7 @@ func newS3Writer(
 		return nil, err
 	}
 	return &s3Writer{
-		awsConfig:    *awsConfig,
+		awsConfig:    awsConfig,
 		endpoint:     s3Config.GetEndpoint(),
 		bucket:       s3Config.GetBucket(),
 		path:         path,

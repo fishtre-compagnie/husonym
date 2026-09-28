@@ -451,6 +451,9 @@ func (s *Service) CreateJob(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.verifyAiConnectionInAccount(ctx, req.Msg.GetSource(), req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	if connectionIdToVerify != nil {
 		if err := s.verifyConnectionInAccount(ctx, *connectionIdToVerify, req.Msg.AccountId); err != nil {
 			return nil, err
@@ -1039,6 +1042,9 @@ func (s *Service) UpdateJobSourceConnection(
 	if err := s.verifyConnectionInAccount(ctx, connectionIdToVerify, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
+	if err := s.verifyAiConnectionInAccount(ctx, req.Msg.GetSource(), jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	// retrieves the connection details
 	conn, err := s.connectionService.GetConnection(
@@ -1486,6 +1492,20 @@ func (s *Service) IsJobNameAvailable(
 	return connect.NewResponse(&mgmtv1alpha1.IsJobNameAvailableResponse{
 		IsAvailable: count == 0,
 	}), nil
+}
+
+// verifyAiConnectionInAccount checks the OpenAI connection of an AI generate source: a run
+// spends its key, so it belongs to the job's account like the source's other connections.
+func (s *Service) verifyAiConnectionInAccount(
+	ctx context.Context,
+	source *mgmtv1alpha1.JobSource,
+	accountId string,
+) error {
+	aiGenerate := source.GetOptions().GetAiGenerate()
+	if aiGenerate == nil {
+		return nil
+	}
+	return s.verifyConnectionInAccount(ctx, aiGenerate.GetAiConnectionId(), accountId)
 }
 
 func (s *Service) verifyConnectionInAccount(

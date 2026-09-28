@@ -604,17 +604,11 @@ func (a *Activity) getConnectionsFromConnectionIds(
 		idx := idx
 		connectionId := connectionId
 		errgrp.Go(func() error {
-			resp, err := a.connclient.GetConnection(
-				errctx,
-				connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionId}),
-			)
+			connection, err := shared.GetConnectionOfAccount(errctx, a.connclient, connectionId, accountId)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve connection: %w", err)
 			}
-			if resp.Msg.GetConnection().GetAccountId() != accountId {
-				return fmt.Errorf("connection %q does not belong to the account of the run", connectionId)
-			}
-			connections[idx] = resp.Msg.Connection
+			connections[idx] = connection
 			return nil
 		})
 	}

@@ -69,14 +69,14 @@ func (n *HusonymAwsManager) newDynamoDbClient(
 	if err != nil {
 		return nil, err
 	}
-	return NewDynamoDbClientFromConfig(*cfg, connCfg.GetEndpoint()), nil
+	return NewDynamoDbClientFromConfig(cfg, connCfg.GetEndpoint()), nil
 }
 
 // NewDynamoDbClientFromConfig returns the DynamoDB client of a resolved config. The endpoint of
 // the connection, when it has one, prevails over one the worker's environment sets for the
 // service (AWS_ENDPOINT_URL_DYNAMODB, a profile's services section).
-func NewDynamoDbClientFromConfig(cfg aws.Config, endpoint string) *dynamodb.Client {
-	return dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+func NewDynamoDbClientFromConfig(cfg *aws.Config, endpoint string) *dynamodb.Client {
+	return dynamodb.NewFromConfig(*cfg, func(o *dynamodb.Options) {
 		if endpoint != "" {
 			o.BaseEndpoint = aws.String(endpoint)
 		}
@@ -91,14 +91,14 @@ func (n *HusonymAwsManager) NewS3Client(
 	if err != nil {
 		return nil, err
 	}
-	return NewS3ClientFromConfig(*cfg, connCfg.GetEndpoint()), nil
+	return NewS3ClientFromConfig(cfg, connCfg.GetEndpoint()), nil
 }
 
 // NewS3ClientFromConfig returns the S3 client of a resolved config. The endpoint of the
 // connection, when it has one, prevails over one the worker's environment sets for the service
 // (AWS_ENDPOINT_URL_S3, a profile's services section).
-func NewS3ClientFromConfig(cfg aws.Config, endpoint string) *s3.Client {
-	return s3.NewFromConfig(cfg, func(o *s3.Options) {
+func NewS3ClientFromConfig(cfg *aws.Config, endpoint string) *s3.Client {
+	return s3.NewFromConfig(*cfg, func(o *s3.Options) {
 		if endpoint != "" {
 			o.BaseEndpoint = aws.String(endpoint)
 		}

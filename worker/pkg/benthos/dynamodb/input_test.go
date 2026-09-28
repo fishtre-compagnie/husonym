@@ -254,6 +254,7 @@ func connectionsOf(
 func Test_UnresolvableAwsConfigFailsTheBuild(t *testing.T) {
 	t.Setenv("AWS_CONFIG_FILE", t.TempDir()+"/config")
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", t.TempDir()+"/credentials")
+	t.Setenv("AWS_PROFILE", "")
 	profile := "husonym-absent-profile"
 	getConnection := connectionsOf(dynamoConnection("dynamo", &mgmtv1alpha1.DynamoDBConnectionConfig{
 		Credentials: &mgmtv1alpha1.AwsS3Credentials{Profile: &profile},
