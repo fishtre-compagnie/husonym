@@ -606,7 +606,10 @@ func serve(ctx context.Context) error {
 	if cascadelicense.IsValid() {
 		slogger.Debug("enabling account hooks service")
 
-		accountHookOptions := []accounthooks.Option{accounthooks.WithAppBaseUrl(getAppBaseUrl())}
+		accountHookOptions := []accounthooks.Option{
+			accounthooks.WithAppBaseUrl(getAppBaseUrl()),
+			accounthooks.WithWorkerOnly(workerOnly),
+		}
 		var slackClient ee_slack.Interface
 		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
 			encryptor, err := getSymEncryptor()
