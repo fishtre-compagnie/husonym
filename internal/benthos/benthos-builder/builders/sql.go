@@ -46,6 +46,8 @@ type sqlSyncBuilder struct {
 	tableDeferrableMap     map[string]bool                           // schema.table -> true if table has at least one deferrable constraint
 	// transformerConfigs resolves the transformers of the job for the pre-flight findings.
 	transformerConfigs *transformerConfigs
+	// transformerConfigsAccountId is the account transformerConfigs resolves for.
+	transformerConfigsAccountId string
 }
 
 func NewSqlSyncBuilder(
@@ -324,11 +326,12 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	return configs, nil
 }
 
-// configs returns what resolves the transformers of the job, made on first use: the
-// user-defined ones of the job's account.
+// configs returns what resolves the transformers of the job, the user-defined ones of the job's
+// account: made on first use, and made again for another account.
 func (b *sqlSyncBuilder) configs(accountId string) *transformerConfigs {
-	if b.transformerConfigs == nil {
+	if b.transformerConfigs == nil || b.transformerConfigsAccountId != accountId {
 		b.transformerConfigs = newTransformerConfigs(te.NewUserDefinedTransformerResolver(b.transformerclient, accountId))
+		b.transformerConfigsAccountId = accountId
 	}
 	return b.transformerConfigs
 }

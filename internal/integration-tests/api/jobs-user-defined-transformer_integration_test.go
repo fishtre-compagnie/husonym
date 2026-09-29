@@ -33,7 +33,7 @@ func (s *IntegrationTestSuite) Test_Job_UserDefinedTransformerOfTheJobsAccount()
 			ConnectionId: srcconn.GetId(),
 		}},
 	}}
-	create := func(name, transformerId string) (*connect.Response[mgmtv1alpha1.CreateJobResponse], error) {
+	create := func(name string, mapping *mgmtv1alpha1.JobMapping) (*connect.Response[mgmtv1alpha1.CreateJobResponse], error) {
 		return jobclient.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
 			AccountId: accountId,
 			JobName:   name,
@@ -44,15 +44,26 @@ func (s *IntegrationTestSuite) Test_Job_UserDefinedTransformerOfTheJobsAccount()
 					PostgresOptions: &mgmtv1alpha1.PostgresDestinationConnectionOptions{},
 				}},
 			}},
-			Mappings: []*mgmtv1alpha1.JobMapping{userDefinedMapping(transformerId)},
+			Mappings: []*mgmtv1alpha1.JobMapping{mapping},
 		}))
 	}
 
-	_, err := create("foreign-rule-job", foreign.GetId())
+	_, err := create("foreign-rule-job", userDefinedMapping(foreign.GetId()))
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	// TransformPiiText hands the PII it finds to the transformer of its anonymizer.
+	piiText := userDefinedMapping(foreign.GetId())
+	piiText.Transformer.Config = &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+		TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{EntityAnonymizers: map[string]*mgmtv1alpha1.PiiAnonymizer{
+			"PERSON": {Config: &mgmtv1alpha1.PiiAnonymizer_Transform_{Transform: &mgmtv1alpha1.PiiAnonymizer_Transform{
+				Config: userDefinedMapping(foreign.GetId()).GetTransformer().GetConfig(),
+			}}},
+		}},
+	}}
+	_, err = create("foreign-pii-rule-job", piiText)
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
 
 	s.MockTemporalForCreateJob("own-rule-job")
-	created, err := create("own-rule-job", own.GetId())
+	created, err := create("own-rule-job", userDefinedMapping(own.GetId()))
 	requireNoErrResp(t, created, err)
 	jobId := created.Msg.GetJob().GetId()
 
@@ -79,6 +90,45 @@ func (s *IntegrationTestSuite) Test_Job_UserDefinedTransformerOfTheJobsAccount()
 	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
 	applied, err := apply(own.GetId())
 	requireNoErrResp(t, applied, err)
+}
+
+// The preview of a column runs the user-defined transformers of the connection's account only,
+// even for a user who is a member of the account that owns another one.
+func (s *IntegrationTestSuite) Test_PreviewColumnTransformer_UserDefinedTransformerOfTheAccount() {
+	t := s.T()
+	ctx := s.ctx
+	userclient := s.OSSAuthenticatedLicensedClients.Users(integrationtests_test.WithUserId(testAuthUserId))
+	connclient := s.OSSAuthenticatedLicensedClients.Connections(integrationtests_test.WithUserId(testAuthUserId))
+	transformerclient := s.OSSAuthenticatedLicensedClients.Transformers(integrationtests_test.WithUserId(testAuthUserId))
+	dataclient := s.OSSAuthenticatedLicensedClients.ConnectionData(integrationtests_test.WithUserId(testAuthUserId))
+	s.setUser(ctx, userclient)
+
+	accountId := s.createTeamAccount(ctx, userclient, uuid.NewString())
+	otherAccountId := s.createTeamAccount(ctx, userclient, uuid.NewString())
+	conn := s.createPostgresConnection(connclient, accountId, "src", "test")
+	own := s.createJavascriptTransformer(transformerclient, accountId, "own-rule")
+	foreign := s.createJavascriptTransformer(transformerclient, otherAccountId, "foreign-rule")
+
+	preview := func(transformerId string) error {
+		_, err := dataclient.PreviewColumnTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.PreviewColumnTransformerRequest{
+			ConnectionId: conn.GetId(),
+			Schema:       "public",
+			Table:        "users",
+			Column:       "name",
+			Transformer:  userDefinedMapping(transformerId).GetTransformer().GetConfig(),
+		}))
+		return err
+	}
+
+	err := preview(foreign.GetId())
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "unable to find user defined transformer")
+
+	// The connection points at no database: the preview goes past the transformer and fails on
+	// reading the column.
+	err = preview(own.GetId())
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "unable to find user defined transformer")
 }
 
 func userDefinedMapping(transformerId string) *mgmtv1alpha1.JobMapping {

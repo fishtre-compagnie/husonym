@@ -97,7 +97,7 @@ func WithLogger(logger *slog.Logger) Option {
 }
 
 // WithUserDefinedTransformerResolver resolves the user-defined transformers the mappings refer
-// to: those of the request's account.
+// to, bound to the account whose transformers they may be.
 func WithUserDefinedTransformerResolver(resolver transformer_executor.UserDefinedTransformerResolver) Option {
 	return func(ja *JsonAnonymizer) {
 		ja.userDefinedTransformers = resolver

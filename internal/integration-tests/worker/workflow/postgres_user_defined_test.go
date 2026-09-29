@@ -13,7 +13,7 @@ import (
 )
 
 // A user-defined transformer of the job's account runs on either engine: each resolves it for
-// the job's account, and one of another account would read as absent.
+// the job's account, and would fail the run if it were given another one.
 func test_postgres_user_defined_transformer(
 	t *testing.T,
 	ctx context.Context,

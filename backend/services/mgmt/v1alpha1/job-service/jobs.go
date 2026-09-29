@@ -1524,15 +1524,13 @@ func (s *Service) verifyUserDefinedTransformersInAccount(
 ) error {
 	transformerIds := []pgtype.UUID{}
 	for _, mapping := range mappings {
-		userDefined := mapping.GetTransformer().GetConfig().GetUserDefinedTransformerConfig()
-		if userDefined == nil {
-			continue
+		for _, id := range userDefinedTransformerIds(mapping.GetTransformer().GetConfig()) {
+			transformerId, err := husonymdb.ToUuid(id)
+			if err != nil {
+				continue // not an id: it names no transformer
+			}
+			transformerIds = append(transformerIds, transformerId)
 		}
-		transformerId, err := husonymdb.ToUuid(userDefined.GetId())
-		if err != nil {
-			continue // not an id: it names no transformer
-		}
-		transformerIds = append(transformerIds, transformerId)
 	}
 	if len(transformerIds) == 0 {
 		return nil
@@ -1557,6 +1555,23 @@ func (s *Service) verifyUserDefinedTransformersInAccount(
 		return husonymerrors.NewForbidden("provided user defined transformer id is not in account")
 	}
 	return nil
+}
+
+// userDefinedTransformerIds lists the user-defined transformers a transformer runs: itself, or
+// those the anonymizers of TransformPiiText hand the PII they find to.
+func userDefinedTransformerIds(config *mgmtv1alpha1.TransformerConfig) []string {
+	if userDefined := config.GetUserDefinedTransformerConfig(); userDefined != nil {
+		return []string{userDefined.GetId()}
+	}
+	piiText := config.GetTransformPiiTextConfig()
+	if piiText == nil {
+		return nil
+	}
+	ids := userDefinedTransformerIds(piiText.GetDefaultAnonymizer().GetTransform().GetConfig())
+	for _, anonymizer := range piiText.GetEntityAnonymizers() {
+		ids = append(ids, userDefinedTransformerIds(anonymizer.GetTransform().GetConfig())...)
+	}
+	return ids
 }
 
 func (s *Service) verifyConnectionInAccount(
