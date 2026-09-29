@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
@@ -109,7 +111,7 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 		runconfigId := fmt.Sprintf("%s.%s", schemaTable.String(), runconfigType)
 		processorConfigs, err := buildProcessorConfigsByRunType(
 			ctx,
-			b.transformerclient,
+			te.NewUserDefinedTransformerResolver(b.transformerclient, job.GetAccountId()),
 			runconfigs.NewRunConfig(
 				runconfigId,
 				schemaTable,

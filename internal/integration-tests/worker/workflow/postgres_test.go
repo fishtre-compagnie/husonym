@@ -149,6 +149,7 @@ func createPostgresSyncJob(
 		},
 		Mappings:           config.JobMappings,
 		VirtualForeignKeys: config.VirtualForeignKeys,
+		WorkflowOptions:    &mgmtv1alpha1.WorkflowOptions{Engine: config.JobOptions.Engine},
 	}))
 	require.NoError(t, err)
 

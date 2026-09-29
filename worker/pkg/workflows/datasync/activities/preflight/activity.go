@@ -52,8 +52,8 @@ type Activity struct {
 	// athanor tells which engine runs the job, the one the table syncs will use: what only
 	// Athanor needs must not be required of Benthos.
 	athanor shared.AthanorPolicy
-	// transformers resolves the user-defined transformers, whose rules may need Athanor.
-	transformers te.UserDefinedTransformerResolver
+	// transformerclient resolves the user-defined transformers, whose rules may need Athanor.
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient
 }
 
 func New(
@@ -62,12 +62,17 @@ func New(
 	sqlconnmanager connectionmanager.Interface[husonym_benthos_sql.SqlDbtx],
 	sqlmanagerclient sqlmanager.SqlManagerClient,
 	athanor shared.AthanorPolicy,
-	transformers te.UserDefinedTransformerResolver,
+	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
 ) *Activity {
 	return &Activity{
 		jobclient: jobclient, connclient: connclient, sqlconnmanager: sqlconnmanager,
-		sqlmanagerclient: sqlmanagerclient, athanor: athanor, transformers: transformers,
+		sqlmanagerclient: sqlmanagerclient, athanor: athanor, transformerclient: transformerclient,
 	}
+}
+
+// transformers resolves the user-defined transformers of the job's account.
+func (a *Activity) transformers(job *mgmtv1alpha1.Job) te.UserDefinedTransformerResolver {
+	return te.NewUserDefinedTransformerResolver(a.transformerclient, job.GetAccountId())
 }
 
 // TableColumns is a table of the run and the columns it writes, generated ones left out.
@@ -285,7 +290,7 @@ func (a *Activity) engineRuns(ctx context.Context, job *mgmtv1alpha1.Job, usesAt
 	if usesAthanor {
 		return shared.AthanorRuns(job)
 	}
-	return shared.BenthosRuns(ctx, job, a.transformers)
+	return shared.BenthosRuns(ctx, job, a.transformers(job))
 }
 
 // connectionFindings asks the MySQL and PostgreSQL connections of a job whether each can do
@@ -363,7 +368,7 @@ func (a *Activity) writtenTables(
 	if !usesAthanor {
 		return tables, nil
 	}
-	omitted, err := runner.OmittedColumns(ctx, job.GetMappings(), a.transformers)
+	omitted, err := runner.OmittedColumns(ctx, job.GetMappings(), a.transformers(job))
 	if err != nil {
 		return nil, err
 	}

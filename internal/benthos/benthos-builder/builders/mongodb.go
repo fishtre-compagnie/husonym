@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -76,7 +78,7 @@ func (b *mongodbSyncBuilder) BuildSourceConfigs(
 		splitColumnPaths := true
 		processorConfigs, err := buildProcessorConfigsByRunType(
 			ctx,
-			b.transformerclient,
+			te.NewUserDefinedTransformerResolver(b.transformerclient, job.GetAccountId()),
 			runconfigs.NewRunConfig(
 				runconfigId,
 				schemaTable,

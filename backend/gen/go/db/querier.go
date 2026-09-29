@@ -22,6 +22,7 @@ type Querier interface {
 	// sharing an issuer share the subject space it mints, so the second one to claim it would
 	// be able to name the members of the first.
 	CountOtherAccountsDeclaringIssuer(ctx context.Context, db DBTX, arg CountOtherAccountsDeclaringIssuerParams) (int64, error)
+	CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error)
 	CreateAccountApiKey(ctx context.Context, db DBTX, arg CreateAccountApiKeyParams) (HusonymApiAccountApiKey, error)
 	CreateAccountHook(ctx context.Context, db DBTX, arg CreateAccountHookParams) (HusonymApiAccountHook, error)
 	CreateAccountInvite(ctx context.Context, db DBTX, arg CreateAccountInviteParams) (HusonymApiAccountInvite, error)

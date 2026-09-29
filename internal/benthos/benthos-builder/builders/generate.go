@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
@@ -42,6 +44,7 @@ func (b *generateBuilder) BuildSourceConfigs(
 	logger := params.Logger
 	job := params.Job
 	configs := []*bb_internal.BenthosSourceConfig{}
+	userDefinedTransformers := te.NewUserDefinedTransformerResolver(b.transformerclient, job.GetAccountId())
 
 	jobSource := job.GetSource()
 	sourceOptions := jobSource.GetOptions().GetGenerate()
@@ -94,14 +97,14 @@ func (b *generateBuilder) BuildSourceConfigs(
 			return nil, fmt.Errorf("missing table column transformers mapping")
 		}
 
-		jsCode, err := extractJsFunctionsAndOutputs(ctx, b.transformerclient, tableMapping.Mappings)
+		jsCode, err := extractJsFunctionsAndOutputs(ctx, userDefinedTransformers, tableMapping.Mappings)
 		if err != nil {
 			return nil, err
 		}
 
 		mutations, err := buildMutationConfigs(
 			ctx,
-			b.transformerclient,
+			userDefinedTransformers,
 			tableMapping.Mappings,
 			tableColInfo,
 			false,

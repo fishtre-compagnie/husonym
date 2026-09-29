@@ -15,6 +15,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -111,7 +112,9 @@ func (s *Service) AnonymizeMany(
 			s.anonymize,
 			s.cfg.PresidioDefaultLanguage,
 		),
-		jsonanonymizer.WithTransformerClient(s.transformerClient),
+		jsonanonymizer.WithUserDefinedTransformerResolver(
+			transformer_executor.NewUserDefinedTransformerResolver(s.transformerClient, req.Msg.GetAccountId()),
+		),
 		jsonanonymizer.WithLogger(logger),
 	)
 	if err != nil {
@@ -245,7 +248,9 @@ func (s *Service) AnonymizeSingle(
 			s.anonymize,
 			s.cfg.PresidioDefaultLanguage,
 		),
-		jsonanonymizer.WithTransformerClient(s.transformerClient),
+		jsonanonymizer.WithUserDefinedTransformerResolver(
+			transformer_executor.NewUserDefinedTransformerResolver(s.transformerClient, req.Msg.GetAccountId()),
+		),
 		jsonanonymizer.WithLogger(logger),
 	)
 	if err != nil {

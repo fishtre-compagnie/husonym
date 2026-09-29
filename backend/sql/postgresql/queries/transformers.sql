@@ -34,3 +34,7 @@ RETURNING *;
 SELECT count(t.id) from husonym_api.transformers t
 INNER JOIN husonym_api.accounts a ON a.id = t.account_id
 WHERE a.id = sqlc.arg('accountId') and t.name = sqlc.arg('transformerName');
+
+-- name: CountUserDefinedTransformersOutsideAccount :one
+SELECT count(t.id) from husonym_api.transformers t
+WHERE t.id = ANY(sqlc.arg('transformerIds')::uuid[]) and t.account_id <> sqlc.arg('accountId');

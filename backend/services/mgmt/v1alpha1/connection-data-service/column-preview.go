@@ -12,6 +12,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
 const (
@@ -39,9 +40,17 @@ func (s *Service) PreviewColumnTransformer(
 ) (*connect.Response[mgmtv1alpha1.PreviewColumnTransformerResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
+	connection, err := s.getConnection(ctx, req.Msg.GetConnectionId())
+	if err != nil {
+		return nil, err
+	}
 	// The transformer is resolved before the source is read: what it turns out to be decides how
-	// many rows the preview may show.
-	config, err := s.resolveTransformer(ctx, req.Msg.GetTransformer())
+	// many rows the preview may show. A user-defined one is taken from the connection's account.
+	userDefinedTransformers := transformer_executor.NewUserDefinedTransformerResolver(
+		s.transformers.Client,
+		connection.GetAccountId(),
+	)
+	config, err := resolveTransformer(ctx, userDefinedTransformers, req.Msg.GetTransformer())
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +64,7 @@ func (s *Service) PreviewColumnTransformer(
 
 	sampled, err := s.sampleRows(
 		ctx,
-		req.Msg.GetConnectionId(),
+		connection,
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
 		clampLimit(req.Msg.GetLimit(), defaultPreviewLimit, maxRows),
@@ -87,7 +96,7 @@ func (s *Service) PreviewColumnTransformer(
 			s.transformers.Anonymize,
 			s.cfg.PresidioDefaultLanguage,
 		),
-		jsonanonymizer.WithTransformerClient(s.transformers.Client),
+		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),
 		jsonanonymizer.WithLogger(logger),
 	)
 	if err != nil {
@@ -163,24 +172,16 @@ func previewValues(
 
 // resolveTransformer replaces a reference to a user-defined transformer by its configuration, so
 // the preview can tell what kind of transformer it is actually running.
-func (s *Service) resolveTransformer(
+func resolveTransformer(
 	ctx context.Context,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
 	config *mgmtv1alpha1.TransformerConfig,
 ) (*mgmtv1alpha1.TransformerConfig, error) {
 	userDefined := config.GetUserDefinedTransformerConfig()
 	if userDefined == nil {
 		return config, nil
 	}
-	resp, err := s.transformers.Client.GetUserDefinedTransformerById(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.GetUserDefinedTransformerByIdRequest{
-			TransformerId: userDefined.GetId(),
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Msg.GetTransformer().GetConfig(), nil
+	return userDefinedTransformers.GetUserDefinedTransformer(ctx, userDefined.GetId())
 }
 
 func isJavascriptRule(config *mgmtv1alpha1.TransformerConfig) bool {

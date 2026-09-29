@@ -228,7 +228,7 @@ func (a *Activity) runAthanor(
 
 	// Mêmes capacités que le chemin Benthos : transformers définis par l'utilisateur
 	// et TransformPiiText (y compris depuis le JavaScript), via l'API liée au compte.
-	resolver := te.NewUserDefinedTransformerResolver(a.transformerclient)
+	resolver := te.NewUserDefinedTransformerResolver(a.transformerclient, job.GetAccountId())
 	piiTextApi := transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)
 	env := &runner.TransformEnv{
 		Resolver:   resolver,

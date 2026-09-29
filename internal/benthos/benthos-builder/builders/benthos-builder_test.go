@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	husonym_benthos_transformers "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers"
 )
 
@@ -25,7 +26,14 @@ const (
 	mockJobId      = "b1767636-3992-4cb4-9bf2-4bb9bddbf43c"
 	mockWorkflowId = "b1767636-3992-4cb4-9bf2-4bb9bddbf43c-workflowid"
 	mockRunId      = "26444272-0bb0-4325-ae60-17dcd9744785"
+
+	testTransformerAccountId = "5629813e-1a35-4874-922c-9827d85f0378"
 )
+
+// accountTransformers resolves the user-defined transformers of the test account.
+func accountTransformers(client mgmtv1alpha1connect.TransformersServiceClient) te.UserDefinedTransformerResolver {
+	return te.NewUserDefinedTransformerResolver(client, testTransformerAccountId)
+}
 
 var driver = sqlmanager_shared.PostgresDriver
 
@@ -111,7 +119,7 @@ func Test_ProcessorConfigEmpty(t *testing.T) {
 	res, err := buildBenthosSqlSourceConfigResponses(
 		logger,
 		context.Background(),
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		tableMappings,
 		runconfigs,
 		connectionId,
@@ -216,7 +224,7 @@ func Test_ProcessorConfigEmptyJavascript(t *testing.T) {
 	res, err := buildBenthosSqlSourceConfigResponses(
 		logger,
 		context.Background(),
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		tableMappings,
 		runconfigs,
 		connectionId,
@@ -315,7 +323,7 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 	)
 	output, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{},
 		map[string]*sqlmanager_shared.DatabaseSchemaRow{},
 		map[string][]*bb_internal.ReferenceKey{},
@@ -331,7 +339,7 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 
 	output, err = buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{},
 		map[string]*sqlmanager_shared.DatabaseSchemaRow{},
 		map[string][]*bb_internal.ReferenceKey{},
@@ -356,13 +364,13 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 		[]*rc.DependsOn{},
 		false,
 	)
-	output, err = buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	output, err = buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{Schema: "public", Table: "users", Column: "id"},
 	}, map[string]*sqlmanager_shared.DatabaseSchemaRow{}, map[string][]*bb_internal.ReferenceKey{}, []string{}, mockJobId, mockRunId, runconfig, nil, []string{})
 	require.Nil(t, err)
 	require.Empty(t, output)
 
-	output, err = buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	output, err = buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{
 			Schema:      "public",
 			Table:       "users",
@@ -373,7 +381,7 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 	require.Nil(t, err)
 	require.Empty(t, output)
 
-	output, err = buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	output, err = buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{
 			Schema: "public",
 			Table:  "users",
@@ -399,7 +407,7 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 		[]*rc.DependsOn{},
 		false,
 	)
-	output, err = buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	output, err = buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{
 			Schema: "public",
 			Table:  "users",
@@ -468,7 +476,7 @@ func Test_buildProcessorConfigsMutation(t *testing.T) {
 		[]*rc.DependsOn{},
 		false,
 	)
-	output, err = buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	output, err = buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{
 			Schema:      "public",
 			Table:       "users",
@@ -536,7 +544,7 @@ func Test_buildProcessorConfigsJavascriptEmpty(t *testing.T) {
 		[]*rc.DependsOn{},
 		false,
 	)
-	resp, err := buildProcessorConfigs(ctx, mockTransformerClient, []*mgmtv1alpha1.JobMapping{
+	resp, err := buildProcessorConfigs(ctx, accountTransformers(mockTransformerClient), []*mgmtv1alpha1.JobMapping{
 		{
 			Schema:      "public",
 			Table:       "users",
@@ -562,6 +570,7 @@ func Test_convertUserDefinedFunctionConfig(t *testing.T) {
 	).Return(connect.NewResponse(&mgmtv1alpha1.GetUserDefinedTransformerByIdResponse{
 		Transformer: &mgmtv1alpha1.UserDefinedTransformer{
 			Id:          "123",
+			AccountId:   testTransformerAccountId,
 			Name:        "stage",
 			Description: "description",
 			Source:      mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_EMAIL,
@@ -599,7 +608,7 @@ func Test_convertUserDefinedFunctionConfig(t *testing.T) {
 		},
 	}
 
-	resp, err := convertUserDefinedFunctionConfig(ctx, mockTransformerClient, jmt)
+	resp, err := convertUserDefinedFunctionConfig(ctx, accountTransformers(mockTransformerClient), jmt)
 	require.NoError(t, err)
 	require.Equal(t, resp, expected)
 }

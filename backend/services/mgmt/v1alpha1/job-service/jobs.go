@@ -454,6 +454,9 @@ func (s *Service) CreateJob(
 	if err := s.verifyAiConnectionInAccount(ctx, req.Msg.GetSource(), req.Msg.GetAccountId()); err != nil {
 		return nil, err
 	}
+	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	if connectionIdToVerify != nil {
 		if err := s.verifyConnectionInAccount(ctx, *connectionIdToVerify, req.Msg.AccountId); err != nil {
 			return nil, err
@@ -1045,6 +1048,9 @@ func (s *Service) UpdateJobSourceConnection(
 	if err := s.verifyAiConnectionInAccount(ctx, req.Msg.GetSource(), jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
+	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	// retrieves the connection details
 	conn, err := s.connectionService.GetConnection(
@@ -1506,6 +1512,51 @@ func (s *Service) verifyAiConnectionInAccount(
 		return nil
 	}
 	return s.verifyConnectionInAccount(ctx, aiGenerate.GetAiConnectionId(), accountId)
+}
+
+// verifyUserDefinedTransformersInAccount refuses a mapping to a user-defined transformer of
+// another account: a run executes it for the job's account. An id that names no transformer is
+// left to the run, as it always was.
+func (s *Service) verifyUserDefinedTransformersInAccount(
+	ctx context.Context,
+	mappings []*mgmtv1alpha1.JobMapping,
+	accountId string,
+) error {
+	transformerIds := []pgtype.UUID{}
+	for _, mapping := range mappings {
+		userDefined := mapping.GetTransformer().GetConfig().GetUserDefinedTransformerConfig()
+		if userDefined == nil {
+			continue
+		}
+		transformerId, err := husonymdb.ToUuid(userDefined.GetId())
+		if err != nil {
+			continue // not an id: it names no transformer
+		}
+		transformerIds = append(transformerIds, transformerId)
+	}
+	if len(transformerIds) == 0 {
+		return nil
+	}
+	accountUuid, err := husonymdb.ToUuid(accountId)
+	if err != nil {
+		return err
+	}
+
+	count, err := s.db.Q.CountUserDefinedTransformersOutsideAccount(
+		ctx,
+		s.db.Db,
+		db_queries.CountUserDefinedTransformersOutsideAccountParams{
+			TransformerIds: transformerIds,
+			AccountId:      accountUuid,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return husonymerrors.NewForbidden("provided user defined transformer id is not in account")
+	}
+	return nil
 }
 
 func (s *Service) verifyConnectionInAccount(
