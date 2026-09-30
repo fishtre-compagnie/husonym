@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -49,7 +51,12 @@ func testDDBOWriter(t *testing.T, conf string) *dynamoDBWriter {
 
 	dConf, err := ddboConfigFromParsed(
 		pConf,
-		connectionsOf(dynamoConnection("dynamo", &mgmtv1alpha1.DynamoDBConnectionConfig{})),
+		connectionsOf(dynamoConnection("dynamo", &mgmtv1alpha1.DynamoDBConnectionConfig{
+			Credentials: &mgmtv1alpha1.AwsS3Credentials{
+				AccessKeyId: aws.String("the-key"), SecretAccessKey: aws.String("the-secret"),
+			},
+		})),
+		cloudidentity.Policy{},
 	)
 	require.NoError(t, err)
 

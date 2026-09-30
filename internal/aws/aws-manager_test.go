@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/stretchr/testify/require"
@@ -23,14 +25,14 @@ func Test_ClientsPreferTheEndpointOfTheConnection(t *testing.T) {
 
 	s3Cfg, err := S3AwsConfig(ctx, &mgmtv1alpha1.AwsS3ConnectionConfig{
 		Region: aws.String("us-east-1"), Endpoint: aws.String("http://s3-connection:9000"),
-	})
+	}, cloudidentity.Policy{AllowServerIdentity: true})
 	require.NoError(t, err)
 	require.Equal(t, "http://s3-connection:9000",
 		aws.ToString(NewS3ClientFromConfig(s3Cfg, "http://s3-connection:9000").Options().BaseEndpoint))
 
 	dynamoCfg, err := DynamoDbAwsConfig(ctx, &mgmtv1alpha1.DynamoDBConnectionConfig{
 		Region: aws.String("us-east-1"), Endpoint: aws.String("http://dynamodb-connection:8000"),
-	})
+	}, cloudidentity.Policy{AllowServerIdentity: true})
 	require.NoError(t, err)
 	require.Equal(t, "http://dynamodb-connection:8000",
 		aws.ToString(NewDynamoDbClientFromConfig(dynamoCfg, "http://dynamodb-connection:8000").Options().BaseEndpoint))
@@ -38,4 +40,48 @@ func Test_ClientsPreferTheEndpointOfTheConnection(t *testing.T) {
 	// Without an endpoint of its own, the connection leaves the environment's in place.
 	require.Equal(t, "http://from-the-environment:1",
 		aws.ToString(NewS3ClientFromConfig(s3Cfg, "").Options().BaseEndpoint))
+}
+
+// Without the deployment's leave, a connection that would act with the server's identity is
+// refused before any config is resolved; one with keys of its own is resolved.
+func Test_AwsConfig_ServerIdentity(t *testing.T) {
+	ctx := context.Background()
+	keys := &mgmtv1alpha1.AwsS3Credentials{AccessKeyId: aws.String("id"), SecretAccessKey: aws.String("secret")}
+
+	_, err := S3AwsConfig(ctx, &mgmtv1alpha1.AwsS3ConnectionConfig{Region: aws.String("us-east-1")}, cloudidentity.Policy{})
+	require.ErrorContains(t, err, cloudidentity.Variable)
+	_, err = DynamoDbAwsConfig(ctx, &mgmtv1alpha1.DynamoDBConnectionConfig{Region: aws.String("us-east-1")}, cloudidentity.Policy{})
+	require.ErrorContains(t, err, cloudidentity.Variable)
+
+	_, err = S3AwsConfig(
+		ctx,
+		&mgmtv1alpha1.AwsS3ConnectionConfig{Region: aws.String("us-east-1"), Credentials: keys},
+		cloudidentity.Policy{},
+	)
+	require.NoError(t, err)
+	_, err = DynamoDbAwsConfig(
+		ctx,
+		&mgmtv1alpha1.DynamoDBConnectionConfig{Region: aws.String("us-east-1"), Credentials: keys},
+		cloudidentity.Policy{},
+	)
+	require.NoError(t, err)
+}
+
+// A role assumed with the process's own identity is never asked of the connection's endpoint,
+// which would receive that identity, but of the deployment's own, if it sets one; with the
+// connection's own keys, the connection's endpoint serves STS as it serves the rest.
+func Test_newStsClient_KeepsTheServerIdentityAwayFromTheConnection(t *testing.T) {
+	t.Setenv("AWS_ENDPOINT_URL_STS", "")
+	t.Setenv("AWS_ENDPOINT_URL", "")
+	connection := "https://endpoint-of-the-connection"
+	deployment := "https://endpoint-of-the-deployment"
+	conf := aws.Config{Region: "us-east-1", BaseEndpoint: &connection}
+	endpoint := func(cfg *AwsCredentialsConfig, deploymentEndpoint *string) *string {
+		return newStsClient(&conf, cfg, deploymentEndpoint).Options().BaseEndpoint
+	}
+
+	require.Nil(t, endpoint(&AwsCredentialsConfig{Role: "r"}, nil))
+	require.Equal(t, deployment, aws.ToString(endpoint(&AwsCredentialsConfig{Role: "r"}, &deployment)))
+	require.Equal(t, deployment, aws.ToString(endpoint(&AwsCredentialsConfig{Role: "r", Profile: "p", Id: "id"}, &deployment)))
+	require.Equal(t, connection, aws.ToString(endpoint(&AwsCredentialsConfig{Role: "r", Id: "id", Secret: "secret"}, &deployment)))
 }

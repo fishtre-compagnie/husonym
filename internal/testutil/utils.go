@@ -65,12 +65,16 @@ type AwsS3Config struct {
 	Region          string
 	AccessKeyId     string
 	SecretAccessKey string
+	SessionToken    string
 }
 
 func GetTestAwsS3Config() *AwsS3Config {
 	return &AwsS3Config{
-		Region: os.Getenv("TEST_S3_REGION"),
-		Bucket: os.Getenv("TEST_S3_BUCKET"),
+		Region:          os.Getenv("TEST_S3_REGION"),
+		Bucket:          os.Getenv("TEST_S3_BUCKET"),
+		AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
 	}
 }
 

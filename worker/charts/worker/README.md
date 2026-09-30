@@ -17,6 +17,7 @@ A Helm chart for the Husonym Temporal Worker
 | autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |
 | autoscaling.minReplicas | int | `1` | The minimum amount of replicas to have running |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | The CPU % utilization to begin a scale up |
+| connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud. |
 | containerPort | int | `8080` | The container port |
 | datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |

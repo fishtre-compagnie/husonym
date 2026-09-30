@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
@@ -144,6 +146,7 @@ func NewTestDataSyncWorkflowEnv(
 		false,
 		workflowEnv.pageLimit,
 		consistencyKeys,
+		cloudidentity.Policy{},
 	)
 
 	schemainit_workflow_register.Register(

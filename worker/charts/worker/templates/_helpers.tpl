@@ -65,6 +65,7 @@ Create the name of the service account to use
 Generate the stringData section for environment variables
 */}}
 {{- define "husonym-worker.env-vars" -}}
+CONNECTIONS_ALLOW_SERVER_IDENTITY: {{ .Values.connections.allowServerIdentity | default false | quote }}
 {{- if .Values.host }}
 HOST: {{ .Values.host | quote}}
 {{- end }}

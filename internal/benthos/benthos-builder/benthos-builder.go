@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"sync"
 
+	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
@@ -130,6 +133,7 @@ func (b *BuilderProvider) registerStandardBuilders(
 	connectionclient mgmtv1alpha1connect.ConnectionServiceClient,
 	selectQueryBuilder bb_shared.SelectQueryMapBuilder,
 	pageLimit *int,
+	identity cloudidentity.Policy,
 ) error {
 	defaultPageLimit := 100_000
 	if pageLimit != nil && *pageLimit > 0 {
@@ -189,7 +193,7 @@ func (b *BuilderProvider) registerStandardBuilders(
 				b.Register(
 					bb_internal.JobTypeSync,
 					bb_shared.ConnectionTypeDynamodb,
-					bb_conns.NewDynamoDbSyncBuilder(transformerclient),
+					bb_conns.NewDynamoDbSyncBuilder(transformerclient, awsmanager.New(identity)),
 				)
 			case bb_shared.ConnectionTypeMongo:
 				b.Register(
@@ -321,6 +325,8 @@ type WorkerBenthosConfig struct {
 	HasConsistencyKey bool
 	// UsesAthanor says which engine runs the job, as the worker resolves it.
 	UsesAthanor bool
+	// CloudIdentity says whether a cloud connection may act with the worker's own identity.
+	CloudIdentity cloudidentity.Policy
 }
 
 // Creates a new BenthosConfigManager configured for worker
@@ -345,6 +351,7 @@ func NewWorkerBenthosConfigManager(
 		config.Connectionclient,
 		config.SelectQueryBuilder,
 		config.PageLimit,
+		config.CloudIdentity,
 	)
 	if err != nil {
 		return nil, err
@@ -426,6 +433,8 @@ func NewCliBenthosConfigManager(
 		nil,
 		nil,
 		config.PageLimit,
+		// The CLI runs on the machine of its user, with that user's own cloud identity.
+		cloudidentity.Policy{AllowServerIdentity: true},
 	)
 	if err != nil {
 		return nil, err

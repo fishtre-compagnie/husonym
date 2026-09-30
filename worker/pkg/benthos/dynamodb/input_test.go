@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -171,7 +173,7 @@ func Test_buildExecStatement(t *testing.T) {
 }
 
 func Test_RegisterDynamoDBInput(t *testing.T) {
-	err := RegisterDynamoDbInput(service.NewEmptyEnvironment(), connectionsOf())
+	err := RegisterDynamoDbInput(service.NewEmptyEnvironment(), connectionsOf(), cloudidentity.Policy{})
 	require.NoError(t, err)
 }
 
@@ -196,14 +198,19 @@ connection_id: dynamo
 }
 
 func Test_Input_ReadsTheConnection(t *testing.T) {
-	dynamoConfig := &mgmtv1alpha1.DynamoDBConnectionConfig{Region: aws.String("us-west-2")}
+	dynamoConfig := &mgmtv1alpha1.DynamoDBConnectionConfig{
+		Region: aws.String("us-west-2"),
+		Credentials: &mgmtv1alpha1.AwsS3Credentials{
+			AccessKeyId: aws.String("the-key"), SecretAccessKey: aws.String("the-secret"),
+		},
+	}
 	getConnection := connectionsOf(dynamoConnection("dynamo", dynamoConfig))
 
-	input, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, nil)
+	input, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, cloudidentity.Policy{}, nil)
 	require.NoError(t, err)
 	require.Equal(t, "us-west-2", input.(*dynamodbInput).connection.awsConfig.Region)
 
-	_, err = newDynamoDbBatchInput(parseInputConfig(t, "unknown"), getConnection, nil)
+	_, err = newDynamoDbBatchInput(parseInputConfig(t, "unknown"), getConnection, cloudidentity.Policy{}, nil)
 	require.ErrorContains(t, err, "unknown")
 
 	getConnection = connectionsOf(&mgmtv1alpha1.Connection{
@@ -212,7 +219,7 @@ func Test_Input_ReadsTheConnection(t *testing.T) {
 			Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{PgConfig: &mgmtv1alpha1.PostgresConnectionConfig{}},
 		},
 	})
-	_, err = newDynamoDbBatchInput(parseInputConfig(t, "pg"), getConnection, nil)
+	_, err = newDynamoDbBatchInput(parseInputConfig(t, "pg"), getConnection, cloudidentity.Policy{}, nil)
 	require.ErrorContains(t, err, "not a DynamoDB connection")
 }
 
@@ -260,7 +267,9 @@ func Test_UnresolvableAwsConfigFailsTheBuild(t *testing.T) {
 		Credentials: &mgmtv1alpha1.AwsS3Credentials{Profile: &profile},
 	}))
 
-	_, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, nil)
+	// Where the deployment allows the server's identity, the profile is looked up, and missed.
+	allowed := cloudidentity.Policy{AllowServerIdentity: true}
+	_, err := newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, allowed, nil)
 	require.ErrorContains(t, err, profile)
 
 	outputConf, err := dynamoOutputConfigSpec().ParseYAML(`
@@ -270,6 +279,12 @@ string_columns:
   id: ${!json("id")}
 `, nil)
 	require.NoError(t, err)
-	_, err = ddboConfigFromParsed(outputConf, getConnection)
+	_, err = ddboConfigFromParsed(outputConf, getConnection, allowed)
 	require.ErrorContains(t, err, profile)
+
+	// Elsewhere, a profile is the server's: the connection is refused before anything is read.
+	_, err = newDynamoDbBatchInput(parseInputConfig(t, "dynamo"), getConnection, cloudidentity.Policy{}, nil)
+	require.ErrorContains(t, err, "credentials of its own")
+	_, err = ddboConfigFromParsed(outputConf, getConnection, cloudidentity.Policy{})
+	require.ErrorContains(t, err, "credentials of its own")
 }

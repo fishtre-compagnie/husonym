@@ -114,6 +114,7 @@ func CreateS3Connection(
 	accountId, name string,
 	bucket string,
 	region *string,
+	credentials *mgmtv1alpha1.AwsS3Credentials,
 ) *mgmtv1alpha1.Connection {
 	resp, err := connclient.CreateConnection(
 		ctx,
@@ -127,7 +128,7 @@ func CreateS3Connection(
 						PathPrefix:  nil,
 						Region:      region,
 						Endpoint:    nil,
-						Credentials: nil,
+						Credentials: credentials,
 					},
 				},
 			},

@@ -19,9 +19,9 @@ There are a few different methods of giving Husonym access to your DynamoDB inst
 
 ### IAM Role Access
 
-Husonym supports being given an IAM Role along with an External ID.
+Husonym supports being given an IAM Role, along with an External ID if the role demands one. It assumes the role from the connection's access keys, only during active syncs or any time data is requested via the frontend, and does not store the credentials it obtains.
 
-If configuring DynamoDB via HusonymCloud, this is the recommended approach over using raw Access Credentials that don't expire. Husonym will assume this role only during active syncs or any time data is requested via the frontend and does not store those credentials in any way.
+A role without access keys would be assumed with the identity of the API and the worker: see [Self-Hosted with AWS](#self-hosted-with-aws).
 
 ### AWS Access Credentials
 
@@ -38,30 +38,7 @@ This way the running husonym-api and husonym-worker are able to natively have ne
 For example, if hosting an EKS cluster, it's recommended to attach an IAM IRSA role to the Husonym deployments with the policies detailed below instead of configuring them directly in the application.
 You'll still need to create the DynamoDB connections inside of Husonym, but the configuration will essentially be empty.
 
-## HusonymCloud Trust Policy
-
-The HusonymCloud principal is: `arn:aws:iam::243317024749:root`, which will allow our cloud services to communicate with your DynamoDB instance.
-Be sure to update the `sts:ExternalId` property with the external id that you've configured with the role.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::243317024749:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "<external-id>"
-        }
-      }
-    }
-  ]
-}
-```
+A connection without credentials then acts with the identity of the API and the worker. Allow it by setting `CONNECTIONS_ALLOW_SERVER_IDENTITY=true` on both (`connections.allowServerIdentity` in the charts), and only on a deployment that serves a single party: with several accounts, any of them would reach what the servers reach. Without it, such a connection is refused.
 
 Continue below to see what permissions are necessary for readonly access as well as readwrite.
 

@@ -1,6 +1,7 @@
 package sync_activity
 
 import (
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
@@ -15,4 +16,6 @@ type EngineConfig struct {
 	// Athanor refuses to run a job without it, and Benthos derives from it the permutation
 	// of TransformPhoneNumber in preserve_format, which is why it belongs to neither.
 	Keys *consistencykey.Resolver
+	// CloudIdentity says whether a cloud connection may act with the worker's own identity.
+	CloudIdentity cloudidentity.Policy
 }

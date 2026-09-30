@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
@@ -277,7 +279,7 @@ func (s *HusonymApiTestClient) setupMux(
 		husonymDb,
 		userclient,
 		mongoconnect.NewConnector(),
-		awsmanager.New(),
+		awsmanager.New(cloudidentity.Policy{}),
 		sqlmanagerclient,
 		&sqlconnect.SqlOpenConnector{},
 	)
@@ -296,7 +298,7 @@ func (s *HusonymApiTestClient) setupMux(
 		)
 	}
 
-	awsManager := awsmanager.New()
+	awsManager := awsmanager.New(cloudidentity.Policy{})
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
 	pgquerier := pg_queries.New()
 	mysqlquerier := mysql_queries.New()

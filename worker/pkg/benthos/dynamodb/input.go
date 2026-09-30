@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -35,11 +37,12 @@ func dynamoInputConfigSpec() *service.ConfigSpec {
 func RegisterDynamoDbInput(
 	env *service.Environment,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) error {
 	return env.RegisterBatchInput(
 		"aws_dynamodb", dynamoInputConfigSpec(),
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
-			return newDynamoDbBatchInput(conf, getConnection, mgr.Logger())
+			return newDynamoDbBatchInput(conf, getConnection, identity, mgr.Logger())
 		},
 	)
 }
@@ -60,6 +63,7 @@ type dynamoDBAPIV2 interface {
 func newDynamoDbBatchInput(
 	conf *service.ParsedConfig,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 	logger *service.Logger,
 ) (service.BatchInput, error) {
 	table, err := conf.FieldString("table")
@@ -81,7 +85,7 @@ func newDynamoDbBatchInput(
 		return nil, err
 	}
 
-	connection, err := resolveDynamoDbConnection(conf, getConnection)
+	connection, err := resolveDynamoDbConnection(conf, getConnection, identity)
 	if err != nil {
 		return nil, err
 	}

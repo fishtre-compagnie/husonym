@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -52,6 +54,7 @@ func outputSpec() *service.ConfigSpec {
 func RegisterAwsS3Output(
 	env *service.Environment,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) error {
 	return env.RegisterBatchOutput(
 		"husonym_aws_s3",
@@ -63,7 +66,7 @@ func RegisterAwsS3Output(
 			if batchPolicy, err = conf.FieldBatchPolicy(fieldBatching); err != nil {
 				return
 			}
-			out, err = newS3Writer(conf, getConnection)
+			out, err = newS3Writer(conf, getConnection, identity)
 			return
 		},
 	)
@@ -93,6 +96,7 @@ type s3Writer struct {
 func newS3Writer(
 	conf *service.ParsedConfig,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) (*s3Writer, error) {
 	connectionId, err := conf.FieldString(fieldConnectionId)
 	if err != nil {
@@ -108,7 +112,7 @@ func newS3Writer(
 	}
 	// Resolved here rather than in Connect: a config that cannot be resolved must fail the
 	// stream, not have Connect retried forever while the fallback never reaches its error output.
-	awsConfig, err := awsmanager.S3AwsConfig(context.Background(), s3Config)
+	awsConfig, err := awsmanager.S3AwsConfig(context.Background(), s3Config, identity)
 	if err != nil {
 		return nil, fmt.Errorf("unable to resolve the aws config of connection %q: %w", connectionId, err)
 	}

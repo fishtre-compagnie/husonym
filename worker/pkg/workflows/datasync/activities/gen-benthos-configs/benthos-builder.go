@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
@@ -42,6 +44,9 @@ type benthosBuilder struct {
 	keys *consistencykey.Resolver
 
 	athanor shared.AthanorPolicy
+
+	// identity says whether a cloud connection may act with the worker's own identity.
+	identity cloudidentity.Policy
 }
 
 func newBenthosBuilder(
@@ -59,6 +64,7 @@ func newBenthosBuilder(
 
 	keys *consistencykey.Resolver,
 	athanor shared.AthanorPolicy,
+	identity cloudidentity.Policy,
 ) *benthosBuilder {
 	return &benthosBuilder{
 		sqlmanagerclient:  sqlmanagerclient,
@@ -72,6 +78,7 @@ func newBenthosBuilder(
 		pageLimit:         pageLimit,
 		keys:              keys,
 		athanor:           athanor,
+		identity:          identity,
 	}
 }
 
@@ -222,6 +229,7 @@ func (b *benthosBuilder) plan(
 		Sqlmanagerclient:       b.sqlmanagerclient,
 		Transformerclient:      b.transformerclient,
 		Connectionclient:       b.connclient,
+		CloudIdentity:          b.identity,
 		SelectQueryBuilder:     &selectquerybuilder.QueryMapBuilderWrapper{},
 		MetricsEnabled:         b.metricsEnabled,
 		MetricLabelKeyVals: map[string]string{

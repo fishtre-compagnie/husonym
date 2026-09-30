@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
@@ -141,6 +143,7 @@ func serve(ctx context.Context) error {
 		return err
 	}
 	slogger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
+	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-api", slogger)
 	if err != nil {
@@ -668,7 +671,7 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	awsManager := awsmanager.New()
+	awsManager := awsmanager.New(cloudIdentity)
 	pgquerier := pg_queries.New()
 	mysqlquerier := mysql_queries.New()
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
@@ -695,7 +698,7 @@ func serve(ctx context.Context) error {
 	)
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsHusonymCloud: ncloudlicense.IsValid()},
+		&v1alpha1_connectionservice.Config{IsHusonymCloud: ncloudlicense.IsValid(), CloudIdentity: cloudIdentity},
 		db,
 		userdataclient,
 		mongoconnector,

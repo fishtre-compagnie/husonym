@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -56,7 +58,7 @@ func Test_HusonymAwsS3Output(t *testing.T) {
 		}
 	}
 	connection := s3Connection(secretKey)
-	client, err := awsmanager.New().NewS3Client(ctx, connection.GetConnectionConfig().GetAwsS3Config())
+	client, err := awsmanager.New(cloudidentity.Policy{}).NewS3Client(ctx, connection.GetConnectionConfig().GetAwsS3Config())
 	require.NoError(t, err)
 	// The gateway listens before it serves: the bucket is created once it answers.
 	require.Eventually(t, func() bool {
@@ -66,7 +68,8 @@ func Test_HusonymAwsS3Output(t *testing.T) {
 
 	// The gateway checks credentials: a key other than the connection's is refused, so a
 	// stream that writes did so with the connection's.
-	wrong, err := awsmanager.New().NewS3Client(ctx, s3Connection("not-the-secret").GetConnectionConfig().GetAwsS3Config())
+	wrong, err := awsmanager.New(cloudidentity.Policy{}).
+		NewS3Client(ctx, s3Connection("not-the-secret").GetConnectionConfig().GetAwsS3Config())
 	require.NoError(t, err)
 	_, err = wrong.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
@@ -84,6 +87,7 @@ func Test_HusonymAwsS3Output(t *testing.T) {
 			}
 			return connection, nil
 		},
+		cloudidentity.Policy{},
 	))
 	builder := env.NewStreamBuilder()
 	require.NoError(t, builder.SetYAML(`
@@ -129,7 +133,11 @@ logger:
 // startS3 starts a SeaweedFS S3 gateway which knows one identity, that of the connection.
 func startS3(ctx context.Context, t *testing.T) string {
 	t.Helper()
-	identities := fmt.Sprintf(`{"identities":[{"name":"husonym-it","credentials":[{"accessKey":%q,"secretKey":%q}],"actions":["Admin","Read","Write","List"]}]}`, accessKey, secretKey)
+	identities := fmt.Sprintf(
+		`{"identities":[{"name":"husonym-it","credentials":[{"accessKey":%q,"secretKey":%q}],"actions":["Admin","Read","Write","List"]}]}`,
+		accessKey,
+		secretKey,
+	)
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "chrislusf/seaweedfs:4.47",

@@ -543,7 +543,7 @@ func (a *Activity) getBenthosEnvironment(
 			),
 		}),
 		benthos_environment.WithRedisConfig(&benthos_environment.RedisConfig{Client: redisclient}),
-		benthos_environment.WithConnections(getConnectionById),
+		benthos_environment.WithConnections(getConnectionById, a.engines.CloudIdentity),
 		benthos_environment.WithStopChannel(stopActivityChan),
 		benthos_environment.WithBlobEnv(blobEnv),
 		benthos_environment.WithTransformPiiTextApi(transformPiiTextApiForAccount),

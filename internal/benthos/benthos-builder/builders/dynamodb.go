@@ -21,13 +21,17 @@ import (
 
 type dyanmodbSyncBuilder struct {
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient
+	// awsManager reads the tables of the source.
+	awsManager awsmanager.HusonymAwsManagerClient
 }
 
 func NewDynamoDbSyncBuilder(
 	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	awsManager awsmanager.HusonymAwsManagerClient,
 ) bb_internal.BenthosBuilder {
 	return &dyanmodbSyncBuilder{
 		transformerclient: transformerclient,
+		awsManager:        awsManager,
 	}
 }
 
@@ -45,8 +49,7 @@ func (b *dyanmodbSyncBuilder) BuildSourceConfigs(
 			sourceConnection.GetConnectionConfig().Config,
 		)
 	}
-	awsManager := awsmanager.New()
-	dynamoClient, err := awsManager.NewDynamoDbClient(ctx, dynamoSourceConfig)
+	dynamoClient, err := b.awsManager.NewDynamoDbClient(ctx, dynamoSourceConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DynamoDB client: %w", err)
 	}
