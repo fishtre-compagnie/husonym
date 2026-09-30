@@ -684,7 +684,7 @@ func isSecretQueryKey(key string) bool {
 func (s *SSHAuthentication) ToDto(canViewSensitive bool) *mgmtv1alpha1.SSHAuthentication {
 	if s.SSHPassphrase != nil {
 		value := s.SSHPassphrase.Value
-		if !canViewSensitive {
+		if !canViewSensitive && value != "" {
 			value = sensitiveValue
 		}
 		return &mgmtv1alpha1.SSHAuthentication{
@@ -694,11 +694,12 @@ func (s *SSHAuthentication) ToDto(canViewSensitive bool) *mgmtv1alpha1.SSHAuthen
 		}
 	} else if s.SSHPrivateKey != nil {
 		sshPrivateKeyValue := s.SSHPrivateKey.Value
-		if !canViewSensitive {
+		if !canViewSensitive && sshPrivateKeyValue != "" {
 			sshPrivateKeyValue = sensitiveValue
 		}
+		// Only a secret there is masked: a mask in place of none would pass for one when sent back.
 		sshPrivateKeyPassphrase := s.SSHPrivateKey.Passphrase
-		if !canViewSensitive {
+		if !canViewSensitive && sshPrivateKeyPassphrase != nil && *sshPrivateKeyPassphrase != "" {
 			v := sensitiveValue
 			sshPrivateKeyPassphrase = &v
 		}
@@ -746,7 +747,7 @@ type ClientTls struct {
 
 func (c *ClientTls) ToDto(canViewSensitive bool) *mgmtv1alpha1.ClientTlsConfig {
 	clientKey := c.ClientKey
-	if !canViewSensitive {
+	if !canViewSensitive && clientKey != nil && *clientKey != "" {
 		v := sensitiveValue
 		clientKey = &v
 	}

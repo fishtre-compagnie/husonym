@@ -124,7 +124,8 @@ func isMaskedMysqlDsn(raw string) bool {
 	if raw == uriSensitiveValue {
 		return true
 	}
-	dsn, err := dbconnectconfig.GetMysqlDsn(raw, slog.Default())
+	// Quiet: the string is the caller's, read at each write, and a warning of it is no news.
+	dsn, err := dbconnectconfig.GetMysqlDsn(raw, slog.New(slog.DiscardHandler))
 	if err != nil {
 		return false
 	}

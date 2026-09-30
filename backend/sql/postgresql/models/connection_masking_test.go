@@ -20,7 +20,10 @@ func sshTunnels() map[string]*SSHTunnel {
 			SSHPassphrase: &SSHPassphrase{Value: secret},
 		}},
 		"ssh private key": {Host: "bastion", SSHAuthentication: &SSHAuthentication{
-			SSHPrivateKey: &SSHPrivateKey{Value: secret, Passphrase: ptr(secret)},
+			SSHPrivateKey: &SSHPrivateKey{Value: secret},
+		}},
+		"ssh private key passphrase": {Host: "bastion", SSHAuthentication: &SSHAuthentication{
+			SSHPrivateKey: &SSHPrivateKey{Passphrase: ptr(secret)},
 		}},
 	}
 }
@@ -97,11 +100,23 @@ func secretCases() map[string]*ConnectionConfig {
 			ApiUrl: "https://example.openai.azure.com/openai?api-key=" + secret,
 		}},
 	}
+	// Each engine that connects through a tunnel or with a client certificate masks their
+	// secrets on its own.
 	for name, tunnel := range sshTunnels() {
 		cases["postgres "+name] = &ConnectionConfig{PgConfig: &PostgresConnectionConfig{
 			Connection: &PostgresConnection{Host: "db"}, SSHTunnel: tunnel,
 		}}
+		cases["mysql "+name] = &ConnectionConfig{MysqlConfig: &MysqlConnectionConfig{
+			Connection: &MysqlConnection{Host: "db"}, SSHTunnel: tunnel,
+		}}
+		cases["mssql "+name] = &ConnectionConfig{MssqlConfig: &MssqlConfig{Url: ptr("sqlserver://db"), SSHTunnel: tunnel}}
+		cases["mongo "+name] = &ConnectionConfig{MongoConfig: &MongoConnectionConfig{Url: ptr("mongodb://db"), SSHTunnel: tunnel}}
 	}
+	cases["mysql client tls"] = &ConnectionConfig{MysqlConfig: &MysqlConnectionConfig{
+		Connection: &MysqlConnection{Host: "db"}, ClientTls: clientTls(),
+	}}
+	cases["mssql client tls"] = &ConnectionConfig{MssqlConfig: &MssqlConfig{Url: ptr("sqlserver://db"), ClientTls: clientTls()}}
+	cases["mongo client tls"] = &ConnectionConfig{MongoConfig: &MongoConnectionConfig{Url: ptr("mongodb://db"), ClientTls: clientTls()}}
 	return cases
 }
 
