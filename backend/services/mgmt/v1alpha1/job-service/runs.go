@@ -1,11 +1,10 @@
 package v1alpha1_jobservice
 
 import (
-	"errors"
-
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -27,6 +24,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
 	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
@@ -548,7 +546,12 @@ func (s *Service) CreateJobRun(
 
 	jobRun, err := s.getStartedJobRun(ctx, job.GetAccountId(), jobRunId)
 	if err != nil {
-		return nil, fmt.Errorf("the run %s started, but it could not be read: %w", jobRunId, err)
+		return nil, fmt.Errorf("the run %s started, but it could not be read: %s", jobRunId, err)
+	}
+	if jobRun == nil {
+		// Started, and not visible yet: what is known of it.
+		logger.Warn("the run started is not visible yet", "jobRunId", jobRunId)
+		jobRun = &mgmtv1alpha1.JobRun{Id: jobRunId, JobId: job.GetId()}
 	}
 	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: jobRun}), nil
 }
@@ -557,12 +560,13 @@ func (s *Service) CreateJobRun(
 // found through Temporal's visibility index, which sees a new one a moment late.
 const startedJobRunVisibleWithin = 5 * time.Second
 
-// getStartedJobRun reads a run the schedule has just started, waiting for it to be visible.
+// getStartedJobRun reads a run the schedule has just started, waiting for it to be visible;
+// nil if it is not visible yet.
 func (s *Service) getStartedJobRun(ctx context.Context, accountId, jobRunId string) (*mgmtv1alpha1.JobRun, error) {
-	ctx, cancel := context.WithTimeout(ctx, startedJobRunVisibleWithin)
+	waitCtx, cancel := context.WithTimeout(ctx, startedJobRunVisibleWithin)
 	defer cancel()
 	for {
-		resp, err := s.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+		resp, err := s.GetJobRun(waitCtx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
 			JobRunId:  jobRunId,
 			AccountId: accountId,
 		}))
@@ -574,8 +578,8 @@ func (s *Service) getStartedJobRun(ctx context.Context, accountId, jobRunId stri
 			return nil, err
 		}
 		select {
-		case <-ctx.Done():
-			return nil, err
+		case <-waitCtx.Done():
+			return nil, ctx.Err()
 		case <-time.After(200 * time.Millisecond):
 		}
 	}

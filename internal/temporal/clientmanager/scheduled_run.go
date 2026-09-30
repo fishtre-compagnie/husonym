@@ -20,8 +20,9 @@ func (e *RunInProgressError) Error() string {
 	return fmt.Sprintf("a run of the job is already in progress: %s", e.WorkflowId)
 }
 
-// ErrNoRunStarted says the schedule was triggered and no run of it appeared in time.
-var ErrNoRunStarted = errors.New("the schedule was triggered but no run started")
+// ErrNoRunStarted says the schedule was triggered and no run of it appeared in time: one may
+// still start.
+var ErrNoRunStarted = errors.New("the schedule was triggered but no run of it appeared in time")
 
 const (
 	scheduledRunPollEvery = 200 * time.Millisecond
@@ -61,10 +62,12 @@ func startScheduledRun(
 	if running := before.Info.RunningWorkflows; len(running) > 0 {
 		return "", &RunInProgressError{WorkflowId: running[0].WorkflowID}
 	}
-	known := map[string]bool{}
+	// A run is told by its first execution too: two runs started within the same second
+	// share their workflow id, which the schedule forms from its own and the time.
+	known := map[temporalclient.ScheduleWorkflowExecution]bool{}
 	for _, action := range before.Info.RecentActions {
 		if action.StartWorkflowResult != nil {
-			known[action.StartWorkflowResult.WorkflowID] = true
+			known[*action.StartWorkflowResult] = true
 		}
 	}
 
@@ -72,24 +75,24 @@ func startScheduledRun(
 		return "", fmt.Errorf("unable to trigger the schedule: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	ticker := time.NewTicker(pollEvery)
 	defer ticker.Stop()
 	for {
-		after, err := handle.Describe(ctx)
-		if err != nil && ctx.Err() == nil {
-			return "", fmt.Errorf("unable to describe the schedule: %w", err)
-		}
-		if err == nil {
+		// A failed look is tried again until the wait ends: the trigger is already sent.
+		if after, err := handle.Describe(waitCtx); err == nil {
 			for _, action := range after.Info.RecentActions {
-				if action.StartWorkflowResult != nil && !known[action.StartWorkflowResult.WorkflowID] {
+				if action.StartWorkflowResult != nil && !known[*action.StartWorkflowResult] {
 					return action.StartWorkflowResult.WorkflowID, nil
 				}
 			}
 		}
 		select {
-		case <-ctx.Done():
+		case <-waitCtx.Done():
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
 			return "", ErrNoRunStarted
 		case <-ticker.C:
 		}

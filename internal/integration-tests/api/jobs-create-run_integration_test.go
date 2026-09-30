@@ -51,6 +51,20 @@ func (s *IntegrationTestSuite) Test_CreateJobRun_ReturnsTheRun() {
 	requireNoErrResp(t, resp, err)
 	require.Equal(t, jobRunId, resp.Msg.GetJobRun().GetId())
 
+	// Still not visible when the wait ends: the run started all the same, and what is known of
+	// it is returned.
+	laterRunId := job.GetId() + "-2026-09-30T10:05:00Z"
+	s.Mocks.TemporalClientManager.EXPECT().
+		StartScheduledRun(mock.Anything, accountId, job.GetId(), mock.Anything).
+		Return(laterRunId, nil).Once()
+	s.Mocks.TemporalClientManager.EXPECT().
+		DescribeWorklowExecution(mock.Anything, accountId, laterRunId, mock.Anything).
+		Return(nil, husonymerrors.NewNotFound("workflow not found for "+laterRunId))
+	resp, err = jobclient.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: job.GetId()}))
+	requireNoErrResp(t, resp, err)
+	require.Equal(t, laterRunId, resp.Msg.GetJobRun().GetId())
+	require.Equal(t, job.GetId(), resp.Msg.GetJobRun().GetJobId())
+
 	s.Mocks.TemporalClientManager.EXPECT().
 		StartScheduledRun(mock.Anything, accountId, job.GetId(), mock.Anything).
 		Return("", &clientmanager.RunInProgressError{WorkflowId: jobRunId}).Once()
