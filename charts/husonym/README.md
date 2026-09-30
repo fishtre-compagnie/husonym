@@ -34,7 +34,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.auth.cliClientId | string | `nil` | The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled) |
 | api.auth.clientMap | string | `nil` | A map of clientId->clientSecret of allowed clients |
 | api.auth.enabled | bool | `false` | Enable/Disable authentication |
-| api.auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Once one is set, only the worker makes the calls that are its alone (the context of a run, the consistency key of an account); without one, any account key allowed to may. Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
+| api.auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
 | api.autoscaling.behavior | string | `nil` | The behavior of the HPA autoscaler |
 | api.autoscaling.enabled | bool | `false` | Whether or not to install the HPA autoscaler |
 | api.autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |
@@ -177,7 +177,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | worker.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | worker.fullnameOverride | string | `nil` | Fully overrides the chart name |
 | worker.host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
-| worker.husonym.apiKey | string | `nil` | Only required if running the backend in auth-mode |
+| worker.husonym.apiKey | string | `nil` | The worker key the worker authenticates with, of the form neo_wt_v1_<uuid v4>: one of the keys allowed on the API (api.auth.workerApiKeys). Required if running the backend in auth-mode |
 | worker.husonym.url | string | `"http://husonym-api"` | The url to the Husonym API instance |
 | worker.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | worker.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |

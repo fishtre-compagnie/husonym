@@ -39,9 +39,15 @@ services:
       - AUTH_API_PROVIDER=keycloak
       # Accounts' providers in development live on the local Keycloak, over http.
       - AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE=true
+      # The worker's key, the same as the worker's HUSONYM_API_KEY below. Development only.
+      - HUSONYM_ALLOWED_WORKER_API_KEYS=neo_wt_v1_3f8c2b1e-6d4a-4e7b-9c05-2a1f7e9d8b36
 
     networks:
       - kc-network
+
+  worker:
+    environment:
+      - HUSONYM_API_KEY=neo_wt_v1_3f8c2b1e-6d4a-4e7b-9c05-2a1f7e9d8b36
 
   db:
     networks:
