@@ -17,14 +17,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// serviceAccountKey is the key file of a service account nobody has.
-func serviceAccountKey(t *testing.T) string {
+// serviceAccountKey is the key file of a service account nobody has, with the given fields
+// replaced.
+func serviceAccountKey(t *testing.T, replaced ...string) string {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	require.NoError(t, err)
-	bits, err := json.Marshal(map[string]string{
+	file := map[string]string{
 		"type":           "service_account",
 		"project_id":     "project",
 		"private_key_id": "key",
@@ -32,7 +33,11 @@ func serviceAccountKey(t *testing.T) string {
 		"client_email":   "writer@project.iam.gserviceaccount.com",
 		"client_id":      "1",
 		"token_uri":      "https://oauth2.googleapis.com/token",
-	})
+	}
+	for i := 0; i+1 < len(replaced); i += 2 {
+		file[replaced[i]] = replaced[i+1]
+	}
+	bits, err := json.Marshal(file)
 	require.NoError(t, err)
 	return string(bits)
 }
@@ -79,7 +84,15 @@ func Test_GcsWriter_TheCredentialsOfItsConnection(t *testing.T) {
 
 	external := `{"type": "external_account", "audience": "a", "subject_token_type": "t", "token_url": "https://sts.googleapis.com/v1/token", "credential_source": {"file": "/etc/passwd"}}`
 	_, err = newGcsWriter(parse(t), connectionsOf(&external), cloudidentity.Policy{})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "only a service account")
+
+	// A key naming another token endpoint would have the worker post to it.
+	elsewhere := serviceAccountKey(t, "token_uri", "http://internal-service:8080/")
+	_, err = newGcsWriter(parse(t), connectionsOf(&elsewhere), cloudidentity.Policy{})
+	require.ErrorContains(t, err, "Google's token endpoint")
+	otherUniverse := serviceAccountKey(t, "universe_domain", "example.com")
+	_, err = newGcsWriter(parse(t), connectionsOf(&otherUniverse), cloudidentity.Policy{})
+	require.ErrorContains(t, err, "Google's own universe")
 }
 
 type recordedObject struct{ name, contentType, contentEncoding, body string }

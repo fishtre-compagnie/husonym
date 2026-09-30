@@ -60,6 +60,16 @@ func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 
 	createdGcs, err := create(gcs(gotypeutil.ToPtr(`{"type": "service_account"}`)))
 	requireNoErrResp(t, createdGcs, err)
+	for name, credentials := range map[string]*string{
+		"no service account": nil,
+		"another type":       gotypeutil.ToPtr(`{"type": "external_account"}`),
+		"another endpoint":   gotypeutil.ToPtr(`{"type": "service_account", "token_uri": "http://internal-service/"}`),
+	} {
+		_, err = client.UpdateConnection(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateConnectionRequest{
+			Id: createdGcs.Msg.GetConnection().GetId(), Name: createdGcs.Msg.GetConnection().GetName(), ConnectionConfig: gcs(credentials),
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "%s: %v", name, err)
+	}
 	created, err := create(s3(keys))
 	requireNoErrResp(t, created, err)
 	createdDynamo, err := create(dynamo(keys))

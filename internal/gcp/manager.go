@@ -3,13 +3,13 @@ package husonym_gcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 
 	"cloud.google.com/go/storage"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"google.golang.org/api/option"
 )
 
@@ -60,7 +60,7 @@ func NewStorageClient(
 	}
 	var opts []option.ClientOption
 	if credentials != "" {
-		if err := checkServiceAccount(credentials); err != nil {
+		if err := CheckServiceAccountCredentials(credentials); err != nil {
 			return nil, err
 		}
 		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentials)))
@@ -72,17 +72,31 @@ func NewStorageClient(
 	return client, nil
 }
 
-// checkServiceAccount refuses credentials that are not a service account's key, before the
-// client library reads them: it only checks their type once it first uses them.
-func checkServiceAccount(credentials string) error {
+// googleTokenURL is where a service account exchanges its signed assertion for a token.
+const googleTokenURL = "https://oauth2.googleapis.com/token" //nolint:gosec // an endpoint, not a credential
+
+// CheckServiceAccountCredentials refuses credentials that are not a service account's key of
+// Google's own universe. Another type may name a file or a URL the server would read; a key
+// naming another token endpoint would have the server post to it and hand back its answer.
+// The client library only reads the key once it first uses it: this is checked before.
+func CheckServiceAccountCredentials(credentials string) error {
 	var file struct {
-		Type string `json:"type"`
+		Type           string `json:"type"`
+		TokenURI       string `json:"token_uri"`
+		UniverseDomain string `json:"universe_domain"`
 	}
 	if err := json.Unmarshal([]byte(credentials), &file); err != nil {
-		return errors.New("the service account credentials are not a JSON key file")
+		return husonymerrors.NewBadRequest("the service account credentials are not a JSON key file")
 	}
-	if file.Type != string(option.ServiceAccount) {
-		return fmt.Errorf("the credentials are of type %q: only a service account's are accepted", file.Type)
+	switch {
+	case file.Type != string(option.ServiceAccount):
+		return husonymerrors.NewBadRequest(
+			fmt.Sprintf("the credentials are of type %q: only a service account's are accepted", file.Type))
+	case file.TokenURI != "" && file.TokenURI != googleTokenURL:
+		return husonymerrors.NewBadRequest("the service account credentials must use Google's token endpoint")
+	case file.UniverseDomain != "" && file.UniverseDomain != "googleapis.com":
+		return husonymerrors.NewBadRequest("the service account credentials must belong to Google's own universe")
+	default:
+		return nil
 	}
-	return nil
 }
