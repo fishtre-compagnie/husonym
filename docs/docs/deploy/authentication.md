@@ -86,7 +86,7 @@ A key can do only what its permissions name, whatever the rest of the configurat
 | Account     | `account:view`, `account:edit`, `account:create`, `account:delete`                                                             |
 
 - A key needs at least one permission, and can hold none that its creator does not hold themselves.
-- Using a connection takes its secrets: reading its schema, scanning or previewing its data, `husonym sync` all need `connection:view_sensitive`. Without it, a key reads connections with their passwords and keys masked, and cannot connect to them.
+- Using a connection takes its secrets: reading its schema, scanning or previewing its data, `husonym sync` all need `connection:view_sensitive`. Without it, a key reads connections with their passwords and keys masked, and cannot connect to them. A connection sent back with a secret still masked is refused, rather than stored with the mask in place of the secret: to change a connection, a key sends its secrets in full.
 - Running a job takes `job:execute`, and so does anything that makes it run: creating it with a first run or an active schedule, setting its schedule, resuming it, and writing or enabling one of its SQL hooks.
 - On a job that runs on a schedule, `job:edit` changes what its next run does — its mappings, its destination: grant it as you would `job:execute`.
 - `account:edit` lets a key manage members and their roles, admin included: grant it as you would admin.

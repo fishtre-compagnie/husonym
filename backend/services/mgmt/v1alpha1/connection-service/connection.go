@@ -491,6 +491,9 @@ func (s *Service) CreateConnection(
 	if err := s.checkCloudIdentity(req.Msg.GetConnectionConfig()); err != nil {
 		return nil, err
 	}
+	if err := checkNoMaskedSecret(cc); err != nil {
+		return nil, err
+	}
 
 	connection, err := s.db.Q.CreateConnection(ctx, s.db.Db, db_queries.CreateConnectionParams{
 		AccountID:        accountUuid,
@@ -564,6 +567,9 @@ func (s *Service) UpdateConnection(
 	if err := cc.FromDto(req.Msg.ConnectionConfig); err != nil {
 		return nil, err
 	}
+	if err := checkNoMaskedSecret(cc); err != nil {
+		return nil, err
+	}
 
 	connection, err = s.db.Q.UpdateConnection(ctx, s.db.Db, db_queries.UpdateConnectionParams{
 		ID:               connection.ID,
@@ -581,6 +587,16 @@ func (s *Service) UpdateConnection(
 	return connect.NewResponse(&mgmtv1alpha1.UpdateConnectionResponse{
 		Connection: dto,
 	}), nil
+}
+
+// checkNoMaskedSecret refuses a config that holds a secret as a caller who may not see it reads
+// it: the mask would replace the secret.
+func checkNoMaskedSecret(cc *pg_models.ConnectionConfig) error {
+	if field, ok := cc.MaskedSecret(); ok {
+		return husonymerrors.NewBadRequest(
+			fmt.Sprintf("the %s of the connection is masked: send the secret itself", field))
+	}
+	return nil
 }
 
 func (s *Service) DeleteConnection(

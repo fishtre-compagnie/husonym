@@ -271,6 +271,50 @@ func (s *IntegrationTestSuite) Test_ConnectionService_UpdateConnection() {
 			requireNoErrResp(t, resp, err)
 			require.Equal(t, updatedName, resp.Msg.GetConnection().GetName())
 		})
+
+		// A connection read masked and sent back would store the mask in place of its password.
+		t.Run("postgres-masked-secret-refused", func(t *testing.T) {
+			conn := s.createPostgresConnection(
+				client,
+				accountId,
+				uuid.NewString(),
+				s.Pgcontainer.URL,
+			)
+			masked, err := client.GetConnection(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{
+				Id:               conn.GetId(),
+				ExcludeSensitive: true,
+			}))
+			requireNoErrResp(t, masked, err)
+			require.NotEqual(t, s.Pgcontainer.URL, masked.Msg.GetConnection().GetConnectionConfig().GetPgConfig().GetUrl())
+
+			resp, err := client.UpdateConnection(
+				s.ctx,
+				connect.NewRequest(&mgmtv1alpha1.UpdateConnectionRequest{
+					Id:               conn.GetId(),
+					Name:             conn.GetName(),
+					ConnectionConfig: masked.Msg.GetConnection().GetConnectionConfig(),
+				}),
+			)
+			requireErrResp(t, resp, err)
+			requireConnectError(t, err, connect.CodeInvalidArgument)
+
+			created, err := client.CreateConnection(
+				s.ctx,
+				connect.NewRequest(&mgmtv1alpha1.CreateConnectionRequest{
+					AccountId:        accountId,
+					Name:             uuid.NewString(),
+					ConnectionConfig: masked.Msg.GetConnection().GetConnectionConfig(),
+				}),
+			)
+			requireErrResp(t, created, err)
+			requireConnectError(t, err, connect.CodeInvalidArgument)
+
+			stored, err := client.GetConnection(s.ctx, connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{
+				Id: conn.GetId(),
+			}))
+			requireNoErrResp(t, stored, err)
+			require.Equal(t, s.Pgcontainer.URL, stored.Msg.GetConnection().GetConnectionConfig().GetPgConfig().GetUrl())
+		})
 	})
 
 	t.Run("OSS Authenticated Licensed", func(t *testing.T) {

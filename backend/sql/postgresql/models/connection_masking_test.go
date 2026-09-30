@@ -29,7 +29,8 @@ func clientTls() *ClientTls {
 	return &ClientTls{ClientKey: ptr(secret)}
 }
 
-func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
+// secretCases puts the marker in each place a credential lives, one config each.
+func secretCases() map[string]*ConnectionConfig {
 	awsCredentials := func() *AwsS3Credentials {
 		return &AwsS3Credentials{AccessKeyId: ptr("AKIA"), SecretAccessKey: ptr(secret), SessionToken: ptr(secret)}
 	}
@@ -101,8 +102,11 @@ func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
 			Connection: &PostgresConnection{Host: "db"}, SSHTunnel: tunnel,
 		}}
 	}
+	return cases
+}
 
-	for name, config := range cases {
+func Test_ConnectionConfig_ToDto_MasksEverySecret(t *testing.T) {
+	for name, config := range secretCases() {
 		t.Run(name, func(t *testing.T) {
 			dto, err := config.ToDto(false)
 			require.NoError(t, err)
