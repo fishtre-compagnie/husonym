@@ -158,6 +158,20 @@ func Test_Workflow(t *testing.T) {
 			)
 		})
 
+		t.Run("user_defined_transformer", func(t *testing.T) {
+			t.Parallel()
+			test_postgres_user_defined_transformer(
+				t,
+				ctx,
+				postgres,
+				husonymApi,
+				dbManagers,
+				accountId,
+				sourceConn,
+				destConn,
+			)
+		})
+
 		t.Run("subsetting", func(t *testing.T) {
 			t.Parallel()
 			test_postgres_subsetting(

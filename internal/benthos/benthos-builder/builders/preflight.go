@@ -7,8 +7,9 @@ import (
 	"slices"
 	"strings"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
@@ -436,12 +437,15 @@ func categoriesOf(config *mgmtv1alpha1.GenerateCategorical) []string {
 // transformerConfigs gives the config a transformer of the job runs: a user-defined one
 // resolved to the system transformer it configures, asked once for the whole job.
 type transformerConfigs struct {
-	client   mgmtv1alpha1connect.TransformersServiceClient
-	resolved map[string]*mgmtv1alpha1.TransformerConfig
+	userDefinedTransformers te.UserDefinedTransformerResolver
+	resolved                map[string]*mgmtv1alpha1.TransformerConfig
 }
 
-func newTransformerConfigs(client mgmtv1alpha1connect.TransformersServiceClient) *transformerConfigs {
-	return &transformerConfigs{client: client, resolved: map[string]*mgmtv1alpha1.TransformerConfig{}}
+func newTransformerConfigs(userDefinedTransformers te.UserDefinedTransformerResolver) *transformerConfigs {
+	return &transformerConfigs{
+		userDefinedTransformers: userDefinedTransformers,
+		resolved:                map[string]*mgmtv1alpha1.TransformerConfig{},
+	}
 }
 
 func (c *transformerConfigs) of(
@@ -455,7 +459,7 @@ func (c *transformerConfigs) of(
 	if config, ok := c.resolved[userDefined.GetId()]; ok {
 		return config, nil
 	}
-	resolved, err := convertUserDefinedFunctionConfig(ctx, c.client, transformer)
+	resolved, err := convertUserDefinedFunctionConfig(ctx, c.userDefinedTransformers, transformer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to resolve a user defined transformer: %w", err)
 	}

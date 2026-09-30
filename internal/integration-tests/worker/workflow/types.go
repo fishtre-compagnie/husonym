@@ -22,4 +22,6 @@ type TestJobOptions struct {
 	AutoMapNewColumns              bool
 	BatchSize                      *uint32
 	MaxInFlight                    *uint32
+	// Engine runs the job; unspecified leaves the deployment default, Benthos in these tests.
+	Engine mgmtv1alpha1.JobEngine
 }

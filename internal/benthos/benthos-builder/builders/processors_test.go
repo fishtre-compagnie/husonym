@@ -35,7 +35,7 @@ func Test_buildProcessorConfigsJavascript(t *testing.T) {
 
 	res, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{
 			{
 				Schema: "public", Table: "users", Column: "address",
@@ -109,7 +109,7 @@ func Test_buildProcessorConfigsGenerateJavascript(t *testing.T) {
 
 	res, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{
 			{Schema: "public", Table: "users", Column: "test",
 				Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: jsT.Config},
@@ -193,7 +193,7 @@ func Test_buildProcessorConfigsJavascriptMultiple(t *testing.T) {
 
 	res, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{
 			{
 				Schema:      "public",
@@ -287,7 +287,7 @@ func Test_buildProcessorConfigsTransformAndGenerateJavascript(t *testing.T) {
 
 	res, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{
 			{
 				Schema:      "public",
@@ -369,7 +369,7 @@ func Test_buildProcessorConfigsJavascript_DeepKeys(t *testing.T) {
 
 	res, err := buildProcessorConfigs(
 		ctx,
-		mockTransformerClient,
+		accountTransformers(mockTransformerClient),
 		[]*mgmtv1alpha1.JobMapping{
 			{
 				Schema: "public", Table: "users", Column: "foo.bar.baz",
@@ -494,7 +494,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 
 		cursors, err := buildIdentityCursors(
 			context.Background(),
-			mockTransformerClient,
+			accountTransformers(mockTransformerClient),
 			[]*mgmtv1alpha1.JobMapping{},
 		)
 
@@ -532,7 +532,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 			},
 		}
 
-		cursors, err := buildIdentityCursors(context.Background(), mockTransformerClient, cols)
+		cursors, err := buildIdentityCursors(context.Background(), accountTransformers(mockTransformerClient), cols)
 
 		require.NoError(t, err)
 		require.Len(t, cursors, 2)
@@ -561,6 +561,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 				).Return(
 				connect.NewResponse(&mgmtv1alpha1.GetUserDefinedTransformerByIdResponse{
 					Transformer: &mgmtv1alpha1.UserDefinedTransformer{
+						AccountId: testTransformerAccountId,
 						Config: &mgmtv1alpha1.TransformerConfig{
 							Config: &mgmtv1alpha1.TransformerConfig_TransformScrambleIdentityConfig{
 								TransformScrambleIdentityConfig: &mgmtv1alpha1.TransformScrambleIdentity{},
@@ -588,7 +589,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 				},
 			}
 
-			cursors, err := buildIdentityCursors(context.Background(), mockTransformerClient, cols)
+			cursors, err := buildIdentityCursors(context.Background(), accountTransformers(mockTransformerClient), cols)
 
 			require.NoError(t, err)
 			require.Len(t, cursors, 1)
@@ -616,7 +617,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 			},
 		}
 
-		cursors, err := buildIdentityCursors(context.Background(), mockTransformerClient, cols)
+		cursors, err := buildIdentityCursors(context.Background(), accountTransformers(mockTransformerClient), cols)
 
 		require.NoError(t, err)
 		require.Empty(t, cursors)
@@ -655,7 +656,7 @@ func Test_buildIdentityCursors(t *testing.T) {
 			},
 		}
 
-		cursors, err := buildIdentityCursors(context.Background(), mockTransformerClient, cols)
+		cursors, err := buildIdentityCursors(context.Background(), accountTransformers(mockTransformerClient), cols)
 
 		require.Error(t, err)
 		require.Nil(t, cursors)

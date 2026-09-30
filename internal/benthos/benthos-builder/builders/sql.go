@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
@@ -44,6 +46,8 @@ type sqlSyncBuilder struct {
 	tableDeferrableMap     map[string]bool                           // schema.table -> true if table has at least one deferrable constraint
 	// transformerConfigs resolves the transformers of the job for the pre-flight findings.
 	transformerConfigs *transformerConfigs
+	// transformerConfigsAccountId is the account transformerConfigs resolves for.
+	transformerConfigsAccountId string
 }
 
 func NewSqlSyncBuilder(
@@ -268,7 +272,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	configs, err := buildBenthosSqlSourceConfigResponses(
 		logger,
 		ctx,
-		b.transformerclient,
+		b.configs(job.GetAccountId()).userDefinedTransformers,
 		groupedTableMapping,
 		runConfigs,
 		sourceConnection.Id,
@@ -310,7 +314,7 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	}
 
 	if preflightDriver(b.driver) {
-		findings, err := sourceFindings(ctx, b.configs(), job, params.UsesAthanor,
+		findings, err := sourceFindings(ctx, b.configs(job.GetAccountId()), job, params.UsesAthanor,
 			sqlSourceOpts.SubsetByForeignKeyConstraints, runConfigs, tableConstraints, groupedColumnInfo,
 			colTransformerMap, foreignKeys)
 		if err != nil {
@@ -322,10 +326,12 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 	return configs, nil
 }
 
-// configs returns what resolves the transformers of the job, made on first use.
-func (b *sqlSyncBuilder) configs() *transformerConfigs {
-	if b.transformerConfigs == nil {
-		b.transformerConfigs = newTransformerConfigs(b.transformerclient)
+// configs returns what resolves the transformers of the job, the user-defined ones of the job's
+// account: made on first use, and made again for another account.
+func (b *sqlSyncBuilder) configs(accountId string) *transformerConfigs {
+	if b.transformerConfigs == nil || b.transformerConfigsAccountId != accountId {
+		b.transformerConfigs = newTransformerConfigs(te.NewUserDefinedTransformerResolver(b.transformerclient, accountId))
+		b.transformerConfigsAccountId = accountId
 	}
 	return b.transformerConfigs
 }
@@ -342,7 +348,7 @@ func splitKeyToTablePieces(key string) (schema, table string, err error) {
 func buildBenthosSqlSourceConfigResponses(
 	slogger *slog.Logger,
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	groupedTableMapping map[string]*tableMapping,
 	runconfigs []*rc.RunConfig,
 	dsnConnectionId string,
@@ -404,7 +410,7 @@ func buildBenthosSqlSourceConfigResponses(
 		slogger.Debug("building processors")
 		processorConfigs, err := buildProcessorConfigsByRunType(
 			ctx,
-			transformerclient,
+			userDefinedTransformers,
 			config,
 			columnForeignKeysMap,
 			transformedFktoPkMap,
@@ -422,7 +428,7 @@ func buildBenthosSqlSourceConfigResponses(
 			bc.Pipeline.Processors = append(bc.Pipeline.Processors, *pc)
 		}
 
-		cursors, err := buildIdentityCursors(ctx, transformerclient, mappings.Mappings)
+		cursors, err := buildIdentityCursors(ctx, userDefinedTransformers, mappings.Mappings)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build identity cursors: %w", err)
 		}
@@ -532,7 +538,7 @@ func (b *sqlSyncBuilder) BuildDestinationConfig(
 	params.SourceConfig.ColumnDefaultProperties = columnDefaultProperties
 
 	if preflightDriver(b.driver) {
-		findings, err := destinationFindings(ctx, b.configs(), params.UsesAthanor,
+		findings, err := destinationFindings(ctx, b.configs(params.Job.GetAccountId()), params.UsesAthanor,
 			params.DestConnection.GetId(), benthosConfig, colInfoMap,
 			b.sqlSourceSchemaColumnInfoMap[tableKey], tableColTransformers)
 		if err != nil {

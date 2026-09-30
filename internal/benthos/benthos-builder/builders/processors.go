@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"connectrpc.com/connect"
+	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
@@ -26,7 +26,7 @@ import (
 
 func buildProcessorConfigsByRunType(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	config *runconfigs.RunConfig,
 	columnForeignKeysMap map[string][]*bb_internal.ReferenceKey,
 	transformedFktoPkMap map[string][]*bb_internal.ReferenceKey,
@@ -53,7 +53,7 @@ func buildProcessorConfigsByRunType(
 		}
 		processorConfigs, err := buildProcessorConfigs(
 			ctx,
-			transformerclient,
+			userDefinedTransformers,
 			mappings,
 			columnInfoMap,
 			transformedFktoPkMap,
@@ -135,7 +135,7 @@ func buildSqlUpdateProcessorConfigs(
 
 func buildProcessorConfigs(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	cols []*mgmtv1alpha1.JobMapping,
 	tableColumnInfo map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	transformedFktoPkMap map[string][]*bb_internal.ReferenceKey,
@@ -152,14 +152,14 @@ func buildProcessorConfigs(
 			filteredCols = append(filteredCols, col)
 		}
 	}
-	jsCode, err := extractJsFunctionsAndOutputs(ctx, transformerclient, filteredCols)
+	jsCode, err := extractJsFunctionsAndOutputs(ctx, userDefinedTransformers, filteredCols)
 	if err != nil {
 		return nil, err
 	}
 
 	mutations, err := buildMutationConfigs(
 		ctx,
-		transformerclient,
+		userDefinedTransformers,
 		filteredCols,
 		tableColumnInfo,
 		runconfig.SplitColumnPaths(),
@@ -253,7 +253,7 @@ func buildDefaultTransformerConfigs(
 
 func extractJsFunctionsAndOutputs(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	cols []*mgmtv1alpha1.JobMapping,
 ) (string, error) {
 	var benthosOutputs []string
@@ -265,7 +265,7 @@ func extractJsFunctionsAndOutputs(
 			if jmTransformer.GetConfig().GetUserDefinedTransformerConfig() != nil {
 				val, err := convertUserDefinedFunctionConfig(
 					ctx,
-					transformerclient,
+					userDefinedTransformers,
 					col.GetTransformer(),
 				)
 				if err != nil {
@@ -325,7 +325,7 @@ func isJavascriptTransformer(jmt *mgmtv1alpha1.JobMappingTransformer) bool {
 
 func buildIdentityCursors(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	cols []*mgmtv1alpha1.JobMapping,
 ) (map[string]*tablesync_shared.IdentityCursor, error) {
 	cursors := map[string]*tablesync_shared.IdentityCursor{}
@@ -334,7 +334,7 @@ func buildIdentityCursors(
 		transformer := col.GetTransformer()
 
 		if transformer.GetConfig().GetUserDefinedTransformerConfig() != nil {
-			val, err := convertUserDefinedFunctionConfig(ctx, transformerclient, transformer)
+			val, err := convertUserDefinedFunctionConfig(ctx, userDefinedTransformers, transformer)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"unable to look up user defined transformer config by id: %w",
@@ -355,7 +355,7 @@ func buildIdentityCursors(
 
 func buildMutationConfigs(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	cols []*mgmtv1alpha1.JobMapping,
 	tableColumnInfo map[string]*sqlmanager_shared.DatabaseSchemaRow,
 	splitColumnPaths bool,
@@ -369,7 +369,7 @@ func buildMutationConfigs(
 				// handle user defined transformer -> get the user defined transformer configs using the id
 				val, err := convertUserDefinedFunctionConfig(
 					ctx,
-					transformerclient,
+					userDefinedTransformers,
 					col.GetTransformer(),
 				)
 				if err != nil {
@@ -519,25 +519,14 @@ func constructBenthosJavascriptObject(col string, source mgmtv1alpha1.Transforme
 // takes in an user defined config with just an id field and return the right transformer config for that user defined function id
 func convertUserDefinedFunctionConfig(
 	ctx context.Context,
-	transformerclient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers te.UserDefinedTransformerResolver,
 	t *mgmtv1alpha1.JobMappingTransformer,
 ) (*mgmtv1alpha1.JobMappingTransformer, error) {
-	transformerResp, err := transformerclient.GetUserDefinedTransformerById(
-		ctx,
-		connect.NewRequest(
-			&mgmtv1alpha1.GetUserDefinedTransformerByIdRequest{
-				TransformerId: t.Config.GetUserDefinedTransformerConfig().Id,
-			},
-		),
-	)
+	config, err := userDefinedTransformers.GetUserDefinedTransformer(ctx, t.GetConfig().GetUserDefinedTransformerConfig().GetId())
 	if err != nil {
 		return nil, err
 	}
-	transformer := transformerResp.Msg.GetTransformer()
-
-	return &mgmtv1alpha1.JobMappingTransformer{
-		Config: transformer.GetConfig(),
-	}, nil
+	return &mgmtv1alpha1.JobMappingTransformer{Config: config}, nil
 }
 
 func computeMutationFunction(

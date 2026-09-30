@@ -12,6 +12,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUserDefinedTransformersOutsideAccount = `-- name: CountUserDefinedTransformersOutsideAccount :one
+SELECT count(t.id) from husonym_api.transformers t
+WHERE t.id = ANY($1::uuid[]) and t.account_id <> $2
+`
+
+type CountUserDefinedTransformersOutsideAccountParams struct {
+	TransformerIds []pgtype.UUID
+	AccountId      pgtype.UUID
+}
+
+func (q *Queries) CountUserDefinedTransformersOutsideAccount(ctx context.Context, db DBTX, arg CountUserDefinedTransformersOutsideAccountParams) (int64, error) {
+	row := db.QueryRow(ctx, countUserDefinedTransformersOutsideAccount, arg.TransformerIds, arg.AccountId)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUserDefinedTransformer = `-- name: CreateUserDefinedTransformer :one
 INSERT INTO husonym_api.transformers (
   name, description, source, account_id, transformer_config, created_by_id, updated_by_id

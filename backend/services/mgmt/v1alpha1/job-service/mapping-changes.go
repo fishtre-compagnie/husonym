@@ -139,6 +139,9 @@ func (s *Service) ApplyMappingChanges(
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
+	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	params, err := reviewParams(user.PgId(), accountUuid, jobUuid, req.Msg.GetChangeIds(), req.Msg.Note)
 	if err != nil {
 		return nil, err

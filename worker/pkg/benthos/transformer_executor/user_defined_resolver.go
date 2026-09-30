@@ -2,6 +2,8 @@ package transformer_executor
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -10,14 +12,17 @@ import (
 
 type apiUserDefinedTransformerResolver struct {
 	transformerClient mgmtv1alpha1connect.TransformersServiceClient
+	accountId         string
 }
 
-// NewUserDefinedTransformerResolver resolves user-defined transformers through the
-// transformers API.
+// NewUserDefinedTransformerResolver resolves, through the transformers API, the user-defined
+// transformers of one account: that of the job or the request whose rules they are. The API
+// gives the worker any transformer, so the account is checked here.
 func NewUserDefinedTransformerResolver(
 	transformerClient mgmtv1alpha1connect.TransformersServiceClient,
+	accountId string,
 ) UserDefinedTransformerResolver {
-	return &apiUserDefinedTransformerResolver{transformerClient: transformerClient}
+	return &apiUserDefinedTransformerResolver{transformerClient: transformerClient, accountId: accountId}
 }
 
 func (u *apiUserDefinedTransformerResolver) GetUserDefinedTransformer(
@@ -33,5 +38,12 @@ func (u *apiUserDefinedTransformerResolver) GetUserDefinedTransformer(
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetTransformer().GetConfig(), nil
+	transformer := resp.Msg.GetTransformer()
+	if !strings.EqualFold(transformer.GetAccountId(), u.accountId) {
+		return nil, connect.NewError(
+			connect.CodeNotFound,
+			fmt.Errorf("unable to find user defined transformer %s in account %s", id, u.accountId),
+		)
+	}
+	return transformer.GetConfig(), nil
 }

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/itchyny/gojq"
@@ -30,8 +29,8 @@ type JsonAnonymizer struct {
 	skipPaths                  map[string]struct{}
 	anonymizeConfig            *anonymizeConfig
 
-	logger            *slog.Logger
-	transformerClient mgmtv1alpha1connect.TransformersServiceClient
+	logger                  *slog.Logger
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver
 }
 
 type anonymizeConfig struct {
@@ -64,7 +63,7 @@ func NewAnonymizer(opts ...Option) (*JsonAnonymizer, error) {
 	a.transformerExecutors, err = initTransformerExecutors(
 		a.transformerMappings,
 		a.anonymizeConfig,
-		a.transformerClient,
+		a.userDefinedTransformers,
 		a.logger,
 	)
 	if err != nil {
@@ -76,7 +75,7 @@ func NewAnonymizer(opts ...Option) (*JsonAnonymizer, error) {
 		a.defaultTransformerExecutor, err = initDefaultTransformerExecutors(
 			a.defaultTransformers,
 			a.anonymizeConfig,
-			a.transformerClient,
+			a.userDefinedTransformers,
 			a.logger,
 		)
 		if err != nil {
@@ -97,9 +96,11 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-func WithTransformerClient(transformerClient mgmtv1alpha1connect.TransformersServiceClient) Option {
+// WithUserDefinedTransformerResolver resolves the user-defined transformers the mappings refer
+// to, bound to the account whose transformers they may be.
+func WithUserDefinedTransformerResolver(resolver transformer_executor.UserDefinedTransformerResolver) Option {
 	return func(ja *JsonAnonymizer) {
-		ja.transformerClient = transformerClient
+		ja.userDefinedTransformers = resolver
 	}
 }
 
@@ -385,13 +386,13 @@ func (a *JsonAnonymizer) AnonymizeJSONObject(jsonStr string) (string, error) {
 func initTransformerExecutors(
 	transformerMappings []*mgmtv1alpha1.TransformerMapping,
 	anonymizeConfig *anonymizeConfig,
-	transformerClient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
 	logger *slog.Logger,
 ) ([]*transformer_executor.TransformerExecutor, error) {
 	executors := []*transformer_executor.TransformerExecutor{}
 	execOpts := []transformer_executor.TransformerExecutorOption{
 		transformer_executor.WithLogger(logger),
-		transformer_executor.WithUserDefinedTransformerResolver(transformer_executor.NewUserDefinedTransformerResolver(transformerClient)),
+		transformer_executor.WithUserDefinedTransformerResolver(userDefinedTransformers),
 	}
 	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
 		anonymizeConfig.anonymize != nil {
@@ -432,12 +433,12 @@ type DefaultExecutors struct {
 func initDefaultTransformerExecutors(
 	defaultTransformer *mgmtv1alpha1.DefaultTransformersConfig,
 	anonymizeConfig *anonymizeConfig,
-	transformerClient mgmtv1alpha1connect.TransformersServiceClient,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
 	logger *slog.Logger,
 ) (*DefaultExecutors, error) {
 	execOpts := []transformer_executor.TransformerExecutorOption{
 		transformer_executor.WithLogger(logger),
-		transformer_executor.WithUserDefinedTransformerResolver(transformer_executor.NewUserDefinedTransformerResolver(transformerClient)),
+		transformer_executor.WithUserDefinedTransformerResolver(userDefinedTransformers),
 	}
 	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
 		anonymizeConfig.anonymize != nil {

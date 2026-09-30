@@ -28,9 +28,13 @@ func (s *Service) GetColumnSampleValues(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetColumnSampleValuesRequest],
 ) (*connect.Response[mgmtv1alpha1.GetColumnSampleValuesResponse], error) {
+	connection, err := s.getConnection(ctx, req.Msg.GetConnectionId())
+	if err != nil {
+		return nil, err
+	}
 	sampled, err := s.sampleRows(
 		ctx,
-		req.Msg.GetConnectionId(),
+		connection,
 		req.Msg.GetSchema(),
 		req.Msg.GetTable(),
 		clampLimit(req.Msg.GetLimit(), defaultSampleLimit, maxSampleLimit),
@@ -59,24 +63,31 @@ type sampledTable struct {
 	rows      []map[string]any
 }
 
-// sampleRows reads the first rows of a table. The raw values are kept, rather than their text,
-// because a transformer has to be handed a value of the column's own type — and whole rows are
-// kept because a javascript rule may read the row's other columns.
-func (s *Service) sampleRows(
-	ctx context.Context,
-	connectionId, schema, table string,
-	limit uint32,
-) (*sampledTable, error) {
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-
-	connResp, err := s.connectionService.GetConnection(
+// getConnection gives the connection whose table is read, through the connection service: the
+// caller has to be allowed to open it.
+func (s *Service) getConnection(ctx context.Context, connectionId string) (*mgmtv1alpha1.Connection, error) {
+	resp, err := s.connectionService.GetConnection(
 		ctx,
 		connect.NewRequest(&mgmtv1alpha1.GetConnectionRequest{Id: connectionId}),
 	)
 	if err != nil {
 		return nil, err
 	}
-	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connResp.Msg.GetConnection())
+	return resp.Msg.GetConnection(), nil
+}
+
+// sampleRows reads the first rows of a table. The raw values are kept, rather than their text,
+// because a transformer has to be handed a value of the column's own type — and whole rows are
+// kept because a javascript rule may read the row's other columns.
+func (s *Service) sampleRows(
+	ctx context.Context,
+	connection *mgmtv1alpha1.Connection,
+	schema, table string,
+	limit uint32,
+) (*sampledTable, error) {
+	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
+
+	dataconn, err := s.connectiondatabuilder.NewDataConnection(logger, connection)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +98,7 @@ func (s *Service) sampleRows(
 	}
 
 	sampled := &sampledTable{
-		accountId: connResp.Msg.GetConnection().GetAccountId(),
+		accountId: connection.GetAccountId(),
 		rows:      make([]map[string]any, 0, len(collector.rows)),
 	}
 	for _, rowbytes := range collector.rows {
