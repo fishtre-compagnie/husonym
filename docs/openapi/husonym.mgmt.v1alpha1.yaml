@@ -12339,6 +12339,12 @@ components:
       additionalProperties: false
     mgmt.v1alpha1.CreateJobRunResponse:
       type: object
+      properties:
+        jobRun:
+          allOf:
+            - $ref: '#/components/schemas/mgmt.v1alpha1.JobRun'
+          title: job_run
+          description: The run the request started.
       title: CreateJobRunResponse
       additionalProperties: false
     mgmt.v1alpha1.DatabaseError:

@@ -1,6 +1,8 @@
 package v1alpha1_jobservice
 
 import (
+	"errors"
+
 	"bufio"
 	"context"
 	"encoding/json"
@@ -12,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
 	"connectrpc.com/connect"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -30,7 +34,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	temporalclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -534,18 +537,23 @@ func (s *Service) CreateJobRun(
 	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
-	err = s.temporalmgr.TriggerSchedule(
-		ctx,
-		job.GetAccountId(),
-		job.GetId(),
-		&temporalclient.ScheduleTriggerOptions{},
-		logger,
-	)
+	jobRunId, err := s.temporalmgr.StartScheduledRun(ctx, job.GetAccountId(), job.GetId(), logger)
+	var inProgress *clientmanager.RunInProgressError
+	if errors.As(err, &inProgress) {
+		return nil, husonymerrors.NewFailedPrecondition(inProgress.Error())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to create job run by triggering temporal schedule: %w", err)
 	}
 
-	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{}), nil
+	jobRun, err := s.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+		JobRunId:  jobRunId,
+		AccountId: job.GetAccountId(),
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("the run %s started, but it could not be read: %w", jobRunId, err)
+	}
+	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: jobRun.Msg.GetJobRun()}), nil
 }
 
 func (s *Service) CancelJobRun(

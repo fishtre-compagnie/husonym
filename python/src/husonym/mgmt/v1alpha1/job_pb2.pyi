@@ -984,8 +984,10 @@ class CreateJobRunRequest(_message.Message):
     def __init__(self, job_id: _Optional[str] = ...) -> None: ...
 
 class CreateJobRunResponse(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("job_run",)
+    JOB_RUN_FIELD_NUMBER: _ClassVar[int]
+    job_run: JobRun
+    def __init__(self, job_run: _Optional[_Union[JobRun, _Mapping]] = ...) -> None: ...
 
 class CancelJobRunRequest(_message.Message):
     __slots__ = ("job_run_id", "account_id")

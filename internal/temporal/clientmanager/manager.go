@@ -47,6 +47,12 @@ type Interface interface {
 		opts *temporalclient.ScheduleTriggerOptions,
 		logger *slog.Logger,
 	) error
+	StartScheduledRun(
+		ctx context.Context,
+		accountId string,
+		scheduleId string,
+		logger *slog.Logger,
+	) (string, error)
 	PauseSchedule(
 		ctx context.Context,
 		accountId string,
