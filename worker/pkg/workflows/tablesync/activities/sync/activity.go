@@ -3,6 +3,7 @@ package sync_activity
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"log/slog"
@@ -169,7 +170,11 @@ func (a *Activity) SyncTable(
 	go monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
 		handleStreamStop(benthosStream, syncResultChan, err, logMessage, logger)
 	}, func(err error) {
-		syncResultChan <- err
+		// Unless the stop above already gave the result: the monitor may end here on a panic.
+		select {
+		case syncResultChan <- err:
+		default:
+		}
 	}, logger)
 
 	benthosConfig, err := a.getBenthosConfig(ctx, &mgmtv1alpha1.RunContextKey{
@@ -345,7 +350,9 @@ func monitorActivityHeartbeat(
 ) {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("recovered from panic in sync activity heartbeat loop: %v", r)
+			logger.Error(fmt.Sprintf("recovered from panic in sync activity heartbeat loop: %v", r))
+			// The activity waits for an end only the monitor gives.
+			handleStreamDone(fmt.Errorf("panic in sync activity heartbeat loop: %v", r))
 		}
 	}()
 
@@ -359,13 +366,12 @@ func monitorActivityHeartbeat(
 			return
 
 		case streamErr := <-streamDone:
-			if streamErr == nil {
-				select {
-				case activityErr := <-stopActivityChan:
-					logger.Info("stream done after a stop activity from benthos channel")
-					streamErr = activityErr
-				default:
-				}
+			select {
+			case activityErr := <-stopActivityChan:
+				logger.Info("stream done after a stop activity from benthos channel")
+				// The stop names the cause; a failed stream only adds how it ended.
+				streamErr = errors.Join(activityErr, streamErr)
+			default:
 			}
 			handleStreamDone(streamErr)
 			return
