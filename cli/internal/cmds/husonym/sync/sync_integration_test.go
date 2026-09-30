@@ -56,20 +56,25 @@ func Test_Sync(t *testing.T) {
 		t,
 		husonymApi.OSSUnauthenticatedLicensedClients.Users(),
 	)
-	awsS3Config := testutil.GetTestAwsS3Config()
-	s3Conn := tchusonymapi.CreateS3Connection(
-		ctx,
-		t,
-		connclient,
-		accountId,
-		"s3-conn",
-		awsS3Config.Bucket,
-		&awsS3Config.Region,
-		&mgmtv1alpha1.AwsS3Credentials{
-			AccessKeyId:     &awsS3Config.AccessKeyId,
-			SecretAccessKey: &awsS3Config.SecretAccessKey,
-		},
-	)
+	// The S3 connection holds real keys: made only where the S3 end-to-end tests run.
+	var s3Conn *mgmtv1alpha1.Connection
+	if testutil.ShouldRunS3IntegrationTest() {
+		awsS3Config := testutil.GetTestAwsS3Config()
+		s3Conn = tchusonymapi.CreateS3Connection(
+			ctx,
+			t,
+			connclient,
+			accountId,
+			"s3-conn",
+			awsS3Config.Bucket,
+			&awsS3Config.Region,
+			&mgmtv1alpha1.AwsS3Credentials{
+				AccessKeyId:     &awsS3Config.AccessKeyId,
+				SecretAccessKey: &awsS3Config.SecretAccessKey,
+				SessionToken:    &awsS3Config.SessionToken,
+			},
+		)
+	}
 	outputType := output.PlainOutput
 
 	t.Run("postgres", func(t *testing.T) {
