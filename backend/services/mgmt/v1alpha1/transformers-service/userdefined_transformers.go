@@ -15,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 )
 
 func (s *Service) GetUserDefinedTransformers(
@@ -130,6 +131,9 @@ func (s *Service) CreateUserDefinedTransformer(
 	if err != nil {
 		return nil, err
 	}
+	if err := verifyRunsNoUserDefinedTransformer(req.Msg.GetTransformerConfig()); err != nil {
+		return nil, err
+	}
 
 	UserDefinedTransformer := &db_queries.CreateUserDefinedTransformerParams{
 		AccountID:         accountUuid,
@@ -238,6 +242,10 @@ func (s *Service) UpdateUserDefinedTransformer(
 		return nil, err
 	}
 
+	if err := verifyRunsNoUserDefinedTransformer(req.Msg.GetTransformerConfig()); err != nil {
+		return nil, err
+	}
+
 	updateParams := &db_queries.UpdateUserDefinedTransformerParams{
 		Name:              req.Msg.Name,
 		Description:       req.Msg.Description,
@@ -322,4 +330,14 @@ func (s *Service) ValidateUserRegexCode(
 	return connect.NewResponse(&mgmtv1alpha1.ValidateUserRegexCodeResponse{
 		Valid: err == nil,
 	}), nil
+}
+
+// verifyRunsNoUserDefinedTransformer refuses a user-defined transformer whose configuration runs
+// another one, directly or through the anonymizers of TransformPiiText. Resolving it would have
+// to resolve that one in turn, and one that names itself would never end.
+func verifyRunsNoUserDefinedTransformer(config *mgmtv1alpha1.TransformerConfig) error {
+	if len(job_util.UserDefinedTransformerIds(config)) > 0 {
+		return husonymerrors.NewBadRequest("a user defined transformer cannot run another user defined transformer")
+	}
+	return nil
 }

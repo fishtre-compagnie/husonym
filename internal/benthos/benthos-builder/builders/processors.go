@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -269,7 +268,7 @@ func extractJsFunctionsAndOutputs(
 					col.GetTransformer(),
 				)
 				if err != nil {
-					return "", errors.New("unable to look up user defined transformer config by id")
+					return "", fmt.Errorf("unable to look up user defined transformer config by id: %w", err)
 				}
 				jmTransformer = val
 			}
@@ -373,7 +372,7 @@ func buildMutationConfigs(
 					col.GetTransformer(),
 				)
 				if err != nil {
-					return "", errors.New("unable to look up user defined transformer config by id")
+					return "", fmt.Errorf("unable to look up user defined transformer config by id: %w", err)
 				}
 				col.Transformer = val
 			}

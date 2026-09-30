@@ -131,6 +131,51 @@ func (s *IntegrationTestSuite) Test_PreviewColumnTransformer_UserDefinedTransfor
 	require.NotContains(t, err.Error(), "unable to find user defined transformer")
 }
 
+// A user-defined transformer runs a transformer of the catalog, never another user-defined one:
+// resolving it would have to resolve that one in turn, and one that names itself would never end.
+func (s *IntegrationTestSuite) Test_UserDefinedTransformer_RunsNoUserDefinedTransformer() {
+	t := s.T()
+	ctx := s.ctx
+	transformerclient := s.OSSUnauthenticatedLicensedClients.Transformers()
+	accountId := s.createPersonalAccount(ctx, s.OSSUnauthenticatedLicensedClients.Users())
+	rule := s.createJavascriptTransformer(transformerclient, accountId, "rule")
+
+	direct := userDefinedMapping(rule.GetId()).GetTransformer().GetConfig()
+	throughPii := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+		TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{
+			DefaultAnonymizer: &mgmtv1alpha1.PiiAnonymizer{Config: &mgmtv1alpha1.PiiAnonymizer_Transform_{
+				Transform: &mgmtv1alpha1.PiiAnonymizer_Transform{Config: direct},
+			}},
+		},
+	}}
+	for name, config := range map[string]*mgmtv1alpha1.TransformerConfig{"direct": direct, "through-pii": throughPii} {
+		_, err := transformerclient.CreateUserDefinedTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.CreateUserDefinedTransformerRequest{
+			AccountId:         accountId,
+			Name:              "nested-" + name,
+			Source:            mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_JAVASCRIPT,
+			TransformerConfig: config,
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "create %s: %v", name, err)
+		require.ErrorContains(t, err, "cannot run another user defined transformer")
+
+		// Itself: the one that would never end.
+		_, err = transformerclient.UpdateUserDefinedTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateUserDefinedTransformerRequest{
+			TransformerId:     rule.GetId(),
+			Name:              rule.GetName(),
+			TransformerConfig: config,
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "update %s: %v", name, err)
+		require.ErrorContains(t, err, "cannot run another user defined transformer")
+	}
+
+	updated, err := transformerclient.UpdateUserDefinedTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateUserDefinedTransformerRequest{
+		TransformerId:     rule.GetId(),
+		Name:              rule.GetName(),
+		TransformerConfig: rule.GetConfig(),
+	}))
+	requireNoErrResp(t, updated, err)
+}
+
 func userDefinedMapping(transformerId string) *mgmtv1alpha1.JobMapping {
 	return &mgmtv1alpha1.JobMapping{
 		Schema: "public",

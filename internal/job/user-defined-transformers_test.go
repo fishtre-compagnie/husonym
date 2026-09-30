@@ -1,4 +1,4 @@
-package v1alpha1_jobservice
+package job
 
 import (
 	"testing"
@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A mapping runs the user-defined transformer it names, and those TransformPiiText hands the PII
-// it finds to: all of them are checked.
-func Test_userDefinedTransformerIds(t *testing.T) {
+// A transformer runs the user-defined transformer it names, and those TransformPiiText hands the
+// PII it finds to.
+func Test_UserDefinedTransformerIds(t *testing.T) {
 	userDefined := func(id string) *mgmtv1alpha1.TransformerConfig {
 		return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
 			UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: id},
@@ -21,12 +21,12 @@ func Test_userDefinedTransformerIds(t *testing.T) {
 		}}
 	}
 
-	require.Equal(t, []string{"a"}, userDefinedTransformerIds(userDefined("a")))
-	require.Empty(t, userDefinedTransformerIds(&mgmtv1alpha1.TransformerConfig{
+	require.Equal(t, []string{"a"}, UserDefinedTransformerIds(userDefined("a")))
+	require.Empty(t, UserDefinedTransformerIds(&mgmtv1alpha1.TransformerConfig{
 		Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
 	}))
-	require.Empty(t, userDefinedTransformerIds(nil))
-	require.ElementsMatch(t, []string{"default", "person", "email"}, userDefinedTransformerIds(&mgmtv1alpha1.TransformerConfig{
+	require.Empty(t, UserDefinedTransformerIds(nil))
+	require.ElementsMatch(t, []string{"default", "person", "email"}, UserDefinedTransformerIds(&mgmtv1alpha1.TransformerConfig{
 		Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{
 			DefaultAnonymizer: transform(userDefined("default")),
 			EntityAnonymizers: map[string]*mgmtv1alpha1.PiiAnonymizer{
