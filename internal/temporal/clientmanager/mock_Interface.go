@@ -1121,6 +1121,84 @@ func (_c *MockInterface_RunWorkflow_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// StartScheduledRun provides a mock function for the type MockInterface
+func (_mock *MockInterface) StartScheduledRun(ctx context.Context, accountId string, scheduleId string, logger *slog.Logger) (string, error) {
+	ret := _mock.Called(ctx, accountId, scheduleId, logger)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartScheduledRun")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, *slog.Logger) (string, error)); ok {
+		return returnFunc(ctx, accountId, scheduleId, logger)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, *slog.Logger) string); ok {
+		r0 = returnFunc(ctx, accountId, scheduleId, logger)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, *slog.Logger) error); ok {
+		r1 = returnFunc(ctx, accountId, scheduleId, logger)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInterface_StartScheduledRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartScheduledRun'
+type MockInterface_StartScheduledRun_Call struct {
+	*mock.Call
+}
+
+// StartScheduledRun is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountId string
+//   - scheduleId string
+//   - logger *slog.Logger
+func (_e *MockInterface_Expecter) StartScheduledRun(ctx any, accountId any, scheduleId any, logger any) *MockInterface_StartScheduledRun_Call {
+	return &MockInterface_StartScheduledRun_Call{Call: _e.mock.On("StartScheduledRun", ctx, accountId, scheduleId, logger)}
+}
+
+func (_c *MockInterface_StartScheduledRun_Call) Run(run func(ctx context.Context, accountId string, scheduleId string, logger *slog.Logger)) *MockInterface_StartScheduledRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 *slog.Logger
+		if args[3] != nil {
+			arg3 = args[3].(*slog.Logger)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInterface_StartScheduledRun_Call) Return(s string, err error) *MockInterface_StartScheduledRun_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockInterface_StartScheduledRun_Call) RunAndReturn(run func(ctx context.Context, accountId string, scheduleId string, logger *slog.Logger) (string, error)) *MockInterface_StartScheduledRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TerminateWorkflow provides a mock function for the type MockInterface
 func (_mock *MockInterface) TerminateWorkflow(ctx context.Context, accountId string, workflowId string, logger *slog.Logger) error {
 	ret := _mock.Called(ctx, accountId, workflowId, logger)

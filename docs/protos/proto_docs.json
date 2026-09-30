@@ -11787,10 +11787,23 @@
           "fullName": "mgmt.v1alpha1.CreateJobRunResponse",
           "description": "",
           "hasExtensions": false,
-          "hasFields": false,
+          "hasFields": true,
           "hasOneofs": false,
           "extensions": [],
-          "fields": []
+          "fields": [
+            {
+              "name": "job_run",
+              "description": "The run the request started.",
+              "label": "",
+              "type": "JobRun",
+              "longType": "JobRun",
+              "fullType": "mgmt.v1alpha1.JobRun",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         },
         {
           "name": "DatabaseError",

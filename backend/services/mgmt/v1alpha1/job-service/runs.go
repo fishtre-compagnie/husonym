@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -23,6 +24,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
 	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
@@ -30,7 +32,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/history/v1"
-	temporalclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -534,18 +535,54 @@ func (s *Service) CreateJobRun(
 	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
-	err = s.temporalmgr.TriggerSchedule(
-		ctx,
-		job.GetAccountId(),
-		job.GetId(),
-		&temporalclient.ScheduleTriggerOptions{},
-		logger,
-	)
+	jobRunId, err := s.temporalmgr.StartScheduledRun(ctx, job.GetAccountId(), job.GetId(), logger)
+	var inProgress *clientmanager.RunInProgressError
+	if errors.As(err, &inProgress) {
+		return nil, husonymerrors.NewFailedPrecondition(inProgress.Error())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to create job run by triggering temporal schedule: %w", err)
 	}
 
-	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{}), nil
+	jobRun, err := s.getStartedJobRun(ctx, job.GetAccountId(), jobRunId)
+	if err != nil {
+		return nil, fmt.Errorf("the run %s started, but it could not be read: %s", jobRunId, err)
+	}
+	if jobRun == nil {
+		// Started, and not visible yet: what is known of it.
+		logger.Warn("the run started is not visible yet", "jobRunId", jobRunId)
+		jobRun = &mgmtv1alpha1.JobRun{Id: jobRunId, JobId: job.GetId()}
+	}
+	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: jobRun}), nil
+}
+
+// startedJobRunVisibleWithin bounds the wait for a run the schedule has just started: runs are
+// found through Temporal's visibility index, which sees a new one a moment late.
+const startedJobRunVisibleWithin = 5 * time.Second
+
+// getStartedJobRun reads a run the schedule has just started, waiting for it to be visible;
+// nil if it is not visible yet.
+func (s *Service) getStartedJobRun(ctx context.Context, accountId, jobRunId string) (*mgmtv1alpha1.JobRun, error) {
+	waitCtx, cancel := context.WithTimeout(ctx, startedJobRunVisibleWithin)
+	defer cancel()
+	for {
+		resp, err := s.GetJobRun(waitCtx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+			JobRunId:  jobRunId,
+			AccountId: accountId,
+		}))
+		if err == nil {
+			return resp.Msg.GetJobRun(), nil
+		}
+		// Runs are found through the visibility index, which sees a new one a moment late.
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			return nil, err
+		}
+		select {
+		case <-waitCtx.Done():
+			return nil, ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
 }
 
 func (s *Service) CancelJobRun(

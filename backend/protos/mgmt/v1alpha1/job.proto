@@ -936,7 +936,10 @@ message CreateJobRunRequest {
   // The unique identifier of the job
   string job_id = 1 [(buf.validate.field).string.uuid = true];
 }
-message CreateJobRunResponse {}
+message CreateJobRunResponse {
+  // The run the request started.
+  JobRun job_run = 1;
+}
 
 message CancelJobRunRequest {
   // The unique identifier of the job run
