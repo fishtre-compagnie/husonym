@@ -72,8 +72,13 @@ func NewStorageClient(
 	return client, nil
 }
 
-// googleTokenURL is where a service account exchanges its signed assertion for a token.
-const googleTokenURL = "https://oauth2.googleapis.com/token" //nolint:gosec // an endpoint, not a credential
+// googleTokenURLs are where a service account exchanges its signed assertion for a token: the
+// endpoint of today's keys, and those older keys still carry.
+var googleTokenURLs = map[string]bool{
+	"https://oauth2.googleapis.com/token":        true,
+	"https://accounts.google.com/o/oauth2/token": true,
+	"https://www.googleapis.com/oauth2/v4/token": true,
+}
 
 // CheckServiceAccountCredentials refuses credentials that are not a service account's key of
 // Google's own universe. Another type may name a file or a URL the server would read; a key
@@ -92,7 +97,7 @@ func CheckServiceAccountCredentials(credentials string) error {
 	case file.Type != string(option.ServiceAccount):
 		return husonymerrors.NewBadRequest(
 			fmt.Sprintf("the credentials are of type %q: only a service account's are accepted", file.Type))
-	case file.TokenURI != "" && file.TokenURI != googleTokenURL:
+	case file.TokenURI != "" && !googleTokenURLs[file.TokenURI]:
 		return husonymerrors.NewBadRequest("the service account credentials must use Google's token endpoint")
 	case file.UniverseDomain != "" && file.UniverseDomain != "googleapis.com":
 		return husonymerrors.NewBadRequest("the service account credentials must belong to Google's own universe")

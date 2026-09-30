@@ -90,6 +90,11 @@ func Test_GcsWriter_TheCredentialsOfItsConnection(t *testing.T) {
 	elsewhere := serviceAccountKey(t, "token_uri", "http://internal-service:8080/")
 	_, err = newGcsWriter(parse(t), connectionsOf(&elsewhere), cloudidentity.Policy{})
 	require.ErrorContains(t, err, "Google's token endpoint")
+	// Older keys carry an older endpoint of Google's.
+	older := serviceAccountKey(t, "token_uri", "https://accounts.google.com/o/oauth2/token")
+	olderWriter, err := newGcsWriter(parse(t), connectionsOf(&older), cloudidentity.Policy{})
+	require.NoError(t, err)
+	require.NoError(t, olderWriter.Close(context.Background()))
 	otherUniverse := serviceAccountKey(t, "universe_domain", "example.com")
 	_, err = newGcsWriter(parse(t), connectionsOf(&otherUniverse), cloudidentity.Policy{})
 	require.ErrorContains(t, err, "Google's own universe")
