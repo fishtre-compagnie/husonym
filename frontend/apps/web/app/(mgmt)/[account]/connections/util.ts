@@ -461,6 +461,8 @@ function buildGcpCloudStorageConnectionConfig(
   return create(GcpCloudStorageConnectionConfigSchema, {
     bucket: values.gcp.bucket,
     pathPrefix: values.gcp.pathPrefix,
+    serviceAccountCredentials:
+      values.gcp.serviceAccountCredentials || undefined,
   });
 }
 

@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { Name } from '../SharedFormInputs';
 import { useHandleSubmit } from '../useHandleSubmit';
 import Bucket from './Bucket';
+import ServiceAccount from './ServiceAccount';
 
 interface GcpCloudStorageFormStore extends BaseStore<GcpCloudStorageFormValues> {
   init?(values: GcpCloudStorageFormValues): void;
@@ -21,6 +22,7 @@ function getInitialFormState(): GcpCloudStorageFormValues {
     gcp: {
       bucket: '',
       pathPrefix: '',
+      serviceAccountCredentials: '',
     },
   };
 }
@@ -53,7 +55,13 @@ interface Props {
 }
 
 export default function GcpCloudStorageForm(props: Props): ReactElement {
-  const { mode, initialValues, onSubmit = async () => undefined } = props;
+  const {
+    mode,
+    initialValues,
+    onSubmit = async () => undefined,
+    canViewSecrets = false,
+    getValueWithSecrets,
+  } = props;
   const { account } = useAccount();
   const store = useFormStore();
 
@@ -87,6 +95,11 @@ export default function GcpCloudStorageForm(props: Props): ReactElement {
   const isViewMode = mode === 'view';
   const submitText = mode === 'create' ? 'Create' : 'Update';
 
+  async function onRevealPassword(): Promise<string> {
+    const values = await getValueWithSecrets?.();
+    return values?.gcp.serviceAccountCredentials ?? '';
+  }
+
   const formContent = (
     <>
       <SystemLicenseAlert />
@@ -105,6 +118,22 @@ export default function GcpCloudStorageForm(props: Props): ReactElement {
         value={formData.gcp}
         onChange={(value) => setFormData({ gcp: value })}
         errors={errors}
+      />
+
+      <ServiceAccount
+        value={formData.gcp.serviceAccountCredentials ?? ''}
+        onChange={
+          isViewMode
+            ? () => {}
+            : (serviceAccountCredentials) =>
+                setFormData({
+                  gcp: { ...formData.gcp, serviceAccountCredentials },
+                })
+        }
+        error={errors['gcp.serviceAccountCredentials']}
+        isViewMode={isViewMode}
+        canViewSecrets={canViewSecrets}
+        onRevealPassword={onRevealPassword}
       />
 
       <div className="flex justify-end gap-3">
