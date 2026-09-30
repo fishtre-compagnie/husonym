@@ -316,7 +316,7 @@ func TestGetAccountConsistencyKeyKeepsTheKeyThatLandedFirst(t *testing.T) {
 // TestGetAccountConsistencyKeyIsForTheRunAlone: once the worker has a key of its own, the key
 // in clear only leaves towards a run, the lock ReconcileJobMappings applies.
 func TestGetAccountConsistencyKeyIsForTheRunAlone(t *testing.T) {
-	f := newFixture(t, &Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: true, HasWorkerApiKeys: true}})
+	f := newFixture(t, &Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: true}})
 	f.allowUser(t, true)
 
 	_, err := f.svc.GetAccountConsistencyKey(context.Background(), connect.NewRequest(

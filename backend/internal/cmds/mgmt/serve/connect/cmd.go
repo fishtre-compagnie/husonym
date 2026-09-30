@@ -402,17 +402,13 @@ func serve(ctx context.Context) error {
 		return err
 	}
 	workerOnly := userdata.WorkerOnly{
-		IsAuthEnabled:    isAuthEnabled,
-		IsHusonymCloud:   ncloudlicense.IsValid(),
-		HasWorkerApiKeys: isAuthEnabled && len(workerApiKeys) > 0,
+		IsAuthEnabled:  isAuthEnabled,
+		IsHusonymCloud: ncloudlicense.IsValid(),
 	}
 	if isAuthEnabled {
 		slogger.Debug("auth is enabled")
-		if len(workerApiKeys) == 0 && !ncloudlicense.IsValid() {
-			slogger.Warn("auth is enabled and no worker key is set (HUSONYM_ALLOWED_WORKER_API_KEYS): " +
-				"the worker authenticates with an account key, which cannot be told from another one, " +
-				"so any account key allowed to edit jobs may write the context of a run. Give the worker " +
-				"a worker key of its own")
+		if err := requireWorkerApiKeys(workerApiKeys, ncloudlicense.IsValid()); err != nil {
+			return err
 		}
 		if !cascadelicense.IsValid() {
 			return errors.New("auth is enabled but no license is present")
@@ -1225,7 +1221,7 @@ func workerApiKeysVariable(isHusonymCloud bool) string {
 
 // getAllowedWorkerApiKeys are the keys a worker authenticates with. A worker key opens only
 // what the worker calls, passes no RBAC, and is the only caller allowed to call what only the
-// worker calls once one is set.
+// worker calls. With authentication on, one is required.
 func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
 	variable := workerApiKeysVariable(isHusonymCloud)
 	keys, err := parseWorkerApiKeys(viper.GetString(variable))
@@ -1233,6 +1229,19 @@ func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
 		return nil, fmt.Errorf("%s: %w", variable, err)
 	}
 	return keys, nil
+}
+
+// requireWorkerApiKeys refuses an authenticated deployment whose worker has no key of its own.
+// An account key cannot be told from another one: were the worker to use one, any account key
+// allowed to edit jobs could write what a run executes.
+func requireWorkerApiKeys(keys []string, isHusonymCloud bool) error {
+	if len(keys) == 0 {
+		return fmt.Errorf(
+			"auth is enabled but no worker key is set (%s): give the worker a worker key of its own",
+			workerApiKeysVariable(isHusonymCloud),
+		)
+	}
+	return nil
 }
 
 // parseWorkerApiKeys reads keys separated by commas, as the chart joins them — a list read
