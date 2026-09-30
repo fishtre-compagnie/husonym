@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -48,8 +49,8 @@ func (_m *MockManagerInterface) EXPECT() *MockManagerInterface_Expecter {
 }
 
 // GetClient provides a mock function for the type MockManagerInterface
-func (_mock *MockManagerInterface) GetClient(ctx context.Context, logger *slog.Logger) (ClientInterface, error) {
-	ret := _mock.Called(ctx, logger)
+func (_mock *MockManagerInterface) GetClient(ctx context.Context, config *mgmtv1alpha1.GcpCloudStorageConnectionConfig, logger *slog.Logger) (ClientInterface, error) {
+	ret := _mock.Called(ctx, config, logger)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetClient")
@@ -57,18 +58,18 @@ func (_mock *MockManagerInterface) GetClient(ctx context.Context, logger *slog.L
 
 	var r0 ClientInterface
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) (ClientInterface, error)); ok {
-		return returnFunc(ctx, logger)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *mgmtv1alpha1.GcpCloudStorageConnectionConfig, *slog.Logger) (ClientInterface, error)); ok {
+		return returnFunc(ctx, config, logger)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *slog.Logger) ClientInterface); ok {
-		r0 = returnFunc(ctx, logger)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *mgmtv1alpha1.GcpCloudStorageConnectionConfig, *slog.Logger) ClientInterface); ok {
+		r0 = returnFunc(ctx, config, logger)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ClientInterface)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *slog.Logger) error); ok {
-		r1 = returnFunc(ctx, logger)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *mgmtv1alpha1.GcpCloudStorageConnectionConfig, *slog.Logger) error); ok {
+		r1 = returnFunc(ctx, config, logger)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -82,24 +83,30 @@ type MockManagerInterface_GetClient_Call struct {
 
 // GetClient is a helper method to define mock.On call
 //   - ctx context.Context
+//   - config *mgmtv1alpha1.GcpCloudStorageConnectionConfig
 //   - logger *slog.Logger
-func (_e *MockManagerInterface_Expecter) GetClient(ctx any, logger any) *MockManagerInterface_GetClient_Call {
-	return &MockManagerInterface_GetClient_Call{Call: _e.mock.On("GetClient", ctx, logger)}
+func (_e *MockManagerInterface_Expecter) GetClient(ctx any, config any, logger any) *MockManagerInterface_GetClient_Call {
+	return &MockManagerInterface_GetClient_Call{Call: _e.mock.On("GetClient", ctx, config, logger)}
 }
 
-func (_c *MockManagerInterface_GetClient_Call) Run(run func(ctx context.Context, logger *slog.Logger)) *MockManagerInterface_GetClient_Call {
+func (_c *MockManagerInterface_GetClient_Call) Run(run func(ctx context.Context, config *mgmtv1alpha1.GcpCloudStorageConnectionConfig, logger *slog.Logger)) *MockManagerInterface_GetClient_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *slog.Logger
+		var arg1 *mgmtv1alpha1.GcpCloudStorageConnectionConfig
 		if args[1] != nil {
-			arg1 = args[1].(*slog.Logger)
+			arg1 = args[1].(*mgmtv1alpha1.GcpCloudStorageConnectionConfig)
+		}
+		var arg2 *slog.Logger
+		if args[2] != nil {
+			arg2 = args[2].(*slog.Logger)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -110,7 +117,7 @@ func (_c *MockManagerInterface_GetClient_Call) Return(clientInterface ClientInte
 	return _c
 }
 
-func (_c *MockManagerInterface_GetClient_Call) RunAndReturn(run func(ctx context.Context, logger *slog.Logger) (ClientInterface, error)) *MockManagerInterface_GetClient_Call {
+func (_c *MockManagerInterface_GetClient_Call) RunAndReturn(run func(ctx context.Context, config *mgmtv1alpha1.GcpCloudStorageConnectionConfig, logger *slog.Logger) (ClientInterface, error)) *MockManagerInterface_GetClient_Call {
 	_c.Call.Return(run)
 	return _c
 }

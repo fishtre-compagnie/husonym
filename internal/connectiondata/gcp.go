@@ -65,7 +65,7 @@ func (s *GcpConnectionDataService) StreamData(
 			"must provide non-nil gcp cloud storage config in request",
 		)
 	}
-	gcpclient, err := s.gcpmanager.GetClient(ctx, s.logger)
+	gcpclient, err := s.gcpmanager.GetClient(ctx, s.connconfig, s.logger)
 	if err != nil {
 		return fmt.Errorf("unable to init gcp storage client: %w", err)
 	}
@@ -115,7 +115,7 @@ func (s *GcpConnectionDataService) GetSchema(
 		return nil, husonymerrors.NewBadRequest("must provide gcp cloud storage config")
 	}
 
-	gcpclient, err := s.gcpmanager.GetClient(ctx, s.logger)
+	gcpclient, err := s.gcpmanager.GetClient(ctx, s.connconfig, s.logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to init gcp storage client: %w", err)
 	}

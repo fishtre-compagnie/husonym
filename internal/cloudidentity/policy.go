@@ -16,7 +16,7 @@ const Variable = "CONNECTIONS_ALLOW_SERVER_IDENTITY"
 // Policy says whether a connection may use the cloud identity of the server. A connection
 // without credentials of its own, or naming a profile or the instance role, acts with the
 // server's: with several accounts, one would reach what the host reaches. Only a deployment
-// that serves one party allows it.
+// that serves one party allows it. It holds for AWS and GCS connections.
 type Policy struct {
 	AllowServerIdentity bool
 }
@@ -55,6 +55,15 @@ func (p Policy) CheckAws(credentials awsCredentials) error {
 	default:
 		return nil
 	}
+}
+
+// CheckGcs refuses a GCS connection without service account credentials of its own: it would
+// act with the application default credentials of the server.
+func (p Policy) CheckGcs(serviceAccountCredentials string) error {
+	if p.AllowServerIdentity || serviceAccountCredentials != "" {
+		return nil
+	}
+	return refused(errors.New("without service account credentials, the connection acts as the server"))
 }
 
 func refused(reason error) error {

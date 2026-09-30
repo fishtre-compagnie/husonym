@@ -183,17 +183,17 @@ type OutputConfig struct {
 }
 
 type Outputs struct {
-	PooledSqlInsert *PooledSqlInsert       `json:"pooled_sql_insert,omitempty" yaml:"pooled_sql_insert,omitempty"`
-	PooledSqlUpdate *PooledSqlUpdate       `json:"pooled_sql_update,omitempty" yaml:"pooled_sql_update,omitempty"`
-	HusonymAwsS3    *HusonymAwsS3Insert    `json:"husonym_aws_s3,omitempty"    yaml:"husonym_aws_s3,omitempty"`
-	GcpCloudStorage *GcpCloudStorageOutput `json:"gcp_cloud_storage,omitempty" yaml:"gcp_cloud_storage,omitempty"`
-	Retry           *RetryConfig           `json:"retry,omitempty"             yaml:"retry,omitempty"`
-	Broker          *OutputBrokerConfig    `json:"broker,omitempty"            yaml:"broker,omitempty"`
-	Fallback        []Outputs              `json:"fallback,omitempty"          yaml:"fallback,omitempty"`
-	RedisHashOutput *RedisHashOutputConfig `json:"redis_hash_output,omitempty" yaml:"redis_hash_output,omitempty"`
-	Error           *ErrorOutputConfig     `json:"error,omitempty"             yaml:"error,omitempty"`
-	PooledMongoDB   *OutputMongoDb         `json:"pooled_mongodb,omitempty"    yaml:"pooled_mongodb,omitempty"`
-	AwsDynamoDB     *OutputAwsDynamoDB     `json:"aws_dynamodb,omitempty"      yaml:"aws_dynamodb,omitempty"`
+	PooledSqlInsert        *PooledSqlInsert              `json:"pooled_sql_insert,omitempty"         yaml:"pooled_sql_insert,omitempty"`
+	PooledSqlUpdate        *PooledSqlUpdate              `json:"pooled_sql_update,omitempty"         yaml:"pooled_sql_update,omitempty"`
+	HusonymAwsS3           *HusonymAwsS3Insert           `json:"husonym_aws_s3,omitempty"            yaml:"husonym_aws_s3,omitempty"`
+	HusonymGcpCloudStorage *HusonymGcpCloudStorageInsert `json:"husonym_gcp_cloud_storage,omitempty" yaml:"husonym_gcp_cloud_storage,omitempty"`
+	Retry                  *RetryConfig                  `json:"retry,omitempty"                     yaml:"retry,omitempty"`
+	Broker                 *OutputBrokerConfig           `json:"broker,omitempty"                    yaml:"broker,omitempty"`
+	Fallback               []Outputs                     `json:"fallback,omitempty"                  yaml:"fallback,omitempty"`
+	RedisHashOutput        *RedisHashOutputConfig        `json:"redis_hash_output,omitempty"         yaml:"redis_hash_output,omitempty"`
+	Error                  *ErrorOutputConfig            `json:"error,omitempty"                     yaml:"error,omitempty"`
+	PooledMongoDB          *OutputMongoDb                `json:"pooled_mongodb,omitempty"            yaml:"pooled_mongodb,omitempty"`
+	AwsDynamoDB            *OutputAwsDynamoDB            `json:"aws_dynamodb,omitempty"              yaml:"aws_dynamodb,omitempty"`
 }
 type ErrorOutputConfig struct {
 	ErrorMsg      string    `json:"error_msg"          yaml:"error_msg"`
@@ -272,17 +272,14 @@ type HusonymAwsS3Insert struct {
 	ContentType  string    `json:"content_type,omitempty"  yaml:"content_type,omitempty"`
 }
 
-type GcpCloudStorageOutput struct {
-	Bucket      string    `json:"bucket"             yaml:"bucket"`
-	Path        string    `json:"path"               yaml:"path"`
-	MaxInFlight int       `json:"max_in_flight"      yaml:"max_in_flight"`
-	Batching    *Batching `json:"batching,omitempty" yaml:"batching,omitempty"`
-
-	ContentType     *string `json:"content_type,omitempty"     yaml:"content_type,omitempty"`
-	ContentEncoding *string `json:"content_encoding,omitempty" yaml:"content_encoding,omitempty"`
-	CollisionMode   *string `json:"collision_mode,omitempty"   yaml:"collision_mode,omitempty"`
-	ChunkSize       *int    `json:"chunk_size,omitempty"       yaml:"chunk_size,omitempty"`
-	Timeout         *string `json:"timeout,omitempty"          yaml:"timeout,omitempty"`
+type HusonymGcpCloudStorageInsert struct {
+	// The bucket and the service account are read from the connection when the stream runs.
+	ConnectionId    string    `json:"connection_id"              yaml:"connection_id"`
+	MaxInFlight     int       `json:"max_in_flight"              yaml:"max_in_flight"`
+	Path            string    `json:"path"                       yaml:"path"`
+	Batching        *Batching `json:"batching,omitempty"         yaml:"batching,omitempty"`
+	ContentType     string    `json:"content_type,omitempty"     yaml:"content_type,omitempty"`
+	ContentEncoding string    `json:"content_encoding,omitempty" yaml:"content_encoding,omitempty"`
 }
 
 type Batching struct {

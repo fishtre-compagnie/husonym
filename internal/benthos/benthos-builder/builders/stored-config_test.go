@@ -60,6 +60,17 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 			},
 		},
 	}
+	gcsConnection := &mgmtv1alpha1.Connection{
+		Id: "gcs-connection",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig{
+				GcpCloudstorageConfig: &mgmtv1alpha1.GcpCloudStorageConnectionConfig{
+					Bucket:                    sentinelSecret + "-bucket",
+					ServiceAccountCredentials: ptr(sentinelSecret + "-service-account"),
+				},
+			},
+		},
+	}
 	sourceConfig := &bb_internal.BenthosSourceConfig{
 		TableSchema: "public",
 		TableName:   "users",
@@ -101,6 +112,18 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	gcsDestination, err := NewGcpCloudStorageSyncBuilder().BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
+		SourceConfig: sourceConfig,
+		JobRunId:     "run",
+		DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
+			Config: &mgmtv1alpha1.JobDestinationOptions_GcpCloudstorageOptions{
+				GcpCloudstorageOptions: &mgmtv1alpha1.GcpCloudStorageDestinationConnectionOptions{},
+			},
+		},
+		DestConnection: gcsConnection,
+	})
+	require.NoError(t, err)
+
 	// The sources receive only the id of their connection; what they write is linted below, and
 	// the DynamoDB workflow test checks the config a real run stores.
 	t.Run("openai generate source declares its connection", func(t *testing.T) {
@@ -112,6 +135,9 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 	})
 	t.Run("dynamodb destination", func(t *testing.T) {
 		requireNamesWithoutHolding(t, dynamoDestination, dynamoConnection.GetId())
+	})
+	t.Run("gcp cloud storage destination", func(t *testing.T) {
+		requireNamesWithoutHolding(t, gcsDestination, gcsConnection.GetId())
 	})
 
 	t.Run("the plugins accept what the builders write", func(t *testing.T) {
@@ -129,6 +155,7 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 		outputs := []husonym_benthos.Outputs{}
 		outputs = append(outputs, s3Destination.Outputs...)
 		outputs = append(outputs, dynamoDestination.Outputs...)
+		outputs = append(outputs, gcsDestination.Outputs...)
 		aiStream := *aiSources[0].Config
 		output := *aiStream.Output
 		broker := *output.Broker

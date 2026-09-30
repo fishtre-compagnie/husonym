@@ -304,7 +304,7 @@ func (s *HusonymApiTestClient) setupMux(
 	mysqlquerier := mysql_queries.New()
 	mongoconnector := mongoconnect.NewConnector()
 	sqlmanager := sqlmanagerclient
-	gcpmanager := husonym_gcp.NewManager()
+	gcpmanager := husonym_gcp.NewManager(cloudidentity.Policy{})
 	husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
 
 	connectiondatabuilder := connectiondata.NewConnectionDataBuilder(

@@ -55,3 +55,11 @@ func Test_FromEnvironment(t *testing.T) {
 	viper.Set(Variable, nil)
 	require.False(t, FromEnvironment(false).AllowServerIdentity)
 }
+
+// A GCS connection brings the key of a service account, or would act with the application
+// default credentials of the server.
+func Test_Policy_CheckGcs(t *testing.T) {
+	require.NoError(t, Policy{}.CheckGcs(`{"type": "service_account"}`))
+	require.ErrorContains(t, Policy{}.CheckGcs(""), Variable)
+	require.NoError(t, Policy{AllowServerIdentity: true}.CheckGcs(""))
+}

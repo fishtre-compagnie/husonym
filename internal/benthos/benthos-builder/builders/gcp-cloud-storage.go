@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
+	bb_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 )
 
 type gcpCloudStorageSyncBuilder struct {
@@ -60,15 +60,19 @@ func (b *gcpCloudStorageSyncBuilder) BuildDestinationConfig(
 		`${!count("files")}.txt.gz`,
 	)
 
+	config.BenthosDsns = append(
+		config.BenthosDsns,
+		&bb_shared.BenthosDsn{ConnectionId: params.DestConnection.GetId()},
+	)
 	config.Outputs = append(config.Outputs, husonym_benthos.Outputs{
 		Fallback: []husonym_benthos.Outputs{
 			{
-				GcpCloudStorage: &husonym_benthos.GcpCloudStorageOutput{
-					Bucket:          gcpCloudStorageConfig.GetBucket(),
+				HusonymGcpCloudStorage: &husonym_benthos.HusonymGcpCloudStorageInsert{
+					ConnectionId:    params.DestConnection.GetId(),
 					MaxInFlight:     10,
 					Path:            strings.Join(pathpieces, "/"),
-					ContentType:     shared.Ptr("txt/plain"),
-					ContentEncoding: shared.Ptr("gzip"),
+					ContentType:     "txt/plain",
+					ContentEncoding: "gzip",
 					Batching: &husonym_benthos.Batching{
 						Count:  100,
 						Period: "5s",

@@ -760,6 +760,8 @@ func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) erro
 		return s.cfg.CloudIdentity.CheckAws(cfg.AwsS3Config.GetCredentials())
 	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
 		return s.cfg.CloudIdentity.CheckAws(cfg.DynamodbConfig.GetCredentials())
+	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
+		return s.cfg.CloudIdentity.CheckGcs(cfg.GcpCloudstorageConfig.GetServiceAccountCredentials())
 	default:
 		return nil
 	}

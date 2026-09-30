@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	husonym_benthos_gcs "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/gcs"
+
 	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
 
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
@@ -257,6 +259,10 @@ func NewWithEnvironment(
 		err = husonym_benthos_awss3.RegisterAwsS3Output(env, config.getConnection, config.identity)
 		if err != nil {
 			return nil, fmt.Errorf("unable to register husonym_aws_s3 output to benthos instance: %w", err)
+		}
+		err = husonym_benthos_gcs.RegisterGcpCloudStorageOutput(env, config.getConnection, config.identity)
+		if err != nil {
+			return nil, fmt.Errorf("unable to register GCP Cloud Storage output to benthos instance: %w", err)
 		}
 	}
 
