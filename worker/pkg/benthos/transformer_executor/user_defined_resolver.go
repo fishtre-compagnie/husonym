@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 )
 
 type apiUserDefinedTransformerResolver struct {
@@ -43,6 +44,14 @@ func (u *apiUserDefinedTransformerResolver) GetUserDefinedTransformer(
 		return nil, connect.NewError(
 			connect.CodeNotFound,
 			fmt.Errorf("unable to find user defined transformer %s in account %s", id, u.accountId),
+		)
+	}
+	// A user-defined transformer runs a transformer of the catalog. One stored before that was
+	// refused names another one, maybe itself: resolving it would never end.
+	if nested := job_util.UserDefinedTransformerIds(transformer.GetConfig()); len(nested) > 0 {
+		return nil, connect.NewError(
+			connect.CodeFailedPrecondition,
+			fmt.Errorf("user defined transformer %s runs another user defined transformer: %s", id, nested[0]),
 		)
 	}
 	return transformer.GetConfig(), nil

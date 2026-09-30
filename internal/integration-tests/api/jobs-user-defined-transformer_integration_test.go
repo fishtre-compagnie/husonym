@@ -156,6 +156,7 @@ func (s *IntegrationTestSuite) Test_UserDefinedTransformer_RunsNoUserDefinedTran
 			TransformerConfig: config,
 		}))
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "create %s: %v", name, err)
+		require.ErrorContains(t, err, "cannot run another user defined transformer")
 
 		// Itself: the one that would never end.
 		_, err = transformerclient.UpdateUserDefinedTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateUserDefinedTransformerRequest{
@@ -164,6 +165,7 @@ func (s *IntegrationTestSuite) Test_UserDefinedTransformer_RunsNoUserDefinedTran
 			TransformerConfig: config,
 		}))
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "update %s: %v", name, err)
+		require.ErrorContains(t, err, "cannot run another user defined transformer")
 	}
 
 	updated, err := transformerclient.UpdateUserDefinedTransformer(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateUserDefinedTransformerRequest{
