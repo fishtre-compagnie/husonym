@@ -24,7 +24,7 @@ A Helm chart for the Husonym Temporal Worker
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
-| husonym.apiKey | string | `nil` | Only required if running the backend in auth-mode |
+| husonym.apiKey | string | `nil` | The worker key the worker authenticates with, of the form neo_wt_v1_<uuid v4>: one of the keys allowed on the API (api.auth.workerApiKeys). Required if running the backend in auth-mode |
 | husonym.url | string | `"http://husonym-api"` | The url to the Husonym API instance |
 | husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
 | husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |

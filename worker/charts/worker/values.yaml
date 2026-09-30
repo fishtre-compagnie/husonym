@@ -95,7 +95,7 @@ shutdownTimeoutSeconds:
 husonym:
   # -- The url to the Husonym API instance
   url: http://husonym-api
-  # -- Only required if running the backend in auth-mode
+  # -- The worker key the worker authenticates with, of the form neo_wt_v1_<uuid v4>: one of the keys allowed on the API (api.auth.workerApiKeys). Required if running the backend in auth-mode
   apiKey:
 
 temporal:

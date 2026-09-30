@@ -313,8 +313,8 @@ func TestGetAccountConsistencyKeyKeepsTheKeyThatLandedFirst(t *testing.T) {
 	require.Equal(t, "the-key-that-won", resp.Msg.GetKey())
 }
 
-// TestGetAccountConsistencyKeyIsForTheRunAlone: once the worker has a key of its own, the key
-// in clear only leaves towards a run, the lock ReconcileJobMappings applies.
+// TestGetAccountConsistencyKeyIsForTheRunAlone: with authentication, the key in clear only
+// leaves towards a run, the lock ReconcileJobMappings applies.
 func TestGetAccountConsistencyKeyIsForTheRunAlone(t *testing.T) {
 	f := newFixture(t, &Config{WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: true}})
 	f.allowUser(t, true)

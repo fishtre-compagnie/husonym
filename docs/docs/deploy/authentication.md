@@ -107,6 +107,8 @@ With authentication on, the worker needs a worker key of its own, and the API do
 
 An account key does not do: it cannot be told from another one, so any account key allowed to edit jobs could then make those calls.
 
+A deployment whose worker used an account key must set both sides in the same upgrade: the API no longer starts without an allowed worker key, and it refuses the account key the worker used for those calls.
+
 ## Temporal mTLS Authentication
 
 Husonym API and Husonym Worker both require mTLS authentication when interfacing with Temporal (if this is enabled in Temporal).
