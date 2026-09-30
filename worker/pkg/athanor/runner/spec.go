@@ -76,7 +76,7 @@ func SpecForTable(
 			continue
 		}
 
-		vt, werr := transform.WrapNeosyncConfig(cfg, env.ExecOptions...)
+		vt, werr := transform.WrapNeosyncConfig(ctx, cfg, env.ExecOptions...)
 		if werr != nil {
 			return nil, engine.Spec{}, fmt.Errorf("runner: colonne %q: %w", col, werr)
 		}

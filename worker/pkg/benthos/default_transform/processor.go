@@ -223,7 +223,8 @@ func initDefaultTransformers(
 		if !shouldProcess(t) {
 			continue
 		}
-		init, err := transformer_executor.InitializeTransformer(t)
+		// No user-defined transformer here: nothing is resolved, with no request to carry.
+		init, err := transformer_executor.InitializeTransformer(context.Background(), t)
 		if err != nil {
 			return nil, err
 		}

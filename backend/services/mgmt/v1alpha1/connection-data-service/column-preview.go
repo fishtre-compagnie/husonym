@@ -86,6 +86,7 @@ func (s *Service) PreviewColumnTransformer(
 	}
 
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
+		ctx,
 		jsonanonymizer.WithTransformerMappings([]*mgmtv1alpha1.TransformerMapping{{
 			Expression:  ".value",
 			Transformer: config,

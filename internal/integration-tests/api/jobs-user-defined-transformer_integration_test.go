@@ -176,6 +176,40 @@ func (s *IntegrationTestSuite) Test_UserDefinedTransformer_RunsNoUserDefinedTran
 	requireNoErrResp(t, updated, err)
 }
 
+// Anonymizing for an account runs the user-defined transformers of that account, resolved as
+// the caller: one of another account is refused, even to a member of both accounts.
+func (s *IntegrationTestSuite) Test_AnonymizeSingle_UserDefinedTransformerOfTheAccount() {
+	t := s.T()
+	ctx := s.ctx
+	userclient := s.OSSAuthenticatedLicensedClients.Users(integrationtests_test.WithUserId(testAuthUserId))
+	transformerclient := s.OSSAuthenticatedLicensedClients.Transformers(integrationtests_test.WithUserId(testAuthUserId))
+	anonymizeclient := s.OSSAuthenticatedLicensedClients.Anonymize(integrationtests_test.WithUserId(testAuthUserId))
+	s.setUser(ctx, userclient)
+
+	accountId := s.createTeamAccount(ctx, userclient, uuid.NewString())
+	otherAccountId := s.createTeamAccount(ctx, userclient, uuid.NewString())
+	own := s.createJavascriptTransformer(transformerclient, accountId, "own-rule")
+	foreign := s.createJavascriptTransformer(transformerclient, otherAccountId, "foreign-rule")
+
+	anonymize := func(transformerId string) (*connect.Response[mgmtv1alpha1.AnonymizeSingleResponse], error) {
+		return anonymizeclient.AnonymizeSingle(ctx, connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
+			AccountId: accountId,
+			InputData: `{"name": "Ada"}`,
+			TransformerMappings: []*mgmtv1alpha1.TransformerMapping{{
+				Expression:  ".name",
+				Transformer: userDefinedMapping(transformerId).GetTransformer().GetConfig(),
+			}},
+		}))
+	}
+
+	anonymized, err := anonymize(own.GetId())
+	requireNoErrResp(t, anonymized, err)
+	require.JSONEq(t, `{"name": "own-rule"}`, anonymized.Msg.GetOutputData())
+
+	_, err = anonymize(foreign.GetId())
+	require.ErrorContains(t, err, "unable to find user defined transformer")
+}
+
 func userDefinedMapping(transformerId string) *mgmtv1alpha1.JobMapping {
 	return &mgmtv1alpha1.JobMapping{
 		Schema: "public",

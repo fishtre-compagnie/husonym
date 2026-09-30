@@ -56,7 +56,7 @@ func Test_UserDefinedTransformerResolver_RunsNoUserDefinedTransformer(t *testing
 		}), nil).Once()
 	resolver := NewUserDefinedTransformerResolver(client, accountId)
 
-	_, err := InitializeTransformerByConfigType(&mgmtv1alpha1.TransformerConfig{
+	_, err := InitializeTransformerByConfigType(context.Background(), &mgmtv1alpha1.TransformerConfig{
 		Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
 			UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: "self"},
 		},

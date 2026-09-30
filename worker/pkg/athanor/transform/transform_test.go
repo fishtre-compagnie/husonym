@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"context"
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -16,7 +17,7 @@ func TestWrap_Passthrough_equivalence(t *testing.T) {
 			PassthroughConfig: &mgmtv1alpha1.Passthrough{},
 		},
 	}
-	vt, err := WrapNeosyncConfig(cfg)
+	vt, err := WrapNeosyncConfig(context.Background(), cfg)
 	require.NoError(t, err)
 
 	out, err := vt.TransformValue(Background(), "bonjour")
@@ -34,7 +35,7 @@ func TestWrap_TransformInt64_realTransformer(t *testing.T) {
 			},
 		},
 	}
-	vt, err := WrapNeosyncConfig(cfg)
+	vt, err := WrapNeosyncConfig(context.Background(), cfg)
 	require.NoError(t, err)
 
 	out, err := vt.TransformValue(Background(), int64(5))

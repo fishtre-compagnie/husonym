@@ -64,6 +64,7 @@ func Test_transformValue(t *testing.T) {
 	// Through the real anonymizer, so the wrapping — {"value": ...} and the .value expression —
 	// is what is under test, not a stand-in for it.
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
+		context.Background(),
 		jsonanonymizer.WithTransformerMappings([]*mgmtv1alpha1.TransformerMapping{{
 			Expression: ".value",
 			Transformer: &mgmtv1alpha1.TransformerConfig{
