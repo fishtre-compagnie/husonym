@@ -92,6 +92,20 @@ func Test_ConnectionConfig_MaskedSecret_AbsentSecretRoundTrips(t *testing.T) {
 				SSHPrivateKey: &SSHPrivateKey{},
 			}},
 		}},
+		"ssh private key with an empty passphrase": {MssqlConfig: &MssqlConfig{
+			Url: ptr("sqlserver://db"),
+			SSHTunnel: &SSHTunnel{Host: "bastion", SSHAuthentication: &SSHAuthentication{
+				SSHPrivateKey: &SSHPrivateKey{Passphrase: ptr("")},
+			}},
+		}},
+		"client tls with an empty key": {MysqlConfig: &MysqlConnectionConfig{
+			Connection: &MysqlConnection{Host: "db"}, ClientTls: &ClientTls{ClientKey: ptr("")},
+		}},
+		"url with an empty password":         {PgConfig: &PostgresConnectionConfig{Url: ptr("postgres://u:@db/app")}},
+		"url with an empty secret parameter": {PgConfig: &PostgresConnectionConfig{Url: ptr("postgres://u@db/app?sslpassword=")}},
+		"dsn with an empty secret parameter": {MysqlConfig: &MysqlConnectionConfig{
+			Url: ptr("u@tcp(db:3306)/app?sslpassword="),
+		}},
 		"ssh without passphrase": {MongoConfig: &MongoConnectionConfig{
 			Url: ptr("mongodb://db"),
 			SSHTunnel: &SSHTunnel{Host: "bastion", SSHAuthentication: &SSHAuthentication{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"slices"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -633,13 +634,13 @@ func maskUrl(raw string) string {
 	}
 	masked := *uri
 	if masked.User != nil {
-		if _, ok := masked.User.Password(); ok {
+		if password, ok := masked.User.Password(); ok && password != "" {
 			masked.User = url.UserPassword(masked.User.Username(), uriSensitiveValue)
 		}
 	}
 	query := masked.Query()
-	for key := range query {
-		if isSecretQueryKey(key) {
+	for key, values := range query {
+		if isSecretQueryKey(key) && slices.ContainsFunc(values, isNotEmpty) {
 			query.Set(key, uriSensitiveValue)
 		}
 	}
@@ -654,19 +655,25 @@ func maskUrl(raw string) string {
 // maskMysqlDsn masks a MySQL connection string: its password, and the parameters that may hold
 // a credential. A string that does not parse is masked whole, like maskUrl does.
 func maskMysqlDsn(raw string) string {
-	dsn, err := dbconnectconfig.GetMysqlDsn(raw, slog.Default())
+	dsn, err := dbconnectconfig.GetMysqlDsn(raw, slog.New(slog.DiscardHandler))
 	if err != nil {
 		return uriSensitiveValue
 	}
 	if dsn.Passwd != "" {
 		dsn.Passwd = uriSensitiveValue
 	}
-	for key := range dsn.Params {
-		if isSecretQueryKey(key) {
+	for key, value := range dsn.Params {
+		if isSecretQueryKey(key) && value != "" {
 			dsn.Params[key] = uriSensitiveValue
 		}
 	}
 	return dsn.FormatDSN()
+}
+
+// isNotEmpty says whether a value holds anything to mask: only a secret there is masked, a mask
+// in place of none passing for one when sent back.
+func isNotEmpty(value string) bool {
+	return value != ""
 }
 
 // isSecretQueryKey says whether a URL parameter may carry a credential. It errs on the side of
