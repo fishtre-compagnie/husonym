@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A cloud connection brings credentials of its own, or a role that demands an external id:
-// without keys, with a profile or with the instance role, it would act as the server, which a
-// deployment allows only when it serves a single party. The tests' API does not.
+// A cloud connection brings credentials of its own, a role assumed from them included: without
+// keys, with a profile or with the instance role, it would act as the server, which a deployment
+// allows only when it serves a single party. The tests' API does not.
 func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 	t := s.T()
 	ctx := s.ctx
@@ -43,6 +43,9 @@ func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 		"s3 with the ec2 role":  s3(&mgmtv1alpha1.AwsS3Credentials{FromEc2Role: gotypeutil.ToPtr(true)}),
 		"dynamodb without keys": dynamo(nil),
 		"dynamodb with a role":  dynamo(&mgmtv1alpha1.AwsS3Credentials{RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r")}),
+		"dynamodb with a role and an external id": dynamo(&mgmtv1alpha1.AwsS3Credentials{
+			RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r"), RoleExternalId: gotypeutil.ToPtr("external"),
+		}),
 	} {
 		_, err := create(config)
 		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "%s: %v", name, err)
@@ -54,7 +57,7 @@ func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 	createdDynamo, err := create(dynamo(keys))
 	requireNoErrResp(t, createdDynamo, err)
 	assumed, err := create(dynamo(&mgmtv1alpha1.AwsS3Credentials{
-		RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r"), RoleExternalId: gotypeutil.ToPtr("external"),
+		AccessKeyId: keys.AccessKeyId, SecretAccessKey: keys.SecretAccessKey, RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r"),
 	}))
 	requireNoErrResp(t, assumed, err)
 

@@ -193,6 +193,17 @@ func DynamoDbAwsConfig(
 	})
 }
 
+// newStsClient returns the STS client a role is assumed with. With the process's own identity,
+// it never signs towards the connection's endpoint: the request would carry that identity to
+// whoever runs it.
+func newStsClient(conf *aws.Config, cfg *AwsCredentialsConfig) *sts.Client {
+	stsConf := *conf
+	if cfg.Profile != "" || cfg.Id == "" {
+		stsConf.BaseEndpoint = nil
+	}
+	return sts.NewFromConfig(stsConf)
+}
+
 func IsNotFound(err error) bool {
 	if err != nil {
 		var apiErr smithy.APIError
@@ -260,7 +271,7 @@ func GetAwsConfig(
 		conf.BaseEndpoint = &cfg.Endpoint
 	}
 	if cfg.Role != "" {
-		stsSvc := sts.NewFromConfig(conf)
+		stsSvc := newStsClient(&conf, cfg)
 
 		var stsOpts []func(*stscreds.AssumeRoleOptions)
 		if cfg.RoleExternalId != "" {

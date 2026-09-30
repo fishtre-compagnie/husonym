@@ -33,16 +33,14 @@ type awsCredentials interface {
 	GetAccessKeyId() string
 	GetSecretAccessKey() string
 	GetFromEc2Role() bool
-	GetRoleArn() string
-	GetRoleExternalId() string
 }
 
 var _ awsCredentials = (*mgmtv1alpha1.AwsS3Credentials)(nil)
 
 // CheckAws refuses AWS credentials that fall back on the server's identity: none, a profile
-// read from the server, or its instance role. The connection acts with keys of its own, or
-// has the server assume a role that demands an external id: the cross-account access AWS
-// provides for, where the role's owner decides who may assume it.
+// read from the server, or its instance role. A role is assumed from the connection's own
+// keys: assumed by the server, it would be any role the server may assume, whatever external
+// id the connection names, since a role that does not demand one ignores it.
 func (p Policy) CheckAws(credentials awsCredentials) error {
 	if p.AllowServerIdentity {
 		return nil
@@ -52,14 +50,10 @@ func (p Policy) CheckAws(credentials awsCredentials) error {
 		return refused(errors.New("an AWS profile is read from the server"))
 	case credentials.GetFromEc2Role():
 		return refused(errors.New("the EC2 role is the server's"))
-	case credentials.GetAccessKeyId() != "" && credentials.GetSecretAccessKey() != "":
-		return nil
-	case credentials.GetRoleArn() != "" && credentials.GetRoleExternalId() != "":
-		return nil
-	case credentials.GetRoleArn() != "":
-		return refused(errors.New("a role is assumed with an external id, or from access keys"))
+	case credentials.GetAccessKeyId() == "" || credentials.GetSecretAccessKey() == "":
+		return refused(errors.New("without an access key, the connection acts as the server, a role it names included"))
 	default:
-		return refused(errors.New("without an access key, the connection acts as the server"))
+		return nil
 	}
 }
 

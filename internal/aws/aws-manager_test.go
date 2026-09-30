@@ -66,3 +66,18 @@ func Test_AwsConfig_ServerIdentity(t *testing.T) {
 	)
 	require.NoError(t, err)
 }
+
+// A role assumed with the process's own identity is never asked of the connection's endpoint,
+// which would receive that identity; with the connection's own keys, the connection's endpoint
+// serves STS as it serves the rest.
+func Test_newStsClient_KeepsTheServerIdentityAwayFromTheConnection(t *testing.T) {
+	t.Setenv("AWS_ENDPOINT_URL_STS", "")
+	t.Setenv("AWS_ENDPOINT_URL", "")
+	endpoint := "https://endpoint-of-the-connection"
+	conf := aws.Config{Region: "us-east-1", BaseEndpoint: &endpoint}
+
+	require.Nil(t, newStsClient(&conf, &AwsCredentialsConfig{Role: "r"}).Options().BaseEndpoint)
+	require.Nil(t, newStsClient(&conf, &AwsCredentialsConfig{Role: "r", Profile: "p", Id: "id"}).Options().BaseEndpoint)
+	require.Equal(t, endpoint, aws.ToString(
+		newStsClient(&conf, &AwsCredentialsConfig{Role: "r", Id: "id", Secret: "secret"}).Options().BaseEndpoint))
+}

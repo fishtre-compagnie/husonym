@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
-
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
@@ -116,6 +114,7 @@ func CreateS3Connection(
 	accountId, name string,
 	bucket string,
 	region *string,
+	credentials *mgmtv1alpha1.AwsS3Credentials,
 ) *mgmtv1alpha1.Connection {
 	resp, err := connclient.CreateConnection(
 		ctx,
@@ -125,14 +124,11 @@ func CreateS3Connection(
 			ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_AwsS3Config{
 					AwsS3Config: &mgmtv1alpha1.AwsS3ConnectionConfig{
-						Bucket:     bucket,
-						PathPrefix: nil,
-						Region:     region,
-						Endpoint:   nil,
-						Credentials: &mgmtv1alpha1.AwsS3Credentials{
-							AccessKeyId:     gotypeutil.ToPtr("test-access-key-id"),
-							SecretAccessKey: gotypeutil.ToPtr("test-secret-access-key"),
-						},
+						Bucket:      bucket,
+						PathPrefix:  nil,
+						Region:      region,
+						Endpoint:    nil,
+						Credentials: credentials,
 					},
 				},
 			},

@@ -65,6 +65,10 @@ func Test_Sync(t *testing.T) {
 		"s3-conn",
 		awsS3Config.Bucket,
 		&awsS3Config.Region,
+		&mgmtv1alpha1.AwsS3Credentials{
+			AccessKeyId:     &awsS3Config.AccessKeyId,
+			SecretAccessKey: &awsS3Config.SecretAccessKey,
+		},
 	)
 	outputType := output.PlainOutput
 
