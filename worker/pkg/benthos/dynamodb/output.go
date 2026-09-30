@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/Jeffail/gabs/v2"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -54,6 +56,7 @@ type ddboConfig struct {
 func ddboConfigFromParsed(
 	pConf *service.ParsedConfig,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) (conf *ddboConfig, err error) {
 	c := &ddboConfig{}
 	if c.Table, err = pConf.FieldString(ddboFieldTable); err != nil {
@@ -74,7 +77,7 @@ func ddboConfigFromParsed(
 	if c.backoffCtor, err = commonRetryBackOffCtorFromParsed(pConf); err != nil {
 		return
 	}
-	if c.connection, err = resolveDynamoDbConnection(pConf, getConnection); err != nil {
+	if c.connection, err = resolveDynamoDbConnection(pConf, getConnection, identity); err != nil {
 		return
 	}
 	return c, nil
@@ -127,6 +130,7 @@ func dynamoOutputConfigSpec() *service.ConfigSpec {
 func RegisterDynamoDbOutput(
 	env *service.Environment,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) error {
 	return env.RegisterBatchOutput(
 		"aws_dynamodb",
@@ -139,7 +143,7 @@ func RegisterDynamoDbOutput(
 				return
 			}
 			var wConf *ddboConfig
-			if wConf, err = ddboConfigFromParsed(conf, getConnection); err != nil {
+			if wConf, err = ddboConfigFromParsed(conf, getConnection, identity); err != nil {
 				return
 			}
 			out, err = newDynamoDBWriter(wConf, mgr)

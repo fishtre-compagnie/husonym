@@ -21,6 +21,8 @@ There are a few different methods of giving Husonym access to your DynamoDB inst
 
 Husonym supports being given an IAM Role along with an External ID.
 
+Without access keys of its own, the connection has the API and the worker assume the role with their own identity: the External ID is then required, and the role's trust policy should demand it.
+
 If configuring DynamoDB via HusonymCloud, this is the recommended approach over using raw Access Credentials that don't expire. Husonym will assume this role only during active syncs or any time data is requested via the frontend and does not store those credentials in any way.
 
 ### AWS Access Credentials
@@ -37,6 +39,8 @@ This way the running husonym-api and husonym-worker are able to natively have ne
 
 For example, if hosting an EKS cluster, it's recommended to attach an IAM IRSA role to the Husonym deployments with the policies detailed below instead of configuring them directly in the application.
 You'll still need to create the DynamoDB connections inside of Husonym, but the configuration will essentially be empty.
+
+A connection without credentials then acts with the identity of the API and the worker. Allow it by setting `CONNECTIONS_ALLOW_SERVER_IDENTITY=true` on both (`connections.allowServerIdentity` in the charts), and only on a deployment that serves a single party: with several accounts, any of them would reach what the servers reach. Without it, such a connection is refused.
 
 ## HusonymCloud Trust Policy
 

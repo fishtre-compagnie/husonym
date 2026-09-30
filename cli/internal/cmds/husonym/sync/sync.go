@@ -9,6 +9,8 @@ import (
 	syncmap "sync"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
@@ -343,7 +345,8 @@ func (c *clisync) configureAndRunSync() error {
 		benthos_environment.WithConnectionDataConfig(&benthos_environment.ConnectionDataConfig{
 			HusonymConnectionDataApi: c.connectiondataclient,
 		}),
-		benthos_environment.WithConnections(getConnectionById),
+		// The CLI runs on the machine of its user, with that user's own cloud identity.
+		benthos_environment.WithConnections(getConnectionById, cloudidentity.Policy{AllowServerIdentity: true}),
 		benthos_environment.WithStopChannel(stopChan),
 		benthos_environment.WithBlobEnv(bloblang.NewEnvironment()),
 	)

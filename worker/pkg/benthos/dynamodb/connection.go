@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
@@ -36,6 +38,7 @@ func (c dynamoDbConnection) client() *dynamodb.Client {
 func resolveDynamoDbConnection(
 	conf *service.ParsedConfig,
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) (dynamoDbConnection, error) {
 	connectionId, err := conf.FieldString(fieldConnectionId)
 	if err != nil {
@@ -49,7 +52,7 @@ func resolveDynamoDbConnection(
 	if dynamoConfig == nil {
 		return dynamoDbConnection{}, fmt.Errorf("connection %q is not a DynamoDB connection", connectionId)
 	}
-	awsConfig, err := awsmanager.DynamoDbAwsConfig(context.Background(), dynamoConfig)
+	awsConfig, err := awsmanager.DynamoDbAwsConfig(context.Background(), dynamoConfig, identity)
 	if err != nil {
 		return dynamoDbConnection{}, fmt.Errorf("unable to resolve the aws config of connection %q: %w", connectionId, err)
 	}

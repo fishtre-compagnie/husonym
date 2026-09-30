@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
@@ -61,6 +63,8 @@ type Activity struct {
 
 	// athanor tells which engine runs the job: what the plan tells of the run depends on it.
 	athanor shared.AthanorPolicy
+	// identity says whether a cloud connection may act with the worker's own identity.
+	identity cloudidentity.Policy
 }
 
 func New(
@@ -72,6 +76,7 @@ func New(
 	pageLimit int,
 	keys *consistencykey.Resolver,
 	athanor shared.AthanorPolicy,
+	identity cloudidentity.Policy,
 ) *Activity {
 	return &Activity{
 		jobclient:         jobclient,
@@ -82,6 +87,7 @@ func New(
 		pageLimit:         pageLimit,
 		keys:              keys,
 		athanor:           athanor,
+		identity:          identity,
 	}
 }
 
@@ -122,6 +128,7 @@ func (a *Activity) GenerateBenthosConfigs(
 		a.pageLimit,
 		a.keys,
 		a.athanor,
+		a.identity,
 	)
 	slogger := temporallogger.NewSlogger(logger)
 	return bbuilder.GenerateBenthosConfigsNew(
@@ -161,7 +168,7 @@ func (a *Activity) PlanPreflight(ctx context.Context, req *PlanPreflightRequest)
 		// No run: the plan is keyed by the check itself, and nothing is kept under it.
 		info.WorkflowExecution.ID,
 		info.WorkflowExecution.RunID,
-		a.metricsEnabled, a.pageLimit, a.keys, a.athanor,
+		a.metricsEnabled, a.pageLimit, a.keys, a.athanor, a.identity,
 	)
 	return bbuilder.PlanPreflight(ctx, req.JobId, temporallogger.NewSlogger(logger))
 }

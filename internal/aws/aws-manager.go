@@ -18,9 +18,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
 )
 
 type HusonymAwsManager struct {
+	// identity says whether a connection may act with the server's own AWS identity.
+	identity cloudidentity.Policy
 }
 
 type HusonymAwsManagerClient interface {
@@ -44,8 +47,8 @@ type HusonymAwsManagerClient interface {
 	) (*DynamoDbClient, error)
 }
 
-func New() *HusonymAwsManager {
-	return &HusonymAwsManager{}
+func New(identity cloudidentity.Policy) *HusonymAwsManager {
+	return &HusonymAwsManager{identity: identity}
 }
 
 // Returns a wrapper dynamodb client
@@ -65,7 +68,7 @@ func (n *HusonymAwsManager) newDynamoDbClient(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.DynamoDBConnectionConfig,
 ) (*dynamodb.Client, error) {
-	cfg, err := DynamoDbAwsConfig(ctx, connCfg)
+	cfg, err := DynamoDbAwsConfig(ctx, connCfg, n.identity)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +90,7 @@ func (n *HusonymAwsManager) NewS3Client(
 	ctx context.Context,
 	connCfg *mgmtv1alpha1.AwsS3ConnectionConfig,
 ) (*s3.Client, error) {
-	cfg, err := S3AwsConfig(ctx, connCfg)
+	cfg, err := S3AwsConfig(ctx, connCfg, n.identity)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +145,16 @@ func withS3Region(region *string) func(o *s3.Options) {
 	}
 }
 
-// S3AwsConfig resolves the AWS config of an S3 connection: region, endpoint and credentials.
+// S3AwsConfig resolves the AWS config of an S3 connection: region, endpoint and credentials,
+// the server's own identity only where the policy allows it.
 func S3AwsConfig(
 	ctx context.Context,
 	s3ConnConfig *mgmtv1alpha1.AwsS3ConnectionConfig,
+	identity cloudidentity.Policy,
 ) (*aws.Config, error) {
+	if err := identity.CheckAws(s3ConnConfig.GetCredentials()); err != nil {
+		return nil, err
+	}
 	return GetAwsConfig(ctx, &AwsCredentialsConfig{
 		Region:          s3ConnConfig.GetRegion(),
 		Endpoint:        s3ConnConfig.GetEndpoint(),
@@ -162,11 +170,15 @@ func S3AwsConfig(
 }
 
 // DynamoDbAwsConfig resolves the AWS config of a DynamoDB connection: region, endpoint and
-// credentials.
+// credentials, the server's own identity only where the policy allows it.
 func DynamoDbAwsConfig(
 	ctx context.Context,
 	dynConnConfig *mgmtv1alpha1.DynamoDBConnectionConfig,
+	identity cloudidentity.Policy,
 ) (*aws.Config, error) {
+	if err := identity.CheckAws(dynConnConfig.GetCredentials()); err != nil {
+		return nil, err
+	}
 	return GetAwsConfig(ctx, &AwsCredentialsConfig{
 		Region:          dynConnConfig.GetRegion(),
 		Endpoint:        dynConnConfig.GetEndpoint(),

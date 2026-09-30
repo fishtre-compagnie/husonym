@@ -7,6 +7,10 @@ import (
 	"io"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -40,7 +44,12 @@ func s3Connection(id, bucket string) *mgmtv1alpha1.Connection {
 		Id: id,
 		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
 			Config: &mgmtv1alpha1.ConnectionConfig_AwsS3Config{
-				AwsS3Config: &mgmtv1alpha1.AwsS3ConnectionConfig{Bucket: bucket},
+				AwsS3Config: &mgmtv1alpha1.AwsS3ConnectionConfig{
+					Bucket: bucket,
+					Credentials: &mgmtv1alpha1.AwsS3Credentials{
+						AccessKeyId: aws.String("the-key"), SecretAccessKey: aws.String("the-secret"),
+					},
+				},
 			},
 		},
 	}
@@ -68,7 +77,7 @@ func newTestWriter(
 	t.Helper()
 	conf, err := outputSpec().ParseYAML(yaml, service.NewEnvironment())
 	require.NoError(t, err)
-	return newS3Writer(conf, getConnection)
+	return newS3Writer(conf, getConnection, cloudidentity.Policy{})
 }
 
 func Test_S3Writer_WritesToTheBucketOfTheConnection(t *testing.T) {
@@ -160,7 +169,7 @@ path: object
 }
 
 func Test_RegisterAwsS3Output(t *testing.T) {
-	require.NoError(t, RegisterAwsS3Output(service.NewEmptyEnvironment(), connectionsOf()))
+	require.NoError(t, RegisterAwsS3Output(service.NewEmptyEnvironment(), connectionsOf(), cloudidentity.Policy{}))
 }
 
 // A connection whose AWS config cannot be resolved fails the stream when it is built: from
@@ -173,9 +182,16 @@ func Test_S3Writer_FailsToBuildOnAnUnresolvableAwsConfig(t *testing.T) {
 	connection := s3Connection("s3", "the-bucket")
 	connection.GetConnectionConfig().GetAwsS3Config().Credentials = &mgmtv1alpha1.AwsS3Credentials{Profile: &profile}
 
-	_, err := newTestWriter(t, `
+	conf, err := outputSpec().ParseYAML(`
 connection_id: s3
 path: object
-`, connectionsOf(connection))
+`, service.NewEnvironment())
+	require.NoError(t, err)
+
+	// Where the deployment allows the server's identity, the profile is looked up, and missed.
+	_, err = newS3Writer(conf, connectionsOf(connection), cloudidentity.Policy{AllowServerIdentity: true})
 	require.ErrorContains(t, err, profile)
+	// Elsewhere, a profile is the server's: the connection is refused before anything is read.
+	_, err = newS3Writer(conf, connectionsOf(connection), cloudidentity.Policy{})
+	require.ErrorContains(t, err, "credentials of its own")
 }

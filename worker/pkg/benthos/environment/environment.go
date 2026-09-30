@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
@@ -39,6 +41,8 @@ type RegisterConfig struct {
 	// Resolves the connections of the run for the DynamoDB, S3 and OpenAI plugins, which
 	// read their credentials from the connection when the stream runs. nil to disable.
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error)
+	// identity says whether an AWS connection may act with the identity of the process.
+	identity cloudidentity.Policy
 
 	stopChannel chan<- error
 
@@ -84,9 +88,11 @@ func WithConnectionDataConfig(connectionDataCfg *ConnectionDataConfig) Option {
 }
 func WithConnections(
 	getConnection func(connectionId string) (connectionmanager.ConnectionInput, error),
+	identity cloudidentity.Policy,
 ) Option {
 	return func(cfg *RegisterConfig) {
 		cfg.getConnection = getConnection
+		cfg.identity = identity
 	}
 }
 func WithBlobEnv(b *bloblang.Environment) Option {
@@ -240,15 +246,15 @@ func NewWithEnvironment(
 				err,
 			)
 		}
-		err = husonym_benthos_dynamodb.RegisterDynamoDbInput(env, config.getConnection)
+		err = husonym_benthos_dynamodb.RegisterDynamoDbInput(env, config.getConnection, config.identity)
 		if err != nil {
 			return nil, fmt.Errorf("unable to register dynamodb input to benthos instance: %w", err)
 		}
-		err = husonym_benthos_dynamodb.RegisterDynamoDbOutput(env, config.getConnection)
+		err = husonym_benthos_dynamodb.RegisterDynamoDbOutput(env, config.getConnection, config.identity)
 		if err != nil {
 			return nil, fmt.Errorf("unable to register dynamodb output to benthos instance: %w", err)
 		}
-		err = husonym_benthos_awss3.RegisterAwsS3Output(env, config.getConnection)
+		err = husonym_benthos_awss3.RegisterAwsS3Output(env, config.getConnection, config.identity)
 		if err != nil {
 			return nil, fmt.Errorf("unable to register husonym_aws_s3 output to benthos instance: %w", err)
 		}

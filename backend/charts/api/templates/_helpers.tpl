@@ -65,6 +65,7 @@ Create the name of the service account to use
 Generate the stringData section for environment variables
 */}}
 {{- define "husonym-api.env-vars" -}}
+CONNECTIONS_ALLOW_SERVER_IDENTITY: {{ .Values.connections.allowServerIdentity | default false | quote }}
 DB_HOST: {{ .Values.db.host }}
 DB_PORT: {{ .Values.db.port | quote }}
 DB_NAME: {{ .Values.db.name }}

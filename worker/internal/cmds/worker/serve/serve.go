@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
 	"connectrpc.com/grpcreflect"
@@ -407,13 +409,15 @@ func serve(ctx context.Context) error {
 			"Athanor engine fail, and a phone number mapped under Benthos keeps neither its " +
 			"format nor its consistency")
 	}
+	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
 	engineConfig := sync_activity.EngineConfig{
 		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
 			viper.GetString("ATHANOR_ENABLED_JOB_IDS"),
 			viper.GetString("ATHANOR_DISABLED_JOB_IDS"),
 		),
-		Keys: consistencyKeys,
+		Keys:          consistencyKeys,
+		CloudIdentity: cloudIdentity,
 	}
 	streamManager := benthosstream.NewBenthosStreamManager()
 	tablesync_workflow_register.Register(
@@ -447,6 +451,7 @@ func serve(ctx context.Context) error {
 		otelconfig.IsEnabled,
 		pageLimit,
 		consistencyKeys,
+		cloudIdentity,
 	)
 
 	if cascadelicense.IsValid() {
@@ -461,7 +466,7 @@ func serve(ctx context.Context) error {
 			sqlmanager,
 			pg_queries.New(),
 			mysql_queries.New(),
-			awsmanager.New(),
+			awsmanager.New(cloudIdentity),
 			husonym_gcp.NewManager(),
 			mongoconnect.NewConnector(),
 			husonymtyperegistry,

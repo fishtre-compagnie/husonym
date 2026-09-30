@@ -6,6 +6,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
@@ -21,6 +22,8 @@ type Service struct {
 
 type Config struct {
 	IsHusonymCloud bool
+	// CloudIdentity says whether a cloud connection may act with the server's own identity.
+	CloudIdentity cloudidentity.Policy
 }
 
 func New(

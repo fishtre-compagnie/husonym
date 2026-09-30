@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	bb_internal "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/internal"
 	_ "github.com/fishtre-compagnie/husonym/internal/benthos/imports" // the components the worker imports
@@ -84,7 +86,7 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	dynamoDestination, err := NewDynamoDbSyncBuilder(nil).BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
+	dynamoDestination, err := NewDynamoDbSyncBuilder(nil, nil).BuildDestinationConfig(context.Background(), &bb_internal.DestinationParams{
 		SourceConfig: sourceConfig,
 		DestinationOpts: &mgmtv1alpha1.JobDestinationOptions{
 			Config: &mgmtv1alpha1.JobDestinationOptions_DynamodbOptions{
@@ -117,7 +119,7 @@ func Test_StoredConfigHoldsNoConnectionSecret(t *testing.T) {
 			testutil.GetTestLogger(t),
 			benthos_environment.WithConnections(func(string) (connectionmanager.ConnectionInput, error) {
 				return nil, errors.New("not resolved: the configs are only linted")
-			}),
+			}, cloudidentity.Policy{}),
 			benthos_environment.WithStopChannel(make(chan error, 1)),
 			benthos_environment.WithBlobEnv(bloblang.NewEnvironment()),
 		)

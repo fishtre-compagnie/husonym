@@ -3,6 +3,7 @@ package datasync_workflow_register
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/cloudidentity"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
@@ -41,6 +42,7 @@ func Register(
 	isOtelEnabled bool,
 	pageLimit int,
 	keys *consistencykey.Resolver,
+	identity cloudidentity.Policy,
 ) {
 	genbenthosActivity := genbenthosconfigs_activity.New(
 		jobclient,
@@ -51,6 +53,7 @@ func Register(
 		pageLimit,
 		keys,
 		athanor,
+		identity,
 	)
 
 	retrieveActivityOpts := syncactivityopts_activity.New(jobclient)

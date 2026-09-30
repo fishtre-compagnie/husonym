@@ -486,6 +486,9 @@ func (s *Service) CreateConnection(
 	); err != nil {
 		return nil, err
 	}
+	if err := s.checkCloudIdentity(req.Msg.GetConnectionConfig()); err != nil {
+		return nil, err
+	}
 
 	connection, err := s.db.Q.CreateConnection(ctx, s.db.Db, db_queries.CreateConnectionParams{
 		AccountID:        accountUuid,
@@ -549,6 +552,9 @@ func (s *Service) UpdateConnection(
 		userdata.NewDbDomainEntity(connection.AccountID, connection.ID),
 		rbac.ConnectionAction_Edit,
 	); err != nil {
+		return nil, err
+	}
+	if err := s.checkCloudIdentity(req.Msg.GetConnectionConfig()); err != nil {
 		return nil, err
 	}
 
@@ -744,6 +750,19 @@ func checkSSHConnection(
 
 type urlEnvVarConfig interface {
 	GetUrlFromEnv() string
+}
+
+// checkCloudIdentity refuses a cloud connection that would act with the server's own identity,
+// where the deployment does not allow it.
+func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) error {
+	switch cfg := config.GetConfig().(type) {
+	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config:
+		return s.cfg.CloudIdentity.CheckAws(cfg.AwsS3Config.GetCredentials())
+	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
+		return s.cfg.CloudIdentity.CheckAws(cfg.DynamodbConfig.GetCredentials())
+	default:
+		return nil
+	}
 }
 
 func checkUrlEnvVar(cfg urlEnvVarConfig, isHusonymCloud bool) error {

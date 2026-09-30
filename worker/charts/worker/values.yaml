@@ -166,3 +166,7 @@ sidecarContainers: []
 tableSync:
   # -- The number of tables to sync concurrently
   maxConcurrency: 3
+
+connections:
+  # -- Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud.
+  allowServerIdentity: false
