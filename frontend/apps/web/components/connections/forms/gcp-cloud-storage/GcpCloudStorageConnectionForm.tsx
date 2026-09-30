@@ -52,6 +52,8 @@ function toFormValues(
     gcp: {
       bucket: connection.connectionConfig.config.value.bucket,
       pathPrefix: connection.connectionConfig.config.value.pathPrefix,
+      serviceAccountCredentials:
+        connection.connectionConfig.config.value.serviceAccountCredentials,
     },
   };
 }

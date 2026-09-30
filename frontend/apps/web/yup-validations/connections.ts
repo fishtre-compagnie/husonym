@@ -331,6 +331,7 @@ export const GcpCloudStorageFormValues = Yup.object<
     .shape({
       bucket: Yup.string().required('The Bucket is required.'),
       pathPrefix: Yup.string().optional(),
+      serviceAccountCredentials: Yup.string().optional(),
     })
     .required('The GCP form fields are required.'),
 });
