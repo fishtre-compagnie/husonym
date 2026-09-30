@@ -3,6 +3,7 @@ package sync_activity
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"log/slog"
@@ -161,12 +162,19 @@ func (a *Activity) SyncTable(
 	)
 
 	stopActivityChan := make(chan error, 3)
+	streamDone := make(chan error, 1)
 	syncResultChan := make(chan error, 1)
 
 	var benthosStream benthosstream.BenthosStreamClient
 
-	go monitorActivityHeartbeat(ctx, stopActivityChan, func(logMessage string, err error) {
+	go monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
 		handleStreamStop(benthosStream, syncResultChan, err, logMessage, logger)
+	}, func(err error) {
+		// Unless the stop above already gave the result: the monitor may end here on a panic.
+		select {
+		case syncResultChan <- err:
+		default:
+		}
 	}, logger)
 
 	benthosConfig, err := a.getBenthosConfig(ctx, &mgmtv1alpha1.RunContextKey{
@@ -276,7 +284,7 @@ func (a *Activity) SyncTable(
 
 	benthosStream = bstream
 
-	go runStream(benthosStream, ctx, syncResultChan, logger)
+	go runStream(benthosStream, ctx, streamDone, logger)
 
 	err = <-syncResultChan
 	if err != nil {
@@ -328,15 +336,23 @@ func (a *Activity) getIdentityAllocator(
 	return tablesync_shared.NewMultiIdentityAllocator(blockAllocator, allocatorBlockSize, seed)
 }
 
+// monitorActivityHeartbeat keeps the activity alive while the stream runs, and alone decides
+// how it ends: stopped by Benthos, by the context, or done. A write that fails critically
+// signals the stop before it is acknowledged, hence before the stream can end: a stream done
+// with a stop signal waiting has failed.
 func monitorActivityHeartbeat(
 	ctx context.Context,
 	stopActivityChan <-chan error,
+	streamDone <-chan error,
 	handleStreamStop func(logMessage string, err error),
+	handleStreamDone func(err error),
 	logger *slog.Logger,
 ) {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("recovered from panic in sync activity heartbeat loop: %v", r)
+			logger.Error(fmt.Sprintf("recovered from panic in sync activity heartbeat loop: %v", r))
+			// The activity waits for an end only the monitor gives.
+			handleStreamDone(fmt.Errorf("panic in sync activity heartbeat loop: %v", r))
 		}
 	}()
 
@@ -347,6 +363,17 @@ func monitorActivityHeartbeat(
 		select {
 		case activityErr := <-stopActivityChan:
 			handleStreamStop("received stop activity from benthos channel", activityErr)
+			return
+
+		case streamErr := <-streamDone:
+			select {
+			case activityErr := <-stopActivityChan:
+				logger.Info("stream done after a stop activity from benthos channel")
+				// The stop names the cause; a failed stream only adds how it ended.
+				streamErr = errors.Join(activityErr, streamErr)
+			default:
+			}
+			handleStreamDone(streamErr)
 			return
 
 		case <-ctx.Done():
@@ -380,25 +407,25 @@ func handleStreamStop(
 func runStream(
 	stream benthosstream.BenthosStreamClient,
 	ctx context.Context,
-	syncResultChan chan<- error,
+	streamDone chan<- error,
 	logger *slog.Logger,
 ) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := fmt.Errorf("panic in benthos stream: %v", r)
 			logger.Error("recovered from panic", "error", err)
-			syncResultChan <- err // Send panic as error to channel
+			streamDone <- err // Send panic as error to channel
 		}
 	}()
 	if err := stream.Run(ctx); err != nil {
 		err = fmt.Errorf("unable to run benthos stream: %w", err)
 		logger.Error("stream run failed", "error", err)
-		syncResultChan <- err
+		streamDone <- err
 		return
 	}
 
 	logger.Debug("stream completed successfully")
-	syncResultChan <- nil
+	streamDone <- nil
 }
 
 func (a *Activity) getBenthosStream(
