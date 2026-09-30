@@ -3,6 +3,7 @@ package integrationtests_test
 import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,10 @@ func (s *IntegrationTestSuite) Test_CreateJobRun_ReturnsTheRun() {
 	s.Mocks.TemporalClientManager.EXPECT().
 		StartScheduledRun(mock.Anything, accountId, job.GetId(), mock.Anything).
 		Return(jobRunId, nil).Once()
+	// The visibility index, through which runs are found, sees a new one a moment late.
+	s.Mocks.TemporalClientManager.EXPECT().
+		DescribeWorklowExecution(mock.Anything, accountId, jobRunId, mock.Anything).
+		Return(nil, husonymerrors.NewNotFound("workflow not found for "+jobRunId)).Once()
 	s.MockTemporalForDescribeWorkflowExecution(accountId, job.GetId(), jobRunId, "Workflow")
 	resp, err := jobclient.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: job.GetId()}))
 	requireNoErrResp(t, resp, err)

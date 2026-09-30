@@ -546,14 +546,39 @@ func (s *Service) CreateJobRun(
 		return nil, fmt.Errorf("unable to create job run by triggering temporal schedule: %w", err)
 	}
 
-	jobRun, err := s.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
-		JobRunId:  jobRunId,
-		AccountId: job.GetAccountId(),
-	}))
+	jobRun, err := s.getStartedJobRun(ctx, job.GetAccountId(), jobRunId)
 	if err != nil {
 		return nil, fmt.Errorf("the run %s started, but it could not be read: %w", jobRunId, err)
 	}
-	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: jobRun.Msg.GetJobRun()}), nil
+	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: jobRun}), nil
+}
+
+// startedJobRunVisibleWithin bounds the wait for a run the schedule has just started: runs are
+// found through Temporal's visibility index, which sees a new one a moment late.
+const startedJobRunVisibleWithin = 5 * time.Second
+
+// getStartedJobRun reads a run the schedule has just started, waiting for it to be visible.
+func (s *Service) getStartedJobRun(ctx context.Context, accountId, jobRunId string) (*mgmtv1alpha1.JobRun, error) {
+	ctx, cancel := context.WithTimeout(ctx, startedJobRunVisibleWithin)
+	defer cancel()
+	for {
+		resp, err := s.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+			JobRunId:  jobRunId,
+			AccountId: accountId,
+		}))
+		if err == nil {
+			return resp.Msg.GetJobRun(), nil
+		}
+		// Runs are found through the visibility index, which sees a new one a moment late.
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			return nil, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, err
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
 }
 
 func (s *Service) CancelJobRun(
