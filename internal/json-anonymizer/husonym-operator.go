@@ -23,7 +23,7 @@ func (n *husonymOperatorApi) Transform(
 	config *mgmtv1alpha1.TransformerConfig,
 	value string,
 ) (string, error) {
-	executor, err := transformer_executor.InitializeTransformerByConfigType(config, n.opts...)
+	executor, err := transformer_executor.InitializeTransformerByConfigType(ctx, config, n.opts...)
 	if err != nil {
 		return "", err
 	}

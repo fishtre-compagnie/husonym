@@ -81,10 +81,11 @@ func WithLogger(logger *slog.Logger) TransformerExecutorOption {
 }
 
 func InitializeTransformer(
+	ctx context.Context,
 	transformerMapping *mgmtv1alpha1.JobMappingTransformer,
 	opts ...TransformerExecutorOption,
 ) (*TransformerExecutor, error) {
-	return InitializeTransformerByConfigType(transformerMapping.GetConfig(), opts...)
+	return InitializeTransformerByConfigType(ctx, transformerMapping.GetConfig(), opts...)
 }
 
 type UserDefinedTransformerResolver interface {
@@ -102,7 +103,12 @@ func WithUserDefinedTransformerResolver(
 	}
 }
 
+// InitializeTransformerByConfigType builds the executor of a transformer. A user-defined one is
+// resolved with ctx, that of the request or the run: it carries who asks. The executor keeps it
+// for what it resolves as it runs — the transformers of a PII rule, those a script calls — and
+// lives no longer than the request or the run.
 func InitializeTransformerByConfigType(
+	ctx context.Context,
 	transformerConfig *mgmtv1alpha1.TransformerConfig,
 	opts ...TransformerExecutorOption,
 ) (*TransformerExecutor, error) {
@@ -121,11 +127,11 @@ func InitializeTransformerByConfigType(
 		if config == nil {
 			return nil, fmt.Errorf("user defined transformer config is nil")
 		}
-		resolvedConfig, err := execCfg.userDefinedTransformerResolver.GetUserDefinedTransformer(context.Background(), config.GetId())
+		resolvedConfig, err := execCfg.userDefinedTransformerResolver.GetUserDefinedTransformer(ctx, config.GetId())
 		if err != nil {
 			return nil, err
 		}
-		return InitializeTransformerByConfigType(resolvedConfig, opts...)
+		return InitializeTransformerByConfigType(ctx, resolvedConfig, opts...)
 	case *mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig:
 		config := typedCfg.GenerateJavascriptConfig
 		if config == nil {
@@ -146,7 +152,7 @@ func InitializeTransformerByConfigType(
 				if err != nil {
 					return nil, fmt.Errorf("failed to create input message: %w", err)
 				}
-				outputMessage, err := RunJavascript(context.Background(), program, inputMessage,
+				outputMessage, err := RunJavascript(ctx, program, inputMessage,
 					transformPiiTextApi, execCfg.logger)
 				if err != nil {
 					return nil, fmt.Errorf("failed to run program: %w", err)
@@ -180,7 +186,7 @@ func InitializeTransformerByConfigType(
 				if err != nil {
 					return nil, fmt.Errorf("failed to create input message: %w", err)
 				}
-				outputMessage, err := RunJavascript(context.Background(), program, inputMessage,
+				outputMessage, err := RunJavascript(ctx, program, inputMessage,
 					transformPiiTextApi, execCfg.logger)
 				if err != nil {
 					return nil, fmt.Errorf("failed to run program: %w", err)
@@ -776,7 +782,7 @@ func InitializeTransformerByConfigType(
 					return nil, fmt.Errorf("expected value to be of type string. %T", value)
 				}
 				return transformPiiTextApi.Transform(
-					context.Background(),
+					ctx,
 					config,
 					valueStr,
 				)

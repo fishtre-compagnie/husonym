@@ -15,6 +15,8 @@ package transform
 // interface — without touching existing code, and fully reversibly.
 
 import (
+	"context"
+
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	te "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
@@ -37,10 +39,11 @@ func (a *neosyncValueAdapter) TransformValue(_ Ctx, in any) (any, error) {
 // compatibilité descendante : le nouveau moteur peut exécuter n'importe quel
 // transformer du fork actuel via cet adaptateur.
 func WrapNeosyncConfig(
+	ctx context.Context,
 	cfg *mgmtv1alpha1.TransformerConfig,
 	opts ...te.TransformerExecutorOption,
 ) (ValueTransformer, error) {
-	exec, err := te.InitializeTransformerByConfigType(cfg, opts...)
+	exec, err := te.InitializeTransformerByConfigType(ctx, cfg, opts...)
 	if err != nil {
 		return nil, err
 	}

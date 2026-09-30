@@ -1,6 +1,7 @@
 package jsonanonymizer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -42,8 +43,9 @@ type anonymizeConfig struct {
 // Option is a functional option for configuring the Anonymizer
 type Option func(*JsonAnonymizer)
 
-// NewAnonymizer initializes a new Anonymizer with functional options
-func NewAnonymizer(opts ...Option) (*JsonAnonymizer, error) {
+// NewAnonymizer initializes a new Anonymizer with functional options. ctx is the request's:
+// the user-defined transformers of the mappings are resolved with it.
+func NewAnonymizer(ctx context.Context, opts ...Option) (*JsonAnonymizer, error) {
 	a := &JsonAnonymizer{
 		transformerMappings: make([]*mgmtv1alpha1.TransformerMapping, 0),
 		logger:              slog.Default(),
@@ -61,6 +63,7 @@ func NewAnonymizer(opts ...Option) (*JsonAnonymizer, error) {
 	// Initialize transformerExecutors
 	var err error
 	a.transformerExecutors, err = initTransformerExecutors(
+		ctx,
 		a.transformerMappings,
 		a.anonymizeConfig,
 		a.userDefinedTransformers,
@@ -73,6 +76,7 @@ func NewAnonymizer(opts ...Option) (*JsonAnonymizer, error) {
 	// Initialize defaultTransformerExecutor if needed
 	if a.defaultTransformers != nil {
 		a.defaultTransformerExecutor, err = initDefaultTransformerExecutors(
+			ctx,
 			a.defaultTransformers,
 			a.anonymizeConfig,
 			a.userDefinedTransformers,
@@ -384,6 +388,7 @@ func (a *JsonAnonymizer) AnonymizeJSONObject(jsonStr string) (string, error) {
 }
 
 func initTransformerExecutors(
+	ctx context.Context,
 	transformerMappings []*mgmtv1alpha1.TransformerMapping,
 	anonymizeConfig *anonymizeConfig,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
@@ -409,6 +414,7 @@ func initTransformerExecutors(
 
 	for _, mapping := range transformerMappings {
 		executor, err := transformer_executor.InitializeTransformerByConfigType(
+			ctx,
 			mapping.GetTransformer(),
 			execOpts...)
 		if err != nil {
@@ -431,6 +437,7 @@ type DefaultExecutors struct {
 }
 
 func initDefaultTransformerExecutors(
+	ctx context.Context,
 	defaultTransformer *mgmtv1alpha1.DefaultTransformersConfig,
 	anonymizeConfig *anonymizeConfig,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
@@ -457,6 +464,7 @@ func initDefaultTransformerExecutors(
 	var err error
 	if defaultTransformer.S != nil {
 		stringExecutor, err = transformer_executor.InitializeTransformerByConfigType(
+			ctx,
 			defaultTransformer.S,
 			execOpts...)
 		if err != nil {
@@ -465,6 +473,7 @@ func initDefaultTransformerExecutors(
 	}
 	if defaultTransformer.N != nil {
 		numberExecutor, err = transformer_executor.InitializeTransformerByConfigType(
+			ctx,
 			defaultTransformer.N,
 			execOpts...)
 		if err != nil {
@@ -473,6 +482,7 @@ func initDefaultTransformerExecutors(
 	}
 	if defaultTransformer.Boolean != nil {
 		booleanExecutor, err = transformer_executor.InitializeTransformerByConfigType(
+			ctx,
 			defaultTransformer.Boolean,
 			execOpts...)
 		if err != nil {

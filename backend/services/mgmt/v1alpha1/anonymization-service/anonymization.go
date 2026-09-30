@@ -103,6 +103,7 @@ func (s *Service) AnonymizeMany(
 	}
 
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
+		ctx,
 		jsonanonymizer.WithTransformerMappings(req.Msg.TransformerMappings),
 		jsonanonymizer.WithDefaultTransformers(req.Msg.DefaultTransformers),
 		jsonanonymizer.WithHaltOnFailure(req.Msg.HaltOnFailure),
@@ -240,6 +241,7 @@ func (s *Service) AnonymizeSingle(
 	}
 
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
+		ctx,
 		jsonanonymizer.WithTransformerMappings(req.Msg.TransformerMappings),
 		jsonanonymizer.WithDefaultTransformers(req.Msg.DefaultTransformers),
 		jsonanonymizer.WithConditionalAnonymizeConfig(

@@ -1,6 +1,7 @@
 package jsonanonymizer
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 func Test_NewAnonymizer(t *testing.T) {
 	t.Run("Initialize with no options", func(t *testing.T) {
-		anonymizer, err := NewAnonymizer()
+		anonymizer, err := NewAnonymizer(context.Background())
 		require.Error(t, err)
 		require.Nil(t, anonymizer)
 	})
@@ -28,7 +29,7 @@ func Test_NewAnonymizer(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithTransformerMappings(mappings))
+		anonymizer, err := NewAnonymizer(context.Background(), WithTransformerMappings(mappings))
 		require.NoError(t, err)
 		require.NotNil(t, anonymizer)
 		require.Equal(t, mappings, anonymizer.transformerMappings)
@@ -48,7 +49,7 @@ func Test_NewAnonymizer(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithDefaultTransformers(defaults))
+		anonymizer, err := NewAnonymizer(context.Background(), WithDefaultTransformers(defaults))
 		require.NoError(t, err)
 		require.NotNil(t, anonymizer)
 		require.Equal(t, defaults, anonymizer.defaultTransformers)
@@ -63,7 +64,7 @@ func Test_NewAnonymizer(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithDefaultTransformers(defaults), WithHaltOnFailure(true))
+		anonymizer, err := NewAnonymizer(context.Background(), WithDefaultTransformers(defaults), WithHaltOnFailure(true))
 		require.NoError(t, err)
 		require.NotNil(t, anonymizer)
 		require.True(t, anonymizer.haltOnFailure)
@@ -82,7 +83,7 @@ func Test_AnonymizeJSONObjects(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithTransformerMappings(mappings))
+		anonymizer, err := NewAnonymizer(context.Background(), WithTransformerMappings(mappings))
 		require.NoError(t, err)
 
 		input := `{"name": "John Doe", "age": 30}`
@@ -104,7 +105,7 @@ func Test_AnonymizeJSONObjects(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithDefaultTransformers(defaults))
+		anonymizer, err := NewAnonymizer(context.Background(), WithDefaultTransformers(defaults))
 		require.NoError(t, err)
 
 		input := `{"name": "John Doe", "city": "New York"}`
@@ -126,7 +127,7 @@ func Test_AnonymizeJSONObjects(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithDefaultTransformers(defaults))
+		anonymizer, err := NewAnonymizer(context.Background(), WithDefaultTransformers(defaults))
 		require.NoError(t, err)
 
 		input := `invalid json`
@@ -145,7 +146,7 @@ func Test_AnonymizeJSONObjects(t *testing.T) {
 				},
 			},
 		}
-		anonymizer, err := NewAnonymizer(WithTransformerMappings(mappings), WithHaltOnFailure(true))
+		anonymizer, err := NewAnonymizer(context.Background(), WithTransformerMappings(mappings), WithHaltOnFailure(true))
 		require.NoError(t, err)
 
 		inputs := []string{
@@ -176,6 +177,7 @@ func Test_AnonymizeJSONObjects(t *testing.T) {
 			},
 		}
 		anonymizer, err := NewAnonymizer(
+			context.Background(),
 			WithTransformerMappings(mappings),
 			WithHaltOnFailure(false),
 		)
@@ -238,7 +240,7 @@ func Test_InitTransformerExecutors(t *testing.T) {
 				},
 			},
 		}
-		executors, err := initTransformerExecutors(mappings, nil, nil, testutil.GetTestLogger(t))
+		executors, err := initTransformerExecutors(context.Background(), mappings, nil, nil, testutil.GetTestLogger(t))
 		require.NoError(t, err)
 		require.Len(t, executors, 1)
 	})
@@ -250,7 +252,7 @@ func Test_InitTransformerExecutors(t *testing.T) {
 				Transformer: nil,
 			},
 		}
-		_, err := initTransformerExecutors(mappings, nil, nil, testutil.GetTestLogger(t))
+		_, err := initTransformerExecutors(context.Background(), mappings, nil, nil, testutil.GetTestLogger(t))
 		require.Error(t, err)
 	})
 }
@@ -273,6 +275,7 @@ func Test_InitDefaultTransformerExecutors(t *testing.T) {
 			},
 		}
 		executors, err := initDefaultTransformerExecutors(
+			context.Background(),
 			defaults,
 			nil,
 			nil,
@@ -293,6 +296,7 @@ func Test_InitDefaultTransformerExecutors(t *testing.T) {
 			},
 		}
 		executors, err := initDefaultTransformerExecutors(
+			context.Background(),
 			defaults,
 			nil,
 			nil,
@@ -340,7 +344,7 @@ func Test_AnonymizeJSON_Largedata(t *testing.T) {
 		},
 	}
 
-	anonymizer, err := NewAnonymizer(WithTransformerMappings(mappings))
+	anonymizer, err := NewAnonymizer(context.Background(), WithTransformerMappings(mappings))
 	require.NoError(t, err)
 
 	outputs, anonErrors := anonymizer.AnonymizeJSONObjects(inputStrings)
@@ -436,6 +440,7 @@ func Test_AnonymizeJSON_Largedata_WithDefaults(t *testing.T) {
 	}
 
 	anonymizer, err := NewAnonymizer(
+		context.Background(),
 		WithTransformerMappings(mappings),
 		WithDefaultTransformers(defaults),
 	)
@@ -501,6 +506,7 @@ func Test_AnonymizeJSON_Largedata_Advanced(t *testing.T) {
 	defaults := &mgmtv1alpha1.DefaultTransformersConfig{}
 
 	anonymizer, err := NewAnonymizer(
+		context.Background(),
 		WithTransformerMappings(mappings),
 		WithDefaultTransformers(defaults),
 	)
