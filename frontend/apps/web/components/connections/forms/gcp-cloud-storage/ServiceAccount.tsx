@@ -36,6 +36,7 @@ export default function ServiceAccount(props: Props): ReactElement {
       />
       {isViewMode ? (
         <SecurePasswordInput
+          id="serviceAccountCredentials"
           value={value || ''}
           disabled={!canViewSecrets}
           onRevealPassword={canViewSecrets ? onRevealPassword : undefined}
