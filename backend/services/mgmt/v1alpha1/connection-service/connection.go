@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
+
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
@@ -760,6 +762,15 @@ func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) erro
 		return s.cfg.CloudIdentity.CheckAws(cfg.AwsS3Config.GetCredentials())
 	case *mgmtv1alpha1.ConnectionConfig_DynamodbConfig:
 		return s.cfg.CloudIdentity.CheckAws(cfg.DynamodbConfig.GetCredentials())
+	case *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
+		credentials := cfg.GcpCloudstorageConfig.GetServiceAccountCredentials()
+		if err := s.cfg.CloudIdentity.CheckGcs(credentials); err != nil {
+			return err
+		}
+		if credentials == "" {
+			return nil
+		}
+		return husonym_gcp.CheckServiceAccountCredentials(credentials)
 	default:
 		return nil
 	}

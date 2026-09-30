@@ -685,7 +685,7 @@ func serve(ctx context.Context) error {
 	)
 	mongoconnector := mongoconnect.NewConnector()
 	husonymtyperegistry := husonymtypes.NewTypeRegistry(slogger)
-	gcpmanager := husonym_gcp.NewManager()
+	gcpmanager := husonym_gcp.NewManager(cloudIdentity)
 	connectiondatabuilder := connectiondata.NewConnectionDataBuilder(
 		sqlConnector,
 		sqlmanager,

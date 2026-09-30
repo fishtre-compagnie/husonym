@@ -467,7 +467,7 @@ func serve(ctx context.Context) error {
 			pg_queries.New(),
 			mysql_queries.New(),
 			awsmanager.New(cloudIdentity),
-			husonym_gcp.NewManager(),
+			husonym_gcp.NewManager(cloudIdentity),
 			mongoconnect.NewConnector(),
 			husonymtyperegistry,
 		)

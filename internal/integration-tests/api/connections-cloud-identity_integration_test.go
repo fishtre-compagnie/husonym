@@ -37,12 +37,18 @@ func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 		}))
 	}
 
+	gcs := func(credentials *string) *mgmtv1alpha1.ConnectionConfig {
+		return &mgmtv1alpha1.ConnectionConfig{Config: &mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig{
+			GcpCloudstorageConfig: &mgmtv1alpha1.GcpCloudStorageConnectionConfig{Bucket: "bucket", ServiceAccountCredentials: credentials},
+		}}
+	}
 	for name, config := range map[string]*mgmtv1alpha1.ConnectionConfig{
-		"s3 without keys":       s3(nil),
-		"s3 with a profile":     s3(&mgmtv1alpha1.AwsS3Credentials{Profile: gotypeutil.ToPtr("default")}),
-		"s3 with the ec2 role":  s3(&mgmtv1alpha1.AwsS3Credentials{FromEc2Role: gotypeutil.ToPtr(true)}),
-		"dynamodb without keys": dynamo(nil),
-		"dynamodb with a role":  dynamo(&mgmtv1alpha1.AwsS3Credentials{RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r")}),
+		"gcs without a service account": gcs(nil),
+		"s3 without keys":               s3(nil),
+		"s3 with a profile":             s3(&mgmtv1alpha1.AwsS3Credentials{Profile: gotypeutil.ToPtr("default")}),
+		"s3 with the ec2 role":          s3(&mgmtv1alpha1.AwsS3Credentials{FromEc2Role: gotypeutil.ToPtr(true)}),
+		"dynamodb without keys":         dynamo(nil),
+		"dynamodb with a role":          dynamo(&mgmtv1alpha1.AwsS3Credentials{RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r")}),
 		"dynamodb with a role and an external id": dynamo(&mgmtv1alpha1.AwsS3Credentials{
 			RoleArn: gotypeutil.ToPtr("arn:aws:iam::1:role/r"), RoleExternalId: gotypeutil.ToPtr("external"),
 		}),
@@ -52,6 +58,18 @@ func (s *IntegrationTestSuite) Test_Connection_CloudIdentityOfItsOwn() {
 		require.ErrorContains(t, err, "credentials of its own", name)
 	}
 
+	createdGcs, err := create(gcs(gotypeutil.ToPtr(`{"type": "service_account"}`)))
+	requireNoErrResp(t, createdGcs, err)
+	for name, credentials := range map[string]*string{
+		"no service account": nil,
+		"another type":       gotypeutil.ToPtr(`{"type": "external_account"}`),
+		"another endpoint":   gotypeutil.ToPtr(`{"type": "service_account", "token_uri": "http://internal-service/"}`),
+	} {
+		_, err = client.UpdateConnection(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateConnectionRequest{
+			Id: createdGcs.Msg.GetConnection().GetId(), Name: createdGcs.Msg.GetConnection().GetName(), ConnectionConfig: gcs(credentials),
+		}))
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "%s: %v", name, err)
+	}
 	created, err := create(s3(keys))
 	requireNoErrResp(t, created, err)
 	createdDynamo, err := create(dynamo(keys))
