@@ -43,6 +43,13 @@ type fakeJobService struct {
 	updated   []*mgmtv1alpha1.UpdateJobSourceConnectionRequest
 	triggered []string
 
+	// triggerErr fails CreateJobRun, unnamed has it start a run it does not name, and entered
+	// and release, when set, hold it open: entered tells a trigger arrived, release lets it end.
+	triggerErr error
+	unnamed    bool
+	entered    chan struct{}
+	release    chan struct{}
+
 	// preflight answers PreflightJob, and preflightErr fails it.
 	preflight    *mgmtv1alpha1.PreflightJobResponse
 	preflightErr error
@@ -254,9 +261,19 @@ func (f *fakeJobService) CreateJobRun(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.CreateJobRunRequest],
 ) (*connect.Response[mgmtv1alpha1.CreateJobRunResponse], error) {
+	if f.entered != nil {
+		f.entered <- struct{}{}
+		<-f.release
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.triggered = append(f.triggered, req.Msg.GetJobId())
+	if f.triggerErr != nil {
+		return nil, f.triggerErr
+	}
+	if f.unnamed {
+		return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{}), nil
+	}
 	// The run is named at once, and shows among the job's runs only when start says so.
 	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: &mgmtv1alpha1.JobRun{
 		Id:    fmt.Sprintf("run-%d", len(f.triggered)),

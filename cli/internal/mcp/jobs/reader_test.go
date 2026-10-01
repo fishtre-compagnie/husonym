@@ -115,6 +115,18 @@ func Test_Reader_StartingIsGivenUp(t *testing.T) {
 	require.Empty(t, reader.launched)
 }
 
+// Two calls that found the job idle at once: one holds it, the other does not trigger it.
+func Test_Reader_HoldIsTakenOnce(t *testing.T) {
+	t.Parallel()
+	reader := &Reader{now: time.Now, launched: map[string]launch{}}
+
+	require.True(t, reader.hold("job"))
+	require.False(t, reader.hold("job"))
+	require.True(t, reader.hold("other"))
+	_, ok := reader.starting("job", nil)
+	require.True(t, ok, "the job is held before its run is known")
+}
+
 // The run started here is told by its id: another run of the job showing does not stand for it.
 func Test_Reader_StartingEndsWhenTheRunShows(t *testing.T) {
 	t.Parallel()

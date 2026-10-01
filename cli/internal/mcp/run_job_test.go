@@ -2,9 +2,12 @@ package mcp_server
 
 import (
 	"cmp"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
@@ -101,6 +104,71 @@ func Test_RunJob(t *testing.T) {
 		callTool(t, session, "run_job", runShop)
 		_, _, triggered := jobService.seen()
 		require.Len(t, triggered, 2)
+	})
+
+	t.Run("holds the job while the trigger is being sent", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		jobService.entered, jobService.release = make(chan struct{}, 2), make(chan struct{})
+		somebody := &person{answer: "accept"}
+		session := connectJobs(t, jobService, somebody.client())
+		// A trigger held open is let go whatever the test finds, or the server would not close.
+		release := sync.OnceFunc(func() { close(jobService.release) })
+		t.Cleanup(release)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "run_job", Arguments: runShop})
+			done <- err
+		}()
+		<-jobService.entered
+
+		// The API answers once the run has started: until then the run is not listed, and the
+		// job is held all the same.
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "was just triggered and may be starting")
+		message = callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "was just triggered and may be starting")
+
+		release()
+		require.NoError(t, <-done)
+		_, updated, triggered := jobService.seen()
+		require.Empty(t, updated)
+		require.Len(t, triggered, 1)
+		require.Len(t, somebody.asked(), 1)
+	})
+
+	t.Run("holds the job when the trigger fails without telling whether a run started", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		jobService.triggerErr = connect.NewError(connect.CodeUnknown, errors.New("the run started, but it could not be read"))
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+
+		callToolError(t, session, "run_job", runShop)
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "was just triggered and may be starting")
+	})
+
+	t.Run("does not hold the job when the API refused the trigger", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		jobService.triggerErr = connect.NewError(connect.CodeFailedPrecondition, errors.New("a run of the job is already in progress"))
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+
+		message := callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "a run of the job is already in progress")
+		callTool(t, session, "update_job_mappings", transformEmail)
+	})
+
+	t.Run("holds the job when the API does not name the run", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		jobService.unnamed = true
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+
+		callTool(t, session, "run_job", runShop)
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "was just triggered and may be starting")
 	})
 
 	t.Run("a yes to the job as it was does not run it as it is", func(t *testing.T) {

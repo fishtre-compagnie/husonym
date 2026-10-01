@@ -25,7 +25,7 @@ func addRunJob(server *mcp.Server, jobReader *jobs.Reader) {
 		Name: "run_job",
 		Description: "Run one job now: it reads its source and writes into its destinations. The person is " +
 			"asked first, each time, and shown what the run reads and writes; nothing runs if they " +
-			"decline. Refused while a run of the job is in progress. preflight_job tells beforehand what the " +
+			"decline. Refused while a run of the job is in progress or was just triggered. preflight_job tells beforehand what the " +
 			"run would meet; the run stops on the same blocking findings.",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive},
 	}, runJob(jobReader))
@@ -49,7 +49,7 @@ func runJob(jobReader *jobs.Reader) mcp.ToolHandlerFor[runJobInput, runJobOutput
 		return nil, runJobOutput{
 			JobId: input.JobId,
 			RunId: runId,
-			Next:  "the run is starting: get_run_status with this job_id follows it",
+			Next:  "the run is starting: get_run_status with this job_id follows it, under this run_id",
 		}, nil
 	}
 }
