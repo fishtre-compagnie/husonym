@@ -108,9 +108,10 @@ func Test_RunJob(t *testing.T) {
 	t.Run("holds the job while the trigger is being sent", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
-		jobService.pauseTrigger = newGate(t)
 		somebody := &person{answer: "accept"}
 		session := connectJobs(t, jobService, somebody.client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseTrigger = newGate(t)
 
 		done := make(chan error, 1)
 		go func() {
@@ -143,9 +144,10 @@ func Test_RunJob(t *testing.T) {
 	t.Run("is refused while a change of the mappings is being written", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
-		jobService.pauseUpdate = newGate(t)
 		somebody := &person{answer: "accept"}
 		session := connectJobs(t, jobService, somebody.client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseUpdate = newGate(t)
 
 		done := make(chan error, 1)
 		go func() {
@@ -169,11 +171,13 @@ func Test_RunJob(t *testing.T) {
 		require.Empty(t, triggered)
 	})
 
+	// The job is taken before it is read: the person answers for the job as read then.
 	t.Run("refuses a change of the mappings while it reads the job to run it", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
-		jobService.pauseRuns = newGate(t)
 		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseJob = newGate(t)
 
 		done := make(chan error, 1)
 		go func() {
@@ -181,15 +185,15 @@ func Test_RunJob(t *testing.T) {
 			done <- err
 		}()
 		select {
-		case <-jobService.pauseRuns.entered:
+		case <-jobService.pauseJob.entered:
 		case err := <-done:
-			require.FailNow(t, "run_job ended before reading the runs", "%v", err)
+			require.FailNow(t, "run_job ended before reading the job", "%v", err)
 		}
 
 		message := callToolError(t, session, "update_job_mappings", transformEmail)
 		require.Contains(t, message, "another call is running or changing this job")
 
-		jobService.pauseRuns.open()
+		jobService.pauseJob.open()
 		require.NoError(t, <-done)
 		_, updated, triggered := jobService.seen()
 		require.Empty(t, updated)

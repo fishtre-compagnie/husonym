@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -57,12 +58,11 @@ func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string
 	}
 
 	// The job is held before the trigger is sent: the API answers once the run has started,
-	// and the run reads the mappings meanwhile. It also makes two calls answered at once start
-	// one run.
-	if !r.hold(jobId) {
-		return "", nil, errTriggered
-	}
-	// The hold stands for the claim from here on, and says why the job is taken.
+	// and the run reads the mappings meanwhile. The hold stands for the claim from here on,
+	// and says why the job is taken.
+	r.mu.Lock()
+	r.launched[jobId] = launch{at: r.now()}
+	r.mu.Unlock()
 	release()
 	res, err := r.client.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobId}))
 	if err != nil {
@@ -96,23 +96,12 @@ func (r *Reader) claim(jobId string) (release func(), err error) {
 		return nil, errClaimed
 	}
 	r.claimed[jobId] = true
-	return func() {
+	// Once: a release called again must not let go of the claim another call took meanwhile.
+	return sync.OnceFunc(func() {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		delete(r.claimed, jobId)
-	}, nil
-}
-
-// hold marks a job as triggered from here, before its run is known. It answers false when the
-// job already is: two calls that found it idle at once do not both trigger it.
-func (r *Reader) hold(jobId string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.launched[jobId]; ok {
-		return false
-	}
-	r.launched[jobId] = launch{at: r.now()}
-	return true
+	}), nil
 }
 
 // errTriggered is returned while a trigger sent from here has not told its run.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -47,10 +48,10 @@ type fakeJobService struct {
 	triggerErr error
 	unnamed    bool
 
-	// pauseTrigger, pauseRuns and pauseUpdate, when set, hold open the next trigger, the next
-	// reading of the job's runs and the next writing of its mappings.
+	// pauseTrigger, pauseJob and pauseUpdate, when set, hold open the next trigger, the next
+	// reading of the job and the next writing of its mappings.
 	pauseTrigger *gate
-	pauseRuns    *gate
+	pauseJob     *gate
 	pauseUpdate  *gate
 
 	// preflight answers PreflightJob, and preflightErr fails it.
@@ -61,14 +62,15 @@ type fakeJobService struct {
 // gate holds one call open: entered tells it arrived, open lets it go on. The calls after it
 // pass.
 type gate struct {
-	once    sync.Once
+	taken   atomic.Bool
 	entered chan struct{}
 	release chan struct{}
 	open    func()
 }
 
 // newGate returns a gate that opens when the test ends, whatever it found: a call left held
-// would keep the server from closing.
+// would keep the server from closing. Cleanups run last in, first out: the gate is made after
+// the session, so that it opens before the session closes.
 func newGate(t *testing.T) *gate {
 	g := &gate{entered: make(chan struct{}), release: make(chan struct{})}
 	g.open = sync.OnceFunc(func() { close(g.release) })
@@ -80,10 +82,11 @@ func (g *gate) wait() {
 	if g == nil {
 		return
 	}
-	g.once.Do(func() {
+	// Only the first call is held: one arriving meanwhile passes, rather than wait behind it.
+	if g.taken.CompareAndSwap(false, true) {
 		close(g.entered)
 		<-g.release
-	})
+	}
 }
 
 func newFakeJobService() *fakeJobService {
@@ -150,6 +153,7 @@ func (f *fakeJobService) GetJob(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.GetJobRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobResponse], error) {
+	f.pauseJob.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.job == nil || f.job.GetId() != req.Msg.GetId() {
@@ -197,7 +201,6 @@ func (f *fakeJobService) GetJobRuns(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobRunsRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobRunsResponse], error) {
-	f.pauseRuns.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	runs := make([]*mgmtv1alpha1.JobRun, 0, len(f.runs))
