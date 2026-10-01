@@ -200,6 +200,64 @@ func Test_RunJob(t *testing.T) {
 		require.Len(t, triggered, 1)
 	})
 
+	// The claim lasts through the question: the yes is for the job as it is described there.
+	t.Run("refuses a change of the mappings while it describes the run to the person", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseHooks = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "run_job", Arguments: runShop})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseHooks.entered:
+		case err := <-done:
+			require.FailNow(t, "run_job ended before reading the hooks", "%v", err)
+		}
+
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "another call is running or changing this job")
+
+		jobService.pauseHooks.open()
+		require.NoError(t, <-done)
+		_, updated, _ := jobService.seen()
+		require.Empty(t, updated)
+	})
+
+	// A change of the mappings claims the job before it looks whether a run is going.
+	t.Run("is refused while a change of the mappings looks whether the job is idle", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		somebody := &person{answer: "accept"}
+		session := connectJobs(t, jobService, somebody.client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseRuns = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "update_job_mappings", Arguments: transformEmail})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseRuns.entered:
+		case err := <-done:
+			require.FailNow(t, "update_job_mappings ended before reading the runs", "%v", err)
+		}
+
+		message := callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "another call is running or changing this job")
+		require.Empty(t, somebody.asked())
+
+		jobService.pauseRuns.open()
+		require.NoError(t, <-done)
+		_, _, triggered := jobService.seen()
+		require.Empty(t, triggered)
+	})
+
 	t.Run("holds the job when the trigger fails without telling whether a run started", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()

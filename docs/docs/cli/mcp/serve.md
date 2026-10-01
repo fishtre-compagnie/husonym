@@ -74,7 +74,7 @@ Running a job writes into real databases, so the agent never runs one alone. Bef
 
 The mappings of a job are not changed while a run of it is going or starting, since the run reads them when it begins — nor while another call of the agent is running or changing the job: the call that comes second is refused, to be made again; and they are written only if the job is still as the agent read it — a change made meanwhile, in the job builder or by a run mapping a new column, is not overwritten.
 
-`run_job` names the run it starts (`run_id`), and refuses while a run of the job is in progress, or while the run it just triggered does not show among the job's runs yet: the list sees a new run a moment late. A trigger that fails for another reason than a missing permission may have started a run, and holds the job the same way, for two minutes at most. `get_run_status` follows a job, not a run: the run started is the one of that id in its list. It names the tables whose sync recorded an error (`failing_tables`); `get_run_failure` says why.
+`run_job` names the run it starts (`run_id`), and refuses while a run of the job is in progress, while another call is running or changing the job, or while the run it just triggered does not show among the job's runs yet: the list sees a new run a moment late. A trigger that fails for another reason than a missing permission may have started a run, and holds the job the same way, for two minutes at most. `get_run_status` follows a job, not a run: the run started is the one of that id in its list. It names the tables whose sync recorded an error (`failing_tables`); `get_run_failure` says why.
 
 ### Checks before a run
 

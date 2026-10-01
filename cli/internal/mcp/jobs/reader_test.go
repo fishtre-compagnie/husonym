@@ -156,6 +156,22 @@ func Test_Reader_ClaimIsTakenOnce(t *testing.T) {
 	require.ErrorIs(t, err, errClaimed)
 }
 
+// A trigger the API has not answered holds the job however long it takes: the wait for the
+// run to show starts at the answer.
+func Test_Reader_StartingIsKeptWhileTheTriggerIsSent(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
+		"job": {sending: true},
+	}}
+
+	now = now.Add(10 * launchTimeout)
+	runId, ok := reader.starting("job", nil)
+	require.True(t, ok)
+	require.Empty(t, runId)
+	require.Len(t, reader.launched, 1)
+}
+
 // The run started here is told by its id: another run of the job showing does not stand for it.
 func Test_Reader_StartingEndsWhenTheRunShows(t *testing.T) {
 	t.Parallel()

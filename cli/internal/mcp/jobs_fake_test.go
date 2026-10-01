@@ -48,10 +48,12 @@ type fakeJobService struct {
 	triggerErr error
 	unnamed    bool
 
-	// pauseTrigger, pauseJob and pauseUpdate, when set, hold open the next trigger, the next
-	// reading of the job and the next writing of its mappings.
+	// The gates, when set, hold open the next trigger, the next reading of the job, of its runs
+	// and of its hooks, and the next writing of its mappings.
 	pauseTrigger *gate
 	pauseJob     *gate
+	pauseRuns    *gate
+	pauseHooks   *gate
 	pauseUpdate  *gate
 
 	// preflight answers PreflightJob, and preflightErr fails it.
@@ -201,6 +203,7 @@ func (f *fakeJobService) GetJobRuns(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobRunsRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobRunsResponse], error) {
+	f.pauseRuns.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	runs := make([]*mgmtv1alpha1.JobRun, 0, len(f.runs))
@@ -360,6 +363,7 @@ func (f *fakeJobService) GetJobHooks(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobHooksRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobHooksResponse], error) {
+	f.pauseHooks.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	hooks := make([]*mgmtv1alpha1.JobHook, 0, len(f.hooks))

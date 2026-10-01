@@ -19,7 +19,11 @@ type launch struct {
 	// the API failed without telling whether a run started: the job is then held until the
 	// launch is given up.
 	runId string
-	at    time.Time
+	// sending says the trigger has not been answered yet: the launch is not given up meanwhile,
+	// however long the API takes.
+	sending bool
+	// at is when the API answered: the launch is given up launchTimeout later.
+	at time.Time
 }
 
 // launchTimeout is how long a run started from here is waited for among the runs of its job.
@@ -61,22 +65,23 @@ func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string
 	// and the run reads the mappings meanwhile. The hold stands for the claim from here on,
 	// and says why the job is taken.
 	r.mu.Lock()
-	r.launched[jobId] = launch{at: r.now()}
+	r.launched[jobId] = launch{sending: true}
 	r.mu.Unlock()
 	release()
 	res, err := r.client.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobId}))
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if err != nil {
 		if startedNothing(err) {
-			r.mu.Lock()
 			delete(r.launched, jobId)
-			r.mu.Unlock()
+		} else {
+			// A run may have started: it is waited for from the failure on, unnamed.
+			r.launched[jobId] = launch{at: r.now()}
 		}
 		return "", nil, err
 	}
 	runId := res.Msg.GetJobRun().GetId()
-	r.mu.Lock()
 	r.launched[jobId] = launch{runId: runId, at: r.now()}
-	r.mu.Unlock()
 	return runId, nil, nil
 }
 
@@ -149,13 +154,16 @@ func (r *Reader) idle(ctx context.Context, jobId string) error {
 
 // starting names the run started from here that has yet to show among runs, the job's runs as
 // just read; it names none while the trigger has not told its run. It forgets the run once it
-// shows, or once it is given up.
+// shows, or once it is given up — never while its trigger is being sent.
 func (r *Reader) starting(jobId string, runs []*mgmtv1alpha1.JobRun) (string, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	launched, ok := r.launched[jobId]
 	if !ok {
 		return "", false
+	}
+	if launched.sending {
+		return "", true
 	}
 	shown := slices.ContainsFunc(runs, func(run *mgmtv1alpha1.JobRun) bool { return run.GetId() == launched.runId })
 	if shown || r.now().Sub(launched.at) > launchTimeout {
