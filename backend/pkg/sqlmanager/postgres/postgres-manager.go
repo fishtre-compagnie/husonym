@@ -21,7 +21,7 @@ type PostgresManager struct {
 }
 
 func NewManager(querier pg_queries.Querier, db pg_queries.DBTX, closer func()) *PostgresManager {
-	return &PostgresManager{querier: &catalogRetryQuerier{inner: querier}, db: db, close: closer}
+	return &PostgresManager{querier: &catalogRetryQuerier{inner: querier, retryOpts: catalogRetryOptions}, db: db, close: closer}
 }
 
 func (p *PostgresManager) GetDatabaseSchema(
