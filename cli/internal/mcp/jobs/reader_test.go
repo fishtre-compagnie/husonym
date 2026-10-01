@@ -134,6 +134,25 @@ func Test_startedNothing(t *testing.T) {
 	require.False(t, startedNothing(errors.New("no code")))
 }
 
+// A job is claimed by one call at a time, and free again once the call lets it go.
+func Test_Reader_ClaimIsTakenOnce(t *testing.T) {
+	t.Parallel()
+	reader := &Reader{claimed: map[string]bool{}}
+
+	release, err := reader.claim("job")
+	require.NoError(t, err)
+	_, err = reader.claim("job")
+	require.ErrorIs(t, err, errClaimed)
+	other, err := reader.claim("other")
+	require.NoError(t, err)
+	other()
+
+	release()
+	release()
+	_, err = reader.claim("job")
+	require.NoError(t, err)
+}
+
 // Two calls that found the job idle at once: one holds it, the other does not trigger it.
 func Test_Reader_HoldIsTakenOnce(t *testing.T) {
 	t.Parallel()

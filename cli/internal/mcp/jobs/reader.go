@@ -103,6 +103,8 @@ type Reader struct {
 	// launched holds, for each job, the run last started from here, until it shows among the
 	// job's runs.
 	launched map[string]launch
+	// claimed holds the jobs a call is running or changing right now.
+	claimed map[string]bool
 }
 
 // New builds a Reader on its own job client, which is never handed out. It names connections
@@ -121,6 +123,7 @@ func New(
 		now:         time.Now,
 		questions:   ask.New[confirmation](),
 		launched:    map[string]launch{},
+		claimed:     map[string]bool{},
 	}
 }
 
@@ -149,8 +152,9 @@ func (r *Reader) Create(ctx context.Context, job *mgmtv1alpha1.CreateJobRequest)
 }
 
 // SetMappings replaces the mappings of a job, as it was read. It refuses while a run of the
-// job is going or starting: the run reads the mappings when it begins, and a change landing
-// then would run without the question the person answered. When the job runs on a schedule,
+// job is going or starting, and while another call runs or changes the job: the run reads the
+// mappings when it begins, and a change landing then would run without the question the
+// person answered. When the job runs on a schedule,
 // the change is as good as a run, and the person is asked first: until they answer, it
 // changes nothing and returns the question to put to them instead.
 func (r *Reader) SetMappings(
@@ -159,6 +163,11 @@ func (r *Reader) SetMappings(
 	job *mgmtv1alpha1.Job,
 	mappings []*mgmtv1alpha1.JobMapping,
 ) (mcp.InputRequestMap, error) {
+	release, err := r.claim(job.GetId())
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	if err := r.idle(ctx, job.GetId()); err != nil {
 		return nil, err
 	}

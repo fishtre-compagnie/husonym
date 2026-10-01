@@ -43,16 +43,47 @@ type fakeJobService struct {
 	updated   []*mgmtv1alpha1.UpdateJobSourceConnectionRequest
 	triggered []string
 
-	// triggerErr fails CreateJobRun, unnamed has it start a run it does not name, and entered
-	// and release, when set, hold it open: entered tells a trigger arrived, release lets it end.
+	// triggerErr fails CreateJobRun, and unnamed has it start a run it does not name.
 	triggerErr error
 	unnamed    bool
-	entered    chan struct{}
-	release    chan struct{}
+
+	// pauseTrigger, pauseRuns and pauseUpdate, when set, hold open the next trigger, the next
+	// reading of the job's runs and the next writing of its mappings.
+	pauseTrigger *gate
+	pauseRuns    *gate
+	pauseUpdate  *gate
 
 	// preflight answers PreflightJob, and preflightErr fails it.
 	preflight    *mgmtv1alpha1.PreflightJobResponse
 	preflightErr error
+}
+
+// gate holds one call open: entered tells it arrived, open lets it go on. The calls after it
+// pass.
+type gate struct {
+	once    sync.Once
+	entered chan struct{}
+	release chan struct{}
+	open    func()
+}
+
+// newGate returns a gate that opens when the test ends, whatever it found: a call left held
+// would keep the server from closing.
+func newGate(t *testing.T) *gate {
+	g := &gate{entered: make(chan struct{}), release: make(chan struct{})}
+	g.open = sync.OnceFunc(func() { close(g.release) })
+	t.Cleanup(g.open)
+	return g
+}
+
+func (g *gate) wait() {
+	if g == nil {
+		return
+	}
+	g.once.Do(func() {
+		close(g.entered)
+		<-g.release
+	})
 }
 
 func newFakeJobService() *fakeJobService {
@@ -154,6 +185,7 @@ func (f *fakeJobService) UpdateJobSourceConnection(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.UpdateJobSourceConnectionRequest],
 ) (*connect.Response[mgmtv1alpha1.UpdateJobSourceConnectionResponse], error) {
+	f.pauseUpdate.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.updated = append(f.updated, req.Msg)
@@ -165,6 +197,7 @@ func (f *fakeJobService) GetJobRuns(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobRunsRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobRunsResponse], error) {
+	f.pauseRuns.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	runs := make([]*mgmtv1alpha1.JobRun, 0, len(f.runs))
@@ -261,10 +294,7 @@ func (f *fakeJobService) CreateJobRun(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.CreateJobRunRequest],
 ) (*connect.Response[mgmtv1alpha1.CreateJobRunResponse], error) {
-	if f.entered != nil {
-		f.entered <- struct{}{}
-		<-f.release
-	}
+	f.pauseTrigger.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.triggered = append(f.triggered, req.Msg.GetJobId())

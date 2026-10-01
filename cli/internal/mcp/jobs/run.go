@@ -28,8 +28,16 @@ const launchTimeout = 2 * time.Minute
 // Run triggers one run of a job, once the person has agreed to it, and returns the id of the
 // run started. Until they answer, it runs nothing and returns the question to put to them
 // instead. It refuses while a run of the job is in progress, and while the run it last started
-// has not shown among the job's runs: the list of runs sees a new one a moment late.
+// has not shown among the job's runs: the list of runs sees a new one a moment late. It refuses
+// too while another call runs or changes the job.
 func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string) (string, mcp.InputRequestMap, error) {
+	// The job is claimed before it is read: the person answers for the job as read here, and
+	// a change of its mappings landing before the trigger would run without their yes.
+	release, err := r.claim(jobId)
+	if err != nil {
+		return "", nil, err
+	}
+	defer release()
 	job, err := r.Get(ctx, jobId)
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to read job %s: %w", jobId, err)
@@ -54,6 +62,8 @@ func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string
 	if !r.hold(jobId) {
 		return "", nil, errTriggered
 	}
+	// The hold stands for the claim from here on, and says why the job is taken.
+	release()
 	res, err := r.client.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobId}))
 	if err != nil {
 		if startedNothing(err) {
@@ -68,6 +78,29 @@ func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string
 	r.launched[jobId] = launch{runId: runId, at: r.now()}
 	r.mu.Unlock()
 	return runId, nil, nil
+}
+
+// errClaimed is returned while another call runs or changes the job.
+var errClaimed = errors.New(
+	"another call is running or changing this job right now: call again once it has answered",
+)
+
+// claim takes a job for the call that runs or changes it, until release. Checking that a job
+// is idle and then acting on it are two steps: without the claim, a run triggered between the
+// two of a change — or a change written between the two of a run — would go unseen. A second
+// call is refused rather than made to wait.
+func (r *Reader) claim(jobId string) (release func(), err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.claimed[jobId] {
+		return nil, errClaimed
+	}
+	r.claimed[jobId] = true
+	return func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		delete(r.claimed, jobId)
+	}, nil
 }
 
 // hold marks a job as triggered from here, before its run is known. It answers false when the
