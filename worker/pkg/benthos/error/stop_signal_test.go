@@ -2,6 +2,7 @@ package husonym_benthos_error
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,30 +13,37 @@ import (
 // stopChannelSize is the room the sync activity gives its stop channel.
 const stopChannelSize = 3
 
-// returnsInTime fails the test when work is still going after a moment: it waits on a channel
-// nobody listens to anymore.
-func returnsInTime(t *testing.T, work func()) {
+// inTime returns what work returns, and fails the test when work is still going after a
+// moment: it waits on a channel nobody listens to anymore.
+func inTime(t *testing.T, work func() error) error {
 	t.Helper()
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		work()
-	}()
+	done := make(chan error, 1)
+	go func() { done <- work() }()
 	select {
-	case <-done:
+	case err := <-done:
+		return err
 	case <-time.After(2 * time.Second):
 		require.FailNow(t, "the stop signal waits for a listener: its sender is held for good")
+		return nil
 	}
 }
 
-func failingBatch(size int, reason string) service.MessageBatch {
-	batch := make(service.MessageBatch, 0, size)
-	for range size {
-		msg := service.NewMessage([]byte("content"))
-		msg.MetaSet("key", reason)
-		batch = append(batch, msg)
+// firstSignal returns the signal that waits on the channel, without waiting for one.
+func firstSignal(t *testing.T, stop <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-stop:
+		return err
+	default:
+		require.FailNow(t, "no stop signal was sent")
+		return nil
 	}
-	return batch
+}
+
+func failingMessage(reason string) *service.Message {
+	msg := service.NewMessage([]byte("content"))
+	msg.MetaSet("key", reason)
+	return msg
 }
 
 // The activity acts on the first stop signal and listens no more. Each failing message of a
@@ -47,11 +55,15 @@ func Test_ErrorProcessor_DoesNotWaitForAListener(t *testing.T) {
 	processor, err := newErrorProcessor(config, service.MockResources(), stop)
 	require.NoError(t, err)
 
-	returnsInTime(t, func() {
-		_, err := processor.ProcessBatch(context.Background(), failingBatch(stopChannelSize+5, "Processor Error"))
-		require.NoError(t, err)
-	})
-	require.EqualError(t, <-stop, "Processor Error", "the first signal is the one kept")
+	batch := service.MessageBatch{}
+	for i := range stopChannelSize + 5 {
+		batch = append(batch, failingMessage(fmt.Sprintf("failure %d", i)))
+	}
+	require.NoError(t, inTime(t, func() error {
+		_, err := processor.ProcessBatch(context.Background(), batch)
+		return err
+	}))
+	require.EqualError(t, firstSignal(t, stop), "failure 0", "the first signal is the one kept")
 }
 
 func Test_ErrorOutput_DoesNotWaitForAListener(t *testing.T) {
@@ -61,10 +73,51 @@ func Test_ErrorOutput_DoesNotWaitForAListener(t *testing.T) {
 	output, err := newErrorOutput(config, service.MockResources(), stop)
 	require.NoError(t, err)
 
-	returnsInTime(t, func() {
-		for range stopChannelSize + 5 {
-			require.NoError(t, output.WriteBatch(context.Background(), failingBatch(1, "violates not-null constraint")))
+	require.NoError(t, inTime(t, func() error {
+		for i := range stopChannelSize + 5 {
+			reason := fmt.Sprintf("row %d violates not-null constraint", i)
+			if err := output.WriteBatch(context.Background(), service.MessageBatch{failingMessage(reason)}); err != nil {
+				return err
+			}
 		}
-	})
-	require.EqualError(t, <-stop, "violates not-null constraint")
+		return nil
+	}))
+	require.EqualError(t, firstSignal(t, stop), "row 0 violates not-null constraint")
+}
+
+// A stream whose rows fail by the dozen, in its pipeline and at its output, ends all the same
+// when nobody listens to the stop channel anymore — as the activity does once it has acted on
+// the first signal.
+func Test_Stream_EndsWhenManyRowsFail(t *testing.T) {
+	stop := make(chan error, stopChannelSize)
+	env := service.NewEnvironment()
+	require.NoError(t, RegisterErrorOutput(env, stop))
+	require.NoError(t, RegisterErrorProcessor(env, stop))
+	builder := env.NewStreamBuilder()
+	require.NoError(t, builder.SetYAML(`
+input:
+  generate:
+    count: 50
+    interval: ""
+    mapping: 'root = {"id": counter()}'
+pipeline:
+  threads: 4
+  processors:
+    - mapping: 'root = if this.id % 2 == 0 { throw("row %d cannot be mapped".format(this.id)) } else { this }'
+    - catch:
+        - error:
+            error_msg: ${! error() }
+output:
+  fallback:
+    - reject: 'row ${! json("id") } violates not-null constraint'
+    - error:
+        error_msg: ${! meta("fallback_error") }
+        batching:
+          count: 1
+`))
+	stream, err := builder.Build()
+	require.NoError(t, err)
+
+	require.NoError(t, inTime(t, func() error { return stream.Run(context.Background()) }))
+	require.Len(t, stop, stopChannelSize, "the channel keeps the first signals, and drops the rest")
 }

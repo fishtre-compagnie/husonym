@@ -41,20 +41,47 @@ func TestInput_StopSignalDoesNotWaitForAListener(t *testing.T) {
 		stopActivityChannel: stop,
 	}
 
-	done := make(chan struct{})
+	for range stopChannelSize + 5 {
+		mock.ExpectQuery("SELECT").WillReturnError(critical)
+	}
+	for _, err := range connectsInTime(t, input, stopChannelSize+5) {
+		require.ErrorIs(t, err, critical)
+	}
+	require.ErrorIs(t, firstSignal(t, stop), critical)
+}
+
+// connectsInTime connects the input several times over, as a stream does after a failure, and
+// fails the test when an attempt is still going after a moment: it waits on a channel nobody
+// listens to anymore.
+func connectsInTime(t *testing.T, input *pooledInput, attempts int) []error {
+	t.Helper()
+	done := make(chan []error, 1)
 	go func() {
-		defer close(done)
-		for range stopChannelSize + 5 {
-			mock.ExpectQuery("SELECT").WillReturnError(critical)
-			require.ErrorIs(t, input.Connect(context.Background()), critical)
+		errs := make([]error, 0, attempts)
+		for range attempts {
+			errs = append(errs, input.Connect(context.Background()))
 		}
+		done <- errs
 	}()
 	select {
-	case <-done:
+	case errs := <-done:
+		return errs
 	case <-time.After(2 * time.Second):
 		require.FailNow(t, "the stop signal waits for a listener: the input is held for good")
+		return nil
 	}
-	require.ErrorIs(t, <-stop, critical)
+}
+
+// firstSignal returns the signal that waits on the channel, without waiting for one.
+func firstSignal(t *testing.T, stop <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-stop:
+		return err
+	default:
+		require.FailNow(t, "no stop signal was sent")
+		return nil
+	}
 }
 
 // A page asked with a token that does not match its order columns stops the activity the same
@@ -79,17 +106,8 @@ func TestInput_TokenMismatchSignalDoesNotWaitForAListener(t *testing.T) {
 		stopActivityChannel: stop,
 	}
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for range stopChannelSize + 5 {
-			require.Error(t, input.Connect(context.Background()))
-		}
-	}()
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		require.FailNow(t, "the stop signal waits for a listener: the input is held for good")
+	for _, err := range connectsInTime(t, input, stopChannelSize+5) {
+		require.ErrorContains(t, err, "must be the same length")
 	}
-	require.ErrorContains(t, <-stop, "must be the same length")
+	require.ErrorContains(t, firstSignal(t, stop), "must be the same length")
 }
