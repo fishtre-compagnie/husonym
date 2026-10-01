@@ -74,15 +74,18 @@ func runSyncInTimeWith(t *testing.T, env *service.Environment, groups [][]*benth
 	}
 }
 
-// A sync whose table fails ends, and tells so: it used to go on waiting for good, with no
-// table left to sync.
-func Test_runSync_AFailedTableEndsTheSync(t *testing.T) {
-	failing := tableConfig("public.broken.insert", "root = (((")
-	later := tableConfig("public.later.insert", `root = {"id": 1}`)
+// A table that fails among others of its group ends the sync all the same: the others are cut
+// short or never start, and the failure is the one reported, not their being cut short.
+func Test_runSync_AFailedTableAmongOthersEndsTheSync(t *testing.T) {
+	group := []*benthosbuilder.BenthosConfigResponse{tableConfig("public.broken.insert", "root = (((")}
+	for _, name := range []string{"a", "b", "c", "d", "e", "f", "g"} {
+		group = append(group, tableConfig("public."+name+".insert", `root = {"id": 1}`))
+	}
 
-	err := runSyncInTime(t, [][]*benthosbuilder.BenthosConfigResponse{{failing}, {later}})
+	err := runSyncInTime(t, [][]*benthosbuilder.BenthosConfigResponse{group})
 
 	require.ErrorContains(t, err, "unable to finish syncing data")
+	require.ErrorContains(t, err, "unable to convert benthos config")
 }
 
 // A sync whose tables all succeed ends without an error, group after group.
@@ -105,7 +108,8 @@ func Test_syncData_EndedSyncBuildsNoStream(t *testing.T) {
 	require.ErrorContains(t, err, "the sync ended before the table started")
 }
 
-// The table that failed is the one the sync reports, and the group after it is not started.
+// A sync whose table fails ends, and tells so: it used to go on waiting for good, with no
+// table left to sync. The group after the failed one is not started.
 func Test_runSync_ReportsTheTableThatFailed(t *testing.T) {
 	env, written := droppingEnvCounted(t)
 	failing := tableConfig("public.broken.insert", "root = (((")

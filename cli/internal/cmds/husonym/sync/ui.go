@@ -2,6 +2,7 @@ package sync_cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -170,7 +171,11 @@ func (m *model) syncConfigs(
 				m.logger.Info(fmt.Sprintf("Syncing table %s", cfg.Name))
 				err := syncData(errctx, m.benv, cfg, m.logger, m.outputType)
 				if err != nil {
-					fmt.Printf("Error syncing table: %s", err.Error()) //nolint:forbidigo
+					// The table that failed is the one told: those the failure cut short, or
+					// kept from starting, only say the sync ended.
+					if !errors.Is(err, context.Canceled) {
+						m.logger.Error(fmt.Sprintf("Error syncing table %s: %s", cfg.Name, err.Error()))
+					}
 					return err
 				}
 				duration := time.Since(start)
@@ -237,7 +242,6 @@ func runSync(
 	}
 	// A table that failed ends the program without an error of its own: the model carries it.
 	if m, ok := final.(*model); ok && m.err != nil {
-		logger.Error(fmt.Sprintf("Error syncing data: %v", m.err))
 		return fmt.Errorf("unable to finish syncing data: %w", m.err)
 	}
 	return nil
