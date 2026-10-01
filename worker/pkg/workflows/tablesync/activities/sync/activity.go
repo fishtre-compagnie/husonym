@@ -432,14 +432,16 @@ func handleStreamStop(
 	logger log.Logger,
 ) {
 	logger.Info(logMessage + ", cleaning up...")
-	syncResultChan <- err
 
+	// The stream is stopped before the result is given: the activity returns on that result,
+	// and gives back the session the stream writes with.
 	if benthosStream != nil {
 		// Stop stream explicitly since stream.Run(ctx) doesn't fully obey canceled context when sink is in error state
 		if stopErr := benthosStream.StopWithin(streamStopBudget); stopErr != nil {
 			logger.Error(stopErr.Error())
 		}
 	}
+	syncResultChan <- err
 }
 
 func runStream(

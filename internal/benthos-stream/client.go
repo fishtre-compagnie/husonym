@@ -45,8 +45,6 @@ type BenthosStreamAdapter struct {
 	// running says Run was let through, and stopAsked that a stop was asked, heard or not.
 	running   bool
 	stopAsked bool
-	// stopped says the stream heard a stop: there is nothing left to stop.
-	stopped bool
 }
 
 func NewBenthosStreamAdapter(stream *service.Stream) *BenthosStreamAdapter {
@@ -81,19 +79,18 @@ func (b *BenthosStreamAdapter) StopWithin(d time.Duration) error {
 	return b.stop(func(stream *service.Stream) error { return stream.StopWithin(d) })
 }
 
-// stop stops the stream, one stop at a time. A stream that never ran has nothing to stop, and
-// will not run. One that is starting may not hear the stop yet: it is not taken for stopped,
-// so that the stop asked again once it runs reaches it.
+// stop stops the stream. One that never ran has nothing to stop, and will not run. One that is
+// starting may not hear the stop yet: the stop asked again once it runs reaches it, a stream
+// being stopped as often as it is asked to.
 func (b *BenthosStreamAdapter) stop(stop func(*service.Stream) error) error {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.stopAsked = true
-	if b.Stream == nil || !b.running || b.stopped {
+	stream, running := b.Stream, b.running
+	b.mu.Unlock()
+
+	// The lock is not held while the stream stops: a stop that takes its time holds no other.
+	if stream == nil || !running {
 		return nil
 	}
-	if err := stop(b.Stream); err != nil {
-		return err
-	}
-	b.stopped = true
-	return nil
+	return stop(stream)
 }

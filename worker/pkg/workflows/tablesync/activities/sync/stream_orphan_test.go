@@ -112,8 +112,13 @@ func Test_monitorStream_StopsTheStreamSetSinceItStarted(t *testing.T) {
 		monitorStream(context.Background(), stop, make(chan error, 1), shared, result, testutil.GetTestLogger(t))
 	}()
 
+	// The monitor is given the time to start: it must read the stream when it acts, not then.
+	time.Sleep(50 * time.Millisecond)
 	stream := benthosstream.NewMockBenthosStreamClient(t)
-	stream.EXPECT().StopWithin(streamStopBudget).Return(nil).Once()
+	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+		require.Empty(t, result, "the result was given before the stream stopped")
+		return nil
+	}).Once()
 	shared.set(stream)
 	cause := errors.New("violates not-null constraint")
 	stop <- cause
@@ -140,13 +145,17 @@ func Test_runStream_CancelledWhileItRuns(t *testing.T) {
 	require.False(t, stillWrites(written), "the stream goes on alone after the activity ended")
 }
 
-// A stream that panics is stopped too, and the panic is what the activity reports.
+// A stream that panics is stopped too, before its end is told, and the panic is what the
+// activity reports.
 func Test_runStream_PanicStopsTheStream(t *testing.T) {
+	streamDone := make(chan error, 1)
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).RunAndReturn(func(context.Context) error { panic("boom") })
-	stream.EXPECT().StopWithin(streamStopBudget).Return(nil).Once()
+	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+		require.Empty(t, streamDone, "the end was told before the stream stopped")
+		return nil
+	}).Once()
 
-	streamDone := make(chan error, 1)
 	runStream(stream, context.Background(), streamDone, testutil.GetTestLogger(t))
 
 	require.ErrorContains(t, <-streamDone, "panic in benthos stream: boom")
