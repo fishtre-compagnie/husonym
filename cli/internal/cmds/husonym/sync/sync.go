@@ -23,6 +23,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
 	"github.com/fishtre-compagnie/husonym/cli/internal/output"
+	benthosstream "github.com/fishtre-compagnie/husonym/internal/benthos-stream"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	benthosbuilder_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
@@ -364,7 +365,7 @@ func (c *clisync) configureAndRunSync() error {
 		return nil
 	}
 
-	return runSync(c.ctx, *c.cmd.OutputType, c.benv, groupedConfigs, c.logger)
+	return runSync(ctx, *c.cmd.OutputType, c.benv, groupedConfigs, c.logger)
 }
 
 func (c *clisync) configureSync() ([][]*benthosbuilder.BenthosConfigResponse, error) {
@@ -518,82 +519,38 @@ func syncData(
 	logger *slog.Logger,
 	outputType output.OutputType,
 ) error {
+	// A sync that has ended builds no more stream: the tables still queued each get their turn.
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("the sync ended before the table started: %w", err)
+	}
 	configbits, err := yaml.Marshal(cfg.Config)
 	if err != nil {
 		return err
 	}
-
-	benthosStreamMutex := syncmap.Mutex{}
-	var benthosStream *service.Stream
-	go func() {
-		for { //nolint
-			select {
-			case <-ctx.Done():
-				benthosStreamMutex.Lock()
-				if benthosStream != nil {
-					// this must be here because stream.Run(ctx) doesn't seem to fully obey a canceled context when
-					// a sink is in an error state. We want to explicitly call stop here because the workflow has been canceled.
-					err := benthosStream.StopWithin(1 * time.Millisecond)
-					if err != nil {
-						logger.Error(err.Error())
-					}
-				}
-				benthosStreamMutex.Unlock()
-				return
-			}
-		}
-	}()
 
 	split := strings.Split(cfg.Name, ".")
 	var runType string
 	if len(split) != 0 {
 		runType = split[len(split)-1]
 	}
-	streamBuilderMu.Lock()
-	streambldr := benv.NewStreamBuilder()
-	if streambldr == nil {
-		return fmt.Errorf("failed to create StreamBuilder")
-	}
+	var streamLogger *slog.Logger
 	if outputType == output.PlainOutput {
-		streambldr.SetLogger(
-			logger.With(
-				"benthos",
-				"true",
-				"schema",
-				cfg.TableSchema,
-				"table",
-				cfg.TableName,
-				"runType",
-				runType,
-			),
+		streamLogger = logger.With(
+			"benthos",
+			"true",
+			"schema",
+			cfg.TableSchema,
+			"table",
+			cfg.TableName,
+			"runType",
+			runType,
 		)
 	}
-	if benv == nil {
-		return fmt.Errorf("benthos env is nil")
-	}
-
-	err = streambldr.SetYAML(string(configbits))
-	if err != nil {
-		return fmt.Errorf("unable to convert benthos config to yaml for stream builder: %w", err)
-	}
-
-	stream, err := streambldr.Build()
-	streamBuilderMu.Unlock()
+	stream, err := newStream(benv, string(configbits), streamLogger)
 	if err != nil {
 		return err
 	}
-	benthosStreamMutex.Lock()
-	benthosStream = stream
-	benthosStreamMutex.Unlock()
-
-	err = stream.Run(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to run benthos stream: %w", err)
-	}
-	benthosStreamMutex.Lock()
-	benthosStream = nil
-	benthosStreamMutex.Unlock()
-	return nil
+	return runStream(ctx, benthosstream.NewBenthosStreamAdapter(stream), logger)
 }
 
 func toSqlConnectionOptions(cfg sqlConnectionOptions) *mgmtv1alpha1.SqlConnectionOptions {

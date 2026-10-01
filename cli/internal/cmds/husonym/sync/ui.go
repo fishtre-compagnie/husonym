@@ -2,6 +2,7 @@ package sync_cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -33,6 +34,8 @@ type model struct {
 	done             bool
 	totalConfigCount int
 	outputType       output.OutputType
+	// err is what ended the sync before its last table.
+	err error
 }
 
 var (
@@ -83,6 +86,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "esc", "q":
 			return m, tea.Quit
 		}
+	case syncFailedMsg:
+		m.err = msg.err
+		return m, tea.Quit
 	case syncedDataMsg:
 		successStrs := []string{}
 		for _, msgStr := range msg {
@@ -147,6 +153,9 @@ func (m *model) View() tea.View {
 
 type syncedDataMsg map[string]string
 
+// syncFailedMsg says a table of the group failed: the sync ends there.
+type syncFailedMsg struct{ err error }
+
 func (m *model) syncConfigs(
 	ctx context.Context,
 	configs []*benthosbuilder.BenthosConfigResponse,
@@ -162,7 +171,11 @@ func (m *model) syncConfigs(
 				m.logger.Info(fmt.Sprintf("Syncing table %s", cfg.Name))
 				err := syncData(errctx, m.benv, cfg, m.logger, m.outputType)
 				if err != nil {
-					fmt.Printf("Error syncing table: %s", err.Error()) //nolint:forbidigo
+					// The table that failed is the one told: those the failure cut short, or
+					// kept from starting, only say the sync ended.
+					if !errors.Is(err, context.Canceled) {
+						m.logger.Error(fmt.Sprintf("Error syncing table %s: %s", cfg.Name, err.Error()))
+					}
 					return err
 				}
 				duration := time.Since(start)
@@ -175,8 +188,7 @@ func (m *model) syncConfigs(
 		}
 
 		if err := errgrp.Wait(); err != nil {
-			tea.Printf("Error syncing data: %s \n", err.Error())
-			return tea.Quit
+			return syncFailedMsg{err: err}
 		}
 
 		results := map[string]string{}
@@ -223,9 +235,14 @@ func runSync(
 		// TUI mode, discard log output
 		synclogger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
-	if _, err := tea.NewProgram(newModel(ctx, benv, groupedConfigs, synclogger, outputType), opts...).Run(); err != nil {
+	final, err := tea.NewProgram(newModel(ctx, benv, groupedConfigs, synclogger, outputType), opts...).Run()
+	if err != nil {
 		logger.Error(fmt.Sprintf("Error syncing data: %v", err))
 		return fmt.Errorf("unable to finish syncing data: %w", err)
+	}
+	// A table that failed ends the program without an error of its own: the model carries it.
+	if m, ok := final.(*model); ok && m.err != nil {
+		return fmt.Errorf("unable to finish syncing data: %w", m.err)
 	}
 	return nil
 }
