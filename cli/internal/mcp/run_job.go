@@ -49,7 +49,7 @@ func runJob(jobReader *jobs.Reader) mcp.ToolHandlerFor[runJobInput, runJobOutput
 		return nil, runJobOutput{
 			JobId: input.JobId,
 			RunId: runId,
-			Next:  "the run is starting: get_run_status with this job_id follows it, under this run_id",
+			Next:  "the run is starting: get_run_status with this job_id follows it",
 		}, nil
 	}
 }

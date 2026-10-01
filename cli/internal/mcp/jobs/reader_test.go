@@ -115,6 +115,25 @@ func Test_Reader_StartingIsGivenUp(t *testing.T) {
 	require.Empty(t, reader.launched)
 }
 
+// Only a refusal for what the caller may do tells that no trigger was sent.
+func Test_startedNothing(t *testing.T) {
+	t.Parallel()
+	for code, nothing := range map[connect.Code]bool{
+		connect.CodePermissionDenied:   true,
+		connect.CodeUnauthenticated:    true,
+		connect.CodeNotFound:           true,
+		connect.CodeFailedPrecondition: false,
+		connect.CodeInvalidArgument:    false,
+		connect.CodeCanceled:           false,
+		connect.CodeDeadlineExceeded:   false,
+		connect.CodeUnavailable:        false,
+		connect.CodeUnknown:            false,
+	} {
+		require.Equal(t, nothing, startedNothing(connect.NewError(code, errors.New("refused"))), code.String())
+	}
+	require.False(t, startedNothing(errors.New("no code")))
+}
+
 // Two calls that found the job idle at once: one holds it, the other does not trigger it.
 func Test_Reader_HoldIsTakenOnce(t *testing.T) {
 	t.Parallel()

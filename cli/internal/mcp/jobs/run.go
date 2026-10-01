@@ -87,12 +87,13 @@ var errTriggered = errors.New(
 	"a run of this job was just triggered and may be starting: get_run_status follows it",
 )
 
-// startedNothing says whether the API refused a trigger before sending it. Any other failure
-// may come after: a run that starts and cannot be read yet, an answer that never arrives.
+// startedNothing says whether the API refused a trigger for what the caller may do: it then
+// sent none. Any other failure keeps the job held: it may come after the trigger — a run that
+// starts and cannot be read yet, an answer that never arrives or cannot be read — or tell of a
+// run the API sees going and the list of runs does not show yet.
 func startedNothing(err error) bool {
 	switch connect.CodeOf(err) {
-	case connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeUnauthenticated,
-		connect.CodeNotFound, connect.CodeInvalidArgument:
+	case connect.CodePermissionDenied, connect.CodeUnauthenticated, connect.CodeNotFound:
 		return true
 	default:
 		return false

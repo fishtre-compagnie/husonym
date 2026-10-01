@@ -30,7 +30,7 @@ func addUpdateJobMappings(server *mcp.Server, data *novalues.Reader, jobReader *
 		Name: "update_job_mappings",
 		Description: "Map columns of a job anew, or map columns it did not read yet; the other mappings stay. " +
 			"When the job runs on a schedule, the change takes effect at its next run, so the person is " +
-			"asked first.",
+			"asked first. Refused while a run of the job is in progress or was just triggered.",
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, OpenWorldHint: &openWorld},
 	}, updateJobMappings(data, jobReader))
 }

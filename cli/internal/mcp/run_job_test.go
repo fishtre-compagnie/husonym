@@ -121,7 +121,11 @@ func Test_RunJob(t *testing.T) {
 			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "run_job", Arguments: runShop})
 			done <- err
 		}()
-		<-jobService.entered
+		select {
+		case <-jobService.entered:
+		case err := <-done:
+			require.FailNow(t, "run_job ended before its trigger", "%v", err)
+		}
 
 		// The API answers once the run has started: until then the run is not listed, and the
 		// job is held all the same.
@@ -152,11 +156,11 @@ func Test_RunJob(t *testing.T) {
 	t.Run("does not hold the job when the API refused the trigger", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
-		jobService.triggerErr = connect.NewError(connect.CodeFailedPrecondition, errors.New("a run of the job is already in progress"))
+		jobService.triggerErr = connect.NewError(connect.CodePermissionDenied, errors.New("missing job:execute"))
 		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
 
 		message := callToolError(t, session, "run_job", runShop)
-		require.Contains(t, message, "a run of the job is already in progress")
+		require.Contains(t, message, "missing job:execute")
 		callTool(t, session, "update_job_mappings", transformEmail)
 	})
 
