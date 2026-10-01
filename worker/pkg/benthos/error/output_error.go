@@ -88,7 +88,7 @@ func (e *errorOutput) WriteBatch(ctx context.Context, batch service.MessageBatch
 		e.logger.Error(
 			fmt.Sprintf("Benthos Error output - sending stop activity signal: %s ", errMsg),
 		)
-		e.stopActivityChannel <- fmt.Errorf("%s", errMsg)
+		husonym_benthos.SignalStop(e.stopActivityChannel, fmt.Errorf("%s", errMsg))
 	}
 	return nil
 }

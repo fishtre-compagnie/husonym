@@ -174,7 +174,7 @@ func (s *pooledInput) Connect(ctx context.Context) error {
 				"order by columns and last read order values must be the same length",
 			)
 			s.logger.Error(columnMisMatchErr.Error())
-			s.stopActivityChannel <- columnMisMatchErr
+			husonym_benthos.SignalStop(s.stopActivityChannel, columnMisMatchErr)
 			return columnMisMatchErr
 		}
 		s.logger.Debug("using paged query")
@@ -211,7 +211,7 @@ func (s *pooledInput) Connect(ctx context.Context) error {
 			s.logger.Error(
 				fmt.Sprintf("Benthos input error - sending stop activity signal: %s ", err.Error()),
 			)
-			s.stopActivityChannel <- err
+			husonym_benthos.SignalStop(s.stopActivityChannel, err)
 		}
 		return err
 	}
