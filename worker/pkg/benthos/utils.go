@@ -23,8 +23,9 @@ func ToSha256(input string) string {
 }
 
 // SignalStop asks the sync activity to stop, without waiting for it to listen. The activity
-// acts on the first signal and listens no more: a later one — each failing message of a batch
-// sends its own — finds the channel full and is dropped, rather than hold its sender for good.
+// acts on the first signal and listens no more: a later one — each message that fails in the
+// pipeline, each batch that fails to be written, each attempt of an input to connect sends its
+// own — finds the channel full and is dropped, rather than hold its sender for good.
 // The channel must have room for one signal at least, or the first could be dropped too.
 func SignalStop(stop chan<- error, err error) {
 	select {
