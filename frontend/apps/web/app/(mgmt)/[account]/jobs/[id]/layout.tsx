@@ -68,17 +68,31 @@ export default function JobIdLayout(props: LayoutProps) {
   const { start: startWithPreflight, dialog: preflightDialog } =
     usePreflightThenRun(data?.job, onTriggerJobRun);
 
+  function refreshRuns(): void {
+    mutateRecentRuns();
+    mutateJobRunsByJob();
+  }
+
   async function onTriggerJobRun(): Promise<void> {
     try {
-      await triggerJobRun({ jobId: id });
-      toast.success('Job run triggered successfully!');
-      setTimeout(() => {
-        mutateRecentRuns();
-        mutateJobRunsByJob();
-      }, 4000); // delay briefly as there can sometimes be a trigger delay in temporal
+      const { jobRun } = await triggerJobRun({ jobId: id });
+      toast.success('Job run triggered successfully!', {
+        action: jobRun?.id
+          ? {
+              label: 'View run',
+              onClick: () => router.push(`/${account?.name}/runs/${jobRun.id}`),
+            }
+          : undefined,
+      });
+      refreshRuns();
+      // The API answers with the run it started. One that comes back without its start is
+      // not listed yet: the list of runs sees a new one a moment late.
+      if (!jobRun?.startedAt) {
+        setTimeout(refreshRuns, 4000);
+      }
     } catch (err) {
       console.error(err);
-      toast.error('Uanble to trigger job run', {
+      toast.error('Unable to trigger job run', {
         description: getErrorMessage(err),
       });
     }
