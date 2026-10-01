@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/redpanda-data/benthos/v4/public/service"
 )
 
@@ -61,7 +62,7 @@ func (r *errorProcessor) ProcessBatch(
 		r.logger.Error(
 			fmt.Sprintf("Benthos Error processor - sending stop activity signal: %s ", errMsg),
 		)
-		r.stopActivityChannel <- fmt.Errorf("%s", errMsg)
+		husonym_benthos.SignalStop(r.stopActivityChannel, fmt.Errorf("%s", errMsg))
 	}
 	return []service.MessageBatch{}, nil
 }

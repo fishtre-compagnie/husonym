@@ -161,6 +161,7 @@ func (a *Activity) SyncTable(
 		),
 	)
 
+	// Room for the signals the monitor reads; one sent past it is dropped, never waited for.
 	stopActivityChan := make(chan error, 3)
 	streamDone := make(chan error, 1)
 	syncResultChan := make(chan error, 1)

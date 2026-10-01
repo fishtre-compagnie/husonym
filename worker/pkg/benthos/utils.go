@@ -22,6 +22,17 @@ func ToSha256(input string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(input)))
 }
 
+// SignalStop asks the sync activity to stop, without waiting for it to listen. The activity
+// acts on the first signal and listens no more: a later one — each failing message of a batch
+// sends its own — finds the channel full and is dropped, rather than hold its sender for good.
+// The channel must have room for one signal at least, or the first could be dropped too.
+func SignalStop(stop chan<- error, err error) {
+	select {
+	case stop <- err:
+	default:
+	}
+}
+
 // checks if the error message is critical
 func IsCriticalError(errMsg string) bool {
 	// list of known error messages for when max connections are reached
