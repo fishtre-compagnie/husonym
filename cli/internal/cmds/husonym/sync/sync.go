@@ -365,7 +365,7 @@ func (c *clisync) configureAndRunSync() error {
 		return nil
 	}
 
-	return runSync(c.ctx, *c.cmd.OutputType, c.benv, groupedConfigs, c.logger)
+	return runSync(ctx, *c.cmd.OutputType, c.benv, groupedConfigs, c.logger)
 }
 
 func (c *clisync) configureSync() ([][]*benthosbuilder.BenthosConfigResponse, error) {
@@ -519,6 +519,10 @@ func syncData(
 	logger *slog.Logger,
 	outputType output.OutputType,
 ) error {
+	// A sync that has ended builds no more stream: the tables still queued each get their turn.
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("the sync ended before the table started: %w", err)
+	}
 	configbits, err := yaml.Marshal(cfg.Config)
 	if err != nil {
 		return err

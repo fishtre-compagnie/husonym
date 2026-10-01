@@ -46,8 +46,10 @@ func runStream(ctx context.Context, stream benthosstream.BenthosStreamClient, lo
 		return fmt.Errorf("the sync ended before the stream started: %w", err)
 	}
 	if err := stream.Run(ctx); err != nil {
+		// Whether it stopped is not told: a stream that failed to start has nothing to stop,
+		// and one given no time to stop by itself is closed.
 		if stopErr := stream.StopWithin(streamStopBudget); stopErr != nil {
-			logger.Error(stopErr.Error())
+			logger.Debug("the stream was asked to stop", "answer", stopErr)
 		}
 		return fmt.Errorf("unable to run benthos stream: %w", err)
 	}
