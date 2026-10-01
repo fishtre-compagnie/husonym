@@ -17,7 +17,7 @@ import (
 func newTriggerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trigger [id]",
-		Short: "trigger a job",
+		Short: "trigger a job, and print the id of the run started",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return errors.New("must provide job uuid as argument")
@@ -92,7 +92,7 @@ func triggerJob(
 	if job.Msg.GetJob().GetAccountId() != accountId {
 		return fmt.Errorf("unable to trigger job run. job not found. accountId: %s", accountId)
 	}
-	_, err = jobclient.CreateJobRun(
+	res, err := jobclient.CreateJobRun(
 		ctx,
 		connect.NewRequest[mgmtv1alpha1.CreateJobRunRequest](&mgmtv1alpha1.CreateJobRunRequest{
 			JobId: jobId,
@@ -101,5 +101,7 @@ func triggerJob(
 	if err != nil {
 		return err
 	}
+	// The id of the run started, alone on the output: a script reads it to follow the run.
+	fmt.Println(res.Msg.GetJobRun().GetId()) //nolint:forbidigo
 	return nil
 }
