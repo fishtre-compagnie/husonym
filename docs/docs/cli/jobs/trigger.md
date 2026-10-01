@@ -32,4 +32,4 @@ The command prints the id of the run it started, alone on its output:
 run_id=$(husonym jobs trigger <job-id>)
 ```
 
-It fails, and starts nothing, while a run of the job is in progress.
+The command returns once the run has started, without waiting for it to end. It fails, and starts nothing, while a run of the job is in progress.

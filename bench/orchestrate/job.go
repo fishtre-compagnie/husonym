@@ -289,7 +289,7 @@ func (c *Client) RunUntil(
 		case <-ctx.Done():
 			return nil, fmt.Errorf("orchestrate: run of %s: %w", jobID, ctx.Err())
 		case <-deadline.C:
-			result, err := c.terminate(ctx, jobID, lastSeen, timeout)
+			result, err := c.terminate(ctx, runID, lastSeen, timeout)
 			if err != nil {
 				return nil, err
 			}
@@ -310,7 +310,7 @@ func (c *Client) RunUntil(
 				return nil, err
 			}
 			if stopped {
-				result, err := c.terminate(ctx, jobID, run, timeout)
+				result, err := c.terminate(ctx, runID, run, timeout)
 				if err != nil {
 					return nil, err
 				}
@@ -338,12 +338,12 @@ func (c *Client) RunUntil(
 // terminate stops a run, and keeps the errors it was retrying on.
 func (c *Client) terminate(
 	ctx context.Context,
-	jobID string,
+	runID string,
 	run *mgmtv1alpha1.JobRun,
 	timeout time.Duration,
 ) (*RunResult, error) {
 	if run == nil {
-		return nil, fmt.Errorf("orchestrate: run of %s never showed up within %s", jobID, timeout)
+		return nil, fmt.Errorf("orchestrate: run %s never showed up within %s", runID, timeout)
 	}
 	if _, err := c.jobs.TerminateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.TerminateJobRunRequest{
 		JobRunId: run.GetId(), AccountId: c.accountID,

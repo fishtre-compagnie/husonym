@@ -76,8 +76,12 @@ export default function JobIdLayout(props: LayoutProps) {
   async function onTriggerJobRun(): Promise<void> {
     try {
       const { jobRun } = await triggerJobRun({ jobId: id });
+      // The API answers with the run it started. One that comes back without its start
+      // cannot be read yet: runs are found through an index that sees a new one a moment
+      // late. Its page would not open, and the lists are read again once it has caught up.
+      const visible = !!jobRun?.startedAt;
       toast.success('Job run triggered successfully!', {
-        action: jobRun?.id
+        action: visible
           ? {
               label: 'View run',
               onClick: () => router.push(`/${account?.name}/runs/${jobRun.id}`),
@@ -85,9 +89,7 @@ export default function JobIdLayout(props: LayoutProps) {
           : undefined,
       });
       refreshRuns();
-      // The API answers with the run it started. One that comes back without its start is
-      // not listed yet: the list of runs sees a new one a moment late.
-      if (!jobRun?.startedAt) {
+      if (!visible) {
         setTimeout(refreshRuns, 4000);
       }
     } catch (err) {

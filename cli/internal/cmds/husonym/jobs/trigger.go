@@ -101,7 +101,12 @@ func triggerJob(
 	if err != nil {
 		return err
 	}
+	runId := res.Msg.GetJobRun().GetId()
+	if runId == "" {
+		logger.Warn("the run was triggered, and the API did not say which one it started")
+		return nil
+	}
 	// The id of the run started, alone on the output: a script reads it to follow the run.
-	fmt.Println(res.Msg.GetJobRun().GetId()) //nolint:forbidigo
+	fmt.Println(runId) //nolint:forbidigo
 	return nil
 }
