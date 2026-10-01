@@ -2,6 +2,7 @@ package benthosstream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -35,49 +36,61 @@ func (b *BenthosStreamManager) NewBenthosStreamFromBuilder(
 	return NewBenthosStreamAdapter(stream), nil
 }
 
+// BenthosStreamAdapter runs one stream, and stops it for good: a stream asked to stop before it
+// ran never starts, and one whose stop came too early to be heard is stopped by the next.
 type BenthosStreamAdapter struct {
-	mu     *sync.RWMutex
+	mu     sync.Mutex
 	Stream *service.Stream
+
+	// running says Run was let through, and stopAsked that a stop was asked, heard or not.
+	running   bool
+	stopAsked bool
 }
 
 func NewBenthosStreamAdapter(stream *service.Stream) *BenthosStreamAdapter {
-	return &BenthosStreamAdapter{
-		Stream: stream,
-		mu:     &sync.RWMutex{},
-	}
+	return &BenthosStreamAdapter{Stream: stream}
 }
 
+// ErrStoppedBeforeRun is returned by Run for a stream that was asked to stop before it ran.
+var ErrStoppedBeforeRun = errors.New("the benthos stream was stopped before it ran")
+
 func (b *BenthosStreamAdapter) Run(ctx context.Context) error {
-	b.mu.RLock()
-	stream := b.Stream
-	b.mu.RUnlock()
+	b.mu.Lock()
+	stream, stopAsked := b.Stream, b.stopAsked
+	if stream != nil && !stopAsked {
+		b.running = true
+	}
+	b.mu.Unlock()
 
 	if stream == nil {
 		return fmt.Errorf("benthos stream is nil during Run")
+	}
+	if stopAsked {
+		return ErrStoppedBeforeRun
 	}
 	return stream.Run(ctx)
 }
 
 func (b *BenthosStreamAdapter) Stop(ctx context.Context) error {
-	b.mu.Lock()
-	stream := b.Stream
-	b.Stream = nil
-	b.mu.Unlock()
-
-	if stream == nil {
-		return nil
-	}
-	return stream.Stop(ctx)
+	return b.stop(func(stream *service.Stream) error { return stream.Stop(ctx) })
 }
 
 func (b *BenthosStreamAdapter) StopWithin(d time.Duration) error {
+	return b.stop(func(stream *service.Stream) error { return stream.StopWithin(d) })
+}
+
+// stop stops the stream. One that never ran has nothing to stop, and will not run. One that is
+// starting may not hear the stop yet: the stop asked again once it runs reaches it, a stream
+// being stopped as often as it is asked to.
+func (b *BenthosStreamAdapter) stop(stop func(*service.Stream) error) error {
 	b.mu.Lock()
-	stream := b.Stream
-	b.Stream = nil
+	b.stopAsked = true
+	stream, running := b.Stream, b.running
 	b.mu.Unlock()
 
-	if stream == nil {
+	// The lock is not held while the stream stops: a stop that takes its time holds no other.
+	if stream == nil || !running {
 		return nil
 	}
-	return stream.StopWithin(d)
+	return stop(stream)
 }

@@ -8,6 +8,7 @@ import (
 	"iter"
 	"log/slog"
 	"maps"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -166,17 +167,10 @@ func (a *Activity) SyncTable(
 	streamDone := make(chan error, 1)
 	syncResultChan := make(chan error, 1)
 
-	var benthosStream benthosstream.BenthosStreamClient
+	// The stream is built further down, while the monitor already runs.
+	benthosStream := &sharedStream{}
 
-	go monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
-		handleStreamStop(benthosStream, syncResultChan, err, logMessage, logger)
-	}, func(err error) {
-		// Unless the stop above already gave the result: the monitor may end here on a panic.
-		select {
-		case syncResultChan <- err:
-		default:
-		}
-	}, logger)
+	go monitorStream(ctx, stopActivityChan, streamDone, benthosStream, syncResultChan, logger)
 
 	benthosConfig, err := a.getBenthosConfig(ctx, &mgmtv1alpha1.RunContextKey{
 		JobRunId:   req.JobRunId,
@@ -283,9 +277,9 @@ func (a *Activity) SyncTable(
 		return nil, fmt.Errorf("unable to get benthos stream: %w", err)
 	}
 
-	benthosStream = bstream
+	benthosStream.set(bstream)
 
-	go runStream(benthosStream, ctx, streamDone, logger)
+	go runStream(bstream, ctx, streamDone, logger)
 
 	err = <-syncResultChan
 	if err != nil {
@@ -335,6 +329,27 @@ func (a *Activity) getIdentityAllocator(
 	)
 	seed := uint64(info.StartedTime.UnixNano())
 	return tablesync_shared.NewMultiIdentityAllocator(blockAllocator, allocatorBlockSize, seed)
+}
+
+// monitorStream monitors the activity, and gives it its result: it stops the stream the
+// activity has set by then, or reports how the stream ended.
+func monitorStream(
+	ctx context.Context,
+	stopActivityChan <-chan error,
+	streamDone <-chan error,
+	stream *sharedStream,
+	syncResultChan chan<- error,
+	logger *slog.Logger,
+) {
+	monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
+		handleStreamStop(stream.get(), syncResultChan, err, logMessage, logger)
+	}, func(err error) {
+		// Unless the stop above already gave the result: the monitor may end here on a panic.
+		select {
+		case syncResultChan <- err:
+		default:
+		}
+	}, logger)
 }
 
 // monitorActivityHeartbeat keeps the activity alive while the stream runs, and alone decides
@@ -387,6 +402,28 @@ func monitorActivityHeartbeat(
 	}
 }
 
+// sharedStream hands the stream of the activity to its monitor, which runs before the stream
+// is built.
+type sharedStream struct {
+	mu     sync.Mutex
+	stream benthosstream.BenthosStreamClient
+}
+
+func (s *sharedStream) set(stream benthosstream.BenthosStreamClient) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stream = stream
+}
+
+func (s *sharedStream) get() benthosstream.BenthosStreamClient {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.stream
+}
+
+// streamStopBudget is how long a stream is given to stop by itself before it is closed.
+const streamStopBudget = 1 * time.Millisecond
+
 func handleStreamStop(
 	benthosStream benthosstream.BenthosStreamClient,
 	syncResultChan chan<- error,
@@ -395,14 +432,16 @@ func handleStreamStop(
 	logger log.Logger,
 ) {
 	logger.Info(logMessage + ", cleaning up...")
-	syncResultChan <- err
 
+	// The stream is stopped before the result is given: the activity returns on that result,
+	// and gives back the session the stream writes with.
 	if benthosStream != nil {
 		// Stop stream explicitly since stream.Run(ctx) doesn't fully obey canceled context when sink is in error state
-		if stopErr := benthosStream.StopWithin(1 * time.Millisecond); stopErr != nil {
+		if stopErr := benthosStream.StopWithin(streamStopBudget); stopErr != nil {
 			logger.Error(stopErr.Error())
 		}
 	}
+	syncResultChan <- err
 }
 
 func runStream(
@@ -415,18 +454,42 @@ func runStream(
 		if r := recover(); r != nil {
 			err := fmt.Errorf("panic in benthos stream: %v", r)
 			logger.Error("recovered from panic", "error", err)
+			stopFailedStream(stream, logger)
 			streamDone <- err // Send panic as error to channel
 		}
 	}()
+	// An activity that has ended starts no stream: the stream would connect to the databases
+	// with a session the activity has released by now.
+	if err := ctx.Err(); err != nil {
+		streamDone <- fmt.Errorf("the activity ended before its stream started: %w", err)
+		return
+	}
 	if err := stream.Run(ctx); err != nil {
 		err = fmt.Errorf("unable to run benthos stream: %w", err)
 		logger.Error("stream run failed", "error", err)
+		stopFailedStream(stream, logger)
 		streamDone <- err
 		return
 	}
 
 	logger.Debug("stream completed successfully")
 	streamDone <- nil
+}
+
+// stopFailedStream stops a stream whose run ended on an error. Run returns on a canceled
+// context without stopping the stream it started, and the monitor only stops the stream it
+// knows when it acts: one canceled before it started would go on alone, reading the source and
+// writing the destination of a run that has failed.
+func stopFailedStream(stream benthosstream.BenthosStreamClient, logger *slog.Logger) {
+	// It runs where a panic of the stream was recovered: one more here would end the worker.
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error(fmt.Sprintf("recovered from panic while stopping the stream: %v", r))
+		}
+	}()
+	if stopErr := stream.StopWithin(streamStopBudget); stopErr != nil {
+		logger.Warn("the stream was asked to stop and did not tell it had", "error", stopErr)
+	}
 }
 
 func (a *Activity) getBenthosStream(
