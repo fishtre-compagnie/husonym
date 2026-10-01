@@ -95,7 +95,7 @@ func Test_UpdateJobMappings(t *testing.T) {
 
 		callTool(t, session, "run_job", runShop)
 		message := callToolError(t, session, "update_job_mappings", transformEmail)
-		require.Contains(t, message, "was just triggered")
+		require.Contains(t, message, "the run run-1 of this job was just started")
 
 		jobService.start(failedRun("run-1", time.Now(), mgmtv1alpha1.JobRunStatus_JOB_RUN_STATUS_RUNNING))
 		message = callToolError(t, session, "update_job_mappings", transformEmail)

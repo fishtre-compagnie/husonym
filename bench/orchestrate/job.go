@@ -265,14 +265,15 @@ func (c *Client) RunUntil(
 	timeout time.Duration,
 	stop func(context.Context) (bool, error),
 ) (*RunResult, error) {
-	// The runs a job already has: the perf mode runs the same job several times, and the
-	// one being waited for is the one that was not there before.
-	previous, err := c.runIDs(ctx, jobID)
+	// The API names the run it starts: the perf mode runs the same job several times, and the
+	// one being waited for is that one, not an earlier run already final.
+	started, err := c.jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobID}))
 	if err != nil {
-		return nil, err
-	}
-	if _, err := c.jobs.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobID})); err != nil {
 		return nil, fmt.Errorf("orchestrate: start run of %s: %w", jobID, err)
+	}
+	runID := started.Msg.GetJobRun().GetId()
+	if runID == "" {
+		return nil, fmt.Errorf("orchestrate: start run of %s: the API did not name the run", jobID)
 	}
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
@@ -288,7 +289,7 @@ func (c *Client) RunUntil(
 		case <-ctx.Done():
 			return nil, fmt.Errorf("orchestrate: run of %s: %w", jobID, ctx.Err())
 		case <-deadline.C:
-			result, err := c.terminate(ctx, jobID, lastSeen, timeout)
+			result, err := c.terminate(ctx, runID, lastSeen, timeout)
 			if err != nil {
 				return nil, err
 			}
@@ -296,7 +297,7 @@ func (c *Client) RunUntil(
 			return result, nil
 		case <-ticker.C:
 		}
-		run, err := c.newRun(ctx, jobID, previous)
+		run, err := c.startedRun(ctx, runID)
 		if err != nil {
 			return nil, err
 		}
@@ -309,7 +310,7 @@ func (c *Client) RunUntil(
 				return nil, err
 			}
 			if stopped {
-				result, err := c.terminate(ctx, jobID, run, timeout)
+				result, err := c.terminate(ctx, runID, run, timeout)
 				if err != nil {
 					return nil, err
 				}
@@ -337,12 +338,12 @@ func (c *Client) RunUntil(
 // terminate stops a run, and keeps the errors it was retrying on.
 func (c *Client) terminate(
 	ctx context.Context,
-	jobID string,
+	runID string,
 	run *mgmtv1alpha1.JobRun,
 	timeout time.Duration,
 ) (*RunResult, error) {
 	if run == nil {
-		return nil, fmt.Errorf("orchestrate: run of %s never showed up within %s", jobID, timeout)
+		return nil, fmt.Errorf("orchestrate: run %s never showed up within %s", runID, timeout)
 	}
 	if _, err := c.jobs.TerminateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.TerminateJobRunRequest{
 		JobRunId: run.GetId(), AccountId: c.accountID,
@@ -356,48 +357,19 @@ func (c *Client) terminate(
 	return &RunResult{RunID: run.GetId(), Status: run.GetStatus(), Duration: timeout, Errors: errs}, nil
 }
 
-// newRun returns the run of a job that is not among the ones it already had, or nil while
-// the API does not list it yet: CreateJobRun returns before the workflow is visible.
-// Waiting for a new run, rather than for the only one, is what lets a job be run again:
-// an earlier run is already final, and would be reported at once as the result of this one.
-func (c *Client) newRun(
-	ctx context.Context,
-	jobID string,
-	previous map[string]bool,
-) (*mgmtv1alpha1.JobRun, error) {
-	resp, err := c.jobs.GetJobRuns(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunsRequest{
-		Id: &mgmtv1alpha1.GetJobRunsRequest_JobId{JobId: jobID},
+// startedRun returns a run the API has just started, or nil while it cannot be read yet:
+// runs are found through an index that sees a new one a moment late.
+func (c *Client) startedRun(ctx context.Context, runID string) (*mgmtv1alpha1.JobRun, error) {
+	resp, err := c.jobs.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+		JobRunId: runID, AccountId: c.accountID,
 	}))
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("orchestrate: runs of %s: %w", jobID, err)
+		return nil, fmt.Errorf("orchestrate: run %s: %w", runID, err)
 	}
-	var found *mgmtv1alpha1.JobRun
-	for _, run := range resp.Msg.GetJobRuns() {
-		if previous[run.GetId()] {
-			continue
-		}
-		if found != nil {
-			return nil, fmt.Errorf("orchestrate: job %s started %s and %s at once",
-				jobID, found.GetId(), run.GetId())
-		}
-		found = run
-	}
-	return found, nil
-}
-
-// runIDs returns the runs a job already has.
-func (c *Client) runIDs(ctx context.Context, jobID string) (map[string]bool, error) {
-	resp, err := c.jobs.GetJobRuns(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunsRequest{
-		Id: &mgmtv1alpha1.GetJobRunsRequest_JobId{JobId: jobID},
-	}))
-	if err != nil {
-		return nil, fmt.Errorf("orchestrate: runs of %s: %w", jobID, err)
-	}
-	ids := map[string]bool{}
-	for _, run := range resp.Msg.GetJobRuns() {
-		ids[run.GetId()] = true
-	}
-	return ids, nil
+	return resp.Msg.GetJobRun(), nil
 }
 
 func isFinal(status mgmtv1alpha1.JobRunStatus) bool {

@@ -12,33 +12,30 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// launch is a trigger whose run has not shown yet.
+// launch is a run started from here that has not shown among the runs of its job yet.
 type launch struct {
-	before map[string]bool
-	at     time.Time
+	// runId is the run the API started. It is empty while the trigger is being sent, and when
+	// the API failed without telling whether a run started: the job is then held until the
+	// launch is given up.
+	runId string
+	at    time.Time
 }
 
-// launchTimeout is how long a trigger is waited for. A trigger the scheduler skips — it
-// skips a firing while a run of the job is going — never shows; past this, it is given up.
+// launchTimeout is how long a run started from here is waited for among the runs of its job.
+// One removed before it showed never does; past this, it is given up.
 const launchTimeout = 2 * time.Minute
 
-// errStarting is returned while a run triggered from here has not shown yet.
-var errStarting = errors.New(
-	"a run of this job was just triggered and has not started yet: get_run_status follows it",
-)
-
-// Run triggers one run of a job, once the person has agreed to it. Until they answer, it runs
-// nothing and returns the question to put to them instead. It refuses while a run of the job
-// is in progress, and while a run triggered from here has not shown yet: the API does not say
-// which run a trigger starts, and the run takes a moment to show among the job's.
-func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string) (mcp.InputRequestMap, error) {
+// Run triggers one run of a job, once the person has agreed to it, and returns the id of the
+// run started. Until they answer, it runs nothing and returns the question to put to them
+// instead. It refuses while a run of the job is in progress, and while the run it last started
+// has not shown among the job's runs: the list of runs sees a new one a moment late.
+func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string) (string, mcp.InputRequestMap, error) {
 	job, err := r.Get(ctx, jobId)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read job %s: %w", jobId, err)
+		return "", nil, fmt.Errorf("unable to read job %s: %w", jobId, err)
 	}
-	runs, err := r.runsIfIdle(ctx, jobId)
-	if err != nil {
-		return nil, err
+	if err := r.idle(ctx, jobId); err != nil {
+		return "", nil, err
 	}
 	questions, err := r.confirm(ctx, req, job, "run", func(snap *snapshot) (string, error) {
 		described, err := r.describe(ctx, snap, job.GetMappings())
@@ -48,70 +45,102 @@ func (r *Reader) Run(ctx context.Context, req *mcp.CallToolRequest, jobId string
 		return fmt.Sprintf("The agent asks to run the job %q now. It %s Run it?", job.GetName(), described), nil
 	})
 	if err != nil || questions != nil {
-		return questions, err
+		return "", questions, err
 	}
 
-	// The trigger is held before it is sent, so that two calls answered at once start one run.
-	before := map[string]bool{}
-	for _, run := range runs {
-		before[run.GetId()] = true
+	// The job is held before the trigger is sent: the API answers once the run has started,
+	// and the run reads the mappings meanwhile. It also makes two calls answered at once start
+	// one run.
+	if !r.hold(jobId) {
+		return "", nil, errTriggered
 	}
+	res, err := r.client.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobId}))
+	if err != nil {
+		if startedNothing(err) {
+			r.mu.Lock()
+			delete(r.launched, jobId)
+			r.mu.Unlock()
+		}
+		return "", nil, err
+	}
+	runId := res.Msg.GetJobRun().GetId()
 	r.mu.Lock()
-	if _, ok := r.launched[jobId]; ok {
-		r.mu.Unlock()
-		return nil, errStarting
-	}
-	r.launched[jobId] = launch{before: before, at: r.now()}
+	r.launched[jobId] = launch{runId: runId, at: r.now()}
 	r.mu.Unlock()
-	if _, err := r.client.CreateJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRunRequest{JobId: jobId})); err != nil {
-		r.mu.Lock()
-		delete(r.launched, jobId)
-		r.mu.Unlock()
-		return nil, err
+	return runId, nil, nil
+}
+
+// hold marks a job as triggered from here, before its run is known. It answers false when the
+// job already is: two calls that found it idle at once do not both trigger it.
+func (r *Reader) hold(jobId string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.launched[jobId]; ok {
+		return false
 	}
-	return nil, nil
+	r.launched[jobId] = launch{at: r.now()}
+	return true
 }
 
-// idle refuses while a run of the job is going, or starting.
+// errTriggered is returned while a trigger sent from here has not told its run.
+var errTriggered = errors.New(
+	"a run of this job was just triggered and may be starting: get_run_status follows it",
+)
+
+// startedNothing says whether the API refused a trigger for what the caller may do: it then
+// sent none. Any other failure keeps the job held: it may come after the trigger — a run that
+// starts and cannot be read yet, an answer that never arrives or cannot be read — or tell of a
+// run the API sees going and the list of runs does not show yet.
+func startedNothing(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodePermissionDenied, connect.CodeUnauthenticated, connect.CodeNotFound:
+		return true
+	default:
+		return false
+	}
+}
+
+// idle refuses while a run of the job is going, or has just been started from here and does
+// not show among its runs yet.
 func (r *Reader) idle(ctx context.Context, jobId string) error {
-	_, err := r.runsIfIdle(ctx, jobId)
-	return err
-}
-
-// runsIfIdle returns the runs of a job, and refuses while one is going or starting.
-func (r *Reader) runsIfIdle(ctx context.Context, jobId string) ([]*mgmtv1alpha1.JobRun, error) {
 	runs, err := r.Runs(ctx, jobId)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if r.Starting(jobId, runs) {
-		return nil, errStarting
+	if runId, ok := r.starting(jobId, runs); ok {
+		if runId == "" {
+			return errTriggered
+		}
+		return fmt.Errorf(
+			"the run %s of this job was just started and does not show among its runs yet: "+
+				"get_run_status follows it", runId,
+		)
 	}
 	if i := slices.IndexFunc(runs, inProgress); i >= 0 {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"a run of this job is in progress (%s): wait for it to end, get_run_status follows it",
 			runs[i].GetId(),
 		)
 	}
-	return runs, nil
+	return nil
 }
 
-// Starting says whether a run triggered from here has yet to show among runs, the job's runs
-// as just read. It forgets a trigger once a run it did not know shows — a run of the schedule
-// showing then is taken for it, and holds the job just the same — or once it is given up.
-func (r *Reader) Starting(jobId string, runs []*mgmtv1alpha1.JobRun) bool {
+// starting names the run started from here that has yet to show among runs, the job's runs as
+// just read; it names none while the trigger has not told its run. It forgets the run once it
+// shows, or once it is given up.
+func (r *Reader) starting(jobId string, runs []*mgmtv1alpha1.JobRun) (string, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	launched, ok := r.launched[jobId]
 	if !ok {
-		return false
+		return "", false
 	}
-	shown := slices.ContainsFunc(runs, func(run *mgmtv1alpha1.JobRun) bool { return !launched.before[run.GetId()] })
+	shown := slices.ContainsFunc(runs, func(run *mgmtv1alpha1.JobRun) bool { return run.GetId() == launched.runId })
 	if shown || r.now().Sub(launched.at) > launchTimeout {
 		delete(r.launched, jobId)
-		return false
+		return "", false
 	}
-	return true
+	return launched.runId, true
 }
 
 func inProgress(run *mgmtv1alpha1.JobRun) bool {

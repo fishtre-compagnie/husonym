@@ -563,24 +563,48 @@ const startedJobRunVisibleWithin = 5 * time.Second
 // getStartedJobRun reads a run the schedule has just started, waiting for it to be visible;
 // nil if it is not visible yet.
 func (s *Service) getStartedJobRun(ctx context.Context, accountId, jobRunId string) (*mgmtv1alpha1.JobRun, error) {
-	waitCtx, cancel := context.WithTimeout(ctx, startedJobRunVisibleWithin)
-	defer cancel()
-	for {
-		resp, err := s.GetJobRun(waitCtx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
+	return waitForStartedJobRun(ctx, startedJobRunVisibleWithin, func(ctx context.Context) (*mgmtv1alpha1.JobRun, error) {
+		resp, err := s.GetJobRun(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRunRequest{
 			JobRunId:  jobRunId,
 			AccountId: accountId,
 		}))
-		if err == nil {
-			return resp.Msg.GetJobRun(), nil
+		if err != nil {
+			return nil, err
 		}
-		// Runs are found through the visibility index, which sees a new one a moment late.
+		return resp.Msg.GetJobRun(), nil
+	})
+}
+
+// startedJobRunReadEvery paces the reads of a run that is not visible yet.
+const startedJobRunReadEvery = 200 * time.Millisecond
+
+// waitForStartedJobRun reads a run until it is found, for at most within; nil if it is not
+// found by then. Runs are found through the visibility index, which sees a new one a moment
+// late.
+func waitForStartedJobRun(
+	ctx context.Context,
+	within time.Duration,
+	read func(context.Context) (*mgmtv1alpha1.JobRun, error),
+) (*mgmtv1alpha1.JobRun, error) {
+	waitCtx, cancel := context.WithTimeout(ctx, within)
+	defer cancel()
+	for {
+		run, err := read(waitCtx)
+		if err == nil {
+			return run, nil
+		}
+		// The wait ending cuts a read short: the run is not visible yet, unless the caller
+		// itself gave up.
+		if waitCtx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		if connect.CodeOf(err) != connect.CodeNotFound {
 			return nil, err
 		}
 		select {
 		case <-waitCtx.Done():
 			return nil, ctx.Err()
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(startedJobRunReadEvery):
 		}
 	}
 }

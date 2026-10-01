@@ -97,31 +97,70 @@ func Test_Reader_RunsComeWithoutFailureMessages(t *testing.T) {
 	}
 }
 
-// A trigger the scheduler skipped never shows: past the timeout, it no longer holds the job.
+// A run removed before it showed never does: past the timeout, it no longer holds the job.
 func Test_Reader_StartingIsGivenUp(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
-		"job": {before: map[string]bool{"old": true}, at: now},
+		"job": {runId: "new", at: now},
 	}}
 	old := []*mgmtv1alpha1.JobRun{{Id: "old"}}
 
-	require.True(t, reader.Starting("job", old))
+	runId, ok := reader.starting("job", old)
+	require.True(t, ok)
+	require.Equal(t, "new", runId)
 	now = now.Add(launchTimeout + time.Second)
-	require.False(t, reader.Starting("job", old))
+	_, ok = reader.starting("job", old)
+	require.False(t, ok)
 	require.Empty(t, reader.launched)
 }
 
-// The run started here is the first one the job did not have before.
+// Only a refusal for what the caller may do tells that no trigger was sent.
+func Test_startedNothing(t *testing.T) {
+	t.Parallel()
+	for code, nothing := range map[connect.Code]bool{
+		connect.CodePermissionDenied:   true,
+		connect.CodeUnauthenticated:    true,
+		connect.CodeNotFound:           true,
+		connect.CodeFailedPrecondition: false,
+		connect.CodeInvalidArgument:    false,
+		connect.CodeCanceled:           false,
+		connect.CodeDeadlineExceeded:   false,
+		connect.CodeUnavailable:        false,
+		connect.CodeUnknown:            false,
+	} {
+		require.Equal(t, nothing, startedNothing(connect.NewError(code, errors.New("refused"))), code.String())
+	}
+	require.False(t, startedNothing(errors.New("no code")))
+}
+
+// Two calls that found the job idle at once: one holds it, the other does not trigger it.
+func Test_Reader_HoldIsTakenOnce(t *testing.T) {
+	t.Parallel()
+	reader := &Reader{now: time.Now, launched: map[string]launch{}}
+
+	require.True(t, reader.hold("job"))
+	require.False(t, reader.hold("job"))
+	require.True(t, reader.hold("other"))
+	_, ok := reader.starting("job", nil)
+	require.True(t, ok, "the job is held before its run is known")
+}
+
+// The run started here is told by its id: another run of the job showing does not stand for it.
 func Test_Reader_StartingEndsWhenTheRunShows(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
-		"job": {before: map[string]bool{"old": true}, at: now},
+		"job": {runId: "new", at: now},
 	}}
 
-	require.False(t, reader.Starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "new"}}))
-	require.False(t, reader.Starting("other", nil))
+	_, ok := reader.starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "other"}})
+	require.True(t, ok)
+	_, ok = reader.starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "new"}})
+	require.False(t, ok)
+	require.Empty(t, reader.launched)
+	_, ok = reader.starting("other", nil)
+	require.False(t, ok)
 }
 
 // A driver's error may quote where and how it connects. The API writes its own words under

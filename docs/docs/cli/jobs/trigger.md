@@ -23,3 +23,13 @@ husonym jobs trigger <job-id>
 
 A job-id must be provided as the first command-line argument. This is required and will fail otherwise.
 This job-id is used to trigger a workflow execution of the relevant Husonym Job.
+
+## Output
+
+The command prints the id of the run it started, alone on its output:
+
+```bash
+run_id=$(husonym jobs trigger <job-id>)
+```
+
+The command returns once the run has started, without waiting for it to end. It fails, and starts nothing, while a run of the job is in progress. Against an API that does not name the run it starts, it prints nothing and warns on its error output.

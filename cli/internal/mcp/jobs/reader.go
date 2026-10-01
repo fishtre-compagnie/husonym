@@ -95,13 +95,13 @@ type Reader struct {
 	connections *maskedconn.Reader
 	accountId   string
 
-	// now tells the time a trigger is given up on.
+	// now tells the time a run started here is given up on.
 	now func() time.Time
 
 	mu        sync.Mutex
 	questions *ask.Questions[confirmation]
-	// launched holds, for each job triggered from here whose run has not shown yet, the runs
-	// the job had before: the run started here is the first one outside them.
+	// launched holds, for each job, the run last started from here, until it shows among the
+	// job's runs.
 	launched map[string]launch
 }
 
