@@ -3,7 +3,6 @@ package mcp_server
 import (
 	"cmp"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -109,12 +108,10 @@ func Test_RunJob(t *testing.T) {
 	t.Run("holds the job while the trigger is being sent", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
-		jobService.entered, jobService.release = make(chan struct{}, 2), make(chan struct{})
 		somebody := &person{answer: "accept"}
 		session := connectJobs(t, jobService, somebody.client())
-		// A trigger held open is let go whatever the test finds, or the server would not close.
-		release := sync.OnceFunc(func() { close(jobService.release) })
-		t.Cleanup(release)
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseTrigger = newGate(t)
 
 		done := make(chan error, 1)
 		go func() {
@@ -122,7 +119,7 @@ func Test_RunJob(t *testing.T) {
 			done <- err
 		}()
 		select {
-		case <-jobService.entered:
+		case <-jobService.pauseTrigger.entered:
 		case err := <-done:
 			require.FailNow(t, "run_job ended before its trigger", "%v", err)
 		}
@@ -134,12 +131,131 @@ func Test_RunJob(t *testing.T) {
 		message = callToolError(t, session, "run_job", runShop)
 		require.Contains(t, message, "was just triggered and may be starting")
 
-		release()
+		jobService.pauseTrigger.open()
 		require.NoError(t, <-done)
 		_, updated, triggered := jobService.seen()
 		require.Empty(t, updated)
 		require.Len(t, triggered, 1)
 		require.Len(t, somebody.asked(), 1)
+	})
+
+	// Finding the job idle and acting on it are two steps: a call arriving between the two of
+	// another is refused.
+	t.Run("is refused while a change of the mappings is being written", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		somebody := &person{answer: "accept"}
+		session := connectJobs(t, jobService, somebody.client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseUpdate = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "update_job_mappings", Arguments: transformEmail})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseUpdate.entered:
+		case err := <-done:
+			require.FailNow(t, "update_job_mappings ended before its write", "%v", err)
+		}
+
+		message := callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "another call is running or changing this job")
+		require.Empty(t, somebody.asked())
+
+		jobService.pauseUpdate.open()
+		require.NoError(t, <-done)
+		_, updated, triggered := jobService.seen()
+		require.Len(t, updated, 1)
+		require.Empty(t, triggered)
+	})
+
+	// The job is taken before it is read: the person answers for the job as read then.
+	t.Run("refuses a change of the mappings while it reads the job to run it", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseJob = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "run_job", Arguments: runShop})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseJob.entered:
+		case err := <-done:
+			require.FailNow(t, "run_job ended before reading the job", "%v", err)
+		}
+
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "another call is running or changing this job")
+
+		jobService.pauseJob.open()
+		require.NoError(t, <-done)
+		_, updated, triggered := jobService.seen()
+		require.Empty(t, updated)
+		require.Len(t, triggered, 1)
+	})
+
+	// The claim lasts through the question: the yes is for the job as it is described there.
+	t.Run("refuses a change of the mappings while it describes the run to the person", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		session := connectJobs(t, jobService, (&person{answer: "accept"}).client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseHooks = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "run_job", Arguments: runShop})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseHooks.entered:
+		case err := <-done:
+			require.FailNow(t, "run_job ended before reading the hooks", "%v", err)
+		}
+
+		message := callToolError(t, session, "update_job_mappings", transformEmail)
+		require.Contains(t, message, "another call is running or changing this job")
+
+		jobService.pauseHooks.open()
+		require.NoError(t, <-done)
+		_, updated, _ := jobService.seen()
+		require.Empty(t, updated)
+	})
+
+	// A change of the mappings claims the job before it looks whether a run is going.
+	t.Run("is refused while a change of the mappings looks whether the job is idle", func(t *testing.T) {
+		t.Parallel()
+		jobService := newFakeJobService()
+		somebody := &person{answer: "accept"}
+		session := connectJobs(t, jobService, somebody.client())
+		// Set once the session is: on a failure the gate opens before the session closes.
+		jobService.pauseRuns = newGate(t)
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "update_job_mappings", Arguments: transformEmail})
+			done <- err
+		}()
+		select {
+		case <-jobService.pauseRuns.entered:
+		case err := <-done:
+			require.FailNow(t, "update_job_mappings ended before reading the runs", "%v", err)
+		}
+
+		message := callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "another call is running or changing this job")
+		require.Empty(t, somebody.asked())
+
+		jobService.pauseRuns.open()
+		require.NoError(t, <-done)
+		_, _, triggered := jobService.seen()
+		require.Empty(t, triggered)
 	})
 
 	t.Run("holds the job when the trigger fails without telling whether a run started", func(t *testing.T) {

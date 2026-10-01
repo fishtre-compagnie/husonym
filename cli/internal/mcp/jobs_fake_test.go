@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -43,16 +44,51 @@ type fakeJobService struct {
 	updated   []*mgmtv1alpha1.UpdateJobSourceConnectionRequest
 	triggered []string
 
-	// triggerErr fails CreateJobRun, unnamed has it start a run it does not name, and entered
-	// and release, when set, hold it open: entered tells a trigger arrived, release lets it end.
+	// triggerErr fails CreateJobRun, and unnamed has it start a run it does not name.
 	triggerErr error
 	unnamed    bool
-	entered    chan struct{}
-	release    chan struct{}
+
+	// The gates, when set, hold open the next trigger, the next reading of the job, of its runs
+	// and of its hooks, and the next writing of its mappings.
+	pauseTrigger *gate
+	pauseJob     *gate
+	pauseRuns    *gate
+	pauseHooks   *gate
+	pauseUpdate  *gate
 
 	// preflight answers PreflightJob, and preflightErr fails it.
 	preflight    *mgmtv1alpha1.PreflightJobResponse
 	preflightErr error
+}
+
+// gate holds one call open: entered tells it arrived, open lets it go on. The calls after it
+// pass.
+type gate struct {
+	taken   atomic.Bool
+	entered chan struct{}
+	release chan struct{}
+	open    func()
+}
+
+// newGate returns a gate that opens when the test ends, whatever it found: a call left held
+// would keep the server from closing. Cleanups run last in, first out: the gate is made after
+// the session, so that it opens before the session closes.
+func newGate(t *testing.T) *gate {
+	g := &gate{entered: make(chan struct{}), release: make(chan struct{})}
+	g.open = sync.OnceFunc(func() { close(g.release) })
+	t.Cleanup(g.open)
+	return g
+}
+
+func (g *gate) wait() {
+	if g == nil {
+		return
+	}
+	// Only the first call is held: one arriving meanwhile passes, rather than wait behind it.
+	if g.taken.CompareAndSwap(false, true) {
+		close(g.entered)
+		<-g.release
+	}
 }
 
 func newFakeJobService() *fakeJobService {
@@ -119,6 +155,7 @@ func (f *fakeJobService) GetJob(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.GetJobRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobResponse], error) {
+	f.pauseJob.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.job == nil || f.job.GetId() != req.Msg.GetId() {
@@ -154,6 +191,7 @@ func (f *fakeJobService) UpdateJobSourceConnection(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.UpdateJobSourceConnectionRequest],
 ) (*connect.Response[mgmtv1alpha1.UpdateJobSourceConnectionResponse], error) {
+	f.pauseUpdate.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.updated = append(f.updated, req.Msg)
@@ -165,6 +203,7 @@ func (f *fakeJobService) GetJobRuns(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobRunsRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobRunsResponse], error) {
+	f.pauseRuns.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	runs := make([]*mgmtv1alpha1.JobRun, 0, len(f.runs))
@@ -261,10 +300,7 @@ func (f *fakeJobService) CreateJobRun(
 	_ context.Context,
 	req *connect.Request[mgmtv1alpha1.CreateJobRunRequest],
 ) (*connect.Response[mgmtv1alpha1.CreateJobRunResponse], error) {
-	if f.entered != nil {
-		f.entered <- struct{}{}
-		<-f.release
-	}
+	f.pauseTrigger.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.triggered = append(f.triggered, req.Msg.GetJobId())
@@ -327,6 +363,7 @@ func (f *fakeJobService) GetJobHooks(
 	context.Context,
 	*connect.Request[mgmtv1alpha1.GetJobHooksRequest],
 ) (*connect.Response[mgmtv1alpha1.GetJobHooksResponse], error) {
+	f.pauseHooks.wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	hooks := make([]*mgmtv1alpha1.JobHook, 0, len(f.hooks))

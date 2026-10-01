@@ -134,16 +134,42 @@ func Test_startedNothing(t *testing.T) {
 	require.False(t, startedNothing(errors.New("no code")))
 }
 
-// Two calls that found the job idle at once: one holds it, the other does not trigger it.
-func Test_Reader_HoldIsTakenOnce(t *testing.T) {
+// A job is claimed by one call at a time, and free again once the call lets it go.
+func Test_Reader_ClaimIsTakenOnce(t *testing.T) {
 	t.Parallel()
-	reader := &Reader{now: time.Now, launched: map[string]launch{}}
+	reader := &Reader{claimed: map[string]bool{}}
 
-	require.True(t, reader.hold("job"))
-	require.False(t, reader.hold("job"))
-	require.True(t, reader.hold("other"))
-	_, ok := reader.starting("job", nil)
-	require.True(t, ok, "the job is held before its run is known")
+	release, err := reader.claim("job")
+	require.NoError(t, err)
+	_, err = reader.claim("job")
+	require.ErrorIs(t, err, errClaimed)
+	other, err := reader.claim("other")
+	require.NoError(t, err)
+	other()
+
+	// A release called again lets go of nothing: the claim another call took meanwhile stands.
+	release()
+	_, err = reader.claim("job")
+	require.NoError(t, err)
+	release()
+	_, err = reader.claim("job")
+	require.ErrorIs(t, err, errClaimed)
+}
+
+// A trigger the API has not answered holds the job however long it takes: the wait for the
+// run to show starts at the answer.
+func Test_Reader_StartingIsKeptWhileTheTriggerIsSent(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
+		"job": {sending: true},
+	}}
+
+	now = now.Add(10 * launchTimeout)
+	runId, ok := reader.starting("job", nil)
+	require.True(t, ok)
+	require.Empty(t, runId)
+	require.Len(t, reader.launched, 1)
 }
 
 // The run started here is told by its id: another run of the job showing does not stand for it.
