@@ -2,6 +2,7 @@ package sync_activity
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -71,6 +72,60 @@ func Test_runStream_CancelledBeforeItStarts(t *testing.T) {
 	require.False(t, stillWrites(written), "the stream goes on alone after the activity ended")
 }
 
+// It is not even asked to run: it would connect to the databases.
+func Test_runStream_EndedActivityDoesNotRunItsStream(t *testing.T) {
+	stream := benthosstream.NewMockBenthosStreamClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	streamDone := make(chan error, 1)
+	runStream(stream, ctx, streamDone, testutil.GetTestLogger(t))
+
+	require.ErrorIs(t, <-streamDone, context.Canceled)
+}
+
+// The stream is stopped before its end is told: the activity returns on that end, and gives
+// back the session the stream writes with.
+func Test_runStream_StopsBeforeItTellsTheEnd(t *testing.T) {
+	streamDone := make(chan error, 1)
+	stream := benthosstream.NewMockBenthosStreamClient(t)
+	stream.EXPECT().Run(mock.Anything).Return(errors.New("the stream failed"))
+	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+		require.Empty(t, streamDone, "the end was told before the stream stopped")
+		return nil
+	}).Once()
+
+	runStream(stream, context.Background(), streamDone, testutil.GetTestLogger(t))
+
+	require.ErrorContains(t, <-streamDone, "the stream failed")
+}
+
+// The monitor runs before the stream is built: a stop signal stops the stream the activity has
+// set since, and gives the activity its result.
+func Test_monitorStream_StopsTheStreamSetSinceItStarted(t *testing.T) {
+	stop := make(chan error, 3)
+	result := make(chan error, 1)
+	shared := &sharedStream{}
+	monitored := make(chan struct{})
+	go func() {
+		defer close(monitored)
+		monitorStream(context.Background(), stop, make(chan error, 1), shared, result, testutil.GetTestLogger(t))
+	}()
+
+	stream := benthosstream.NewMockBenthosStreamClient(t)
+	stream.EXPECT().StopWithin(streamStopBudget).Return(nil).Once()
+	shared.set(stream)
+	cause := errors.New("violates not-null constraint")
+	stop <- cause
+
+	select {
+	case <-monitored:
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "the monitor did not act on the stop signal")
+	}
+	require.Equal(t, cause, <-result)
+}
+
 // The same once it runs: whatever stops the activity, its stream stops with it.
 func Test_runStream_CancelledWhileItRuns(t *testing.T) {
 	stream, written := endlessStream(t)
@@ -90,6 +145,18 @@ func Test_runStream_PanicStopsTheStream(t *testing.T) {
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).RunAndReturn(func(context.Context) error { panic("boom") })
 	stream.EXPECT().StopWithin(streamStopBudget).Return(nil).Once()
+
+	streamDone := make(chan error, 1)
+	runStream(stream, context.Background(), streamDone, testutil.GetTestLogger(t))
+
+	require.ErrorContains(t, <-streamDone, "panic in benthos stream: boom")
+}
+
+// A stop that panics, where the panic of the stream was recovered, does not end the worker.
+func Test_runStream_PanicWhileStopping(t *testing.T) {
+	stream := benthosstream.NewMockBenthosStreamClient(t)
+	stream.EXPECT().Run(mock.Anything).RunAndReturn(func(context.Context) error { panic("boom") })
+	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error { panic("again") })
 
 	streamDone := make(chan error, 1)
 	runStream(stream, context.Background(), streamDone, testutil.GetTestLogger(t))

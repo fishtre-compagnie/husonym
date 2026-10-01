@@ -170,15 +170,7 @@ func (a *Activity) SyncTable(
 	// The stream is built further down, while the monitor already runs.
 	benthosStream := &sharedStream{}
 
-	go monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
-		handleStreamStop(benthosStream.get(), syncResultChan, err, logMessage, logger)
-	}, func(err error) {
-		// Unless the stop above already gave the result: the monitor may end here on a panic.
-		select {
-		case syncResultChan <- err:
-		default:
-		}
-	}, logger)
+	go monitorStream(ctx, stopActivityChan, streamDone, benthosStream, syncResultChan, logger)
 
 	benthosConfig, err := a.getBenthosConfig(ctx, &mgmtv1alpha1.RunContextKey{
 		JobRunId:   req.JobRunId,
@@ -339,6 +331,27 @@ func (a *Activity) getIdentityAllocator(
 	return tablesync_shared.NewMultiIdentityAllocator(blockAllocator, allocatorBlockSize, seed)
 }
 
+// monitorStream monitors the activity, and gives it its result: it stops the stream the
+// activity has set by then, or reports how the stream ended.
+func monitorStream(
+	ctx context.Context,
+	stopActivityChan <-chan error,
+	streamDone <-chan error,
+	stream *sharedStream,
+	syncResultChan chan<- error,
+	logger *slog.Logger,
+) {
+	monitorActivityHeartbeat(ctx, stopActivityChan, streamDone, func(logMessage string, err error) {
+		handleStreamStop(stream.get(), syncResultChan, err, logMessage, logger)
+	}, func(err error) {
+		// Unless the stop above already gave the result: the monitor may end here on a panic.
+		select {
+		case syncResultChan <- err:
+		default:
+		}
+	}, logger)
+}
+
 // monitorActivityHeartbeat keeps the activity alive while the stream runs, and alone decides
 // how it ends: stopped by Benthos, by the context, or done. A write that fails critically
 // signals the stop before it is acknowledged, hence before the stream can end: a stream done
@@ -443,6 +456,12 @@ func runStream(
 			streamDone <- err // Send panic as error to channel
 		}
 	}()
+	// An activity that has ended starts no stream: the stream would connect to the databases
+	// with a session the activity has released by now.
+	if err := ctx.Err(); err != nil {
+		streamDone <- fmt.Errorf("the activity ended before its stream started: %w", err)
+		return
+	}
 	if err := stream.Run(ctx); err != nil {
 		err = fmt.Errorf("unable to run benthos stream: %w", err)
 		logger.Error("stream run failed", "error", err)
@@ -460,8 +479,14 @@ func runStream(
 // knows when it acts: one canceled before it started would go on alone, reading the source and
 // writing the destination of a run that has failed.
 func stopFailedStream(stream benthosstream.BenthosStreamClient, logger *slog.Logger) {
+	// It runs where a panic of the stream was recovered: one more here would end the worker.
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error(fmt.Sprintf("recovered from panic while stopping the stream: %v", r))
+		}
+	}()
 	if stopErr := stream.StopWithin(streamStopBudget); stopErr != nil {
-		logger.Warn("the stream did not stop by itself", "error", stopErr)
+		logger.Warn("the stream was asked to stop and did not tell it had", "error", stopErr)
 	}
 }
 
