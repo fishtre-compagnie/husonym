@@ -17,9 +17,8 @@ type getRunStatusInput struct {
 }
 
 type getRunStatusOutput struct {
-	Starting bool         `json:"starting,omitempty" jsonschema:"a run was triggered with run_job and has not shown yet: call again shortly"`
-	Runs     []runSummary `json:"runs"               jsonschema:"the latest runs of the job, most recent first"`
-	Latest   *runDetail   `json:"latest,omitempty"   jsonschema:"what the most recent run is doing"`
+	Runs   []runSummary `json:"runs"             jsonschema:"the latest runs of the job, most recent first; a run just started with run_job shows a moment later"`
+	Latest *runDetail   `json:"latest,omitempty" jsonschema:"what the most recent run is doing"`
 }
 
 type runSummary struct {
@@ -61,7 +60,7 @@ func getRunStatus(jobReader *jobs.Reader) mcp.ToolHandlerFor[getRunStatusInput, 
 		if err != nil {
 			return nil, getRunStatusOutput{}, err
 		}
-		out := getRunStatusOutput{Starting: jobReader.Starting(input.JobId, runs), Runs: []runSummary{}}
+		out := getRunStatusOutput{Runs: []runSummary{}}
 		for _, run := range runs[:min(len(runs), runsShown)] {
 			summary := runSummary{
 				RunId:     run.GetId(),

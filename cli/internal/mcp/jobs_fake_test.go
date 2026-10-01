@@ -3,6 +3,7 @@ package mcp_server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -256,7 +257,11 @@ func (f *fakeJobService) CreateJobRun(
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.triggered = append(f.triggered, req.Msg.GetJobId())
-	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{}), nil
+	// The run is named at once, and shows among the job's runs only when start says so.
+	return connect.NewResponse(&mgmtv1alpha1.CreateJobRunResponse{JobRun: &mgmtv1alpha1.JobRun{
+		Id:    fmt.Sprintf("run-%d", len(f.triggered)),
+		JobId: req.Msg.GetJobId(),
+	}}), nil
 }
 
 // seen returns what the server created, changed and triggered so far.

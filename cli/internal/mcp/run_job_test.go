@@ -26,7 +26,8 @@ func Test_RunJob(t *testing.T) {
 				connections: &fakeConnectionService{}, data: &fakeDataService{}, jobs: jobService,
 			}, somebody.client(), protocolVersion)
 
-			callTool(t, session, "run_job", runShop)
+			started := callTool(t, session, "run_job", runShop)
+			require.Equal(t, "run-1", started.StructuredContent.(map[string]any)["run_id"], "the run started is named")
 			jobService.start(failedRun("run-1", time.Now(), mgmtv1alpha1.JobRunStatus_JOB_RUN_STATUS_COMPLETE))
 			callTool(t, session, "run_job", runShop)
 
@@ -79,7 +80,7 @@ func Test_RunJob(t *testing.T) {
 		require.Empty(t, triggered)
 	})
 
-	t.Run("refuses while the run it triggered has not shown, before asking", func(t *testing.T) {
+	t.Run("refuses while the run it started has not shown, before asking", func(t *testing.T) {
 		t.Parallel()
 		jobService := newFakeJobService()
 		somebody := &person{answer: "accept"}
@@ -87,15 +88,16 @@ func Test_RunJob(t *testing.T) {
 		callTool(t, session, "run_job", runShop)
 
 		message := callToolError(t, session, "run_job", runShop)
-		require.Contains(t, message, "was just triggered and has not started yet")
+		require.Contains(t, message, "the run run-1 of this job was just started and does not show among its runs yet")
 		require.Len(t, somebody.asked(), 1, "the second call asks nothing")
-		status := callTool(t, session, "get_run_status", runShop)
-		require.Equal(t, true, status.StructuredContent.(map[string]any)["starting"])
+
+		// Another run showing is not the one started here: the job is still held.
+		jobService.start(failedRun("run-0", time.Now(), mgmtv1alpha1.JobRunStatus_JOB_RUN_STATUS_COMPLETE))
+		message = callToolError(t, session, "run_job", runShop)
+		require.Contains(t, message, "the run run-1 of this job was just started")
 
 		// The run shows, and ends: the job can run again.
 		jobService.start(failedRun("run-1", time.Now(), mgmtv1alpha1.JobRunStatus_JOB_RUN_STATUS_COMPLETE))
-		status = callTool(t, session, "get_run_status", runShop)
-		require.Nil(t, status.StructuredContent.(map[string]any)["starting"])
 		callTool(t, session, "run_job", runShop)
 		_, _, triggered := jobService.seen()
 		require.Len(t, triggered, 2)

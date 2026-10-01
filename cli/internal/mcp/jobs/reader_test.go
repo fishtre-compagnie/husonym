@@ -97,31 +97,39 @@ func Test_Reader_RunsComeWithoutFailureMessages(t *testing.T) {
 	}
 }
 
-// A trigger the scheduler skipped never shows: past the timeout, it no longer holds the job.
+// A run removed before it showed never does: past the timeout, it no longer holds the job.
 func Test_Reader_StartingIsGivenUp(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
-		"job": {before: map[string]bool{"old": true}, at: now},
+		"job": {runId: "new", at: now},
 	}}
 	old := []*mgmtv1alpha1.JobRun{{Id: "old"}}
 
-	require.True(t, reader.Starting("job", old))
+	runId, ok := reader.starting("job", old)
+	require.True(t, ok)
+	require.Equal(t, "new", runId)
 	now = now.Add(launchTimeout + time.Second)
-	require.False(t, reader.Starting("job", old))
+	_, ok = reader.starting("job", old)
+	require.False(t, ok)
 	require.Empty(t, reader.launched)
 }
 
-// The run started here is the first one the job did not have before.
+// The run started here is told by its id: another run of the job showing does not stand for it.
 func Test_Reader_StartingEndsWhenTheRunShows(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	reader := &Reader{now: func() time.Time { return now }, launched: map[string]launch{
-		"job": {before: map[string]bool{"old": true}, at: now},
+		"job": {runId: "new", at: now},
 	}}
 
-	require.False(t, reader.Starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "new"}}))
-	require.False(t, reader.Starting("other", nil))
+	_, ok := reader.starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "other"}})
+	require.True(t, ok)
+	_, ok = reader.starting("job", []*mgmtv1alpha1.JobRun{{Id: "old"}, {Id: "new"}})
+	require.False(t, ok)
+	require.Empty(t, reader.launched)
+	_, ok = reader.starting("other", nil)
+	require.False(t, ok)
 }
 
 // A driver's error may quote where and how it connects. The API writes its own words under

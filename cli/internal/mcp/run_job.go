@@ -15,6 +15,7 @@ type runJobInput struct {
 
 type runJobOutput struct {
 	JobId string `json:"job_id"`
+	RunId string `json:"run_id" jsonschema:"the run started; it shows among the runs of the job a moment later"`
 	Next  string `json:"next"`
 }
 
@@ -36,7 +37,7 @@ func runJob(jobReader *jobs.Reader) mcp.ToolHandlerFor[runJobInput, runJobOutput
 		req *mcp.CallToolRequest,
 		input runJobInput,
 	) (*mcp.CallToolResult, runJobOutput, error) {
-		questions, err := jobReader.Run(ctx, req, input.JobId)
+		runId, questions, err := jobReader.Run(ctx, req, input.JobId)
 		switch {
 		case errors.Is(err, jobs.ErrDeclined), errors.Is(err, jobs.ErrCannotAsk):
 			return nil, runJobOutput{}, err
@@ -47,8 +48,8 @@ func runJob(jobReader *jobs.Reader) mcp.ToolHandlerFor[runJobInput, runJobOutput
 		}
 		return nil, runJobOutput{
 			JobId: input.JobId,
-			// The API does not say which run it started: it is the next one to show.
-			Next: "the run is starting: get_run_status with this job_id follows it",
+			RunId: runId,
+			Next:  "the run is starting: get_run_status with this job_id follows it",
 		}, nil
 	}
 }
