@@ -373,9 +373,16 @@ func Test_runSync_ACriticalErrorEndsTheSyncAndIsTold(t *testing.T) {
 	case err := <-done:
 		require.ErrorContains(t, err, "unable to finish syncing data")
 		require.ErrorContains(t, err, `duplicate key value violates unique constraint "users_pkey"`)
-		require.NotContains(t, err.Error(), "later_pkey", "the group after the refused row was synced")
 	case <-time.After(20 * time.Second):
 		require.FailNow(t, "the sync does not end on a critical error")
+	}
+	// The group after it was not synced: its own refused row would have signaled too.
+	for range cap(stop) {
+		select {
+		case signal := <-stop:
+			require.NotContains(t, signal.Error(), "later_pkey", "the group after the refused row was synced")
+		default:
+		}
 	}
 }
 
@@ -411,7 +418,7 @@ func Test_model_ACriticalErrorStopsTheSync(t *testing.T) {
 	critical := errors.New("duplicate key value violates unique constraint")
 
 	_, cmd := m.Update(syncStoppedMsg{err: critical})
-	require.NotNil(t, cmd)
+	require.IsType(t, tea.QuitMsg{}, cmd(), "the sync ends on a critical error")
 	require.ErrorIs(t, m.ctx.Err(), context.Canceled)
 
 	m.Update(syncFailedMsg{err: errors.New("unable to run benthos stream: the sink is closed")})
@@ -429,18 +436,62 @@ func Test_model_TheFirstFailureIsTheCause(t *testing.T) {
 	require.ErrorIs(t, m.outcome(nil), failure)
 }
 
-// The watch of the critical errors ends with the sync.
+// The watch tells the program of a critical error, and returns it: a program that has ended
+// is told nothing. It ends with the sync.
 func Test_model_watchStop(t *testing.T) {
-	stop := make(chan error, 1)
-	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
-	m.stop = stop
-
+	logger := testutil.GetTestLogger(t)
 	critical := errors.New("violates not-null constraint")
-	stop <- critical
-	require.Equal(t, syncStoppedMsg{err: critical}, m.watchStop()())
 
-	m.cancel()
-	require.Nil(t, m.watchStop()())
+	t.Run("a critical error is told and returned", func(t *testing.T) {
+		stop := make(chan error, 1)
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = stop
+		told := make(chan tea.Msg, 1)
+
+		stop <- critical
+		heard := m.watchStop(func(msg tea.Msg) { told <- msg })
+
+		require.Equal(t, critical, <-heard)
+		require.Equal(t, syncStoppedMsg{err: critical}, <-told)
+	})
+
+	t.Run("a program that ended before it was told has failed all the same", func(t *testing.T) {
+		stop := make(chan error, 1)
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = stop
+		m.done = true
+
+		stop <- critical
+		heard := m.watchStop(func(tea.Msg) {})
+		// The watch has taken the error off the channel: it is the only one to hold it.
+		require.Eventually(t, func() bool { return len(stop) == 0 }, time.Second, time.Millisecond)
+		m.finish(heard, logger)
+
+		require.ErrorIs(t, m.outcome(nil), critical)
+	})
+
+	t.Run("the watch ends with the sync", func(t *testing.T) {
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = make(chan error, 1)
+		m.done = true
+
+		heard := m.watchStop(func(tea.Msg) { require.Fail(t, "nothing to tell") })
+		m.finish(heard, logger)
+
+		_, open := <-heard
+		require.False(t, open)
+		require.NoError(t, m.outcome(nil))
+	})
+}
+
+// What failed first stays the cause, though a critical error is heard late.
+func Test_model_outcome_ALateCriticalErrorDoesNotHideTheCause(t *testing.T) {
+	stop := make(chan error, 1)
+	stop <- errors.New("violates not-null constraint")
+	failure := errors.New("the table failed")
+	m := &model{err: failure, stop: stop}
+
+	require.ErrorIs(t, m.outcome(nil), failure)
 }
 
 // A critical error the program did not hear before its last table ended is told all the same.

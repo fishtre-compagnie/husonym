@@ -127,18 +127,35 @@ func newModel(
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(m.syncConfigs(m.ctx, m.groupedConfigs[m.index]), m.spinner.Tick, m.watchStop())
+	return tea.Batch(m.syncConfigs(m.ctx, m.groupedConfigs[m.index]), m.spinner.Tick)
 }
 
-// watchStop waits for a critical error of a stream, until the sync ends.
-func (m *model) watchStop() tea.Cmd {
-	return func() tea.Msg {
+// watchStop waits for a critical error of a stream, until the sync ends, and tells the program
+// of it. It returns what it heard, on a channel closed once the watch has ended: a program that
+// ends meanwhile is told nothing, and the error is no less the reason the sync failed.
+func (m *model) watchStop(tell func(tea.Msg)) <-chan error {
+	heard := make(chan error, 1)
+	go func() {
+		defer close(heard)
 		select {
 		case err := <-m.stop:
-			return syncStoppedMsg{err: err}
+			heard <- err
+			tell(syncStoppedMsg{err: err})
 		case <-m.ctx.Done():
-			return nil
 		}
+	}()
+	return heard
+}
+
+// finish stops the tables still being synced and waits for them, then for the watch of the
+// critical errors: what it heard is a failure of the sync, told to the program or not.
+func (m *model) finish(heard <-chan error, logger *slog.Logger) {
+	m.cancel()
+	if !m.inFlight.end(m.endWait) {
+		logger.Warn("the tables being synced did not stop in time")
+	}
+	if stopErr, ok := <-heard; ok {
+		m.fail(stopErr)
 	}
 }
 
@@ -343,11 +360,9 @@ const syncEndWait = 5 * time.Second
 // synced are stopped and waited for: once the sync has returned, no write is started. A write
 // under way when its table was stopped may still complete.
 func runSyncProgram(m *model, program *tea.Program, logger *slog.Logger) error {
+	heard := m.watchStop(program.Send)
 	_, err := program.Run()
-	m.cancel()
-	if !m.inFlight.end(m.endWait) {
-		logger.Warn("the tables being synced did not stop in time")
-	}
+	m.finish(heard, logger)
 	if err != nil && !errors.Is(err, tea.ErrInterrupted) {
 		logger.Error(fmt.Sprintf("Error syncing data: %v", err))
 	}
@@ -356,8 +371,8 @@ func runSyncProgram(m *model, program *tea.Program, logger *slog.Logger) error {
 
 // outcome tells how the sync ended, from how its program did.
 func (m *model) outcome(programErr error) error {
-	// A critical error the program did not hear before it ended: the stream acknowledges the
-	// row it was refused, and the last table may have ended as if it had been written.
+	// A critical error the program was not told of before it ended: the stream acknowledges
+	// the row it was refused, and the last table may have ended as if it had been written.
 	select {
 	case stopErr := <-m.stop:
 		m.fail(stopErr)
