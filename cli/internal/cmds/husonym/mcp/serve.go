@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/cli/internal/auth"
 	cli_logger "github.com/fishtre-compagnie/husonym/cli/internal/logger"
@@ -57,22 +58,29 @@ func serve(ctx context.Context, apiKey string, debugMode bool) error {
 	}
 	husonymurl := auth.GetHusonymUrl()
 
-	userclient := mgmtv1alpha1connect.NewUserAccountServiceClient(httpclient, husonymurl)
+	limited := connect.WithInterceptors(apiTimeLimits().interceptor())
+	userclient := mgmtv1alpha1connect.NewUserAccountServiceClient(httpclient, husonymurl, limited)
 	accountId, err := auth.ResolveAccountIdFromFlag(ctx, userclient, nil, &apiKey, logger)
 	if err != nil {
 		return err
 	}
 
-	connections := maskedconn.New(httpclient, husonymurl)
-	jobReader := jobs.New(httpclient, husonymurl, accountId, connections)
-	server := mcp_server.New(mcp_server.Options{
+	options := readers(httpclient, husonymurl, accountId, limited)
+	options.Version = version.Get().GitVersion
+	options.Logger = logger
+	return mcp_server.New(options).Run(ctx, &mcp.StdioTransport{})
+}
+
+// readers builds the readers the server reaches the API through, for one account. Each makes
+// its calls with the options given: the time limits of the calls among them.
+func readers(httpclient connect.HTTPClient, url, accountId string, opts ...connect.ClientOption) mcp_server.Options {
+	connections := maskedconn.New(httpclient, url, opts...)
+	jobReader := jobs.New(httpclient, url, accountId, connections, opts...)
+	return mcp_server.Options{
 		Connections: connections,
-		Data:        novalues.New(httpclient, husonymurl, accountId),
-		Values:      rowvalues.New(httpclient, husonymurl, accountId, connections, jobReader),
+		Data:        novalues.New(httpclient, url, accountId, opts...),
+		Values:      rowvalues.New(httpclient, url, accountId, connections, jobReader, opts...),
 		Jobs:        jobReader,
 		AccountId:   accountId,
-		Version:     version.Get().GitVersion,
-		Logger:      logger,
-	})
-	return server.Run(ctx, &mcp.StdioTransport{})
+	}
 }

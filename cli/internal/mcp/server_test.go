@@ -373,6 +373,9 @@ func connectClientWith(
 	return connectAPI(t, fakeAPI{connections: connections, data: data, jobs: &fakeJobService{}}, clientOptions, protocolVersion)
 }
 
+// progressEveryInTests is how often the servers of the tests tell of a call still worked on.
+const progressEveryInTests = 10 * time.Millisecond
+
 // fakeAPI is the part of the API the MCP server calls.
 type fakeAPI struct {
 	connections *fakeConnectionService
@@ -395,14 +398,14 @@ func connectAPI(t *testing.T, fakes fakeAPI, clientOptions *mcp.ClientOptions, p
 
 	connections := maskedconn.New(api.Client(), api.URL)
 	jobReader := jobs.New(api.Client(), api.URL, accountId, connections)
-	server := New(Options{
+	server := newServer(Options{
 		Connections: connections,
 		Data:        novalues.New(api.Client(), api.URL, accountId),
 		Values:      rowvalues.New(api.Client(), api.URL, accountId, connections, jobReader),
 		Jobs:        jobReader,
 		AccountId:   accountId,
 		Version:     "test",
-	})
+	}, progressEveryInTests)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	serverSession, err := server.Connect(ctx, serverTransport, nil)
 	require.NoError(t, err)
