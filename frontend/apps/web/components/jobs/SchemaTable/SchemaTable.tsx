@@ -109,6 +109,8 @@ interface ResolvedPii {
   confidence: PiiConfidence;
   method: PiiDetectionMethod;
   evidence: string;
+  // true si le scan de contenu n'a pas pu analyser la colonne.
+  contentNotAnalyzed: boolean;
 }
 
 export function SchemaTable(props: Props): ReactElement {
@@ -165,6 +167,7 @@ export function SchemaTable(props: Props): ReactElement {
         confidence: v.piiConfidence,
         method: v.piiDetectionMethod,
         evidence: v.piiEvidence,
+        contentNotAnalyzed: v.contentNotAnalyzed,
       };
     }
     return {
@@ -175,6 +178,7 @@ export function SchemaTable(props: Props): ReactElement {
       confidence: constraintHandler.getPiiConfidence(colKey),
       method: constraintHandler.getPiiDetectionMethod(colKey),
       evidence: constraintHandler.getPiiEvidence(colKey),
+      contentNotAnalyzed: false,
     };
   };
 
@@ -373,6 +377,17 @@ export function SchemaTable(props: Props): ReactElement {
             (failed.length > 3 ? '…' : '')
         );
       }
+      // De même les colonnes que l'analyse de contenu n'a pas pu traiter : elles
+      // portent un badge, et sont annoncées, pour ne pas passer pour des colonnes
+      // sans donnée personnelle.
+      const notAnalyzed = Object.values(next).filter(
+        (v) => v.contentNotAnalyzed
+      ).length;
+      if (notAnalyzed > 0) {
+        toast.warning(
+          `${notAnalyzed} column(s) could not be analyzed: scan again, or review them yourself.`
+        );
+      }
 
       // Les détections prouvées par une clé de contrôle (NIR mod 97, IBAN,
       // Luhn...) sont appliquées comme celles issues du nom. Celles qui reposent
@@ -393,7 +408,10 @@ export function SchemaTable(props: Props): ReactElement {
         return;
       }
       if (confirmed === 0 && toReview === 0) {
-        toast.success('No personal data found in the sampled content.');
+        // Rien trouvé ne vaut que pour ce qui a été analysé.
+        if (notAnalyzed === 0) {
+          toast.success('No personal data found in the sampled content.');
+        }
       } else {
         const parts: string[] = [];
         if (confirmed > 0) {
@@ -535,6 +553,7 @@ export function SchemaTable(props: Props): ReactElement {
             piiConfidence: pii.confidence,
             piiDetectionMethod: pii.method,
             piiEvidence: pii.evidence,
+            contentNotAnalyzed: pii.contentNotAnalyzed,
           };
         })(),
       };

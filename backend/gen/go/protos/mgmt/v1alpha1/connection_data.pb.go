@@ -3159,9 +3159,13 @@ type ColumnPiiVerdict struct {
 	// How the verdict was reached.
 	PiiDetectionMethod PiiDetectionMethod `protobuf:"varint,8,opt,name=pii_detection_method,json=piiDetectionMethod,proto3,enum=mgmt.v1alpha1.PiiDetectionMethod" json:"pii_detection_method,omitempty"`
 	// The proof, in words, for the tooltip.
-	PiiEvidence   string `protobuf:"bytes,9,opt,name=pii_evidence,json=piiEvidence,proto3" json:"pii_evidence,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PiiEvidence string `protobuf:"bytes,9,opt,name=pii_evidence,json=piiEvidence,proto3" json:"pii_evidence,omitempty"`
+	// True when the content of the column could not be analyzed: the analysis service failed
+	// on it, or did not answer. The verdict then rests on the name of the column alone, and
+	// says nothing of what it holds.
+	ContentNotAnalyzed bool `protobuf:"varint,10,opt,name=content_not_analyzed,json=contentNotAnalyzed,proto3" json:"content_not_analyzed,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ColumnPiiVerdict) Reset() {
@@ -3255,6 +3259,13 @@ func (x *ColumnPiiVerdict) GetPiiEvidence() string {
 		return x.PiiEvidence
 	}
 	return ""
+}
+
+func (x *ColumnPiiVerdict) GetContentNotAnalyzed() bool {
+	if x != nil {
+		return x.ContentNotAnalyzed
+	}
+	return false
 }
 
 type DetectPiiInConnectionDataResponse struct {
@@ -4169,7 +4180,7 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	" \x01(\tR\fdataCategory\x12C\n" +
 	"\x0epii_confidence\x18\v \x01(\x0e2\x1c.mgmt.v1alpha1.PiiConfidenceR\rpiiConfidence\x12S\n" +
 	"\x14pii_detection_method\x18\f \x01(\x0e2!.mgmt.v1alpha1.PiiDetectionMethodR\x12piiDetectionMethod\x12!\n" +
-	"\fpii_evidence\x18\r \x01(\tR\vpiiEvidence\"\xc1\x03\n" +
+	"\fpii_evidence\x18\r \x01(\tR\vpiiEvidence\"\xf3\x03\n" +
 	"\x10ColumnPiiVerdict\x12\x16\n" +
 	"\x06schema\x18\x01 \x01(\tR\x06schema\x12\x14\n" +
 	"\x05table\x18\x02 \x01(\tR\x05table\x12\x16\n" +
@@ -4179,7 +4190,9 @@ const file_mgmt_v1alpha1_connection_data_proto_rawDesc = "" +
 	"\x1csuggested_transformer_source\x18\x06 \x01(\x0e2 .mgmt.v1alpha1.TransformerSourceR\x1asuggestedTransformerSource\x12C\n" +
 	"\x0epii_confidence\x18\a \x01(\x0e2\x1c.mgmt.v1alpha1.PiiConfidenceR\rpiiConfidence\x12S\n" +
 	"\x14pii_detection_method\x18\b \x01(\x0e2!.mgmt.v1alpha1.PiiDetectionMethodR\x12piiDetectionMethod\x12!\n" +
-	"\fpii_evidence\x18\t \x01(\tR\vpiiEvidence\"\xa3\x01\n" +
+	"\fpii_evidence\x18\t \x01(\tR\vpiiEvidence\x120\n" +
+	"\x14content_not_analyzed\x18\n" +
+	" \x01(\bR\x12contentNotAnalyzed\"\xa3\x01\n" +
 	"!DetectPiiInConnectionDataResponse\x12A\n" +
 	"\n" +
 	"detections\x18\x01 \x03(\v2!.mgmt.v1alpha1.ColumnPiiDetectionR\n" +

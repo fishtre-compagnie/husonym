@@ -3,6 +3,7 @@ package presidio
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,5 +69,25 @@ func TestNewClient_WaitsForALimitedTime(t *testing.T) {
 	}
 	if analyzeTimeout <= 0 {
 		t.Fatal("the default client waits without end")
+	}
+}
+
+// An analyzer that cannot be reached is told apart from one that answers with an error: the
+// first will not answer the next text either, the second may.
+func TestClientAnalyze_TellsNoAnswerFromARefusal(t *testing.T) {
+	refusing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unsupported language", http.StatusBadRequest)
+	}))
+	defer refusing.Close()
+	_, err := NewClient(refusing.URL).Analyze(context.Background(), AnalyzeRequest{Text: "x", Language: "zz"})
+	if err == nil || errors.Is(err, ErrNoAnswer) {
+		t.Fatalf("a refusal is told as %v", err)
+	}
+
+	gone := httptest.NewServer(http.NotFoundHandler())
+	gone.Close()
+	_, err = NewClient(gone.URL).Analyze(context.Background(), AnalyzeRequest{Text: "x", Language: "en"})
+	if !errors.Is(err, ErrNoAnswer) {
+		t.Fatalf("an analyzer that cannot be reached is told as %v", err)
 	}
 }

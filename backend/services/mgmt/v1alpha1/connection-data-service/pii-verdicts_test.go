@@ -30,7 +30,7 @@ func Test_verdicts(t *testing.T) {
 
 	t.Run("une colonne par colonne de la table, le nom et le contenu réconciliés", func(t *testing.T) {
 		tableColumns := []*mgmtv1alpha1.DatabaseColumn{column("id", "uuid"), column("email", "text"), column("note", "text")}
-		got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note})
+		got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note}, nil)
 
 		// One verdict per column, in the table's order: note is in the schema and in the
 		// detections, and must not come back twice.
@@ -50,7 +50,7 @@ func Test_verdicts(t *testing.T) {
 
 	t.Run("seulement les colonnes demandées", func(t *testing.T) {
 		tableColumns := []*mgmtv1alpha1.DatabaseColumn{column("id", "uuid"), column("email", "text"), column("note", "text")}
-		got := verdicts("public", "users", tableColumns, map[string]struct{}{"note": {}}, []*mgmtv1alpha1.ColumnPiiDetection{note})
+		got := verdicts("public", "users", tableColumns, map[string]struct{}{"note": {}}, []*mgmtv1alpha1.ColumnPiiDetection{note}, nil)
 
 		require.Equal(t, map[string]mgmtv1alpha1.PiiDetectionMethod{
 			"note": mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
@@ -64,7 +64,7 @@ func Test_verdicts(t *testing.T) {
 			"schéma vide":               {},
 			"colonne absente du schéma": {column("id", "uuid")},
 		} {
-			got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note})
+			got := verdicts("public", "users", tableColumns, nil, []*mgmtv1alpha1.ColumnPiiDetection{note}, nil)
 			require.Equal(t,
 				mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
 				summarize(got)["note"], name)
@@ -78,7 +78,7 @@ func Test_verdicts(t *testing.T) {
 			PiiConfidence:      mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
 			PiiDetectionMethod: mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
 		}
-		got := verdicts("public", "users", nil, nil, []*mgmtv1alpha1.ColumnPiiDetection{note, email})
+		got := verdicts("public", "users", nil, nil, []*mgmtv1alpha1.ColumnPiiDetection{note, email}, nil)
 
 		// Le nom se lit encore sans le type : email l'emporte par son nom.
 		require.Equal(t, map[string]mgmtv1alpha1.PiiDetectionMethod{

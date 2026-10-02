@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"slices"
@@ -171,6 +172,10 @@ func (s *Service) DetectPiiInConnectionData(
 		}
 	}
 
+	content := &contentAnalysis{
+		analyze: s.analyze, threshold: threshold, language: language, logger: logger,
+		notAnalyzed: map[string]struct{}{},
+	}
 	detections := make([]*mgmtv1alpha1.ColumnPiiDetection, 0, len(colOrder))
 	for _, col := range colOrder {
 		values := colValues[col]
@@ -245,14 +250,11 @@ func (s *Service) DetectPiiInConnectionData(
 		// ÉTAGE 3 — Presidio en dernier recours, sur ce qui n'est pas décidable
 		// autrement : noms de personnes, lieux, texte libre. Résultat toujours
 		// marqué NEEDS_REVIEW, un modèle statistique ne prouve rien.
-		entity, avgScore, matchCount, ok, err := s.analyzeColumn(ctx, values, threshold, language)
-		if err != nil {
-			// A column the analyzer could not read is not told empty of personal data: the
-			// scan of the table fails. Why is logged here, and not told: the error of the
-			// analyzer can quote where it is reached, and the value it read.
-			logger.Warn(fmt.Sprintf("presidio analyze failed on column %q: %v", col, err))
-			return nil, analysisUnavailable(req.Msg.GetSchema(), req.Msg.GetTable())
+		// A caller that gave up is not answered a scan cut short as if it were whole.
+		if err := ctx.Err(); err != nil {
+			return nil, err
 		}
+		entity, avgScore, matchCount, ok := content.column(ctx, col, values)
 		if !ok {
 			continue
 		}
@@ -295,7 +297,9 @@ func (s *Service) DetectPiiInConnectionData(
 
 	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
 		Detections: detections,
-		Verdicts:   verdicts(req.Msg.GetSchema(), req.Msg.GetTable(), tableColumns, wanted, detections),
+		Verdicts: verdicts(
+			req.Msg.GetSchema(), req.Msg.GetTable(), tableColumns, wanted, detections, content.notAnalyzed,
+		),
 	}), nil
 }
 
@@ -304,11 +308,15 @@ func (s *Service) DetectPiiInConnectionData(
 // the schema can come back empty or fail, and a sampled column can be missing from it; a
 // detection with no verdict would vanish from the screen while the scan still counts it. Such a
 // column's name is still read, only without its type.
+//
+// A column whose content could not be analyzed is told so: its verdict, from its name alone,
+// says nothing of what it holds.
 func verdicts(
 	schema, table string,
 	tableColumns []*mgmtv1alpha1.DatabaseColumn,
 	wanted map[string]struct{},
 	detections []*mgmtv1alpha1.ColumnPiiDetection,
+	notAnalyzed map[string]struct{},
 ) []*mgmtv1alpha1.ColumnPiiVerdict {
 	byColumn := make(map[string]*mgmtv1alpha1.ColumnPiiDetection, len(detections))
 	for _, detection := range detections {
@@ -327,6 +335,11 @@ func verdicts(
 			})
 		}
 	}
+	for _, column := range slices.Sorted(maps.Keys(notAnalyzed)) {
+		if !inSchema[column] {
+			columns = append(columns, &mgmtv1alpha1.DatabaseColumn{Schema: schema, Table: table, Column: column})
+		}
+	}
 
 	out := make([]*mgmtv1alpha1.ColumnPiiVerdict, 0, len(columns))
 	for _, column := range columns {
@@ -338,18 +351,61 @@ func verdicts(
 		// A copy: the name-based detection is written onto the column, which is not ours.
 		named := proto.CloneOf(column)
 		piidetect.Enrich([]*mgmtv1alpha1.DatabaseColumn{named})
-		out = append(out, piidetect.Reconcile(named, byColumn[column.GetColumn()]))
+		verdict := piidetect.Reconcile(named, byColumn[column.GetColumn()])
+		_, verdict.ContentNotAnalyzed = notAnalyzed[column.GetColumn()]
+		out = append(out, verdict)
 	}
 	return out
+}
+
+// contentAnalysis analyzes the content of the columns of one table, and keeps which of them
+// it could not analyze: a column the analyzer failed on is not one without personal data.
+type contentAnalysis struct {
+	analyze   presidio.Analyzer
+	threshold float64
+	language  string
+	logger    interface{ Warn(string, ...any) }
+
+	// silent says the analyzer did not answer: it is not asked again for this table, whose
+	// other columns it would each be waited for.
+	silent bool
+	// notAnalyzed holds the columns whose content could not be analyzed.
+	notAnalyzed map[string]struct{}
+}
+
+// column tells what the analyzer finds in the values of a column: the dominant entity, its
+// mean score and how many values carry it; ok is false when it finds none, and when the
+// column could not be analyzed, which is kept.
+func (a *contentAnalysis) column(
+	ctx context.Context,
+	name string,
+	values []string,
+) (entity string, avgScore float64, matchCount int, ok bool) {
+	if a.silent {
+		a.notAnalyzed[name] = struct{}{}
+		return "", 0, 0, false
+	}
+	entity, avgScore, matchCount, ok, err := analyzeColumn(ctx, a.analyze, values, a.threshold, a.language)
+	if err != nil {
+		// Why is logged, and not told: the error of the analyzer can quote where it is
+		// reached, and the value it read.
+		a.logger.Warn(fmt.Sprintf("presidio analyze failed on column %q: %v", name, err))
+		a.notAnalyzed[name] = struct{}{}
+		a.silent = errors.Is(err, presidio.ErrNoAnswer)
+		return "", 0, 0, false
+	}
+	return entity, avgScore, matchCount, ok
 }
 
 // analyzeColumn examines each value on its own (NER recognizes an isolated
 // name/place better than one buried in a list) and returns the dominant entity
 // among the mappable ones, its mean score, and how many values carry it. It fails when the
 // analyzer does, at the first value: a value left out would count as one without personal
-// data.
-func (s *Service) analyzeColumn(
+// data. A value the analyzer refuses is asked once more, a refusal that passes being no
+// reason to give the column up; an analyzer that does not answer is not asked again.
+func analyzeColumn(
 	ctx context.Context,
+	analyzer presidio.Analyzer,
 	values []string,
 	threshold float64,
 	language string,
@@ -366,11 +422,11 @@ func (s *Service) analyzeColumn(
 			continue
 		}
 		analyzed++
-		results, err := s.analyze.Analyze(ctx, presidio.AnalyzeRequest{
-			Text:           text,
-			Language:       language,
-			ScoreThreshold: threshold,
-		})
+		request := presidio.AnalyzeRequest{Text: text, Language: language, ScoreThreshold: threshold}
+		results, err := analyzer.Analyze(ctx, request)
+		if err != nil && !errors.Is(err, presidio.ErrNoAnswer) {
+			results, err = analyzer.Analyze(ctx, request)
+		}
 		if err != nil {
 			return "", 0, 0, false, err
 		}
@@ -414,15 +470,6 @@ func (s *Service) analyzeColumn(
 	}
 	a := byEntity[best]
 	return best, a.scoreSum / float64(a.count), a.count, true, nil
-}
-
-// analysisUnavailable is the error of a scan whose content analysis did not answer, or failed.
-func analysisUnavailable(schema, table string) error {
-	return connect.NewError(connect.CodeUnavailable, fmt.Errorf(
-		"l'analyse de contenu de %s.%s n'a pas abouti : le service d'analyse (Presidio) n'a pas répondu "+
-			"ou a échoué. Relancez le scan ; si l'échec persiste, vérifiez ce service",
-		schema, table,
-	))
 }
 
 func valueToText(v any) string {

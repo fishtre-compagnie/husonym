@@ -148,6 +148,8 @@ type fakeDataService struct {
 	scanned     []string
 	previews    []*mgmtv1alpha1.PreviewColumnTransformerRequest
 	scanFailure map[string]error
+	// notAnalyzed holds, by table, the columns whose content the scan could not analyze.
+	notAnalyzed map[string][]string
 }
 
 // fakeTransformersService knows a few system transformers, with their default configuration.
@@ -307,7 +309,9 @@ func (f *fakeDataService) DetectPiiInConnectionData(
 	var verdicts []*mgmtv1alpha1.ColumnPiiVerdict
 	for _, column := range shopColumns() {
 		if tableKey(column.GetSchema(), column.GetTable()) == table {
-			verdicts = append(verdicts, piidetect.Reconcile(column, byColumn[column.GetColumn()]))
+			verdict := piidetect.Reconcile(column, byColumn[column.GetColumn()])
+			verdict.ContentNotAnalyzed = slices.Contains(f.notAnalyzed[table], column.GetColumn())
+			verdicts = append(verdicts, verdict)
 		}
 	}
 	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{

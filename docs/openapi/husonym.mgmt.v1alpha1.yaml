@@ -10511,6 +10511,14 @@ components:
           type: string
           title: pii_evidence
           description: The proof, in words, for the tooltip.
+        contentNotAnalyzed:
+          type: boolean
+          title: content_not_analyzed
+          description: >-
+            True when the content of the column could not be analyzed: the
+            analysis service failed
+             on it, or did not answer. The verdict then rests on the name of the column alone, and
+             says nothing of what it holds.
       title: ColumnPiiVerdict
       additionalProperties: false
       description: >-

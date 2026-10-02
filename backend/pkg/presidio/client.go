@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -36,6 +37,11 @@ type AnalyzeResult struct {
 	End        int     `json:"end"`
 	Score      float64 `json:"score"`
 }
+
+// ErrNoAnswer is the error of an analysis the analyzer did not answer: it could not be
+// reached, or took too long. An analyzer that answers with an error has one of its own: it
+// was asked, and refused this text.
+var ErrNoAnswer = errors.New("the analyzer did not answer")
 
 // Analyzer est l'abstraction du service d'analyse (facilite les tests/mocks).
 type Analyzer interface {
@@ -113,7 +119,7 @@ func (c *Client) Analyze(ctx context.Context, req AnalyzeRequest) ([]AnalyzeResu
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("presidio analyze request failed: %w", err)
+		return nil, fmt.Errorf("presidio analyze request failed: %w", errors.Join(ErrNoAnswer, err))
 	}
 	defer resp.Body.Close()
 
