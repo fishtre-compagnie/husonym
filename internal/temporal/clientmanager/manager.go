@@ -232,11 +232,12 @@ func (m *ClientManager) CreateSchedule(
 	if err != nil {
 		return "", err
 	}
+	// Given back however the creation ends: a schedule that is refused must not keep its client.
+	defer closeClient()
 	handle, err := schedclient.Create(ctx, *opts)
 	if err != nil {
 		return "", err
 	}
-	defer closeClient()
 	return handle.GetID(), nil
 }
 
