@@ -451,22 +451,22 @@ func (b *SchemaDifferencesBuilder) buildTableDomainDifferences() {
 				destConstraints[constraint.Name] = constraint
 			}
 
+			// A constraint whose definition changed is replaced: removed, and added anew.
 			for _, constraint := range srcConstraints {
-				if destConstraint, ok := destConstraints[constraint.Name]; ok {
-					if constraint.Definition != destConstraint.Definition {
-						domain.RemovedConstraints = append(
-							domain.RemovedConstraints,
-							constraint.Name,
-						)
-					}
-				} else {
-					domain.NewConstraints[constraint.Name] = constraint.Definition
+				destConstraint, ok := destConstraints[constraint.Name]
+				if ok && constraint.Definition == destConstraint.Definition {
+					continue
 				}
+				if ok {
+					domain.RemovedConstraints = append(domain.RemovedConstraints, constraint.Name)
+				}
+				domain.NewConstraints[constraint.Name] = constraint.Definition
 			}
 
+			// A constraint the source no longer has is removed from the destination.
 			for _, constraint := range destConstraints {
 				if _, ok := srcConstraints[constraint.Name]; !ok {
-					domain.NewConstraints[constraint.Name] = constraint.Definition
+					domain.RemovedConstraints = append(domain.RemovedConstraints, constraint.Name)
 				}
 			}
 

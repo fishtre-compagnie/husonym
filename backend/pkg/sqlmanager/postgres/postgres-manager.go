@@ -346,6 +346,8 @@ func (p *PostgresManager) GetDataTypesByTables(
 			domain := &sqlmanager_shared.DomainDataType{
 				Schema:      row.Schema,
 				Name:        row.Name,
+				IsNullable:  row.IsNullable,
+				Default:     row.Default.String,
 				Constraints: constraints,
 			}
 			domain.Fingerprint = sqlmanager_shared.BuildDomainDataTypeFingerprint(domain)

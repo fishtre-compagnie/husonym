@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/doug-martin/goqu/v9"
@@ -478,19 +480,9 @@ func BuildDomainConstraintStatements(
 	removedConstraints []string,
 ) []string {
 	statements := []string{}
-	for constraint, definition := range newConstraints {
-		statements = append(
-			statements,
-			fmt.Sprintf(
-				"ALTER DOMAIN %q.%q ADD CONSTRAINT %q %s;",
-				schema,
-				domainName,
-				constraint,
-				definition,
-			),
-		)
-	}
-	for _, constraint := range removedConstraints {
+	// The removed constraints first: one whose definition changed is removed, and added anew
+	// under the same name.
+	for _, constraint := range slices.Sorted(slices.Values(removedConstraints)) {
 		statements = append(
 			statements,
 			fmt.Sprintf(
@@ -498,6 +490,18 @@ func BuildDomainConstraintStatements(
 				schema,
 				domainName,
 				constraint,
+			),
+		)
+	}
+	for _, constraint := range slices.Sorted(maps.Keys(newConstraints)) {
+		statements = append(
+			statements,
+			fmt.Sprintf(
+				"ALTER DOMAIN %q.%q ADD CONSTRAINT %q %s;",
+				schema,
+				domainName,
+				constraint,
+				newConstraints[constraint],
 			),
 		)
 	}
@@ -513,11 +517,11 @@ func BuildDropDomainDefaultStatement(schema, domainName string) string {
 }
 
 func BuildUpdateDomainNotNullStatement(schema, domainName string, isNullable bool) string {
-	nullString := "NOT NULL"
+	action := "SET"
 	if isNullable {
-		nullString = "NULL"
+		action = "DROP"
 	}
-	return fmt.Sprintf("ALTER DOMAIN %q.%q SET %s;", schema, domainName, nullString)
+	return fmt.Sprintf("ALTER DOMAIN %q.%q %s NOT NULL;", schema, domainName, action)
 }
 
 type buildTableColRequest struct {

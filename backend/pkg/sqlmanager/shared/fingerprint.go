@@ -162,6 +162,8 @@ func BuildDomainDataTypeFingerprint(domain *DomainDataType) string {
 	return BuildFingerprint(
 		domain.Schema,
 		domain.Name,
+		strconv.FormatBool(domain.IsNullable),
+		domain.Default,
 		strings.Join(constraintStrings, ","),
 	)
 }

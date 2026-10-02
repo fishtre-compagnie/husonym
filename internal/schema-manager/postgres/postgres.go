@@ -429,6 +429,17 @@ func (d *PostgresSchemaManager) BuildSchemaDiffStatements(
 		)
 	}
 
+	// A new domain is created without its default, which may call a function or a sequence
+	// created after it: the default is set here, once both are.
+	for _, domain := range diff.ExistsInSource.Domains {
+		if domain.Default != "" {
+			updateDatatypesStatements = append(
+				updateDatatypesStatements,
+				sqlmanager_postgres.BuildUpdateDomainDefaultStatement(domain.Schema, domain.Name, domain.Default),
+			)
+		}
+	}
+
 	for _, domain := range diff.ExistsInBoth.Different.Domains {
 		statements := sqlmanager_postgres.BuildDomainConstraintStatements(
 			domain.Domain.Schema,

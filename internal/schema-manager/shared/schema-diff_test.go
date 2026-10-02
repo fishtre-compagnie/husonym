@@ -595,3 +595,72 @@ func TestBuildTableEnumDifferences(t *testing.T) {
 	require.Len(t, enumDiff.ChangedValues, 1)
 	require.Equal(t, "inactive", enumDiff.ChangedValues["disabled"])
 }
+
+// A domain is reconciled whole: the constraints the source no longer has are removed, those
+// whose definition changed are replaced, and its default and nullability are compared.
+func Test_buildTableDomainDifferences(t *testing.T) {
+	sourceData := &DatabaseData{
+		Domains: map[string]*sqlmanager_shared.DomainDataType{
+			"public.amount": {
+				Schema: "public", Name: "amount", IsNullable: false, Default: "1",
+				Constraints: []*sqlmanager_shared.DomainConstraint{
+					{Name: "kept", Definition: "CHECK ((VALUE > 0))"},
+					{Name: "changed", Definition: "CHECK ((VALUE < 1000))"},
+					{Name: "added", Definition: "CHECK ((VALUE <> 13))"},
+				},
+			},
+			"public.same": {
+				Schema: "public", Name: "same", IsNullable: true,
+				Constraints: []*sqlmanager_shared.DomainConstraint{{Name: "kept", Definition: "CHECK ((VALUE > 0))"}},
+			},
+			"public.created": {Schema: "public", Name: "created", IsNullable: true},
+		},
+	}
+	destData := &DatabaseData{
+		Domains: map[string]*sqlmanager_shared.DomainDataType{
+			"public.amount": {
+				Schema: "public", Name: "amount", IsNullable: true,
+				Constraints: []*sqlmanager_shared.DomainConstraint{
+					{Name: "kept", Definition: "CHECK ((VALUE > 0))"},
+					{Name: "changed", Definition: "CHECK ((VALUE < 100))"},
+					{Name: "removed", Definition: "CHECK ((VALUE <> 7))"},
+				},
+			},
+			"public.same": {
+				Schema: "public", Name: "same", IsNullable: true,
+				Constraints: []*sqlmanager_shared.DomainConstraint{{Name: "kept", Definition: "CHECK ((VALUE > 0))"}},
+			},
+			"public.dropped": {Schema: "public", Name: "dropped", IsNullable: true},
+		},
+	}
+
+	diff := NewSchemaDifferencesBuilder(
+		[]*sqlmanager_shared.SchemaTable{}, sourceData, destData, findMatchingColumnTest,
+	).Build()
+
+	require.Len(t, diff.ExistsInSource.Domains, 1)
+	require.Equal(t, "created", diff.ExistsInSource.Domains[0].Name)
+	require.Len(t, diff.ExistsInDestination.Domains, 1)
+	require.Equal(t, "dropped", diff.ExistsInDestination.Domains[0].Name)
+
+	domains := map[string]*DomainDiff{}
+	for _, domain := range diff.ExistsInBoth.Different.Domains {
+		domains[domain.Domain.Name] = domain
+	}
+	require.Len(t, domains, 2)
+
+	amount := domains["amount"]
+	require.Equal(t, map[string]string{
+		"changed": "CHECK ((VALUE < 1000))",
+		"added":   "CHECK ((VALUE <> 13))",
+	}, amount.NewConstraints)
+	require.ElementsMatch(t, []string{"changed", "removed"}, amount.RemovedConstraints)
+	require.True(t, amount.IsNullDifferent)
+	require.True(t, amount.IsDefaultDifferent)
+
+	same := domains["same"]
+	require.Empty(t, same.NewConstraints)
+	require.Empty(t, same.RemovedConstraints)
+	require.False(t, same.IsNullDifferent)
+	require.False(t, same.IsDefaultDifferent)
+}
