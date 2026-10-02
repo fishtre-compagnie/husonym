@@ -558,3 +558,54 @@ func Test_runSync_ACriticalErrorStopsATableThatGoesOn(t *testing.T) {
 		require.FailNow(t, "the sync does not stop on a critical error while its table goes on")
 	}
 }
+
+// A group of tables that ends asks the watch whether the sync was stopped meanwhile: the
+// stream acknowledges the row it was refused, and its table ends as if it had been written.
+func Test_model_stoppedMeanwhile(t *testing.T) {
+	logger := testutil.GetTestLogger(t)
+	critical := errors.New("duplicate key value violates unique constraint")
+
+	t.Run("a critical error that waits is the answer, and stops the sync", func(t *testing.T) {
+		stop := make(chan error, 1)
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = stop
+		t.Cleanup(m.cancel)
+
+		// The watch is held where it tells the program: the group gets its answer from the
+		// channel or from the stop, never neither.
+		told := make(chan struct{})
+		t.Cleanup(func() { close(told) })
+		stop <- critical
+		heard := m.watchStop(func(tea.Msg) { <-told })
+
+		switch answer := m.stoppedMeanwhile().(type) {
+		case syncStoppedMsg:
+			require.Equal(t, critical, answer.err)
+		case syncFailedMsg:
+			require.ErrorIs(t, answer.err, context.Canceled, "the watch had stopped the sync already")
+		default:
+			require.Fail(t, "the group was told nothing had stopped the sync", "%T", answer)
+		}
+		require.Equal(t, critical, <-heard)
+	})
+
+	t.Run("nothing stopped the sync", func(t *testing.T) {
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = make(chan error, 1)
+		t.Cleanup(m.cancel)
+		m.watchStop(func(tea.Msg) { require.Fail(t, "nothing to tell") })
+
+		require.Nil(t, m.stoppedMeanwhile())
+		require.Nil(t, m.stoppedMeanwhile(), "the watch goes on answering")
+		require.NoError(t, m.ctx.Err())
+	})
+
+	t.Run("a sync that was quit", func(t *testing.T) {
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.cancel()
+
+		answer, ok := m.stoppedMeanwhile().(syncFailedMsg)
+		require.True(t, ok)
+		require.ErrorIs(t, answer.err, context.Canceled)
+	})
+}

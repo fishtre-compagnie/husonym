@@ -41,8 +41,10 @@ type model struct {
 	cancel   context.CancelFunc
 	inFlight inFlightGroups
 	endWait  time.Duration
-	// stop carries the critical errors of the streams: one stops the sync.
-	stop <-chan error
+	// stop carries the critical errors of the streams: one stops the sync. The watch reads
+	// it, and answers on askStop the groups of tables that ask whether one came.
+	stop    <-chan error
+	askStop chan chan error
 }
 
 // inFlightGroups counts the groups of tables being synced, until the sync ends: a group that
@@ -120,6 +122,7 @@ func newModel(
 		spinner:          s,
 		totalConfigCount: getConfigCount(groupedConfigs),
 		endWait:          syncEndWait,
+		askStop:          make(chan chan error),
 		logger:           logger,
 		outputType:       outputType,
 		benv:             benv,
@@ -135,19 +138,55 @@ func (m *model) Init() tea.Cmd {
 // ends meanwhile is told nothing, and the error is no less the reason the sync failed.
 func (m *model) watchStop(tell func(tea.Msg)) <-chan error {
 	heard := make(chan error, 1)
+	// Stopped here, without waiting for the program: the stream goes on past the row it was
+	// refused, and the tables still queued would start meanwhile.
+	stopOn := func(err error) {
+		heard <- err
+		m.cancel()
+		tell(syncStoppedMsg{err: err})
+	}
 	go func() {
 		defer close(heard)
-		select {
-		case err := <-m.stop:
-			heard <- err
-			// Stopped here, without waiting for the program: the stream goes on past the row
-			// it was refused, and the tables still queued would start meanwhile.
-			m.cancel()
-			tell(syncStoppedMsg{err: err})
-		case <-m.ctx.Done():
+		for {
+			select {
+			case err := <-m.stop:
+				stopOn(err)
+				return
+			case answer := <-m.askStop:
+				// A group of tables has ended, and asks whether one of its streams met a
+				// critical error. The watch alone reads the channel: its answer leaves no
+				// moment where the error is neither waiting there nor known.
+				select {
+				case err := <-m.stop:
+					answer <- err
+					stopOn(err)
+					return
+				default:
+					answer <- nil
+				}
+			case <-m.ctx.Done():
+				return
+			}
 		}
 	}()
 	return heard
+}
+
+// stoppedMeanwhile says, for a group of tables that has ended without a failure, whether the
+// sync was stopped while it ran. A stream acknowledges the row it was refused, and its table
+// ends as if it had been written: the group after it must not start for that.
+func (m *model) stoppedMeanwhile() tea.Msg {
+	answer := make(chan error, 1)
+	select {
+	case m.askStop <- answer:
+		if err := <-answer; err != nil {
+			return syncStoppedMsg{err: err}
+		}
+		return nil
+	case <-m.ctx.Done():
+		// Stopped already: by a critical error the watch has heard, or by a key.
+		return syncFailedMsg{err: m.ctx.Err()}
+	}
 }
 
 // finish stops the tables still being synced and waits for them, then for the watch of the
@@ -303,6 +342,9 @@ func (m *model) syncConfigs(
 
 		if err := errgrp.Wait(); err != nil {
 			return syncFailedMsg{err: err}
+		}
+		if stopped := m.stoppedMeanwhile(); stopped != nil {
+			return stopped
 		}
 
 		results := map[string]string{}
