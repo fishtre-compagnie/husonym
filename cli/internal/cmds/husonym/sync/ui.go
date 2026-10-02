@@ -139,7 +139,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case syncFailedMsg:
-		m.err = msg.err
+		// Tables cut short when the sync was stopped did not fail: the stop is what ended it.
+		if !errors.Is(msg.err, context.Canceled) {
+			m.err = msg.err
+		}
 		return m, tea.Quit
 	case syncedDataMsg:
 		successStrs := []string{}

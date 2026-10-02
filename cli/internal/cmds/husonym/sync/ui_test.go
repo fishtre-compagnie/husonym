@@ -3,6 +3,7 @@ package sync_cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -210,6 +211,29 @@ func Test_model_AKeyStopsTheTables(t *testing.T) {
 
 	require.NotNil(t, cmd)
 	require.ErrorIs(t, ctx.Err(), context.Canceled)
+}
+
+// A key stops the tables being synced, which end cut short: the sync was interrupted, it is
+// not one of its tables that failed.
+func Test_model_TablesCutShortByTheStopDidNotFail(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+
+	_, cmd := m.Update(syncFailedMsg{err: fmt.Errorf("unable to run benthos stream: %w", context.Canceled)})
+
+	require.NotNil(t, cmd, "the sync ends all the same")
+	require.NoError(t, m.err)
+	require.ErrorIs(t, m.outcome(nil), errSyncInterrupted)
+}
+
+// A table that failed is what the sync reports.
+func Test_model_ATableThatFailedIsReported(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	failure := errors.New("the table failed")
+
+	_, cmd := m.Update(syncFailedMsg{err: failure})
+
+	require.NotNil(t, cmd)
+	require.ErrorIs(t, m.outcome(nil), failure)
 }
 
 func Test_model_outcome(t *testing.T) {
