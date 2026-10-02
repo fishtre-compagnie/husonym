@@ -59,3 +59,14 @@ func TestClientAnalyzeNon200(t *testing.T) {
 		t.Fatal("expected error on non-200 response")
 	}
 }
+
+// An analyzer that never answers must not hold the scan that asks it: the client it is given
+// by default waits for a limited time.
+func TestNewClient_WaitsForALimitedTime(t *testing.T) {
+	if got := NewClient("http://presidio").httpClient.Timeout; got != analyzeTimeout {
+		t.Fatalf("the default client waits %s, want %s", got, analyzeTimeout)
+	}
+	if analyzeTimeout <= 0 {
+		t.Fatal("the default client waits without end")
+	}
+}

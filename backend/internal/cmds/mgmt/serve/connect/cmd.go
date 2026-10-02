@@ -1489,8 +1489,13 @@ func getPresidioAnonymizeClient() (*presidioapi.ClientWithResponses, bool, error
 	return getPresidioClient(endpoint)
 }
 
+// presidioTimeout is how long Presidio is waited for, for one text to analyze or anonymize.
+// Past it Presidio is not answering, and the call that asks it — a row a run transforms —
+// would wait without end.
+const presidioTimeout = 30 * time.Second
+
 func getPresidioClient(endpoint string) (*presidioapi.ClientWithResponses, bool, error) {
-	httpclient := http_client.WithHeaders(&http.Client{}, getPresidioHttpHeaders())
+	httpclient := http_client.WithHeaders(&http.Client{Timeout: presidioTimeout}, getPresidioHttpHeaders())
 
 	client, err := presidioapi.NewClientWithResponses(
 		endpoint,

@@ -245,7 +245,14 @@ func (s *Service) DetectPiiInConnectionData(
 		// ÉTAGE 3 — Presidio en dernier recours, sur ce qui n'est pas décidable
 		// autrement : noms de personnes, lieux, texte libre. Résultat toujours
 		// marqué NEEDS_REVIEW, un modèle statistique ne prouve rien.
-		entity, avgScore, matchCount, ok := s.analyzeColumn(ctx, values, threshold, language, logger)
+		entity, avgScore, matchCount, ok, err := s.analyzeColumn(ctx, values, threshold, language)
+		if err != nil {
+			// A column the analyzer could not read is not told empty of personal data: the
+			// scan of the table fails. Why is logged here, and not told: the error of the
+			// analyzer can quote where it is reached, and the value it read.
+			logger.Warn(fmt.Sprintf("presidio analyze failed on column %q: %v", col, err))
+			return nil, analysisUnavailable(req.Msg.GetSchema(), req.Msg.GetTable())
+		}
 		if !ok {
 			continue
 		}
@@ -338,14 +345,15 @@ func verdicts(
 
 // analyzeColumn examines each value on its own (NER recognizes an isolated
 // name/place better than one buried in a list) and returns the dominant entity
-// among the mappable ones, its mean score, and how many values carry it.
+// among the mappable ones, its mean score, and how many values carry it. It fails when the
+// analyzer does, at the first value: a value left out would count as one without personal
+// data.
 func (s *Service) analyzeColumn(
 	ctx context.Context,
 	values []string,
 	threshold float64,
 	language string,
-	logger interface{ Warn(string, ...any) },
-) (entity string, avgScore float64, matchCount int, ok bool) {
+) (entity string, avgScore float64, matchCount int, ok bool, err error) {
 	type agg struct {
 		count    int
 		scoreSum float64
@@ -364,8 +372,7 @@ func (s *Service) analyzeColumn(
 			ScoreThreshold: threshold,
 		})
 		if err != nil {
-			logger.Warn(fmt.Sprintf("presidio analyze failed: %v", err))
-			continue
+			return "", 0, 0, false, err
 		}
 		// Meilleur score par entité DANS cette valeur (on compte des VALEURS, pas des spans).
 		bestPerEntity := map[string]float64{}
@@ -385,7 +392,7 @@ func (s *Service) analyzeColumn(
 		}
 	}
 	if analyzed == 0 {
-		return "", 0, 0, false
+		return "", 0, 0, false, nil
 	}
 
 	// Entité dominante = présente dans le plus de VALEURS, PARMI les entités
@@ -403,10 +410,19 @@ func (s *Service) analyzeColumn(
 		}
 	}
 	if best == "" {
-		return "", 0, 0, false
+		return "", 0, 0, false, nil
 	}
 	a := byEntity[best]
-	return best, a.scoreSum / float64(a.count), a.count, true
+	return best, a.scoreSum / float64(a.count), a.count, true, nil
+}
+
+// analysisUnavailable is the error of a scan whose content analysis did not answer, or failed.
+func analysisUnavailable(schema, table string) error {
+	return connect.NewError(connect.CodeUnavailable, fmt.Errorf(
+		"l'analyse de contenu de %s.%s n'a pas abouti : le service d'analyse (Presidio) n'a pas répondu "+
+			"ou a échoué. Relancez le scan ; si l'échec persiste, vérifiez ce service",
+		schema, table,
+	))
 }
 
 func valueToText(v any) string {

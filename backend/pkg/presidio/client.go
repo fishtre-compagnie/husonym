@@ -16,6 +16,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // AnalyzeRequest est une requête d'analyse de texte.
@@ -61,11 +62,16 @@ func WithHeaders(headers map[string]string) Option {
 	return func(c *Client) { c.headers = headers }
 }
 
+// analyzeTimeout is how long the analyzer is waited for, for one text. A text is short, and
+// analyzed in milliseconds: past this, the analyzer is not answering, and the scan that asks
+// it would wait without end.
+const analyzeTimeout = 15 * time.Second
+
 // NewClient crée un client pointant sur l'URL de base du serveur Presidio Analyzer.
 func NewClient(baseURL string, opts ...Option) *Client {
 	c := &Client{
 		baseURL:    strings.TrimRight(baseURL, "/"),
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: analyzeTimeout},
 	}
 	for _, opt := range opts {
 		opt(c)
