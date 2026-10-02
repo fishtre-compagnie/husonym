@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/casbin/casbin/v3"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -109,7 +108,7 @@ func (r *Rbac) InitPolicies(
 }
 
 func setupAccountPolicies(
-	enforcer casbin.IEnforcer,
+	enforcer Enforcer,
 	accountIds []string,
 	logger *slog.Logger,
 ) error {
@@ -152,7 +151,7 @@ func setupAccountPolicies(
 func setupUserAssignments(
 	ctx context.Context,
 	db Db,
-	enforcer casbin.IEnforcer,
+	enforcer Enforcer,
 	accountIds []string,
 	logger *slog.Logger,
 ) error {
@@ -202,7 +201,7 @@ func setupUserAssignments(
 	return nil
 }
 
-func getGroupingPoliciesByDomain(enforcer casbin.IEnforcer) (map[string][][]string, error) {
+func getGroupingPoliciesByDomain(enforcer Enforcer) (map[string][][]string, error) {
 	// Get all grouping policies
 	allPolicies, err := enforcer.GetNamedGroupingPolicy("g")
 	if err != nil {
@@ -493,7 +492,7 @@ type setPolicyResult struct {
 	DidConflict bool
 }
 
-func setPolicy(e casbin.IEnforcer, policy []string) (*setPolicyResult, error) {
+func setPolicy(e Enforcer, policy []string) (*setPolicyResult, error) {
 	// AddPoliciesEx is what should be uesd here but is resulting in duplicates (and errors with unique constraint)
 	// AddPolicies handles the unique constraint but fails if even one policy already exists..
 

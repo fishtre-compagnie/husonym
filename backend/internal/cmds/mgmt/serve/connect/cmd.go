@@ -265,7 +265,6 @@ func serve(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		rbacenforcer.EnableAutoSave(true)
 		err = rbacenforcer.LoadPolicy()
 		if err != nil {
 			return fmt.Errorf("unable to load rbac policies: %w", err)

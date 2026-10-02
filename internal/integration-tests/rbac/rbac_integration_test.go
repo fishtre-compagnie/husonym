@@ -42,7 +42,6 @@ func TestRbac(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	rbacenforcer.EnableAutoSave(true)
 	err = rbacenforcer.LoadPolicy()
 	require.NoError(t, err)
 
