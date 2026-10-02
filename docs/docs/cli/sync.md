@@ -24,7 +24,7 @@ husonym sync
 
 ## How a sync ends
 
-The command returns once the last table is synced. It returns an error, and exits with a non-zero status, when a table fails or when the sync is quit before its last table — `q`, `esc` or `ctrl+c`. Either way the tables being synced are stopped first: nothing is written once the command has returned. The tables already written stay as they are.
+The command returns once the last table is synced. It returns an error, and exits with a non-zero status, when a table fails or when the sync is quit before its last table — `q`, `esc` or `ctrl+c`. The same goes for a sync stopped by a signal. Either way the tables being synced are stopped first: once the command has returned, no write is started, though one that was under way may still complete. The rows already written stay as they are.
 
 ## Options
 
