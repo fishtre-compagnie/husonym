@@ -450,7 +450,6 @@ func (s *HusonymApiTestClient) getEnforcedRbacClient(
 	if err != nil {
 		return nil, fmt.Errorf("unable to create rbac enforcer: %w", err)
 	}
-	rbacenforcer.EnableAutoSave(true)
 	err = rbacenforcer.LoadPolicy()
 	if err != nil {
 		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
