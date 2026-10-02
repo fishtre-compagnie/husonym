@@ -153,5 +153,7 @@ func newSqlAdapter(
 	if err != nil {
 		return nil, fmt.Errorf("unable to create casbin sql adapter: %w", err)
 	}
-	return adapter, nil
+	return &boundedStore{
+		store: adapter, ctx: ctx, readTimeout: storeReadTimeout, writeTimeout: storeWriteTimeout,
+	}, nil
 }
