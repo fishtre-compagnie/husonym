@@ -1075,15 +1075,16 @@ SELECT
 	pg_catalog.format_type(t.typbasetype, t.typtypmod) AS type,
 	t.typnotnull AS is_nullable,
 	COALESCE(pg_get_expr(t.typdefaultbin, t.typnamespace), t.typdefault) AS default,
-	CASE 
-        WHEN COUNT(c.oid) = 0 THEN NULL
-        ELSE JSON_AGG(
+	-- An empty list for a domain without constraint: a NULL does not scan.
+	COALESCE(
+        JSON_AGG(
             JSON_BUILD_OBJECT(
                 'name',       conname,
                 'definition', pg_catalog.pg_get_constraintdef(c.oid)
             )
-        )
-    END::JSONB AS constraints
+        ) FILTER (WHERE c.oid IS NOT NULL),
+        '[]'
+    )::JSONB AS constraints
 FROM
 	relevant_custom_types rct
 	JOIN pg_catalog.pg_type t ON rct.type_oid = t.oid
