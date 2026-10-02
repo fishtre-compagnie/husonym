@@ -2,12 +2,14 @@ package sqlmanager_postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cenkalti/backoff/v7"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -42,6 +44,83 @@ func Test_isCatalogChange(t *testing.T) {
 	require.False(t, isCatalogChange(&pgconn.PgError{Code: "42P01", Message: `relation "t" does not exist`}))
 	require.False(t, isCatalogChange(&pgconn.PgError{Code: "P0001", Message: "cache lookup failed for type 1"}),
 		"raised by a function of the database, not by the server")
+}
+
+// A definition gone is a NULL where the row holds a text: database/sql refuses it with words
+// of its own, which the read is told by. Scanned for real, lest the words change.
+func Test_isCatalogChange_DefinitionGone(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	columns := []string{"schema_name", "table_name", "index_name", "index_definition"}
+	sqlMock.ExpectQuery("pg_get_indexdef").WillReturnRows(
+		sqlmock.NewRows(columns).AddRow("app", "t", "t_v_idx", nil))
+	sqlMock.ExpectQuery("pg_get_indexdef").WillReturnRows(
+		sqlmock.NewRows(columns).AddRow("app", "t", "t_v_idx", "CREATE INDEX t_v_idx ON app.t (v)").RowError(0, errors.New("broken")))
+
+	_, err = pg_queries.New().GetIndicesBySchemasAndTables(context.Background(), db, []string{"app.t"})
+	require.Error(t, err)
+	require.True(t, isCatalogChange(err), "a definition gone is not told a change of the catalog: %v", err)
+	require.True(t, isCatalogChange(fmt.Errorf("unable to read: %w", errDefinitionGone)))
+
+	_, err = pg_queries.New().GetIndicesBySchemasAndTables(context.Background(), db, []string{"app.t"})
+	require.Error(t, err)
+	require.False(t, isCatalogChange(err), "another failure of the read is not passing: %v", err)
+	require.False(t, isCatalogChange(errors.New("converting NULL to string is unsupported")), "not a scan")
+	require.False(t, isCatalogChange(
+		errors.New(`sql: Scan error on column index 2, name "n": converting driver.Value type string ("a") to a int64`),
+	), "a scan that fails on a value is not passing")
+}
+
+func Test_domainConstraintsHeld(t *testing.T) {
+	domain := func(constraints string) []*pg_queries.GetDomainsByTablesRow {
+		return []*pg_queries.GetDomainsByTablesRow{
+			{Schema: "app", Name: "plain", Constraints: json.RawMessage("[]")},
+			{Schema: "app", Name: "amount", Constraints: json.RawMessage(constraints)},
+		}
+	}
+	require.NoError(t, domainConstraintsHeld(nil))
+	require.NoError(t, domainConstraintsHeld(domain(`[{"name": "positive", "definition": "CHECK ((VALUE > 0))"}]`)))
+	require.NoError(t, domainConstraintsHeld(domain(`not a list`)), "left to the one who reads the list")
+	require.NoError(t, domainConstraintsHeld(domain(``)))
+
+	require.ErrorIs(t, domainConstraintsHeld(domain(`[{"name": "positive", "definition": null}]`)), errDefinitionGone)
+	require.ErrorIs(t, domainConstraintsHeld(domain(
+		`[{"name": "positive", "definition": "CHECK ((VALUE > 0))"}, {"name": "small"}]`,
+	)), errDefinitionGone)
+}
+
+// A domain that lists a constraint without its definition is read again.
+func Test_catalogRetryQuerier_ReadsDomainsAgainWhenADefinitionIsGone(t *testing.T) {
+	gone := []*pg_queries.GetDomainsByTablesRow{
+		{Schema: "app", Name: "amount", Constraints: json.RawMessage(`[{"name": "positive", "definition": null}]`)},
+	}
+	held := []*pg_queries.GetDomainsByTablesRow{
+		{Schema: "app", Name: "amount", Constraints: json.RawMessage(`[]`)},
+	}
+
+	t.Run("until the list holds", func(t *testing.T) {
+		inner := pg_queries.NewMockQuerier(t)
+		inner.EXPECT().GetDomainsByTables(mock.Anything, mock.Anything, mock.Anything).Return(gone, nil).Twice()
+		inner.EXPECT().GetDomainsByTables(mock.Anything, mock.Anything, mock.Anything).Return(held, nil).Once()
+		wrapped := &catalogRetryQuerier{inner: inner, retryOpts: fastRetryOptions}
+
+		domains, err := wrapped.GetDomainsByTables(context.Background(), nil, []string{"app.t"})
+
+		require.NoError(t, err)
+		require.Equal(t, held, domains)
+	})
+
+	t.Run("and fails rather than tell a constraint without definition", func(t *testing.T) {
+		inner := pg_queries.NewMockQuerier(t)
+		inner.EXPECT().GetDomainsByTables(mock.Anything, mock.Anything, mock.Anything).
+			Return(gone, nil).Times(catalogReadAttempts)
+		wrapped := &catalogRetryQuerier{inner: inner, retryOpts: fastRetryOptions}
+
+		_, err := wrapped.GetDomainsByTables(context.Background(), nil, []string{"app.t"})
+
+		require.ErrorIs(t, err, errDefinitionGone)
+	})
 }
 
 func Test_retryOnCatalogChange(t *testing.T) {

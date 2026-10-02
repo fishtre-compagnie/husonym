@@ -506,7 +506,13 @@ domain_defs AS (
         CASE
             WHEN t.typnotnull THEN ' NOT NULL' ELSE ''
         END || ' ' ||
-        COALESCE('CONSTRAINT ' || conname || ' ' || pg_catalog.pg_get_constraintdef(c.oid), '') || ';' AS definition
+        -- A domain without constraint has none to tell. One whose constraint was dropped
+        -- under the read has a NULL definition, which fails the read rather than tell the
+        -- domain without its constraint.
+        CASE
+            WHEN c.oid IS NULL THEN ''
+            ELSE 'CONSTRAINT ' || conname || ' ' || pg_catalog.pg_get_constraintdef(c.oid)
+        END || ';' AS definition
     FROM
         relevant_custom_types rct
     JOIN

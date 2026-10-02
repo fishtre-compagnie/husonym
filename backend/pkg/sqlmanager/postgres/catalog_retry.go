@@ -2,6 +2,7 @@ package sqlmanager_postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
@@ -31,19 +32,61 @@ func catalogRetryOptions() []backoff.RetryOption {
 	}
 }
 
+// errDefinitionGone tells a read that lists an object whose definition is gone.
+var errDefinitionGone = errors.New("an object of the catalog was dropped under its read")
+
 // isCatalogChange says whether a read of the catalog failed because the catalog changed under
 // it. The queries read the catalog of the whole database, and resolve the types, relations
 // and functions they find by their id: when another session drops one of them meanwhile — a
 // migration in another schema will do — PostgreSQL finds the id gone and fails the whole
 // query with an internal error, "cache lookup failed for type 19421" or "could not open
 // relation with OID 19421". Read again, the catalog no longer lists what was dropped.
+//
+// The functions that tell the definition of an object — pg_get_indexdef, pg_get_constraintdef
+// and the like — do not fail when it is gone: they answer NULL, for an object the query still
+// lists. Such a read tells no state the catalog was ever in, and is read again as well.
 func isCatalogChange(err error) bool {
+	if errors.Is(err, errDefinitionGone) || isNullDefinition(err) {
+		return true
+	}
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "XX000" {
 		return false
 	}
 	return strings.HasPrefix(pgErr.Message, "cache lookup failed") ||
 		strings.HasPrefix(pgErr.Message, "could not open relation with OID")
+}
+
+// isNullDefinition says whether a read failed on a NULL where the row holds a text: no query
+// selects a text that may be NULL, but for a definition gone. database/sql has no error to
+// match for it, only its words.
+func isNullDefinition(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	return strings.HasPrefix(message, "sql: Scan error on column") &&
+		strings.HasSuffix(message, "converting NULL to string is unsupported")
+}
+
+// domainConstraintsHeld tells errDefinitionGone when a domain lists a constraint without its
+// definition: the list is a JSON document, in which a NULL definition does not fail the read.
+func domainConstraintsHeld(domains []*pg_queries.GetDomainsByTablesRow) error {
+	for _, domain := range domains {
+		var constraints []struct {
+			Definition *string `json:"definition"`
+		}
+		// A list that does not parse is told by the one who reads it.
+		if err := json.Unmarshal(domain.Constraints, &constraints); err != nil {
+			continue
+		}
+		for _, constraint := range constraints {
+			if constraint.Definition == nil {
+				return errDefinitionGone
+			}
+		}
+	}
+	return nil
 }
 
 // retryOnCatalogChange reads the catalog, again when it changed under the read.
@@ -146,7 +189,11 @@ func (q *catalogRetryQuerier) GetDomainsByTables(
 	schematables []string,
 ) ([]*pg_queries.GetDomainsByTablesRow, error) {
 	return retryOnCatalogChange(ctx, q.retryOpts, func() ([]*pg_queries.GetDomainsByTablesRow, error) {
-		return q.inner.GetDomainsByTables(ctx, db, schematables)
+		domains, err := q.inner.GetDomainsByTables(ctx, db, schematables)
+		if err != nil {
+			return nil, err
+		}
+		return domains, domainConstraintsHeld(domains)
 	})
 }
 
