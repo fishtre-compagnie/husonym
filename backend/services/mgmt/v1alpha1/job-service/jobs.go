@@ -31,6 +31,10 @@ import (
 
 const (
 	defaultCronStr = "0 0 1 1 *"
+
+	// createJobCleanupTimeout is how long the removal of a job whose schedule could not be
+	// created may take, once the call that created it has ended.
+	createJobCleanupTimeout = 15 * time.Second
 )
 
 func (s *Service) GetJobs(
@@ -629,7 +633,20 @@ func (s *Service) CreateJob(
 	if err != nil {
 		logger.Error(fmt.Errorf("unable to create schedule workflow in temporal: %w", err).Error())
 		logger.Debug("deleting newly created job")
-		removeJobErr := s.db.Q.RemoveJobById(ctx, s.db.Db, cj.ID)
+		// The job is removed though the call may have ended: a caller that gave up, or reached
+		// its time limit, while the schedule was being created would leave a job without one.
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), createJobCleanupTimeout)
+		defer cancel()
+		if ctx.Err() != nil {
+			// The orchestrator may have created the schedule all the same, its answer lost with
+			// the call: left there, it would run a job that no longer is.
+			if removeScheduleErr := s.temporalmgr.DeleteSchedule(
+				cleanupCtx, req.Msg.GetAccountId(), jobUuid, logger,
+			); removeScheduleErr != nil {
+				logger.Error(fmt.Sprintf("unable to remove the schedule of a job that was not created: %s", removeScheduleErr))
+			}
+		}
+		removeJobErr := s.db.Q.RemoveJobById(cleanupCtx, s.db.Db, cj.ID)
 		if removeJobErr != nil {
 			return nil, fmt.Errorf(
 				"unable to create scheduled job and was unable to fully cleanup partially created resources: %w: %w",

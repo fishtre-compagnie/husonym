@@ -121,3 +121,36 @@ func Test_RunWorkflow_Failure(t *testing.T) {
 	require.ErrorContains(t, manager.RunWorkflow(context.Background(), "account",
 		&temporalclient.StartWorkflowOptions{ID: "wf"}, "Workflow", "arg", &result, slog.Default()), "activity failed")
 }
+
+// A schedule the orchestrator refuses gives back the client it was asked with, as one it
+// creates does.
+func Test_CreateSchedule_GivesItsClientBack(t *testing.T) {
+	for name, refusal := range map[string]error{"created": nil, "refused": errors.New("invalid cron expression")} {
+		t.Run(name, func(t *testing.T) {
+			configs := NewMockConfigProvider(t)
+			configs.EXPECT().GetConfig(mock.Anything, "account").
+				Return(&TemporalConfig{Namespace: "default", SyncJobQueueName: "sync-job"}, nil)
+			schedules := temporalmocks.NewScheduleClient(t)
+			handle := temporalmocks.NewScheduleHandle(t)
+			handle.On("GetID").Return("schedule-1").Maybe()
+			schedules.On("Create", mock.Anything, mock.Anything).Return(handle, refusal)
+			client := temporalmocks.NewClient(t)
+			client.On("ScheduleClient").Return(schedules)
+			manager := NewClientManager(configs, &fakeFactory{workflowClient: client, namespaceClient: temporalmocks.NewNamespaceClient(t)})
+
+			_, err := manager.CreateSchedule(
+				context.Background(),
+				"account",
+				&temporalclient.ScheduleOptions{ID: "schedule-1"},
+				slog.Default(),
+			)
+			require.Equal(t, refusal, err)
+
+			held := 0
+			for _, cached := range manager.clientCache.clients {
+				held += cached.referenceCount
+			}
+			require.Zero(t, held, "the client asked with is still held")
+		})
+	}
+}
