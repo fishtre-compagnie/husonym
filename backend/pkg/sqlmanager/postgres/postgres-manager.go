@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -927,7 +928,9 @@ func (p *PostgresManager) GetTableInitStatements(
 			mu.Lock()
 			partitionTables[key.String()] = record
 			mu.Unlock()
-			if !record.IsPartitioned {
+			// The partitions are read of the tables asked for only: those of the other tables
+			// of the schema are not told, and one of them dropped meanwhile would fail the read.
+			if !record.IsPartitioned && slices.Contains(combined, key.String()) {
 				ks := key.String()
 				errgrp.Go(func() error {
 					partitionhierarchy, err := p.querier.GetPartitionHierarchyByTable(
