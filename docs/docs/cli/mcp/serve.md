@@ -86,6 +86,14 @@ A finding may come with the statement that grants what the account lacks, and no
 
 Two tools return values read from rows: `preview_column`, and `get_run_failure`, since a database quotes the value a write failed on. Those values reach the model — and whoever serves it, unless it runs on your machine. So the server never decides alone: before the first read on a connection, it asks you through your MCP client, and your answer holds for that connection until the session ends, whichever of the two tools reads. For a run, the connection is the source of its job. Decline, and nothing is read. A client that cannot ask you gets a refusal, never a read. `suggest_mappings` can also have the API scan a sample of a table (`scan_content`), but it reports what it found as counts and labels, never the values themselves.
 
+### Time limits
+
+The server waits for each call it makes to the API for a limited time, so that a call the API never answers ends, and tells the agent so, instead of holding the tool and the job it runs or changes: 30 seconds for what the API answers by itself, 2 minutes for what it answers by reading the database of a connection — its schema, a sample scanned for personal data, a preview, the check of mappings — or by reading the history of a run, a little over 2 minutes for `check_connection`, and a little over 3 for `preflight_job`. A tool that makes several calls, such as `suggest_mappings` scanning table after table, may take longer in all.
+
+A trigger cut short by its limit may have started a run: `run_job` then holds the job as for any trigger that failed, for two minutes at most.
+
+An MCP client may itself give up on a tool call after a time of its own. To a client that asks for the progress of a call (a `progressToken`), the server tells every 15 seconds that the call is still worked on, which the protocol lets the client count as a reason to wait longer.
+
 ## Environment Variables
 
 | Variable        | Description                                                                                              | Is Required                                 | Default Value         |
