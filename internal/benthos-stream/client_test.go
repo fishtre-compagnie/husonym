@@ -105,6 +105,21 @@ func Test_Adapter_StopsARunningStream(t *testing.T) {
 	require.NoError(t, adapter.Stop(context.Background()))
 }
 
+// A stream given no time to stop by itself is closed, and writes no more: Benthos answers the
+// stop with the deadline of the budget, which is no failure of the stop.
+func Test_Adapter_ClosesARunningStream(t *testing.T) {
+	stream, written := endlessStream(t)
+	adapter := NewBenthosStreamAdapter(stream)
+
+	go func() { _ = adapter.Run(context.Background()) }()
+	require.Eventually(t, func() bool { return written.Load() > 0 }, 5*time.Second, 10*time.Millisecond)
+
+	if err := adapter.StopWithin(CloseBudget); err != nil {
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	}
+	require.False(t, stillWrites(written), "the stream goes on writing once closed")
+}
+
 // blockingOutput holds its writes until it is closed.
 type blockingOutput struct{ closed chan struct{} }
 

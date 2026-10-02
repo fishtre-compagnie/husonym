@@ -138,7 +138,7 @@ func Test_runStream_CanceledWhileItRuns(t *testing.T) {
 func Test_runStream_FailedRunIsStopped(t *testing.T) {
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).Return(errors.New("the stream failed"))
-	stream.EXPECT().StopWithin(streamStopBudget).Return(nil).Once()
+	stream.EXPECT().StopWithin(benthosstream.CloseBudget).Return(nil).Once()
 
 	err := runStream(context.Background(), stream, testutil.GetTestLogger(t))
 	require.ErrorContains(t, err, "unable to run benthos stream: the stream failed")
