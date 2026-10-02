@@ -143,17 +143,34 @@ func newRedisProcFromConfig(
 	return r, nil
 }
 
+// retried runs a command, and again after the retry period while it fails. A command whose
+// context has ended is not tried again, nor waited for: its stream is stopping, and each row
+// of the batch would sit through the waits. Nor is an absent key, redis.Nil: it is the answer
+// of Redis, which would give it again.
+func retried[T any](ctx context.Context, r *redisProc, name string, command func() (T, error)) (T, error) {
+	res, err := command()
+	for i := 0; i <= r.retries && err != nil; i++ {
+		if ctx.Err() != nil || errors.Is(err, redis.Nil) {
+			return res, err
+		}
+		r.log.Errorf("%v command failed: %v", name, err)
+		select {
+		case <-ctx.Done():
+			return res, err
+		case <-time.After(r.retryPeriod):
+		}
+		res, err = command()
+	}
+	return res, err
+}
+
 type redisOperator func(ctx context.Context, r *redisProc, key string, part *service.Message) error
 
 func newRedisKeysOperator() redisOperator {
 	return func(ctx context.Context, r *redisProc, key string, part *service.Message) error {
-		res, err := r.client.Keys(ctx, key).Result()
-
-		for i := 0; i <= r.retries && err != nil; i++ {
-			r.log.Errorf("Keys command failed: %v\n", err)
-			<-time.After(r.retryPeriod)
-			res, err = r.client.Keys(ctx, key).Result()
-		}
+		res, err := retried(ctx, r, "Keys", func() ([]string, error) {
+			return r.client.Keys(ctx, key).Result()
+		})
 		if err != nil {
 			return err
 		}
@@ -169,13 +186,9 @@ func newRedisKeysOperator() redisOperator {
 
 func newRedisSCardOperator() redisOperator {
 	return func(ctx context.Context, r *redisProc, key string, part *service.Message) error {
-		res, err := r.client.SCard(ctx, key).Result()
-
-		for i := 0; i <= r.retries && err != nil; i++ {
-			r.log.Errorf("SCard command failed: %v\n", err)
-			<-time.After(r.retryPeriod)
-			res, err = r.client.SCard(ctx, key).Result()
-		}
+		res, err := retried(ctx, r, "SCard", func() (int64, error) {
+			return r.client.SCard(ctx, key).Result()
+		})
 		if err != nil {
 			return err
 		}
@@ -192,13 +205,9 @@ func newRedisSAddOperator() redisOperator {
 			return err
 		}
 
-		res, err := r.client.SAdd(ctx, key, mBytes).Result()
-
-		for i := 0; i <= r.retries && err != nil; i++ {
-			r.log.Errorf("SAdd command failed: %v\n", err)
-			<-time.After(r.retryPeriod)
-			res, err = r.client.SAdd(ctx, key, mBytes).Result()
-		}
+		res, err := retried(ctx, r, "SAdd", func() (int64, error) {
+			return r.client.SAdd(ctx, key, mBytes).Result()
+		})
 		if err != nil {
 			return err
 		}
@@ -219,13 +228,9 @@ func newRedisIncrByOperator() redisOperator {
 		if err != nil {
 			return err
 		}
-		res, err := r.client.IncrBy(ctx, key, int64(valueInt)).Result()
-
-		for i := 0; i <= r.retries && err != nil; i++ {
-			r.log.Errorf("incrby command failed: %v\n", err)
-			<-time.After(r.retryPeriod)
-			res, err = r.client.IncrBy(ctx, key, int64(valueInt)).Result()
-		}
+		res, err := retried(ctx, r, "incrby", func() (int64, error) {
+			return r.client.IncrBy(ctx, key, int64(valueInt)).Result()
+		})
 		if err != nil {
 			return err
 		}
@@ -289,12 +294,9 @@ func (r *redisProc) execRaw(
 	}
 	args = append([]any{command}, args...)
 
-	res, err := r.client.Do(ctx, args...).Result()
-	for i := 0; i <= r.retries && err != nil; i++ {
-		r.log.Errorf("%v command failed: %v", command, err)
-		<-time.After(r.retryPeriod)
-		res, err = r.client.Do(ctx, args...).Result()
-	}
+	res, err := retried(ctx, r, command, func() (any, error) {
+		return r.client.Do(ctx, args...).Result()
+	})
 	if err != nil {
 		return err
 	}
