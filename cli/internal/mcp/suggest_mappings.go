@@ -24,7 +24,7 @@ type suggestMappingsOutput struct {
 type tableSuggestions struct {
 	Table     string             `json:"table"                jsonschema:"schema.table"`
 	Columns   []columnSuggestion `json:"columns"`
-	ScanError string             `json:"scan_error,omitempty" jsonschema:"why the content scan failed on this table; its suggestions then come from column names alone"`
+	ScanError string             `json:"scan_error,omitempty" jsonschema:"why the content scan failed on this table; its suggestions then come from column names alone, and each of its columns is told content_not_analyzed"`
 }
 
 type columnSuggestion struct {
@@ -35,6 +35,7 @@ type columnSuggestion struct {
 	Confidence           string   `json:"confidence,omitempty"            jsonschema:"confirmed: proven, may be applied as is; needs_review: a clue, to put to a person before acting on it"`
 	Method               string   `json:"method,omitempty"                jsonschema:"how it was found: column_name, checksum, content or format"`
 	Evidence             string   `json:"evidence,omitempty"              jsonschema:"the proof, in words"`
+	ContentNotAnalyzed   bool     `json:"content_not_analyzed,omitempty"  jsonschema:"true when the content scan could not analyze this column: what is said of it comes from its name alone, and a column not told sensitive may hold personal data all the same"`
 	Keys                 []string `json:"keys,omitempty"                  jsonschema:"primary, foreign and referenced: the keys the column takes part in; see the tool description"`
 }
 
@@ -45,7 +46,9 @@ func addSuggestMappings(server *mcp.Server, reader *novalues.Reader) {
 		Description: "Say which columns hold personal data and which transformer fits each, with how sure " +
 			"the detection is and why. A column in a key is flagged: transformed on its own, it breaks the " +
 			"references between tables, so it takes the same treatment on both sides of each reference — " +
-			"never apply a suggestion to one blindly.",
+			"never apply a suggestion to one blindly. With scan_content, a column the scan could not " +
+			"analyze is told so (content_not_analyzed): it is not known to be free of personal data, and " +
+			"is to be put to a person or scanned again.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
 	}, suggestMappings(reader))
 }
@@ -107,10 +110,13 @@ func suggestMappings(reader *novalues.Reader) mcp.ToolHandlerFor[suggestMappings
 				// The API decides: after a scan, its verdict reconciles the name with the
 				// content; without one, the schema already carries the name's.
 				var verdict piiVerdict = column
-				if v, ok := scanned[column.GetColumn()]; ok {
-					verdict = v
+				scannedVerdict, ok := scanned[column.GetColumn()]
+				if ok {
+					verdict = scannedVerdict
 				}
 				suggestion := suggest(verdict)
+				// A table whose scan failed has none of its columns analyzed.
+				suggestion.ContentNotAnalyzed = scannedVerdict.GetContentNotAnalyzed() || suggestions.ScanError != ""
 				suggestion.Keys = keys[column.GetColumn()]
 				suggestions.Columns = append(suggestions.Columns, suggestion)
 			}

@@ -17,6 +17,7 @@ import {
 } from '@husonym/sdk';
 import { createColumnHelper, Row } from '@tanstack/react-table';
 import RgpdCell from './RgpdCell';
+import { rgpdRank, rgpdState } from './rgpd-state';
 import { DataTableRowActions } from '../NosqlTable/data-table-row-actions';
 import EditCollection from '../NosqlTable/EditCollection';
 import EditDocumentKey from '../NosqlTable/EditDocumentKey';
@@ -44,6 +45,8 @@ export interface JobMappingRow {
   piiConfidence?: PiiConfidence;
   piiDetectionMethod?: PiiDetectionMethod;
   piiEvidence?: string;
+  // true si le scan de contenu n'a pas pu analyser la colonne.
+  contentNotAnalyzed?: boolean;
 }
 
 interface RowAttribute {
@@ -258,20 +261,19 @@ function getJobMappingColumns() {
     (row) => {
       const anonymise = isAnonymizingTransformer(row.transformer);
       // Rang décroissant = gravité décroissante au tri inverse :
-      //   3 non traité (part en clair) > 2 à vérifier > 1 conforme > 0 rien.
-      const rank =
-        row.isSensitive &&
-        row.piiConfidence !== PiiConfidence.NEEDS_REVIEW &&
-        !anonymise
-          ? 3
-          : row.piiConfidence === PiiConfidence.NEEDS_REVIEW
-            ? 2
-            : row.isSensitive
-              ? 1
-              : 0;
+      //   3 non traité (part en clair) > 2 à vérifier ou non analysé > 1 conforme
+      //   > 0 rien.
+      const rank = rgpdRank(
+        rgpdState({
+          isSensitive: row.isSensitive,
+          confidence: row.piiConfidence,
+          isAnonymized: anonymise,
+          contentNotAnalyzed: row.contentNotAnalyzed,
+        })
+      );
       // `anonymise` fait partie de la clé : sans lui, changer le transformer ne
       // rafraîchirait pas le badge (cellule mémoïsée par TanStack).
-      return `${rank}|${anonymise}|${row.piiConfidence ?? 0}|${row.piiDetectionMethod ?? 0}|${row.dataCategory ?? ''}`;
+      return `${rank}|${anonymise}|${row.piiConfidence ?? 0}|${row.piiDetectionMethod ?? 0}|${row.dataCategory ?? ''}|${row.contentNotAnalyzed ?? false}`;
     },
     {
       id: 'rgpd',
@@ -289,6 +291,7 @@ function getJobMappingColumns() {
               dataCategory={row.original.dataCategory}
               confidence={row.original.piiConfidence}
               method={row.original.piiDetectionMethod}
+              contentNotAnalyzed={row.original.contentNotAnalyzed}
               isAnonymized={isAnonymizingTransformer(row.original.transformer)}
               hasSuggestion={
                 // Un transformer suggéré ne suffit pas : il doit aussi être

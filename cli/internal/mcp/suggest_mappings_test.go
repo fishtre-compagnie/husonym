@@ -68,7 +68,7 @@ func Test_SuggestMappings(t *testing.T) {
 		require.JSONEq(t, `{"tables": [
 			{
 				"table": "public.locked",
-				"columns": [{"column": "id", "sensitive": false}],
+				"columns": [{"column": "id", "sensitive": false, "content_not_analyzed": true}],
 				"scan_error": "the API could not scan public.locked: deadline_exceeded"
 			},
 			{
@@ -94,6 +94,49 @@ func Test_SuggestMappings(t *testing.T) {
 				]
 			}
 		]}`, string(structured))
+	})
+
+	// A column the scan could not analyze is not known to be free of personal data: the agent
+	// is told which, beside what the name of each says.
+	t.Run("tells the columns the content scan could not analyze", func(t *testing.T) {
+		t.Parallel()
+		data := &fakeDataService{notAnalyzed: map[string][]string{"public.orders": {"user_id"}, "public.users": {"email"}}}
+		session := connectClient(t, &fakeConnectionService{}, data)
+
+		res := callTool(t, session, "suggest_mappings", map[string]any{
+			"connection_id": connectionId,
+			"tables":        []string{"public.users", "public.orders"},
+			"scan_content":  true,
+		})
+
+		var out suggestMappingsOutput
+		structured, err := json.Marshal(res.StructuredContent)
+		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(structured, &out))
+		notAnalyzed := map[string]bool{}
+		sensitive := map[string]bool{}
+		for _, table := range out.Tables {
+			require.Empty(t, table.ScanError)
+			for _, column := range table.Columns {
+				notAnalyzed[table.Table+"."+column.Column] = column.ContentNotAnalyzed
+				sensitive[table.Table+"."+column.Column] = column.Sensitive
+			}
+		}
+		require.True(t, notAnalyzed["public.orders.user_id"])
+		require.False(t, sensitive["public.orders.user_id"])
+		require.True(t, notAnalyzed["public.users.email"])
+		require.True(t, sensitive["public.users.email"], "the name of the column still speaks")
+		require.False(t, notAnalyzed["public.orders.note"])
+		require.False(t, notAnalyzed["public.users.id"])
+
+		// Without a scan, nothing is said of the content.
+		res = callTool(t, session, "suggest_mappings", map[string]any{
+			"connection_id": connectionId,
+			"tables":        []string{"public.users"},
+		})
+		structured, err = json.Marshal(res.StructuredContent)
+		require.NoError(t, err)
+		require.NotContains(t, string(structured), "content_not_analyzed")
 	})
 
 	t.Run("needs at least one table", func(t *testing.T) {

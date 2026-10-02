@@ -48,6 +48,7 @@ import {
 import { JobMappingRow, SQL_COLUMNS } from '../JobMappingTable/Columns';
 import { ColumnDecisionTarget } from '../JobMappingTable/MappingDecisionPanel';
 import JobMappingTable from '../JobMappingTable/JobMappingTable';
+import { rgpdState } from '../JobMappingTable/rgpd-state';
 import FormErrorsCard, { ErrorLevel, FormError } from './FormErrorsCard';
 import { ImportMappingsConfig } from './ImportJobMappingsButton';
 import { getVirtualForeignKeysColumns } from './VirtualFkColumns';
@@ -109,6 +110,8 @@ interface ResolvedPii {
   confidence: PiiConfidence;
   method: PiiDetectionMethod;
   evidence: string;
+  // true si le scan de contenu n'a pas pu analyser la colonne.
+  contentNotAnalyzed: boolean;
 }
 
 export function SchemaTable(props: Props): ReactElement {
@@ -143,6 +146,12 @@ export function SchemaTable(props: Props): ReactElement {
   const [contentPii, setContentPii] = useState<
     Record<string, ColumnPiiVerdict>
   >({});
+  // Les tables dont le dernier scan a échoué : leurs colonnes n'ont pas été
+  // analysées, et le disent, au lieu de passer pour des colonnes sans donnée
+  // personnelle.
+  const [notScannedTables, setNotScannedTables] = useState<Set<string>>(
+    new Set()
+  );
   const [isScanningPii, setIsScanningPii] = useState(false);
   const { mutateAsync: detectPii } = useMutation(
     ConnectionDataService.method.detectPiiInConnectionData
@@ -165,6 +174,7 @@ export function SchemaTable(props: Props): ReactElement {
         confidence: v.piiConfidence,
         method: v.piiDetectionMethod,
         evidence: v.piiEvidence,
+        contentNotAnalyzed: v.contentNotAnalyzed,
       };
     }
     return {
@@ -175,6 +185,9 @@ export function SchemaTable(props: Props): ReactElement {
       confidence: constraintHandler.getPiiConfidence(colKey),
       method: constraintHandler.getPiiDetectionMethod(colKey),
       evidence: constraintHandler.getPiiEvidence(colKey),
+      contentNotAnalyzed: notScannedTables.has(
+        `${colKey.schema}.${colKey.table}`
+      ),
     };
   };
 
@@ -306,6 +319,7 @@ export function SchemaTable(props: Props): ReactElement {
         tables: new Set<string>(),
       };
       setContentPii({});
+      setNotScannedTables(new Set());
     }
 
     const tables = new Map<string, { schema: string; table: string }>();
@@ -363,14 +377,35 @@ export function SchemaTable(props: Props): ReactElement {
         });
         return { ...merged, ...next };
       });
+      setNotScannedTables((prev) => {
+        const kept = [...prev].filter((table) => !rescanned.has(table));
+        return new Set([...kept, ...failed]);
+      });
 
-      // Les tables non analysées sont annoncées : sans ce message, leurs colonnes
-      // resteraient sans badge et l'absence de détection passerait pour une absence
-      // de donnée personnelle.
+      // Les tables non analysées sont annoncées, et leurs colonnes portent le badge
+      // « non analysée » : sans cela, l'absence de détection passerait pour une
+      // absence de donnée personnelle.
       if (failed.length > 0) {
         toast.warning(
           `${failed.length} table(s) not scanned: ${failed.slice(0, 3).join(', ')}` +
             (failed.length > 3 ? '…' : '')
+        );
+      }
+      // De même les colonnes que l'analyse de contenu n'a pas pu traiter : elles
+      // portent un badge, pour ne pas passer pour des colonnes sans donnée
+      // personnelle. Leur nombre est celui des badges, annoncé au clic seulement :
+      // le scan de fond enchaînerait un message par table.
+      const notAnalyzed = Object.values(next).filter(
+        (v) =>
+          rgpdState({
+            isSensitive: v.isSensitive,
+            confidence: v.piiConfidence,
+            contentNotAnalyzed: v.contentNotAnalyzed,
+          }) === 'not_analyzed'
+      ).length;
+      if (notAnalyzed > 0 && scope === 'all') {
+        toast.warning(
+          `${notAnalyzed} column(s) could not be analyzed: scan again, or review them yourself.`
         );
       }
 
@@ -393,7 +428,10 @@ export function SchemaTable(props: Props): ReactElement {
         return;
       }
       if (confirmed === 0 && toReview === 0) {
-        toast.success('No personal data found in the sampled content.');
+        // Rien trouvé ne vaut que pour ce qui a été analysé.
+        if (notAnalyzed === 0 && failed.length === 0) {
+          toast.success('No personal data found in the sampled content.');
+        }
       } else {
         const parts: string[] = [];
         if (confirmed > 0) {
@@ -535,12 +573,13 @@ export function SchemaTable(props: Props): ReactElement {
             piiConfidence: pii.confidence,
             piiDetectionMethod: pii.method,
             piiEvidence: pii.evidence,
+            contentNotAnalyzed: pii.contentNotAnalyzed,
           };
         })(),
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, constraintHandler, contentPii]);
+  }, [data, constraintHandler, contentPii, notScannedTables]);
 
   function getColumnDecision(index: number): ColumnDecisionTarget | undefined {
     const row = tableData[index];

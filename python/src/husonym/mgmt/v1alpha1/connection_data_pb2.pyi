@@ -512,7 +512,7 @@ class ColumnPiiDetection(_message.Message):
     def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., entity_type: _Optional[str] = ..., score: _Optional[float] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., is_sensitive: _Optional[bool] = ..., match_count: _Optional[int] = ..., sampled_count: _Optional[int] = ..., data_category: _Optional[str] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
 
 class ColumnPiiVerdict(_message.Message):
-    __slots__ = ("schema", "table", "column", "is_sensitive", "data_category", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence")
+    __slots__ = ("schema", "table", "column", "is_sensitive", "data_category", "suggested_transformer_source", "pii_confidence", "pii_detection_method", "pii_evidence", "content_not_analyzed")
     SCHEMA_FIELD_NUMBER: _ClassVar[int]
     TABLE_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FIELD_NUMBER: _ClassVar[int]
@@ -522,6 +522,7 @@ class ColumnPiiVerdict(_message.Message):
     PII_CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
     PII_DETECTION_METHOD_FIELD_NUMBER: _ClassVar[int]
     PII_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
+    CONTENT_NOT_ANALYZED_FIELD_NUMBER: _ClassVar[int]
     schema: str
     table: str
     column: str
@@ -531,7 +532,8 @@ class ColumnPiiVerdict(_message.Message):
     pii_confidence: PiiConfidence
     pii_detection_method: PiiDetectionMethod
     pii_evidence: str
-    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., data_category: _Optional[str] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ...) -> None: ...
+    content_not_analyzed: bool
+    def __init__(self, schema: _Optional[str] = ..., table: _Optional[str] = ..., column: _Optional[str] = ..., is_sensitive: _Optional[bool] = ..., data_category: _Optional[str] = ..., suggested_transformer_source: _Optional[_Union[_transformer_pb2.TransformerSource, str]] = ..., pii_confidence: _Optional[_Union[PiiConfidence, str]] = ..., pii_detection_method: _Optional[_Union[PiiDetectionMethod, str]] = ..., pii_evidence: _Optional[str] = ..., content_not_analyzed: _Optional[bool] = ...) -> None: ...
 
 class DetectPiiInConnectionDataResponse(_message.Message):
     __slots__ = ("detections", "verdicts")

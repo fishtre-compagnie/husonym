@@ -2,9 +2,11 @@ import { cn } from '@/libs/utils';
 import {
   CheckCircledIcon,
   ExclamationTriangleIcon,
+  QuestionMarkCircledIcon,
 } from '@radix-ui/react-icons';
 import { PiiConfidence, PiiDetectionMethod } from '@husonym/sdk';
 import { ReactElement } from 'react';
+import { rgpdState } from './rgpd-state';
 
 // Libellés lisibles des catégories détectées (backend pkg/piidetect + entités Presidio).
 const CATEGORY_LABELS: Record<string, string> = {
@@ -54,11 +56,18 @@ interface Props {
   // en texte ou un IBAN, faute de générateur qui préserve le format : le message
   // doit alors dire « aucun transformer compatible » et non « non anonymisée ».
   hasSuggestion?: boolean;
+  // true si le scan de contenu n'a pas pu analyser la colonne : son nom seul a
+  // parlé, et l'absence de détection ne dit rien de ce qu'elle contient.
+  contentNotAnalyzed?: boolean;
 }
 
 // Cellule de la colonne « RGPD ».
 //
-// Trois états, parce qu'ils appellent trois actions différentes :
+// Une colonne dont le contenu n'a pas pu être analysé, et dont le nom ne dit
+// rien, porte un badge gris : vide, la cellule passerait pour « aucune donnée
+// personnelle ».
+//
+// Trois autres états, parce qu'ils appellent trois actions différentes :
 //   * vert   — sensible ET anonymisé : rien à faire.
 //   * rouge  — sensible mais laissé en Passthrough : la donnée personnelle
 //              partirait EN CLAIR vers la destination. Un badge vert dans ce cas
@@ -72,16 +81,39 @@ export default function RgpdCell({
   method,
   isAnonymized,
   hasSuggestion,
+  contentNotAnalyzed,
 }: Props): ReactElement {
-  const needsReview = confidence === PiiConfidence.NEEDS_REVIEW;
-  // Le doute sur la détection primes : inutile d'alarmer sur une absence de
-  // transformer si la colonne n'est peut-être pas personnelle.
-  const nonTraite = isSensitive && !needsReview && isAnonymized === false;
-
+  const state = rgpdState({
+    isSensitive,
+    confidence,
+    isAnonymized,
+    contentNotAnalyzed,
+  });
   // Une détection à confirmer reste affichée même si le backend n'a pas tranché
   // sur la sensibilité : c'est précisément l'objet de la levée de doute.
-  if (!isSensitive && !needsReview) {
+  const needsReview = state === 'review';
+  const nonTraite = state === 'not_anonymized';
+
+  if (state === 'none') {
     return <span className="text-muted-foreground/40 text-xs">—</span>;
+  }
+  if (state === 'not_analyzed') {
+    const notAnalyzed =
+      'The content of this column could not be analyzed: whether it holds personal data is not known. Scan again.';
+    return (
+      <span
+        title={notAnalyzed}
+        aria-label={notAnalyzed}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold',
+          'border-slate-500/40 bg-slate-50 text-slate-700',
+          'dark:border-slate-400/40 dark:bg-slate-900/40 dark:text-slate-300'
+        )}
+      >
+        <QuestionMarkCircledIcon className="h-3.5 w-3.5" />
+        Not analyzed
+      </span>
+    );
   }
 
   const category = dataCategory ? CATEGORY_LABELS[dataCategory] : undefined;

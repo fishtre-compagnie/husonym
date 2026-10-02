@@ -12,10 +12,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // AnalyzeRequest est une requête d'analyse de texte.
@@ -34,6 +36,22 @@ type AnalyzeResult struct {
 	Start      int     `json:"start"`
 	End        int     `json:"end"`
 	Score      float64 `json:"score"`
+}
+
+// ErrNoAnswer is the error of an analysis the analyzer did not answer: it could not be
+// reached, took too long, or was answered for by a proxy. An analyzer that answers with an
+// error has one of its own: it was asked, and refused this text.
+var ErrNoAnswer = errors.New("the analyzer did not answer")
+
+// notTheAnalyzer says whether a status is that of what stands before the analyzer — a proxy
+// that cannot reach it, or waited for it too long — or of an analyzer that takes no more.
+func notTheAnalyzer(status int) bool {
+	switch status {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 // Analyzer est l'abstraction du service d'analyse (facilite les tests/mocks).
@@ -61,11 +79,16 @@ func WithHeaders(headers map[string]string) Option {
 	return func(c *Client) { c.headers = headers }
 }
 
+// analyzeTimeout is how long the analyzer is waited for, for one text. A text is short, and
+// analyzed in milliseconds: past this, the analyzer is not answering, and the scan that asks
+// it would wait without end.
+const analyzeTimeout = 15 * time.Second
+
 // NewClient crée un client pointant sur l'URL de base du serveur Presidio Analyzer.
 func NewClient(baseURL string, opts ...Option) *Client {
 	c := &Client{
 		baseURL:    strings.TrimRight(baseURL, "/"),
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: analyzeTimeout},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -107,17 +130,24 @@ func (c *Client) Analyze(ctx context.Context, req AnalyzeRequest) ([]AnalyzeResu
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("presidio analyze request failed: %w", err)
+		return nil, fmt.Errorf("presidio analyze request failed: %w", errors.Join(ErrNoAnswer, err))
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("presidio analyze answer cut short: %w", errors.Join(ErrNoAnswer, err))
+	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(
+		err := fmt.Errorf(
 			"presidio analyze returned status %d: %s",
 			resp.StatusCode,
 			string(respBody),
 		)
+		if notTheAnalyzer(resp.StatusCode) {
+			return nil, errors.Join(ErrNoAnswer, err)
+		}
+		return nil, err
 	}
 
 	var results []AnalyzeResult

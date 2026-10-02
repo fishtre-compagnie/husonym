@@ -427,6 +427,10 @@ message ColumnPiiVerdict {
   PiiDetectionMethod pii_detection_method = 8;
   // The proof, in words, for the tooltip.
   string pii_evidence = 9;
+  // True when the content of the column could not be analyzed: the analysis service failed
+  // on it, or did not answer. The verdict then rests on the name of the column alone, and
+  // says nothing of what it holds.
+  bool content_not_analyzed = 10;
 }
 
 message DetectPiiInConnectionDataResponse {

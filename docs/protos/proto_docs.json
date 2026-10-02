@@ -7572,6 +7572,18 @@
               "isoneof": false,
               "oneofdecl": "",
               "defaultValue": ""
+            },
+            {
+              "name": "content_not_analyzed",
+              "description": "True when the content of the column could not be analyzed: the analysis service failed\non it, or did not answer. The verdict then rests on the name of the column alone, and\nsays nothing of what it holds.",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
