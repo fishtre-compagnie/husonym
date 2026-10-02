@@ -236,6 +236,11 @@ func Test_Sync(t *testing.T) {
 		// tables, it refuses them for good. The sync ends and tells why, where it used to end
 		// the process on the spot.
 		t.Run("postgres_sync_refused_rows", func(t *testing.T) {
+			// It needs the rows of the sync above: on an empty destination nothing is refused.
+			rowCount, err := postgres.Target.GetTableRowCount(ctx, "humanresources", "employees")
+			require.NoError(t, err)
+			require.Positive(t, rowCount, "the destination holds no row to refuse the sync with")
+
 			cmdconfig := &cmdConfig{
 				Source: &sourceConfig{
 					ConnectionId: sourceConn.Id,

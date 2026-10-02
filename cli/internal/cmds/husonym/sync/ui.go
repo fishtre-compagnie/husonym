@@ -140,6 +140,9 @@ func (m *model) watchStop(tell func(tea.Msg)) <-chan error {
 		select {
 		case err := <-m.stop:
 			heard <- err
+			// Stopped here, without waiting for the program: the stream goes on past the row
+			// it was refused, and the tables still queued would start meanwhile.
+			m.cancel()
 			tell(syncStoppedMsg{err: err})
 		case <-m.ctx.Done():
 		}

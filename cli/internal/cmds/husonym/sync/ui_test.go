@@ -360,8 +360,19 @@ func Test_runSync_ACriticalErrorEndsTheSyncAndIsTold(t *testing.T) {
 	require.NoError(t, husonym_benthos_error.RegisterErrorOutput(env, stop))
 	refused := tableConfig("public.refused.insert", `root = {"id": 1}`)
 	refused.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "users_pkey"`
+	// The group after it writes to an output that counts its rows.
+	written := &atomic.Int64{}
+	spec := service.NewConfigSpec().
+		Field(service.NewStringField("key")).
+		Field(service.NewBoolField("walk_metadata")).
+		Field(service.NewBoolField("walk_json_object")).
+		Field(service.NewStringField("fields_mapping"))
+	require.NoError(t, env.RegisterOutput("redis_hash_output", spec,
+		func(*service.ParsedConfig, *service.Resources) (service.Output, int, error) {
+			return countingOutput{written: written}, 1, nil
+		}))
 	later := tableConfig("public.later.insert", `root = {"id": 1}`)
-	later.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "later_pkey"`
+	later.Config.Output.Outputs = husonym_benthos.Outputs{RedisHashOutput: &husonym_benthos.RedisHashOutputConfig{Key: "k"}}
 
 	done := make(chan error, 1)
 	go func() {
@@ -376,14 +387,7 @@ func Test_runSync_ACriticalErrorEndsTheSyncAndIsTold(t *testing.T) {
 	case <-time.After(20 * time.Second):
 		require.FailNow(t, "the sync does not end on a critical error")
 	}
-	// The group after it was not synced: its own refused row would have signaled too.
-	for range cap(stop) {
-		select {
-		case signal := <-stop:
-			require.NotContains(t, signal.Error(), "later_pkey", "the group after the refused row was synced")
-		default:
-		}
-	}
+	require.Zero(t, written.Load(), "the group after the refused row was synced")
 }
 
 // The stream acknowledges the row it was refused, and its table ends as if it had been
@@ -468,6 +472,34 @@ func Test_model_watchStop(t *testing.T) {
 		m.finish(heard, logger)
 
 		require.ErrorIs(t, m.outcome(nil), critical)
+	})
+
+	t.Run("a table that failed first stays the cause", func(t *testing.T) {
+		stop := make(chan error, 1)
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = stop
+		failure := errors.New("the table failed")
+		m.Update(syncFailedMsg{err: failure})
+
+		stop <- critical
+		heard := m.watchStop(func(tea.Msg) {})
+		require.Eventually(t, func() bool { return len(stop) == 0 }, time.Second, time.Millisecond)
+		m.finish(heard, logger)
+
+		require.ErrorIs(t, m.outcome(nil), failure)
+	})
+
+	t.Run("a critical error stops the tables without waiting for the program", func(t *testing.T) {
+		stop := make(chan error, 1)
+		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+		m.stop = stop
+		told := make(chan struct{})
+
+		stop <- critical
+		// A program that takes its time to hear.
+		m.watchStop(func(tea.Msg) { <-told })
+		require.Eventually(t, func() bool { return m.ctx.Err() != nil }, time.Second, time.Millisecond)
+		close(told)
 	})
 
 	t.Run("the watch ends with the sync", func(t *testing.T) {
