@@ -144,7 +144,10 @@ func (w *gcsWriter) WriteBatch(ctx context.Context, batch service.MessageBatch) 
 		return service.ErrNotConnected
 	}
 
-	for i, msg := range batch {
+	// The objects that fail are told one by one: told failed as a whole, the batch would be
+	// written again whole, and the objects already written written once more, under the name
+	// their path gives them then.
+	return batch.WalkWithBatchedErrors(func(i int, msg *service.Message) error {
 		name, err := batch.TryInterpolatedString(i, w.path)
 		if err != nil {
 			return fmt.Errorf("unable to interpolate the object name: %w", err)
@@ -154,13 +157,12 @@ func (w *gcsWriter) WriteBatch(ctx context.Context, batch service.MessageBatch) 
 			return err
 		}
 		putCtx, cancel := context.WithTimeout(ctx, w.timeout)
-		err = store.put(putCtx, name, w.contentType, w.contentEncoding, body)
-		cancel()
-		if err != nil {
+		defer cancel()
+		if err := store.put(putCtx, name, w.contentType, w.contentEncoding, body); err != nil {
 			return fmt.Errorf("unable to upload object %q: %w", name, err)
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (w *gcsWriter) Close(ctx context.Context) error {

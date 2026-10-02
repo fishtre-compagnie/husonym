@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -20,7 +23,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// fakeS3 records the uploads asked of it, and fails them with errs, one by upload.
 type fakeS3 struct {
+	mu   sync.Mutex
 	puts []*s3.PutObjectInput
 	errs []error
 }
@@ -30,6 +35,8 @@ func (f *fakeS3) PutObject(
 	params *s3.PutObjectInput,
 	optFns ...func(*s3.Options),
 ) (*s3.PutObjectOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.puts = append(f.puts, params)
 	if len(f.errs) > 0 {
 		err := f.errs[0]
@@ -83,7 +90,7 @@ func newTestWriter(
 func Test_S3Writer_WritesToTheBucketOfTheConnection(t *testing.T) {
 	writer, err := newTestWriter(t, `
 connection_id: s3
-path: workflows/run/${! count("s3-test-files") }.jsonl.gz
+path: workflows/run/${! meta("n") }.jsonl.gz
 content_type: application/gzip
 storage_class: STANDARD_IA
 `, connectionsOf(s3Connection("s3", "the-bucket")))
@@ -91,11 +98,10 @@ storage_class: STANDARD_IA
 
 	fake := &fakeS3{}
 	writer.client = fake
-	err = writer.WriteBatch(context.Background(), service.MessageBatch{
-		service.NewMessage([]byte("first")),
-		service.NewMessage([]byte("second")),
-	})
-	require.NoError(t, err)
+	batch := service.MessageBatch{service.NewMessage([]byte("first")), service.NewMessage([]byte("second"))}
+	batch[0].MetaSet("n", "1")
+	batch[1].MetaSet("n", "2")
+	require.NoError(t, writer.WriteBatch(context.Background(), batch))
 
 	require.Len(t, fake.puts, 2)
 	for i, want := range []struct{ key, body string }{
@@ -136,6 +142,95 @@ path: object
 	writer.client = &fakeS3{errs: []error{errors.New("access denied")}}
 	err = writer.WriteBatch(context.Background(), service.MessageBatch{service.NewMessage([]byte("x"))})
 	require.ErrorContains(t, err, "access denied")
+}
+
+// failedMessages tells the messages of the batch a write failed, by their index.
+func failedMessages(t *testing.T, err error) map[int]string {
+	t.Helper()
+	var batchErr *service.BatchError
+	require.ErrorAs(t, err, &batchErr, "the write does not tell which messages it failed")
+	failed := map[int]string{}
+	batchErr.WalkMessages(func(i int, _ *service.Message, err error) bool {
+		if err != nil {
+			failed[i] = err.Error()
+		}
+		return true
+	})
+	return failed
+}
+
+// A batch is written object by object. The write tells which uploads failed: told failed as a
+// whole, the batch would be written again whole, and the objects already uploaded uploaded
+// once more, under the key their path gives them then.
+func Test_S3Writer_AFailedUploadFailsItsMessageOnly(t *testing.T) {
+	writer, err := newTestWriter(t, `
+connection_id: s3
+path: workflows/run/${! meta("n") }.jsonl.gz
+`, connectionsOf(s3Connection("s3", "the-bucket")))
+	require.NoError(t, err)
+
+	fake := &fakeS3{errs: []error{nil, errors.New("slow down")}}
+	writer.client = fake
+	batch := service.MessageBatch{
+		service.NewMessage([]byte("first")),
+		service.NewMessage([]byte("second")),
+		service.NewMessage([]byte("third")),
+	}
+	for i, message := range batch {
+		message.MetaSet("n", strconv.Itoa(i+1))
+	}
+	err = writer.WriteBatch(context.Background(), batch)
+
+	failed := failedMessages(t, err)
+	require.Len(t, failed, 1)
+	require.Contains(t, failed[1], "slow down")
+	require.Contains(t, failed[1], "workflows/run/2.jsonl.gz")
+	require.Len(t, fake.puts, 3, "an upload that fails does not keep the next from being tried")
+}
+
+// In a stream, the upload that failed is the only one made again.
+func Test_S3Output_OnlyTheFailedUploadIsMadeAgain(t *testing.T) {
+	fake := &fakeS3{errs: []error{nil, errors.New("slow down")}}
+	env := service.NewEnvironment()
+	require.NoError(t, env.RegisterBatchOutput("s3_under_test", outputSpec(),
+		func(conf *service.ParsedConfig, _ *service.Resources) (service.BatchOutput, service.BatchPolicy, int, error) {
+			writer, err := newS3Writer(conf, connectionsOf(s3Connection("s3", "the-bucket")), cloudidentity.Policy{})
+			if err != nil {
+				return nil, service.BatchPolicy{}, 0, err
+			}
+			// Connect keeps the client it finds.
+			writer.client = fake
+			return writer, service.BatchPolicy{}, 1, nil
+		}))
+	builder := env.NewStreamBuilder()
+	require.NoError(t, builder.SetYAML(`
+input:
+  generate:
+    count: 3
+    batch_size: 3
+    interval: ""
+    mapping: 'root = "row " + counter().string()'
+output:
+  s3_under_test:
+    connection_id: s3
+    path: 'workflows/run/${! count("s3-test-stream") }.txt'
+logger:
+  level: none
+`))
+	stream, err := builder.Build()
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, stream.Run(ctx))
+
+	bodies := []string{}
+	for _, put := range fake.puts {
+		body, err := io.ReadAll(put.Body)
+		require.NoError(t, err)
+		bodies = append(bodies, string(body))
+	}
+	// The second upload failed, and is the one made again.
+	require.Equal(t, []string{"row 1", "row 2", "row 3", "row 2"}, bodies)
 }
 
 func Test_S3Writer_WritesNothingBeforeConnect(t *testing.T) {
