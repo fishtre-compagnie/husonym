@@ -108,8 +108,11 @@ func newModel(
 ) *model {
 	s := spinner.New()
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+	// The sync has a context of its own: a key or its end stops the tables being synced.
+	ctx, cancel := context.WithCancel(ctx)
 	return &model{
 		ctx:              ctx,
+		cancel:           cancel,
 		groupedConfigs:   groupedConfigs,
 		tableSynced:      0,
 		spinner:          s,
@@ -133,14 +136,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
 			// The tables being synced are stopped at the key, not once the program has closed.
-			if m.cancel != nil {
-				m.cancel()
-			}
+			m.cancel()
 			return m, tea.Quit
 		}
 	case syncFailedMsg:
 		// Tables cut short when the sync was stopped did not fail: the stop is what ended it.
-		if !errors.Is(msg.err, context.Canceled) {
+		if m.ctx.Err() == nil || !errors.Is(msg.err, context.Canceled) {
 			m.err = msg.err
 		}
 		return m, tea.Quit
@@ -298,10 +299,7 @@ func runSync(
 		// TUI mode, discard log output
 		synclogger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	m := newModel(ctx, benv, groupedConfigs, synclogger, outputType)
-	m.cancel = cancel
 	return runSyncProgram(m, tea.NewProgram(m, opts...), logger)
 }
 

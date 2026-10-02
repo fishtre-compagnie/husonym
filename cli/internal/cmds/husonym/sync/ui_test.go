@@ -152,10 +152,8 @@ func endlessSync(t *testing.T) (*model, *tea.Program, <-chan error, *atomic.Int6
 		{endlessTable("public.later.insert")},
 	}
 	logger := testutil.GetTestLogger(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	m := newModel(ctx, env, groups, logger, output.PlainOutput)
-	m.cancel = cancel
+	m := newModel(context.Background(), env, groups, logger, output.PlainOutput)
+	t.Cleanup(m.cancel)
 	program := tea.NewProgram(m, tea.WithoutRenderer(), tea.WithInput(nil))
 
 	done := make(chan error, 1)
@@ -202,27 +200,37 @@ func Test_runSync_QuitBeforeItsLastTable(t *testing.T) {
 
 // The tables are stopped at the key, before the program has closed.
 func Test_model_AKeyStopsTheTables(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	m := newModel(ctx, droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
-	m.cancel = cancel
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	require.NoError(t, m.ctx.Err())
 
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 
 	require.NotNil(t, cmd)
-	require.ErrorIs(t, ctx.Err(), context.Canceled)
+	require.ErrorIs(t, m.ctx.Err(), context.Canceled)
 }
 
 // A key stops the tables being synced, which end cut short: the sync was interrupted, it is
 // not one of its tables that failed.
 func Test_model_TablesCutShortByTheStopDidNotFail(t *testing.T) {
 	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	m.cancel()
 
 	_, cmd := m.Update(syncFailedMsg{err: fmt.Errorf("unable to run benthos stream: %w", context.Canceled)})
 
 	require.NotNil(t, cmd, "the sync ends all the same")
 	require.NoError(t, m.err)
 	require.ErrorIs(t, m.outcome(nil), errSyncInterrupted)
+}
+
+// A table that ends on a canceled context while the sync was not stopped did fail.
+func Test_model_ATableCanceledOnItsOwnFailed(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	failure := fmt.Errorf("unable to run benthos stream: %w", context.Canceled)
+
+	m.Update(syncFailedMsg{err: failure})
+
+	require.ErrorIs(t, m.outcome(nil), failure)
+	require.NotErrorIs(t, m.outcome(nil), errSyncInterrupted)
 }
 
 // A table that failed is what the sync reports.
@@ -245,15 +253,16 @@ func Test_model_outcome(t *testing.T) {
 		programErr error
 		want       error
 	}{
-		"its last table synced":                {done: true},
-		"a key after its last table":           {done: true, programErr: nil},
-		"a signal after its last table":        {done: true, programErr: tea.ErrInterrupted},
-		"quit before its last table":           {want: errSyncInterrupted},
-		"a signal before its last table":       {programErr: tea.ErrInterrupted, want: errSyncInterrupted},
-		"a table failed":                       {failed: failure, want: failure},
-		"a table failed, then a signal":        {failed: failure, programErr: tea.ErrInterrupted, want: failure},
-		"the program failed":                   {programErr: crash, want: crash},
-		"the program failed after a table did": {failed: failure, programErr: crash, want: crash},
+		"its last table synced":                   {done: true},
+		"a key after its last table":              {done: true, programErr: nil},
+		"a signal after its last table":           {done: true, programErr: tea.ErrInterrupted},
+		"quit before its last table":              {want: errSyncInterrupted},
+		"a signal before its last table":          {programErr: tea.ErrInterrupted, want: errSyncInterrupted},
+		"a table failed":                          {failed: failure, want: failure},
+		"a table failed, then a signal":           {failed: failure, programErr: tea.ErrInterrupted, want: failure},
+		"the program failed":                      {programErr: crash, want: crash},
+		"the program failed after a table did":    {failed: failure, programErr: crash, want: crash},
+		"the program failed after its last table": {done: true, programErr: crash, want: crash},
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := &model{done: tc.done, err: tc.failed}
@@ -275,6 +284,21 @@ func Test_inFlightGroups(t *testing.T) {
 		require.False(t, groups.end(50*time.Millisecond))
 		groups.done()
 		require.True(t, groups.end(time.Second))
+	})
+
+	t.Run("no group starts while the sync waits for those being synced", func(t *testing.T) {
+		groups := &inFlightGroups{}
+		require.True(t, groups.begin())
+		ended := make(chan bool, 1)
+		go func() { ended <- groups.end(5 * time.Second) }()
+		require.Eventually(t, func() bool {
+			groups.mu.Lock()
+			defer groups.mu.Unlock()
+			return groups.ended
+		}, time.Second, time.Millisecond, "the sync that ends closes the door before it waits")
+		require.False(t, groups.begin())
+		groups.done()
+		require.True(t, <-ended)
 	})
 
 	t.Run("a group does not start once the sync has ended", func(t *testing.T) {
