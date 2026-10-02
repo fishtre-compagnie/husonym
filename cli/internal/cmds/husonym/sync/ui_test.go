@@ -566,27 +566,30 @@ func Test_model_stoppedMeanwhile(t *testing.T) {
 	critical := errors.New("duplicate key value violates unique constraint")
 
 	t.Run("a critical error that waits is the answer, and stops the sync", func(t *testing.T) {
-		stop := make(chan error, 1)
-		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
-		m.stop = stop
-		t.Cleanup(m.cancel)
+		// The watch takes the error by itself, or when it is asked: both ways are met over
+		// the rounds, and neither tells the group that nothing stopped the sync.
+		for range 50 {
+			stop := make(chan error, 1)
+			m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
+			m.stop = stop
 
-		// The watch is held where it tells the program: the group gets its answer from the
-		// channel or from the stop, never neither.
-		told := make(chan struct{})
-		t.Cleanup(func() { close(told) })
-		stop <- critical
-		heard := m.watchStop(func(tea.Msg) { <-told })
+			// The watch is held where it tells the program.
+			told := make(chan struct{})
+			stop <- critical
+			heard := m.watchStop(func(tea.Msg) { <-told })
 
-		switch answer := m.stoppedMeanwhile().(type) {
-		case syncStoppedMsg:
-			require.Equal(t, critical, answer.err)
-		case syncFailedMsg:
-			require.ErrorIs(t, answer.err, context.Canceled, "the watch had stopped the sync already")
-		default:
-			require.Fail(t, "the group was told nothing had stopped the sync", "%T", answer)
+			switch answer := inTime(t, m.stoppedMeanwhile).(type) {
+			case syncStoppedMsg:
+				require.Equal(t, critical, answer.err)
+			case syncFailedMsg:
+				require.ErrorIs(t, answer.err, context.Canceled, "the watch had stopped the sync already")
+			default:
+				require.Fail(t, "the group was told nothing had stopped the sync", "%T", answer)
+			}
+			require.Equal(t, critical, <-heard)
+			close(told)
+			m.cancel()
 		}
-		require.Equal(t, critical, <-heard)
 	})
 
 	t.Run("nothing stopped the sync", func(t *testing.T) {
@@ -595,8 +598,8 @@ func Test_model_stoppedMeanwhile(t *testing.T) {
 		t.Cleanup(m.cancel)
 		m.watchStop(func(tea.Msg) { require.Fail(t, "nothing to tell") })
 
-		require.Nil(t, m.stoppedMeanwhile())
-		require.Nil(t, m.stoppedMeanwhile(), "the watch goes on answering")
+		require.Nil(t, inTime(t, m.stoppedMeanwhile))
+		require.Nil(t, inTime(t, m.stoppedMeanwhile), "the watch goes on answering")
 		require.NoError(t, m.ctx.Err())
 	})
 
@@ -604,8 +607,63 @@ func Test_model_stoppedMeanwhile(t *testing.T) {
 		m := newModel(context.Background(), droppingEnv(t), nil, logger, output.PlainOutput)
 		m.cancel()
 
-		answer, ok := m.stoppedMeanwhile().(syncFailedMsg)
+		answer, ok := inTime(t, m.stoppedMeanwhile).(syncFailedMsg)
 		require.True(t, ok)
 		require.ErrorIs(t, answer.err, context.Canceled)
 	})
+}
+
+// inTime returns the message a step of the sync gives, which it must do soon: a step that
+// waits for a watch that does not answer fails here, rather than hold the tests.
+func inTime(t *testing.T, step func() tea.Msg) tea.Msg {
+	t.Helper()
+	done := make(chan tea.Msg, 1)
+	go func() { done <- step() }()
+	select {
+	case msg := <-done:
+		return msg
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "the step of the sync does not end")
+		return nil
+	}
+}
+
+// A table whose row was refused ends as if it had been written: its group is not told synced
+// for that. The watch is started late, as if it had been slow to hear the critical error: the
+// group has ended by then, and waits to ask it.
+func Test_model_AGroupWithARefusedRowIsNotToldSynced(t *testing.T) {
+	logger := testutil.GetTestLogger(t)
+	for range 10 {
+		stop := make(chan error, 3)
+		env := service.NewEnvironment()
+		require.NoError(t, husonym_benthos_error.RegisterErrorOutput(env, stop))
+		refused := tableConfig("public.refused.insert", `root = {"id": 1}`)
+		refused.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "users_pkey"`
+		m := newModel(context.Background(), env, nil, logger, output.PlainOutput)
+		m.stop = stop
+
+		ended := make(chan tea.Msg, 1)
+		go func() { ended <- m.syncConfigs(m.ctx, []*benthosbuilder.BenthosConfigResponse{refused})() }()
+		// The stream signals the critical error, acknowledges the row and ends.
+		require.Eventually(t, func() bool { return len(stop) > 0 }, 10*time.Second, time.Millisecond)
+		select {
+		case msg := <-ended:
+			require.FailNow(t, "the group did not wait to ask whether the sync was stopped", "%T", msg)
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		// A program that takes its time to hear.
+		told := make(chan struct{})
+		m.watchStop(func(tea.Msg) { <-told })
+		select {
+		case msg := <-ended:
+			_, synced := msg.(syncedDataMsg)
+			require.False(t, synced, "the group with a refused row is told synced")
+			require.NotNil(t, msg)
+		case <-time.After(10 * time.Second):
+			require.FailNow(t, "the group got no answer from the watch")
+		}
+		close(told)
+		m.cancel()
+	}
 }
