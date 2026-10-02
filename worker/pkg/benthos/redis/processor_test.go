@@ -159,3 +159,22 @@ func Test_redisProc_ACommandThatKeepsFailingIsGivenUp(t *testing.T) {
 	// adapted from.
 	require.EqualValues(t, 4, calls.Load())
 }
+
+// An absent key is an answer of Redis, not a failure: asked again, it would be absent again,
+// and the row would wait for nothing before it is told in error.
+func Test_redisProc_AnAbsentKeyIsNotTriedAgain(t *testing.T) {
+	for name, config := range map[string]string{"command": rawCommand, "operator": operator} {
+		t.Run(name, func(t *testing.T) {
+			proc, calls, logs := newTestProcessorFailing(t, config, 100, redis.Nil)
+
+			start := time.Now()
+			out, err := proc.ProcessBatch(context.Background(), rows(1))
+
+			require.NoError(t, err)
+			require.ErrorIs(t, out[0][0].GetError(), redis.Nil)
+			require.EqualValues(t, 1, calls.Load(), "an absent key was asked again")
+			require.Less(t, time.Since(start), 400*time.Millisecond)
+			require.NotContains(t, logs.String(), "command failed")
+		})
+	}
+}

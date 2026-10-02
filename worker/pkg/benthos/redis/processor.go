@@ -145,11 +145,12 @@ func newRedisProcFromConfig(
 
 // retried runs a command, and again after the retry period while it fails. A command whose
 // context has ended is not tried again, nor waited for: its stream is stopping, and each row
-// of the batch would sit through the waits.
+// of the batch would sit through the waits. Nor is an absent key, redis.Nil: it is the answer
+// of Redis, which would give it again.
 func retried[T any](ctx context.Context, r *redisProc, name string, command func() (T, error)) (T, error) {
 	res, err := command()
 	for i := 0; i <= r.retries && err != nil; i++ {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || errors.Is(err, redis.Nil) {
 			return res, err
 		}
 		r.log.Errorf("%v command failed: %v", name, err)
