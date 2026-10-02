@@ -1,8 +1,10 @@
 package sync_activity
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -90,7 +92,7 @@ func Test_runStream_StopsBeforeItTellsTheEnd(t *testing.T) {
 	streamDone := make(chan error, 1)
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).Return(errors.New("the stream failed"))
-	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+	stream.EXPECT().StopWithin(benthosstream.CloseBudget).RunAndReturn(func(time.Duration) error {
 		require.Empty(t, streamDone, "the end was told before the stream stopped")
 		return nil
 	}).Once()
@@ -115,7 +117,7 @@ func Test_monitorStream_StopsTheStreamSetSinceItStarted(t *testing.T) {
 	// The monitor is given the time to start: it must read the stream when it acts, not then.
 	time.Sleep(50 * time.Millisecond)
 	stream := benthosstream.NewMockBenthosStreamClient(t)
-	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+	stream.EXPECT().StopWithin(benthosstream.CloseBudget).RunAndReturn(func(time.Duration) error {
 		require.Empty(t, result, "the result was given before the stream stopped")
 		return nil
 	}).Once()
@@ -151,7 +153,7 @@ func Test_runStream_PanicStopsTheStream(t *testing.T) {
 	streamDone := make(chan error, 1)
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).RunAndReturn(func(context.Context) error { panic("boom") })
-	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error {
+	stream.EXPECT().StopWithin(benthosstream.CloseBudget).RunAndReturn(func(time.Duration) error {
 		require.Empty(t, streamDone, "the end was told before the stream stopped")
 		return nil
 	}).Once()
@@ -165,7 +167,7 @@ func Test_runStream_PanicStopsTheStream(t *testing.T) {
 func Test_runStream_PanicWhileStopping(t *testing.T) {
 	stream := benthosstream.NewMockBenthosStreamClient(t)
 	stream.EXPECT().Run(mock.Anything).RunAndReturn(func(context.Context) error { panic("boom") })
-	stream.EXPECT().StopWithin(streamStopBudget).RunAndReturn(func(time.Duration) error { panic("again") })
+	stream.EXPECT().StopWithin(benthosstream.CloseBudget).RunAndReturn(func(time.Duration) error { panic("again") })
 
 	streamDone := make(chan error, 1)
 	runStream(stream, context.Background(), streamDone, testutil.GetTestLogger(t))
@@ -198,4 +200,39 @@ func Test_sharedStream(t *testing.T) {
 	_ = shared.get()
 	<-done
 	require.Equal(t, stream, shared.get())
+}
+
+// A stream that is closed answers with the deadline of its budget, whether it has closed or
+// not: the answer is no failure, and is not logged as one each time an activity stops.
+func Test_AClosedStreamIsNotLoggedAsAFailure(t *testing.T) {
+	logged := func() (*slog.Logger, *bytes.Buffer) {
+		logs := &bytes.Buffer{}
+		return slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelInfo})), logs
+	}
+	closed := func() *benthosstream.MockBenthosStreamClient {
+		stream := benthosstream.NewMockBenthosStreamClient(t)
+		stream.EXPECT().StopWithin(benthosstream.CloseBudget).Return(context.DeadlineExceeded).Once()
+		return stream
+	}
+
+	t.Run("stopped by its activity", func(t *testing.T) {
+		logger, logs := logged()
+		result := make(chan error, 1)
+		cause := errors.New("violates not-null constraint")
+
+		handleStreamStop(closed(), result, cause, "received stop activity from benthos channel", logger)
+
+		require.Equal(t, cause, <-result)
+		require.NotContains(t, logs.String(), "level=ERROR")
+		require.NotContains(t, logs.String(), "level=WARN")
+		require.NotContains(t, logs.String(), "deadline exceeded")
+	})
+
+	t.Run("stopped once its run failed", func(t *testing.T) {
+		logger, logs := logged()
+
+		stopFailedStream(closed(), logger)
+
+		require.Empty(t, logs.String())
+	})
 }

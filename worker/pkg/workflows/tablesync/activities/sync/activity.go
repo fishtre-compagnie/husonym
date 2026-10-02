@@ -421,9 +421,6 @@ func (s *sharedStream) get() benthosstream.BenthosStreamClient {
 	return s.stream
 }
 
-// streamStopBudget is how long a stream is given to stop by itself before it is closed.
-const streamStopBudget = 1 * time.Millisecond
-
 func handleStreamStop(
 	benthosStream benthosstream.BenthosStreamClient,
 	syncResultChan chan<- error,
@@ -437,8 +434,8 @@ func handleStreamStop(
 	// and gives back the session the stream writes with.
 	if benthosStream != nil {
 		// Stop stream explicitly since stream.Run(ctx) doesn't fully obey canceled context when sink is in error state
-		if stopErr := benthosStream.StopWithin(streamStopBudget); stopErr != nil {
-			logger.Error(stopErr.Error())
+		if stopErr := benthosStream.StopWithin(benthosstream.CloseBudget); stopErr != nil {
+			logger.Debug("the stream was asked to stop", "answer", stopErr)
 		}
 	}
 	syncResultChan <- err
@@ -487,8 +484,8 @@ func stopFailedStream(stream benthosstream.BenthosStreamClient, logger *slog.Log
 			logger.Error(fmt.Sprintf("recovered from panic while stopping the stream: %v", r))
 		}
 	}()
-	if stopErr := stream.StopWithin(streamStopBudget); stopErr != nil {
-		logger.Warn("the stream was asked to stop and did not tell it had", "error", stopErr)
+	if stopErr := stream.StopWithin(benthosstream.CloseBudget); stopErr != nil {
+		logger.Debug("the stream was asked to stop", "answer", stopErr)
 	}
 }
 

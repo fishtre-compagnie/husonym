@@ -36,6 +36,12 @@ func (b *BenthosStreamManager) NewBenthosStreamFromBuilder(
 	return NewBenthosStreamAdapter(stream), nil
 }
 
+// CloseBudget is the time a stream is given to stop by itself when its run has failed or was
+// canceled: none. The rows in flight are not to be written, and whoever stops the stream waits
+// for it. Benthos answers such a stop with the deadline of the budget, whether the stream has
+// closed or not: the answer tells nothing, and is no failure.
+const CloseBudget = time.Millisecond
+
 // BenthosStreamAdapter runs one stream, and stops it for good: a stream asked to stop before it
 // ran never starts, and one whose stop came too early to be heard is stopped by the next.
 type BenthosStreamAdapter struct {
