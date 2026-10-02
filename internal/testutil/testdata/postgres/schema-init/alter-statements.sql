@@ -152,8 +152,14 @@ ALTER DOMAIN positive_integer
   SET NOT NULL;
 
 
-ALTER DOMAIN positive_integer ADD CONSTRAINT less_10000 
+ALTER DOMAIN positive_integer ADD CONSTRAINT less_10000
     CHECK (VALUE < 10000);
+
+-- A constraint the domain no longer has, and one whose definition changed.
+ALTER DOMAIN positive_integer DROP CONSTRAINT positive_integer_small;
+ALTER DOMAIN positive_integer DROP CONSTRAINT positive_integer_check;
+ALTER DOMAIN positive_integer ADD CONSTRAINT positive_integer_check
+    CHECK (VALUE >= 0);
 
 
 ALTER TABLE locations ALTER COLUMN city DROP NOT NULL;

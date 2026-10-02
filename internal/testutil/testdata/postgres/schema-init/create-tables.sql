@@ -99,7 +99,8 @@ CREATE TABLE dummy_comp_table (
 );
 
 CREATE DOMAIN positive_integer AS integer
-    CHECK (VALUE > 0);
+    CHECK (VALUE > 0)
+    CONSTRAINT positive_integer_small CHECK (VALUE < 1000000);
 
 CREATE DOMAIN over_hundred AS integer
     CHECK (VALUE > 100);

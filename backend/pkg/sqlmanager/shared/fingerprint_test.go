@@ -199,3 +199,28 @@ func Test_BuildTriggerFingerprint(t *testing.T) {
 	result4 := BuildTriggerFingerprint(trigger4)
 	require.Equal(t, result, result4)
 }
+
+// Two domains that differ by a constraint, by their default or by their nullability are not
+// the same; the order their constraints are told in makes none.
+func Test_BuildDomainDataTypeFingerprint(t *testing.T) {
+	domain := func(change func(*DomainDataType)) string {
+		d := &DomainDataType{
+			Schema: "app", Name: "amount", IsNullable: true, Default: "1",
+			Constraints: []*DomainConstraint{
+				{Name: "positive", Definition: "CHECK ((VALUE > 0))"},
+				{Name: "small", Definition: "CHECK ((VALUE < 1000))"},
+			},
+		}
+		change(d)
+		return BuildDomainDataTypeFingerprint(d)
+	}
+	same := domain(func(*DomainDataType) {})
+
+	require.Equal(t, same, domain(func(d *DomainDataType) {
+		d.Constraints[0], d.Constraints[1] = d.Constraints[1], d.Constraints[0]
+	}))
+	require.NotEqual(t, same, domain(func(d *DomainDataType) { d.Default = "" }))
+	require.NotEqual(t, same, domain(func(d *DomainDataType) { d.IsNullable = false }))
+	require.NotEqual(t, same, domain(func(d *DomainDataType) { d.Constraints = d.Constraints[:1] }))
+	require.NotEqual(t, same, domain(func(d *DomainDataType) { d.Constraints[1].Definition = "CHECK ((VALUE < 100))" }))
+}

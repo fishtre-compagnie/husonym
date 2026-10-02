@@ -388,22 +388,37 @@ domain_defs AS (
         pg_catalog.format_type(t.typbasetype, t.typtypmod) ||
         CASE
             WHEN t.typnotnull THEN ' NOT NULL' ELSE ''
-        END || ' ' ||
-        -- A domain without constraint has none to tell. One whose constraint was dropped
-        -- under the read has a NULL definition, which fails the read rather than tell the
-        -- domain without its constraint.
+        END ||
+        -- One statement tells the domain with all its constraints: one statement by constraint
+        -- would create the domain with the first of them only. A domain without constraint has
+        -- none to tell. One whose constraint was dropped under the read has a NULL definition,
+        -- which fails the read rather than tell the domain without that constraint.
+        -- The default is not told: it may call a function or a sequence that is created after
+        -- the domain. It is set once the domain is created, as a default that changed is.
         CASE
-            WHEN c.oid IS NULL THEN ''
-            ELSE 'CONSTRAINT ' || conname || ' ' || pg_catalog.pg_get_constraintdef(c.oid)
+            WHEN COUNT(c.oid) = 0 THEN ''
+            WHEN array_position(
+                array_agg('CONSTRAINT ' || quote_ident(c.conname) || ' ' || pg_catalog.pg_get_constraintdef(c.oid) ORDER BY c.conname),
+                NULL
+            ) IS NOT NULL THEN NULL
+            ELSE ' ' || array_to_string(
+                array_agg('CONSTRAINT ' || quote_ident(c.conname) || ' ' || pg_catalog.pg_get_constraintdef(c.oid) ORDER BY c.conname),
+                ' '
+            )
         END || ';' AS definition
     FROM
         relevant_custom_types rct
     JOIN
         pg_catalog.pg_type t ON rct.type_oid = t.oid
     LEFT JOIN
-        pg_catalog.pg_constraint c ON t.oid = c.contypid
+        -- The checks only: PostgreSQL 17 also lists the NOT NULL of a domain among its
+        -- constraints, which is told above. A check that is not validated is not accepted
+        -- by CREATE DOMAIN: the next reconciliation adds it, as it does a new constraint.
+        pg_catalog.pg_constraint c ON t.oid = c.contypid AND c.contype = 'c' AND c.convalidated
     WHERE
         rct.type = 'domain'
+    GROUP BY
+        rct.schema_name, rct.type_name, rct.type, t.typbasetype, t.typtypmod, t.typnotnull
 ),
 enum_defs AS (
     SELECT
@@ -1066,8 +1081,8 @@ SELECT
 	rct.schema_name as schema,
 	rct.type_name as name,
 	pg_catalog.format_type(t.typbasetype, t.typtypmod) AS type,
-	t.typnotnull AS is_nullable,
-	COALESCE(pg_get_expr(t.typdefaultbin, t.typnamespace), t.typdefault) AS default,
+	(NOT t.typnotnull)::BOOL AS is_nullable,
+	COALESCE(pg_get_expr(t.typdefaultbin, 0), t.typdefault) AS default,
 	-- An empty list for a domain without constraint: a NULL does not scan.
 	COALESCE(
         JSON_AGG(
@@ -1081,5 +1096,6 @@ SELECT
 FROM
 	relevant_custom_types rct
 	JOIN pg_catalog.pg_type t ON rct.type_oid = t.oid
-	LEFT JOIN pg_catalog.pg_constraint c ON t.oid = c.contypid
-GROUP BY rct.schema_name, rct.type_name, t.typbasetype, t.typtypmod, t.typnotnull, t.typdefaultbin, t.typnamespace, t.typdefault;
+	-- The checks only: PostgreSQL 17 also lists the NOT NULL of a domain among its constraints.
+	LEFT JOIN pg_catalog.pg_constraint c ON t.oid = c.contypid AND c.contype = 'c'
+GROUP BY rct.schema_name, rct.type_name, t.typbasetype, t.typtypmod, t.typnotnull, t.typdefaultbin, t.typdefault;

@@ -3,6 +3,7 @@ package sqlmanager_postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -68,7 +69,7 @@ func Test_PostgresManager_ReadsAgainWhenADefinitionIsGone(t *testing.T) {
 
 	_, err = db.ExecContext(ctx, `
 		CREATE SCHEMA app;
-		CREATE DOMAIN app.amount AS int;
+		CREATE DOMAIN app.amount AS int CONSTRAINT amount_small CHECK (VALUE < 1000);
 		CREATE TABLE app.t (id int PRIMARY KEY, v int, a app.amount);`)
 	require.NoError(t, err)
 
@@ -167,7 +168,8 @@ func Test_PostgresManager_ReadsAgainWhenADefinitionIsGone(t *testing.T) {
 			},
 		},
 		{
-			// Without the NULL, the domain would be told without its constraint, as if it had none.
+			// Without the NULL, the domain would be told without the constraint that is gone, as
+			// if it had the other only.
 			query:  "GetDataTypesBySchemaAndTables",
 			create: `ALTER DOMAIN app.amount ADD CONSTRAINT amount_positive CHECK (VALUE > 0)`,
 			drop:   `ALTER DOMAIN app.amount DROP CONSTRAINT amount_positive`,
@@ -190,7 +192,16 @@ func Test_PostgresManager_ReadsAgainWhenADefinitionIsGone(t *testing.T) {
 				domains, err := bare.GetDomainsByTables(ctx, db, schemaTables)
 				require.NoError(t, err)
 				require.Len(t, domains, 1)
-				require.JSONEq(t, `[{"name": "amount_positive", "definition": null}]`, string(domains[0].Constraints))
+				var constraints []struct {
+					Name       string  `json:"name"`
+					Definition *string `json:"definition"`
+				}
+				require.NoError(t, json.Unmarshal(domains[0].Constraints, &constraints))
+				require.Len(t, constraints, 2)
+				for _, constraint := range constraints {
+					require.Equal(t, constraint.Name != "amount_positive", constraint.Definition != nil,
+						"the definition of %s", constraint.Name)
+				}
 			},
 			read: func(t *testing.T, manager *postgres.PostgresManager) error {
 				datatypes, err := manager.GetDataTypesByTables(ctx, tables)
@@ -198,8 +209,10 @@ func Test_PostgresManager_ReadsAgainWhenADefinitionIsGone(t *testing.T) {
 					return err
 				}
 				require.Len(t, datatypes.Domains, 1)
-				// Read again, the domain has no constraint left, and is told so.
-				require.Empty(t, datatypes.Domains[0].Constraints)
+				// Read again, the domain has the constraint it is left with, and is told so.
+				require.Equal(t,
+					[]*sqlmanager_shared.DomainConstraint{{Name: "amount_small", Definition: "CHECK ((VALUE < 1000))"}},
+					datatypes.Domains[0].Constraints)
 				return nil
 			},
 		},
