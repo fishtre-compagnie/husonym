@@ -2,6 +2,7 @@ package mcp_cmd
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,8 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -141,11 +144,60 @@ func (answeringJobs) GetJob(
 func Test_apiTimeLimits(t *testing.T) {
 	limits := apiTimeLimits()
 
-	require.Equal(t, 30*time.Second, limits.of(mgmtv1alpha1connect.JobServiceCreateJobRunProcedure))
-	require.Equal(t, 30*time.Second, limits.of(mgmtv1alpha1connect.JobServiceGetJobRunsProcedure))
-	require.Equal(t, 2*time.Minute, limits.of(mgmtv1alpha1connect.ConnectionDataServiceGetConnectionSchemaProcedure))
-	require.Equal(t, 2*time.Minute, limits.of(mgmtv1alpha1connect.ConnectionDataServiceDetectPiiInConnectionDataProcedure))
+	for _, procedure := range []string{
+		mgmtv1alpha1connect.JobServiceCreateJobRunProcedure,
+		mgmtv1alpha1connect.JobServiceGetJobProcedure,
+		mgmtv1alpha1connect.JobServiceGetJobRunsProcedure,
+		mgmtv1alpha1connect.JobServiceCreateJobProcedure,
+		mgmtv1alpha1connect.ConnectionServiceGetConnectionsProcedure,
+	} {
+		require.Equal(t, 30*time.Second, limits.of(procedure), procedure)
+	}
+	for _, procedure := range []string{
+		mgmtv1alpha1connect.ConnectionDataServiceGetAllSchemasAndTablesProcedure,
+		mgmtv1alpha1connect.ConnectionDataServiceGetConnectionSchemaProcedure,
+		mgmtv1alpha1connect.ConnectionDataServiceGetConnectionTableConstraintsProcedure,
+		mgmtv1alpha1connect.ConnectionDataServiceDetectPiiInConnectionDataProcedure,
+		mgmtv1alpha1connect.ConnectionDataServicePreviewColumnTransformerProcedure,
+		mgmtv1alpha1connect.JobServiceValidateJobMappingsProcedure,
+		mgmtv1alpha1connect.JobServiceGetJobRunEventsProcedure,
+	} {
+		require.Equal(t, 2*time.Minute, limits.of(procedure), procedure)
+	}
 	require.Greater(t, limits.of(mgmtv1alpha1connect.ConnectionServiceCheckConnectionConfigByIdProcedure), 2*time.Minute)
+}
+
+// An answer of the API that lands as the limit is reached is passed on as it is: a refusal
+// told as a silence would hold a job that was never run.
+func Test_timeLimits_PassesOnAnAnswerThatLandsAtTheLimit(t *testing.T) {
+	limits := timeLimits{byDefault: 20 * time.Millisecond}
+	refused := connect.NewWireError(connect.CodePermissionDenied, errors.New("missing job:execute"))
+	atTheLimit := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		<-ctx.Done()
+		return nil, refused
+	}
+
+	_, err := limits.interceptor()(atTheLimit)(context.Background(), connect.NewRequest(&mgmtv1alpha1.GetJobRequest{}))
+
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	require.ErrorContains(t, err, "missing job:execute")
+}
+
+// The server asks the API who it answers for before it serves: an API that never answers does
+// not hold it there.
+func Test_signIn_DoesNotWaitForAnAPIThatNeverAnswers(t *testing.T) {
+	api := silentAPI(t)
+	// The address of the API is read from the configuration of the command, which a test
+	// has none of: left unset, the test would call whatever listens on the default address.
+	viper.Set("HUSONYM_API_URL", api.URL)
+	t.Cleanup(func() { viper.Set("HUSONYM_API_URL", "") })
+
+	err := inTime(t, func() error {
+		_, _, err := signIn(context.Background(), "an-api-key", testutil.GetTestLogger(t), 50*time.Millisecond)
+		return err
+	})
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 // Every reader of the server makes its calls with the limits it is given.

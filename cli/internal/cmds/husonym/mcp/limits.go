@@ -27,6 +27,9 @@ const (
 	// databaseTimeLimit is the limit of a call the API answers by reading the database of a
 	// connection, which may be far, slow or large.
 	databaseTimeLimit = 2 * time.Minute
+	// historyTimeLimit is the limit of a call the API answers by reading the history of a run
+	// from the orchestrator, table by table: long for a run of many tables that failed.
+	historyTimeLimit = 2 * time.Minute
 	// checkTimeLimit is a little longer than the two minutes the API gives the check of a
 	// connection, so that the API says it did not end in time, rather than the call being cut
 	// short.
@@ -45,6 +48,7 @@ func apiTimeLimits() timeLimits {
 			mgmtv1alpha1connect.ConnectionDataServiceDetectPiiInConnectionDataProcedure:     databaseTimeLimit,
 			mgmtv1alpha1connect.ConnectionDataServicePreviewColumnTransformerProcedure:      databaseTimeLimit,
 			mgmtv1alpha1connect.JobServiceValidateJobMappingsProcedure:                      databaseTimeLimit,
+			mgmtv1alpha1connect.JobServiceGetJobRunEventsProcedure:                          historyTimeLimit,
 			mgmtv1alpha1connect.ConnectionServiceCheckConnectionConfigByIdProcedure:         checkTimeLimit,
 		},
 	}
@@ -70,8 +74,10 @@ func (l timeLimits) interceptor() connect.UnaryInterceptorFunc {
 			defer cancel()
 			res, err := next(limitedCtx, req)
 			// Cut short at the limit, and not by the caller giving up: said in words the agent
-			// can act on.
-			if err != nil && errors.Is(limitedCtx.Err(), context.DeadlineExceeded) {
+			// can act on. An answer of the API that lands as the limit is reached is its
+			// answer still, and is passed on.
+			if errors.Is(limitedCtx.Err(), context.DeadlineExceeded) &&
+				connect.CodeOf(err) == connect.CodeDeadlineExceeded && !connect.IsWireError(err) {
 				return nil, connect.NewError(
 					connect.CodeDeadlineExceeded,
 					fmt.Errorf("the API did not answer within %s", limit),

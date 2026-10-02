@@ -88,7 +88,7 @@ Two tools return values read from rows: `preview_column`, and `get_run_failure`,
 
 ### Time limits
 
-The server waits for each call it makes to the API for a limited time, so that a call the API never answers ends, and tells the agent so, instead of holding the tool and the job it runs or changes: 30 seconds for what the API answers by itself, 2 minutes for what it answers by reading the database of a connection — its schema, a sample scanned for personal data, a preview, the check of mappings — a little over 2 minutes for `check_connection`, and a little over 3 for `preflight_job`. A tool that makes several calls, such as `suggest_mappings` scanning table after table, may take longer in all.
+The server waits for each call it makes to the API for a limited time, so that a call the API never answers ends, and tells the agent so, instead of holding the tool and the job it runs or changes: 30 seconds for what the API answers by itself, 2 minutes for what it answers by reading the database of a connection — its schema, a sample scanned for personal data, a preview, the check of mappings — or by reading the history of a run, a little over 2 minutes for `check_connection`, and a little over 3 for `preflight_job`. A tool that makes several calls, such as `suggest_mappings` scanning table after table, may take longer in all.
 
 A trigger cut short by its limit may have started a run: `run_job` then holds the job as for any trigger that failed, for two minutes at most.
 

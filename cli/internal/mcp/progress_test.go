@@ -69,7 +69,15 @@ func Test_Progress_ACallThatLastsTellsItIsStillWorkedOn(t *testing.T) {
 	jobService.pauseJob.open()
 	require.NoError(t, <-done)
 
-	progress := client.all()
+	// The client hands what it is told to its handler a moment after it received it: what was
+	// told before the answer is waited for, until nothing more comes.
+	var progress []*mcp.ProgressNotificationParams
+	require.Eventually(t, func() bool {
+		before := len(client.all())
+		time.Sleep(10 * progressEveryInTests)
+		progress = client.all()
+		return len(progress) == before
+	}, 5*time.Second, time.Millisecond, "the client is still told of a call that has answered")
 	for i, notification := range progress {
 		require.Equal(t, "call-1", notification.ProgressToken)
 		require.NotEmpty(t, notification.Message)
@@ -77,8 +85,6 @@ func Test_Progress_ACallThatLastsTellsItIsStillWorkedOn(t *testing.T) {
 			require.Greater(t, notification.Progress, progress[i-1].Progress, "the progress told does not grow")
 		}
 	}
-	time.Sleep(10 * progressEveryInTests)
-	require.Len(t, client.all(), len(progress), "the client is told of a call that has answered")
 }
 
 // A client that did not ask is told nothing.
