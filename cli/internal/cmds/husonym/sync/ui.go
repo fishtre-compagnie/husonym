@@ -34,8 +34,55 @@ type model struct {
 	done             bool
 	totalConfigCount int
 	outputType       output.OutputType
-	// err is what ended the sync before its last table.
+	// err is the table that failed, which ended the sync before its last one.
 	err error
+	// cancel stops the tables being synced, and inFlight tells when they have: a sync that
+	// ends stops them and waits for them, endWait at most.
+	cancel   context.CancelFunc
+	inFlight inFlightGroups
+	endWait  time.Duration
+}
+
+// inFlightGroups counts the groups of tables being synced, until the sync ends: a group that
+// would start after that does not.
+type inFlightGroups struct {
+	mu      syncmap.Mutex
+	ended   bool
+	running syncmap.WaitGroup
+}
+
+// begin counts a group as being synced. It answers false once the sync has ended: the group
+// must not start.
+func (g *inFlightGroups) begin() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.ended {
+		return false
+	}
+	g.running.Add(1)
+	return true
+}
+
+func (g *inFlightGroups) done() { g.running.Done() }
+
+// end keeps any more group from starting, and waits for those being synced, for a time: it
+// says whether they were done by then.
+func (g *inFlightGroups) end(timeout time.Duration) bool {
+	g.mu.Lock()
+	g.ended = true
+	g.mu.Unlock()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		g.running.Wait()
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 var (
@@ -61,12 +108,16 @@ func newModel(
 ) *model {
 	s := spinner.New()
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+	// The sync has a context of its own: a key or its end stops the tables being synced.
+	ctx, cancel := context.WithCancel(ctx)
 	return &model{
 		ctx:              ctx,
+		cancel:           cancel,
 		groupedConfigs:   groupedConfigs,
 		tableSynced:      0,
 		spinner:          s,
 		totalConfigCount: getConfigCount(groupedConfigs),
+		endWait:          syncEndWait,
 		logger:           logger,
 		outputType:       outputType,
 		benv:             benv,
@@ -84,10 +135,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc", "q":
+			// The tables being synced are stopped at the key, not once the program has closed.
+			m.cancel()
 			return m, tea.Quit
 		}
 	case syncFailedMsg:
-		m.err = msg.err
+		// Tables cut short when the sync was stopped did not fail: the stop is what ended it.
+		if m.ctx.Err() == nil || !errors.Is(msg.err, context.Canceled) {
+			m.err = msg.err
+		}
 		return m, tea.Quit
 	case syncedDataMsg:
 		successStrs := []string{}
@@ -151,6 +207,9 @@ func (m *model) View() tea.View {
 	return tea.NewView(printlog.Render("\n") + spin + info)
 }
 
+// errSyncInterrupted is returned for a sync quit before its last table.
+var errSyncInterrupted = errors.New("the sync was interrupted before its last table")
+
 type syncedDataMsg map[string]string
 
 // syncFailedMsg says a table of the group failed: the sync ends there.
@@ -161,6 +220,11 @@ func (m *model) syncConfigs(
 	configs []*benthosbuilder.BenthosConfigResponse,
 ) tea.Cmd {
 	return func() tea.Msg {
+		// The program may have ended since it asked for the group.
+		if !m.inFlight.begin() {
+			return nil
+		}
+		defer m.inFlight.done()
 		messageMap := syncmap.Map{}
 		errgrp, errctx := errgroup.WithContext(ctx)
 		errgrp.SetLimit(5)
@@ -235,14 +299,40 @@ func runSync(
 		// TUI mode, discard log output
 		synclogger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
-	final, err := tea.NewProgram(newModel(ctx, benv, groupedConfigs, synclogger, outputType), opts...).Run()
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error syncing data: %v", err))
-		return fmt.Errorf("unable to finish syncing data: %w", err)
+	m := newModel(ctx, benv, groupedConfigs, synclogger, outputType)
+	return runSyncProgram(m, tea.NewProgram(m, opts...), logger)
+}
+
+// syncEndWait bounds the wait for the tables of a sync that has ended to stop.
+const syncEndWait = 5 * time.Second
+
+// runSyncProgram runs the program of a sync until it ends, and tells how it ended. However it
+// ends — its last table, a table that failed, a key or a signal — the tables still being
+// synced are stopped and waited for: once the sync has returned, no write is started. A write
+// under way when its table was stopped may still complete.
+func runSyncProgram(m *model, program *tea.Program, logger *slog.Logger) error {
+	_, err := program.Run()
+	m.cancel()
+	if !m.inFlight.end(m.endWait) {
+		logger.Warn("the tables being synced did not stop in time")
 	}
-	// A table that failed ends the program without an error of its own: the model carries it.
-	if m, ok := final.(*model); ok && m.err != nil {
+	if err != nil && !errors.Is(err, tea.ErrInterrupted) {
+		logger.Error(fmt.Sprintf("Error syncing data: %v", err))
+	}
+	return m.outcome(err)
+}
+
+// outcome tells how the sync ended, from how its program did.
+func (m *model) outcome(programErr error) error {
+	switch {
+	case programErr != nil && !errors.Is(programErr, tea.ErrInterrupted):
+		return fmt.Errorf("unable to finish syncing data: %w", programErr)
+	case m.err != nil:
 		return fmt.Errorf("unable to finish syncing data: %w", m.err)
+	case !m.done:
+		// Quit before its last table, the sync did not do what it was asked to, whatever way
+		// it was quit: a key, a signal.
+		return fmt.Errorf("unable to finish syncing data: %w", errSyncInterrupted)
 	}
 	return nil
 }

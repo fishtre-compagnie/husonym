@@ -2,6 +2,8 @@ package sync_cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,6 +13,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"github.com/redpanda-data/benthos/v4/public/service"
+
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -129,4 +133,219 @@ func Test_runSync_WritesEveryGroup(t *testing.T) {
 
 	require.NoError(t, runSyncInTimeWith(t, env, [][]*benthosbuilder.BenthosConfigResponse{{first}, {second}}))
 	require.EqualValues(t, 2, written.Load())
+}
+
+// endlessTable is the config of a table whose rows never end.
+func endlessTable(name string) *benthosbuilder.BenthosConfigResponse {
+	cfg := tableConfig(name, `root = {"id": counter()}`)
+	cfg.Config.Input.Generate.Count = 0
+	return cfg
+}
+
+// endlessSync starts a sync of tables that never end, in plain mode, and returns once rows are
+// being written: the program, how the sync ends, and the count of rows written.
+func endlessSync(t *testing.T) (*model, *tea.Program, <-chan error, *atomic.Int64) {
+	t.Helper()
+	env, written := droppingEnvCounted(t)
+	groups := [][]*benthosbuilder.BenthosConfigResponse{
+		{endlessTable("public.a.insert"), endlessTable("public.b.insert")},
+		{endlessTable("public.later.insert")},
+	}
+	logger := testutil.GetTestLogger(t)
+	m := newModel(context.Background(), env, groups, logger, output.PlainOutput)
+	t.Cleanup(m.cancel)
+	program := tea.NewProgram(m, tea.WithoutRenderer(), tea.WithInput(nil))
+
+	done := make(chan error, 1)
+	go func() { done <- runSyncProgram(m, program, logger) }()
+	require.Eventually(t, func() bool { return written.Load() > 0 }, 10*time.Second, 10*time.Millisecond)
+	return m, program, done, written
+}
+
+// endsInTime returns how the sync ended, which it must do soon.
+func endsInTime(t *testing.T, done <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "the sync is slow to end once it was quit")
+		return nil
+	}
+}
+
+// A sync quit before its last table is told interrupted, soon, and starts no write once it has
+// returned: it used to return as if it had synced every table, its streams still writing.
+func Test_runSync_QuitBeforeItsLastTable(t *testing.T) {
+	for name, quit := range map[string]tea.Msg{
+		"q":       tea.KeyPressMsg{Code: 'q', Text: "q"},
+		"esc":     tea.KeyPressMsg{Code: tea.KeyEscape},
+		"ctrl+c":  tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl},
+		"sigint":  tea.InterruptMsg{},
+		"sigterm": tea.QuitMsg{},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, program, done, written := endlessSync(t)
+
+			program.Send(quit)
+			err := endsInTime(t, done)
+
+			require.ErrorIs(t, err, errSyncInterrupted)
+			before := written.Load()
+			time.Sleep(300 * time.Millisecond)
+			require.Equal(t, before, written.Load(), "the sync goes on writing after it returned")
+		})
+	}
+}
+
+// The tables are stopped at the key, before the program has closed.
+func Test_model_AKeyStopsTheTables(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	require.NoError(t, m.ctx.Err())
+
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+
+	require.NotNil(t, cmd)
+	require.ErrorIs(t, m.ctx.Err(), context.Canceled)
+}
+
+// A key stops the tables being synced, which end cut short: the sync was interrupted, it is
+// not one of its tables that failed.
+func Test_model_TablesCutShortByTheStopDidNotFail(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	m.cancel()
+
+	_, cmd := m.Update(syncFailedMsg{err: fmt.Errorf("unable to run benthos stream: %w", context.Canceled)})
+
+	require.NotNil(t, cmd, "the sync ends all the same")
+	require.NoError(t, m.err)
+	require.ErrorIs(t, m.outcome(nil), errSyncInterrupted)
+}
+
+// A table that ends on a canceled context while the sync was not stopped did fail.
+func Test_model_ATableCanceledOnItsOwnFailed(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	failure := fmt.Errorf("unable to run benthos stream: %w", context.Canceled)
+
+	m.Update(syncFailedMsg{err: failure})
+
+	require.ErrorIs(t, m.outcome(nil), failure)
+	require.NotErrorIs(t, m.outcome(nil), errSyncInterrupted)
+}
+
+// A table that failed is what the sync reports.
+func Test_model_ATableThatFailedIsReported(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	failure := errors.New("the table failed")
+
+	_, cmd := m.Update(syncFailedMsg{err: failure})
+
+	require.NotNil(t, cmd)
+	require.ErrorIs(t, m.outcome(nil), failure)
+}
+
+func Test_model_outcome(t *testing.T) {
+	failure := errors.New("the table failed")
+	crash := errors.New("the program crashed")
+	for name, tc := range map[string]struct {
+		done       bool
+		failed     error
+		programErr error
+		want       error
+	}{
+		"its last table synced":                   {done: true},
+		"a key after its last table":              {done: true, programErr: nil},
+		"a signal after its last table":           {done: true, programErr: tea.ErrInterrupted},
+		"quit before its last table":              {want: errSyncInterrupted},
+		"a signal before its last table":          {programErr: tea.ErrInterrupted, want: errSyncInterrupted},
+		"a table failed":                          {failed: failure, want: failure},
+		"a table failed, then a signal":           {failed: failure, programErr: tea.ErrInterrupted, want: failure},
+		"the program failed":                      {programErr: crash, want: crash},
+		"the program failed after a table did":    {failed: failure, programErr: crash, want: crash},
+		"the program failed after its last table": {done: true, programErr: crash, want: crash},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := &model{done: tc.done, err: tc.failed}
+			err := m.outcome(tc.programErr)
+			if tc.want == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tc.want)
+			require.ErrorContains(t, err, "unable to finish syncing data")
+		})
+	}
+}
+
+func Test_inFlightGroups(t *testing.T) {
+	t.Run("waits for the groups being synced", func(t *testing.T) {
+		groups := &inFlightGroups{}
+		require.True(t, groups.begin())
+		require.False(t, groups.end(50*time.Millisecond))
+		groups.done()
+		require.True(t, groups.end(time.Second))
+	})
+
+	t.Run("no group starts while the sync waits for those being synced", func(t *testing.T) {
+		groups := &inFlightGroups{}
+		require.True(t, groups.begin())
+		ended := make(chan bool, 1)
+		go func() { ended <- groups.end(5 * time.Second) }()
+		require.Eventually(t, func() bool {
+			groups.mu.Lock()
+			defer groups.mu.Unlock()
+			return groups.ended
+		}, time.Second, time.Millisecond, "the sync that ends closes the door before it waits")
+		require.False(t, groups.begin())
+		groups.done()
+		require.True(t, <-ended)
+	})
+
+	t.Run("a group does not start once the sync has ended", func(t *testing.T) {
+		groups := &inFlightGroups{}
+		require.True(t, groups.end(time.Second), "nothing to wait for")
+		require.False(t, groups.begin())
+		require.True(t, groups.end(time.Second), "the group that did not start is not waited for")
+	})
+}
+
+// The program may end between asking for a group and running it: the group does not start.
+func Test_model_AGroupAskedForAfterTheEndDoesNotStart(t *testing.T) {
+	env, written := droppingEnvCounted(t)
+	m := newModel(context.Background(), env, nil, testutil.GetTestLogger(t), output.PlainOutput)
+	syncGroup := m.syncConfigs(context.Background(),
+		[]*benthosbuilder.BenthosConfigResponse{tableConfig("public.a.insert", `root = {"id": 1}`)})
+
+	require.True(t, m.inFlight.end(time.Second), "a group asked for and not started is not waited for")
+	require.Nil(t, syncGroup())
+	require.Zero(t, written.Load())
+}
+
+// The sync does not return while a group of tables has yet to end, and does not wait for it
+// past its bound.
+func Test_runSyncProgram_WaitsForTheTablesBeingSynced(t *testing.T) {
+	t.Run("until they have ended", func(t *testing.T) {
+		m, program, done, _ := endlessSync(t)
+		// A group that takes its time to end.
+		require.True(t, m.inFlight.begin())
+
+		program.Send(tea.KeyPressMsg{Code: 'q', Text: "q"})
+		select {
+		case <-done:
+			require.FailNow(t, "the sync returned while a group of tables had yet to end")
+		case <-time.After(500 * time.Millisecond):
+		}
+		m.inFlight.done()
+		require.ErrorIs(t, endsInTime(t, done), errSyncInterrupted)
+	})
+
+	t.Run("for a time", func(t *testing.T) {
+		m, program, done, _ := endlessSync(t)
+		m.endWait = 100 * time.Millisecond
+		// A group that never ends.
+		require.True(t, m.inFlight.begin())
+
+		program.Send(tea.KeyPressMsg{Code: 'q', Text: "q"})
+		require.ErrorIs(t, endsInTime(t, done), errSyncInterrupted)
+	})
 }
