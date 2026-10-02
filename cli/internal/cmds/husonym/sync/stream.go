@@ -24,9 +24,12 @@ func newStream(benv *service.Environment, configYAML string, logger *slog.Logger
 	if streambldr == nil {
 		return nil, errors.New("failed to create StreamBuilder")
 	}
-	if logger != nil {
-		streambldr.SetLogger(logger)
+	// A stream without a logger is given one that discards: left to its own, Benthos writes
+	// the errors of the stream to the terminal, over the screen of a sync that shows one.
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
 	}
+	streambldr.SetLogger(logger)
 	if err := streambldr.SetYAML(configYAML); err != nil {
 		return nil, fmt.Errorf("unable to convert benthos config to yaml for stream builder: %w", err)
 	}
