@@ -12,6 +12,7 @@ import (
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
+	husonym_benthos_error "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/error"
 	"github.com/redpanda-data/benthos/v4/public/service"
 
 	tea "charm.land/bubbletea/v2"
@@ -67,7 +68,7 @@ func runSyncInTimeWith(t *testing.T, env *service.Environment, groups [][]*benth
 	t.Helper()
 	done := make(chan error, 1)
 	go func() {
-		done <- runSync(context.Background(), output.PlainOutput, env, groups, testutil.GetTestLogger(t))
+		done <- runSync(context.Background(), output.PlainOutput, env, groups, nil, testutil.GetTestLogger(t))
 	}()
 	select {
 	case err := <-done:
@@ -348,4 +349,129 @@ func Test_runSyncProgram_WaitsForTheTablesBeingSynced(t *testing.T) {
 		program.Send(tea.KeyPressMsg{Code: 'q', Text: "q"})
 		require.ErrorIs(t, endsInTime(t, done), errSyncInterrupted)
 	})
+}
+
+// A row the destination refuses for good — a duplicate key, a constraint — stops the sync, and
+// the sync tells why: it used to end the process on the spot, with "Sync Failed." for all
+// explanation, its session not given back and the terminal left as it was.
+func Test_runSync_ACriticalErrorEndsTheSyncAndIsTold(t *testing.T) {
+	stop := make(chan error, 3)
+	env := service.NewEnvironment()
+	require.NoError(t, husonym_benthos_error.RegisterErrorOutput(env, stop))
+	refused := tableConfig("public.refused.insert", `root = {"id": 1}`)
+	refused.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "users_pkey"`
+	later := tableConfig("public.later.insert", `root = {"id": 1}`)
+	later.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "later_pkey"`
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runSync(context.Background(), output.PlainOutput, env,
+			[][]*benthosbuilder.BenthosConfigResponse{{refused}, {later}}, stop, testutil.GetTestLogger(t))
+	}()
+
+	select {
+	case err := <-done:
+		require.ErrorContains(t, err, "unable to finish syncing data")
+		require.ErrorContains(t, err, `duplicate key value violates unique constraint "users_pkey"`)
+		require.NotContains(t, err.Error(), "later_pkey", "the group after the refused row was synced")
+	case <-time.After(20 * time.Second):
+		require.FailNow(t, "the sync does not end on a critical error")
+	}
+}
+
+// The stream acknowledges the row it was refused, and its table ends as if it had been
+// written: on the last table of a sync, the critical error is told all the same.
+func Test_runSync_ACriticalErrorOnTheLastTableIsTold(t *testing.T) {
+	for range 20 {
+		stop := make(chan error, 3)
+		env := service.NewEnvironment()
+		require.NoError(t, husonym_benthos_error.RegisterErrorOutput(env, stop))
+		refused := tableConfig("public.refused.insert", `root = {"id": 1}`)
+		refused.Config.Output.Error.ErrorMsg = `null value in column "name" violates not-null constraint`
+
+		done := make(chan error, 1)
+		go func() {
+			done <- runSync(context.Background(), output.PlainOutput, env,
+				[][]*benthosbuilder.BenthosConfigResponse{{refused}}, stop, testutil.GetTestLogger(t))
+		}()
+
+		select {
+		case err := <-done:
+			require.ErrorContains(t, err, "violates not-null constraint")
+		case <-time.After(20 * time.Second):
+			require.FailNow(t, "the sync does not end on a critical error")
+		}
+	}
+}
+
+// A critical error stops the tables being synced, and is the cause the sync reports: what
+// follows it — tables cut short, a table that fails in turn — is its consequence.
+func Test_model_ACriticalErrorStopsTheSync(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	critical := errors.New("duplicate key value violates unique constraint")
+
+	_, cmd := m.Update(syncStoppedMsg{err: critical})
+	require.NotNil(t, cmd)
+	require.ErrorIs(t, m.ctx.Err(), context.Canceled)
+
+	m.Update(syncFailedMsg{err: errors.New("unable to run benthos stream: the sink is closed")})
+	require.ErrorIs(t, m.outcome(nil), critical)
+}
+
+// A table that failed first stays the cause, though a critical error follows.
+func Test_model_TheFirstFailureIsTheCause(t *testing.T) {
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	failure := errors.New("the table failed")
+
+	m.Update(syncFailedMsg{err: failure})
+	m.Update(syncStoppedMsg{err: errors.New("duplicate key value violates unique constraint")})
+
+	require.ErrorIs(t, m.outcome(nil), failure)
+}
+
+// The watch of the critical errors ends with the sync.
+func Test_model_watchStop(t *testing.T) {
+	stop := make(chan error, 1)
+	m := newModel(context.Background(), droppingEnv(t), nil, testutil.GetTestLogger(t), output.PlainOutput)
+	m.stop = stop
+
+	critical := errors.New("violates not-null constraint")
+	stop <- critical
+	require.Equal(t, syncStoppedMsg{err: critical}, m.watchStop()())
+
+	m.cancel()
+	require.Nil(t, m.watchStop()())
+}
+
+// A critical error the program did not hear before its last table ended is told all the same.
+func Test_model_outcome_ACriticalErrorHeardLate(t *testing.T) {
+	stop := make(chan error, 1)
+	critical := errors.New("violates not-null constraint")
+	stop <- critical
+	m := &model{done: true, stop: stop}
+
+	require.ErrorIs(t, m.outcome(nil), critical)
+}
+
+// The stream goes on past the row it was refused: a table that never ends does not keep the
+// sync from stopping on the critical error.
+func Test_runSync_ACriticalErrorStopsATableThatGoesOn(t *testing.T) {
+	stop := make(chan error, 3)
+	env := service.NewEnvironment()
+	require.NoError(t, husonym_benthos_error.RegisterErrorOutput(env, stop))
+	refused := endlessTable("public.refused.insert")
+	refused.Config.Output.Error.ErrorMsg = `duplicate key value violates unique constraint "users_pkey"`
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runSync(context.Background(), output.PlainOutput, env,
+			[][]*benthosbuilder.BenthosConfigResponse{{refused}}, stop, testutil.GetTestLogger(t))
+	}()
+
+	select {
+	case err := <-done:
+		require.ErrorContains(t, err, `duplicate key value violates unique constraint "users_pkey"`)
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "the sync does not stop on a critical error while its table goes on")
+	}
 }

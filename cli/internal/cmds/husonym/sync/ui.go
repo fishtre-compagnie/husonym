@@ -41,6 +41,8 @@ type model struct {
 	cancel   context.CancelFunc
 	inFlight inFlightGroups
 	endWait  time.Duration
+	// stop carries the critical errors of the streams: one stops the sync.
+	stop <-chan error
 }
 
 // inFlightGroups counts the groups of tables being synced, until the sync ends: a group that
@@ -125,7 +127,19 @@ func newModel(
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(m.syncConfigs(m.ctx, m.groupedConfigs[m.index]), m.spinner.Tick)
+	return tea.Batch(m.syncConfigs(m.ctx, m.groupedConfigs[m.index]), m.spinner.Tick, m.watchStop())
+}
+
+// watchStop waits for a critical error of a stream, until the sync ends.
+func (m *model) watchStop() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case err := <-m.stop:
+			return syncStoppedMsg{err: err}
+		case <-m.ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -139,10 +153,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancel()
 			return m, tea.Quit
 		}
+	case syncStoppedMsg:
+		// The stream goes on past the row that was refused: the sync is stopped here.
+		m.fail(msg.err)
+		m.cancel()
+		return m, tea.Quit
 	case syncFailedMsg:
 		// Tables cut short when the sync was stopped did not fail: the stop is what ended it.
 		if m.ctx.Err() == nil || !errors.Is(msg.err, context.Canceled) {
-			m.err = msg.err
+			m.fail(msg.err)
 		}
 		return m, tea.Quit
 	case syncedDataMsg:
@@ -214,6 +233,17 @@ type syncedDataMsg map[string]string
 
 // syncFailedMsg says a table of the group failed: the sync ends there.
 type syncFailedMsg struct{ err error }
+
+// syncStoppedMsg says a stream met a critical error — a row its destination refuses for good.
+type syncStoppedMsg struct{ err error }
+
+// fail records what ended the sync before its last table: the first failure is the cause, and
+// those that follow it are its consequences.
+func (m *model) fail(err error) {
+	if m.err == nil {
+		m.err = err
+	}
+}
 
 func (m *model) syncConfigs(
 	ctx context.Context,
@@ -287,6 +317,7 @@ func runSync(
 	outputType output.OutputType,
 	benv *service.Environment,
 	groupedConfigs [][]*benthosbuilder.BenthosConfigResponse,
+	stop <-chan error,
 	logger *slog.Logger,
 ) error {
 	var opts []tea.ProgramOption
@@ -300,6 +331,7 @@ func runSync(
 		synclogger = slog.New(slog.NewJSONHandler(io.Discard, nil))
 	}
 	m := newModel(ctx, benv, groupedConfigs, synclogger, outputType)
+	m.stop = stop
 	return runSyncProgram(m, tea.NewProgram(m, opts...), logger)
 }
 
@@ -324,6 +356,13 @@ func runSyncProgram(m *model, program *tea.Program, logger *slog.Logger) error {
 
 // outcome tells how the sync ended, from how its program did.
 func (m *model) outcome(programErr error) error {
+	// A critical error the program did not hear before it ended: the stream acknowledges the
+	// row it was refused, and the last table may have ended as if it had been written.
+	select {
+	case stopErr := <-m.stop:
+		m.fail(stopErr)
+	default:
+	}
 	switch {
 	case programErr != nil && !errors.Is(programErr, tea.ErrInterrupted):
 		return fmt.Errorf("unable to finish syncing data: %w", programErr)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	syncmap "sync"
 	"time"
@@ -305,22 +304,9 @@ func (c *clisync) configureAndRunSync() error {
 
 	destConnection := cmdConfigToDestinationConnection(c.cmd)
 
+	// The streams tell of a critical error on this channel; the sync, which listens to it,
+	// stops and returns the error. Room for the first signals: one sent past it is dropped.
 	stopChan := make(chan error, 3)
-	ctx, cancel := context.WithCancel(c.ctx)
-	defer cancel()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-stopChan:
-				c.logger.Error("Sync Failed.")
-				cancel()
-				os.Exit(1)
-				return
-			}
-		}
-	}()
 	connCache := map[string]*mgmtv1alpha1.Connection{
 		destConnection.Id:   destConnection,
 		sourceConnection.Id: sourceConnection,
@@ -365,7 +351,7 @@ func (c *clisync) configureAndRunSync() error {
 		return nil
 	}
 
-	return runSync(ctx, *c.cmd.OutputType, c.benv, groupedConfigs, c.logger)
+	return runSync(c.ctx, *c.cmd.OutputType, c.benv, groupedConfigs, stopChan, c.logger)
 }
 
 func (c *clisync) configureSync() ([][]*benthosbuilder.BenthosConfigResponse, error) {
