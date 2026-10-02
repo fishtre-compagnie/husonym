@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -229,6 +230,48 @@ func Test_Sync(t *testing.T) {
 				"postgres",
 				[]string{"id"},
 			)
+		})
+
+		// The destination holds the rows of the sync above: synced again without emptying its
+		// tables, it refuses them for good. The sync ends and tells why, where it used to end
+		// the process on the spot.
+		t.Run("postgres_sync_refused_rows", func(t *testing.T) {
+			// It needs the rows of the sync above: on an empty destination nothing is refused.
+			rowCount, err := postgres.Target.GetTableRowCount(ctx, "humanresources", "employees")
+			require.NoError(t, err)
+			require.Positive(t, rowCount, "the destination holds no row to refuse the sync with")
+
+			cmdconfig := &cmdConfig{
+				Source: &sourceConfig{
+					ConnectionId: sourceConn.Id,
+				},
+				Destination: &sqlDestinationConfig{
+					ConnectionUrl: postgres.Target.URL,
+					Driver:        postgresDriver,
+				},
+				OutputType: &outputType,
+				AccountId:  &accountId,
+			}
+			sync := &clisync{
+				connectiondataclient: conndataclient,
+				connectionclient:     connclient,
+				sqlmanagerclient:     sqlmanagerclient,
+				ctx:                  ctx,
+				logger:               testutil.GetTestLogger(t),
+				cmd:                  cmdconfig,
+				connmanager:          connmanager,
+				session:              connectionmanager.NewUniqueSession(),
+			}
+
+			ended := make(chan error, 1)
+			go func() { ended <- sync.configureAndRunSync() }()
+			select {
+			case err := <-ended:
+				require.ErrorContains(t, err, "unable to finish syncing data")
+				require.ErrorContains(t, err, "duplicate key value violates unique constraint")
+			case <-time.After(2 * time.Minute):
+				require.FailNow(t, "the sync does not end on rows its destination refuses")
+			}
 		})
 
 		t.Run("S3_end_to_end", func(t *testing.T) {
