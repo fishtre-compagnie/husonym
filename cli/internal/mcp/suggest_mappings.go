@@ -24,7 +24,7 @@ type suggestMappingsOutput struct {
 type tableSuggestions struct {
 	Table     string             `json:"table"                jsonschema:"schema.table"`
 	Columns   []columnSuggestion `json:"columns"`
-	ScanError string             `json:"scan_error,omitempty" jsonschema:"why the content scan failed on this table; its suggestions then come from column names alone"`
+	ScanError string             `json:"scan_error,omitempty" jsonschema:"why the content scan failed on this table; its suggestions then come from column names alone, and each of its columns is told content_not_analyzed"`
 }
 
 type columnSuggestion struct {
@@ -115,7 +115,8 @@ func suggestMappings(reader *novalues.Reader) mcp.ToolHandlerFor[suggestMappings
 					verdict = scannedVerdict
 				}
 				suggestion := suggest(verdict)
-				suggestion.ContentNotAnalyzed = scannedVerdict.GetContentNotAnalyzed()
+				// A table whose scan failed has none of its columns analyzed.
+				suggestion.ContentNotAnalyzed = scannedVerdict.GetContentNotAnalyzed() || suggestions.ScanError != ""
 				suggestion.Keys = keys[column.GetColumn()]
 				suggestions.Columns = append(suggestions.Columns, suggestion)
 			}

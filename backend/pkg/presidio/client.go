@@ -39,9 +39,20 @@ type AnalyzeResult struct {
 }
 
 // ErrNoAnswer is the error of an analysis the analyzer did not answer: it could not be
-// reached, or took too long. An analyzer that answers with an error has one of its own: it
-// was asked, and refused this text.
+// reached, took too long, or was answered for by a proxy. An analyzer that answers with an
+// error has one of its own: it was asked, and refused this text.
 var ErrNoAnswer = errors.New("the analyzer did not answer")
+
+// notTheAnalyzer says whether a status is that of what stands before the analyzer — a proxy
+// that cannot reach it, or waited for it too long — or of an analyzer that takes no more.
+func notTheAnalyzer(status int) bool {
+	switch status {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
+}
 
 // Analyzer est l'abstraction du service d'analyse (facilite les tests/mocks).
 type Analyzer interface {
@@ -123,13 +134,20 @@ func (c *Client) Analyze(ctx context.Context, req AnalyzeRequest) ([]AnalyzeResu
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("presidio analyze answer cut short: %w", errors.Join(ErrNoAnswer, err))
+	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(
+		err := fmt.Errorf(
 			"presidio analyze returned status %d: %s",
 			resp.StatusCode,
 			string(respBody),
 		)
+		if notTheAnalyzer(resp.StatusCode) {
+			return nil, errors.Join(ErrNoAnswer, err)
+		}
+		return nil, err
 	}
 
 	var results []AnalyzeResult

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestClientAnalyze(t *testing.T) {
@@ -89,5 +90,39 @@ func TestClientAnalyze_TellsNoAnswerFromARefusal(t *testing.T) {
 	_, err = NewClient(gone.URL).Analyze(context.Background(), AnalyzeRequest{Text: "x", Language: "en"})
 	if !errors.Is(err, ErrNoAnswer) {
 		t.Fatalf("an analyzer that cannot be reached is told as %v", err)
+	}
+
+	// A proxy answers for an analyzer it cannot reach.
+	for _, status := range []int{http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout} {
+		proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "upstream", status)
+		}))
+		_, err = NewClient(proxy.URL).Analyze(context.Background(), AnalyzeRequest{Text: "x", Language: "en"})
+		proxy.Close()
+		if !errors.Is(err, ErrNoAnswer) {
+			t.Fatalf("the status %d of a proxy is told as %v", status, err)
+		}
+	}
+
+	// An analyzer that takes too long, or whose caller gave up, did not answer.
+	released := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-released:
+		}
+	}))
+	defer slow.Close()
+	defer close(released)
+	impatient := NewClient(slow.URL, WithHTTPClient(&http.Client{Timeout: 50 * time.Millisecond}))
+	_, err = impatient.Analyze(context.Background(), AnalyzeRequest{Text: "x", Language: "en"})
+	if !errors.Is(err, ErrNoAnswer) {
+		t.Fatalf("an analyzer that takes too long is told as %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = NewClient(slow.URL).Analyze(ctx, AnalyzeRequest{Text: "x", Language: "en"})
+	if !errors.Is(err, ErrNoAnswer) {
+		t.Fatalf("a caller that gave up is told %v", err)
 	}
 }

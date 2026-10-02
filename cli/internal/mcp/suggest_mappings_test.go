@@ -68,7 +68,7 @@ func Test_SuggestMappings(t *testing.T) {
 		require.JSONEq(t, `{"tables": [
 			{
 				"table": "public.locked",
-				"columns": [{"column": "id", "sensitive": false}],
+				"columns": [{"column": "id", "sensitive": false, "content_not_analyzed": true}],
 				"scan_error": "the API could not scan public.locked: deadline_exceeded"
 			},
 			{

@@ -258,14 +258,6 @@ func (s *Service) DetectPiiInConnectionData(
 		if !ok {
 			continue
 		}
-		// Une entité doit couvrir une fraction suffisante des valeurs.
-		minMatches := len(values) * matchRatioNumerator / matchRatioDenominato
-		if minMatches < minMatchesFloor {
-			minMatches = minMatchesFloor
-		}
-		if matchCount < minMatches {
-			continue
-		}
 		suggestion, ok := piidetect.SuggestionForEntity(entity, columnTypes[col])
 		if !ok {
 			continue
@@ -374,8 +366,12 @@ type contentAnalysis struct {
 }
 
 // column tells what the analyzer finds in the values of a column: the dominant entity, its
-// mean score and how many values carry it; ok is false when it finds none, and when the
-// column could not be analyzed, which is kept.
+// mean score and how many values carry it. ok is false when no entity covers enough of the
+// values, and when the column could not be analyzed, which is kept.
+//
+// A column some values of which the analyzer refused is told by the values it took, when they
+// are enough to find an entity: what was found stands. When they are not, the column is not
+// told empty of personal data: the values refused may be the ones that hold some.
 func (a *contentAnalysis) column(
 	ctx context.Context,
 	name string,
@@ -385,50 +381,84 @@ func (a *contentAnalysis) column(
 		a.notAnalyzed[name] = struct{}{}
 		return "", 0, 0, false
 	}
-	entity, avgScore, matchCount, ok, err := analyzeColumn(ctx, a.analyze, values, a.threshold, a.language)
+	found, refused, err := analyzeColumn(ctx, a.analyze, values, a.threshold, a.language)
 	if err != nil {
 		// Why is logged, and not told: the error of the analyzer can quote where it is
 		// reached, and the value it read.
-		a.logger.Warn(fmt.Sprintf("presidio analyze failed on column %q: %v", name, err))
+		a.logger.Warn(fmt.Sprintf("presidio did not answer on column %q: %v", name, err))
 		a.notAnalyzed[name] = struct{}{}
-		a.silent = errors.Is(err, presidio.ErrNoAnswer)
+		a.silent = true
 		return "", 0, 0, false
 	}
-	return entity, avgScore, matchCount, ok
+	// Une entité doit couvrir une fraction suffisante des valeurs.
+	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
+		return found.entity, found.avgScore, found.matchCount, true
+	}
+	if refused != nil {
+		a.logger.Warn(fmt.Sprintf("presidio refused values of column %q: %v", name, refused))
+		a.notAnalyzed[name] = struct{}{}
+	}
+	return "", 0, 0, false
+}
+
+// minMatches is how many of the values sampled an entity must cover to be told of a column.
+func minMatches(sampled int) int {
+	return max(sampled*matchRatioNumerator/matchRatioDenominato, minMatchesFloor)
+}
+
+// refusedValuesLimit is how many values of a column the analyzer may refuse before the
+// column is given up: past it, the analyzer fails on the column, not on a value.
+const refusedValuesLimit = 2
+
+// columnEntity is the dominant entity of a column, among the mappable ones: its mean score,
+// and how many values carry it. Its entity is empty when the analyzer found none.
+type columnEntity struct {
+	entity     string
+	avgScore   float64
+	matchCount int
 }
 
 // analyzeColumn examines each value on its own (NER recognizes an isolated
 // name/place better than one buried in a list) and returns the dominant entity
-// among the mappable ones, its mean score, and how many values carry it. It fails when the
-// analyzer does, at the first value: a value left out would count as one without personal
-// data. A value the analyzer refuses is asked once more, a refusal that passes being no
-// reason to give the column up; an analyzer that does not answer is not asked again.
+// among the mappable ones.
+//
+// A value the analyzer refuses is asked once more, a refusal that passes being no reason to
+// leave it out. One it refuses again is left out, and its refusal returned with what the other
+// values showed: past refusedValuesLimit of them, the column is given up. An analyzer that
+// does not answer is not asked again, and is the error returned.
 func analyzeColumn(
 	ctx context.Context,
 	analyzer presidio.Analyzer,
 	values []string,
 	threshold float64,
 	language string,
-) (entity string, avgScore float64, matchCount int, ok bool, err error) {
+) (found columnEntity, refused, err error) {
 	type agg struct {
 		count    int
 		scoreSum float64
 	}
 	byEntity := map[string]*agg{}
-	analyzed := 0
+	refusedValues := 0
 	for _, v := range values {
 		text := truncateRunes(v, maxValueRunes)
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
-		analyzed++
 		request := presidio.AnalyzeRequest{Text: text, Language: language, ScoreThreshold: threshold}
 		results, err := analyzer.Analyze(ctx, request)
 		if err != nil && !errors.Is(err, presidio.ErrNoAnswer) {
 			results, err = analyzer.Analyze(ctx, request)
 		}
+		if errors.Is(err, presidio.ErrNoAnswer) {
+			return columnEntity{}, nil, err
+		}
 		if err != nil {
-			return "", 0, 0, false, err
+			refused = err
+			refusedValues++
+			if refusedValues >= refusedValuesLimit {
+				break
+			}
+			continue
 		}
 		// Meilleur score par entité DANS cette valeur (on compte des VALEURS, pas des spans).
 		bestPerEntity := map[string]float64{}
@@ -447,9 +477,6 @@ func analyzeColumn(
 			a.scoreSum += sc
 		}
 	}
-	if analyzed == 0 {
-		return "", 0, 0, false, nil
-	}
 
 	// Entité dominante = présente dans le plus de VALEURS, PARMI les entités
 	// mappables vers un transformer. On ignore le bruit non exploitable
@@ -466,10 +493,10 @@ func analyzeColumn(
 		}
 	}
 	if best == "" {
-		return "", 0, 0, false, nil
+		return columnEntity{}, refused, nil
 	}
 	a := byEntity[best]
-	return best, a.scoreSum / float64(a.count), a.count, true, nil
+	return columnEntity{entity: best, avgScore: a.scoreSum / float64(a.count), matchCount: a.count}, refused, nil
 }
 
 func valueToText(v any) string {

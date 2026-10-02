@@ -71,23 +71,82 @@ func Test_contentAnalysis_AsksAgainAValueThatIsRefused(t *testing.T) {
 	require.Len(t, analyzer.asked, len(names)+1)
 }
 
-// A column the analyzer keeps refusing a value of is told not analyzed, and not empty of
-// personal data: a value left out would count as one without any. The other columns are
-// analyzed all the same.
-func Test_contentAnalysis_AColumnItCannotAnalyseDoesNotCostTheOthers(t *testing.T) {
+// A column one value of which the analyzer keeps refusing is told by the others, when they
+// are enough to find an entity: what they show stands.
+func Test_contentAnalysis_AValueItRefusesDoesNotCostTheColumn(t *testing.T) {
 	analyzer := &scriptedAnalyzer{failures: map[string]int{"Alan Turing": 2}, failure: refused}
+	content := newContentAnalysis(analyzer)
+
+	entity, _, matches, ok := content.column(context.Background(), "full_name", names)
+
+	require.True(t, ok)
+	require.Equal(t, "PERSON", entity)
+	require.Equal(t, len(names)-1, matches)
+	require.Empty(t, content.notAnalyzed)
+}
+
+// A column the values taken of which show no entity, some of them refused, is told not
+// analyzed, and not empty of personal data: the values refused may be the ones that hold some.
+// It is given up at its second value refused, and the other columns are analyzed all the same.
+func Test_contentAnalysis_AColumnItCannotAnalyzeDoesNotCostTheOthers(t *testing.T) {
+	analyzer := &scriptedAnalyzer{failures: map[string]int{"Ada Lovelace": 2, "Alan Turing": 2}, failure: refused}
 	content := newContentAnalysis(analyzer)
 
 	_, _, _, ok := content.column(context.Background(), "full_name", names)
 	require.False(t, ok)
 	require.Equal(t, map[string]struct{}{"full_name": {}}, content.notAnalyzed)
-	require.Equal(t, []string{"Ada Lovelace", "Alan Turing", "Alan Turing"}, analyzer.asked,
-		"the column was analyzed past the value it could not be")
+	require.Equal(t, []string{"Ada Lovelace", "Ada Lovelace", "Alan Turing", "Alan Turing"}, analyzer.asked,
+		"the column was analyzed past the values it was given up on")
 
 	_, _, matches, ok := content.column(context.Background(), "city", cities)
 	require.True(t, ok)
 	require.Equal(t, len(cities), matches)
 	require.Equal(t, map[string]struct{}{"full_name": {}}, content.notAnalyzed)
+}
+
+// A column in which the analyzer finds nothing, none of its values refused, is analyzed.
+func Test_contentAnalysis_AColumnWithoutEntityIsAnalyzed(t *testing.T) {
+	content := newContentAnalysis(nothingFound{})
+
+	_, _, _, ok := content.column(context.Background(), "label", names)
+
+	require.False(t, ok)
+	require.Empty(t, content.notAnalyzed)
+}
+
+// An entity that too few of the values carry is not told of the column, which is analyzed
+// all the same: a name in a column of labels does not make it a column of names.
+func Test_contentAnalysis_AnEntityOfTooFewValuesIsNotTold(t *testing.T) {
+	content := newContentAnalysis(findsIn{"Ada Lovelace"})
+
+	_, _, _, ok := content.column(context.Background(), "label", names)
+
+	require.False(t, ok)
+	require.Empty(t, content.notAnalyzed)
+}
+
+// findsIn finds a person in the texts it holds, and nothing in the others.
+type findsIn []string
+
+func (f findsIn) Analyze(_ context.Context, req presidio.AnalyzeRequest) ([]presidio.AnalyzeResult, error) {
+	for _, text := range f {
+		if text == req.Text {
+			return []presidio.AnalyzeResult{{EntityType: "PERSON", Score: 0.9}}, nil
+		}
+	}
+	return nil, nil
+}
+
+type nothingFound struct{}
+
+func (nothingFound) Analyze(context.Context, presidio.AnalyzeRequest) ([]presidio.AnalyzeResult, error) {
+	return nil, nil
+}
+
+func Test_minMatches(t *testing.T) {
+	require.Equal(t, 2, minMatches(4))
+	require.Equal(t, 2, minMatches(6))
+	require.Equal(t, 6, minMatches(20))
 }
 
 // An analyzer that does not answer is not asked again, for this value nor for the columns
