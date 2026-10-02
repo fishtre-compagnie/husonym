@@ -65,6 +65,18 @@ func Test_HusonymAwsS3Output(t *testing.T) {
 		_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: aws.String(bucket)})
 		return err == nil
 	}, time.Minute, time.Second)
+	// Its first write takes its time, while it makes room for the bucket: longer, on a busy
+	// machine, than the stream gives an upload. An upload cut short may be stored all the same,
+	// and is written again under the next key: the stream would write a row twice. The first
+	// write is made here, outside the keys the stream writes, and waited for.
+	require.Eventually(t, func() bool {
+		_, err := client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String("first-write"),
+			Body:   strings.NewReader("x"),
+		})
+		return err == nil
+	}, time.Minute, time.Second)
 
 	// The gateway checks credentials: a key other than the connection's is refused, so a
 	// stream that writes did so with the connection's.
@@ -101,9 +113,12 @@ output:
     connection_id: s3-connection
     path: 'workflows/run/${! count("husonym-it-files") }.txt'
     content_type: text/plain
+    timeout: 30s
 logger:
-  level: none
+  level: ERROR
 `))
+	// The errors of the stream are told with the test: an upload that fails says why.
+	builder.SetLogger(testutil.GetTestLogger(t))
 	stream, err := builder.Build()
 	require.NoError(t, err)
 	runCtx, cancel := context.WithTimeout(ctx, time.Minute)
@@ -111,7 +126,7 @@ logger:
 	require.NoError(t, stream.Run(runCtx))
 
 	// The keys are not asserted: count() is evaluated again when a write is retried, as it
-	// was by the native aws_s3 output, so a retry while the gateway warms up moves them on.
+	// was by the native aws_s3 output, so a retry moves them on.
 	listed, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String("workflows/run/"),
