@@ -162,7 +162,10 @@ func (w *s3Writer) WriteBatch(ctx context.Context, batch service.MessageBatch) e
 		return service.ErrNotConnected
 	}
 
-	for i, msg := range batch {
+	// The uploads that fail are told one by one: told failed as a whole, the batch would be
+	// written again whole, and the objects already uploaded uploaded once more, under the key
+	// their path gives them then.
+	return batch.WalkWithBatchedErrors(func(i int, msg *service.Message) error {
 		key, err := batch.TryInterpolatedString(i, w.path)
 		if err != nil {
 			return fmt.Errorf("unable to interpolate the object key: %w", err)
@@ -171,11 +174,8 @@ func (w *s3Writer) WriteBatch(ctx context.Context, batch service.MessageBatch) e
 		if err != nil {
 			return err
 		}
-		if err := w.put(ctx, client, key, body); err != nil {
-			return err
-		}
-	}
-	return nil
+		return w.put(ctx, client, key, body)
+	})
 }
 
 func (w *s3Writer) put(ctx context.Context, client putObjectAPI, key string, body []byte) error {

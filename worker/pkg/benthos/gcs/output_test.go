@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"strconv"
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -102,10 +103,19 @@ func Test_GcsWriter_TheCredentialsOfItsConnection(t *testing.T) {
 
 type recordedObject struct{ name, contentType, contentEncoding, body string }
 
-type fakeStore struct{ objects []recordedObject }
+// fakeStore records the objects it is asked to write, and fails them with errs, one by object.
+type fakeStore struct {
+	objects []recordedObject
+	errs    []error
+}
 
 func (f *fakeStore) put(_ context.Context, name, contentType, contentEncoding string, body []byte) error {
 	f.objects = append(f.objects, recordedObject{name, contentType, contentEncoding, string(body)})
+	if len(f.errs) > 0 {
+		err := f.errs[0]
+		f.errs = f.errs[1:]
+		return err
+	}
 	return nil
 }
 func (f *fakeStore) close() error { return nil }
@@ -129,4 +139,37 @@ func Test_GcsWriter_WritesEachMessage(t *testing.T) {
 
 	require.NoError(t, writer.Close(context.Background()))
 	require.ErrorIs(t, writer.WriteBatch(context.Background(), batch), service.ErrNotConnected)
+}
+
+// A batch is written object by object. The write tells which objects failed: told failed as a
+// whole, the batch would be written again whole, and the objects already written written once
+// more, under the name their path gives them then.
+func Test_GcsWriter_AFailedObjectFailsItsMessageOnly(t *testing.T) {
+	key := serviceAccountKey(t)
+	writer, err := newGcsWriter(parse(t), connectionsOf(&key), cloudidentity.Policy{})
+	require.NoError(t, err)
+	store := &fakeStore{errs: []error{nil, errors.New("slow down")}}
+	writer.store = store
+
+	batch := service.MessageBatch{
+		service.NewMessage([]byte("first")), service.NewMessage([]byte("second")), service.NewMessage([]byte("third")),
+	}
+	for i, message := range batch {
+		message.MetaSet("n", strconv.Itoa(i+1))
+	}
+	err = writer.WriteBatch(context.Background(), batch)
+
+	var batchErr *service.BatchError
+	require.ErrorAs(t, err, &batchErr, "the write does not tell which messages it failed")
+	failed := map[int]string{}
+	batchErr.WalkMessages(func(i int, _ *service.Message, err error) bool {
+		if err != nil {
+			failed[i] = err.Error()
+		}
+		return true
+	})
+	require.Len(t, failed, 1)
+	require.Contains(t, failed[1], "slow down")
+	require.Contains(t, failed[1], "objects/2.txt.gz")
+	require.Len(t, store.objects, 3, "an object that fails does not keep the next from being tried")
 }
