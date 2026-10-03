@@ -321,7 +321,7 @@ func Test_Manager_snapshot_Selection(t *testing.T) {
 		Return([]*mssql_queries.GetCheckConstraintsRow{{ObjectID: 1, Name: "CK", Definition: "([a]>(0))"}}, nil).Once()
 	querier.EXPECT().GetTableNotices(mock.Anything, mock.Anything, ids, 16).
 		Return([]*mssql_queries.GetTableNoticesRow{
-			{ObjectID: 1, Kind: mssql_queries.NoticeCompression, Detail: "PAGE"},
+			{ObjectID: 1, Kind: ddl.NoticeCompression, Detail: "PAGE"},
 		}, nil).Once()
 	// Only the modules and the sequences the selection keeps are read.
 	querier.EXPECT().GetModuleDefinitions(mock.Anything, mock.Anything, []int64{10, 11}).

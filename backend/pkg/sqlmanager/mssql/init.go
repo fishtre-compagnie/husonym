@@ -72,19 +72,8 @@ func (m *Manager) GetSchemaTableDataTypes(
 	}, nil
 }
 
-// GetSchemaTableTriggers gives the triggers of the tables. A disabled trigger has the state D.
-func (m *Manager) GetSchemaTableTriggers(
-	ctx context.Context,
-	tables []*sqlmanager_shared.SchemaTable,
-) ([]*sqlmanager_shared.TableTrigger, error) {
-	plan, err := m.plan(ctx, tables)
-	if err != nil {
-		return nil, err
-	}
-	return plan.Triggers, nil
-}
-
-// GetSequencesByTables gives the sequences the defaults of the given tables draw from.
+// GetSequencesByTables gives the sequences the given tables bring with them: those their
+// defaults draw from, and those the modules created with them draw from.
 func (m *Manager) GetSequencesByTables(
 	ctx context.Context,
 	schema string,

@@ -22,6 +22,7 @@ type Querier interface {
 	) ([]*GetForeignKeysRow, error)
 	GetCheckConstraints(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetCheckConstraintsRow, error)
 	GetModuleHeaders(ctx context.Context, db mysql_queries.DBTX) ([]*GetModuleHeadersRow, error)
+	GetTableTriggers(ctx context.Context, db mysql_queries.DBTX) ([]*GetTableTriggersRow, error)
 	GetDependencies(ctx context.Context, db mysql_queries.DBTX) ([]*GetDependenciesRow, error)
 	GetModuleDefinitions(
 		ctx context.Context,

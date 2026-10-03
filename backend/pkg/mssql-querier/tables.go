@@ -42,10 +42,11 @@ func (q *Queries) GetDatabaseInfo(ctx context.Context, db mysql_queries.DBTX) (*
 const resolveTables = `-- name: ResolveTables :many
 SELECT
     CAST(j.[key] AS int) AS position,
-    t.object_id,
+    o.object_id,
     s.name,
-    t.name,
-    t.temporal_type,
+    o.name,
+    CASE WHEN o.type = 'V' THEN 1 ELSE 0 END,
+    COALESCE(t.temporal_type, 0),
     COALESCE(t.history_table_id, 0),
     COALESCE(hs.name, ''),
     COALESCE(h.name, ''),
@@ -54,13 +55,17 @@ SELECT
     COALESCE(ps.name, ''),
     COALESCE(pe.name, ''),
     COALESCE(t.is_memory_optimized, 0),
-    t.is_filetable,
-    t.is_external,
+    COALESCE(t.is_filetable, 0),
+    COALESCE(t.is_external, 0),
     COALESCE(t.is_node, 0),
-    COALESCE(t.is_edge, 0)
+    COALESCE(t.is_edge, 0),
+    CASE WHEN t.uses_ansi_nulls = 0 THEN 1 ELSE 0 END,
+    CASE WHEN h.uses_ansi_nulls = 0 THEN 1 ELSE 0 END
 FROM OPENJSON(@tables) j
 JOIN sys.schemas s ON s.name = JSON_VALUE(j.value, '$.s') COLLATE CATALOG_DEFAULT
-JOIN sys.tables t ON t.schema_id = s.schema_id AND t.name = JSON_VALUE(j.value, '$.t') COLLATE CATALOG_DEFAULT
+JOIN sys.objects o ON o.schema_id = s.schema_id AND o.type IN ('U', 'V')
+    AND o.name = JSON_VALUE(j.value, '$.t') COLLATE CATALOG_DEFAULT
+LEFT JOIN sys.tables t ON t.object_id = o.object_id
 LEFT JOIN sys.tables h ON h.object_id = t.history_table_id
 LEFT JOIN sys.schemas hs ON hs.schema_id = h.schema_id
 LEFT JOIN sys.periods p ON p.object_id = t.object_id
@@ -76,6 +81,8 @@ type ResolveTablesRow struct {
 	// Schema and Name are spelled as the catalog spells them.
 	Schema string
 	Name   string
+	// IsView tells a requested name that is a view: the other fields of the row are empty.
+	IsView bool
 
 	TemporalType      int
 	HistoryID         int64
@@ -91,6 +98,10 @@ type ResolveTablesRow struct {
 	IsExternal        bool
 	IsNode            bool
 	IsEdge            bool
+	// AnsiNullsOff and HistoryAnsiNullsOff tell a table, and its history table, created under
+	// ANSI_NULLS OFF.
+	AnsiNullsOff        bool
+	HistoryAnsiNullsOff bool
 }
 
 // SchemaTable names a table by its schema and its name.
@@ -100,7 +111,7 @@ type SchemaTable struct {
 }
 
 // ResolveTables finds the requested tables. The server compares the names, under the collation
-// of the catalog; a table that is not found gives no row.
+// of the catalog; a name that is neither a table nor a view gives no row.
 func (q *Queries) ResolveTables(
 	ctx context.Context,
 	db mysql_queries.DBTX,
@@ -116,6 +127,7 @@ func (q *Queries) ResolveTables(
 			&i.ObjectID,
 			&i.Schema,
 			&i.Name,
+			&i.IsView,
 			&i.TemporalType,
 			&i.HistoryID,
 			&i.HistorySchema,
@@ -129,6 +141,8 @@ func (q *Queries) ResolveTables(
 			&i.IsExternal,
 			&i.IsNode,
 			&i.IsEdge,
+			&i.AnsiNullsOff,
+			&i.HistoryAnsiNullsOff,
 		)
 	}, sql.Named("tables", string(encoded)))
 }

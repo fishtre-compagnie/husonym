@@ -1,6 +1,7 @@
 package sqlmanager_mssql
 
 import (
+	"math"
 	"testing"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -71,6 +72,27 @@ func Test_BuildMssqlIdentityColumnResetStatement(t *testing.T) {
 			t,
 			BuildMssqlIdentityColumnResetStatement("dbo", "t", value(100), value(-1)),
 			"DBCC CHECKIDENT (N'[dbo].[t]', RESEED, 101)",
+		)
+	})
+
+	t.Run("a seed at the least value an integer holds is reseeded below it, never wrapped", func(t *testing.T) {
+		t.Parallel()
+		// The server refuses a value its type does not hold: the statement fails, whatever the
+		// type of the column.
+		require.Contains(
+			t,
+			BuildMssqlIdentityColumnResetStatement("dbo", "t", value(math.MinInt64), value(1)),
+			"DBCC CHECKIDENT (N'[dbo].[t]', RESEED, -9223372036854775809)",
+		)
+		require.Contains(
+			t,
+			BuildMssqlIdentityColumnResetStatement("dbo", "t", value(math.MaxInt64), value(-1)),
+			"DBCC CHECKIDENT (N'[dbo].[t]', RESEED, 9223372036854775808)",
+		)
+		require.Contains(
+			t,
+			BuildMssqlIdentityColumnResetStatement("dbo", "t", value(math.MinInt32), value(1)),
+			"DBCC CHECKIDENT (N'[dbo].[t]', RESEED, -2147483649)",
 		)
 	})
 

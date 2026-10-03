@@ -2,6 +2,7 @@ package sqlmanager_mssql
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -45,10 +46,13 @@ func BuildMssqlIdentityColumnResetStatement(
 		return BuildMssqlIdentityColumnResetCurrent(schema, table)
 	}
 	name := tableLiteral(schema, table)
+	// The value is computed without bounds: for a seed at the least value of its type it is
+	// one the type does not hold, which the server refuses, whatever the type.
+	value := new(big.Int).Sub(big.NewInt(int64(*identitySeed)), big.NewInt(int64(*identityIncrement)))
 	return fmt.Sprintf(
 		"IF EXISTS (SELECT 1 FROM sys.identity_columns WHERE object_id = OBJECT_ID(%s, N'U') AND last_value IS NOT NULL)\n"+
-			"DBCC CHECKIDENT (%s, RESEED, %d)",
-		name, name, *identitySeed-*identityIncrement,
+			"DBCC CHECKIDENT (%s, RESEED, %s)",
+		name, name, value.String(),
 	)
 }
 
