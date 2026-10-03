@@ -7,14 +7,12 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/queue"
 	transformer_utils "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformers/utils"
 )
 
-var (
-	supportedLanguage = "en"
-)
+const supportedLanguage = "en"
 
 // Used when using the PII Anonymizer with Husonym Transformers
 type HusonymOperatorApi interface {
@@ -27,8 +25,8 @@ type HusonymOperatorApi interface {
 
 func TransformPiiText(
 	ctx context.Context,
-	analyzeClient presidioapi.AnalyzeInterface,
-	anonymizeClient presidioapi.AnonymizeInterface,
+	analyzeClient presidio.Analyzer,
+	anonymizeClient presidio.Anonymizer,
 	husonymOperatorApi HusonymOperatorApi,
 	config *mgmtv1alpha1.TransformPiiText,
 	value string,
@@ -38,59 +36,39 @@ func TransformPiiText(
 		return value, nil
 	}
 	threshold := float64(config.GetScoreThreshold())
-	adhocRecognizers := buildAdhocRecognizers(config.GetDenyRecognizers())
-	allowedEntities := config.GetAllowedEntities()
-	analyzeResp, err := analyzeClient.PostAnalyzeWithResponse(ctx, presidioapi.AnalyzeRequest{
+	findings, err := analyzeClient.Analyze(ctx, &presidio.AnalyzeRequest{
 		Text:             value,
 		Language:         config.GetLanguage(),
 		ScoreThreshold:   &threshold,
-		AdHocRecognizers: &adhocRecognizers,
-		Entities:         &allowedEntities,
+		AdHocRecognizers: buildAdhocRecognizers(config.GetDenyRecognizers()),
+		Entities:         config.GetAllowedEntities(),
 	})
 	if err != nil {
 		return "", fmt.Errorf("unable to analyze input: %w", err)
 	}
 
-	if analyzeResp.JSON200 == nil {
-		return "", fmt.Errorf(
-			"received non-200 response from analyzer: %s %d %s",
-			analyzeResp.Status(),
-			analyzeResp.StatusCode(),
-			string(analyzeResp.Body),
-		)
-	}
-
-	analysisResults := removeAllowedPhrases(*analyzeResp.JSON200, value, config.GetAllowedPhrases())
+	analysisResults := removeAllowedPhrases(findings, value, config.GetAllowedPhrases())
 
 	analysisResults, husonymEntityMap := processAnalysisResultsForHusonymTransformers(
 		analysisResults,
 		getHusonymConfiguredEntities(config),
 		value,
 	)
-	anonymizers, err := buildAnonymizers(config)
-	if err != nil {
-		return "", fmt.Errorf("unable to build anonymizers: %w", err)
-	}
-
-	anonResp, err := anonymizeClient.PostAnonymizeWithResponse(ctx, presidioapi.AnonymizeRequest{
-		AnalyzerResults: presidioapi.ToAnonymizeRecognizerResults(analysisResults),
-		Text:            value,
-		Anonymizers:     &anonymizers,
+	anonymized, err := anonymizeClient.Anonymize(ctx, &presidio.AnonymizeRequest{
+		Text:      value,
+		Findings:  analysisResults,
+		Operators: buildAnonymizers(config),
 	})
 	if err != nil {
 		return "", fmt.Errorf("unable to anonymize input: %w", err)
 	}
-	err = handleAnonRespErr(anonResp)
-	if err != nil {
-		return "", err
-	}
 	if len(husonymEntityMap) == 0 {
-		return *anonResp.JSON200.Text, nil
+		return anonymized.Text, nil
 	}
 
 	outputText, err := handleHusonymEntityAnonymization(
 		ctx,
-		anonResp.JSON200,
+		anonymized,
 		config.GetDefaultAnonymizer(),
 		config.GetEntityAnonymizers(),
 		husonymEntityMap,
@@ -105,14 +83,14 @@ func TransformPiiText(
 
 func handleHusonymEntityAnonymization(
 	ctx context.Context,
-	resp *presidioapi.AnonymizeResponse,
+	resp *presidio.AnonymizeResult,
 	defaultAnonymizer *mgmtv1alpha1.PiiAnonymizer,
 	entityAnonymizerMap map[string]*mgmtv1alpha1.PiiAnonymizer,
 	entityValueMap map[string]*queue.Queue[string],
 	husonymOperatorApi HusonymOperatorApi,
 	logger *slog.Logger,
 ) (string, error) {
-	outputText := *resp.Text
+	outputText := resp.Text
 
 	var defaultTransformerConfig *mgmtv1alpha1.TransformerConfig
 	if defaultAnonymizer != nil {
@@ -122,7 +100,7 @@ func handleHusonymEntityAnonymization(
 				defaultTransformerConfig = defaultAnonymizer.GetTransform().GetConfig()
 			} else {
 				defaultTransformerConfig = getDefaultTransformerConfigByEntity(
-					"DEFAULT",
+					presidio.DefaultOperatorKey,
 				) // DEFAULT here will fall through to the switch case statement
 			}
 		}
@@ -137,7 +115,7 @@ func handleHusonymEntityAnonymization(
 		entityConfigMap[entity] = transformConfig
 	}
 
-	for _, item := range *resp.Items {
+	for _, item := range resp.Items {
 		presidioEntity := strings.TrimPrefix(item.EntityType, husonymEntityPrefix)
 
 		var transformerConfig *mgmtv1alpha1.TransformerConfig
@@ -175,9 +153,9 @@ func handleHusonymEntityAnonymization(
 			return "", fmt.Errorf("unable to transform husonym entity %s: %w", presidioEntity, err)
 		}
 		logger.Debug(
-			fmt.Sprintf("transformed snippet %s replacing %s", transformedSnippet, *item.Text),
+			fmt.Sprintf("transformed snippet %s replacing %s", transformedSnippet, item.Text),
 		)
-		outputText = strings.Replace(outputText, *item.Text, transformedSnippet, 1)
+		outputText = strings.Replace(outputText, item.Text, transformedSnippet, 1)
 	}
 	return outputText, nil
 }
@@ -277,38 +255,32 @@ func getHusonymConfiguredEntities(config *mgmtv1alpha1.TransformPiiText) []strin
 
 func buildAnonymizers(
 	config *mgmtv1alpha1.TransformPiiText,
-) (map[string]presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties, error) {
-	output := map[string]presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-	defaultAnon, ok, err := toPresidioAnonymizerConfig("DEFAULT", config.GetDefaultAnonymizer())
-	if err != nil {
-		return nil, fmt.Errorf("unable to build default anonymizer: %w", err)
-	}
+) map[string]presidio.Operator {
+	output := map[string]presidio.Operator{}
+	defaultAnon, ok := toPresidioAnonymizerConfig(presidio.DefaultOperatorKey, config.GetDefaultAnonymizer())
 	if ok {
-		output["DEFAULT"] = *defaultAnon
+		output[presidio.DefaultOperatorKey] = defaultAnon
 	}
 	for entity, anonymizer := range config.GetEntityAnonymizers() {
-		ap, ok, err := toPresidioAnonymizerConfig(entity, anonymizer)
-		if err != nil {
-			return nil, fmt.Errorf("unable to build entity %s anonymizer: %w", entity, err)
-		}
+		operator, ok := toPresidioAnonymizerConfig(entity, anonymizer)
 		if ok {
 			if anonymizer.GetTransform() != nil {
-				output[fmt.Sprintf("%s%s", husonymEntityPrefix, entity)] = *ap
+				output[fmt.Sprintf("%s%s", husonymEntityPrefix, entity)] = operator
 			} else {
-				output[entity] = *ap
+				output[entity] = operator
 			}
 		}
 	}
 
-	return output, nil
+	return output
 }
 
 func removeAllowedPhrases(
-	results []presidioapi.RecognizerResultWithAnaysisExplanation,
+	results []presidio.Finding,
 	text string,
 	allowedPhrases []string,
-) []presidioapi.RecognizerResultWithAnaysisExplanation {
-	output := []presidioapi.RecognizerResultWithAnaysisExplanation{}
+) []presidio.Finding {
+	output := []presidio.Finding{}
 	uniquePhrases := transformer_utils.ToSet(allowedPhrases)
 	textLen := len(text)
 	for _, result := range results {
@@ -330,16 +302,16 @@ const (
 )
 
 func processAnalysisResultsForHusonymTransformers(
-	inputResults []presidioapi.RecognizerResultWithAnaysisExplanation,
+	inputResults []presidio.Finding,
 	husonymEnabledEntities []string,
 	inputText string,
-) (analysisResults []presidioapi.RecognizerResultWithAnaysisExplanation, entityValueMap map[string]*queue.Queue[string]) {
+) (analysisResults []presidio.Finding, entityValueMap map[string]*queue.Queue[string]) {
 	entitySet := map[string]struct{}{}
 	for _, entity := range husonymEnabledEntities {
 		entitySet[entity] = struct{}{}
 	}
 
-	output := make([]presidioapi.RecognizerResultWithAnaysisExplanation, 0, len(inputResults))
+	output := make([]presidio.Finding, 0, len(inputResults))
 	entityValueMap = map[string]*queue.Queue[string]{} // entity -> list of original values
 	for _, result := range inputResults {
 		if _, ok := entitySet[result.EntityType]; ok {
@@ -355,108 +327,59 @@ func processAnalysisResultsForHusonymTransformers(
 	return output, entityValueMap
 }
 
-func buildAdhocRecognizers(dtos []*mgmtv1alpha1.PiiDenyRecognizer) []presidioapi.PatternRecognizer {
-	output := []presidioapi.PatternRecognizer{}
+func buildAdhocRecognizers(dtos []*mgmtv1alpha1.PiiDenyRecognizer) []presidio.AdHocRecognizer {
+	output := []presidio.AdHocRecognizer{}
 	for _, dto := range dtos {
-		name := dto.GetName()
-		denywords := dto.GetDenyWords()
-		output = append(output, presidioapi.PatternRecognizer{
-			Name:              &name,
-			SupportedEntity:   &name,
-			DenyList:          &denywords,
-			SupportedLanguage: &supportedLanguage,
+		output = append(output, presidio.AdHocRecognizer{
+			Name:              dto.GetName(),
+			SupportedEntity:   dto.GetName(),
+			DenyList:          dto.GetDenyWords(),
+			SupportedLanguage: supportedLanguage,
 		})
 	}
 	return output
 }
 
+// toPresidioAnonymizerConfig returns the operator of an anonymizer, and false when the
+// anonymizer sets none.
 func toPresidioAnonymizerConfig(
 	entity string,
 	dto *mgmtv1alpha1.PiiAnonymizer,
-) (*presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties, bool, error) {
+) (presidio.Operator, bool) {
 	switch cfg := dto.GetConfig().(type) {
 	case *mgmtv1alpha1.PiiAnonymizer_Redact_:
-		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-		err := ap.FromRedact(presidioapi.Redact{Type: "redact"})
-		if err != nil {
-			return nil, false, err
-		}
-		return ap, true, nil
+		return presidio.Redact(), true
 	case *mgmtv1alpha1.PiiAnonymizer_Replace_:
-		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-		err := ap.FromReplace(presidioapi.Replace{Type: "replace", NewValue: cfg.Replace.GetValue()})
-		if err != nil {
-			return nil, false, err
-		}
-		return ap, true, nil
+		return presidio.Replace(cfg.Replace.GetValue()), true
 	case *mgmtv1alpha1.PiiAnonymizer_Hash_:
-		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-		hashtype := toPresidioHashType(cfg.Hash.GetAlgo())
-		err := ap.FromHash(presidioapi.Hash{Type: "hash", HashType: &hashtype})
-		if err != nil {
-			return nil, false, err
-		}
-		return ap, true, nil
+		return presidio.Hash(toPresidioHashType(cfg.Hash.GetAlgo())), true
 	case *mgmtv1alpha1.PiiAnonymizer_Mask_:
-		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-		fromend := cfg.Mask.GetFromEnd()
-		err := ap.FromMask(presidioapi.Mask{
-			Type:        "mask",
-			CharsToMask: int(cfg.Mask.GetCharsToMask()),
-			FromEnd:     &fromend,
-			MaskingChar: cfg.Mask.GetMaskingChar(),
-		})
-		if err != nil {
-			return nil, false, err
-		}
-		return ap, true, nil
+		return presidio.Mask(
+			cfg.Mask.GetMaskingChar(),
+			int(cfg.Mask.GetCharsToMask()),
+			cfg.Mask.GetFromEnd(),
+		), true
 	case *mgmtv1alpha1.PiiAnonymizer_Transform_:
-		ap := &presidioapi.AnonymizeRequest_Anonymizers_AdditionalProperties{}
-		err := ap.FromReplace(
-			presidioapi.Replace{Type: "replace", NewValue: withHusonymEntityBumpers(fmt.Sprintf("%s%s", husonymEntityPrefix, entity))},
-		)
-		if err != nil {
-			return nil, false, err
-		}
-		return ap, true, nil
+		return presidio.Replace(
+			withHusonymEntityBumpers(fmt.Sprintf("%s%s", husonymEntityPrefix, entity)),
+		), true
 	}
-	return nil, false, nil
+	return presidio.Operator{}, false
 }
 
 func withHusonymEntityBumpers(text string) string {
 	return fmt.Sprintf("{{%s}}", text)
 }
 
-func toPresidioHashType(dto mgmtv1alpha1.PiiAnonymizer_Hash_HashType) presidioapi.HashHashType {
+func toPresidioHashType(dto mgmtv1alpha1.PiiAnonymizer_Hash_HashType) presidio.HashType {
 	switch dto {
 	case mgmtv1alpha1.PiiAnonymizer_Hash_HASH_TYPE_MD5:
-		return presidioapi.Md5
+		return presidio.HashMD5
 	case mgmtv1alpha1.PiiAnonymizer_Hash_HASH_TYPE_SHA256:
-		return presidioapi.Sha256
+		return presidio.HashSHA256
 	case mgmtv1alpha1.PiiAnonymizer_Hash_HASH_TYPE_SHA512:
-		return presidioapi.Sha512
+		return presidio.HashSHA512
 	default:
-		return presidioapi.Md5
+		return presidio.HashMD5
 	}
-}
-
-func handleAnonRespErr(resp *presidioapi.PostAnonymizeResponse) error {
-	if resp == nil {
-		return fmt.Errorf("resp was nil")
-	}
-	if resp.JSON400 != nil {
-		return fmt.Errorf("%s", *resp.JSON400.Error)
-	}
-	if resp.JSON422 != nil {
-		return fmt.Errorf("%s", *resp.JSON422.Error)
-	}
-	if resp.JSON200 == nil {
-		return fmt.Errorf(
-			"received non-200 response from anonymizer: %s %d %s",
-			resp.Status(),
-			resp.StatusCode(),
-			string(resp.Body),
-		)
-	}
-	return nil
 }

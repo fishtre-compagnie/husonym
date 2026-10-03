@@ -24,7 +24,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
-	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	"github.com/go-logr/logr"
@@ -57,7 +56,6 @@ import (
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
@@ -77,7 +75,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
@@ -640,32 +637,20 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	var presAnalyzeClient presidioapi.AnalyzeInterface
-	var presAnonClient presidioapi.AnonymizeInterface
-	var presEntityClient presidioapi.EntityInterface
-	analyzeClient, ok, err := getPresidioAnalyzeClient()
+	presidioClients, err := getPresidioClients()
 	if err != nil {
-		return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
+		return fmt.Errorf("unable to initialize the presidio clients: %w", err)
 	}
-	if ok {
-		slogger.Debug("presidio analyze client is enabled")
-		presAnalyzeClient = analyzeClient
-		presEntityClient = analyzeClient
-	}
-	anonClient, ok, err := getPresidioAnonymizeClient()
-	if err != nil {
-		return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
-	}
-	if ok {
-		slogger.Debug("presidio anonymize client is enabled")
-		presAnonClient = anonClient
-	}
+	presidioLevel, presidioSummary := presidioClients.summary()
+	slogger.Log(ctx, presidioLevel, presidioSummary)
 
-	isPresidioEnabled := presAnalyzeClient != nil && presAnonClient != nil
+	// Transforming a text takes both services. The PII content scan only takes the analyzer.
+	isPresidioEnabled := presidioClients.transformsText()
 
 	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
-		IsPresidioEnabled: isPresidioEnabled,
-	}, db, presEntityClient, userdataclient, eelicense)
+		IsPresidioEnabled:       isPresidioEnabled,
+		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
+	}, db, presidioClients.entities, userdataclient, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewTransformersServiceHandler(
 			transformerService,
@@ -680,7 +665,7 @@ func serve(ctx context.Context) error {
 		IsPresidioEnabled:       isPresidioEnabled,
 		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
 		IsAuthEnabled:           isAuthEnabled,
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presAnalyzeClient, presAnonClient, db, eelicense)
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.analyzer, presidioClients.anonymizer, db, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,
@@ -691,29 +676,21 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	// The PII content scan (ConnectionDataService) uses an IN-HOUSE Presidio client
-	// (backend/pkg/presidio), independent from the EE-licensed code: the feature
-	// stays free to run in production. It only needs PRESIDIO_ANALYZER_URL to be set.
-	var connectionPiiAnalyzer presidio.Analyzer
-	if endpoint := getPresidioAnalyzeEndpoint(); endpoint != "" {
-		connectionPiiAnalyzer = presidio.NewClient(
-			endpoint,
-			presidio.WithHeaders(getPresidioHttpHeaders()),
-		)
-	}
+	// The PII content scan (ConnectionDataService) is not an Enterprise feature: it only
+	// needs PRESIDIO_ANALYZER_URL to be set.
 	connectionDataService := v1alpha1_connectiondataservice.New(
 		&v1alpha1_connectiondataservice.Config{
-			IsPresidioEnabled:       connectionPiiAnalyzer != nil,
+			IsPresidioEnabled:       presidioClients.analyzer != nil,
 			PresidioDefaultLanguage: getPresidioDefaultLanguage(),
 		},
 		connectionService,
 		connectiondatabuilder,
-		connectionPiiAnalyzer,
+		presidioClients.analyzer,
 		v1alpha1_connectiondataservice.Transformers{
 			Client:            transformerService,
 			IsPresidioEnabled: isPresidioEnabled,
-			Analyze:           presAnalyzeClient,
-			Anonymize:         presAnonClient,
+			Analyze:           presidioClients.analyzer,
+			Anonymize:         presidioClients.anonymizer,
 			License:           eelicense,
 		},
 	)
@@ -766,14 +743,6 @@ func serve(ctx context.Context) error {
 		slogger.Error(err.Error())
 	}
 	return nil
-}
-
-func getPresidioDefaultLanguage() *string {
-	lang := viper.GetString("PRESIDIO_DEFAULT_LANGUAGE")
-	if lang == "" {
-		return nil
-	}
-	return &lang
 }
 
 func getPromClientFromEnvironment() (promapi.Client, error) {
@@ -1323,63 +1292,4 @@ func getSymEncryptor() (sym_encrypt.Interface, error) {
 		return nil, nil
 	}
 	return sym_encrypt.NewEncryptor(password)
-}
-
-func getPresidioAnalyzeClient() (*presidioapi.ClientWithResponses, bool, error) {
-	endpoint := getPresidioAnalyzeEndpoint()
-	if endpoint == "" {
-		return nil, false, nil
-	}
-	return getPresidioClient(endpoint)
-}
-
-func getPresidioAnonymizeClient() (*presidioapi.ClientWithResponses, bool, error) {
-	endpoint := getPresidioAnonymizeEndpoint()
-	if endpoint == "" {
-		return nil, false, nil
-	}
-	return getPresidioClient(endpoint)
-}
-
-// presidioTimeout is how long Presidio is waited for, for one text to analyze or anonymize: a
-// text may be a long one, on a Presidio that is busy. Past it Presidio is not answering, and
-// the call that asks it — a row a run transforms — would wait without end.
-const presidioTimeout = time.Minute
-
-func getPresidioClient(endpoint string) (*presidioapi.ClientWithResponses, bool, error) {
-	httpclient := http_client.WithHeaders(&http.Client{Timeout: presidioTimeout}, getPresidioHttpHeaders())
-
-	client, err := presidioapi.NewClientWithResponses(
-		endpoint,
-		presidioapi.WithHTTPClient(httpclient),
-	)
-	if err != nil {
-		return nil, false, err
-	}
-
-	return client, true, nil
-}
-
-func getPresidioAnalyzeEndpoint() string {
-	return viper.GetString("PRESIDIO_ANALYZER_URL")
-}
-func getPresidioAnonymizeEndpoint() string {
-	return viper.GetString("PRESIDIO_ANONYMIZER_URL")
-}
-
-func getPresidioHttpHeaders() map[string]string {
-	output := map[string]string{}
-	authtoken := getPresidioAuthTokenHeaderValue()
-	if authtoken != nil && *authtoken != "" {
-		output["Authorization"] = *authtoken
-	}
-	return output
-}
-
-func getPresidioAuthTokenHeaderValue() *string {
-	val := viper.GetString("PRESIDIO_HEADER_AUTH_TOKEN")
-	if val == "" {
-		return nil
-	}
-	return &val
 }
