@@ -368,9 +368,14 @@ func (s *SchemaTableDataTypeResponse) GetStatements() []string {
 	return output
 }
 
+// SkippedObject is an object or attribute of the source that a block leaves out, and why.
+type SkippedObject struct{ Object, Reason string }
+
 type InitSchemaStatements struct {
 	Label      string
 	Statements []string
+	// Skipped tells what the block leaves out. SQL Server only.
+	Skipped []*SkippedObject
 }
 
 type SelectQuery struct {
