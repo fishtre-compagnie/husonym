@@ -3,6 +3,7 @@ package enforcer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"testing"
@@ -95,6 +96,66 @@ func Test_roleStore_SkipsARowThatIsNoAssignment(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, []string{"job_viewer"}, enforcer.GetRolesForUserInDomain("users/2", "accounts/b"))
+}
+
+// A role is held in the account its assignment names, and that account is never a pattern: an
+// assignment naming every account gives the role nowhere.
+func Test_Enforcer_ARoleAssignedToEveryAccountIsHeldNowhere(t *testing.T) {
+	enforcer, err := newEnforcer(&slowStore{})
+	require.NoError(t, err)
+	_, err = enforcer.AddPolicy([]string{"account_admin", "*", "*", "*"})
+	require.NoError(t, err)
+	for user, account := range map[string]string{"users/1": "*", "users/2": "accounts/*"} {
+		_, err = enforcer.AddRoleForUserInDomain(user, "account_admin", account)
+		require.NoError(t, err)
+
+		allowed, err := enforcer.Enforce(user, "accounts/a", "jobs/*", "view")
+		require.NoError(t, err)
+		require.False(t, allowed, "the role assigned in %s is held in accounts/a", account)
+		require.Empty(t, enforcer.GetRolesForUserInDomain(user, "accounts/a"))
+	}
+}
+
+// accountsLoaded gives an enforcer that holds a rule of every account and one member in each
+// of a number of accounts.
+func accountsLoaded(tb testing.TB, accounts int) *Enforcer {
+	tb.Helper()
+	store := &slowStore{rules: [][]string{{"p", "job_viewer", "*", "jobs/*", "view"}}}
+	for i := range accounts {
+		store.rules = append(store.rules, []string{"g", fmt.Sprintf("users/%d", i), "job_viewer", fmt.Sprintf("accounts/%d", i)})
+	}
+	enforcer, err := newEnforcer(store)
+	require.NoError(tb, err)
+	return enforcer
+}
+
+// What a check costs does not depend on how many accounts there are: in an account where the
+// person holds no role, the answer comes without looking at the other accounts.
+func Benchmark_Enforce_InAnAccountWithoutRoles(b *testing.B) {
+	for _, accounts := range []int{1000, 4000, 8000} {
+		enforcer := accountsLoaded(b, accounts)
+		b.Run(fmt.Sprintf("%d accounts", accounts), func(b *testing.B) {
+			for b.Loop() {
+				if allowed, err := enforcer.Enforce("users/0", "accounts/none", "jobs/*", "view"); err != nil || allowed {
+					b.Fatal(allowed, err)
+				}
+			}
+		})
+	}
+}
+
+// What reading the roles again costs grows with their number, and no faster.
+func Benchmark_LoadPolicy(b *testing.B) {
+	for _, accounts := range []int{1000, 4000, 8000} {
+		enforcer := accountsLoaded(b, accounts)
+		b.Run(fmt.Sprintf("%d accounts", accounts), func(b *testing.B) {
+			for b.Loop() {
+				if err := enforcer.LoadPolicy(); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
 }
 
 // A rule written for every account is held by whoever has its role in the account asked about,

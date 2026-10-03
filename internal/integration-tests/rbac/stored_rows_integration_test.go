@@ -292,6 +292,21 @@ func TestRbacStoredRows(t *testing.T) {
 		requireAccess(ctx, t, service, first, withoutRoles, allowedTo["account_admin"])
 	})
 
+	// A role assignment gives its role in the account it names, and that account is never a
+	// pattern: a row naming every account gives nothing anywhere.
+	t.Run("a role assigned to every account", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		everywhere, underAccounts, account := uuid.NewString(), uuid.NewString(), uuid.NewString()
+		storeRow(ctx, t, db, "g", "users/"+everywhere, "account_admin", "*")
+		storeRow(ctx, t, db, "g", "users/"+underAccounts, "account_admin", "accounts/*")
+
+		service, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		requireAccess(ctx, t, service, everywhere, account, nil)
+		requireAccess(ctx, t, service, underAccounts, account, nil)
+	})
+
 	storedFor := func(ctx context.Context, t *testing.T, userId string) []string {
 		t.Helper()
 		var roles []string

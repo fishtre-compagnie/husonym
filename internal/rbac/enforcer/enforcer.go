@@ -23,6 +23,10 @@ const (
 	// modelDocument says how a request (person, account, object, action) is decided: it is
 	// allowed when a rule grants the action on the object to a role the person holds in that
 	// account. A rule names its account, or every account with "*".
+	//
+	// The account of a role assignment is never a pattern: the account term is written with
+	// an equality, not with keyMatch, which would make the engine match the accounts of the
+	// assignments as patterns too, and walk every account at each check and each reload.
 	modelDocument = `
 [request_definition]
 r = sub, dom, obj, act
@@ -37,7 +41,7 @@ g = _, _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub, r.dom) && keyMatch(r.dom, p.dom) && keyMatch(r.obj, p.obj) && keyMatch(r.act, p.act)
+m = g(r.sub, p.sub, r.dom) && (p.dom == "*" || r.dom == p.dom) && keyMatch(r.obj, p.obj) && keyMatch(r.act, p.act)
 `
 )
 

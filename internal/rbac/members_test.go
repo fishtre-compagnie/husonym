@@ -119,6 +119,22 @@ func Test_SetRole_RemovesARoleThisInstanceDidNotKnow(t *testing.T) {
 	requireRefused(t, service.Enforce(ctx, member, account, AccountAction_Edit), AccountAction_Edit)
 }
 
+// A role assigned in every account, by a row made by hand, gives nothing in any account.
+func Test_Service_ARoleAssignedToEveryAccountGivesNothing(t *testing.T) {
+	ctx := context.Background()
+	rows := &memoryRows{}
+	everywhere, underAccounts := someone(), someone()
+	rows.write("g", everywhere.stored(), "account_admin", "*")
+	rows.write("g", underAccounts.stored(), "account_admin", "accounts/*")
+	service := serviceOn(t, rows)
+
+	for _, user := range []User{everywhere, underAccounts} {
+		for _, action := range Actions() {
+			requireRefused(t, service.Enforce(ctx, user, someAccount(), action), action)
+		}
+	}
+}
+
 // The role asked for is in the table once the change returns, even when this instance believed
 // the member already held it: another instance had given the member another role since, which
 // this one had not read yet.
