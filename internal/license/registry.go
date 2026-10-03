@@ -11,9 +11,9 @@ import (
 
 // A record of every license ever minted.
 //
-// This exists for one commercial reason: renewals are the revenue, and you cannot chase a
-// renewal you have no record of. It also answers "what exactly did we sell this customer"
-// when a support question arrives, which a signed blob in someone's inbox does not.
+// It lets an expiring license be found and renewed, and answers "what exactly did we issue
+// to this customer" when a support question arrives, which a signed blob in someone's inbox
+// does not.
 //
 // It holds customer names and issued licenses, so it belongs next to the signing key —
 // outside the repository — and is written 0600. Never commit one.

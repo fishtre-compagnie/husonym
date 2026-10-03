@@ -22,8 +22,7 @@ restart. What the API and the worker wire at startup follows configuration only.
 The verifying public key is **embedded in the binary** (`husonym_ee_pub.pem`, via
 `go:embed`). Verification is entirely offline: no phone-home, no network call, so an
 air-gapped deployment works and we collect nothing about customer usage. The consequence
-is that there is **no revocation** — a license is valid until it expires, which is why
-license terms should be short enough that non-renewal is itself the enforcement.
+is that there is **no revocation** — a license is valid until it expires.
 
 ```
 EE_LICENSE = base64({ "license": base64(payload), "signature": base64(sig) })
@@ -47,16 +46,7 @@ diverge during grace, and that is deliberate: every caller gating on `IsValid()`
 the grace behavior without knowing the lifecycle exists. Use `State()` when the
 distinction matters — banners, logs, diagnostics.
 
-Why a grace period rather than a hard stop: a lapsed license is usually a slow invoice, and
-cutting a customer's environment off the same day turns an accounting delay into an
-incident they blame us for. The commercial lever is enough without it — a sync tool that
-cannot sync is already useless.
-
 ## What a license gates
-
-Gating widened deliberately: the license used to cover only the EE extras while the product
-itself was free, which is the open-core shape inherited from upstream and does not match
-selling the tool.
 
 **Requires a valid license** (`JobService`):
 
@@ -180,8 +170,8 @@ two live licences for one contract makes the registry ambiguous about what is in
 
 The registry holds customer names and working licences. It is written `0600`, lives outside
 this repository, and `.gitignore` carries a backstop in case a copy ever lands here. Back it
-up with the signing key — losing it does not break any deployment, but it loses the renewal
-pipeline, which is the revenue.
+up with the signing key — losing it does not break any deployment, but it loses the record
+of what was issued and when each license expires.
 
 ## Developing locally
 
@@ -244,10 +234,4 @@ Worth being clear-eyed about, so nobody builds on an illusion:
 
 - A customer receiving **source** can delete the check and rebuild in minutes. The model
   assumes they receive images only.
-- A determined party can patch a binary. The aim is to make circumvention deliberate and
-  demonstrable — which is what makes it contractually actionable.
-- The code inherited from upstream is **MIT**, and was published. Those versions stay MIT
-  and a fork of them remains legal. The lock applies to future, unpublished versions.
-
-The real protection is the contract plus the distribution model. This mechanism is what
-makes the contract enforceable, not a substitute for it.
+- A determined party can patch a binary.
