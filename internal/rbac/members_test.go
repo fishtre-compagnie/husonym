@@ -8,7 +8,6 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/internal/rbac/enforcer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,7 +90,7 @@ func Test_SetRole_TellsARoleStoredAndNotReadBack(t *testing.T) {
 	down := errors.New("the database is down")
 	rows.fail(nil, down)
 	err := service.SetRole(ctx, member, account, viewer)
-	require.ErrorIs(t, err, enforcer.ErrNotReadBack)
+	require.ErrorIs(t, err, ErrRoleNotReadBack)
 	require.ErrorIs(t, err, down)
 
 	require.Equal(t, [][]string{assignment(member, "job_viewer", account)}, rows.stored())
