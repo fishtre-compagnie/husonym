@@ -743,6 +743,7 @@ func serve(ctx context.Context) error {
 			IsPresidioEnabled: isPresidioEnabled,
 			Analyze:           presAnalyzeClient,
 			Anonymize:         presAnonClient,
+			License:           eelicense,
 		},
 	)
 	api.Handle(

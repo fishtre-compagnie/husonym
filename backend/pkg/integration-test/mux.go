@@ -319,7 +319,10 @@ func (s *HusonymApiTestClient) setupMux(
 		// Pas d'analyseur Presidio dans les tests d'intégration : IsPresidioEnabled
 		// reste faux, le scan de contenu répond donc FailedPrecondition.
 		nil,
-		v1alpha1_connectiondataservice.Transformers{Client: transformerService},
+		v1alpha1_connectiondataservice.Transformers{
+			Client:  transformerService,
+			License: eelicense,
+		},
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(

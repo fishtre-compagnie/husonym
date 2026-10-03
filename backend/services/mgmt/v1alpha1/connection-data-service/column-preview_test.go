@@ -10,7 +10,9 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +83,122 @@ func Test_transformValue(t *testing.T) {
 	out, err := transformValue(anonymizer, "alice")
 	require.NoError(t, err)
 	require.Equal(t, "ALICE", out)
+}
+
+func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
+	piiText := &mgmtv1alpha1.TransformerConfig{
+		Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+			TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{},
+		},
+	}
+	raws := []any{"Hello, John Doe!"}
+	logger := testutil.GetTestLogger(t)
+
+	t.Run("under a lapsed license the transformer is not enabled and Presidio is not called", func(t *testing.T) {
+		// No expectation on either client: a call to Presidio fails the test.
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			IsPresidioEnabled: true,
+			Analyze:           presidioapi.NewMockAnalyzeInterface(t),
+			Anonymize:         presidioapi.NewMockAnonymizeInterface(t),
+			License:           testutil.NewFakeEELicense(),
+		}}
+
+		resp, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+
+		// What a deployment without Presidio answers: the transformer cannot be built.
+		require.Nil(t, resp)
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+	})
+
+	t.Run("under a valid license the transformer runs", func(t *testing.T) {
+		analyze := presidioapi.NewMockAnalyzeInterface(t)
+		analyze.EXPECT().
+			PostAnalyzeWithResponse(mock.Anything, mock.Anything).
+			Return(&presidioapi.PostAnalyzeResponse{
+				JSON200: &[]presidioapi.RecognizerResultWithAnaysisExplanation{{}},
+			}, nil).
+			Once()
+		anonymized := "Hello, <REDACTED>!"
+		anonymize := presidioapi.NewMockAnonymizeInterface(t)
+		anonymize.EXPECT().
+			PostAnonymizeWithResponse(mock.Anything, mock.Anything).
+			Return(&presidioapi.PostAnonymizeResponse{
+				JSON200: &presidioapi.AnonymizeResponse{
+					Text:  &anonymized,
+					Items: &[]presidioapi.OperatorResult{},
+				},
+			}, nil).
+			Once()
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			IsPresidioEnabled: true,
+			Analyze:           analyze,
+			Anonymize:         anonymize,
+			License:           testutil.NewFakeEELicense(testutil.WithIsValid()),
+		}}
+
+		resp, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+
+		require.NoError(t, err)
+		require.Len(t, resp.GetValues(), 1)
+		require.Empty(t, resp.GetValues()[0].GetError())
+		require.Equal(t, anonymized, resp.GetValues()[0].GetOutput().GetValue())
+	})
+
+	t.Run("the license is read on every preview", func(t *testing.T) {
+		eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
+		analyze := presidioapi.NewMockAnalyzeInterface(t)
+		analyze.EXPECT().
+			PostAnalyzeWithResponse(mock.Anything, mock.Anything).
+			Return(&presidioapi.PostAnalyzeResponse{
+				JSON200: &[]presidioapi.RecognizerResultWithAnaysisExplanation{{}},
+			}, nil).
+			Once()
+		anonymized := "Hello, <REDACTED>!"
+		anonymize := presidioapi.NewMockAnonymizeInterface(t)
+		anonymize.EXPECT().
+			PostAnonymizeWithResponse(mock.Anything, mock.Anything).
+			Return(&presidioapi.PostAnonymizeResponse{
+				JSON200: &presidioapi.AnonymizeResponse{
+					Text:  &anonymized,
+					Items: &[]presidioapi.OperatorResult{},
+				},
+			}, nil).
+			Once()
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			IsPresidioEnabled: true,
+			Analyze:           analyze,
+			Anonymize:         anonymize,
+			License:           eelicense,
+		}}
+
+		_, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		require.NoError(t, err)
+
+		eelicense.SetValid(false)
+		_, err = s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+	})
+
+	t.Run("another transformer does not look at the license", func(t *testing.T) {
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			IsPresidioEnabled: true,
+			Analyze:           presidioapi.NewMockAnalyzeInterface(t),
+			Anonymize:         presidioapi.NewMockAnonymizeInterface(t),
+			License:           testutil.NewFakeEELicense(),
+		}}
+		passthrough := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
+				PassthroughConfig: &mgmtv1alpha1.Passthrough{},
+			},
+		}
+
+		resp, err := s.previewAnonymized(context.Background(), raws, passthrough, nil, logger)
+
+		require.NoError(t, err)
+		require.Len(t, resp.GetValues(), 1)
+		require.Equal(t, "Hello, John Doe!", resp.GetValues()[0].GetOutput().GetValue())
+	})
 }
 
 // An age written as a JSON number — "age":28 — and not as a string — "age":"28".

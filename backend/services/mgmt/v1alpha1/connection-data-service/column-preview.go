@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -85,6 +86,25 @@ func (s *Service) PreviewColumnTransformer(
 		return connect.NewResponse(s.previewJavascript(ctx, sampled, req.Msg.GetColumn(), raws, config)), nil
 	}
 
+	resp, err := s.previewAnonymized(ctx, raws, config, userDefinedTransformers, logger)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// previewAnonymized runs the sampled values through the anonymizer AnonymizeMany uses.
+//
+// The transformers that call Presidio are handed to the anonymizer only under a valid license,
+// read here on every preview. Without one they are not enabled, exactly as when Presidio is not
+// configured; every other transformer runs the same either way.
+func (s *Service) previewAnonymized(
+	ctx context.Context,
+	raws []any,
+	config *mgmtv1alpha1.TransformerConfig,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
+	logger *slog.Logger,
+) (*mgmtv1alpha1.PreviewColumnTransformerResponse, error) {
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
 		ctx,
 		jsonanonymizer.WithTransformerMappings([]*mgmtv1alpha1.TransformerMapping{{
@@ -92,7 +112,7 @@ func (s *Service) PreviewColumnTransformer(
 			Transformer: config,
 		}}),
 		jsonanonymizer.WithConditionalAnonymizeConfig(
-			s.transformers.IsPresidioEnabled,
+			s.transformers.IsPresidioEnabled && s.transformers.License.IsValid(),
 			s.transformers.Analyze,
 			s.transformers.Anonymize,
 			s.cfg.PresidioDefaultLanguage,
@@ -108,9 +128,9 @@ func (s *Service) PreviewColumnTransformer(
 		)
 	}
 
-	return connect.NewResponse(previewValues(raws, func(raw any) (any, error) {
+	return previewValues(raws, func(raw any) (any, error) {
 		return transformValue(anonymizer, raw)
-	})), nil
+	}), nil
 }
 
 // transformValue runs one value through the anonymizer, wrapped the way the anonymizer takes it.
