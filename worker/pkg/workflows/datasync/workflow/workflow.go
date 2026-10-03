@@ -84,6 +84,8 @@ func withJobHookTimingActivityOptions(ctx workflow.Context) workflow.Context {
 
 func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*WorkflowResponse, error) {
 	logger := workflow.GetLogger(ctx)
+	// Read once, before anything else: the run keeps this answer to its end.
+	licensed := workflow_shared.LicenseIsValid(ctx, w.eelicense)
 	getAccountId := func() (string, error) {
 		actOptResp, err := retrieveActivityOptions(ctx, req.JobId, logger)
 		if err != nil {
@@ -92,12 +94,12 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 		return actOptResp.AccountId, nil
 	}
 	runWorkflow := func(ctx workflow.Context, logger log.Logger) (*WorkflowResponse, error) {
-		return executeWorkflow(ctx, req)
+		return executeWorkflow(ctx, req, licensed)
 	}
 	wfinfo := workflow.GetInfo(ctx)
 	return workflow_shared.HandleWorkflowEventLifecycle(
 		ctx,
-		w.eelicense,
+		licensed,
 		req.JobId,
 		wfinfo.WorkflowExecution.ID,
 		logger,
@@ -106,7 +108,13 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 	)
 }
 
-func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowResponse, error) {
+// licensed is the license answer the run started with. The job hooks of every timing are
+// handed it, so that the hooks of the end follow what the hooks of the start followed.
+func executeWorkflow(
+	wfctx workflow.Context,
+	req *WorkflowRequest,
+	licensed bool,
+) (*WorkflowResponse, error) {
 	ctx, cancelHandler := workflow.WithCancel(wfctx)
 	logger := workflow.GetLogger(ctx)
 
@@ -207,8 +215,9 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
-			JobId:  req.JobId,
-			Timing: mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_PRESYNC,
+			JobId:    req.JobId,
+			Timing:   mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_PRESYNC,
+			Licensed: &licensed,
 		},
 		logger,
 	)
@@ -551,8 +560,9 @@ func executeWorkflow(wfctx workflow.Context, req *WorkflowRequest) (*WorkflowRes
 	err = execRunJobHooksByTiming(
 		ctx,
 		&jobhooks_by_timing_activity.RunJobHooksByTimingRequest{
-			JobId:  req.JobId,
-			Timing: mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_POSTSYNC,
+			JobId:    req.JobId,
+			Timing:   mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_POSTSYNC,
+			Licensed: &licensed,
 		},
 		logger,
 	)

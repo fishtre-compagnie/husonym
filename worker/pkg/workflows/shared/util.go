@@ -8,7 +8,6 @@ import (
 	"time"
 
 	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
-	"github.com/fishtre-compagnie/husonym/internal/license"
 	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/log"
@@ -17,16 +16,19 @@ import (
 
 // Utility function that handles spawning job run lifecycle hooks: created, success, failed
 // Should only be used by root workflows that are responsible for handling the lifecycle of a job run
+//
+// licensed is the answer the run got from LicenseIsValid at its start: the hooks of its end
+// follow it, whatever became of the license meanwhile.
 func HandleWorkflowEventLifecycle[T any](
 	ctx workflow.Context,
-	eelicense license.EEInterface,
+	licensed bool,
 	jobId,
 	runId string, // typically the temporal workflow execution id
 	logger log.Logger,
 	getAccountId func() (string, error),
 	fn func(ctx workflow.Context, logger log.Logger) (*T, error),
 ) (*T, error) {
-	if !eelicense.IsValid() {
+	if !licensed {
 		logger.Debug("ee license is not valid, skipping event lifecycle")
 		return fn(ctx, logger)
 	}

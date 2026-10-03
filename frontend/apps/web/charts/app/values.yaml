@@ -124,7 +124,7 @@ tolerations: []
 nodeSelector: {}
 
 # -- Feature flag that enables the frontend to show the run logs on the Run [id] page.
-# only enable this if the backend has been configured to surface run logs. Requires EE License
+# only enable this if the backend has been configured to surface run logs.
 enableRunLogs: false
 
 # -- Feature flag that will disable GCP Cloud Storage Connections from being visible.
@@ -132,12 +132,12 @@ enableRunLogs: false
 disableGcpCloudStorageConnections: false
 
 ## -- Whether or not to enable the metrics service and display usage metrics in the app
-# if this is enabled, the backend must also have the metrics service enabled and configured. Requires EE License
+# if this is enabled, the backend must also have the metrics service enabled and configured.
 protometrics:
   enabled: false
 
 jobHooks:
-  # -- Enables Job Hooks on the frontend. Note: This will only work if it has also been enabled via the backend with a valid license
+  # -- Enables Job Hooks on the frontend. Note: creating or modifying a hook requires a valid license; existing hooks stay visible and removable without one
   enabled: false
 
 # -- The strategy to use when rolling out new replicas

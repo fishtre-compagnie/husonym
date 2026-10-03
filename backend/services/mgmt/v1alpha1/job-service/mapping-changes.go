@@ -139,6 +139,10 @@ func (s *Service) ApplyMappingChanges(
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
 		return nil, err
 	}
+	// Setting transformers changes the job: it needs a valid license, as every other change.
+	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
+		return nil, err
+	}
 	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), req.Msg.GetAccountId()); err != nil {
 		return nil, err
 	}

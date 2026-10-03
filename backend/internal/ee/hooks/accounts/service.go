@@ -302,6 +302,13 @@ func (s *Service) SetAccountHookEnabled(
 		}, nil
 	}
 
+	// Turning a hook off is stopping, which never takes a license; arming it does.
+	if req.GetEnabled() {
+		if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
+
 	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
 		return nil, err
@@ -403,6 +410,9 @@ func (s *Service) CreateAccountHook(
 		return nil, err
 	}
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.GetAccountId()), rbac.AccountAction_Edit); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, req.GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -514,6 +524,9 @@ func (s *Service) UpdateAccountHook(
 		return nil, err
 	}
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(getResp.GetHook().GetAccountId()), rbac.AccountAction_Edit); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
 		return nil, err
 	}
 
@@ -648,6 +661,11 @@ func (s *Service) HandleSlackOAuthCallback(
 	}
 
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(oauthState.AccountId), rbac.AccountAction_Edit); err != nil {
+		return nil, err
+	}
+	// Connecting Slack creates something for the account: refused without a valid license,
+	// before the code is exchanged and anything is stored.
+	if err := user.EnforceLicense(ctx, oauthState.AccountId); err != nil {
 		return nil, err
 	}
 	logger.Debug("slack oauth state validated")

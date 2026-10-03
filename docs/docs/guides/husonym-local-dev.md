@@ -58,8 +58,6 @@ Once everything is up and running, The app can be accessed locally at [http://lo
 
 This will stand up Keycloak with a pre-configured realm that will allow logging in to Husonym with a standard username and password, completely offline!
 
-> **NB:** This requires a valid Husonym Enterprise license to be present in the API container. If you would like to try this out, please contact us.
-
 ```console
 make compose/dev/auth/up
 ```

@@ -78,7 +78,7 @@ A Helm chart for the Husonym Backend API
 | resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
 | resources.requests.memory | string | `"128Mi"` | Sets the Memory amount to be requested |
-| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI (requires a valid license). |
+| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI. |
 | runLogs.lokiConfig.baseUrl | string | `nil` | The base url to the loki instance |
 | runLogs.lokiConfig.keepLabels | string | `nil` | List format. |
 | runLogs.lokiConfig.labelsQuery | string | `nil` | LogQL labels query (without the {} as those are provided by the system) |

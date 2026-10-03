@@ -89,7 +89,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | api.resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
 | api.resources.requests.memory | string | `"128Mi"` | Sets the Memory amount to be requested |
-| api.runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI (requires a valid license). |
+| api.runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI. |
 | api.runLogs.lokiConfig.baseUrl | string | `nil` | The base url to the loki instance |
 | api.runLogs.lokiConfig.keepLabels | string | `nil` | List format. |
 | api.runLogs.lokiConfig.labelsQuery | string | `nil` | LogQL labels query (without the {} as those are provided by the system) |
@@ -128,7 +128,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | app.deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
 | app.disableGcpCloudStorageConnections | bool | `false` | Feature flag that will disable GCP Cloud Storage Connections from being visible. Note: This only disables the new connections form and is a temporary flag until authentication in the multi-tenant environment is better understood. |
-| app.enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. Requires EE License |
+| app.enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. |
 | app.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | app.fullnameOverride | string | `nil` | Fully overrides the chart name |
 | app.host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
@@ -140,7 +140,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | app.ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | app.istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
-| app.jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: This will only work if it has also been enabled via the backend with a valid license |
+| app.jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: creating or modifying a hook requires a valid license; existing hooks stay visible and removable without one |
 | app.nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
 | app.nextAuthSecret | string | `"This is an example"` | next-auth secret that is used to encrypt the session cookie |
 | app.nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |

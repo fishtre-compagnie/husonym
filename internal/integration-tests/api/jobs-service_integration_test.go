@@ -232,66 +232,6 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 	t := s.T()
 	ctx := s.ctx
 
-	t.Run("OSS-unlicensed-unimplemented", func(t *testing.T) {
-		client := s.OSSUnauthenticatedUnlicensedClients.Jobs()
-		t.Run("GetJobHooks", func(t *testing.T) {
-			resp, err := client.GetJobHooks(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.GetJobHooksRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("GetJobHook", func(t *testing.T) {
-			resp, err := client.GetJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.GetJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("CreateJobHook", func(t *testing.T) {
-			resp, err := client.CreateJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.CreateJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("DeleteJobHook", func(t *testing.T) {
-			resp, err := client.DeleteJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.DeleteJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("IsJobHookNameAvailable", func(t *testing.T) {
-			resp, err := client.IsJobHookNameAvailable(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.IsJobHookNameAvailableRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("UpdateJobHook", func(t *testing.T) {
-			resp, err := client.UpdateJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.UpdateJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("SetJobHookEnabled", func(t *testing.T) {
-			resp, err := client.SetJobHookEnabled(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-	})
-
 	t.Run("OSS-authenticated-licensed", func(t *testing.T) {
 		client := s.OSSAuthenticatedLicensedClients.Jobs(
 			integrationtests_test.WithUserId(testAuthUserId),

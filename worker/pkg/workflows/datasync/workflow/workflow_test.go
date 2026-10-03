@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	benthosbuilder_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	runconfigs "github.com/fishtre-compagnie/husonym/internal/runconfigs"
@@ -201,6 +203,91 @@ func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 		&WorkflowResponse{},
 		"Error: Workflow result does not match the expected value",
 	)
+
+	env.AssertExpectations(t)
+}
+
+// The license lapses while a table is being synced: the run goes on with the answer it
+// started with, and announces its success as it announced its start.
+func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestWorkflowEnvironment()
+
+	eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
+
+	var activityOpts *syncactivityopts_activity.Activity
+	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
+		Return(&syncactivityopts_activity.RetrieveActivityOptionsResponse{
+			SyncActivityOptions: &workflow.ActivityOptions{
+				StartToCloseTimeout: time.Minute,
+			},
+			AccountId: uuid.NewString(),
+		}, nil)
+	var accStatsActivity *accountstatus_activity.Activity
+	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
+	var preflightActivity *preflight_activity.Activity
+	env.OnActivity(preflightActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil)
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil)
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil)
+
+	// One hook child at the start of the run, one at its success.
+	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
+		Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+
+	var genact *genbenthosconfigs_activity.Activity
+	env.OnActivity(genact.GenerateBenthosConfigs, mock.Anything, mock.Anything).
+		Return(&genbenthosconfigs_activity.GenerateBenthosConfigsResponse{BenthosConfigs: []*benthosbuilder.BenthosConfigResponse{
+			{
+				Name:      "public.users",
+				DependsOn: []*runconfigs.DependsOn{},
+				Config:    &husonym_benthos.BenthosConfig{},
+			},
+		}}, nil)
+
+	// What the run tells the job hooks of each timing about its license.
+	var mu sync.Mutex
+	hooksLicensed := map[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_Timing]*bool{}
+	var jobHookTimingActivity *jobhooks_by_timing_activity.Activity
+	env.OnActivity(jobHookTimingActivity.RunJobHooksByTiming, mock.Anything, mock.Anything).
+		Return(func(
+			_ context.Context,
+			req *jobhooks_by_timing_activity.RunJobHooksByTimingRequest,
+		) (*jobhooks_by_timing_activity.RunJobHooksByTimingResponse, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			hooksLicensed[req.Timing] = req.Licensed
+			return &jobhooks_by_timing_activity.RunJobHooksByTimingResponse{}, nil
+		})
+
+	syncWorkflow := tablesync_workflow.New(10)
+	env.OnWorkflow(syncWorkflow.TableSync, mock.Anything, mock.Anything).
+		Return(func(ctx workflow.Context, req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			eelicense.SetValid(false)
+			return &tablesync_workflow.TableSyncResponse{}, nil
+		})
+
+	datasyncWorkflow := New(eelicense)
+	env.ExecuteWorkflow(datasyncWorkflow.Workflow, &WorkflowRequest{})
+
+	require.True(t, env.IsWorkflowCompleted())
+	require.NoError(t, env.GetWorkflowError())
+	require.False(t, eelicense.IsValid(), "the license lapsed during the run")
+
+	// The hooks of the end of the run are told what the hooks of its start were told: a
+	// post-sync hook that undoes what a pre-sync one did is not left out halfway.
+	mu.Lock()
+	defer mu.Unlock()
+	presync := hooksLicensed[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_PRESYNC]
+	postsync := hooksLicensed[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_POSTSYNC]
+	require.NotNil(t, presync, "the pre-sync hooks are told the license answer of the run")
+	require.NotNil(t, postsync, "the post-sync hooks are told the license answer of the run")
+	require.True(t, *presync)
+	require.True(t, *postsync, "the license lapsed, the run keeps the answer it started with")
 
 	env.AssertExpectations(t)
 }

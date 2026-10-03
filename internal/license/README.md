@@ -8,13 +8,21 @@ This is the internal reference. Customer-facing wording lives in
 ## The mechanism
 
 A license is a JSON payload signed with **Ed25519**, base64-encoded, handed to the
-customer, and set as the `EE_LICENSE` environment variable on the backend and the worker.
+customer, and installed on the backend and the worker: either as the `EE_LICENSE`
+environment variable, or in a file whose path is given by `EE_LICENSE_FILE`. When both are
+set, the file wins. `EE_LICENSE` is read once, when the process starts; the file is read
+again at most once a minute, on demand, so a renewed license is picked up without a
+restart. A value that cannot be read or verified is logged and never replaces the key
+already in place; the process starts either way.
+
+The license is a `license.Provider` that answers from the clock on every call: it is
+checked per request, not when the process starts, so an expiry takes effect without a
+restart. What the API and the worker wire at startup follows configuration only.
 
 The verifying public key is **embedded in the binary** (`husonym_ee_pub.pem`, via
 `go:embed`). Verification is entirely offline: no phone-home, no network call, so an
 air-gapped deployment works and we collect nothing about customer usage. The consequence
-is that there is **no revocation** — a license is valid until it expires, which is why
-license terms should be short enough that non-renewal is itself the enforcement.
+is that there is **no revocation** — a license is valid until it expires.
 
 ```
 EE_LICENSE = base64({ "license": base64(payload), "signature": base64(sig) })
@@ -31,23 +39,14 @@ the same license yields the same state on any instance at any moment.
 | `expiring` | within 30 days of expiry | work, with a warning banner |
 | `grace` | past expiry, within `grace_days` (default 14) | **still work**, with a blocking banner |
 | `frozen` | past expiry + grace | stop |
-| `none` | no `EE_LICENSE` set | never worked |
+| `none` | no usable key from `EE_LICENSE` or `EE_LICENSE_FILE` | never worked |
 
 **`IsValid()` means "may use paid features", not "is before the expiry date".** The two
 diverge during grace, and that is deliberate: every caller gating on `IsValid()` inherits
 the grace behavior without knowing the lifecycle exists. Use `State()` when the
 distinction matters — banners, logs, diagnostics.
 
-Why a grace period rather than a hard stop: a lapsed license is usually a slow invoice, and
-cutting a customer's environment off the same day turns an accounting delay into an
-incident they blame us for. The commercial lever is enough without it — a sync tool that
-cannot sync is already useless.
-
 ## What a license gates
-
-Gating widened deliberately: the license used to cover only the EE extras while the product
-itself was free, which is the open-core shape inherited from upstream and does not match
-selling the tool.
 
 **Requires a valid license** (`JobService`):
 
@@ -58,9 +57,15 @@ selling the tool.
 | `CreateJobDestinationConnections` | `UpdateJobDestinationConnection` |
 | `UpdateJobSchedule` | `SetJobWorkflowOptions` |
 | `PauseJob` — **resume only** | `SetJobSyncOptions` |
+| `ApplyMappingChanges` | |
 
-Plus the EE extras that were already gated: RBAC, SQL Server, job and account hooks, Loki
-run logs, S3 and GCS connections.
+Plus, outside `JobService`: creating or modifying a job or account hook and turning one
+back on, storing a Slack connection, creating or modifying S3 and GCS connections,
+initializing the schema of a SQL Server destination, the bulk anonymization call and the
+PII text transformer (the column preview included).
+
+RBAC and Loki run logs are not gated: the access rules always apply, and run logs are
+served whenever they are configured.
 
 **Deliberately not gated** — this half matters as much:
 
@@ -152,7 +157,7 @@ go run ./internal/license/cmd/husonym-license list
 go run ./internal/license/cmd/husonym-license show <license-id>
 go run ./internal/license/cmd/husonym-license show <license-id> --json
 
-# Check any licence value through the exact path the product uses at startup
+# Check any licence value through the exact path the product uses
 go run ./internal/license/cmd/husonym-license verify "$EE_LICENSE"
 ```
 
@@ -165,8 +170,8 @@ two live licences for one contract makes the registry ambiguous about what is in
 
 The registry holds customer names and working licences. It is written `0600`, lives outside
 this repository, and `.gitignore` carries a backstop in case a copy ever lands here. Back it
-up with the signing key — losing it does not break any deployment, but it loses the renewal
-pipeline, which is the revenue.
+up with the signing key — losing it does not break any deployment, but it loses the record
+of what was issued and when each license expires.
 
 ## Developing locally
 
@@ -188,8 +193,9 @@ document: the license was documented here long before anything injected it, and 
 refused with no indication why.
 
 In tests, use `testutil.NewFakeEELicense(testutil.WithIsValid())` — and
-`testutil.WithLimits(...)` to exercise caps. Never wire `license.NewValidLicense()` into
-production code: it is unconditionally valid and used to short-circuit the whole cascade.
+`testutil.WithLimits(...)` to exercise caps; `SetValid(false)` makes it lapse mid-test.
+Production code builds one `license.NewProvider(license.SourceFromEnv(), logger)` and hands
+it down as a `license.EEInterface`.
 
 ## The signing key
 
@@ -228,10 +234,4 @@ Worth being clear-eyed about, so nobody builds on an illusion:
 
 - A customer receiving **source** can delete the check and rebuild in minutes. The model
   assumes they receive images only.
-- A determined party can patch a binary. The aim is to make circumvention deliberate and
-  demonstrable — which is what makes it contractually actionable.
-- The code inherited from upstream is **MIT**, and was published. Those versions stay MIT
-  and a fork of them remains legal. The lock applies to future, unpublished versions.
-
-The real protection is the contract plus the distribution model. This mechanism is what
-makes the contract enforceable, not a substitute for it.
+- A determined party can patch a binary.

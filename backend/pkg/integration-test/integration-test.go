@@ -164,7 +164,7 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceAuthenticatedExpiringPostfix, ossAuthExpiringMux),
 	)
 
-	ossUnauthUnlicensedMux, err := s.setupOssUnlicensedMux(pgcontainer, logger)
+	ossUnauthUnlicensedMux, err := s.setupOssUnlicensedMux(ctx, pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup oss unauthenticated unlicensed mux: %w", err)
 	}
@@ -173,7 +173,7 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceUnauthenticatedUnlicensedPostfix, ossUnauthUnlicensedMux),
 	)
 
-	ossLimitedMux, err := s.setupOssLimitedMux(pgcontainer, logger)
+	ossLimitedMux, err := s.setupOssLimitedMux(ctx, pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup oss unauthenticated limited mux: %w", err)
 	}

@@ -100,7 +100,6 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := false
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
@@ -109,7 +108,6 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
 		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(testutil.WithIsValid()),
@@ -121,7 +119,6 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := true
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
@@ -130,7 +127,6 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
 		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(testutil.WithIsValid()),
@@ -144,7 +140,6 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := true
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
@@ -154,7 +149,6 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
 		enforcedRbacClient,
 		logger,
 		s.Mocks.ExpiringLicense,
@@ -162,17 +156,19 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 }
 
 func (s *HusonymApiTestClient) setupOssUnlicensedMux(
+	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := false
 	isAuthEnabled := false
-	permissiveRbacClient := rbac.NewAllowAllClient()
+	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		permissiveRbacClient,
+		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(),
 	)
@@ -182,18 +178,21 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 // two connections (the minimum a job needs, so the job cap stays reachable), and postgres
 // only.
 func (s *HusonymApiTestClient) setupOssLimitedMux(
+	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := false
 	maxJobs := 1
 	maxConnections := 2
+	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		rbac.NewAllowAllClient(),
+		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(
 			testutil.WithIsValid(),
@@ -209,14 +208,14 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 func (s *HusonymApiTestClient) setupMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	isAuthEnabled bool,
-	isLicensed bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
 	// The license every service of this mux reads. Each mode has its own, so that a test
 	// can change one without touching the others.
 	eelicense *testutil.FakeEELicense,
 ) (*http.ServeMux, error) {
-	isPresidioEnabled := isLicensed
+	// Presidio is wired the same way in every mode: the license is read per request.
+	isPresidioEnabled := true
 
 	maxAllowed := int64(10000)
 
@@ -259,19 +258,7 @@ func (s *HusonymApiTestClient) setupMux(
 		&sqlconnect.SqlOpenConnector{},
 	)
 
-	var jobhookService *jobhooks.Service
-	if isLicensed {
-		jobhookService = jobhooks.New(
-			husonymDb,
-			userclient,
-			jobhooks.WithEnabled(),
-		)
-	} else {
-		jobhookService = jobhooks.New(
-			husonymDb,
-			userclient,
-		)
-	}
+	jobhookService := jobhooks.New(husonymDb, userclient)
 
 	awsManager := awsmanager.New(cloudidentity.Policy{})
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
@@ -332,7 +319,10 @@ func (s *HusonymApiTestClient) setupMux(
 		// Pas d'analyseur Presidio dans les tests d'intégration : IsPresidioEnabled
 		// reste faux, le scan de contenu répond donc FailedPrecondition.
 		nil,
-		v1alpha1_connectiondataservice.Transformers{Client: transformerService},
+		v1alpha1_connectiondataservice.Transformers{
+			Client:  transformerService,
+			License: eelicense,
+		},
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(
@@ -395,17 +385,10 @@ func (s *HusonymApiTestClient) setupMux(
 		connect.WithInterceptors(interceptors...),
 	))
 
-	if isLicensed {
-		mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
-			accountHookService,
-			connect.WithInterceptors(interceptors...),
-		))
-	} else {
-		mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
-			mgmtv1alpha1connect.UnimplementedAccountHookServiceHandler{},
-			connect.WithInterceptors(interceptors...),
-		))
-	}
+	mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
+		accountHookService,
+		connect.WithInterceptors(interceptors...),
+	))
 
 	return mux, nil
 }

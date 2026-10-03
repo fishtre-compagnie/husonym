@@ -439,34 +439,34 @@ func serve(ctx context.Context) error {
 		cloudIdentity,
 	)
 
-	if eelicense.IsValid() {
-		logger.Debug("ee license is valid, registering account hook activities")
-		accounthook_workflow_register.Register(w, accounthookclient)
+	// Registered whatever the license: the worker follows its configuration, and the
+	// workflows ask the license when they run. A license that becomes valid without a
+	// restart then finds its workflows and activities there.
+	accounthook_workflow_register.Register(w, accounthookclient)
 
-		openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
+	openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
 
-		husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
-		conndatabuilder := connectiondata.NewConnectionDataBuilder(
-			sqlConnector,
-			sqlmanager,
-			pg_queries.New(),
-			mysql_queries.New(),
-			awsmanager.New(cloudIdentity),
-			husonym_gcp.NewManager(cloudIdentity),
-			mongoconnect.NewConnector(),
-			husonymtyperegistry,
-		)
+	husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
+	conndatabuilder := connectiondata.NewConnectionDataBuilder(
+		sqlConnector,
+		sqlmanager,
+		pg_queries.New(),
+		mysql_queries.New(),
+		awsmanager.New(cloudIdentity),
+		husonym_gcp.NewManager(cloudIdentity),
+		mongoconnect.NewConnector(),
+		husonymtyperegistry,
+	)
 
-		piidetect_workflow_register.Register(
-			w,
-			connclient,
-			jobclient,
-			&openaiclient,
-			conndatabuilder,
-			eelicense,
-			temporalClient.ScheduleClient(),
-		)
-	}
+	piidetect_workflow_register.Register(
+		w,
+		connclient,
+		jobclient,
+		&openaiclient,
+		conndatabuilder,
+		eelicense,
+		temporalClient.ScheduleClient(),
+	)
 
 	if err := w.Start(); err != nil {
 		return fmt.Errorf("unable to start temporal worker: %w", err)

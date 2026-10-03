@@ -14,7 +14,7 @@ RBAC (Role-Based Access Control) is a system that allows you to manage user perm
 
 RBAC is available for all team and enterprise accounts in Husonym Cloud.
 
-For OSS users, RBAC is only available with a valid Enterprise license.
+For OSS users, access rules apply whether or not a license is installed. See [Licensing](/deploy/licensing).
 
 ## How to configure RBAC
 

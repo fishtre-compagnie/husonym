@@ -31,7 +31,7 @@ func Test_CreateJobHook_TakesExecute(t *testing.T) {
 	querier.On("GetAccountIdFromJobId", mock.Anything, mock.Anything, mock.Anything).
 		Return(pgtype.UUID{Bytes: uuid.New(), Valid: true}, nil)
 
-	svc := New(husonymdb.New(husonymdb.NewMockDBTX(t), querier), users, WithEnabled())
+	svc := New(husonymdb.New(husonymdb.NewMockDBTX(t), querier), users)
 	_, err := svc.CreateJobHook(context.Background(), &mgmtv1alpha1.CreateJobHookRequest{
 		JobId: uuid.NewString(),
 		Hook:  &mgmtv1alpha1.NewJobHook{Name: "h", Enabled: true},

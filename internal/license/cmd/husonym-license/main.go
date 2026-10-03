@@ -5,8 +5,7 @@
 // nothing to catch it before the customer did. This tool builds the payload from the same
 // structs the product verifies, validates it, and records the result.
 //
-// The registry is why this matters commercially: renewals are the revenue, and you cannot
-// chase a renewal you have no record of.
+// The registry records every license issued, so an expiring one can be found and renewed.
 //
 //	go run ./internal/license/cmd/husonym-license issue \
 //	  --to "Acme Co." --customer-id acme --days 365 --max-jobs 20

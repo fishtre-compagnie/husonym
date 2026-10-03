@@ -29,6 +29,7 @@ import (
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -130,7 +131,6 @@ func serve(ctx context.Context) error {
 	// Building the provider never fails: a license that cannot be read is logged and
 	// leaves the instance without one.
 	eelicense := license.NewProvider(license.SourceFromEnv(), slogger)
-	slogger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	cloudIdentity := cloudidentity.FromEnvironment()
 
@@ -159,17 +159,11 @@ func serve(ctx context.Context) error {
 		mgmtv1alpha1connect.AnonymizationServiceName,
 	}
 
-	if shouldEnableMetricsService() && !eelicense.IsValid() {
-		return errors.New("metrics service is enabled but no license is present")
-	}
-
 	if shouldEnableMetricsService() {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	if eelicense.IsValid() {
-		services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
-	}
+	services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
 
 	// The settings of an account carry secrets, so they are only held where the deployment
 	// can encrypt one. Without a password the handler answers Unimplemented, and health and
@@ -236,29 +230,9 @@ func serve(ctx context.Context) error {
 		}
 	}
 
-	var rbacclient rbac.Interface
-	if eelicense.IsValid() {
-		slogger.Debug("rbac is enabled")
-		stddb := stdlib.OpenDBFromPool(pool)
-
-		rbacenforcer, err := enforcer.NewActiveEnforcer(ctx, stddb, "husonym_api.casbin_rule")
-		if err != nil {
-			return err
-		}
-		err = rbacenforcer.LoadPolicy()
-		if err != nil {
-			return fmt.Errorf("unable to load rbac policies: %w", err)
-		}
-		rbacdb := rbac.NewRbacDb(querier, db.Db)
-		enforcedClient := rbac.New(rbacenforcer)
-		err = enforcedClient.InitPolicies(ctx, rbacdb, slogger)
-		if err != nil {
-			return fmt.Errorf("unable to initialize rbac policies: %w", err)
-		}
-		rbacclient = enforcedClient
-	} else {
-		slogger.Debug("rbac is disabled")
-		rbacclient = rbac.NewAllowAllClient()
+	rbacclient, err := newRbacClient(ctx, pool, querier, db, slogger)
+	if err != nil {
+		return err
 	}
 
 	stdInterceptors := []connect.Interceptor{}
@@ -390,9 +364,6 @@ func serve(ctx context.Context) error {
 		slogger.Debug("auth is enabled")
 		if err := requireWorkerApiKeys(workerApiKeys); err != nil {
 			return err
-		}
-		if !eelicense.IsValid() {
-			return errors.New("auth is enabled but no license is present")
 		}
 		// The issuers to accept: the deployment's own, always, plus whatever the accounts
 		// have declared. Resolved per request behind a short cache -- see the package.
@@ -564,61 +535,49 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	if eelicense.IsValid() {
-		slogger.Debug("enabling account hooks service")
+	slogger.Debug("enabling account hooks service")
 
-		accountHookOptions := []accounthooks.Option{
-			accounthooks.WithAppBaseUrl(getAppBaseUrl()),
-			accounthooks.WithWorkerOnly(workerOnly),
+	accountHookOptions := []accounthooks.Option{
+		accounthooks.WithAppBaseUrl(getAppBaseUrl()),
+		accounthooks.WithWorkerOnly(workerOnly),
+	}
+	var slackClient ee_slack.Interface
+	if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
+		encryptor, err := getSymEncryptor()
+		if err != nil {
+			return err
 		}
-		var slackClient ee_slack.Interface
-		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
-			encryptor, err := getSymEncryptor()
-			if err != nil {
-				return err
-			}
-			if encryptor == nil {
-				return sym_encrypt.ErrEmptyPassword
-			}
-			slackClient = ee_slack.NewClient(
-				encryptor,
-				ee_slack.WithAuthClientCreds(
-					viper.GetString("SLACK_AUTH_CLIENT_ID"),
-					viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
-				),
-				ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
-				ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
-			)
-			accountHookOptions = append(
-				accountHookOptions,
-				accounthooks.WithSlackClient(slackClient),
-			)
+		if encryptor == nil {
+			return sym_encrypt.ErrEmptyPassword
 		}
-
-		accountHookService := v1alpha1_accounthookservice.New(
-			accounthooks.New(db, userdataclient, accountHookOptions...),
-		)
-
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				accountHookService,
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
+		slackClient = ee_slack.NewClient(
+			encryptor,
+			ee_slack.WithAuthClientCreds(
+				viper.GetString("SLACK_AUTH_CLIENT_ID"),
+				viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
 			),
+			ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
+			ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
 		)
-	} else {
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				mgmtv1alpha1connect.UnimplementedAccountHookServiceHandler{},
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
-			),
+		accountHookOptions = append(
+			accountHookOptions,
+			accounthooks.WithSlackClient(slackClient),
 		)
 	}
+
+	accountHookService := v1alpha1_accounthookservice.New(
+		accounthooks.New(db, userdataclient, accountHookOptions...),
+	)
+
+	api.Handle(
+		mgmtv1alpha1connect.NewAccountHookServiceHandler(
+			accountHookService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
 
 	apiKeyService := v1alpha1_apikeyservice.New(&v1alpha1_apikeyservice.Config{
 		IsAuthEnabled: isAuthEnabled,
@@ -678,23 +637,11 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	jobhookOpts := []jobhooks.Option{}
-	if eelicense.IsValid() {
-		jobhookOpts = append(jobhookOpts, jobhooks.WithEnabled())
-	}
-
-	jobhookService := jobhooks.New(
-		db,
-		userdataclient,
-		jobhookOpts...,
-	)
+	jobhookService := jobhooks.New(db, userdataclient)
 
 	runLogConfig, err := getRunLogConfig()
 	if err != nil {
 		return err
-	}
-	if runLogConfig != nil && runLogConfig.IsEnabled && !eelicense.IsValid() {
-		return errors.New("run logs are enabled but no license is present")
 	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
@@ -725,29 +672,25 @@ func serve(ctx context.Context) error {
 	var presAnalyzeClient presidioapi.AnalyzeInterface
 	var presAnonClient presidioapi.AnonymizeInterface
 	var presEntityClient presidioapi.EntityInterface
-	if eelicense.IsValid() {
-		analyzeClient, ok, err := getPresidioAnalyzeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio analyze client is enabled")
-			presAnalyzeClient = analyzeClient
-			presEntityClient = analyzeClient
-		}
-		anonClient, ok, err := getPresidioAnonymizeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio anonymize client is enabled")
-			presAnonClient = anonClient
-		}
+	analyzeClient, ok, err := getPresidioAnalyzeClient()
+	if err != nil {
+		return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
+	}
+	if ok {
+		slogger.Debug("presidio analyze client is enabled")
+		presAnalyzeClient = analyzeClient
+		presEntityClient = analyzeClient
+	}
+	anonClient, ok, err := getPresidioAnonymizeClient()
+	if err != nil {
+		return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
+	}
+	if ok {
+		slogger.Debug("presidio anonymize client is enabled")
+		presAnonClient = anonClient
 	}
 
-	isPresidioEnabled := eelicense.IsValid() &&
-		presAnalyzeClient != nil &&
-		presAnonClient != nil
+	isPresidioEnabled := presAnalyzeClient != nil && presAnonClient != nil
 
 	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
 		IsPresidioEnabled: isPresidioEnabled,
@@ -800,6 +743,7 @@ func serve(ctx context.Context) error {
 			IsPresidioEnabled: isPresidioEnabled,
 			Analyze:           presAnalyzeClient,
 			Anonymize:         presAnonClient,
+			License:           eelicense,
 		},
 	)
 	api.Handle(
@@ -875,6 +819,33 @@ func getPromClientFromEnvironment() (promapi.Client, error) {
 		Address:      getPromApiUrl(),
 		RoundTripper: roundTripper,
 	})
+}
+
+// The access rules apply on every instance, licensed or not: what they allow is a matter
+// of roles, not of the license.
+func newRbacClient(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	querier db_queries.Querier,
+	db *husonymdb.HusonymDb,
+	logger *slog.Logger,
+) (rbac.Interface, error) {
+	rbacenforcer, err := enforcer.NewActiveEnforcer(
+		ctx,
+		stdlib.OpenDBFromPool(pool),
+		"husonym_api.casbin_rule",
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := rbacenforcer.LoadPolicy(); err != nil {
+		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
+	}
+	enforcedClient := rbac.New(rbacenforcer)
+	if err := enforcedClient.InitPolicies(ctx, rbac.NewRbacDb(querier, db.Db), logger); err != nil {
+		return nil, fmt.Errorf("unable to initialize rbac policies: %w", err)
+	}
+	return enforcedClient, nil
 }
 
 func getDbConfig() (*husonymdb.ConnectConfig, error) {
