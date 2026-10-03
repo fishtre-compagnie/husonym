@@ -29,6 +29,7 @@ import (
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -159,10 +160,6 @@ func serve(ctx context.Context) error {
 		mgmtv1alpha1connect.AnonymizationServiceName,
 	}
 
-	if shouldEnableMetricsService() && !eelicense.IsValid() {
-		return errors.New("metrics service is enabled but no license is present")
-	}
-
 	if shouldEnableMetricsService() {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
@@ -236,29 +233,9 @@ func serve(ctx context.Context) error {
 		}
 	}
 
-	var rbacclient rbac.Interface
-	if eelicense.IsValid() {
-		slogger.Debug("rbac is enabled")
-		stddb := stdlib.OpenDBFromPool(pool)
-
-		rbacenforcer, err := enforcer.NewActiveEnforcer(ctx, stddb, "husonym_api.casbin_rule")
-		if err != nil {
-			return err
-		}
-		err = rbacenforcer.LoadPolicy()
-		if err != nil {
-			return fmt.Errorf("unable to load rbac policies: %w", err)
-		}
-		rbacdb := rbac.NewRbacDb(querier, db.Db)
-		enforcedClient := rbac.New(rbacenforcer)
-		err = enforcedClient.InitPolicies(ctx, rbacdb, slogger)
-		if err != nil {
-			return fmt.Errorf("unable to initialize rbac policies: %w", err)
-		}
-		rbacclient = enforcedClient
-	} else {
-		slogger.Debug("rbac is disabled")
-		rbacclient = rbac.NewAllowAllClient()
+	rbacclient, err := newRbacClient(ctx, pool, querier, db, slogger)
+	if err != nil {
+		return err
 	}
 
 	stdInterceptors := []connect.Interceptor{}
@@ -390,9 +367,6 @@ func serve(ctx context.Context) error {
 		slogger.Debug("auth is enabled")
 		if err := requireWorkerApiKeys(workerApiKeys); err != nil {
 			return err
-		}
-		if !eelicense.IsValid() {
-			return errors.New("auth is enabled but no license is present")
 		}
 		// The issuers to accept: the deployment's own, always, plus whatever the accounts
 		// have declared. Resolved per request behind a short cache -- see the package.
@@ -693,9 +667,6 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if runLogConfig != nil && runLogConfig.IsEnabled && !eelicense.IsValid() {
-		return errors.New("run logs are enabled but no license is present")
-	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
 		IsAuthEnabled: isAuthEnabled,
@@ -875,6 +846,33 @@ func getPromClientFromEnvironment() (promapi.Client, error) {
 		Address:      getPromApiUrl(),
 		RoundTripper: roundTripper,
 	})
+}
+
+// The access rules apply on every instance, licensed or not: what they allow is a matter
+// of roles, not of the license.
+func newRbacClient(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	querier db_queries.Querier,
+	db *husonymdb.HusonymDb,
+	logger *slog.Logger,
+) (rbac.Interface, error) {
+	rbacenforcer, err := enforcer.NewActiveEnforcer(
+		ctx,
+		stdlib.OpenDBFromPool(pool),
+		"husonym_api.casbin_rule",
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := rbacenforcer.LoadPolicy(); err != nil {
+		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
+	}
+	enforcedClient := rbac.New(rbacenforcer)
+	if err := enforcedClient.InitPolicies(ctx, rbac.NewRbacDb(querier, db.Db), logger); err != nil {
+		return nil, fmt.Errorf("unable to initialize rbac policies: %w", err)
+	}
+	return enforcedClient, nil
 }
 
 func getDbConfig() (*husonymdb.ConnectConfig, error) {

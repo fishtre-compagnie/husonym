@@ -162,17 +162,21 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 }
 
 func (s *HusonymApiTestClient) setupOssUnlicensedMux(
+	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isLicensed := false
 	isAuthEnabled := false
-	permissiveRbacClient := rbac.NewAllowAllClient()
+	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		permissiveRbacClient,
+		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(),
 	)
@@ -182,6 +186,7 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 // two connections (the minimum a job needs, so the job cap stays reachable), and postgres
 // only.
 func (s *HusonymApiTestClient) setupOssLimitedMux(
+	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
@@ -189,11 +194,15 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 	isAuthEnabled := false
 	maxJobs := 1
 	maxConnections := 2
+	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		rbac.NewAllowAllClient(),
+		enforcedRbacClient,
 		logger,
 		testutil.NewFakeEELicense(
 			testutil.WithIsValid(),
