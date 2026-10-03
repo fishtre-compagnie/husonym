@@ -16,11 +16,14 @@ const (
 	assignmentSize = 3
 )
 
-// Rows is the table of the rules, as the enforcer asks it: it writes rows to it, and reads the
-// rows of the kinds it names.
+// Rows is the table of the rules, as the enforcer asks it: it writes rows to it, reads the
+// rows of the kinds it names, and replaces the role of a person in an account.
 type Rows interface {
 	persist.ContextBatchAdapter
 	LoadFilteredPolicyCtx(ctx context.Context, m model.Model, filter any) error
+	// ReplaceAssignmentCtx leaves the person that role in the account and no other, all at
+	// once: the table never holds the person without a role meanwhile.
+	ReplaceAssignmentCtx(ctx context.Context, user, role, account string) error
 }
 
 // roleStore is the store the enforcer loads from: the role assignments of the table, and the
@@ -34,14 +37,14 @@ type roleStore struct {
 
 func (s *roleStore) LoadPolicyCtx(ctx context.Context, m model.Model) error {
 	// The rows are read aside, so that one that is no assignment is left out instead of
-	// failing the load, which would cost every member their role. Read aside, a row needs a
-	// first value only: its size is checked below. A row with no value at all still fails.
+	// failing the load, which would cost every member their role. Read aside, a row may be of
+	// any size, down to its kind alone: its size is checked below.
 	read := m.Copy()
 	aside, err := read.GetAssertion(assignmentKind, assignmentKind)
 	if err != nil {
 		return err
 	}
-	aside.Tokens = aside.Tokens[:1]
+	aside.Tokens = aside.Tokens[:0]
 	if err := s.LoadFilteredPolicyCtx(ctx, read, &sqladapter.Filter{PType: []string{assignmentKind}}); err != nil {
 		return err
 	}

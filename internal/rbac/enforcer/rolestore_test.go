@@ -2,6 +2,7 @@ package enforcer
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"testing"
@@ -18,6 +19,10 @@ type tableOfRows struct {
 	persist.ContextBatchAdapter
 	rows  [][]string
 	asked []any
+}
+
+func (s *tableOfRows) ReplaceAssignmentCtx(context.Context, string, string, string) error {
+	return errors.New("the table is only read")
 }
 
 func (s *tableOfRows) LoadFilteredPolicyCtx(_ context.Context, m model.Model, filter any) error {
@@ -72,6 +77,7 @@ func Test_roleStore_LoadsTheAssignmentsAndTheFixedRulesOnly(t *testing.T) {
 // such row does not cost every member their role.
 func Test_roleStore_SkipsARowThatIsNoAssignment(t *testing.T) {
 	table := &tableOfRows{rows: [][]string{
+		{"g"},
 		{"g", "users/1", "account_admin"},
 		{"g", "users/2", "job_viewer", "accounts/b"},
 		{"g", "users/3", "job_viewer", "accounts/b", "extra"},

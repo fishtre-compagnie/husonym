@@ -23,7 +23,7 @@ type Checker interface {
 	// never a refusal.
 	Allowed(ctx context.Context, user User, account Account, action Action) (bool, error)
 	// Enforce returns nothing when user may do action in account, and a permission error when
-	// not. A failure to decide is returned as it is.
+	// not. A failure to decide is the error Allowed gives, which is not a permission error.
 	Enforce(ctx context.Context, user User, account Account, action Action) error
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/internal/rbac/enforcer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ const (
 	executor  = mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_EXECUTOR
 )
 
-// The roles are stored under the words the table has always held, and read back from them.
+// Each role is stored under its word, and read back from it; a word that is no role is no role.
 func Test_Role_TranslatesBothWays(t *testing.T) {
 	for role, word := range map[mgmtv1alpha1.AccountRole]string{
 		admin: "account_admin", developer: "job_developer", executor: "job_executor", viewer: "job_viewer",
@@ -52,7 +53,8 @@ func Test_SetRole_ReplacesTheRoleHeld(t *testing.T) {
 	require.Equal(t, map[User]mgmtv1alpha1.AccountRole{member: viewer}, service.Roles([]User{member}, account))
 }
 
-// A change of role that fails midway leaves the member the role held before: never none.
+// A change of role the table refuses leaves the member the role held before, in the table and
+// in memory: never none.
 func Test_SetRole_NeverLeavesTheMemberWithoutARole(t *testing.T) {
 	ctx := context.Background()
 	rows := &memoryRows{}
@@ -61,21 +63,44 @@ func Test_SetRole_NeverLeavesTheMemberWithoutARole(t *testing.T) {
 	require.NoError(t, service.SetRole(ctx, member, account, developer))
 
 	down := errors.New("the database is down")
-	rows.failingRemovals = down
+	rows.fail(down, nil)
 	require.ErrorIs(t, service.SetRole(ctx, member, account, viewer), down)
 
 	require.NoError(t, service.Enforce(ctx, member, account, JobAction_Create), "the role held before is lost")
-	require.Contains(t, rows.stored(), assignment(member, "job_developer", account))
+	require.Equal(t, [][]string{assignment(member, "job_developer", account)}, rows.stored())
 
-	// Another instance, which reads the table, sees a role too.
+	// Another instance, which reads the table, sees that role too.
+	rows.fail(nil, nil)
 	require.NoError(t, service.enforcer.LoadPolicy())
-	require.NoError(t, service.Enforce(ctx, member, account, JobAction_Create))
 	require.Equal(t, map[User]mgmtv1alpha1.AccountRole{member: developer}, service.Roles([]User{member}, account))
 
 	// Asked again once the table answers, the change is made.
-	rows.failingRemovals = nil
 	require.NoError(t, service.SetRole(ctx, member, account, viewer))
 	require.Equal(t, [][]string{assignment(member, "job_viewer", account)}, rows.stored())
+}
+
+// A role the table took and that could not be read back is told as such: it is stored, and
+// held here once the roles are read again. Until then the member holds the role held before.
+func Test_SetRole_TellsARoleStoredAndNotReadBack(t *testing.T) {
+	ctx := context.Background()
+	rows := &memoryRows{}
+	service := serviceOn(t, rows)
+	member, account := someone(), someAccount()
+	require.NoError(t, service.SetRole(ctx, member, account, developer))
+
+	down := errors.New("the database is down")
+	rows.fail(nil, down)
+	err := service.SetRole(ctx, member, account, viewer)
+	require.ErrorIs(t, err, enforcer.ErrNotReadBack)
+	require.ErrorIs(t, err, down)
+
+	require.Equal(t, [][]string{assignment(member, "job_viewer", account)}, rows.stored())
+	require.NoError(t, service.Enforce(ctx, member, account, JobAction_Create))
+
+	rows.fail(nil, nil)
+	require.NoError(t, service.enforcer.LoadPolicy())
+	requireRefused(t, service.Enforce(ctx, member, account, JobAction_Create), JobAction_Create)
+	require.NoError(t, service.Enforce(ctx, member, account, JobAction_View))
 }
 
 // A role another instance gave moments ago, which this one has not read yet, is taken away with
@@ -92,6 +117,51 @@ func Test_SetRole_RemovesARoleThisInstanceDidNotKnow(t *testing.T) {
 	require.Equal(t, [][]string{assignment(member, "job_viewer", account)}, rows.stored())
 	require.NoError(t, service.enforcer.LoadPolicy())
 	requireRefused(t, service.Enforce(ctx, member, account, AccountAction_Edit), AccountAction_Edit)
+}
+
+// The role asked for is in the table once the change returns, even when this instance believed
+// the member already held it: another instance had given the member another role since, which
+// this one had not read yet.
+func Test_SetRole_StoresTheRoleThisInstanceBelievedHeld(t *testing.T) {
+	ctx := context.Background()
+	rows := &memoryRows{}
+	service := serviceOn(t, rows)
+	member, account := someone(), someAccount()
+	require.NoError(t, service.SetRole(ctx, member, account, developer))
+	// Elsewhere, the member is made a viewer.
+	rows.erase(assignment(member, "job_developer", account)...)
+	rows.write(assignment(member, "job_viewer", account)...)
+
+	require.NoError(t, service.SetRole(ctx, member, account, developer))
+
+	require.Equal(t, [][]string{assignment(member, "job_developer", account)}, rows.stored())
+	require.NoError(t, service.enforcer.LoadPolicy())
+	require.NoError(t, service.Enforce(ctx, member, account, JobAction_Create))
+}
+
+// Two changes of the role of one member made at once leave the member one of the two roles
+// asked for, in the table and in memory: never both, never none.
+func Test_SetRole_TwoChangesAtOnceLeaveOneOfTheRoles(t *testing.T) {
+	ctx := context.Background()
+	rows := &memoryRows{}
+	service := serviceOn(t, rows)
+	account := someAccount()
+	asked := map[mgmtv1alpha1.AccountRole]string{executor: "job_executor", viewer: "job_viewer"}
+
+	for range 1500 {
+		member := someone()
+		require.NoError(t, service.SetRole(ctx, member, account, admin))
+		var wg sync.WaitGroup
+		for role := range asked {
+			wg.Go(func() { require.NoError(t, service.SetRole(ctx, member, account, role)) })
+		}
+		wg.Wait()
+
+		held := service.Roles([]User{member}, account)[member]
+		require.Contains(t, asked, held)
+		require.Equal(t, [][]string{assignment(member, asked[held], account)}, rows.storedFor(member))
+		require.NoError(t, service.RemoveMember(ctx, member, account))
+	}
 }
 
 // A role that is none is refused as a mistake of the caller, before anything is touched.
