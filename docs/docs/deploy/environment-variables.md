@@ -81,6 +81,10 @@ These environment variables are loaded when running the `mgmt serve connect` com
 
 At startup the API logs which Presidio features are enabled, and warns when PRESIDIO_ANONYMIZER_URL is set without PRESIDIO_ANALYZER_URL.
 
+During a run, a value whose anonymization gets no answer from Presidio is retried for up to a minute before the run fails.
+
+The Presidio analyzer reports an input it refuses, such as a language it has no recognizers for, as an HTTP 500: the API then answers `internal`, with the message Presidio gives.
+
 ## Backend API Database Migrations
 
 These environment variables are loaded when running the `mgmt migrate up` command which runs database migrations.
