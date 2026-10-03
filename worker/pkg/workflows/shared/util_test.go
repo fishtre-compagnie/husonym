@@ -1,8 +1,11 @@
 package workflow_shared
 
 import (
+	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	"github.com/stretchr/testify/assert"
@@ -40,6 +43,87 @@ func Test_SanitizeWorkflowID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SanitizeWorkflowID(tt.input)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// The events of a run carry the workflow's own time, not the clock of the worker: the
+// created event the time of the start, the event of the end the time the body ended at.
+func Test_HandleWorkflowEventLifecycle_Events(t *testing.T) {
+	startedAt := time.Date(2026, time.October, 3, 7, 51, 52, 716809604, time.UTC)
+	const bodyDuration = time.Minute
+
+	tests := []struct {
+		name    string
+		bodyErr error
+		end     string
+	}{
+		{
+			name: "created then succeeded",
+			end:  `{"name":3,"accountId":"acc-789","timestamp":"2026-10-03T07:52:52.716809604Z","jobRunSucceeded":{"jobId":"job-123","jobRunId":"run-456"}}`,
+		},
+		{
+			name:    "created then failed",
+			bodyErr: errors.New("function failed"),
+			end:     `{"name":2,"accountId":"acc-789","timestamp":"2026-10-03T07:52:52.716809604Z","jobRunFailed":{"jobId":"job-123","jobRunId":"run-456"}}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ts testsuite.WorkflowTestSuite
+			env := ts.NewTestWorkflowEnvironment()
+			env.SetStartTime(startedAt)
+
+			var mu sync.Mutex
+			var events []string
+			env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+			env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
+				Return(func(
+					_ workflow.Context,
+					req *accounthook_workflow.ProcessAccountHookRequest,
+				) (*accounthook_workflow.ProcessAccountHookResponse, error) {
+					encoded, err := json.Marshal(req.Event)
+					if err != nil {
+						return nil, err
+					}
+					mu.Lock()
+					defer mu.Unlock()
+					events = append(events, string(encoded))
+					return &accounthook_workflow.ProcessAccountHookResponse{}, nil
+				}).Times(2)
+
+			env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
+				return HandleWorkflowEventLifecycle(
+					ctx,
+					true,
+					"job-123",
+					"run-456",
+					workflow.GetLogger(ctx),
+					func() (string, error) { return "acc-789", nil },
+					func(ctx workflow.Context, _ log.Logger) (*string, error) {
+						if err := workflow.Sleep(ctx, bodyDuration); err != nil {
+							return nil, err
+						}
+						result := "success"
+						return &result, tt.bodyErr
+					},
+				)
+			})
+
+			require.True(t, env.IsWorkflowCompleted())
+			if tt.bodyErr == nil {
+				require.NoError(t, env.GetWorkflowError())
+			} else {
+				require.ErrorContains(t, env.GetWorkflowError(), tt.bodyErr.Error())
+			}
+			env.AssertExpectations(t)
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, []string{
+				`{"name":1,"accountId":"acc-789","timestamp":"2026-10-03T07:51:52.716809604Z","jobRunCreated":{"jobId":"job-123","jobRunId":"run-456"}}`,
+				tt.end,
+			}, events)
 		})
 	}
 }

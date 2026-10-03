@@ -18,7 +18,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
@@ -36,7 +36,7 @@ func New(
 
 type ExecuteHookRequest struct {
 	HookId string
-	Event  *accounthook_events.Event
+	Event  *runevents.Event
 }
 
 type ExecuteHookResponse struct{}
@@ -53,7 +53,7 @@ func (a *Activity) ExecuteAccountHook(
 		"WorkflowID", activityInfo.WorkflowExecution.ID,
 		"RunID", activityInfo.WorkflowExecution.RunID,
 		"HookId", req.HookId,
-		"Event", req.Event.Name.String(),
+		"Event", req.Event.Kind().String(),
 	}
 	slogger := temporallogger.NewSlogger(log.With(
 		activity.GetLogger(ctx),
@@ -112,7 +112,7 @@ func (a *Activity) ExecuteAccountHook(
 func executeWebhook(
 	ctx context.Context,
 	webhook *mgmtv1alpha1.AccountHookConfig_WebHook,
-	event *accounthook_events.Event,
+	event *runevents.Event,
 	logger *slog.Logger,
 ) error {
 	logger.Debug(
@@ -216,9 +216,9 @@ type webhookPayload struct {
 	EventData any    `json:"event_data"`
 }
 
-func getPayload(event *accounthook_events.Event) ([]byte, error) {
+func getPayload(event *runevents.Event) ([]byte, error) {
 	payload := webhookPayload{
-		EventName: event.Name.String(),
+		EventName: event.Kind().String(),
 		EventData: event,
 	}
 

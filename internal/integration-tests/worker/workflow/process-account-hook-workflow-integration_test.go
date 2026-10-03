@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
-	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
@@ -93,11 +94,11 @@ func Test_ProcessAccountHookWorkflow(t *testing.T) {
 	env.ExecuteWorkflow(
 		accounthook_workflow.ProcessAccountHook,
 		&accounthook_workflow.ProcessAccountHookRequest{
-			Event: accounthook_events.NewEvent_JobRunSucceeded(
-				accountId,
-				"test-job-id",
-				"test-job-run-id",
-			),
+			Event: runevents.Run{
+				AccountID: accountId,
+				JobID:     "test-job-id",
+				RunID:     "test-job-run-id",
+			}.Succeeded(time.Now()),
 		},
 	)
 

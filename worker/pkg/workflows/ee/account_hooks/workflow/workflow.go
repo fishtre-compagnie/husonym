@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
 	execute_hook_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/execute"
 	hooks_by_event_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/activities/hooks-by-event"
 	"go.temporal.io/sdk/temporal"
@@ -13,7 +13,7 @@ import (
 )
 
 type ProcessAccountHookRequest struct {
-	Event *accounthook_events.Event
+	Event *runevents.Event
 }
 
 type ProcessAccountHookResponse struct{}
@@ -22,6 +22,14 @@ func ProcessAccountHook(
 	wfctx workflow.Context,
 	req *ProcessAccountHookRequest,
 ) (*ProcessAccountHookResponse, error) {
+	if req == nil || req.Event == nil {
+		return nil, temporal.NewNonRetryableApplicationError(
+			"event is required",
+			"MissingEvent",
+			nil,
+		)
+	}
+
 	var hooksByEventActivity *hooks_by_event_activity.Activity
 	var resp *hooks_by_event_activity.RunHooksByEventResponse
 	err := workflow.ExecuteActivity(
@@ -35,8 +43,8 @@ func ProcessAccountHook(
 		}),
 		hooksByEventActivity.GetAccountHooksByEvent,
 		&hooks_by_event_activity.RunHooksByEventRequest{
-			AccountId: req.Event.AccountId,
-			EventName: req.Event.Name,
+			AccountId: req.Event.AccountID(),
+			EventName: req.Event.Kind(),
 		}).
 		Get(wfctx, &resp)
 	if err != nil {
