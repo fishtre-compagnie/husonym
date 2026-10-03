@@ -122,8 +122,9 @@ type TableTrigger struct {
 	TriggerName   string
 	Definition    string
 	// EnabledState is, on PostgreSQL, when the trigger fires: O in origin and local
-	// sessions (the default), R in replica sessions only, A always, D never. Empty on the
-	// other databases, whose triggers are either there or not.
+	// sessions (the default), R in replica sessions only, A always, D never. On SQL Server it
+	// is D for a disabled trigger and empty for an enabled one. Empty on MySQL, whose triggers
+	// are either there or not.
 	EnabledState string
 	// Mysql is, on MySQL, the parts of the trigger and what it was created with. Definition
 	// does not carry the latter: a trigger created again without them runs with the rights

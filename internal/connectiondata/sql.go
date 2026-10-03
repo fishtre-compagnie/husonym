@@ -312,6 +312,14 @@ func (s *SQLConnectionDataService) GetInitStatements(
 	ctx context.Context,
 	options *mgmtv1alpha1.InitStatementOptions,
 ) (*mgmtv1alpha1.GetConnectionInitStatementsResponse, error) {
+	// Init statements are given for MySQL and PostgreSQL: any other connection is told so
+	// before its catalog is read.
+	switch s.connconfig.GetConfig().(type) {
+	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig, *mgmtv1alpha1.ConnectionConfig_PgConfig:
+	default:
+		return nil, errors.New("unsupported connection config")
+	}
+
 	schemas, err := s.GetSchema(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -381,9 +389,6 @@ func (s *SQLConnectionDataService) GetInitStatements(
 				"postgres truncate unsupported. table foreig keys required to build truncate statement.",
 			)
 		}
-
-	default:
-		return nil, errors.New("unsupported connection config")
 	}
 
 	return &mgmtv1alpha1.GetConnectionInitStatementsResponse{

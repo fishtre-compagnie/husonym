@@ -4,33 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/cenkalti/backoff/v7"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	"github.com/fishtre-compagnie/husonym/internal/backoffutil"
 	"github.com/jackc/pgx/v5/pgconn"
 )
-
-// catalogReadAttempts bounds how often a read of the catalog is tried.
-const catalogReadAttempts = 4
-
-// catalogRetryOptions waits 50 ms before the second try, and twice as long at each one after.
-func catalogRetryOptions() []backoff.RetryOption {
-	wait := backoff.NewExponentialBackOff()
-	wait.InitialInterval = 50 * time.Millisecond
-	wait.Multiplier = 2
-	wait.RandomizationFactor = 0
-	return []backoff.RetryOption{
-		backoff.WithBackOff(wait),
-		backoff.WithMaxTries(catalogReadAttempts),
-		backoff.WithNotify(func(err error, _ time.Duration) {
-			slog.Default().Warn("the catalog changed under its read: reading it again", "error", err)
-		}),
-	}
-}
 
 // errDefinitionGone tells a read that lists an object whose definition is gone.
 var errDefinitionGone = errors.New("an object of the catalog was dropped under its read")
