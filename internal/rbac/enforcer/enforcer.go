@@ -116,7 +116,10 @@ var ErrNotReadBack = errors.New("the role is stored, and the roles could not be 
 // changes the roles meanwhile on this instance.
 //
 // When it returns nil the table held that role for the person, and this instance holds what the
-// table held. When the table refuses, nothing has changed.
+// table held. When the table refuses the change, nothing has changed. When the change runs out
+// of time or loses the database while it is committed, the table may hold either the role held
+// before or the role asked for, never none; this instance keeps deciding from what it held, and
+// sees which at the next reload.
 func (e *Enforcer) SetRoleForUserInDomain(user, role, domain string) error {
 	e.reloading.Lock()
 	defer e.reloading.Unlock()

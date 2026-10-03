@@ -368,6 +368,43 @@ func TestRbacStoredRows(t *testing.T) {
 		}
 	})
 
+	// The same holds for a member that had no role yet, on a database whose transactions take
+	// one snapshot for all their statements unless told otherwise: the change of a role reads
+	// what was committed before each of its statements, whatever the default of the server.
+	t.Run("two instances giving a first role at once, under repeatable read by default", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		repeatableRead := func() *rbac.Service {
+			config, err := pgxpool.ParseConfig(container.URL)
+			require.NoError(t, err)
+			config.ConnConfig.RuntimeParams["default_transaction_isolation"] = "repeatable read"
+			pool, err := pgxpool.NewWithConfig(ctx, config)
+			require.NoError(t, err)
+			t.Cleanup(pool.Close)
+			service, err := rbac.New(ctx, pool, testutil.GetTestLogger(t))
+			require.NoError(t, err)
+			return service
+		}
+		here, there := repeatableRead(), repeatableRead()
+		account := rbac.NewAccount(uuid.NewString())
+
+		for range 100 {
+			memberId := uuid.NewString()
+			member := rbac.NewUser(memberId)
+			var wg sync.WaitGroup
+			wg.Go(func() {
+				require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_EXECUTOR))
+			})
+			wg.Go(func() {
+				require.NoError(t, there.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER))
+			})
+			wg.Wait()
+
+			roles := storedFor(ctx, t, memberId)
+			require.Len(t, roles, 1, "the member holds %v", roles)
+		}
+	})
+
 	// Another instance of the API learns of a change of role when it reads the table again,
 	// which it does every ten seconds.
 	t.Run("another instance sees a change of role", func(t *testing.T) {

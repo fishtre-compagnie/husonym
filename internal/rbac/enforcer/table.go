@@ -6,6 +6,7 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	"github.com/fishtre-compagnie/husonym/internal/rbac/sqladapter"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -34,7 +35,9 @@ func OpenRows(ctx context.Context, pool *pgxpool.Pool) (Rows, error) {
 // transaction: the role is never missing, to this instance or to another. Two replacements
 // for one person in one account, wherever they are asked, are made one after the other.
 func (t *table) ReplaceAssignmentCtx(ctx context.Context, user, role, account string) error {
-	tx, err := t.pool.Begin(ctx)
+	// Read committed, whatever the default of the server: the replacement has to see what the
+	// change it waited for wrote, which a snapshot taken before the wait would not show.
+	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return err
 	}
