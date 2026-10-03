@@ -131,76 +131,83 @@ func Test_Activity_Webhook_Success(t *testing.T) {
 	require.Equal(t, jobRunSucceededEvent["jobRunId"], "test-run-id")
 }
 
-func Test_Activity_Slack_Success(t *testing.T) {
+// A Slack hook that is still stored is skipped, not failed: the workflow of the event goes on,
+// and the other hooks of the event still run. The API serves no Slack procedure here, so a
+// call to one would fail the activity.
+func Test_Activity_SlackHookIsSkipped(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestActivityEnvironment()
 
-	hookId := uuid.NewString()
+	slackHookId := uuid.NewString()
+	webhookHookId := uuid.NewString()
 	accountId := uuid.NewString()
 
 	mux := http.NewServeMux()
 	var srv *httptest.Server
-
 	mux.Handle(
 		mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure,
 		connect.NewUnaryHandler(
 			mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure,
 			func(ctx context.Context, r *connect.Request[mgmtv1alpha1.GetAccountHookRequest]) (*connect.Response[mgmtv1alpha1.GetAccountHookResponse], error) {
-				if r.Msg.GetId() == hookId {
-					return connect.NewResponse(&mgmtv1alpha1.GetAccountHookResponse{
-						Hook: &mgmtv1alpha1.AccountHook{
-							Id:          hookId,
-							AccountId:   accountId,
-							Name:        "test-hook",
-							Description: "test-description",
-							Events: []mgmtv1alpha1.AccountHookEvent{
-								mgmtv1alpha1.AccountHookEvent_ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED,
-							},
-							Config: &mgmtv1alpha1.AccountHookConfig{
-								Config: &mgmtv1alpha1.AccountHookConfig_Slack{
-									Slack: &mgmtv1alpha1.AccountHookConfig_SlackHook{
-										ChannelId: "test-channel-id",
-									},
-								},
+				hook := &mgmtv1alpha1.AccountHook{
+					Id:        r.Msg.GetId(),
+					AccountId: accountId,
+					Name:      "test-hook",
+					Events: []mgmtv1alpha1.AccountHookEvent{
+						mgmtv1alpha1.AccountHookEvent_ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED,
+					},
+				}
+				switch r.Msg.GetId() {
+				case slackHookId:
+					hook.Config = &mgmtv1alpha1.AccountHookConfig{
+						Config: &mgmtv1alpha1.AccountHookConfig_Slack{
+							Slack: &mgmtv1alpha1.AccountHookConfig_SlackHook{ChannelId: "test-channel-id"},
+						},
+					}
+				case webhookHookId:
+					hook.Config = &mgmtv1alpha1.AccountHookConfig{
+						Config: &mgmtv1alpha1.AccountHookConfig_Webhook{
+							Webhook: &mgmtv1alpha1.AccountHookConfig_WebHook{
+								Url:    fmt.Sprintf("%s/webhook", srv.URL),
+								Secret: "test-secret",
 							},
 						},
-					}), nil
+					}
+				default:
+					return nil, connect.NewError(connect.CodeNotFound, errors.New("invalid test input"))
 				}
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("invalid test input"))
+				return connect.NewResponse(&mgmtv1alpha1.GetAccountHookResponse{Hook: hook}), nil
 			},
 		),
 	)
-
-	mux.Handle(
-		mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
-		connect.NewUnaryHandler(
-			mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
-			func(ctx context.Context, r *connect.Request[mgmtv1alpha1.SendSlackMessageRequest]) (*connect.Response[mgmtv1alpha1.SendSlackMessageResponse], error) {
-				return connect.NewResponse(&mgmtv1alpha1.SendSlackMessageResponse{}), nil
-			},
-		),
-	)
-
+	webhookCalls := 0
+	mux.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
+		webhookCalls++
+		w.WriteHeader(http.StatusOK)
+	})
 	srv = startHTTPServer(t, mux)
 	accounthookclient := mgmtv1alpha1connect.NewAccountHookServiceClient(srv.Client(), srv.URL)
 	activity := New(accounthookclient)
-
 	env.RegisterActivity(activity)
 
+	event := accounthook_events.NewEvent_JobRunSucceeded(accountId, "test-job-id", "test-run-id")
+
 	val, err := env.ExecuteActivity(activity.ExecuteAccountHook, &ExecuteHookRequest{
-		HookId: hookId,
-		Event: accounthook_events.NewEvent_JobRunSucceeded(
-			accountId,
-			"test-job-id",
-			"test-run-id",
-		),
+		HookId: slackHookId,
+		Event:  event,
 	})
 	require.NoError(t, err)
-	res := &ExecuteHookResponse{}
-	err = val.Get(res)
+	require.NoError(t, val.Get(&ExecuteHookResponse{}))
+	require.Zero(t, webhookCalls)
+
+	val, err = env.ExecuteActivity(activity.ExecuteAccountHook, &ExecuteHookRequest{
+		HookId: webhookHookId,
+		Event:  event,
+	})
 	require.NoError(t, err)
-	require.NotNil(t, res)
+	require.NoError(t, val.Get(&ExecuteHookResponse{}))
+	require.Equal(t, 1, webhookCalls)
 }
 
 func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
