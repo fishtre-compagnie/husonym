@@ -871,6 +871,21 @@ func (q *Queries) IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAcco
 	return count, err
 }
 
+const lockIdentityProviderSubject = `-- name: LockIdentityProviderSubject :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// Holds a subject for the rest of the transaction: a second transaction asking for the
+// same one waits here until the first is done. It is what stands for the row to hold when
+// an identity is seen for the first time and has no row yet.
+//
+// The subject alone is the key, without its issuer, because a row recorded before issuers
+// were is found by its subject under any of them.
+func (q *Queries) LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error {
+	_, err := db.Exec(ctx, lockIdentityProviderSubject, providersub)
+	return err
+}
+
 const lockUser = `-- name: LockUser :one
 SELECT id FROM husonym_api.users
 WHERE id = $1

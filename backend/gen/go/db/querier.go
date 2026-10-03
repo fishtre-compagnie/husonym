@@ -137,6 +137,13 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// Holds a subject for the rest of the transaction: a second transaction asking for the
+	// same one waits here until the first is done. It is what stands for the row to hold when
+	// an identity is seen for the first time and has no row yet.
+	//
+	// The subject alone is the key, without its issuer, because a row recorded before issuers
+	// were is found by its subject under any of them.
+	LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error
 	// Holds a user for the rest of the transaction, so that what is created once per user is
 	// decided by one transaction at a time: a second one waits here until the first is done.
 	//

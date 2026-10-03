@@ -267,6 +267,27 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		require.NoError(t, group.Wait(), "serialization failure on the sign-in path")
 	})
 
+	t.Run("concurrent first sign-ins of a new identity give one user", func(t *testing.T) {
+		identity := testIdentity("first-sign-in-concurrent")
+
+		group := new(errgroup.Group)
+		uids := make([]string, 8)
+		for i := range uids {
+			group.Go(func() error {
+				user, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+				if err != nil {
+					return err
+				}
+				uids[i] = husonymdb.UUIDString(user.ID)
+				return nil
+			})
+		}
+		require.NoError(t, group.Wait(), "first sign-ins at once of the same identity")
+		for _, uid := range uids {
+			require.Equal(t, uids[0], uid, "first sign-ins at once of the same identity gave it several users")
+		}
+	})
+
 	t.Run("no profile at all still signs the user in", func(t *testing.T) {
 		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("profile-absent"), nil)
 		requireNoErrResp(t, resp, err)
