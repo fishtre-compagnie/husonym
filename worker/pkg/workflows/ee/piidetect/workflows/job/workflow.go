@@ -42,7 +42,9 @@ func (w *Workflow) JobPiiDetect(
 		"jobId", req.JobId,
 	)
 
-	if !w.eelicense.IsValid() {
+	// Read once: the hooks of the run's end follow the same answer as its start.
+	licensed := workflow_shared.LicenseIsValid(ctx, w.eelicense)
+	if !licensed {
 		logger.Debug("ee license is not valid, skipping pii detect")
 		return nil, fmt.Errorf("ee license is not valid, unable to run pii detect")
 	}
@@ -70,7 +72,7 @@ func (w *Workflow) JobPiiDetect(
 
 	return workflow_shared.HandleWorkflowEventLifecycle(
 		ctx,
-		w.eelicense,
+		licensed,
 		req.JobId,
 		workflow.GetInfo(ctx).WorkflowExecution.ID,
 		logger,

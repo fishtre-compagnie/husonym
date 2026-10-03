@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -78,7 +77,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -125,7 +124,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(), // invalid license
+				false, // invalid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -171,7 +170,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -217,7 +216,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),

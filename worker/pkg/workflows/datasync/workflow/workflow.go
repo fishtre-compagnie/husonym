@@ -84,6 +84,8 @@ func withJobHookTimingActivityOptions(ctx workflow.Context) workflow.Context {
 
 func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*WorkflowResponse, error) {
 	logger := workflow.GetLogger(ctx)
+	// Read once, before anything else: the run keeps this answer to its end.
+	licensed := workflow_shared.LicenseIsValid(ctx, w.eelicense)
 	getAccountId := func() (string, error) {
 		actOptResp, err := retrieveActivityOptions(ctx, req.JobId, logger)
 		if err != nil {
@@ -97,7 +99,7 @@ func (w *Workflow) Workflow(ctx workflow.Context, req *WorkflowRequest) (*Workfl
 	wfinfo := workflow.GetInfo(ctx)
 	return workflow_shared.HandleWorkflowEventLifecycle(
 		ctx,
-		w.eelicense,
+		licensed,
 		req.JobId,
 		wfinfo.WorkflowExecution.ID,
 		logger,

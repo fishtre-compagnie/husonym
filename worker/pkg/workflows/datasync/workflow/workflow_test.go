@@ -205,6 +205,69 @@ func Test_Workflow_Succeeds_SingleSync(t *testing.T) {
 	env.AssertExpectations(t)
 }
 
+// The license lapses while a table is being synced: the run goes on with the answer it
+// started with, and announces its success as it announced its start.
+func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
+	testSuite := &testsuite.WorkflowTestSuite{}
+	env := testSuite.NewTestWorkflowEnvironment()
+
+	eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
+
+	var activityOpts *syncactivityopts_activity.Activity
+	env.OnActivity(activityOpts.RetrieveActivityOptions, mock.Anything, mock.Anything).
+		Return(&syncactivityopts_activity.RetrieveActivityOptionsResponse{
+			SyncActivityOptions: &workflow.ActivityOptions{
+				StartToCloseTimeout: time.Minute,
+			},
+			AccountId: uuid.NewString(),
+		}, nil)
+	var accStatsActivity *accountstatus_activity.Activity
+	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true}, nil)
+	var preflightActivity *preflight_activity.Activity
+	env.OnActivity(preflightActivity.RunPreflight, mock.Anything, mock.Anything).
+		Return(&preflight_activity.RunPreflightResponse{}, nil)
+	var triggersActivity *destinationtriggers_activity.Activity
+	env.OnActivity(triggersActivity.SuspendTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil)
+	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
+		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil)
+
+	// One hook child at the start of the run, one at its success.
+	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
+		Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+
+	var genact *genbenthosconfigs_activity.Activity
+	env.OnActivity(genact.GenerateBenthosConfigs, mock.Anything, mock.Anything).
+		Return(&genbenthosconfigs_activity.GenerateBenthosConfigsResponse{BenthosConfigs: []*benthosbuilder.BenthosConfigResponse{
+			{
+				Name:      "public.users",
+				DependsOn: []*runconfigs.DependsOn{},
+				Config:    &husonym_benthos.BenthosConfig{},
+			},
+		}}, nil)
+
+	var jobHookTimingActivity *jobhooks_by_timing_activity.Activity
+	env.OnActivity(jobHookTimingActivity.RunJobHooksByTiming, mock.Anything, mock.Anything).
+		Return(&jobhooks_by_timing_activity.RunJobHooksByTimingResponse{}, nil)
+
+	syncWorkflow := tablesync_workflow.New(10)
+	env.OnWorkflow(syncWorkflow.TableSync, mock.Anything, mock.Anything).
+		Return(func(ctx workflow.Context, req *tablesync_workflow.TableSyncRequest) (*tablesync_workflow.TableSyncResponse, error) {
+			eelicense.SetValid(false)
+			return &tablesync_workflow.TableSyncResponse{}, nil
+		})
+
+	datasyncWorkflow := New(eelicense)
+	env.ExecuteWorkflow(datasyncWorkflow.Workflow, &WorkflowRequest{})
+
+	require.True(t, env.IsWorkflowCompleted())
+	require.NoError(t, env.GetWorkflowError())
+	require.False(t, eelicense.IsValid(), "the license lapsed during the run")
+
+	env.AssertExpectations(t)
+}
+
 func Test_Workflow_Follows_Synchronous_DependentFlow(t *testing.T) {
 	testSuite := &testsuite.WorkflowTestSuite{}
 	env := testSuite.NewTestWorkflowEnvironment()
