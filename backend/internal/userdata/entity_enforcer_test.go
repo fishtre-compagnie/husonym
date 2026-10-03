@@ -9,19 +9,31 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/stretchr/testify/require"
 )
 
-// An API key is answered by its scope, never by the RBAC: here the RBAC allows everything, as it
-// does without a license, and the scope still narrows.
+// allowsEverything is an RBAC under which a person may do anything, so that what a caller is
+// refused here comes from the scope of its key alone.
+type allowsEverything struct{}
+
+func (allowsEverything) Allowed(context.Context, rbac.User, rbac.Account, rbac.Action) (bool, error) {
+	return true, nil
+}
+
+func (allowsEverything) Enforce(context.Context, rbac.User, rbac.Account, rbac.Action) error {
+	return nil
+}
+
+// An API key is answered by its scope, never by the RBAC: here the RBAC allows everything, and
+// the scope still narrows.
 func Test_UserEntityEnforcer_AnswersAKeyByItsScope(t *testing.T) {
 	ctx := context.Background()
 	scope := permission.NewScope([]string{"connection:view", "job:view"})
 	enforcer := func(isApiKey bool, keyScope *permission.Scope) *UserEntityEnforcer {
 		return &UserEntityEnforcer{
-			enforcer:             rbac.NewAllowAllClient(),
-			user:                 rbac.NewUserIdEntity("user"),
+			enforcer:             allowsEverything{},
+			user:                 rbac.NewUser("user"),
 			enforceAccountAccess: func(context.Context, string) error { return nil },
 			isApiKey:             isApiKey,
 			keyScope:             keyScope,
@@ -103,17 +115,17 @@ func Test_UserEntityEnforcer_EveryMethod(t *testing.T) {
 		anyAction bool // allowed whatever the scope
 	}{
 		"account key": {&UserEntityEnforcer{
-			enforcer: rbac.NewAllowAllClient(), user: rbac.NewUserIdEntity("key"),
+			enforcer: allowsEverything{}, user: rbac.NewUser("key"),
 			enforceAccountAccess: func(context.Context, string) error { return nil },
 			isApiKey:             true, keyScope: &scope,
 		}, false},
 		"worker key": {&UserEntityEnforcer{
-			enforcer: rbac.NewAllowAllClient(), user: rbac.NewUserIdEntity("worker"),
+			enforcer: allowsEverything{}, user: rbac.NewUser("worker"),
 			enforceAccountAccess: func(context.Context, string) error { return nil },
 			isApiKey:             true,
 		}, true},
 		"person": {&UserEntityEnforcer{
-			enforcer: rbac.NewAllowAllClient(), user: rbac.NewUserIdEntity("person"),
+			enforcer: allowsEverything{}, user: rbac.NewUser("person"),
 			enforceAccountAccess: func(context.Context, string) error { return nil },
 		}, true},
 	}

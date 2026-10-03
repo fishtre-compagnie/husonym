@@ -4,9 +4,9 @@ import (
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 )
 

@@ -18,9 +18,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -272,18 +272,10 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	}
 
 	newPersonalAccountId := husonymdb.UUIDString(resp.PersonalAccount.ID)
-	if err := s.rbacClient.SetupNewAccount(ctx, newPersonalAccountId, logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup newly converted personal account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(newPersonalAccountId),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(newPersonalAccountId),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -318,26 +310,10 @@ func (s *Service) SetPersonalAccount(
 		return nil, err
 	}
 
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	logger = logger.With(
-		"accountId",
-		husonymdb.UUIDString(account.ID),
-		"userId",
-		user.Msg.GetUserId(),
-	)
-
-	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup new account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -422,20 +398,10 @@ func (s *Service) CreateTeamAccount(
 		return nil, err
 	}
 
-	logger = logger.With("accountId", husonymdb.UUIDString(account.ID))
-
-	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup new account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -479,17 +445,12 @@ func (s *Service) GetTeamAccountMembers(
 		return nil, err
 	}
 
-	rbacUsers := make([]rbac.EntityString, 0, len(userIdentities))
+	rbacUsers := make([]rbac.User, 0, len(userIdentities))
 	for i := range userIdentities {
-		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(userIdentities[i].UserID))
+		rbacUsers = append(rbacUsers, rbac.NewPgUser(userIdentities[i].UserID))
 	}
 
-	userRoles := s.rbacClient.GetUserRoles(
-		ctx,
-		rbacUsers,
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
-		logger,
-	)
+	userRoles := s.rbacClient.Roles(rbacUsers, rbac.NewAccount(husonymdb.UUIDString(accountUuid)))
 	logger.Debug(fmt.Sprintf("found %d users with roles", len(userRoles)))
 
 	dtoUsers := make([]*mgmtv1alpha1.AccountUser, len(userIdentities))
@@ -501,19 +462,8 @@ func (s *Service) GetTeamAccountMembers(
 			dtoUsers[i] = &mgmtv1alpha1.AccountUser{
 				Id: husonymdb.UUIDString(user.UserID),
 			}
-			role, ok := userRoles[rbac.NewPgUserIdEntity(user.UserID).String()]
-			if ok {
-				logger.Debug(
-					fmt.Sprintf(
-						"found role for user: %s - %s",
-						husonymdb.UUIDString(user.UserID),
-						role.String(),
-					),
-				)
-				dtoUsers[i].Role = role.ToDto()
-			} else {
-				dtoUsers[i].Role = mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED
-			}
+			// A member without a role has the unspecified one.
+			dtoUsers[i].Role = userRoles[rbac.NewPgUser(user.UserID)]
 			// What the provider said at sign-in, stored on the association. This is the
 			// nominal path, and it is the same for every OIDC provider.
 			identity := &authmgmt.User{
@@ -596,10 +546,10 @@ func (s *Service) RemoveTeamAccountMember(
 		return nil, fmt.Errorf("unable to remove account user from db: %w", err)
 	}
 
-	if err := s.rbacClient.RemoveAccountUser(
+	if err := s.rbacClient.RemoveMember(
 		ctx,
-		rbac.NewPgUserIdEntity(memberUserId),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
+		rbac.NewPgUser(memberUserId),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 	); err != nil {
 		return nil, fmt.Errorf("unable to remove account user from rbac engine: %w", err)
 	}
@@ -794,10 +744,10 @@ func (s *Service) AcceptTeamAccountInvite(
 		return nil, err
 	}
 
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(validateResp.AccountId)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
 		validateResp.Role,
 	); err != nil {
 		return nil, fmt.Errorf(
@@ -855,10 +805,10 @@ func (s *Service) SetUserRole(
 		return nil, husonymerrors.NewBadRequest("provided user id is not in account")
 	}
 
-	err = s.rbacClient.SetAccountRole(
+	err = s.setRole(
 		ctx,
-		rbac.NewPgUserIdEntity(requestingUserUuid),
-		rbac.NewAccountIdEntity(req.Msg.GetAccountId()),
+		rbac.NewPgUser(requestingUserUuid),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 		req.Msg.GetRole(),
 	)
 	if err != nil {

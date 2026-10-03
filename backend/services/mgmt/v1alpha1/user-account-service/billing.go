@@ -10,9 +10,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
