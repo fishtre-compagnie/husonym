@@ -110,6 +110,12 @@ func Test_Operator_Mask(t *testing.T) {
 		{"no count masks the whole finding", "Call Jörg Müller now", "Jörg Müller", maskAll("#"), "Call ########### now"},
 		{"no count and no character removes the finding", "Call Bob now", "Bob", maskAll(""), "Call  now"},
 		{"characters are counted, not bytes", "Call éé now", "éé", mask("*", 1, true), "Call é* now"},
+		{
+			"a mask with no setting at all removes the finding",
+			"Call Bob now", "Bob",
+			&mgmtv1alpha1.PiiAnonymizer{Config: &mgmtv1alpha1.PiiAnonymizer_Mask_{}},
+			"Call  now",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out := mustRewrite(t, withDefault(tc.operator), Options{}, tc.text, found(t, tc.text, tc.found, "PERSON", 0.85))
@@ -168,10 +174,10 @@ func Test_Transform_Snippets(t *testing.T) {
 	})
 
 	t.Run("a text in double braces is left where it is", func(t *testing.T) {
-		text := "{{HUSONYM_PERSON}} met Bob, see {{HUSONYM_DEFAULT}}"
+		text := "{{name}} met Bob, see {{ first_name }}"
 		out := mustRewrite(t, withDefault(transformWith(nil)), Options{Build: (&constant{out: "Ann"}).build}, text,
 			found(t, text, "Bob", "PERSON", 0.85))
-		require.Equal(t, "{{HUSONYM_PERSON}} met Ann, see {{HUSONYM_DEFAULT}}", out)
+		require.Equal(t, "{{name}} met Ann, see {{ first_name }}", out)
 	})
 
 	t.Run("an output that equals another finding is not rewritten again", func(t *testing.T) {

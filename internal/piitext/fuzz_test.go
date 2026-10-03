@@ -52,6 +52,9 @@ func Fuzz_Transform_RewritesExactlyWhatWasFound(f *testing.F) {
 		f.Add(tc.text, []byte{0, 5, 0, 1, 0, 5, 1, 1, 4, 1, 0, 2, 5, 4, 0, 2})
 	}
 	f.Add("James Bond met Jörg Müller", []byte{0, 5, 0, 3, 6, 4, 0, 3, 15, 4, 0, 3, 20, 5, 0, 3})
+	// A finding inside another of its type, and one inside another of another type.
+	f.Add("James Bond met Jörg Müller", []byte{0, 5, 0, 3, 1, 2, 0, 3})
+	f.Add("James Bond met Jörg Müller", []byte{15, 5, 0, 1, 16, 2, 1, 4})
 	f.Add("", []byte{0, 0, 0, 0})
 	f.Add("caf\xff Bob", []byte{4, 3, 0, 4})
 
@@ -121,6 +124,7 @@ func Fuzz_Transform_RewritesExactlyWhatWasFound(f *testing.F) {
 func Fuzz_Resolve_CoversWhatWasFound(f *testing.F) {
 	f.Add("James Bond met Jörg Müller", []byte{0, 5, 0, 3, 6, 4, 0, 3, 15, 4, 0, 3, 20, 5, 0, 3})
 	f.Add("ééééé John Mary 👩‍💻", []byte{0, 5, 0, 1, 3, 5, 1, 1, 4, 5, 2, 2, 5, 4, 0, 2})
+	f.Add("James Bond met Jörg Müller", []byte{0, 5, 0, 3, 1, 2, 0, 3})
 
 	f.Fuzz(func(t *testing.T, text string, seed []byte) {
 		if text == "" || !utf8.ValidString(text) {

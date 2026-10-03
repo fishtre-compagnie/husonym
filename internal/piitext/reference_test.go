@@ -148,7 +148,7 @@ func Test_Reference_Anonymizer(t *testing.T) {
 			}
 			require.NoError(t, err)
 			if deviation, ok := different[tc.Name]; ok {
-				require.NotEqual(t, tc.Answer.Text, deviation.want, "the reference no longer differs: %s", deviation.reason)
+				require.NotEqual(t, tc.Answer.Text, deviation.want, "the reference answers the same: %s", deviation.reason)
 				require.Equal(t, deviation.want, out, deviation.reason)
 				return
 			}

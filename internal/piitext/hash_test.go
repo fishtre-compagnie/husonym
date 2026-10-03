@@ -118,6 +118,27 @@ func Test_Hash(t *testing.T) {
 		require.NotEqual(t, hashWith(first), hashWith(second), "two engines draw two keys")
 	})
 
+	t.Run("outside a run two accounts never hash under the same key, and one account keeps its own", func(t *testing.T) {
+		engine := newEngine(t, finding(t, found(t, text, "Zoé", "PERSON", 0.85)))
+		hashFor := func(key *HashKey) string {
+			transformer, err := engine.Transformer(withDefault(hashOf(sha256Type)), Options{HashKey: key})
+			require.NoError(t, err)
+			out, err := transformer.Transform(context.Background(), text)
+			require.NoError(t, err)
+			return out
+		}
+		require.Equal(t, hashFor(engine.AccountHashKey("account-a")), hashFor(engine.AccountHashKey("account-a")))
+		require.NotEqual(t, hashFor(engine.AccountHashKey("account-a")), hashFor(engine.AccountHashKey("account-b")))
+		require.NotEqual(t, hashFor(engine.AccountHashKey("account-a")), hashFor(nil),
+			"the key of an account is not the key of the process")
+
+		other := newEngine(t, finding(t, found(t, text, "Zoé", "PERSON", 0.85)))
+		require.NotEqual(t, *engine.AccountHashKey("account-a"), *other.AccountHashKey("account-a"),
+			"another process gives the account another key")
+		var none *Engine
+		require.Nil(t, none.AccountHashKey("account-a"))
+	})
+
 	t.Run("two hashed findings of one value each hash their own text", func(t *testing.T) {
 		both := "Zoé met Bob and Zoé"
 		config := withDefault(hashOf(md5Type))

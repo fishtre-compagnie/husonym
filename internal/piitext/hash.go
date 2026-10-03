@@ -49,6 +49,23 @@ func drawHashKey() (HashKey, error) {
 	return key, nil
 }
 
+// AccountHashKey returns the key of the values of an account that belong to no run: a direct
+// call to the anonymization endpoints, the preview of a column. It is derived from the key of
+// the process under a label of its own, so two accounts never hash under the same key, and one
+// account hashes a text the same way for as long as the process lives.
+//
+// A nil engine has no key to give.
+func (e *Engine) AccountHashKey(accountId string) *HashKey {
+	if e == nil {
+		return nil
+	}
+	mac := hmac.New(sha256.New, e.processKey[:])
+	mac.Write([]byte("account:" + accountId))
+	var key HashKey
+	copy(key[:], mac.Sum(nil))
+	return &key
+}
+
 // hashVariant is one of the three forms of a hash. The hash type of a configuration chooses the
 // length of what is written, which is what the column it lands in depends on; every form is an
 // HMAC of the exact text of the finding.

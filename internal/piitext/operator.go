@@ -90,7 +90,8 @@ func maskOperator(config *mgmtv1alpha1.PiiAnonymizer_Mask) operator {
 	return func(_ context.Context, _, text string) (string, error) {
 		length := utf8.RuneCountInString(text)
 		count := length
-		if config.CharsToMask != nil {
+		// A mask set with no message at all is a mask with no setting.
+		if config != nil && config.CharsToMask != nil {
 			count = min(length, max(0, int(config.GetCharsToMask())))
 		}
 		masking := strings.Repeat(config.GetMaskingChar(), count)

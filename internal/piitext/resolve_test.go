@@ -32,6 +32,16 @@ func Test_Resolve(t *testing.T) {
 			"<PERSON> met Jörg Müller",
 		},
 		{
+			"a finding inside another of its type is rewritten with all of it",
+			text, []presidio.Finding{at("PERSON", 0, 10, 0.8), at("PERSON", 6, 8, 0.8)},
+			"<PERSON> met Jörg Müller",
+		},
+		{
+			"a finding inside another of its type that starts with it is rewritten with all of it",
+			text, []presidio.Finding{at("PERSON", 0, 3, 0.9), at("PERSON", 0, 10, 0.4)},
+			"<PERSON> met Jörg Müller",
+		},
+		{
 			"findings of one type that touch stay two",
 			"JamesBond", []presidio.Finding{at("PERSON", 0, 5, 0.8), at("PERSON", 5, 9, 0.8)},
 			"<PERSON><PERSON>",
