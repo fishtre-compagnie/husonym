@@ -4,7 +4,7 @@ description: Learn how Husonym handles schema initialization
 id: schema-initialization-overview
 hide_title: false
 slug: /schema-init/overview
-# cSpell:words ROWGUIDCOL,rowstore,columnstore,filegroups
+# cSpell:words ROWGUIDCOL,rowstore,columnstore,filegroups,NORECOMPUTE
 ---
 
 ## Introduction
@@ -21,7 +21,7 @@ The source database must be at compatibility level 130 or more, and the login of
 
 - The schemas that hold an object of the job.
 - Tables with their columns in order: types with their lengths, precision and scale (`max` included), collations, nullability, identities with their seed and increment, computed columns, defaults under their name, sparse columns and column sets, masked columns, `ROWGUIDCOL`.
-- The alias types of those columns, and the sequences their defaults draw from.
+- The alias types of those columns, and the sequences that their defaults, or the modules created with them, draw from.
 - Primary keys, unique constraints, check constraints and foreign keys, each under its name, with its clustering, key order, actions, and its disabled or not-trusted state.
 - Rowstore and columnstore indexes with their keys, included columns, filter and options. A disabled non-clustered index is created disabled.
 - Temporal tables: the period, the history table under its name with its indexes, and the retention.
@@ -35,19 +35,21 @@ Some objects cannot be created as they are, and creating something close would g
 - Memory-optimized, graph, ledger and external tables, and FileTables.
 - Columns typed by an XML schema collection or a CLR type, Always Encrypted and `FILESTREAM` columns, columns created under `ANSI_PADDING OFF`, columns or alias types with a bound rule or a bound default.
 - A disabled clustered index, or a disabled index that backs a primary key or a unique constraint.
-- A function called by a table when it is encrypted, CLR, or schema-bound to a table.
+- A function called by a table — by a computed column, a check or a default — when it cannot be created before the tables, or would not run on the destination: an encrypted or CLR function, a function schema-bound to a table, an inline function that reads a table or a view, and a function that needs a table outside the job, a synonym, a table type, a CLR object, a module that is left out, or an alias type that no column of the job uses.
 
 ### What is left out
 
 What follows is not created. Each item is recorded with the run, next to the statements that failed:
 
-- A table of the job that the source does not have.
+- A table of the job that the source does not have, or that is a view there.
 - A foreign key to a table that is not part of the job.
-- A view, function or procedure that is encrypted or CLR, or that depends on a table outside the job, a synonym, a table type, a CLR object, or another module that is left out.
+- A view, function or procedure that is encrypted or CLR, or that depends on a table outside the job, a synonym, a table type, a CLR object, an alias type that no column of the job uses, or another module that is left out.
 - An encrypted or CLR trigger, and the first or last firing order of a trigger.
-- XML, spatial, full-text and JSON indexes, and the order of an ordered columnstore index.
+- XML, spatial, full-text and JSON indexes, the indexes of a view, and the order of an ordered columnstore index.
 - Partitioning, filegroups, compression, user statistics, extended properties, permissions, row-level security, change tracking and change data capture.
+- Options that are not at their default: `OPTIMIZE_FOR_SEQUENTIAL_KEY` and `STATISTICS_NORECOMPUTE` of an index, `LOCK_ESCALATION`, `text in row`, `large value types out of row` and XML compression of a table.
+- The `ANSI_NULLS OFF` setting a table was created under: the table is created under `ANSI_NULLS ON`.
 - The current value of a sequence: it is created at its declared start.
 - The collation of a column typed by an alias type: such a column takes the default collation of the destination database.
 
-A view, a function or a procedure that fails to be created is recorded and the run goes on. Any other statement that fails stops the run.
+A view, a function or a procedure that fails to be created is recorded and the run goes on. Any other statement that fails stops the run: a trigger, for one, whose name another table of the destination already holds.
