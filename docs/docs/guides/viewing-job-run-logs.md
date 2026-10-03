@@ -61,8 +61,6 @@ kubectl logs -n husonym deployment/husonym-worker -f`
 
 #### Husonym UI
 
-> **NB:** This requires a valid Husonym Enterprise license for OSS deployments. If you would like to try this out, please contact us.
-
 Husonym can be configured to surface pod logs via the UI by configuring `husonym-api` to surface these.
 
 If you've deployed Husonym via the helm chart, this should come pre-configured with kubernetes pod logs.
@@ -73,7 +71,7 @@ This are great for basic deployments, but will disappear on worker pod shutdown.
 
 ## Persistence with Loki
 
-Husonym has native support for surfacing logs that come from a [Grafana Loki](https://grafana.com/oss/loki/) instance (with a valid Husonym Enterprise license).
+Husonym has native support for surfacing logs that come from a [Grafana Loki](https://grafana.com/oss/loki/) instance.
 
 Please note that Husonym does not natively handle shipping logs to Loki, however it can natively handle querying a Loki instance to surface logs into Husonym UI.
 

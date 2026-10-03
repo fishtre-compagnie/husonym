@@ -31,8 +31,11 @@ restart**: replace the content of the file and the new key takes effect within a
 minute. A key that cannot be verified, or a file that is empty or unreadable, is ignored
 and reported in the logs. The key already in place stays in force.
 
-If `EE_LICENSE` itself cannot be read, the service still starts, without a license, and
-logs the reason.
+The service always starts, whatever the license: absent, unreadable or expired. In the
+first two cases it logs the reason and runs without a license.
+
+The license is checked on every request and follows the clock. An expiry, like a renewal,
+takes effect without a restart.
 
 Verification happens entirely offline. Husonym never contacts us to check your license, so
 it works in an air-gapped environment, and we collect nothing about how you use it.
@@ -44,9 +47,15 @@ jobs are accepted but never execute.
 
 ## What the license covers
 
-An active license is required to **create, configure and run jobs** — the core of the
-product — as well as role-based access control, Microsoft SQL Server connections, job and
-account hooks, and run logs.
+The rule is the same for every request: **creating, modifying and executing** require a
+valid license; **reading, stopping and deleting** never do. In practice, a valid license
+is needed to create, configure and run jobs — the core of the product — as well as to
+create or modify job and account hooks, to use Microsoft SQL Server connections, and to
+use PII detection and the anonymization calls that rely on it.
+
+Husonym itself does not depend on the license to start. Authentication, run logs and
+metrics are available whether or not a license is installed, and the access rules (roles)
+apply with or without one.
 
 ## As your license approaches expiry
 
@@ -65,20 +74,22 @@ The grace period is normally 14 days, and your license may specify a different l
 ## What happens if a license expires
 
 Once the grace period ends, Husonym stops starting work. It does not lock you out and it
-never touches your data.
+never touches your data. The instance keeps starting and serving requests.
 
-**Stops:**
+**Refused** with the message `account does not have an active license`:
 
 - creating new jobs, and changing the configuration of existing ones
 - starting new job runs, manually or on a schedule
 - resuming a paused schedule
+- creating or modifying a hook, and turning a hook back on
+- PII detection, and the anonymization calls that need it
 
 **Keeps working:**
 
-- viewing every job, connection, mapping and run in your history
-- pausing a schedule
+- viewing every job, run, run log, connection, hook and mapping in your history
+- pausing a schedule, and turning a hook off
 - cancelling or terminating a run that is already going
-- deleting jobs and connections
+- deleting jobs, hooks and connections
 
 Runs already in progress when the license expires are allowed to finish rather than being
 interrupted mid-sync.
