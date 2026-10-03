@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
@@ -31,8 +31,8 @@ type TransformerExecutorConfig struct {
 }
 
 type transformPiiTextConfig struct {
-	analyze   presidioapi.AnalyzeInterface
-	anonymize presidioapi.AnonymizeInterface
+	analyze   presidio.Analyzer
+	anonymize presidio.Anonymizer
 
 	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi
 
@@ -40,8 +40,8 @@ type transformPiiTextConfig struct {
 }
 
 func WithTransformPiiTextConfig(
-	analyze presidioapi.AnalyzeInterface,
-	anonymize presidioapi.AnonymizeInterface,
+	analyze presidio.Analyzer,
+	anonymize presidio.Anonymizer,
 	husonymOperatorApi ee_transformer_fns.HusonymOperatorApi,
 	defaultLanguage *string,
 ) TransformerExecutorOption {

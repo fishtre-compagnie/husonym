@@ -85,11 +85,6 @@ packages:
       ConnectionDataBuilder: {}
       ConnectionDataService: {}
       SampleDataStream: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/presidio:
-    interfaces:
-      AnalyzeInterface: {}
-      AnonymizeInterface: {}
-      EntityInterface: {}
   github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
     interfaces:
       HusonymOperatorApi: {}

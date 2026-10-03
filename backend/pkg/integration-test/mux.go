@@ -21,6 +21,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
 	v1alpha1_accountsettingservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-settings-service"
@@ -34,7 +35,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
@@ -241,7 +241,7 @@ func (s *HusonymApiTestClient) setupMux(
 			IsPresidioEnabled: isPresidioEnabled,
 		},
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
-		s.Mocks.Presidio.Entities,
+		s.Mocks.Presidio,
 		userclient,
 		eelicense,
 	)
@@ -294,8 +294,8 @@ func (s *HusonymApiTestClient) setupMux(
 		connectiondatabuilder,
 	)
 
-	var presAnalyzeClient presidioapi.AnalyzeInterface
-	var presAnonClient presidioapi.AnonymizeInterface
+	var presAnalyzeClient presidio.Analyzer
+	var presAnonClient presidio.Anonymizer
 
 	anonymizationService := v1alpha_anonymizationservice.New(
 		&v1alpha_anonymizationservice.Config{

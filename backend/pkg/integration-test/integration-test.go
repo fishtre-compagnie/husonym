@@ -11,10 +11,10 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
 	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
@@ -36,16 +36,11 @@ type Mocks struct {
 	Authclient             *auth_client.MockInterface
 	Authmanagerclient      *authmgmt.MockInterface
 	Prometheusclient       *promapiv1mock.MockAPI
-	Presidio               Presidiomocks
+	// Presidio answers what a test tells it to, and fails the test on any other call.
+	Presidio *presidiotest.Fake
 	// The license of the OSSAuthenticatedExpiringClients mode only. It starts valid; a
 	// test that changes it sets it back to valid in t.Cleanup.
 	ExpiringLicense *testutil.FakeEELicense
-}
-
-type Presidiomocks struct {
-	Analyzer   *presidioapi.MockAnalyzeInterface
-	Anonymizer *presidioapi.MockAnonymizeInterface
-	Entities   *presidioapi.MockEntityInterface
 }
 
 type HusonymApiTestClient struct {
@@ -118,11 +113,7 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		Authclient:             auth_client.NewMockInterface(t),
 		Authmanagerclient:      authmgmt.NewMockInterface(t),
 		Prometheusclient:       promapiv1mock.NewMockAPI(t),
-		Presidio: Presidiomocks{
-			Analyzer:   presidioapi.NewMockAnalyzeInterface(t),
-			Anonymizer: presidioapi.NewMockAnonymizeInterface(t),
-			Entities:   presidioapi.NewMockEntityInterface(t),
-		},
+		Presidio:               presidiotest.New(t),
 	}
 
 	err = s.InitializeTest(ctx, t)

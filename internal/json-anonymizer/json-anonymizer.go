@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/itchyny/gojq"
 )
@@ -35,8 +35,8 @@ type JsonAnonymizer struct {
 }
 
 type anonymizeConfig struct {
-	analyze         presidioapi.AnalyzeInterface
-	anonymize       presidioapi.AnonymizeInterface
+	analyze         presidio.Analyzer
+	anonymize       presidio.Anonymizer
 	defaultLanguage *string
 }
 
@@ -111,8 +111,8 @@ func WithUserDefinedTransformerResolver(resolver transformer_executor.UserDefine
 // WithAnonymizeConfig sets the analyze and anonymize clients for use by the presidio transformers only if isEnabled is true
 func WithConditionalAnonymizeConfig(
 	isEnabled bool,
-	analyze presidioapi.AnalyzeInterface,
-	anonymize presidioapi.AnonymizeInterface,
+	analyze presidio.Analyzer,
+	anonymize presidio.Anonymizer,
 	defaultLanguage *string,
 ) Option {
 	return func(ja *JsonAnonymizer) {
@@ -376,7 +376,7 @@ func (a *JsonAnonymizer) AnonymizeJSONObject(jsonStr string) (string, error) {
 		return "", fmt.Errorf("failed to anonymize JSON: unknown error")
 	}
 	if err, ok := result.(error); ok {
-		return "", fmt.Errorf("failed to anonymize JSON: %v", err)
+		return "", fmt.Errorf("failed to anonymize JSON: %w", err)
 	}
 
 	processedJSON, err := json.Marshal(result)

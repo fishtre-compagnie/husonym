@@ -74,6 +74,16 @@ These environment variables are loaded when running the `mgmt serve connect` com
 | MAX_ALLOWED_RECORDS                 | The max allowed records that are allowed for an account to ingest (currently only applies to Personal accounts in Husonym Cloud)                                                                                                                                                                 | false    | NULL                                          |
 | EE_LICENSE                          | A base64-encoded license key obtained from the Husonym team. Required to create, configure and run jobs. See [Licensing](/deploy/licensing)                                                                                                                                                      | false    |                                               |
 | HUSONYM_SYM_ENCRYPTION_PASSWORD     | Password used for basic symmetric encryption of the secrets an account's settings carry. One key, no rotation: changing it leaves what was already encrypted unreadable.                                                                                                                         | false    |                                               |
+| PRESIDIO_ANALYZER_URL               | The base URL of the Presidio analyzer, which finds personal data in a text. Enables the PII content scan of a connection. Unset, Presidio is not used                                                                                                                                            | false    |                                               |
+| PRESIDIO_ANONYMIZER_URL             | The base URL of the Presidio anonymizer, which rewrites the personal data found. With PRESIDIO_ANALYZER_URL, enables the PII text transformer and the listing of its entities. Has no effect without it                                                                                          | false    |                                               |
+| PRESIDIO_HEADER_AUTH_TOKEN          | The value of the `Authorization` header sent with every request to both Presidio services, exactly as given (include the scheme, such as `Bearer`, if one is expected). Unset, no header is sent                                                                                                 | false    |                                               |
+| PRESIDIO_DEFAULT_LANGUAGE           | The two-letter language a PII text transformer that sets none analyzes in, the PII content scan analyzes in, and the PII entities are listed for. The analyzer must have recognizers for it                                                                                                      | false    | en                                            |
+
+At startup the API logs which Presidio features are enabled, and warns when PRESIDIO_ANONYMIZER_URL is set without PRESIDIO_ANALYZER_URL.
+
+During a run, a value whose anonymization gets no answer from Presidio is retried for up to a minute before the run fails.
+
+The Presidio analyzer reports an input it refuses, such as a language it has no recognizers for, as an HTTP 500: the API then answers `internal`, with the message Presidio gives.
 
 ## Backend API Database Migrations
 

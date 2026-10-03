@@ -4,7 +4,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
@@ -37,8 +36,8 @@ type Config struct {
 type Transformers struct {
 	Client            mgmtv1alpha1connect.TransformersServiceClient
 	IsPresidioEnabled bool
-	Analyze           presidioapi.AnalyzeInterface
-	Anonymize         presidioapi.AnonymizeInterface
+	Analyze           presidio.Analyzer
+	Anonymize         presidio.Anonymizer
 	License           license.EEInterface
 }
 

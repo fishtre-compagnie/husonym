@@ -418,6 +418,22 @@ type columnEntity struct {
 	matchCount int
 }
 
+// analyzeTimeout is how long the analyzer is waited for, for one sampled value. A value is
+// short, and analyzed in milliseconds: past this, the analyzer is not answering, and the scan
+// that asks it would wait without end.
+const analyzeTimeout = 15 * time.Second
+
+// analyzeValue asks the analyzer about one sampled value, for no longer than analyzeTimeout.
+func analyzeValue(
+	ctx context.Context,
+	analyzer presidio.Analyzer,
+	request *presidio.AnalyzeRequest,
+) ([]presidio.Finding, error) {
+	ctx, cancel := context.WithTimeout(ctx, analyzeTimeout)
+	defer cancel()
+	return analyzer.Analyze(ctx, request)
+}
+
 // analyzeColumn examines each value on its own (NER recognizes an isolated
 // name/place better than one buried in a list) and returns the dominant entity
 // among the mappable ones.
@@ -444,10 +460,13 @@ func analyzeColumn(
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
-		request := presidio.AnalyzeRequest{Text: text, Language: language, ScoreThreshold: threshold}
-		results, err := analyzer.Analyze(ctx, request)
+		request := &presidio.AnalyzeRequest{Text: text, Language: language}
+		if threshold > 0 {
+			request.ScoreThreshold = &threshold
+		}
+		results, err := analyzeValue(ctx, analyzer, request)
 		if err != nil && !errors.Is(err, presidio.ErrNoAnswer) {
-			results, err = analyzer.Analyze(ctx, request)
+			results, err = analyzeValue(ctx, analyzer, request)
 		}
 		if errors.Is(err, presidio.ErrNoAnswer) {
 			return columnEntity{}, nil, err

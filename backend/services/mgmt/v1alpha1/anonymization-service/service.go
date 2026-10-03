@@ -3,7 +3,7 @@ package v1alpha_anonymizationservice
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"go.opentelemetry.io/otel/metric"
@@ -15,8 +15,8 @@ type Service struct {
 	userdataclient     userdata.Interface
 	useraccountService mgmtv1alpha1connect.UserAccountServiceClient
 	transformerClient  mgmtv1alpha1connect.TransformersServiceClient
-	analyze            presidioapi.AnalyzeInterface
-	anonymize          presidioapi.AnonymizeInterface
+	analyze            presidio.Analyzer
+	anonymize          presidio.Anonymizer
 	db                 *husonymdb.HusonymDb
 	license            license.EEInterface
 }
@@ -33,8 +33,8 @@ func New(
 	userdataclient userdata.Interface,
 	useraccountService mgmtv1alpha1connect.UserAccountServiceClient,
 	transformerClient mgmtv1alpha1connect.TransformersServiceClient,
-	analyzeclient presidioapi.AnalyzeInterface,
-	anonymizeclient presidioapi.AnonymizeInterface,
+	analyzeclient presidio.Analyzer,
+	anonymizeclient presidio.Anonymizer,
 	db *husonymdb.HusonymDb,
 	licenseClient license.EEInterface,
 ) *Service {
