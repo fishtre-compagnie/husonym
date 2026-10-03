@@ -3,6 +3,7 @@ package sqlmanager_mssql
 import (
 	"context"
 	"database/sql"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -280,6 +281,52 @@ func testIdentityReset(t *testing.T, server *testServer) {
 		zero, one := 0, 1
 		require.Error(t, exec(t, mssql.BuildMssqlIdentityColumnResetStatement("it's", "tiny", &zero, &one)))
 	})
+}
+
+// testRestrictedLogin shows what a login that may read the rows of a database, and not the
+// definitions of its objects, is told: the server answers its catalog queries without the
+// definitions and without an error, so the plan is refused by name of the permission.
+func testRestrictedLogin(t *testing.T, server *testServer) {
+	owner := server.database(t, "rt_restricted", "")
+	const password = "Re4der!Passw0rd"
+	for _, statement := range []string{
+		"CREATE SEQUENCE dbo.numbers AS int START WITH 1",
+		"CREATE TABLE dbo.t (id int NOT NULL CONSTRAINT DF_t DEFAULT (NEXT VALUE FOR dbo.numbers), v int NULL, " +
+			"CONSTRAINT CK_t CHECK (v > 0))",
+		"CREATE VIEW dbo.v AS SELECT id FROM dbo.t",
+		"CREATE LOGIN rt_reader WITH PASSWORD = '" + password + "', CHECK_POLICY = OFF",
+		"CREATE USER rt_reader FOR LOGIN rt_reader",
+		"ALTER ROLE db_datareader ADD MEMBER rt_reader",
+	} {
+		_, err := owner.ExecContext(t.Context(), statement)
+		require.NoError(t, err, statement)
+	}
+	address, err := url.Parse(server.container.URL)
+	require.NoError(t, err)
+	address.User = url.UserPassword("rt_reader", password)
+	reader := newManager(t, server.open(t, "rt_restricted", address.String()))
+	requested := []*sqlmanager_shared.SchemaTable{table("dbo", "t")}
+
+	_, err = reader.GetSchemaInitStatements(t.Context(), requested)
+	require.ErrorContains(t, err, "the login lacks the VIEW DEFINITION permission on the database")
+
+	// The lists and the columns are still given.
+	tables, err := reader.GetAllTables(t.Context())
+	require.NoError(t, err)
+	require.Len(t, tables, 1)
+	columns, err := reader.GetDatabaseSchema(t.Context())
+	require.NoError(t, err)
+	require.Len(t, columns, 2)
+
+	// With the permission the login is given the plan the owner is given.
+	_, err = owner.ExecContext(t.Context(), "GRANT VIEW DEFINITION TO rt_reader")
+	require.NoError(t, err)
+	expected, err := newManager(t, owner).GetSchemaInitStatements(t.Context(), requested)
+	require.NoError(t, err)
+	actual, err := reader.GetSchemaInitStatements(t.Context(), requested)
+	require.NoError(t, err)
+	// The grant is itself a permission on nothing but the database: the plans tell the same.
+	require.Equal(t, expected, actual)
 }
 
 // testListing shows what the lists of schemas, tables and columns hold.

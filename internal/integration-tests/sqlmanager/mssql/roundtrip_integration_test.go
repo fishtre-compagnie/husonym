@@ -48,6 +48,7 @@ func Test_MssqlSchemaInit(t *testing.T) {
 		{"a catalog that changes under its read", testChangingCatalog},
 		{"session options", testSessionOptions},
 		{"identity reset", testIdentityReset},
+		{"a login that cannot read definitions", testRestrictedLogin},
 		{"listing", testListing},
 	}
 	for _, tc := range cases {

@@ -12,7 +12,8 @@ const getDatabaseInfo = `-- name: GetDatabaseInfo :one
 SELECT
     d.compatibility_level,
     COALESCE(d.collation_name, ''),
-    CAST(SERVERPROPERTY('ProductMajorVersion') AS int)
+    CAST(SERVERPROPERTY('ProductMajorVersion') AS int),
+    COALESCE(HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'VIEW DEFINITION'), 0)
 FROM sys.databases d
 WHERE d.database_id = DB_ID();
 `
@@ -21,13 +22,17 @@ type GetDatabaseInfoRow struct {
 	CompatibilityLevel int
 	Collation          string
 	MajorVersion       int
+	// CanViewDefinitions tells whether the login holds VIEW DEFINITION on the database. Without
+	// it the catalog answers all the same, with the definitions of the objects left out.
+	CanViewDefinitions bool
 }
 
 // GetDatabaseInfo tells the compatibility level and default collation of the current database,
-// and the major version of the server.
+// the major version of the server, and whether the login may read definitions.
 func (q *Queries) GetDatabaseInfo(ctx context.Context, db mysql_queries.DBTX) (*GetDatabaseInfoRow, error) {
 	var i GetDatabaseInfoRow
-	err := db.QueryRowContext(ctx, getDatabaseInfo).Scan(&i.CompatibilityLevel, &i.Collation, &i.MajorVersion)
+	err := db.QueryRowContext(ctx, getDatabaseInfo).
+		Scan(&i.CompatibilityLevel, &i.Collation, &i.MajorVersion, &i.CanViewDefinitions)
 	if err != nil {
 		return nil, err
 	}

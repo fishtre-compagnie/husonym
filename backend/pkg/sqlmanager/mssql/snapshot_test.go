@@ -49,7 +49,9 @@ var (
 // expectDatabase answers the first query of a read: a database recent enough.
 func expectDatabase(querier *mssql_queries.MockQuerier) {
 	querier.EXPECT().GetDatabaseInfo(mock.Anything, mock.Anything).
-		Return(&mssql_queries.GetDatabaseInfoRow{CompatibilityLevel: 160, Collation: "Latin1_General_100_CI_AS", MajorVersion: 16}, nil).
+		Return(&mssql_queries.GetDatabaseInfoRow{
+			CompatibilityLevel: 160, Collation: "Latin1_General_100_CI_AS", MajorVersion: 16, CanViewDefinitions: true,
+		}, nil).
 		Once()
 }
 
@@ -202,6 +204,23 @@ func Test_Manager_snapshot_CompatibilityLevel(t *testing.T) {
 	_, err := manager.snapshot(t.Context(), requestedUsers)
 
 	require.EqualError(t, err, "compatibility level 120: 130 or more is required")
+}
+
+func Test_Manager_snapshot_ViewDefinition(t *testing.T) {
+	t.Parallel()
+	manager, querier := newTestManager(t)
+	// Without the permission the catalog answers, with the definitions left out: nothing else
+	// is read.
+	querier.EXPECT().GetDatabaseInfo(mock.Anything, mock.Anything).
+		Return(&mssql_queries.GetDatabaseInfoRow{CompatibilityLevel: 160, MajorVersion: 16}, nil).Once()
+
+	_, err := manager.snapshot(t.Context(), requestedUsers)
+
+	require.EqualError(
+		t,
+		err,
+		"the login lacks the VIEW DEFINITION permission on the database: the definitions of its objects cannot be read",
+	)
 }
 
 func Test_Manager_snapshot_Tables(t *testing.T) {

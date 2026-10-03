@@ -48,6 +48,13 @@ func (m *Manager) snapshot(ctx context.Context, tables []*sqlmanager_shared.Sche
 			"compatibility level %d: %d or more is required", info.CompatibilityLevel, minCompatibilityLevel,
 		)
 	}
+	// A login without the permission is told no dependency, no sequence and no definition, and
+	// no error either: a plan made of that would create something else than the source holds.
+	if !info.CanViewDefinitions {
+		return nil, errors.New(
+			"the login lacks the VIEW DEFINITION permission on the database: the definitions of its objects cannot be read",
+		)
+	}
 	database := ddl.Database{
 		CompatibilityLevel: info.CompatibilityLevel,
 		Collation:          info.Collation,
