@@ -120,6 +120,16 @@ The HMAC hash is sent in the `X-Husonym-Signature` header.
 
 The HMAC hash algorithm is sent in the `X-Husonym-Signature-Type` header.
 
+### Who Sees the Secret
+
+The secret key is shown to those who may edit the account: the members with the admin role. Any other member sees `********` in its place, in the UI and in the API.
+
+`********` is never accepted as a secret. A hook saved by someone who sees the secret masked needs the secret entered again, and the secret a hook holds is replaced by the one the save carries.
+
+### Webhook URL
+
+The URL of a webhook is an `http` or `https` address with a host, such as `https://example.com/webhook`. A hook is not saved with a URL of another form.
+
 ### More Request Details and Response Information
 
 Each webhook is sent as a POST request to the webhook URL.

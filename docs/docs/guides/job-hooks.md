@@ -47,7 +47,13 @@ Furthermore, the timing of when the hook runs may also be configured. Today, the
 - `Pre Sync`: Runs before the first table sync, truncation, and schema initialization.
 - `Post Sync`: Runs after the last table syncs (effectively right before the job is marked as complete).
 
-Any SQL connection configured in the job (source or destination) will be available to the hook.
+Any SQL connection configured in the job (source or destination) will be available to the hook. A hook is not saved with a connection the job does not use.
+
+The name of a hook is unique within its job.
+
+### Who can manage a job hook
+
+The SQL of a hook runs on a connection of the job at its next run. Creating a hook, changing one and enabling one therefore take the permission to execute the job, in addition to the permission to create or edit it. Disabling a hook takes the permission to edit the job, and deleting one the permission to delete it.
 
 SQL queries are run in an `Exec` manner, meaning that their results are not returned and are ignored. Today, Husonym only checks for errors. This is planned to change in the future where Husonym can handle the returned results to allow users to perform further actions like result verification.
 
