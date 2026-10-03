@@ -179,7 +179,7 @@ refused before it can create a user. A provider that does not state it is unaffe
 
 Starting Husonym in Auth Mode is done in a similar way as starting Husonym in non-auth mode: using a compose file. A compose file is also provided that stands up [Keycloak](https://keycloak.org), an open source auth solution.
 
-To stand up Husonym with auth, simply run the following command from the repo root:
+To stand up Husonym with auth, simply run the following command from the repo root. It needs `HUSONYM_VERSION` to be set, see [Choosing the version](/deploy/docker-compose#choosing-the-version).
 
 ```sh
 make compose/auth/up

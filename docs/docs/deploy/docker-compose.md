@@ -45,7 +45,7 @@ docker compose up -d
 ### Moving to a newer version
 
 Migrations of the Husonym database run when the API starts, and they are not reversed when you go back to an older version.
-**Back up the Husonym database before every upgrade.**
+**Back up the Husonym database before every upgrade**: the `db` service (PostgreSQL, database `husonym`). Temporal has its own database, which this step does not cover.
 
 Then change the value of `HUSONYM_VERSION` and run:
 
@@ -73,6 +73,8 @@ Husonym provides an auth friendly compose file that will stand up Husonym in aut
 make compose/auth/up
 docker compose -f compose.yml -f compose.auth.yml up -d
 ```
+
+Like the main `compose.yml`, these commands need `HUSONYM_VERSION` to be set, see [Choosing the version](#choosing-the-version).
 
 Keycloak comes default with two clients that allow the app and cli to login successfully.
 
