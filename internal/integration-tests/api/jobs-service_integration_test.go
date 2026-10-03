@@ -465,7 +465,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 					}),
 				)
 				requireErrResp(t, resp, err)
-				requireConnectError(t, err, connect.CodeUnknown)
+				requireConnectError(t, err, connect.CodeInvalidArgument)
 			})
 		})
 
