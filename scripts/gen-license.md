@@ -40,7 +40,7 @@ verifies, validates it, refuses a key that does not match the build, and records
 issued.
 
 ```console
-go run ./internal/ee/license/cmd/husonym-license issue \
+go run ./internal/license/cmd/husonym-license issue \
   --to "Acme Co." --customer-id acme-001 --days 365 \
   --max-jobs 20 --connection-types postgres,mysql \
   --note "contract 2026-A"
@@ -62,16 +62,16 @@ Renewals are the revenue, and you cannot chase a renewal you have no record of.
 
 ```console
 # The renewal worklist, soonest first. Excludes licenses already past grace.
-go run ./internal/ee/license/cmd/husonym-license expiring --within 45
+go run ./internal/license/cmd/husonym-license expiring --within 45
 
 # Everything issued, with its current lifecycle state
-go run ./internal/ee/license/cmd/husonym-license list
+go run ./internal/license/cmd/husonym-license list
 
 # One license, including the value to re-send a customer who lost theirs
-go run ./internal/ee/license/cmd/husonym-license show <license-id>
+go run ./internal/license/cmd/husonym-license show <license-id>
 
 # Check a license through exactly the path the product uses at startup
-go run ./internal/ee/license/cmd/husonym-license verify "$EE_LICENSE"
+go run ./internal/license/cmd/husonym-license verify "$EE_LICENSE"
 ```
 
 Re-sending from `show` is preferable to issuing a replacement: two live licenses for one
