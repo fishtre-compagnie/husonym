@@ -132,14 +132,21 @@ export type NewAccountHookFormValues = yup.InferType<
   typeof NewAccountHookFormValues
 >;
 
+// What the API returns in the place of a webhook secret to someone who may not edit the
+// account. It is not a secret: the API refuses it when it is sent back.
+const MASKED_SECRET = '********';
+
 function toWebhookConfig(
   input: AccountHookConfig
 ): AccountHookWebhookFormValues {
   switch (input.config.case) {
     case 'webhook': {
+      const { secret } = input.config.value;
       return {
         url: input.config.value.url,
-        secret: input.config.value.secret,
+        // A masked secret leaves the field empty, so that the form asks for the secret
+        // rather than sending the mask.
+        secret: secret === MASKED_SECRET ? '' : secret,
         disableSslVerification: input.config.value.disableSslVerification,
       };
     }
