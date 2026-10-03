@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -72,6 +73,35 @@ func Test_newPresidioClients(t *testing.T) {
 		require.ErrorContains(t, err, "PRESIDIO_ANALYZER_URL")
 		_, err = newPresidioClients("", "anonymizer", "")
 		require.ErrorContains(t, err, "PRESIDIO_ANONYMIZER_URL")
+	})
+}
+
+// The transformer service lists the entities for the language the deployment sets: it is told
+// that language, and whether both services are there.
+func Test_presidioClients_transformerServiceConfig(t *testing.T) {
+	both, err := newPresidioClients("http://analyzer:3000", "http://anonymizer:3000", "")
+	require.NoError(t, err)
+	analyzerOnly, err := newPresidioClients("http://analyzer:3000", "", "")
+	require.NoError(t, err)
+
+	t.Run("the language the deployment sets", func(t *testing.T) {
+		viper.Set("PRESIDIO_DEFAULT_LANGUAGE", "fr")
+		t.Cleanup(func() { viper.Set("PRESIDIO_DEFAULT_LANGUAGE", nil) })
+
+		config := both.transformerServiceConfig()
+		require.True(t, config.IsPresidioEnabled)
+		require.NotNil(t, config.PresidioDefaultLanguage)
+		require.Equal(t, "fr", *config.PresidioDefaultLanguage)
+	})
+
+	t.Run("no language set", func(t *testing.T) {
+		config := both.transformerServiceConfig()
+		require.True(t, config.IsPresidioEnabled)
+		require.Nil(t, config.PresidioDefaultLanguage)
+	})
+
+	t.Run("the analyzer alone does not enable the listing", func(t *testing.T) {
+		require.False(t, analyzerOnly.transformerServiceConfig().IsPresidioEnabled)
 	})
 }
 

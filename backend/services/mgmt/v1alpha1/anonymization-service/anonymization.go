@@ -277,10 +277,13 @@ func (s *Service) AnonymizeSingle(
 		if outputErrorCounter != nil {
 			outputErrorCounter.Add(ctx, int64(1), metric.WithAttributes(labels...))
 		}
-		// Why is logged, and not always told: the error of a Presidio that did not answer can
-		// quote where it is reached.
-		logger.Error("unable to anonymize the input", "error", err)
-		return nil, husonymerrors.FromPresidio(err)
+		answer := husonymerrors.FromPresidio(ctx, err)
+		if husonymerrors.IsServiceFault(answer) {
+			// Why is logged, and not always told: the error of a Presidio that did not answer
+			// can quote where it is reached.
+			logger.Error("unable to anonymize the input", "error", err)
+		}
+		return nil, answer
 	}
 
 	if outputCounter != nil {

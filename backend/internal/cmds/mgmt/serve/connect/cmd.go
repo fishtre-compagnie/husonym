@@ -647,10 +647,9 @@ func serve(ctx context.Context) error {
 	// Transforming a text takes both services. The PII content scan only takes the analyzer.
 	isPresidioEnabled := presidioClients.transformsText()
 
-	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
-		IsPresidioEnabled:       isPresidioEnabled,
-		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
-	}, db, presidioClients.entities, userdataclient, eelicense)
+	transformerService := v1alpha1_transformerservice.New(
+		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,
+	)
 	api.Handle(
 		mgmtv1alpha1connect.NewTransformersServiceHandler(
 			transformerService,

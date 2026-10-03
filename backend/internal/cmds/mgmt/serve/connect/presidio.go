@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
+	v1alpha1_transformerservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/transformers-service"
 	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 	"github.com/spf13/viper"
 )
@@ -57,6 +58,16 @@ func newPresidioClients(analyzerURL, anonymizerURL, authorization string) (*pres
 // the personal data, the other rewrites it.
 func (c *presidioClients) transformsText() bool {
 	return c.analyzer != nil && c.anonymizer != nil
+}
+
+// transformerServiceConfig is what the transformer service is told about Presidio: whether the
+// PII text transformer and the listing of its entities are enabled, and the language the
+// deployment sets, which the entities are listed for.
+func (c *presidioClients) transformerServiceConfig() *v1alpha1_transformerservice.Config {
+	return &v1alpha1_transformerservice.Config{
+		IsPresidioEnabled:       c.transformsText(),
+		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
+	}
 }
 
 // summary tells the operator what Presidio is used for, given the services configured.

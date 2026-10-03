@@ -50,12 +50,16 @@ func (s *Service) GetTransformPiiEntities(
 
 	entities, err := s.entityclient.SupportedEntities(ctx, s.entityLanguage())
 	if err != nil {
-		// Why is logged, and not told: the error can quote where Presidio is reached.
-		logger_interceptor.GetLoggerFromContextOrDefault(ctx).
-			Error("unable to retrieve available entities", "error", err)
-		return nil, husonymerrors.FromPresidio(
+		answer := husonymerrors.FromPresidio(
+			ctx,
 			fmt.Errorf("unable to retrieve available entities: %w", err),
 		)
+		if husonymerrors.IsServiceFault(answer) {
+			// Why is logged, and not told: the error can quote where Presidio is reached.
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).
+				Error("unable to retrieve available entities", "error", err)
+		}
+		return nil, answer
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.GetTransformPiiEntitiesResponse{
