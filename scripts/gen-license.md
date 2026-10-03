@@ -70,7 +70,7 @@ go run ./internal/license/cmd/husonym-license list
 # One license, including the value to re-send a customer who lost theirs
 go run ./internal/license/cmd/husonym-license show <license-id>
 
-# Check a license through exactly the path the product uses at startup
+# Check a license through exactly the path the product uses
 go run ./internal/license/cmd/husonym-license verify "$EE_LICENSE"
 ```
 
