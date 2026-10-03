@@ -76,6 +76,21 @@ func testRefusals(t *testing.T, server *testServer) {
 			Object: "[helpers].[bound_rate]",
 			Reason: "needed by table [refused].[calls_bound]: schema-bound to table [helpers].[rates]",
 		}}},
+		{"calls_inline", []ddl.Refusal{{
+			Object: "[helpers].[inline_rates]",
+			Reason: "needed by table [refused].[calls_inline]: " +
+				"inline function reads table [helpers].[rates], which is created after it",
+		}}},
+		{"calls_reader", []ddl.Refusal{{
+			Object: "[helpers].[reads_rates]",
+			Reason: "needed by table [refused].[calls_reader]: " +
+				"depends on table [helpers].[rates], which is outside the selection",
+		}}},
+		{"calls_alias", []ddl.Refusal{{
+			Object: "[helpers].[takes_alias]",
+			Reason: "needed by table [refused].[calls_alias]: " +
+				"depends on alias type [helpers].[only_in_module], which no column of the selection uses",
+		}}},
 	}
 	all := []*sqlmanager_shared.SchemaTable{}
 	refusals := 0
@@ -98,6 +113,19 @@ func testRefusals(t *testing.T, server *testServer) {
 		require.ErrorContains(t, err, "[refused].[in_memory]: memory-optimized table\n")
 	})
 
+	t.Run("a function that reads a table requested with the one that calls it is created", func(t *testing.T) {
+		blocks, err := manager.GetSchemaInitStatements(t.Context(), []*sqlmanager_shared.SchemaTable{
+			table("refused", "calls_reader"), table("helpers", "rates"),
+		})
+		require.NoError(t, err)
+		dest := server.database(t, "rt_refusals_dest", "")
+		apply(t, dest, blocks)
+		_, err = dest.ExecContext(t.Context(), "INSERT INTO helpers.rates (id, rate) VALUES (1, 5)")
+		require.NoError(t, err)
+		_, err = dest.ExecContext(t.Context(), "INSERT INTO refused.calls_reader (id) VALUES (1)")
+		require.NoError(t, err, "the check runs its function, which finds its table")
+	})
+
 	t.Run("the other operations of a plan are refused as well", func(t *testing.T) {
 		refused := []*sqlmanager_shared.SchemaTable{table("refused", "graph_node")}
 		var refusal *ddl.RefusalError
@@ -105,9 +133,57 @@ func testRefusals(t *testing.T, server *testServer) {
 		require.ErrorAs(t, err, &refusal)
 		_, err = manager.GetSchemaTableDataTypes(t.Context(), refused)
 		require.ErrorAs(t, err, &refusal)
-		_, err = manager.GetSchemaTableTriggers(t.Context(), refused)
+		_, err = manager.GetSequencesByTables(t.Context(), "refused", []string{"graph_node"})
 		require.ErrorAs(t, err, &refusal)
+		// The triggers of a table are read whatever the table is.
+		_, err = manager.GetSchemaTableTriggers(t.Context(), refused)
+		require.NoError(t, err)
 	})
+}
+
+// testReported shows what the plan tells of what it does not reproduce beside storage and
+// administration: options that are not at their default, a table created under ANSI_NULLS OFF,
+// the index of a view, a requested name that is a view, a module that needs an alias type no
+// column uses. A sequence only a procedure draws from is created.
+func testReported(t *testing.T, server *testServer) {
+	source := casesDatabase(t, server, "rt_reported")
+	dest := server.database(t, "rt_reported_dest", "")
+	manager := newManager(t, source)
+
+	blocks, err := manager.GetSchemaInitStatements(t.Context(), []*sqlmanager_shared.SchemaTable{
+		table("reported", "options"), table("reported", "nulls_off"), table("reported", "v_indexed"),
+	})
+	require.NoError(t, err)
+
+	skipped := skippedOf(blocks)
+	require.ElementsMatch(t, []string{
+		"[reported].[v_indexed]: a view, not a table: only tables are requested",
+		"[reported].[nulls_off]: created under ANSI_NULLS OFF at the source: it is created under ANSI_NULLS ON",
+		"[reported].[options]: XML compression not reproduced",
+		"[reported].[options]: extended properties not reproduced: 3",
+		"[reported].[options]: OPTIMIZE_FOR_SEQUENTIAL_KEY not reproduced: 1",
+		"[reported].[options]: STATISTICS_NORECOMPUTE not reproduced: 1",
+		"[reported].[options]: LOCK_ESCALATION not reproduced: DISABLE",
+		"[reported].[options]: text in row not reproduced: 256",
+		"[reported].[options]: large value types out of row not reproduced",
+	}, skipped[sqlmanager_shared.CreateTablesLabel])
+	require.ElementsMatch(t, []string{
+		"[reported].[v_indexed]: the indexes of a view are not reproduced",
+	}, skipped[mssql.TableIndexLabel])
+	require.ElementsMatch(t, []string{
+		"[reported].[p_alias]: depends on alias type [reported].[only_in_module], which no column of the selection uses",
+	}, skipped[mssql.ViewsFunctionsLabel])
+	require.Empty(t, skipped[mssql.DataTypesLabel])
+
+	apply(t, dest, blocks)
+	var sequences, procedures int
+	require.NoError(t, dest.QueryRowContext(t.Context(), `
+SELECT (SELECT COUNT(*) FROM sys.sequences WHERE name = 'of_a_procedure'),
+       (SELECT COUNT(*) FROM sys.procedures WHERE name IN ('p_next', 'p_alias'))`).Scan(&sequences, &procedures))
+	require.Equal(t, 1, sequences, "the sequence the procedure draws from is created")
+	require.Equal(t, 1, procedures, "the procedure that draws from it is created, the other is not")
+	_, err = dest.ExecContext(t.Context(), "EXEC reported.p_next")
+	require.NoError(t, err)
 }
 
 // testSkips shows that the read of the catalog sets what each skip is decided on, and that the

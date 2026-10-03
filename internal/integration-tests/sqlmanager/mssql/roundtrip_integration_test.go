@@ -44,6 +44,10 @@ func Test_MssqlSchemaInit(t *testing.T) {
 		{"round trip", testRoundTrip},
 		{"refusals", testRefusals},
 		{"skips", testSkips},
+		{"what is reported", testReported},
+		{"the triggers of a destination", testDestinationTriggers},
+		{"a trigger name taken on another table", testTriggerNameTaken},
+		{"object versions", testObjectVersions},
 		{"quoting", testQuoting},
 		{"a catalog that changes under its read", testChangingCatalog},
 		{"session options", testSessionOptions},
@@ -300,9 +304,8 @@ func testRoundTrip(t *testing.T, server *testServer) {
 	for _, trigger := range triggers {
 		states[trigger.TriggerName] = trigger.EnabledState
 	}
-	require.Equal(t, map[string]string{
-		"trg_busy_insert": "", "trg busy ] off": "D", "trg_view_insert": "",
-	}, states)
+	require.Equal(t, map[string]string{"trg_busy_insert": "", "trg busy ] off": "D"}, states,
+		"the triggers of the tables, not the one of a view")
 	sequences, err := manager.GetSequencesByTables(t.Context(), "sales", []string{"defaults", "busy"})
 	require.NoError(t, err)
 	require.Len(t, sequences, 7)

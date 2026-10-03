@@ -211,6 +211,8 @@ ALTER TABLE sales.busy NOCHECK CONSTRAINT CK_busy_off;
 GO
 ALTER TABLE sales.busy WITH NOCHECK ADD CONSTRAINT CK_busy_untrusted CHECK (qty < 500) ;
 GO
+ALTER TABLE sales.busy ADD CONSTRAINT CK_busy_replication CHECK NOT FOR REPLICATION (u1 > -1000);
+GO
 
 -- Two tables that reference each other; actions; a disabled key; a key that is not trusted.
 CREATE TABLE sales.chicken (
@@ -223,6 +225,7 @@ CREATE TABLE sales.egg (
     chicken_id int NULL,
     other_chicken_id int NULL,
     third_chicken_id int NULL,
+    fourth_chicken_id int NULL,
     CONSTRAINT FK_egg_chicken FOREIGN KEY (chicken_id) REFERENCES sales.chicken (id)
         ON DELETE CASCADE ON UPDATE SET NULL
 );
@@ -234,6 +237,9 @@ GO
 ALTER TABLE sales.egg NOCHECK CONSTRAINT FK_egg_disabled;
 GO
 ALTER TABLE sales.egg WITH NOCHECK ADD CONSTRAINT FK_egg_untrusted FOREIGN KEY (third_chicken_id)
+    REFERENCES sales.chicken (id);
+GO
+ALTER TABLE sales.egg ADD CONSTRAINT FK_egg_replication FOREIGN KEY (fourth_chicken_id)
     REFERENCES sales.chicken (id) NOT FOR REPLICATION;
 GO
 

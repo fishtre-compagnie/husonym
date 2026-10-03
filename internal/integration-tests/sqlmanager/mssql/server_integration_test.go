@@ -3,6 +3,7 @@ package sqlmanager_mssql
 import (
 	"context"
 	"database/sql"
+	"math"
 	"net/url"
 	"strings"
 	"sync"
@@ -281,6 +282,17 @@ func testIdentityReset(t *testing.T, server *testServer) {
 		zero, one := 0, 1
 		require.Error(t, exec(t, mssql.BuildMssqlIdentityColumnResetStatement("it's", "tiny", &zero, &one)))
 	})
+
+	t.Run("nor can a seed at the least value of bigint", func(t *testing.T) {
+		require.NoError(t, exec(t,
+			"CREATE TABLE [it's].[big] (id bigint IDENTITY(-9223372036854775808,1) NOT NULL, v int NULL)"))
+		require.NoError(t, exec(t, "INSERT INTO [it's].[big] (v) VALUES (1)"))
+		require.NoError(t, exec(t, mssql.BuildMssqlDeleteStatement("it's", "big")))
+		least, one := math.MinInt64, 1
+		require.Error(t, exec(t, mssql.BuildMssqlIdentityColumnResetStatement("it's", "big", &least, &one)))
+		// The table still generates values.
+		require.NoError(t, exec(t, "INSERT INTO [it's].[big] (v) VALUES (1)"))
+	})
 }
 
 // testRestrictedLogin shows what a login that may read the rows of a database, and not the
@@ -327,6 +339,129 @@ func testRestrictedLogin(t *testing.T, server *testServer) {
 	require.NoError(t, err)
 	// The grant is itself a permission on nothing but the database: the plans tell the same.
 	require.Equal(t, expected, actual)
+}
+
+// testDestinationTriggers reads the triggers of a database the way a run reads those of its
+// destination: nothing is known of it. The read is given whatever the tables hold, whatever
+// the compatibility level, and to a login that may only read and write rows.
+func testDestinationTriggers(t *testing.T, server *testServer) {
+	owner := server.database(t, "rt_triggers", "")
+	const password = "Wr1ter!Passw0rd"
+	conn, err := owner.Conn(t.Context())
+	require.NoError(t, err)
+	defer conn.Close()
+	for _, statement := range []string{
+		// A column a plan refuses.
+		"SET ANSI_PADDING OFF",
+		"CREATE TABLE dbo.legacy (id int NOT NULL, code varchar(10) NULL)",
+		"SET ANSI_PADDING ON",
+		"CREATE TRIGGER dbo.trg_legacy ON dbo.legacy AFTER INSERT AS RETURN",
+		"CREATE TABLE dbo.plain (id int NOT NULL)",
+		"CREATE TRIGGER dbo.trg_plain ON dbo.plain AFTER INSERT AS RETURN",
+		"DISABLE TRIGGER dbo.trg_plain ON dbo.plain",
+		"CREATE LOGIN rt_writer WITH PASSWORD = '" + password + "', CHECK_POLICY = OFF",
+		"CREATE USER rt_writer FOR LOGIN rt_writer",
+		"ALTER ROLE db_datareader ADD MEMBER rt_writer",
+		"ALTER ROLE db_datawriter ADD MEMBER rt_writer",
+		"ALTER DATABASE rt_triggers SET COMPATIBILITY_LEVEL = 120",
+	} {
+		_, err := conn.ExecContext(t.Context(), statement)
+		require.NoError(t, err, statement)
+	}
+	requested := []*sqlmanager_shared.SchemaTable{table("dbo", "legacy"), table("dbo", "plain"), table("dbo", "gone")}
+
+	// A plan of these tables is refused; their triggers are read all the same.
+	_, err = newManager(t, owner).GetSchemaInitStatements(t.Context(), requested)
+	require.Error(t, err)
+	triggers, err := newManager(t, owner).GetSchemaTableTriggers(t.Context(), requested)
+	require.NoError(t, err)
+	states := map[string]string{}
+	for _, trigger := range triggers {
+		states[trigger.Table+"/"+trigger.TriggerName] = trigger.EnabledState
+	}
+	require.Equal(t, map[string]string{"legacy/trg_legacy": "", "plain/trg_plain": "D"}, states)
+
+	// A login that reads and writes rows is not told the text of the triggers: it is given
+	// none, and no error.
+	address, err := url.Parse(server.container.URL)
+	require.NoError(t, err)
+	address.User = url.UserPassword("rt_writer", password)
+	writer := newManager(t, server.open(t, "rt_triggers", address.String()))
+	triggers, err = writer.GetSchemaTableTriggers(t.Context(), requested)
+	require.NoError(t, err)
+	require.Empty(t, triggers)
+}
+
+// testTriggerNameTaken shows that a trigger is guarded by its name and its parent: when another
+// table of the destination holds a trigger of that name, the statement runs and fails.
+func testTriggerNameTaken(t *testing.T, server *testServer) {
+	source := server.database(t, "rt_trigger_name", "")
+	dest := server.database(t, "rt_trigger_name_dest", "")
+	for _, statement := range []string{
+		"CREATE TABLE dbo.t (id int NOT NULL)",
+		"CREATE TRIGGER dbo.trg_taken ON dbo.t AFTER INSERT AS RETURN",
+	} {
+		_, err := source.ExecContext(t.Context(), statement)
+		require.NoError(t, err, statement)
+	}
+	for _, statement := range []string{
+		"CREATE TABLE dbo.t (id int NOT NULL)",
+		"CREATE TABLE dbo.holder (id int NOT NULL)",
+		"CREATE TRIGGER dbo.trg_taken ON dbo.holder AFTER INSERT AS RETURN",
+	} {
+		_, err := dest.ExecContext(t.Context(), statement)
+		require.NoError(t, err, statement)
+	}
+	blocks, err := newManager(t, source).GetSchemaInitStatements(
+		t.Context(), []*sqlmanager_shared.SchemaTable{table("dbo", "t")},
+	)
+	require.NoError(t, err)
+	triggers := blocks[7]
+	require.Equal(t, mssql.TableTriggersLabel, triggers.Label)
+	require.Len(t, triggers.Statements, 1)
+
+	_, err = dest.ExecContext(t.Context(), triggers.Statements[0])
+
+	require.ErrorContains(t, err, "trg_taken")
+}
+
+// testObjectVersions shows what the version check looks at: the tables themselves, and their
+// children — constraints and triggers — whose own dates move without the table's.
+func testObjectVersions(t *testing.T, server *testServer) {
+	db := server.database(t, "rt_versions", "")
+	for _, statement := range []string{
+		"CREATE TABLE dbo.t (id int NOT NULL CONSTRAINT PK_t PRIMARY KEY, v int NULL CONSTRAINT CK_t CHECK (v > 0))",
+		"CREATE TRIGGER dbo.trg_t ON dbo.t AFTER INSERT AS RETURN",
+		"CREATE TABLE dbo.other (id int NOT NULL CONSTRAINT PK_other PRIMARY KEY)",
+	} {
+		_, err := db.ExecContext(t.Context(), statement)
+		require.NoError(t, err, statement)
+	}
+	names := map[int64]string{}
+	rows, err := db.QueryContext(t.Context(), "SELECT object_id, name FROM sys.objects WHERE is_ms_shipped = 0")
+	require.NoError(t, err)
+	defer rows.Close()
+	var requestedID int64
+	for rows.Next() {
+		var id int64
+		var name string
+		require.NoError(t, rows.Scan(&id, &name))
+		names[id] = name
+		if name == "t" {
+			requestedID = id
+		}
+	}
+	require.NoError(t, rows.Err())
+
+	versions, err := mssql_queries.New().GetObjectVersions(t.Context(), db, []int64{requestedID, requestedID})
+
+	require.NoError(t, err)
+	found := []string{}
+	for _, version := range versions {
+		found = append(found, names[version.ObjectID])
+		require.False(t, version.ModifyDate.IsZero())
+	}
+	require.ElementsMatch(t, []string{"t", "PK_t", "CK_t", "trg_t"}, found, "the table and its children, each once")
 }
 
 // testListing shows what the lists of schemas, tables and columns hold.

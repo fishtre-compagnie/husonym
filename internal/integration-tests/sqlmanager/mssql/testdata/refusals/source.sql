@@ -78,6 +78,32 @@ END
 GO
 CREATE TABLE refused.calls_bound (id int NOT NULL, v AS (helpers.bound_rate(id)));
 GO
+-- An inline function reads its table when it is created; a scalar function that selects from it
+-- is called by the check of another table.
+CREATE FUNCTION helpers.inline_rates(@n int) RETURNS TABLE AS RETURN (SELECT rate FROM helpers.rates WHERE id = @n)
+GO
+CREATE FUNCTION helpers.through_inline(@n int) RETURNS int AS
+BEGIN
+    RETURN (SELECT MAX(rate) FROM helpers.inline_rates(@n))
+END
+GO
+CREATE TABLE refused.calls_inline (id int NOT NULL, CONSTRAINT CK_inline CHECK (helpers.through_inline(id) > 0));
+GO
+-- A function that reads a table which is not requested with the table that calls it.
+CREATE FUNCTION helpers.reads_rates(@n int) RETURNS int AS
+BEGIN
+    RETURN (SELECT MAX(rate) FROM helpers.rates WHERE id = @n)
+END
+GO
+CREATE TABLE refused.calls_reader (id int NOT NULL, CONSTRAINT CK_reader CHECK (helpers.reads_rates(id) > 0));
+GO
+-- A function whose parameter is of an alias type that no column uses.
+CREATE TYPE helpers.only_in_module FROM int NOT NULL;
+GO
+CREATE FUNCTION helpers.takes_alias(@n helpers.only_in_module) RETURNS int AS BEGIN RETURN @n END
+GO
+CREATE TABLE refused.calls_alias (id int NOT NULL, v AS (helpers.takes_alias(id)));
+GO
 
 -- What is left out and reported.
 CREATE TABLE outside.parent (id int NOT NULL PRIMARY KEY);
@@ -139,4 +165,58 @@ GO
 CREATE SECURITY POLICY helpers.tenants ADD FILTER PREDICATE helpers.same_tenant(tenant) ON skipped.stored;
 GO
 ALTER TABLE skipped.child ENABLE CHANGE_TRACKING;
+GO
+
+-- The schema reported: options that are not at their default, a table created under ANSI_NULLS
+-- OFF, an indexed view, properties of a constraint, an index and a trigger, a procedure that
+-- draws from a sequence and one that takes an alias type no column uses.
+CREATE SCHEMA reported;
+GO
+CREATE TABLE reported.options (
+    id int NOT NULL CONSTRAINT PK_options PRIMARY KEY WITH (OPTIMIZE_FOR_SEQUENTIAL_KEY = ON),
+    v int NULL,
+    doc xml NULL,
+    big varchar(max) NULL,
+    old text NULL
+) WITH (XML_COMPRESSION = ON);
+GO
+CREATE INDEX IX_options_v ON reported.options (v) WITH (STATISTICS_NORECOMPUTE = ON);
+GO
+ALTER TABLE reported.options SET (LOCK_ESCALATION = DISABLE);
+GO
+EXEC sys.sp_tableoption N'reported.options', 'text in row', '256';
+GO
+EXEC sys.sp_tableoption N'reported.options', 'large value types out of row', 1;
+GO
+CREATE TRIGGER reported.trg_options ON reported.options AFTER INSERT AS RETURN
+GO
+EXEC sys.sp_addextendedproperty @name = N'note', @value = N'of the key',
+    @level0type = N'SCHEMA', @level0name = N'reported', @level1type = N'TABLE', @level1name = N'options',
+    @level2type = N'CONSTRAINT', @level2name = N'PK_options';
+GO
+EXEC sys.sp_addextendedproperty @name = N'note', @value = N'of the index',
+    @level0type = N'SCHEMA', @level0name = N'reported', @level1type = N'TABLE', @level1name = N'options',
+    @level2type = N'INDEX', @level2name = N'IX_options_v';
+GO
+EXEC sys.sp_addextendedproperty @name = N'note', @value = N'of the trigger',
+    @level0type = N'SCHEMA', @level0name = N'reported', @level1type = N'TABLE', @level1name = N'options',
+    @level2type = N'TRIGGER', @level2name = N'trg_options';
+GO
+SET ANSI_NULLS OFF;
+GO
+CREATE TABLE reported.nulls_off (id int NOT NULL, v int NULL);
+GO
+SET ANSI_NULLS ON;
+GO
+CREATE VIEW reported.v_indexed WITH SCHEMABINDING AS SELECT id, v FROM reported.options
+GO
+CREATE UNIQUE CLUSTERED INDEX CIX_v_indexed ON reported.v_indexed (id);
+GO
+CREATE SEQUENCE reported.of_a_procedure AS int START WITH 1;
+GO
+CREATE PROCEDURE reported.p_next AS SELECT NEXT VALUE FOR reported.of_a_procedure AS n
+GO
+CREATE TYPE reported.only_in_module FROM int NOT NULL;
+GO
+CREATE PROCEDURE reported.p_alias @n reported.only_in_module AS SELECT @n AS n
 GO
