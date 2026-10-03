@@ -15,7 +15,7 @@ func Test_Issue(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	// The property that matters: whatever Issue mints, getLicense must accept and read
+	// The property that matters: whatever Issue mints, parseWith must accept and read
 	// back identically. Issuing and verifying share their structures precisely so this
 	// cannot drift.
 	t.Run("round-trips through verification", func(t *testing.T) {
@@ -31,7 +31,7 @@ func Test_Issue(t *testing.T) {
 		require.NotEmpty(t, issued.Encoded)
 		require.NotEmpty(t, issued.Id)
 
-		got, err := getLicense(issued.Encoded, pub)
+		got, err := parseWith(issued.Encoded, pub)
 		require.NoError(t, err)
 		require.Equal(t, "Acme Co.", got.IssuedTo)
 		require.Equal(t, "cust-001", got.CustomerId)
@@ -40,8 +40,7 @@ func Test_Issue(t *testing.T) {
 		require.Equal(t, 10, *got.Limits.MaxJobs)
 		require.True(t, got.Limits.Allows("postgres"))
 		require.False(t, got.Limits.Allows("mssql"))
-		require.True(t, got.IsValid())
-		require.Equal(t, StateValid, got.State())
+		require.Equal(t, StateValid, got.StateAt(time.Now().UTC()))
 	})
 
 	t.Run("generates a distinct id when none is given", func(t *testing.T) {
@@ -99,7 +98,7 @@ func Test_Issue(t *testing.T) {
 		}, otherPriv)
 		require.NoError(t, err)
 
-		got, err := getLicense(issued.Encoded, pub)
+		got, err := parseWith(issued.Encoded, pub)
 		require.Error(t, err)
 		require.Nil(t, got)
 	})

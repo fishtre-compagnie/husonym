@@ -16,7 +16,23 @@ environment:
   EE_LICENSE: <the value provided to you>
 ```
 
-Restart both services afterwards; the license is read at startup.
+Alternatively, put the license in a file and set `EE_LICENSE_FILE` to its path:
+
+```yaml
+environment:
+  EE_LICENSE_FILE: /etc/husonym/license
+```
+
+When both variables are set, the file wins over `EE_LICENSE`.
+
+`EE_LICENSE` is read once, when the service starts. The file named by `EE_LICENSE_FILE`
+is read again at most once a minute, so a renewed license is picked up **without a
+restart**: replace the content of the file and the new key takes effect within about a
+minute. A key that cannot be verified, or a file that is empty or unreadable, is ignored
+and reported in the logs. The key already in place stays in force.
+
+If `EE_LICENSE` itself cannot be read, the service still starts, without a license, and
+logs the reason.
 
 Verification happens entirely offline. Husonym never contacts us to check your license, so
 it works in an air-gapped environment, and we collect nothing about how you use it.
@@ -86,7 +102,9 @@ Reaching a limit never affects anything already running.
 ## Renewing, or asking a question
 
 Write to [contact@husonym.com](mailto:contact@husonym.com). Renewing means replacing the
-`EE_LICENSE` value and restarting the API and the worker — nothing else changes.
+license value: with `EE_LICENSE_FILE`, replace the content of the file and the API and the
+worker pick it up on their own; with `EE_LICENSE`, change the value and restart the API
+and the worker. Nothing else changes.
 
 If you have lost your license value, ask us rather than assuming a new one is needed: we
 keep a record of what was issued and can re-send it.

@@ -12,8 +12,8 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	tabledependency "github.com/fishtre-compagnie/husonym/backend/pkg/table-dependency"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	ee_sqlmanager_mssql "github.com/fishtre-compagnie/husonym/internal/ee/mssql-manager"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 

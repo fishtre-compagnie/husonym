@@ -40,8 +40,8 @@ type RegistryEntry struct {
 
 // State reports where this license sits in its lifecycle right now.
 func (e *RegistryEntry) State() State {
-	c := &licenseContents{ExpiresAt: e.ExpiresAt, GraceDays: e.GraceDays}
-	return c.State()
+	k := &Key{ExpiresAt: e.ExpiresAt, GraceDays: e.GraceDays}
+	return k.StateAt(time.Now().UTC())
 }
 
 type Registry struct {

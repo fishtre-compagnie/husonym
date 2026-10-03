@@ -14,7 +14,7 @@ import (
 )
 
 // Issuing lives in the same package as verification on purpose: both sides share
-// licenseContents and Limits, so it is structurally impossible to issue a license this
+// Key and Limits, so it is structurally impossible to issue a license this
 // codebase cannot read back. The previous shell script signed an arbitrary JSON file,
 // which made a typo in a field name a silent, undetectable problem.
 
@@ -85,7 +85,7 @@ type IssuedLicense struct {
 }
 
 // Issue mints and signs a license. The returned Encoded value is what goes into
-// EE_LICENSE, and getLicense() verifies it against the embedded public key.
+// EE_LICENSE, and Parse verifies it against the embedded public key.
 func Issue(req *IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
 	if len(priv) == 0 {
 		return nil, errors.New("no private key provided")
@@ -106,7 +106,7 @@ func Issue(req *IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
 		issuedAt = time.Now().UTC()
 	}
 
-	contents := &licenseContents{
+	contents := &Key{
 		Version:    "v1",
 		Id:         id,
 		IssuedTo:   req.IssuedTo,
@@ -121,7 +121,7 @@ func Issue(req *IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal license contents: %w", err)
 	}
-	envelope, err := json.Marshal(licenseFile{
+	signed, err := json.Marshal(envelope{
 		License:   base64.StdEncoding.EncodeToString(raw),
 		Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(priv, raw)),
 	})
@@ -130,7 +130,7 @@ func Issue(req *IssueRequest, priv ed25519.PrivateKey) (*IssuedLicense, error) {
 	}
 
 	return &IssuedLicense{
-		Encoded:    base64.StdEncoding.EncodeToString(envelope),
+		Encoded:    base64.StdEncoding.EncodeToString(signed),
 		Id:         contents.Id,
 		IssuedTo:   contents.IssuedTo,
 		CustomerId: contents.CustomerId,
@@ -171,11 +171,4 @@ func ParsePrivateKey(pemBytes []byte) (ed25519.PrivateKey, error) {
 // rotation is traceable in the registry rather than guessed at.
 func PublicKeyFingerprint(pub ed25519.PublicKey) string {
 	return hex.EncodeToString(pub)[:16]
-}
-
-// EmbeddedPublicKey returns the key this binary verifies against. Comparing it to the
-// signing key before issuing catches the mistake of minting licenses with a key the
-// shipped product will reject.
-func EmbeddedPublicKey() (ed25519.PublicKey, error) {
-	return parsePublicKey(publicKeyPEM)
 }

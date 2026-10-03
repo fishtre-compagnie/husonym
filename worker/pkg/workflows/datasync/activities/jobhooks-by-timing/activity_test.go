@@ -11,6 +11,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -25,6 +26,10 @@ type fakeELicense struct {
 
 func (f *fakeELicense) IsValid() bool {
 	return f.isValid
+}
+
+func (f *fakeELicense) Limits() *license.Limits {
+	return nil
 }
 
 func Test_New(t *testing.T) {

@@ -421,6 +421,32 @@ func (s *IntegrationTestSuite) Test_UserAccountService_IsAccountStatusValid_OSS_
 	)
 }
 
+// The license is read on every call: the same service answers differently once the
+// license stops being valid, without being rebuilt.
+func (s *IntegrationTestSuite) Test_IsAccountStatusValid_FollowsTheLicense() {
+	t := s.T()
+	client := s.OSSAuthenticatedExpiringClients.Users(
+		integrationtests_test.WithUserId("license-follower"),
+	)
+	s.setUser(s.ctx, client)
+	accountId := s.createPersonalAccount(s.ctx, client)
+	t.Cleanup(func() { s.Mocks.ExpiringLicense.SetValid(true) })
+
+	isValid := func() bool {
+		resp, err := client.IsAccountStatusValid(
+			s.ctx,
+			connect.NewRequest(&mgmtv1alpha1.IsAccountStatusValidRequest{AccountId: accountId}),
+		)
+		requireNoErrResp(t, resp, err)
+		return resp.Msg.GetIsValid()
+	}
+
+	require.True(t, isValid())
+
+	s.Mocks.ExpiringLicense.SetValid(false)
+	require.False(t, isValid())
+}
+
 func (s *IntegrationTestSuite) Test_UserAccountService_GetAccountBillingCheckoutSession() {
 	accountId := s.createPersonalAccount(s.ctx, s.OSSUnauthenticatedLicensedClients.Users())
 	resp, err := s.OSSUnauthenticatedLicensedClients.Users().

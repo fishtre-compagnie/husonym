@@ -8,9 +8,9 @@
 // The registry is why this matters commercially: renewals are the revenue, and you cannot
 // chase a renewal you have no record of.
 //
-//	go run ./internal/ee/license/cmd/husonym-license issue \
+//	go run ./internal/license/cmd/husonym-license issue \
 //	  --to "Acme Co." --customer-id acme --days 365 --max-jobs 20
-//	go run ./internal/ee/license/cmd/husonym-license expiring --within 45
+//	go run ./internal/license/cmd/husonym-license expiring --within 45
 //
 // Both the signing key and the registry live outside the repository. Never commit either.
 package main
@@ -27,7 +27,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
 const usage = `husonym-license — mint Enterprise licenses and track what was issued
@@ -314,16 +314,17 @@ func runVerify(args []string) error {
 		return fmt.Errorf("usage: verify <EE_LICENSE value>")
 	}
 	// Verifies through exactly the path the product uses at startup.
-	ee, err := license.NewFromValue(fs.Arg(0))
+	key, err := license.Parse(fs.Arg(0))
 	if err != nil {
 		return fmt.Errorf("license does not verify against this build: %w", err)
 	}
+	state := key.StateAt(time.Now().UTC())
 	fmt.Fprintf(os.Stdout, "verifies against this build\n")
-	fmt.Fprintf(os.Stdout, "  state    %s\n", ee.State())
-	fmt.Fprintf(os.Stdout, "  expires  %s (%s)\n", ee.ExpiresAt().Format(time.RFC3339), humanDays(ee.ExpiresAt()))
-	fmt.Fprintf(os.Stdout, "  grace to %s\n", ee.GracePeriodEndsAt().Format(time.RFC3339))
-	fmt.Fprintf(os.Stdout, "  usable   %t\n", ee.IsValid())
-	fmt.Fprintf(os.Stdout, "  limits   %s\n", limitsLabel(ee.Limits()))
+	fmt.Fprintf(os.Stdout, "  state    %s\n", state)
+	fmt.Fprintf(os.Stdout, "  expires  %s (%s)\n", key.ExpiresAt.Format(time.RFC3339), humanDays(key.ExpiresAt))
+	fmt.Fprintf(os.Stdout, "  grace to %s\n", key.GraceEndsAt().Format(time.RFC3339))
+	fmt.Fprintf(os.Stdout, "  usable   %t\n", state != license.StateFrozen)
+	fmt.Fprintf(os.Stdout, "  limits   %s\n", limitsLabel(key.Limits))
 	return nil
 }
 
@@ -396,7 +397,7 @@ const signingKeyEnv = "HUSONYM_EE_SIGNING_KEY"
 // loadSigningKey prefers the environment over the filesystem, so the key can be injected
 // by a secret manager and never written to disk:
 //
-//	infisical run -- go run ./internal/ee/license/cmd/husonym-license issue …
+//	infisical run -- go run ./internal/license/cmd/husonym-license issue …
 //
 // Accepts the PEM directly or base64 of it. Both because a multi-line value survives some
 // secret managers and shells intact and not others, and a key that fails to load at the

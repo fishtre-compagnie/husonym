@@ -122,7 +122,7 @@ Use the tool; do not hand-sign a JSON file. See
 [`scripts/gen-license.md`](../../../scripts/gen-license.md) for the full reference.
 
 ```console
-go run ./internal/ee/license/cmd/husonym-license issue \
+go run ./internal/license/cmd/husonym-license issue \
   --to "Acme Co." --customer-id acme-001 --days 365 \
   --max-jobs 20 --connection-types postgres,mysql \
   --note "contract 2026-A"
@@ -143,17 +143,17 @@ command.
 
 ```console
 # The renewal worklist: expiring soonest first, excluding licenses already frozen
-go run ./internal/ee/license/cmd/husonym-license expiring --within 45
+go run ./internal/license/cmd/husonym-license expiring --within 45
 
 # Everything issued, with each licence's current lifecycle state
-go run ./internal/ee/license/cmd/husonym-license list
+go run ./internal/license/cmd/husonym-license list
 
 # One licence in full, including the value to re-send a customer who lost theirs
-go run ./internal/ee/license/cmd/husonym-license show <license-id>
-go run ./internal/ee/license/cmd/husonym-license show <license-id> --json
+go run ./internal/license/cmd/husonym-license show <license-id>
+go run ./internal/license/cmd/husonym-license show <license-id> --json
 
 # Check any licence value through the exact path the product uses at startup
-go run ./internal/ee/license/cmd/husonym-license verify "$EE_LICENSE"
+go run ./internal/license/cmd/husonym-license verify "$EE_LICENSE"
 ```
 
 The file is plain JSON and can be read directly, but `list` additionally shows the state
@@ -177,7 +177,7 @@ not a bug.
 Issue yourself a long-lived development license once:
 
 ```console
-infisical run --env=prod -- go run ./internal/ee/license/cmd/husonym-license issue \
+infisical run --env=prod -- go run ./internal/license/cmd/husonym-license issue \
   --to "Development" --customer-id dev --days 3650 --note "local dev"
 ```
 
@@ -203,7 +203,7 @@ then `aqua i`, see CONTRIBUTING.md); bind the checkout once with `infisical logi
 `--key`:
 
 ```console
-infisical run -- go run ./internal/ee/license/cmd/husonym-license issue \
+infisical run -- go run ./internal/license/cmd/husonym-license issue \
   --to "Acme Co." --customer-id acme-001 --days 365
 ```
 

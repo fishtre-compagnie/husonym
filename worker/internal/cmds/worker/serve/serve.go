@@ -31,9 +31,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	retry_interceptor "github.com/fishtre-compagnie/husonym/internal/connectrpc/interceptors/retry"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
@@ -84,10 +84,9 @@ func serve(ctx context.Context) error {
 		logger,
 	) // set default logger for methods that can't easily access the configured logger
 
-	eelicense, err := license.NewFromEnv()
-	if err != nil {
-		return fmt.Errorf("unable to initialize ee license from env: %w", err)
-	}
+	// Building the provider never fails: a license that cannot be read is logged and
+	// leaves the instance without one.
+	eelicense := license.NewProvider(license.SourceFromEnv(), logger)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-worker", logger)
@@ -320,10 +319,6 @@ func serve(ctx context.Context) error {
 	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	_ = w
 
-	// See the matching comment in the backend: NewValidLicense() was short-circuiting the
-	// cascade and granting every gated feature unconditionally. Tests only.
-	cascadelicense := license.NewCascadeLicense(eelicense)
-
 	husonymurl := shared.GetHusonymUrl()
 	httpclient := shared.GetHusonymHttpClient()
 	connectInterceptorOption := connect.WithInterceptors(connectInterceptors...)
@@ -431,20 +426,20 @@ func serve(ctx context.Context) error {
 		jobclient,
 		connclient,
 		sqlmanager,
-		cascadelicense,
+		eelicense,
 	)
 
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
-		sqlmanager, sqlconnmanager, engineConfig.Policy, cascadelicense, redisclient,
+		sqlmanager, sqlconnmanager, engineConfig.Policy, eelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
 		consistencyKeys,
 		cloudIdentity,
 	)
 
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		logger.Debug("ee license is valid, registering account hook activities")
 		accounthook_workflow_register.Register(w, accounthookclient)
 
@@ -468,7 +463,7 @@ func serve(ctx context.Context) error {
 			jobclient,
 			&openaiclient,
 			conndatabuilder,
-			cascadelicense,
+			eelicense,
 			temporalClient.ScheduleClient(),
 		)
 	}

@@ -8,9 +8,9 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -70,7 +70,10 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 // the user, and each service reaches for the user anyway to enforce access. Callers should
 // still confirm the license is valid (EnforceLicense) before reading caps from it.
 func (u *User) LicenseLimits() *license.Limits {
-	return license.LimitsOf(u.license)
+	if u.license == nil {
+		return nil
+	}
+	return u.license.Limits()
 }
 
 func (u *User) IsLicensed(ctx context.Context, accountId string) (bool, error) {
