@@ -122,9 +122,11 @@ The HMAC hash algorithm is sent in the `X-Husonym-Signature-Type` header.
 
 ### Who Sees the Secret
 
-The secret key is shown to those who may edit the account: the members with the admin role. Any other member sees `********` in its place, in the UI and in the API.
+Members who may edit the account, that is the members with the admin role, see the secret key and can change the hook.
 
-`********` is never accepted as a secret. A hook saved by someone who sees the secret masked needs the secret entered again, and the secret a hook holds is replaced by the one the save carries.
+Other members see the rest of the hook with the secret hidden: the API returns `********` in its place and the UI leaves the field empty. They cannot change the hook.
+
+An API client that reads a hook with one identity and saves it with another must send the secret itself: `********` is refused as a secret, and every save replaces the stored secret with the one it carries.
 
 ### Webhook URL
 

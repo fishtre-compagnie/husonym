@@ -53,7 +53,15 @@ The name of a hook is unique within its job.
 
 ### Who can manage a job hook
 
-The SQL of a hook runs on a connection of the job at its next run. Creating a hook, changing one and enabling one therefore take the permission to execute the job, in addition to the permission to create or edit it. Disabling a hook takes the permission to edit the job, and deleting one the permission to delete it.
+Each action on a hook needs these permissions on jobs:
+
+| Action  | Permissions needed     |
+| ------- | ---------------------- |
+| Create  | create and execute     |
+| Update  | view, edit and execute |
+| Enable  | view, edit and execute |
+| Disable | view and edit          |
+| Delete  | delete                 |
 
 SQL queries are run in an `Exec` manner, meaning that their results are not returned and are ignored. Today, Husonym only checks for errors. This is planned to change in the future where Husonym can handle the returned results to allow users to perform further actions like result verification.
 
