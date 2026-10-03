@@ -342,9 +342,17 @@ const transformers: TransformerMapping[] = [
 {"text":"Hello, yes, this is \u003cPERSON\u003e. I had an appointment \u003cDATE_TIME\u003e to get some Advil and Ibuprofen, but didn't pick it up. Can you give me a call back at 6173943902? Thank you."}
 ```
 
+### Hashing What Is Found
+
+With a `hash` anonymizer, each finding is replaced by a keyed hash of its exact text: 64 hexadecimal characters for `SHA256`, 128 for `SHA512`, 32 for `MD5` or no algorithm.
+
+For a call to these endpoints the key is drawn when the API starts. The same text gives the same hash for as long as that API process runs; the hashes change when the API restarts, and two replicas of the API give two different hashes for the same text. Do not store them as identifiers that must survive a restart. Inside a job run of the Athanor engine, the key comes from the job's consistency scope instead, and the same text keeps its hash across the tables of that scope.
+
+The other anonymizers, and every setting of the transformer, are described in [Transform PII Text](/transformers/system#transform-pii-text).
+
 ## Error Handling
 
-Errors can occur during the anonymization process due to malformed JSON, transformer failures, or other issues.
+Errors can occur during the anonymization process due to malformed JSON, transformer failures, or other issues. A text the PII text transformer cannot rewrite exactly — the analyzer does not answer, or a transformer applied to a finding fails — is an error for that value: it is never returned partly rewritten.
 
 ### AnonymizeSingle
 

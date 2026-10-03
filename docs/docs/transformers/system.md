@@ -4,7 +4,7 @@ description: Learn about Husonym's System Transformers that come out of the box 
 id: system
 hide_title: false
 slug: /transformers/system
-# cSpell:words luhn,huntingon,dach,sporer,rodriguezon,rega,jdoe,lsmith,aidan,kunze,littel,johnsonston,unixtimestamp,utctimestamp
+# cSpell:words luhn,huntingon,dach,sporer,rodriguezon,rega,jdoe,lsmith,aidan,kunze,littel,johnsonston,unixtimestamp,utctimestamp,jörg,müller
 ---
 
 ## Introduction
@@ -55,6 +55,7 @@ Husonym ships with 40+ System Transformers to give you an easy way to get starte
 | [Transform Javascript](/transformers/system#transform-javascript)                 | any     | Executes user-provided javascript in on the input value.                                                                                                                                      |
 | [Transform Last Name](/transformers/system#transform-last-name)                   | string  | Transforms an existing last name.                                                                                                                                                             |
 | [Transform Phone Number](/transformers/system#transform-phone-number)             | string  | Transforms an existing phone number that is typed as a string.                                                                                                                                |
+| [Transform PII Text](/transformers/system#transform-pii-text)                     | string  | Transforms free-form text using PII analyzers                                                                                                                                                 |
 | [Transform String](/transformers/system#transform-string)                         | string  | Transforms an existing string value.                                                                                                                                                          |
 | [Transform Character Scramble](/transformers/system#transform-character-scramble) | string  | Transforms an existing string value by scrambling the characters while maintaining the format.                                                                                                |
 | [Passthrough](/transformers/system#passthrough)                                   | string  | Passes the input value through to the destination with no changes.                                                                                                                            |
@@ -726,6 +727,49 @@ The default applies to mappings created from now on. A mapping saved before Pres
 | true           | -              | +1 (555) 123-4567 | +1 (556) 887-3834 |
 | false          | false          | 2890923784        | 520927323239      |
 | false          | true           | 2890923784        | 5209223539        |
+
+### Transform PII Text\{#transform-pii-text}
+
+Anonymizes free text: a note, a comment, the body of a message. A [Presidio](https://microsoft.github.io/presidio/) analyzer finds the personal data the text carries, and Husonym rewrites each finding where it stands. The rest of the text is left exactly as it is.
+
+It needs a license and `PRESIDIO_ANALYZER_URL` (see [Environment Variables](/deploy/environment-variables)). Only the analyzer is used: Husonym does not call a Presidio anonymizer.
+
+**Configurations**
+
+| Name              | Description                                                                                                                                                                                                    | Default                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| ScoreThreshold    | The confidence, from 0 to 1, the analyzer must reach for a finding to count. A finding scored exactly at the threshold counts. 0 keeps everything the analyzer suspects.                                       | 0.5                                    |
+| Language          | The two-letter language of the text.                                                                                                                                                                           | `PRESIDIO_DEFAULT_LANGUAGE`, else `en` |
+| DefaultAnonymizer | What to do with a finding whose entity has no anonymizer of its own.                                                                                                                                           | Replace with the entity type           |
+| EntityAnonymizers | What to do with the findings of one entity (`PERSON`, `PHONE_NUMBER`, the name of a deny list…). An entity listed here gets this anonymizer and not the default.                                               |                                        |
+| AllowedEntities   | The entities to look for. Empty, all of them. The names of the deny lists below are always looked for.                                                                                                         |                                        |
+| DenyRecognizers   | Lists of words to treat as personal data, each list an entity of its own, named after the list. They are looked for in the language of the text.                                                               |                                        |
+| AllowedPhrases    | Phrases to leave as they are. A finding is left when its whole text is one of them: the case counts, a phrase that is only part of a finding does not count. An accented letter matches however it is encoded. |                                        |
+
+**Anonymizers**
+
+| Anonymizer | What stands in place of a finding                                                                                                                                                                                                                                                                                                                                                           | `Jörg Müller`, found as `PERSON`                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Replace    | The given value. Without one, the entity type between angle brackets.                                                                                                                                                                                                                                                                                                                       | `<PERSON>`                                             |
+| Redact     | Nothing: the finding is removed.                                                                                                                                                                                                                                                                                                                                                            |                                                        |
+| Mask       | The finding with `chars_to_mask` of its characters overwritten by `masking_char`, from its start, or from its end with `from_end`. Without `chars_to_mask`, every character is overwritten. `masking_char` is one character.                                                                                                                                                                | `**** Müller` (4 characters), `***********` (no count) |
+| Hash       | A keyed hash of the exact text of the finding, in lowercase hexadecimal: 64 characters for `SHA256`, 128 for `SHA512`, 32 for `MD5` or no algorithm. Every length is computed with HMAC-SHA-2; the algorithm chooses the length of the output.                                                                                                                                              | `3f1c…` (64 characters)                                |
+| Transform  | The output of another transformer, which is handed the exact text of the finding. Without a transformer, one is chosen from the entity: a name for `PERSON`, a phone number for `PHONE_NUMBER`, an e-mail address for `EMAIL_ADDRESS`, a card number for `CREDIT_CARD`, a social security number for `US_SSN`, an IP address for `IP_ADDRESS`, and a random SHA-256 hash for anything else. | `Lena Sporer`                                          |
+
+**Hashes**
+
+The same text gives the same hash wherever the key is the same, and the text cannot be recovered from its hash without the key. The case, the spaces and the encoding of the text count: `Bob` and `bob` have two hashes. The entity does not count: a text has one hash, whatever it was found as.
+
+- **In a run of the Athanor engine**, the key is derived from the job's consistency scope: the same text has the same hash in every table of the run. With the scope `job` or `account` it keeps that hash from one run to the next; with the default scope `run`, every run gives new hashes.
+- **Everywhere else** — a call to `AnonymizeSingle` or `AnonymizeMany`, the preview of a column, a run of the Benthos engine — the key is drawn when the API starts. Hashes are stable while that API process runs. They change when it restarts, and two replicas of the API give two different hashes for the same text. The preview of a column therefore never shows the hash a run will write.
+
+**Findings that overlap**
+
+Each character of the text belongs to one finding at most. Findings of the same entity that overlap, or that only spaces separate, are rewritten as one. A finding inside another is rewritten with it. Where findings of two entities overlap, each character goes to the finding the analyzer is most confident in.
+
+**Failures**
+
+A value is rewritten exactly or not at all. When the analyzer does not answer or refuses the text, when its answer does not fit the text, or when the transformer of a `Transform` anonymizer fails, the value fails: it is never returned half rewritten, and a run stops on it. An empty value and a null value are returned as they are, without calling the analyzer.
 
 ### Transform String\{#transform-string}
 
