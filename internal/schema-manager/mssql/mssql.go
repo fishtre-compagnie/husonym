@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
@@ -129,13 +130,30 @@ func (d *MssqlSchemaManager) InitializeSchema(
 }
 
 // requestedTables turns the keys of the tables of a job into tables of the source, in the order
-// of the keys. A key is schema.table and either part may hold a dot: the key is looked up among
-// the tables the source has. A key that none of them builds is split at its first dot, and the
-// source tells whether it has that table.
+// of the keys.
 func (d *MssqlSchemaManager) requestedTables(
 	ctx context.Context,
 	uniqueTables map[string]struct{},
 ) ([]*sqlmanager_shared.SchemaTable, error) {
+	byKey, err := d.tablesByKey(ctx, uniqueTables)
+	if err != nil {
+		return nil, err
+	}
+	tables := make([]*sqlmanager_shared.SchemaTable, 0, len(byKey))
+	for _, key := range slices.Sorted(maps.Keys(byKey)) {
+		tables = append(tables, byKey[key])
+	}
+	return tables, nil
+}
+
+// tablesByKey tells, for each key of the tables of a job, the schema and the table it names. A
+// key is schema.table and either part may hold a dot: the key is looked up among the tables the
+// source has. A key that none of them builds is split at its first dot, and the source tells
+// whether it has that table.
+func (d *MssqlSchemaManager) tablesByKey(
+	ctx context.Context,
+	uniqueTables map[string]struct{},
+) (map[string]*sqlmanager_shared.SchemaTable, error) {
 	sourceTables, err := d.sourcedb.Db().GetAllTables(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list the tables of the source: %w", err)
@@ -149,14 +167,17 @@ func (d *MssqlSchemaManager) requestedTables(
 		})
 	}
 
-	tables := make([]*sqlmanager_shared.SchemaTable, 0, len(uniqueTables))
+	tables := make(map[string]*sqlmanager_shared.SchemaTable, len(uniqueTables))
 	for _, key := range slices.Sorted(maps.Keys(uniqueTables)) {
 		switch matches := byKey[key]; len(matches) {
 		case 0:
-			schema, table := sqlmanager_shared.SplitTableKey(key)
-			tables = append(tables, &sqlmanager_shared.SchemaTable{Schema: schema, Table: table})
+			schema, table, found := strings.Cut(key, ".")
+			if !found {
+				schema, table = sqlmanager_shared.SplitTableKey(key)
+			}
+			tables[key] = &sqlmanager_shared.SchemaTable{Schema: schema, Table: table}
 		case 1:
-			tables = append(tables, matches[0])
+			tables[key] = matches[0]
 		default:
 			return nil, fmt.Errorf(
 				"table key %q names two tables of the source: %s and %s",
@@ -199,9 +220,15 @@ func (d *MssqlSchemaManager) TruncateData(
 		return err
 	}
 
+	// The order comes by key; each key names its table by the schema and the name the source
+	// gives, whatever dots they hold.
+	tables, err := d.tablesByKey(ctx, uniqueTables)
+	if err != nil {
+		return err
+	}
 	orderedTableDelete := []string{}
-	for i := len(orderedTablesResp.OrderedTables) - 1; i >= 0; i-- {
-		st := orderedTablesResp.OrderedTables[i]
+	for i := len(orderedTablesResp.OrderedKeys) - 1; i >= 0; i-- {
+		st := tables[orderedTablesResp.OrderedKeys[i]]
 		orderedTableDelete = append(
 			orderedTableDelete,
 			sqlmanager_mssql.BuildMssqlDeleteStatement(st.Schema, st.Table),

@@ -122,6 +122,12 @@ func Test_InitializeSchema_Tables(t *testing.T) {
 		require.Equal(t, []*sqlmanager_shared.SchemaTable{{Schema: "dbo", Table: "Users"}}, asked)
 	})
 
+	t.Run("such a key splits at its first dot, and keeps the others", func(t *testing.T) {
+		t.Parallel()
+		asked := requested(t, tables("dbo", "users"), "a.b.c")
+		require.Equal(t, []*sqlmanager_shared.SchemaTable{{Schema: "a", Table: "b.c"}}, asked)
+	})
+
 	t.Run("a key two tables build is refused, both named", func(t *testing.T) {
 		t.Parallel()
 		f := newFixture(t, initSchema(), true)
@@ -227,8 +233,19 @@ func Test_TruncateData(t *testing.T) {
 	f := newFixture(t, &mgmtv1alpha1.MssqlDestinationConnectionOptions{
 		TruncateTable: &mgmtv1alpha1.MssqlTruncateTableConfig{TruncateBeforeInsert: true},
 	}, false)
-	f.source.EXPECT().GetTableConstraintsBySchema(mock.Anything, []string{"dbo"}).
-		Return(&sqlmanager_shared.TableConstraints{}, nil)
+	// A schema and a table whose names hold a dot; the lines reference the table of the
+	// dotted schema, so they are emptied first.
+	f.source.EXPECT().GetAllTables(mock.Anything).
+		Return(tables("dbo", "order.lines", "a.b", "c", "dbo", "other", "dbo", "order"), nil)
+	f.source.EXPECT().GetTableConstraintsBySchema(mock.Anything, []string{"dbo", "a.b"}).
+		Return(&sqlmanager_shared.TableConstraints{
+			ForeignKeyConstraints: map[string][]*sqlmanager_shared.ForeignConstraint{
+				"dbo.order.lines": {{
+					Columns: []string{"c_id"}, NotNullable: []bool{true},
+					ForeignKey: &sqlmanager_shared.ForeignKey{Table: "a.b.c", Columns: []string{"id"}},
+				}},
+			},
+		}, nil)
 	f.source.EXPECT().GetSchemaColumnMap(mock.Anything).Return(
 		map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
 			"dbo.order.lines": {
@@ -249,10 +266,18 @@ func Test_TruncateData(t *testing.T) {
 		}).
 		Return(nil)
 
-	err := f.manager.TruncateData(t.Context(), map[string]struct{}{"dbo.order.lines": {}}, []string{"dbo"})
+	err := f.manager.TruncateData(
+		t.Context(),
+		map[string]struct{}{"dbo.order.lines": {}, "a.b.c": {}},
+		[]string{"dbo", "a.b"},
+	)
 
 	require.NoError(t, err)
 	require.Len(t, batches, 2)
+	require.Equal(t, []string{
+		"DELETE FROM [dbo].[order.lines];",
+		"DELETE FROM [a.b].[c];",
+	}, batches[0], "each table is named by its schema and its name, whatever dots they hold")
 	require.Equal(t, []string{
 		sqlmanager_mssql.BuildMssqlIdentityColumnResetStatement("dbo", "order.lines", &seed, &increment),
 	}, batches[1], "the table of an identity column is named by its row, not by a split of its key")
