@@ -663,6 +663,11 @@ func (s *Service) HandleSlackOAuthCallback(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(oauthState.AccountId), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
+	// Connecting Slack creates something for the account: refused without a valid license,
+	// before the code is exchanged and anything is stored.
+	if err := user.EnforceLicense(ctx, oauthState.AccountId); err != nil {
+		return nil, err
+	}
 	logger.Debug("slack oauth state validated")
 
 	slackCode := req.GetCode()
