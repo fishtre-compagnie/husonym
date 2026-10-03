@@ -77,9 +77,6 @@ packages:
     interfaces:
       BenthosStreamClient: {}
       BenthosStreamManagerClient: {}
-  github.com/fishtre-compagnie/husonym/internal/billing:
-    interfaces:
-      Interface: {}
   github.com/fishtre-compagnie/husonym/internal/connection-manager:
     interfaces:
       ConnectionProvider: {}

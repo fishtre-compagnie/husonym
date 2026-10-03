@@ -7,8 +7,7 @@ import husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 // with what it read. With authentication on, the worker has a key of its own, and that key
 // alone may. Without authentication, every caller may do anything and nothing is told apart.
 type WorkerOnly struct {
-	IsAuthEnabled  bool
-	IsHusonymCloud bool
+	IsAuthEnabled bool
 }
 
 // Allow says whether a caller may call what only the worker calls.
@@ -16,7 +15,7 @@ func (w WorkerOnly) Allow(user *User) error {
 	switch {
 	case user.IsWorkerApiKey():
 		return nil
-	case w.IsAuthEnabled, w.IsHusonymCloud:
+	case w.IsAuthEnabled:
 		return husonymerrors.NewForbidden("only the worker calls this, with its key")
 	default:
 		return nil

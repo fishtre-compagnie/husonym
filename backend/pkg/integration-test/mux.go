@@ -33,7 +33,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
@@ -92,8 +91,6 @@ const (
 	// OSS, Unauthenticated, Licensed with usage caps deliberately small enough for a test
 	// to reach them
 	openSourceUnauthenticatedLimitedPostfix = "/oss-unauthenticated-limited"
-	// NeoCloud, Licensed, Authenticated
-	neoCloudAuthenticatedLicensedPostfix = "/husonymcloud-authenticated"
 )
 
 func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
@@ -103,7 +100,6 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := false
-	isHusonymCloud := false
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
@@ -112,7 +108,6 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
 		nil,
@@ -126,7 +121,6 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := true
-	isHusonymCloud := false
 	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
@@ -135,7 +129,6 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
 		nil,
@@ -148,37 +141,12 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 ) (*http.ServeMux, error) {
 	isLicensed := false
 	isAuthEnabled := false
-	isHusonymCloud := false
 	permissiveRbacClient := rbac.NewAllowAllClient()
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isHusonymCloud,
 		permissiveRbacClient,
-		logger,
-		nil,
-	)
-}
-
-func (s *HusonymApiTestClient) setupNeoCloudMux(
-	ctx context.Context,
-	pgcontainer *tcpostgres.PostgresTestContainer,
-	logger *slog.Logger,
-) (*http.ServeMux, error) {
-	isLicensed := true
-	isAuthEnabled := true
-	isHusonymCloud := true
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
-	}
-	return s.setupMux(
-		pgcontainer,
-		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
-		enforcedRbacClient,
 		logger,
 		nil,
 	)
@@ -193,14 +161,12 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 ) (*http.ServeMux, error) {
 	isLicensed := true
 	isAuthEnabled := false
-	isHusonymCloud := false
 	maxJobs := 1
 	maxConnections := 2
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
 		isLicensed,
-		isHusonymCloud,
 		rbac.NewAllowAllClient(),
 		logger,
 		&license.Limits{
@@ -215,14 +181,13 @@ func (s *HusonymApiTestClient) setupMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	isAuthEnabled bool,
 	isLicensed bool,
-	isHusonymCloud bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
 	// Usage caps to put on the fake license. Nil means uncapped, which is what every
 	// variant other than the limited one wants.
 	licenseLimits *license.Limits,
 ) (*http.ServeMux, error) {
-	isPresidioEnabled := isLicensed || isHusonymCloud
+	isPresidioEnabled := isLicensed
 
 	maxAllowed := int64(10000)
 	var eelicense *testutil.FakeEELicense
@@ -238,25 +203,16 @@ func (s *HusonymApiTestClient) setupMux(
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
 
-	var billingclient billing.Interface
-	if isHusonymCloud {
-		billingclient = s.Mocks.Billingclient
-	} else {
-		billingclient = nil
-	}
-
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
 			IsAuthEnabled:            isAuthEnabled,
 			DeploymentIssuer:         TestIssuer,
-			IsHusonymCloud:           isHusonymCloud,
 			DefaultMaxAllowedRecords: &maxAllowed,
 		},
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.TemporalConfigProvider,
 		s.Mocks.Authclient,
 		s.Mocks.Authmanagerclient,
-		billingclient,
 		rbacClient, // rbac client
 		eelicense,
 	)
@@ -275,7 +231,7 @@ func (s *HusonymApiTestClient) setupMux(
 	sqlmanagerclient := NewTestSqlManagerClient()
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsHusonymCloud: isHusonymCloud},
+		&v1alpha1_connectionservice.Config{},
 		husonymDb,
 		userclient,
 		mongoconnect.NewConnector(),
@@ -320,9 +276,8 @@ func (s *HusonymApiTestClient) setupMux(
 
 	jobService := v1alpha1_jobservice.New(
 		&v1alpha1_jobservice.Config{
-			IsAuthEnabled:  isAuthEnabled,
-			IsHusonymCloud: isHusonymCloud,
-			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+			IsAuthEnabled: isAuthEnabled,
+			WorkerOnly:    userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		husonymDb,
 		s.Mocks.TemporalClientManager,
@@ -340,7 +295,6 @@ func (s *HusonymApiTestClient) setupMux(
 		&v1alpha_anonymizationservice.Config{
 			IsPresidioEnabled: isPresidioEnabled,
 			IsAuthEnabled:     isAuthEnabled,
-			IsHusonymCloud:    isHusonymCloud,
 		},
 		nil, // meter
 		userclient,
@@ -378,8 +332,7 @@ func (s *HusonymApiTestClient) setupMux(
 	}
 	accountSettingService := v1alpha1_accountsettingservice.New(
 		&v1alpha1_accountsettingservice.Config{
-			IsHusonymCloud: isHusonymCloud,
-			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+			WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		husonymDb,
 		userclient,

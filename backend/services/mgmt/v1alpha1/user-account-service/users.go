@@ -2,9 +2,7 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -20,12 +18,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stripe/stripe-go/v86"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -199,11 +195,6 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			"unable to convert personal account to team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsHusonymCloud && s.billingclient == nil {
-		return nil, husonymerrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
-		)
-	}
 
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
@@ -302,39 +293,9 @@ func (s *Service) ConvertPersonalToTeamAccount(
 		)
 	}
 
-	var checkoutSessionUrl *string
-	if s.cfg.IsHusonymCloud && !resp.TeamAccount.StripeCustomerID.Valid && s.billingclient != nil {
-		account, err := s.db.UpsertStripeCustomerId(
-			ctx,
-			resp.TeamAccount.ID,
-			s.getCreateStripeAccountFunction(user.Msg.GetUserId(), logger),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to upsert stripe customer id after account creation: %w",
-				err,
-			)
-		}
-		session, err := s.generateCheckoutSession(
-			ctx,
-			account.StripeCustomerID.String,
-			account.AccountSlug,
-			user.Msg.GetUserId(),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate checkout session: %w", err)
-		}
-		logger.Debug("stripe checkout session created", "id", session.ID)
-		checkoutSessionUrl = &session.URL
-		resp.TeamAccount = account // update the team account that now includes a stripe customer id
-	}
-
 	return connect.NewResponse(&mgmtv1alpha1.ConvertPersonalToTeamAccountResponse{
 		AccountId:            husonymdb.UUIDString(resp.TeamAccount.ID),
 		NewPersonalAccountId: husonymdb.UUIDString(resp.PersonalAccount.ID),
-		CheckoutSessionUrl:   checkoutSessionUrl,
 	}), nil
 }
 
@@ -446,11 +407,6 @@ func (s *Service) CreateTeamAccount(
 			"unable to create team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsHusonymCloud && s.billingclient == nil {
-		return nil, husonymerrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
-		)
-	}
 
 	user, err := s.GetUser(ctx, connect.NewRequest(&mgmtv1alpha1.GetUserRequest{}))
 	if err != nil {
@@ -467,34 +423,6 @@ func (s *Service) CreateTeamAccount(
 	}
 
 	logger = logger.With("accountId", husonymdb.UUIDString(account.ID))
-
-	var checkoutSessionUrl *string
-	if s.cfg.IsHusonymCloud && !account.StripeCustomerID.Valid && s.billingclient != nil {
-		account, err = s.db.UpsertStripeCustomerId(
-			ctx,
-			account.ID,
-			s.getCreateStripeAccountFunction(user.Msg.GetUserId(), logger),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to upsert stripe customer id after account creation: %w",
-				err,
-			)
-		}
-		session, err := s.generateCheckoutSession(
-			ctx,
-			account.StripeCustomerID.String,
-			account.AccountSlug,
-			user.Msg.GetUserId(),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate checkout session: %w", err)
-		}
-		logger.Debug("stripe checkout session created", "id", session.ID)
-		checkoutSessionUrl = &session.URL
-	}
 
 	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -518,70 +446,8 @@ func (s *Service) CreateTeamAccount(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.CreateTeamAccountResponse{
-		AccountId:          husonymdb.UUIDString(account.ID),
-		CheckoutSessionUrl: checkoutSessionUrl,
+		AccountId: husonymdb.UUIDString(account.ID),
 	}), nil
-}
-
-func (s *Service) getCreateStripeAccountFunction(
-	userId string,
-	logger *slog.Logger,
-) func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
-	return func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
-		email := s.getEmailFromToken(ctx, logger)
-		if email == nil {
-			return "", errors.New(
-				"unable to retrieve user email from auth token when creating stripe account",
-			)
-		}
-		customer, err := s.billingclient.NewCustomer(ctx, &billing.CustomerRequest{
-			Email:     *email,
-			Name:      account.AccountSlug,
-			AccountId: husonymdb.UUIDString(account.ID),
-			UserId:    userId,
-		})
-		if err != nil {
-			return "", fmt.Errorf("unable to create new stripe customer: %w", err)
-		}
-		return customer.ID, nil
-	}
-}
-
-func (s *Service) generateCheckoutSession(
-	ctx context.Context,
-	customerId, accountSlug, userId string,
-	logger *slog.Logger,
-) (*stripe.CheckoutSession, error) {
-	if s.billingclient == nil {
-		return nil, errors.New("unable to generate checkout session as stripe client is nil")
-	}
-
-	session, err := s.billingclient.NewCheckoutSession(
-		ctx,
-		customerId,
-		accountSlug,
-		userId,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create new stripe checkout session: %w", err)
-	}
-	return session, nil
-}
-
-func (s *Service) getEmailFromToken(ctx context.Context, logger *slog.Logger) *string {
-	tokenctxResp, err := tokenctx.GetTokenCtx(ctx)
-	if err != nil {
-		logger.Error(
-			fmt.Errorf("unable to retrieve token from ctx when getting email: %w", err).Error(),
-		)
-		return nil
-	}
-	if tokenctxResp.JwtContextData != nil && tokenctxResp.JwtContextData.Claims != nil {
-		return tokenctxResp.JwtContextData.Claims.Email
-	}
-	logger.Error(errors.New("unable to retrieve email from token ctx").Error())
-	return nil
 }
 
 func (s *Service) GetTeamAccountMembers(
@@ -1032,7 +898,7 @@ func (s *Service) GetSystemInformation(
 		License: &mgmtv1alpha1.SystemLicense{
 			IsValid:        s.licenseclient.IsValid(),
 			ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
-			IsHusonymCloud: s.cfg.IsHusonymCloud,
+			IsHusonymCloud: false,
 		},
 	}), nil
 }

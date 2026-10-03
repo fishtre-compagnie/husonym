@@ -26,7 +26,6 @@ func Test_parseWorkerApiKeys(t *testing.T) {
 
 // With authentication on, the worker has a key of its own, or the API does not start.
 func Test_requireWorkerApiKeys(t *testing.T) {
-	require.NoError(t, requireWorkerApiKeys([]string{"neo_wt_v1_1b4e28ba-2fa1-41d2-883f-0016d3cca427"}, false))
-	require.ErrorContains(t, requireWorkerApiKeys(nil, false), "HUSONYM_ALLOWED_WORKER_API_KEYS")
-	require.ErrorContains(t, requireWorkerApiKeys(nil, true), "HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS")
+	require.NoError(t, requireWorkerApiKeys([]string{"neo_wt_v1_1b4e28ba-2fa1-41d2-883f-0016d3cca427"}))
+	require.ErrorContains(t, requireWorkerApiKeys(nil), "HUSONYM_ALLOWED_WORKER_API_KEYS")
 }

@@ -292,25 +292,25 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 		})
 	})
 
-	t.Run("Cloud", func(t *testing.T) {
-		client := s.HusonymCloudAuthenticatedLicensedClients.Jobs(
+	t.Run("OSS-authenticated-licensed", func(t *testing.T) {
+		client := s.OSSAuthenticatedLicensedClients.Jobs(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(
 			ctx,
-			s.HusonymCloudAuthenticatedLicensedClients.Users(
+			s.OSSAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 		accountId := s.createPersonalAccount(
 			ctx,
-			s.HusonymCloudAuthenticatedLicensedClients.Users(
+			s.OSSAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 
 		srcconn := s.createPostgresConnection(
-			s.HusonymCloudAuthenticatedLicensedClients.Connections(
+			s.OSSAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -318,7 +318,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 			"test",
 		)
 		destconn := s.createPostgresConnection(
-			s.HusonymCloudAuthenticatedLicensedClients.Connections(
+			s.OSSAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -328,7 +328,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 
 		s.MockTemporalForCreateJob("test-id")
 		jobResp, err := client.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
-			JobName:   "cloud-testjob-1",
+			JobName:   "oss-testjob-1",
 			AccountId: accountId,
 			Mappings:  []*mgmtv1alpha1.JobMapping{},
 			Source: &mgmtv1alpha1.JobSource{
