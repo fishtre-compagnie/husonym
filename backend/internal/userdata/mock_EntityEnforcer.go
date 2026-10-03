@@ -7,7 +7,7 @@ package userdata
 import (
 	"context"
 
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	mock "github.com/stretchr/testify/mock"
 )
 

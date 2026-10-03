@@ -29,7 +29,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -75,13 +74,12 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
 	"github.com/spf13/cobra"
@@ -769,22 +767,19 @@ func newRbacClient(
 	db *husonymdb.HusonymDb,
 	logger *slog.Logger,
 ) (rbac.Interface, error) {
-	rbacenforcer, err := enforcer.NewActiveEnforcer(
-		ctx,
-		stdlib.OpenDBFromPool(pool),
-		"husonym_api.casbin_rule",
-	)
+	client, err := rbac.New(ctx, pool, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to load the role assignments: %w", err)
 	}
-	if err := rbacenforcer.LoadPolicy(); err != nil {
-		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
+	// An account whose members have no role gets its admins here. The API starts without it:
+	// those accounts stay as they are until the next start, and every other one is served.
+	granted, err := client.GrantAdminWhereNoRole(ctx, rbac.NewAccounts(querier, db.Db))
+	if err != nil {
+		logger.ErrorContext(ctx, "unable to give an admin to the accounts where nobody has a role", "error", err)
+	} else if granted > 0 {
+		logger.InfoContext(ctx, "made admin the members of the accounts where nobody had a role", "members", granted)
 	}
-	enforcedClient := rbac.New(rbacenforcer)
-	if err := enforcedClient.InitPolicies(ctx, rbac.NewRbacDb(querier, db.Db), logger); err != nil {
-		return nil, fmt.Errorf("unable to initialize rbac policies: %w", err)
-	}
-	return enforcedClient, nil
+	return client, nil
 }
 
 func getDbConfig() (*husonymdb.ConnectConfig, error) {

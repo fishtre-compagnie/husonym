@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,21 +30,8 @@ func Test_Parse_RefusesWhatIsNoPermission(t *testing.T) {
 // knows: the two lists are one list, written twice.
 func Test_EveryRbacActionHasAPermission(t *testing.T) {
 	var named []mgmtv1alpha1.Permission
-	for _, a := range []rbac.AccountAction{
-		rbac.AccountAction_Create, rbac.AccountAction_Delete, rbac.AccountAction_View, rbac.AccountAction_Edit,
-	} {
-		named = append(named, Account(a))
-	}
-	for _, a := range []rbac.ConnectionAction{
-		rbac.ConnectionAction_Create, rbac.ConnectionAction_Delete, rbac.ConnectionAction_View,
-		rbac.ConnectionAction_ViewSensitive, rbac.ConnectionAction_Edit,
-	} {
-		named = append(named, Connection(a))
-	}
-	for _, a := range []rbac.JobAction{
-		rbac.JobAction_Create, rbac.JobAction_Delete, rbac.JobAction_Execute, rbac.JobAction_View, rbac.JobAction_Edit,
-	} {
-		named = append(named, Job(a))
+	for _, action := range rbac.Actions() {
+		named = append(named, Of(action))
 	}
 	require.ElementsMatch(t, All(), named)
 }

@@ -35,16 +35,14 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 var (
@@ -101,7 +99,7 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isAuthEnabled := false
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
@@ -120,7 +118,7 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isAuthEnabled := true
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
@@ -141,7 +139,7 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isAuthEnabled := true
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
@@ -161,7 +159,7 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
 	isAuthEnabled := false
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
@@ -185,7 +183,7 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 	isAuthEnabled := false
 	maxJobs := 1
 	maxConnections := 2
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
@@ -387,23 +385,4 @@ func (s *HusonymApiTestClient) setupMux(
 	))
 
 	return mux, nil
-}
-
-func (s *HusonymApiTestClient) getEnforcedRbacClient(
-	ctx context.Context,
-	pgcontainer *tcpostgres.PostgresTestContainer,
-) (rbac.Interface, error) {
-	rbacenforcer, err := enforcer.NewActiveEnforcer(
-		ctx,
-		stdlib.OpenDBFromPool(pgcontainer.DB),
-		"husonym_api.casbin_rule",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create rbac enforcer: %w", err)
-	}
-	err = rbacenforcer.LoadPolicy()
-	if err != nil {
-		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
-	}
-	return rbac.New(rbacenforcer), nil
 }
