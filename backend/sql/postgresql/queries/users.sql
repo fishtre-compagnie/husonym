@@ -133,6 +133,16 @@ INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
 INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE u.id = sqlc.arg('userId') AND a.account_type = 1;
 
+-- Holds a user for the rest of the transaction, so that what is created once per user is
+-- decided by one transaction at a time: a second one waits here until the first is done.
+--
+-- NO KEY UPDATE, not UPDATE: a row that references the user (an account association, an
+-- API key) can still be written meanwhile, only another holder waits.
+-- name: LockUser :one
+SELECT id FROM husonym_api.users
+WHERE id = $1
+FOR NO KEY UPDATE;
+
 -- name: CreatePersonalAccount :one
 INSERT INTO husonym_api.accounts (
   account_type, account_slug, max_allowed_records

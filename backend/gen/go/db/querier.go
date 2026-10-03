@@ -137,6 +137,12 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// Holds a user for the rest of the transaction, so that what is created once per user is
+	// decided by one transaction at a time: a second one waits here until the first is done.
+	//
+	// NO KEY UPDATE, not UPDATE: a row that references the user (an account association, an
+	// API key) can still be written meanwhile, only another holder waits.
+	LockUser(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error)
 	RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error

@@ -871,6 +871,24 @@ func (q *Queries) IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAcco
 	return count, err
 }
 
+const lockUser = `-- name: LockUser :one
+SELECT id FROM husonym_api.users
+WHERE id = $1
+FOR NO KEY UPDATE
+`
+
+// Holds a user for the rest of the transaction, so that what is created once per user is
+// decided by one transaction at a time: a second one waits here until the first is done.
+//
+// NO KEY UPDATE, not UPDATE: a row that references the user (an account association, an
+// API key) can still be written meanwhile, only another holder waits.
+func (q *Queries) LockUser(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error) {
+	row := db.QueryRow(ctx, lockUser, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const removeAccountInvite = `-- name: RemoveAccountInvite :exec
 DELETE FROM husonym_api.account_invites
 WHERE id = $1

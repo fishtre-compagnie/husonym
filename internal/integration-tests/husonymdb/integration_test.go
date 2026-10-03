@@ -14,6 +14,7 @@ import (
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -322,7 +323,7 @@ func (s *IntegrationTestSuite) Test_SetPersonalAccount() {
 
 		// Neither call is cut short by the failure of the other: each one reports its own.
 		errgrp := new(errgroup.Group)
-		uids := make([]string, 2)
+		uids := make([]string, 8)
 		for i := range uids {
 			errgrp.Go(func() error {
 				resp, err := s.db.SetPersonalAccount(s.ctx, user.ID, &maxAllowed)
@@ -334,8 +335,26 @@ func (s *IntegrationTestSuite) Test_SetPersonalAccount() {
 			})
 		}
 
-		require.NoError(t, errgrp.Wait(), "two calls at once for the same user")
-		require.Equal(t, uids[0], uids[1])
+		require.NoError(t, errgrp.Wait(), "calls at once for the same user")
+		for _, uid := range uids {
+			require.Equal(t, uids[0], uid, "calls at once for the same user gave it several personal accounts")
+		}
+	})
+
+	t.Run("a user that does not exist is refused", func(t *testing.T) {
+		unknown, err := husonymdb.ToUuid(uuid.NewString())
+		require.NoError(t, err)
+		countAccounts := func() int {
+			var count int
+			require.NoError(t, s.pgcontainer.DB.QueryRow(s.ctx, "SELECT count(*) FROM husonym_api.accounts").Scan(&count))
+			return count
+		}
+		before := countAccounts()
+
+		resp, err := s.db.SetPersonalAccount(s.ctx, unknown, nil)
+		requireErrResp(t, resp, err)
+		require.True(t, husonymerrors.IsNotFound(err), "refused for another reason: %v", err)
+		require.Equal(t, before, countAccounts(), "an account was left without a user")
 	})
 }
 
