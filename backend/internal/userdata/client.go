@@ -9,9 +9,9 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
 type UserServiceClient interface {

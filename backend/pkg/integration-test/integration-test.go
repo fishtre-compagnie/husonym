@@ -39,6 +39,9 @@ type Mocks struct {
 	Prometheusclient       *promapiv1mock.MockAPI
 	Presidio               Presidiomocks
 	Slackclient            *ee_slack.MockInterface
+	// The license of the OSSAuthenticatedExpiringClients mode only. It starts valid; a
+	// test that changes it sets it back to valid in t.Cleanup.
+	ExpiringLicense *testutil.FakeEELicense
 }
 
 type Presidiomocks struct {
@@ -60,6 +63,9 @@ type HusonymApiTestClient struct {
 	OSSUnauthenticatedLicensedClients *HusonymClients
 	// OSS, Authenticated, Licensed
 	OSSAuthenticatedLicensedClients *HusonymClients
+	// OSS, Authenticated, Licensed with a license of its own (Mocks.ExpiringLicense) that
+	// a test can make invalid
+	OSSAuthenticatedExpiringClients *HusonymClients
 	// OSS, Unauthenticated, Unlicensed
 	OSSUnauthenticatedUnlicensedClients *HusonymClients
 	// OSS, Unauthenticated, Licensed with small usage caps — for exercising limit
@@ -149,6 +155,15 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceAuthenticatedLicensedPostfix, ossAuthLicensedMux),
 	)
 
+	ossAuthExpiringMux, err := s.setupOssExpiringAuthMux(ctx, pgcontainer, logger)
+	if err != nil {
+		return fmt.Errorf("unable to setup oss authenticated expiring mux: %w", err)
+	}
+	rootmux.Handle(
+		openSourceAuthenticatedExpiringPostfix+"/",
+		http.StripPrefix(openSourceAuthenticatedExpiringPostfix, ossAuthExpiringMux),
+	)
+
 	ossUnauthUnlicensedMux, err := s.setupOssUnlicensedMux(pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup oss unauthenticated unlicensed mux: %w", err)
@@ -178,6 +193,9 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	)
 	s.OSSAuthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceAuthenticatedLicensedPostfix,
+	)
+	s.OSSAuthenticatedExpiringClients = newHusonymClients(
+		s.httpsrv.URL + openSourceAuthenticatedExpiringPostfix,
 	)
 	s.OSSUnauthenticatedUnlicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedUnlicensedPostfix,

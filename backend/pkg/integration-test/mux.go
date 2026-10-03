@@ -34,7 +34,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
@@ -42,6 +41,7 @@ import (
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -86,6 +86,8 @@ const (
 	openSourceUnauthenticatedLicensedPostfix = "/oss-unauthenticated-licensed"
 	// OSS, Authenticated, Licensed
 	openSourceAuthenticatedLicensedPostfix = "/oss-authenticated-licensed"
+	// OSS, Authenticated, Licensed with a license of its own that a test can make invalid
+	openSourceAuthenticatedExpiringPostfix = "/oss-authenticated-expiring"
 	// OSS, Unauthenticated, Unlicensed
 	openSourceUnauthenticatedUnlicensedPostfix = "/oss-unauthenticated-unlicensed"
 	// OSS, Unauthenticated, Licensed with usage caps deliberately small enough for a test
@@ -110,7 +112,7 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 		isLicensed,
 		enforcedRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(testutil.WithIsValid()),
 	)
 }
 
@@ -131,7 +133,31 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 		isLicensed,
 		enforcedRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(testutil.WithIsValid()),
+	)
+}
+
+// Licensed and authenticated like setupOssLicensedAuthMux, but with a license of its own
+// so a test can make it invalid without touching the other modes. It starts valid.
+func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
+	ctx context.Context,
+	pgcontainer *tcpostgres.PostgresTestContainer,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	isLicensed := true
+	isAuthEnabled := true
+	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
+	s.Mocks.ExpiringLicense = testutil.NewFakeEELicense(testutil.WithIsValid())
+	return s.setupMux(
+		pgcontainer,
+		isAuthEnabled,
+		isLicensed,
+		enforcedRbacClient,
+		logger,
+		s.Mocks.ExpiringLicense,
 	)
 }
 
@@ -148,7 +174,7 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 		isLicensed,
 		permissiveRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(),
 	)
 }
 
@@ -169,11 +195,14 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 		isLicensed,
 		rbac.NewAllowAllClient(),
 		logger,
-		&license.Limits{
-			MaxJobs:                &maxJobs,
-			MaxConnections:         &maxConnections,
-			AllowedConnectionTypes: []string{"postgres"},
-		},
+		testutil.NewFakeEELicense(
+			testutil.WithIsValid(),
+			testutil.WithLimits(&license.Limits{
+				MaxJobs:                &maxJobs,
+				MaxConnections:         &maxConnections,
+				AllowedConnectionTypes: []string{"postgres"},
+			}),
+		),
 	)
 }
 
@@ -183,23 +212,13 @@ func (s *HusonymApiTestClient) setupMux(
 	isLicensed bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
-	// Usage caps to put on the fake license. Nil means uncapped, which is what every
-	// variant other than the limited one wants.
-	licenseLimits *license.Limits,
+	// The license every service of this mux reads. Each mode has its own, so that a test
+	// can change one without touching the others.
+	eelicense *testutil.FakeEELicense,
 ) (*http.ServeMux, error) {
 	isPresidioEnabled := isLicensed
 
 	maxAllowed := int64(10000)
-	var eelicense *testutil.FakeEELicense
-	if isLicensed {
-		opts := []testutil.Option{testutil.WithIsValid()}
-		if licenseLimits != nil {
-			opts = append(opts, testutil.WithLimits(licenseLimits))
-		}
-		eelicense = testutil.NewFakeEELicense(opts...)
-	} else {
-		eelicense = testutil.NewFakeEELicense()
-	}
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
 

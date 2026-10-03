@@ -11,10 +11,11 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 
 	"github.com/neilotoole/slogt/v2"
 	"github.com/testcontainers/testcontainers-go"
@@ -89,7 +90,10 @@ func GetTestLogger(t testing.TB) *slog.Logger {
 	return slogt.New(t, f)
 }
 
+// FakeEELicense is a license whose validity a test can flip while services read it from
+// other goroutines.
 type FakeEELicense struct {
+	mu      sync.RWMutex
 	isValid bool
 	limits  *license.Limits
 }
@@ -119,14 +123,23 @@ func NewFakeEELicense(opts ...Option) *FakeEELicense {
 }
 
 func (f *FakeEELicense) IsValid() bool {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	return f.isValid
+}
+
+// SetValid changes the validity the fake reports from now on. It is safe for concurrent use.
+func (f *FakeEELicense) SetValid(valid bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.isValid = valid
 }
 
 func (f *FakeEELicense) ExpiresAt() time.Time {
 	return time.Now().Add(time.Hour * 24 * 365)
 }
 
-// Limits satisfies license.LimitedLicense so the fake can exercise cap enforcement.
+// Limits lets the fake exercise cap enforcement.
 func (f *FakeEELicense) Limits() *license.Limits {
 	return f.limits
 }

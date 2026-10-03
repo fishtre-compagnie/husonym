@@ -76,13 +76,13 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
@@ -127,10 +127,9 @@ func serve(ctx context.Context) error {
 		slogger,
 	) // set default logger for methods that can't easily access the configured logger
 
-	eelicense, err := license.NewFromEnv()
-	if err != nil {
-		return fmt.Errorf("unable to initialize ee license from env: %w", err)
-	}
+	// Building the provider never fails: a license that cannot be read is logged and
+	// leaves the instance without one.
+	eelicense := license.NewProvider(license.SourceFromEnv(), slogger)
 	slogger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	cloudIdentity := cloudidentity.FromEnvironment()
@@ -147,12 +146,6 @@ func serve(ctx context.Context) error {
 		defer profiler.Stop() //nolint:errcheck
 	}
 
-	// A signed EE license, and nothing else. NewValidLicense() used to close this list;
-	// because the cascade stops at the first valid entry and that one is unconditionally
-	// valid, every gated feature was granted to everyone regardless of licensing. Do not
-	// reintroduce it here — it belongs in tests only.
-	cascadelicense := license.NewCascadeLicense(eelicense)
-
 	mux := http.NewServeMux()
 
 	services := []string{
@@ -166,7 +159,7 @@ func serve(ctx context.Context) error {
 		mgmtv1alpha1connect.AnonymizationServiceName,
 	}
 
-	if shouldEnableMetricsService() && !cascadelicense.IsValid() {
+	if shouldEnableMetricsService() && !eelicense.IsValid() {
 		return errors.New("metrics service is enabled but no license is present")
 	}
 
@@ -174,7 +167,7 @@ func serve(ctx context.Context) error {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
 	}
 
@@ -244,7 +237,7 @@ func serve(ctx context.Context) error {
 	}
 
 	var rbacclient rbac.Interface
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		slogger.Debug("rbac is enabled")
 		stddb := stdlib.OpenDBFromPool(pool)
 
@@ -398,7 +391,7 @@ func serve(ctx context.Context) error {
 		if err := requireWorkerApiKeys(workerApiKeys); err != nil {
 			return err
 		}
-		if !cascadelicense.IsValid() {
+		if !eelicense.IsValid() {
 			return errors.New("auth is enabled but no license is present")
 		}
 		// The issuers to accept: the deployment's own, always, plus whatever the accounts
@@ -530,7 +523,7 @@ func serve(ctx context.Context) error {
 		IsAuthEnabled:            isAuthEnabled,
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, cascadelicense)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -540,7 +533,7 @@ func serve(ctx context.Context) error {
 			connect.WithRecover(recoverHandler),
 		),
 	)
-	userdataclient := userdata.NewClient(useraccountService, rbacclient, cascadelicense)
+	userdataclient := userdata.NewClient(useraccountService, rbacclient, eelicense)
 
 	var accountSettingHandler mgmtv1alpha1connect.AccountSettingServiceHandler = mgmtv1alpha1connect.UnimplementedAccountSettingServiceHandler{}
 	if settingsEncryptor != nil {
@@ -571,7 +564,7 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		slogger.Debug("enabling account hooks service")
 
 		accountHookOptions := []accounthooks.Option{
@@ -686,7 +679,7 @@ func serve(ctx context.Context) error {
 	)
 
 	jobhookOpts := []jobhooks.Option{}
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		jobhookOpts = append(jobhookOpts, jobhooks.WithEnabled())
 	}
 
@@ -700,7 +693,7 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if runLogConfig != nil && runLogConfig.IsEnabled && !cascadelicense.IsValid() {
+	if runLogConfig != nil && runLogConfig.IsEnabled && !eelicense.IsValid() {
 		return errors.New("run logs are enabled but no license is present")
 	}
 
@@ -732,7 +725,7 @@ func serve(ctx context.Context) error {
 	var presAnalyzeClient presidioapi.AnalyzeInterface
 	var presAnonClient presidioapi.AnonymizeInterface
 	var presEntityClient presidioapi.EntityInterface
-	if cascadelicense.IsValid() {
+	if eelicense.IsValid() {
 		analyzeClient, ok, err := getPresidioAnalyzeClient()
 		if err != nil {
 			return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
@@ -752,13 +745,13 @@ func serve(ctx context.Context) error {
 		}
 	}
 
-	isPresidioEnabled := cascadelicense.IsValid() &&
+	isPresidioEnabled := eelicense.IsValid() &&
 		presAnalyzeClient != nil &&
 		presAnonClient != nil
 
 	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
 		IsPresidioEnabled: isPresidioEnabled,
-	}, db, presEntityClient, userdataclient, cascadelicense)
+	}, db, presEntityClient, userdataclient, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewTransformersServiceHandler(
 			transformerService,
@@ -773,7 +766,7 @@ func serve(ctx context.Context) error {
 		IsPresidioEnabled:       isPresidioEnabled,
 		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
 		IsAuthEnabled:           isAuthEnabled,
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presAnalyzeClient, presAnonClient, db, cascadelicense)
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presAnalyzeClient, presAnonClient, db, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,
