@@ -808,7 +808,7 @@ func (s *Service) SetUserRole(
 	err = s.rbacClient.SetRole(
 		ctx,
 		rbac.NewPgUser(requestingUserUuid),
-		rbac.NewAccount(req.Msg.GetAccountId()),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 		req.Msg.GetRole(),
 	)
 	if err != nil {

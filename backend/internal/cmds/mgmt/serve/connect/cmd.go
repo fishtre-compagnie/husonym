@@ -771,15 +771,25 @@ func newRbacClient(
 	if err != nil {
 		return nil, fmt.Errorf("unable to load the role assignments: %w", err)
 	}
-	// An account whose members have no role gets its admins here. The API starts without it:
-	// those accounts stay as they are until the next start, and every other one is served.
-	granted, err := client.GrantAdminWhereNoRole(ctx, rbac.NewAccounts(querier, db.Db))
+	grantAdminWhereNoRole(ctx, client, rbac.NewAccounts(querier, db.Db), logger)
+	return client, nil
+}
+
+// adminGranter gives an admin to the accounts where nobody holds a role.
+type adminGranter interface {
+	GrantAdminWhereNoRole(ctx context.Context, accounts rbac.Accounts) (int, error)
+}
+
+// grantAdminWhereNoRole gives its admins to an account whose members have no role. The API
+// starts whether or not it succeeds: should it fail, those accounts stay as they are until the
+// next start, and every other one is served.
+func grantAdminWhereNoRole(ctx context.Context, granter adminGranter, accounts rbac.Accounts, logger *slog.Logger) {
+	granted, err := granter.GrantAdminWhereNoRole(ctx, accounts)
 	if err != nil {
 		logger.ErrorContext(ctx, "unable to give an admin to the accounts where nobody has a role", "error", err)
 	} else if granted > 0 {
 		logger.InfoContext(ctx, "made admin the members of the accounts where nobody had a role", "members", granted)
 	}
-	return client, nil
 }
 
 func getDbConfig() (*husonymdb.ConnectConfig, error) {
