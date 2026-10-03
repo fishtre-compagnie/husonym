@@ -62,7 +62,19 @@ func (d *HusonymDb) SetUserByIdentity(
 	}
 
 	var userResp *db_queries.HusonymApiUser
-	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.Serializable}, func(dbtx BaseDBTX) error {
+	// Everything below reads, then writes what it did not find: a user and its association,
+	// the issuer of a row recorded before issuers were, the user of an association that
+	// lost its own. Two sign-ins at once of the same identity must not both find nothing,
+	// so the subject is held first, and the second waits until the first has committed.
+	//
+	// That is why the transaction is read committed: under a snapshot taken before the
+	// wait, the second would still find nothing once released, and could only fail -- which
+	// a serializable transaction did, on the first sign-in of an identity arriving through
+	// two requests at once.
+	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(dbtx BaseDBTX) error {
+		if err := d.Q.LockIdentityProviderSubject(ctx, dbtx, identity.Subject); err != nil {
+			return err
+		}
 		association, err := d.Q.GetUserAssociationByIdentity(ctx, dbtx, db_queries.GetUserAssociationByIdentityParams{
 			ProviderSub: identity.Subject,
 			ProviderIss: identity.Issuer,
@@ -133,10 +145,10 @@ func (d *HusonymDb) SetUserByIdentity(
 //
 // Two properties, and both are the point rather than caution:
 //
-//   - it runs OUTSIDE the serializable transaction above. Signing in is a read on the
-//     nominal path, and the application calls it on every page load: a write inside that
-//     transaction turns two tabs of the same user into a serialization failure, which
-//     nothing here retries.
+//   - it runs OUTSIDE the transaction above, which holds the subject. Signing in is a read
+//     on the nominal path, and the application calls it on every page load: a write inside
+//     that transaction would be one more thing two tabs of the same user wait on each
+//     other for.
 //   - it cannot fail the sign-in. The statement is a no-op unless something differs, so
 //     a failure here means the display identity is a sign-in out of date -- never a
 //     reason to refuse the user. Same rule as reading the profile in the first place.
@@ -167,13 +179,30 @@ func (d *HusonymDb) refreshIdentityProviderProfile(
 	}
 }
 
+// SetPersonalAccount finds or creates the personal account of a user.
+//
+// Nothing in the schema says a user has one personal account, so two calls at once must
+// not both find none and both create one. The user is held first: the second call waits
+// there until the first has committed, then finds the account the first created.
+//
+// That is why the transaction is read committed. Under a snapshot taken before the wait
+// -- repeatable read, serializable -- the second call would still see no account once
+// released, and could only fail; a serializable transaction did fail it, on the first
+// sign-in of a user arriving through two requests at once.
 func (d *HusonymDb) SetPersonalAccount(
 	ctx context.Context,
 	userId pgtype.UUID,
 	maxAllowedRecords *int64, // only used when personal account is created
 ) (*db_queries.HusonymApiAccount, error) {
 	var personalAccount *db_queries.HusonymApiAccount
-	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.Serializable}, func(dbtx BaseDBTX) error {
+	if err := d.WithTx(ctx, &pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(dbtx BaseDBTX) error {
+		if _, err := d.Q.LockUser(ctx, dbtx, userId); err != nil {
+			if IsNoRows(err) {
+				// No user, so nothing was held: going on would create an account unprotected.
+				return husonymerrors.NewNotFound("unable to set the personal account of a user that does not exist")
+			}
+			return err
+		}
 		resp, err := upsertPersonalAccount(ctx, d.Q, dbtx, &upsertPersonalAccountRequest{
 			UserId:            userId,
 			MaxAllowedRecords: maxAllowedRecords,

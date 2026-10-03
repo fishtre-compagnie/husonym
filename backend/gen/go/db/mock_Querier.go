@@ -6857,6 +6857,141 @@ func (_c *MockQuerier_IsUserInAccountApiKey_Call) RunAndReturn(run func(ctx cont
 	return _c
 }
 
+// LockIdentityProviderSubject provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error {
+	ret := _mock.Called(ctx, db, providersub)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockIdentityProviderSubject")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, string) error); ok {
+		r0 = returnFunc(ctx, db, providersub)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_LockIdentityProviderSubject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockIdentityProviderSubject'
+type MockQuerier_LockIdentityProviderSubject_Call struct {
+	*mock.Call
+}
+
+// LockIdentityProviderSubject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - providersub string
+func (_e *MockQuerier_Expecter) LockIdentityProviderSubject(ctx any, db any, providersub any) *MockQuerier_LockIdentityProviderSubject_Call {
+	return &MockQuerier_LockIdentityProviderSubject_Call{Call: _e.mock.On("LockIdentityProviderSubject", ctx, db, providersub)}
+}
+
+func (_c *MockQuerier_LockIdentityProviderSubject_Call) Run(run func(ctx context.Context, db DBTX, providersub string)) *MockQuerier_LockIdentityProviderSubject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockIdentityProviderSubject_Call) Return(err error) *MockQuerier_LockIdentityProviderSubject_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_LockIdentityProviderSubject_Call) RunAndReturn(run func(ctx context.Context, db DBTX, providersub string) error) *MockQuerier_LockIdentityProviderSubject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LockUser provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockUser(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error) {
+	ret := _mock.Called(ctx, db, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockUser")
+	}
+
+	var r0 pgtype.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) (pgtype.UUID, error)); ok {
+		return returnFunc(ctx, db, id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.UUID) pgtype.UUID); ok {
+		r0 = returnFunc(ctx, db, id)
+	} else {
+		r0 = ret.Get(0).(pgtype.UUID)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.UUID) error); ok {
+		r1 = returnFunc(ctx, db, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_LockUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockUser'
+type MockQuerier_LockUser_Call struct {
+	*mock.Call
+}
+
+// LockUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - id pgtype.UUID
+func (_e *MockQuerier_Expecter) LockUser(ctx any, db any, id any) *MockQuerier_LockUser_Call {
+	return &MockQuerier_LockUser_Call{Call: _e.mock.On("LockUser", ctx, db, id)}
+}
+
+func (_c *MockQuerier_LockUser_Call) Run(run func(ctx context.Context, db DBTX, id pgtype.UUID)) *MockQuerier_LockUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.UUID
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockUser_Call) Return(uUID pgtype.UUID, err error) *MockQuerier_LockUser_Call {
+	_c.Call.Return(uUID, err)
+	return _c
+}
+
+func (_c *MockQuerier_LockUser_Call) RunAndReturn(run func(ctx context.Context, db DBTX, id pgtype.UUID) (pgtype.UUID, error)) *MockQuerier_LockUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RemoveAccountApiKey provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error {
 	ret := _mock.Called(ctx, db, id)

@@ -14,6 +14,7 @@ import (
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -266,6 +267,27 @@ func (s *IntegrationTestSuite) Test_SetUserByIdentity_IdentityProfile() {
 		require.NoError(t, group.Wait(), "serialization failure on the sign-in path")
 	})
 
+	t.Run("concurrent first sign-ins of a new identity give one user", func(t *testing.T) {
+		identity := testIdentity("first-sign-in-concurrent")
+
+		group := new(errgroup.Group)
+		uids := make([]string, 8)
+		for i := range uids {
+			group.Go(func() error {
+				user, err := s.db.SetUserByIdentity(s.ctx, identity, nil)
+				if err != nil {
+					return err
+				}
+				uids[i] = husonymdb.UUIDString(user.ID)
+				return nil
+			})
+		}
+		require.NoError(t, group.Wait(), "first sign-ins at once of the same identity")
+		for _, uid := range uids {
+			require.Equal(t, uids[0], uid, "first sign-ins at once of the same identity gave it several users")
+		}
+	})
+
 	t.Run("no profile at all still signs the user in", func(t *testing.T) {
 		resp, err := s.db.SetUserByIdentity(s.ctx, testIdentity("profile-absent"), nil)
 		requireNoErrResp(t, resp, err)
@@ -320,27 +342,40 @@ func (s *IntegrationTestSuite) Test_SetPersonalAccount() {
 		user := s.setUser(t, s.ctx, "foo2")
 		maxAllowed := int64(100)
 
-		errgrp, errctx := errgroup.WithContext(s.ctx)
+		// Neither call is cut short by the failure of the other: each one reports its own.
+		errgrp := new(errgroup.Group)
+		uids := make([]string, 8)
+		for i := range uids {
+			errgrp.Go(func() error {
+				resp, err := s.db.SetPersonalAccount(s.ctx, user.ID, &maxAllowed)
+				if err != nil {
+					return err
+				}
+				uids[i] = husonymdb.UUIDString(resp.ID)
+				return nil
+			})
+		}
 
-		var uid1 string
-		errgrp.Go(func() error {
-			resp, err := s.db.SetPersonalAccount(errctx, user.ID, &maxAllowed)
-			assertNoErrResp(t, resp, err)
-			uid1 = husonymdb.UUIDString(resp.ID)
-			return nil
-		})
+		require.NoError(t, errgrp.Wait(), "calls at once for the same user")
+		for _, uid := range uids {
+			require.Equal(t, uids[0], uid, "calls at once for the same user gave it several personal accounts")
+		}
+	})
 
-		var uid2 string
-		errgrp.Go(func() error {
-			resp, err := s.db.SetPersonalAccount(errctx, user.ID, &maxAllowed)
-			assertNoErrResp(t, resp, err)
-			uid2 = husonymdb.UUIDString(resp.ID)
-			return nil
-		})
-
-		err := errgrp.Wait()
+	t.Run("a user that does not exist is refused", func(t *testing.T) {
+		unknown, err := husonymdb.ToUuid(uuid.NewString())
 		require.NoError(t, err)
-		require.Equal(t, uid1, uid2)
+		countAccounts := func() int {
+			var count int
+			require.NoError(t, s.pgcontainer.DB.QueryRow(s.ctx, "SELECT count(*) FROM husonym_api.accounts").Scan(&count))
+			return count
+		}
+		before := countAccounts()
+
+		resp, err := s.db.SetPersonalAccount(s.ctx, unknown, nil)
+		requireErrResp(t, resp, err)
+		require.True(t, husonymerrors.IsNotFound(err), "refused for another reason: %v", err)
+		require.Equal(t, before, countAccounts(), "an account was left without a user")
 	})
 }
 
