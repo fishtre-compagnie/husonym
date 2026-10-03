@@ -294,15 +294,19 @@ func (s *Service) SetAccountHookEnabled(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(getResp.Hook.AccountId), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
-	if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
-		return nil, err
-	}
 
 	if req.GetEnabled() == getResp.GetHook().GetEnabled() {
 		logger.Debug("hook is already in the desired state")
 		return &mgmtv1alpha1.SetAccountHookEnabledResponse{
 			Hook: getResp.GetHook(),
 		}, nil
+	}
+
+	// Turning a hook off is stopping, which never takes a license; arming it does.
+	if req.GetEnabled() {
+		if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
+			return nil, err
+		}
 	}
 
 	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())

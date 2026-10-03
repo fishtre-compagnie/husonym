@@ -389,8 +389,11 @@ func (s *Service) SetJobHookEnabled(
 			return nil, err
 		}
 	}
-	if err := verifyResp.user.EnforceLicense(ctx, husonymdb.UUIDString(verifyResp.AccountUuid)); err != nil {
-		return nil, err
+	// Turning a hook off is stopping, which never takes a license; arming it does.
+	if req.GetEnabled() {
+		if err := verifyResp.user.EnforceLicense(ctx, husonymdb.UUIDString(verifyResp.AccountUuid)); err != nil {
+			return nil, err
+		}
 	}
 
 	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())

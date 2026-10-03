@@ -110,12 +110,6 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 		}))
 		requireLicenseRefusal(t, err)
 
-		_, err = jobs.SetJobHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{
-			Id:      jobHook.GetId(),
-			Enabled: !jobHook.GetEnabled(),
-		}))
-		requireLicenseRefusal(t, err)
-
 		_, err = accountHooks.CreateAccountHook(ctx, connect.NewRequest(&mgmtv1alpha1.CreateAccountHookRequest{
 			AccountId: accountId,
 			Hook: &mgmtv1alpha1.NewAccountHook{
@@ -131,12 +125,6 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 			Name:   "renamed",
 			Events: accountHook.GetEvents(),
 			Config: accountHook.GetConfig(),
-		}))
-		requireLicenseRefusal(t, err)
-
-		_, err = accountHooks.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{
-			Id:      accountHook.GetId(),
-			Enabled: !accountHook.GetEnabled(),
 		}))
 		requireLicenseRefusal(t, err)
 
@@ -158,6 +146,31 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 		}))
 		require.Error(t, err)
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	})
+
+	t.Run("a hook can be turned off but not back on", func(t *testing.T) {
+		require.True(t, jobHook.GetEnabled())
+		require.True(t, accountHook.GetEnabled())
+
+		off, err := jobs.SetJobHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{
+			Id: jobHook.GetId(), Enabled: false,
+		}))
+		requireNoErrResp(t, off, err)
+		require.False(t, off.Msg.GetHook().GetEnabled())
+		_, err = jobs.SetJobHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{
+			Id: jobHook.GetId(), Enabled: true,
+		}))
+		requireLicenseRefusal(t, err)
+
+		accountOff, err := accountHooks.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{
+			Id: accountHook.GetId(), Enabled: false,
+		}))
+		requireNoErrResp(t, accountOff, err)
+		require.False(t, accountOff.Msg.GetHook().GetEnabled())
+		_, err = accountHooks.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{
+			Id: accountHook.GetId(), Enabled: true,
+		}))
+		requireLicenseRefusal(t, err)
 	})
 
 	t.Run("what was configured stays readable", func(t *testing.T) {
