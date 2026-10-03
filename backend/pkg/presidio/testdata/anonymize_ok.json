@@ -1,1 +1,0 @@
-{"text": "Tr\u00e8s cher J\u00f6rg M\u00fcller, \u00e9crivez \u00e0 <EMAIL> ou appelez le ********0188.", "items": [{"start": 55, "end": 67, "entity_type": "PHONE_NUMBER", "text": "********0188", "operator": "mask"}, {"start": 33, "end": 40, "entity_type": "EMAIL_ADDRESS", "text": "<EMAIL>", "operator": "replace"}]}

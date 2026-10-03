@@ -4,8 +4,10 @@ package presidiotest
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 )
@@ -13,7 +15,6 @@ import (
 var (
 	_ presidio.Analyzer     = (*Fake)(nil)
 	_ presidio.EntityLister = (*Fake)(nil)
-	_ presidio.Anonymizer   = (*Fake)(nil)
 )
 
 // Fake is a Presidio that answers what the test tells it to, and counts what it is asked. An
@@ -25,7 +26,6 @@ type Fake struct {
 	mu                sync.Mutex
 	analyze           func(context.Context, *presidio.AnalyzeRequest) ([]presidio.Finding, error)
 	supportedEntities func(context.Context, string) ([]string, error)
-	anonymize         func(context.Context, *presidio.AnonymizeRequest) (*presidio.AnonymizeResult, error)
 	calls             Calls
 }
 
@@ -33,7 +33,6 @@ type Fake struct {
 type Calls struct {
 	Analyze           int
 	SupportedEntities int
-	Anonymize         int
 }
 
 // New returns a Presidio no call is expected of.
@@ -41,15 +40,22 @@ func New(t testing.TB) *Fake {
 	return &Fake{t: t}
 }
 
-// Rewriting returns a Presidio that finds the given findings in every text, and rewrites every
-// text to anonymized.
-func Rewriting(t testing.TB, findings []presidio.Finding, anonymized string) *Fake {
+// Finding returns a Presidio that finds part, as an entity of the given type, in every text
+// that carries it, and nothing in the others. Like Presidio it counts positions in characters.
+func Finding(t testing.TB, entityType, part string) *Fake {
 	fake := New(t)
-	fake.OnAnalyze(func(context.Context, *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
-		return findings, nil
-	})
-	fake.OnAnonymize(func(context.Context, *presidio.AnonymizeRequest) (*presidio.AnonymizeResult, error) {
-		return &presidio.AnonymizeResult{Text: anonymized}, nil
+	fake.OnAnalyze(func(_ context.Context, req *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
+		at := strings.Index(req.Text, part)
+		if at < 0 {
+			return []presidio.Finding{}, nil
+		}
+		start := utf8.RuneCountInString(req.Text[:at])
+		return []presidio.Finding{{
+			EntityType: entityType,
+			Start:      start,
+			End:        start + utf8.RuneCountInString(part),
+			Score:      0.85,
+		}}, nil
 	})
 	return fake
 }
@@ -66,15 +72,6 @@ func (f *Fake) OnSupportedEntities(answer func(context.Context, string) ([]strin
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.supportedEntities = answer
-}
-
-// OnAnonymize sets what Anonymize answers from now on.
-func (f *Fake) OnAnonymize(
-	answer func(context.Context, *presidio.AnonymizeRequest) (*presidio.AnonymizeResult, error),
-) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.anonymize = answer
 }
 
 // Calls returns how many times each operation was called so far.
@@ -104,17 +101,6 @@ func (f *Fake) SupportedEntities(ctx context.Context, language string) ([]string
 		return nil, f.unexpected("SupportedEntities")
 	}
 	return answer(ctx, language)
-}
-
-func (f *Fake) Anonymize(ctx context.Context, req *presidio.AnonymizeRequest) (*presidio.AnonymizeResult, error) {
-	f.mu.Lock()
-	answer := f.anonymize
-	f.calls.Anonymize++
-	f.mu.Unlock()
-	if answer == nil {
-		return nil, f.unexpected("Anonymize")
-	}
-	return answer(ctx, req)
 }
 
 func (f *Fake) unexpected(operation string) error {

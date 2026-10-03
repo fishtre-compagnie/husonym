@@ -639,11 +639,10 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to initialize the presidio clients: %w", err)
 	}
-	presidioLevel, presidioSummary := presidioClients.summary()
-	slogger.Log(ctx, presidioLevel, presidioSummary)
-
-	// Transforming a text takes both services. The PII content scan only takes the analyzer.
-	isPresidioEnabled := presidioClients.transformsText()
+	slogger.Info(presidioClients.summary())
+	if notice, ok := unusedPresidioSettings(); ok {
+		slogger.Info(notice)
+	}
 
 	transformerService := v1alpha1_transformerservice.New(
 		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,
@@ -659,10 +658,9 @@ func serve(ctx context.Context) error {
 	)
 
 	anonymizationService := v1alpha1_anonymizationservice.New(&v1alpha1_anonymizationservice.Config{
-		IsPresidioEnabled:       isPresidioEnabled,
-		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
-		IsAuthEnabled:           isAuthEnabled,
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.analyzer, presidioClients.anonymizer, db, eelicense)
+		IsAuthEnabled: isAuthEnabled,
+		WorkerOnly:    workerOnly,
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,
@@ -684,11 +682,9 @@ func serve(ctx context.Context) error {
 		connectiondatabuilder,
 		presidioClients.analyzer,
 		v1alpha1_connectiondataservice.Transformers{
-			Client:            transformerService,
-			IsPresidioEnabled: isPresidioEnabled,
-			Analyze:           presidioClients.analyzer,
-			Anonymize:         presidioClients.anonymizer,
-			License:           eelicense,
+			Client:  transformerService,
+			PiiText: presidioClients.piiText,
+			License: eelicense,
 		},
 	)
 	api.Handle(

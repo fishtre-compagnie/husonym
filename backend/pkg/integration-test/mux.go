@@ -21,7 +21,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
 	v1alpha1_accountsettingservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-settings-service"
@@ -40,6 +39,7 @@ import (
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
@@ -292,20 +292,23 @@ func (s *HusonymApiTestClient) setupMux(
 		connectiondatabuilder,
 	)
 
-	var presAnalyzeClient presidio.Analyzer
-	var presAnonClient presidio.Anonymizer
+	// Free text is analyzed by the Presidio of the test, which answers what the test tells it
+	// to and fails it on any other call.
+	piiText, err := piitext.NewEngine(s.Mocks.Presidio, "")
+	if err != nil {
+		return nil, err
+	}
 
 	anonymizationService := v1alpha_anonymizationservice.New(
 		&v1alpha_anonymizationservice.Config{
-			IsPresidioEnabled: isPresidioEnabled,
-			IsAuthEnabled:     isAuthEnabled,
+			IsAuthEnabled: isAuthEnabled,
+			WorkerOnly:    userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		nil, // meter
 		userclient,
 		userService,
 		transformerService,
-		presAnalyzeClient,
-		presAnonClient,
+		piiText,
 		husonymDb,
 		eelicense,
 	)

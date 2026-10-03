@@ -13,7 +13,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +88,13 @@ func Test_transformValue(t *testing.T) {
 	require.Equal(t, "ALICE", out)
 }
 
+func engineOf(t *testing.T, analyzer presidio.Analyzer) *piitext.Engine {
+	t.Helper()
+	engine, err := piitext.NewEngine(analyzer, "")
+	require.NoError(t, err)
+	return engine
+}
+
 func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 	piiText := &mgmtv1alpha1.TransformerConfig{
 		Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
@@ -99,13 +108,11 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 		// No answer set on Presidio: a call to it fails the test.
 		presidioFake := presidiotest.New(t)
 		s := &Service{cfg: &Config{}, transformers: Transformers{
-			IsPresidioEnabled: true,
-			Analyze:           presidioFake,
-			Anonymize:         presidioFake,
-			License:           testutil.NewFakeEELicense(),
+			PiiText: engineOf(t, presidioFake),
+			License: testutil.NewFakeEELicense(),
 		}}
 
-		resp, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
 
 		// What a deployment without Presidio answers: the transformer cannot be built.
 		require.Nil(t, resp)
@@ -114,51 +121,90 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 	})
 
 	t.Run("under a valid license the transformer runs", func(t *testing.T) {
-		anonymized := "Hello, <REDACTED>!"
-		presidioFake := presidiotest.Rewriting(t, []presidio.Finding{{}}, anonymized)
+		anonymized := "Hello, <PERSON>!"
+		presidioFake := presidiotest.Finding(t, "PERSON", "John Doe")
 		s := &Service{cfg: &Config{}, transformers: Transformers{
-			IsPresidioEnabled: true,
-			Analyze:           presidioFake,
-			Anonymize:         presidioFake,
-			License:           testutil.NewFakeEELicense(testutil.WithIsValid()),
+			PiiText: engineOf(t, presidioFake),
+			License: testutil.NewFakeEELicense(testutil.WithIsValid()),
 		}}
 
-		resp, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
 
 		require.NoError(t, err)
 		require.Len(t, resp.GetValues(), 1)
 		require.Empty(t, resp.GetValues()[0].GetError())
 		require.Equal(t, anonymized, resp.GetValues()[0].GetOutput().GetValue())
-		require.Equal(t, presidiotest.Calls{Analyze: 1, Anonymize: 1}, presidioFake.Calls())
+		require.Equal(t, presidiotest.Calls{Analyze: 1}, presidioFake.Calls())
 	})
 
 	t.Run("the license is read on every preview", func(t *testing.T) {
 		eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
-		presidioFake := presidiotest.Rewriting(t, []presidio.Finding{{}}, "Hello, <REDACTED>!")
+		presidioFake := presidiotest.Finding(t, "PERSON", "John Doe")
 		s := &Service{cfg: &Config{}, transformers: Transformers{
-			IsPresidioEnabled: true,
-			Analyze:           presidioFake,
-			Anonymize:         presidioFake,
-			License:           eelicense,
+			PiiText: engineOf(t, presidioFake),
+			License: eelicense,
 		}}
 
-		_, err := s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		_, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
 		require.NoError(t, err)
 
 		eelicense.SetValid(false)
-		_, err = s.previewAnonymized(context.Background(), raws, piiText, nil, logger)
+		_, err = s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
 		require.ErrorContains(t, err, "TransformPiiText is not enabled")
 		// Presidio was called for the first preview only.
-		require.Equal(t, presidiotest.Calls{Analyze: 1, Anonymize: 1}, presidioFake.Calls())
+		require.Equal(t, presidiotest.Calls{Analyze: 1}, presidioFake.Calls())
+	})
+
+	t.Run("a user-defined transformer that stores it needs the license too", func(t *testing.T) {
+		resolver := transformer_executor.NewMockUserDefinedTransformerResolver(t)
+		resolver.On("GetUserDefinedTransformer", mock.Anything, "stored").Return(piiText, nil)
+		userDefined := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
+				UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: "stored"},
+			},
+		}
+		eelicense := testutil.NewFakeEELicense(testutil.WithIsValid())
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			PiiText: engineOf(t, presidiotest.Finding(t, "PERSON", "John Doe")),
+			License: eelicense,
+		}}
+
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, userDefined, resolver, logger)
+		require.NoError(t, err)
+		require.Equal(t, "Hello, <PERSON>!", resp.GetValues()[0].GetOutput().GetValue())
+
+		eelicense.SetValid(false)
+		_, err = s.previewAnonymized(context.Background(), "an-account", raws, userDefined, resolver, logger)
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+	})
+
+	t.Run("two accounts are shown two hashes for the same text, and one account the same", func(t *testing.T) {
+		algo := mgmtv1alpha1.PiiAnonymizer_Hash_HASH_TYPE_SHA256
+		hashing := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+				TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{DefaultAnonymizer: &mgmtv1alpha1.PiiAnonymizer{
+					Config: &mgmtv1alpha1.PiiAnonymizer_Hash_{Hash: &mgmtv1alpha1.PiiAnonymizer_Hash{Algo: &algo}},
+				}},
+			},
+		}
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			PiiText: engineOf(t, presidiotest.Finding(t, "PERSON", "John Doe")),
+			License: testutil.NewFakeEELicense(testutil.WithIsValid()),
+		}}
+		shown := func(accountId string) string {
+			resp, err := s.previewAnonymized(context.Background(), accountId, raws, hashing, nil, logger)
+			require.NoError(t, err)
+			return resp.GetValues()[0].GetOutput().GetValue()
+		}
+		require.Equal(t, shown("account-a"), shown("account-a"))
+		require.NotEqual(t, shown("account-a"), shown("account-b"))
 	})
 
 	t.Run("another transformer does not look at the license", func(t *testing.T) {
 		presidioFake := presidiotest.New(t)
 		s := &Service{cfg: &Config{}, transformers: Transformers{
-			IsPresidioEnabled: true,
-			Analyze:           presidioFake,
-			Anonymize:         presidioFake,
-			License:           testutil.NewFakeEELicense(),
+			PiiText: engineOf(t, presidioFake),
+			License: testutil.NewFakeEELicense(),
 		}}
 		passthrough := &mgmtv1alpha1.TransformerConfig{
 			Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{
@@ -166,7 +212,7 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 			},
 		}
 
-		resp, err := s.previewAnonymized(context.Background(), raws, passthrough, nil, logger)
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, passthrough, nil, logger)
 
 		require.NoError(t, err)
 		require.Len(t, resp.GetValues(), 1)

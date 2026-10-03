@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	// maxAnswerBytes is the largest success read: an anonymized text and the list of what was
-	// replaced in it. Past it the answer is not one to a text.
+	// maxAnswerBytes is the largest success read: the list of what was found in a text. Past
+	// it the answer is not one to a text.
 	maxAnswerBytes = 16 << 20
 	// maxRefusalBytes is how much of a refusal is read: its message is a sentence.
 	maxRefusalBytes = 64 << 10
 )
 
-// endpoint is one of the two services of Presidio, and how it is reached.
+// endpoint is a service of Presidio, and how it is reached.
 type endpoint struct {
 	base       *url.URL
 	httpClient *http.Client

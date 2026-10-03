@@ -86,7 +86,7 @@ func (s *Service) PreviewColumnTransformer(
 		return connect.NewResponse(s.previewJavascript(ctx, sampled, req.Msg.GetColumn(), raws, config)), nil
 	}
 
-	resp, err := s.previewAnonymized(ctx, raws, config, userDefinedTransformers, logger)
+	resp, err := s.previewAnonymized(ctx, connection.GetAccountId(), raws, config, userDefinedTransformers, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +95,13 @@ func (s *Service) PreviewColumnTransformer(
 
 // previewAnonymized runs the sampled values through the anonymizer AnonymizeMany uses.
 //
-// The transformers that call Presidio are handed to the anonymizer only under a valid license,
-// read here on every preview. Without one they are not enabled, exactly as when Presidio is not
-// configured; every other transformer runs the same either way.
+// TransformPiiText is enabled only under a valid license, read here on every preview. Without
+// one it is not enabled, exactly as when Presidio is not configured; every other transformer
+// runs the same either way. A preview belongs to no run: the hashes it shows are computed under
+// the key the process keeps for the account, and are not those a run writes.
 func (s *Service) previewAnonymized(
 	ctx context.Context,
+	accountId string,
 	raws []any,
 	config *mgmtv1alpha1.TransformerConfig,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
@@ -111,11 +113,10 @@ func (s *Service) previewAnonymized(
 			Expression:  ".value",
 			Transformer: config,
 		}}),
-		jsonanonymizer.WithConditionalAnonymizeConfig(
-			s.transformers.IsPresidioEnabled && s.transformers.License.IsValid(),
-			s.transformers.Analyze,
-			s.transformers.Anonymize,
-			s.cfg.PresidioDefaultLanguage,
+		jsonanonymizer.WithPiiText(
+			s.transformers.PiiText,
+			s.transformers.PiiText != nil && s.transformers.License.IsValid(),
+			s.transformers.PiiText.AccountHashKey(accountId),
 		),
 		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),
 		jsonanonymizer.WithLogger(logger),

@@ -17,6 +17,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	continuation_token "github.com/fishtre-compagnie/husonym/internal/continuation-token"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/consistency"
@@ -229,7 +230,10 @@ func (a *Activity) runAthanor(
 	// Mêmes capacités que le chemin Benthos : transformers définis par l'utilisateur
 	// et TransformPiiText (y compris depuis le JavaScript), via l'API liée au compte.
 	resolver := te.NewUserDefinedTransformerResolver(a.transformerclient, job.GetAccountId())
-	piiTextApi := transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId)
+	// The hashes TransformPiiText writes derive from the scope of the run, as every other
+	// deterministic output does: the same text has the same hash in every table of the scope.
+	piiTextApi := transformers.NewAccountAwareAnonymizationPiiTextApi(a.anonymizationClient, req.AccountId).
+		WithHashKey(piiTextHashKey(deriver))
 	env := &runner.TransformEnv{
 		Resolver:   resolver,
 		PiiTextApi: piiTextApi,
@@ -334,6 +338,15 @@ func consistencyDeriver(key string, job *mgmtv1alpha1.Job, jobRunID string) (*co
 		return nil, err
 	}
 	return consistency.New([]byte(key), scope), nil
+}
+
+// semanticTypePiiText is the semantic type the hashes of TransformPiiText derive their key under.
+const semanticTypePiiText = "pii_text"
+
+// piiTextHashKey is the key the hashes of TransformPiiText are computed under in the scope of a
+// run. It is what the worker hands the API with each text, and the only key that leaves it.
+func piiTextHashKey(deriver *consistency.Deriver) piitext.HashKey {
+	return deriver.HashKey(semanticTypePiiText)
 }
 
 // consistencyScope reads the job's consistency scope as the string a Deriver takes. Both engines

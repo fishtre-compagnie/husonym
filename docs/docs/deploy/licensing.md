@@ -54,7 +54,8 @@ valid license; **reading, stopping and deleting** never do. In practice, a valid
 is needed to create, configure and run jobs — the core of the product — as well as to
 create or modify job and account hooks, to create or modify Amazon S3 and Google Cloud
 Storage connections, to initialize the schema of a Microsoft SQL Server destination, and
-to use the bulk anonymization call and the PII text transformer. Your license may also
+to use the bulk anonymization call and the PII text transformer — whether it is mapped
+directly, stored in a user-defined transformer or called from a script. Your license may also
 restrict which connection types you can create (see [Usage limits](#usage-limits)).
 
 Husonym itself does not depend on the license to start. Authentication, run logs and

@@ -84,19 +84,10 @@ func analyzerAt(t *testing.T, url string) *AnalyzerClient {
 	return client
 }
 
-func anonymizerAt(t *testing.T, url string) *AnonymizerClient {
-	t.Helper()
-	client, err := NewAnonymizerClient(url, &http.Client{})
-	require.NoError(t, err)
-	return client
-}
-
-// operations runs each of the three operations against one base URL, with a valid request.
+// operations runs each of the two operations against one base URL, with a valid request.
 func operations(t *testing.T, url string, httpClient *http.Client) map[string]func(context.Context) error {
 	t.Helper()
 	analyzer, err := NewAnalyzerClient(url, httpClient)
-	require.NoError(t, err)
-	anonymizer, err := NewAnonymizerClient(url, httpClient)
 	require.NoError(t, err)
 	return map[string]func(context.Context) error{
 		"analyze": func(ctx context.Context) error {
@@ -107,15 +98,11 @@ func operations(t *testing.T, url string, httpClient *http.Client) map[string]fu
 			_, err := analyzer.SupportedEntities(ctx, "en")
 			return err
 		},
-		"anonymize": func(ctx context.Context) error {
-			_, err := anonymizer.Anonymize(ctx, &AnonymizeRequest{Text: "x"})
-			return err
-		},
 	}
 }
 
 // A Presidio that answers and does not do what was asked says why: its status and its message
-// reach the caller, the same way for the three operations.
+// reach the caller, the same way for both operations.
 func TestRefusal_CarriesStatusAndMessage(t *testing.T) {
 	answers := map[string]struct {
 		status  int
@@ -129,11 +116,9 @@ func TestRefusal_CarriesStatusAndMessage(t *testing.T) {
 			http.StatusInternalServerError, recorded(t, "analyze_unsupported_language.json"),
 			"No matching recognizers were found to serve the request.",
 		},
-		"anonymizer with a bad operator": {
-			http.StatusUnprocessableEntity, recorded(t, "anonymize_invalid_operator.json"), "Invalid operator class 'nope'.",
-		},
-		"anonymizer without a body": {
-			http.StatusBadRequest, recorded(t, "anonymize_no_body.json"),
+		"a request the service cannot read": {
+			http.StatusBadRequest,
+			`{"error": "The browser (or proxy) sent a request that this server could not understand."}`,
 			"The browser (or proxy) sent a request that this server could not understand.",
 		},
 	}
@@ -195,7 +180,6 @@ func TestCallIsBounded(t *testing.T) {
 
 	t.Run("the client is built with its limit", func(t *testing.T) {
 		require.Equal(t, Timeout, analyzerAt(t, "http://presidio").endpoint.timeout)
-		require.Equal(t, Timeout, anonymizerAt(t, "http://presidio").endpoint.timeout)
 	})
 
 	t.Run("the limit of the client", func(t *testing.T) {
@@ -209,11 +193,11 @@ func TestCallIsBounded(t *testing.T) {
 	})
 
 	t.Run("a shorter limit of the caller", func(t *testing.T) {
-		client := anonymizerAt(t, silent(t).URL)
+		client := analyzerAt(t, silent(t).URL)
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		defer cancel()
 		start := time.Now()
-		_, err := client.Anonymize(ctx, &AnonymizeRequest{Text: "x"})
+		_, err := client.Analyze(ctx, &AnalyzeRequest{Text: "x", Language: "en"})
 		require.ErrorIs(t, err, ErrNoAnswer)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 		require.Less(t, time.Since(start), 10*time.Second)
@@ -283,15 +267,11 @@ func TestNewClient_RefusesABadURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := NewAnalyzerClient(url, &http.Client{})
 			require.Error(t, err)
-			_, err = NewAnonymizerClient(url, &http.Client{})
-			require.Error(t, err)
 		})
 	}
 
 	t.Run("no HTTP client", func(t *testing.T) {
 		_, err := NewAnalyzerClient("http://presidio", nil)
-		require.Error(t, err)
-		_, err = NewAnonymizerClient("http://presidio", nil)
 		require.Error(t, err)
 	})
 
