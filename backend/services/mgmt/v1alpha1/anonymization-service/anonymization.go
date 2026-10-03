@@ -111,8 +111,9 @@ func (s *Service) AnonymizeMany(
 		jsonanonymizer.WithDefaultTransformers(req.Msg.DefaultTransformers),
 		jsonanonymizer.WithHaltOnFailure(req.Msg.HaltOnFailure),
 		// The license was read above, for the whole request. The values of a bulk request
-		// belong to no run: their hashes are computed under the key of the process.
-		jsonanonymizer.WithPiiText(s.piiText, true, nil),
+		// belong to no run: their hashes are computed under the key the process keeps for
+		// the account.
+		jsonanonymizer.WithPiiText(s.piiText, true, s.piiText.AccountHashKey(req.Msg.GetAccountId())),
 		jsonanonymizer.WithUserDefinedTransformerResolver(
 			transformer_executor.NewUserDefinedTransformerResolver(s.transformerClient, req.Msg.GetAccountId()),
 		),
@@ -217,6 +218,10 @@ func (s *Service) AnonymizeSingle(
 	hashKey, err := s.runHashKey(user, req.Header())
 	if err != nil {
 		return nil, err
+	}
+	if hashKey == nil {
+		// No run: the key the process keeps for the account.
+		hashKey = s.piiText.AccountHashKey(req.Msg.GetAccountId())
 	}
 
 	requestedCount := uint64(len(req.Msg.InputData))
@@ -325,7 +330,7 @@ func getTraceID(ctx context.Context) string {
 // TransformPiiText are computed: the same text then has the same hash in every table of the
 // run's consistency scope. Only the worker hands one, so the header counts from the worker
 // alone: from any other caller it is not read at all, and the hashes are computed under the
-// key of the process, as for a request that carries none.
+// key the process keeps for the account, as for a request that carries none.
 func (s *Service) runHashKey(user *userdata.User, header http.Header) (*piitext.HashKey, error) {
 	encoded := header.Get(piitext.HashKeyHeader)
 	if encoded == "" || s.cfg.WorkerOnly.Allow(user) != nil {

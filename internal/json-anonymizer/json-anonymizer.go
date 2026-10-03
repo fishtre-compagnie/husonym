@@ -115,8 +115,9 @@ func WithUserDefinedTransformerResolver(resolver transformer_executor.UserDefine
 // Presidio analyzer — the transformer is not enabled, and a mapping that asks for it fails to
 // build.
 //
-// hashKey is the key of the consistency scope the values belong to, nil when they belong to
-// none: the hashes are then computed under the key of the process.
+// hashKey is the key the hashes are computed under: the one of the consistency scope the values
+// belong to, or, when they belong to none, the one the engine keeps for their account
+// (Engine.AccountHashKey).
 func WithPiiText(engine *piitext.Engine, licensed bool, hashKey *piitext.HashKey) Option {
 	return func(ja *JsonAnonymizer) {
 		if engine != nil && licensed {

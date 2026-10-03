@@ -86,7 +86,7 @@ func (s *Service) PreviewColumnTransformer(
 		return connect.NewResponse(s.previewJavascript(ctx, sampled, req.Msg.GetColumn(), raws, config)), nil
 	}
 
-	resp, err := s.previewAnonymized(ctx, raws, config, userDefinedTransformers, logger)
+	resp, err := s.previewAnonymized(ctx, connection.GetAccountId(), raws, config, userDefinedTransformers, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +98,10 @@ func (s *Service) PreviewColumnTransformer(
 // TransformPiiText is enabled only under a valid license, read here on every preview. Without
 // one it is not enabled, exactly as when Presidio is not configured; every other transformer
 // runs the same either way. A preview belongs to no run: the hashes it shows are computed under
-// the key of the process, and are not those a run writes.
+// the key the process keeps for the account, and are not those a run writes.
 func (s *Service) previewAnonymized(
 	ctx context.Context,
+	accountId string,
 	raws []any,
 	config *mgmtv1alpha1.TransformerConfig,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
@@ -115,7 +116,7 @@ func (s *Service) previewAnonymized(
 		jsonanonymizer.WithPiiText(
 			s.transformers.PiiText,
 			s.transformers.PiiText != nil && s.transformers.License.IsValid(),
-			nil,
+			s.transformers.PiiText.AccountHashKey(accountId),
 		),
 		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),
 		jsonanonymizer.WithLogger(logger),
