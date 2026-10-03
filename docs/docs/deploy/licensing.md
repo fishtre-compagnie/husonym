@@ -34,8 +34,8 @@ and reported in the logs. The key already in place stays in force.
 The service always starts, whatever the license: absent, unreadable or expired. In the
 first two cases it logs the reason and runs without a license.
 
-The license is checked on every request and follows the clock. An expiry, like a renewal,
-takes effect without a restart.
+The license is checked on every request and follows the clock. An expiry never needs a
+restart. A renewal needs none only with `EE_LICENSE_FILE`.
 
 Verification happens entirely offline. Husonym never contacts us to check your license, so
 it works in an air-gapped environment, and we collect nothing about how you use it.
@@ -50,8 +50,10 @@ jobs are accepted but never execute.
 The rule is the same for every request: **creating, modifying and executing** require a
 valid license; **reading, stopping and deleting** never do. In practice, a valid license
 is needed to create, configure and run jobs — the core of the product — as well as to
-create or modify job and account hooks, to use Microsoft SQL Server connections, and to
-use PII detection and the anonymization calls that rely on it.
+create or modify job and account hooks, to create or modify Amazon S3 and Google Cloud
+Storage connections, to initialize the schema of a Microsoft SQL Server destination, and
+to use the bulk anonymization call and the PII text transformer. Your license may also
+restrict which connection types you can create (see [Usage limits](#usage-limits)).
 
 Husonym itself does not depend on the license to start. Authentication, run logs and
 metrics are available whether or not a license is installed, and the access rules (roles)
@@ -76,13 +78,17 @@ The grace period is normally 14 days, and your license may specify a different l
 Once the grace period ends, Husonym stops starting work. It does not lock you out and it
 never touches your data. The instance keeps starting and serving requests.
 
-**Refused** with the message `account does not have an active license`:
+**Refused:**
 
 - creating new jobs, and changing the configuration of existing ones
 - starting new job runs, manually or on a schedule
 - resuming a paused schedule
 - creating or modifying a hook, and turning a hook back on
-- PII detection, and the anonymization calls that need it
+- creating or modifying an Amazon S3 or Google Cloud Storage connection
+
+These are refused with the message `account does not have an active license`. Also
+refused, each with its own message: initializing the schema of a Microsoft SQL Server
+destination, the bulk anonymization call, and the PII text transformer.
 
 **Keeps working:**
 
