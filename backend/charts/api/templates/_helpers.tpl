@@ -145,10 +145,7 @@ AUTH_API_BASEURL: {{ .Values.auth.api.baseUrl }}
 {{- if and .Values.auth .Values.auth.api .Values.auth.api.provider }}
 AUTH_API_PROVIDER: {{ .Values.auth.api.provider }}
 {{- end }}
-HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
-{{- if .Values.husonymCloud.enabled }}
-HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS: {{ join "," .Values.husonymCloud.workerApiKeys }}
-{{- else if and .Values.auth .Values.auth.workerApiKeys }}
+{{- if and .Values.auth .Values.auth.workerApiKeys }}
 HUSONYM_ALLOWED_WORKER_API_KEYS: {{ join "," .Values.auth.workerApiKeys }}
 {{- end }}
 KUBERNETES_ENABLED: {{ .Values.kubernetes.enabled | default "true" | quote }}

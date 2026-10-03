@@ -30,7 +30,7 @@ serviceAccount:
   # -- Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment.
   annotations: {}
 
-# -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
+# -- Adds a special tag to the logging to determine what environment is running
 husonymEnv:
 
 # Currently does not do anything but will eventaully allow emitting otel metrics and traces
@@ -144,7 +144,7 @@ auth:
   audience:
   # -- The base url of the auth server
   baseUrl:
-  # -- Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). Not used on HusonymCloud, which has husonymCloud.workerApiKeys.
+  # -- Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account).
   workerApiKeys: []
   # -- Let an account declare an identity provider over plain http or at a private address. By default an account's provider must be reached over https, at an address on the internet, since this deployment fetches what it publishes. For a deployment whose providers live on its own network. Set the same on the app.
   accountIssuerAllowPrivate: false
@@ -192,12 +192,6 @@ nodeSelector: {}
 volumes: []
 # -- Volumes that will be mounted to the deployment
 volumeMounts: []
-
-husonymCloud:
-  # -- Whether or not this is HusonymCloud
-  enabled: false
-  # -- Worker API keys that have been allowlisted to for use
-  workerApiKeys: []
 
 # currently this is used for k8s pods runLogs but is deprecated and runLogs should be configured instead
 kubernetes:
@@ -259,5 +253,5 @@ ee:
   license:
 
 connections:
-  # -- Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud.
+  # -- Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker.
   allowServerIdentity: false
