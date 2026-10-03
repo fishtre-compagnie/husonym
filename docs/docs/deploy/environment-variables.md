@@ -80,9 +80,9 @@ These environment variables are loaded when running the `mgmt serve connect` com
 
 At startup the API logs which Presidio features are enabled.
 
-The analyzer is the only Presidio service the API calls: it rewrites what the analyzer finds by itself. `PRESIDIO_ANONYMIZER_URL` is not read. A deployment that sets it starts and runs as one that does not, whatever its value, and the API says so in one log line at startup; the variable and the anonymizer service can be removed.
+The analyzer is the only Presidio service the API calls: it rewrites what the analyzer finds by itself. `PRESIDIO_ANONYMIZER_URL` is not read. A deployment that sets it starts and runs as one that does not, whatever its value, and the API says so in one log line at startup. Husonym needs no Presidio anonymizer service.
 
-The hashes the [PII text transformer](/transformers/system#transform-pii-text) writes are keyed. In a run of the Athanor engine the key comes from the job's consistency scope (see ANONYMIZATION_CONSISTENCY_KEY, on the worker). For a direct call to the anonymization endpoints and for the preview of a column, the key is drawn when the API starts: those hashes are stable while the API runs, change after a restart, and differ between two replicas of the API.
+The hashes the [PII text transformer](/transformers/system#transform-pii-text) writes are keyed. In a run of the Athanor engine the key comes from the job's consistency scope (see ANONYMIZATION_CONSISTENCY_KEY, on the worker). For a direct call to the anonymization endpoints and for the preview of a column, the key is derived for each account from a key drawn when the API starts: those hashes are stable while the API runs, change after a restart, and differ between two replicas of the API.
 
 During a run, a value whose anonymization gets no answer from Presidio is retried for up to a minute before the run fails.
 
