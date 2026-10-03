@@ -12,11 +12,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -97,11 +98,11 @@ func Test_Activity_Webhook_Success(t *testing.T) {
 
 	val, err := env.ExecuteActivity(activity.ExecuteAccountHook, &ExecuteHookRequest{
 		HookId: hookId,
-		Event: accounthook_events.NewEvent_JobRunSucceeded(
-			accountId,
-			"test-job-id",
-			"test-run-id",
-		),
+		Event: runevents.Run{
+			AccountID: accountId,
+			JobID:     "test-job-id",
+			RunID:     "test-run-id",
+		}.Succeeded(time.Now()),
 	})
 	require.NoError(t, err)
 	res := &ExecuteHookResponse{}
@@ -191,7 +192,11 @@ func Test_Activity_SlackHookIsSkipped(t *testing.T) {
 	activity := New(accounthookclient)
 	env.RegisterActivity(activity)
 
-	event := accounthook_events.NewEvent_JobRunSucceeded(accountId, "test-job-id", "test-run-id")
+	event := runevents.Run{
+		AccountID: accountId,
+		JobID:     "test-job-id",
+		RunID:     "test-run-id",
+	}.Succeeded(time.Now())
 
 	val, err := env.ExecuteActivity(activity.ExecuteAccountHook, &ExecuteHookRequest{
 		HookId: slackHookId,
@@ -208,6 +213,32 @@ func Test_Activity_SlackHookIsSkipped(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, val.Get(&ExecuteHookResponse{}))
 	require.Equal(t, 1, webhookCalls)
+}
+
+// The body of a webhook and its signature are read by the receivers: they are fixed to
+// the byte.
+func Test_getPayload_Golden(t *testing.T) {
+	event := runevents.Run{
+		AccountID: "acc-replay",
+		JobID:     "job-replay",
+		RunID:     "datasync-before",
+	}.Succeeded(time.Date(2026, time.October, 3, 7, 51, 53, 58540394, time.UTC))
+
+	payload, err := getPayload(event)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		`{"event_name":"ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED","event_data":{"name":3,"accountId":"acc-replay","timestamp":"2026-10-03T07:51:53.058540394Z","jobRunSucceeded":{"jobId":"job-replay","jobRunId":"datasync-before"}}}`,
+		string(payload),
+	)
+
+	signature, err := generateHmac("test-secret", payload)
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		"1e4ce99f85f395e4e1a0a4e0415cb0e1afbe678b18b437dc2a9571134683af4e",
+		signature,
+	)
 }
 
 func startHTTPServer(tb testing.TB, h http.Handler) *httptest.Server {
