@@ -30,7 +30,7 @@ serviceAccount:
   # -- Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment.
   annotations: {}
 
-# -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
+# -- Adds a special tag to the logging to determine what environment is running
 husonymEnv:
 
 # otel Currently does not do anything but will eventaully allow emitting otel metrics and traces
@@ -122,10 +122,6 @@ ingress:
 tolerations: []
 # -- Any node selectors that should be applied to the deployment
 nodeSelector: {}
-
-husonymCloud:
-  # -- Whether or not this is HusonymCloud
-  enabled: false
 
 # -- Feature flag that enables the frontend to show the run logs on the Run [id] page.
 # only enable this if the backend has been configured to surface run logs. Requires EE License

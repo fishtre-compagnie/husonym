@@ -31,7 +31,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	retry_interceptor "github.com/fishtre-compagnie/husonym/internal/connectrpc/interceptors/retry"
-	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
@@ -90,12 +89,6 @@ func serve(ctx context.Context) error {
 		return fmt.Errorf("unable to initialize ee license from env: %w", err)
 	}
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
-
-	ncloudlicense, err := cloudlicense.NewFromEnv()
-	if err != nil {
-		return fmt.Errorf("unable to initialize husonym cloud license from env: %w", err)
-	}
-	logger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-worker", logger)
 	if err != nil {
@@ -329,10 +322,7 @@ func serve(ctx context.Context) error {
 
 	// See the matching comment in the backend: NewValidLicense() was short-circuiting the
 	// cascade and granting every gated feature unconditionally. Tests only.
-	cascadelicense := license.NewCascadeLicense(
-		ncloudlicense,
-		eelicense,
-	)
+	cascadelicense := license.NewCascadeLicense(eelicense)
 
 	husonymurl := shared.GetHusonymUrl()
 	httpclient := shared.GetHusonymHttpClient()
@@ -409,7 +399,7 @@ func serve(ctx context.Context) error {
 			"Athanor engine fail, and a phone number mapped under Benthos keeps neither its " +
 			"format nor its consistency")
 	}
-	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
+	cloudIdentity := cloudidentity.FromEnvironment()
 	engineConfig := sync_activity.EngineConfig{
 		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),

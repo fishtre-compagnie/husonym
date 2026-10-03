@@ -21,7 +21,6 @@ type Service struct {
 }
 
 type Config struct {
-	IsHusonymCloud bool
 	// CloudIdentity says whether a cloud connection may act with the server's own identity.
 	CloudIdentity cloudidentity.Policy
 }

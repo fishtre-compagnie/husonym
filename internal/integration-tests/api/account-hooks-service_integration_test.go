@@ -91,24 +91,23 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 	})
 
-	t.Run("Cloud", func(t *testing.T) {
-		client := s.HusonymCloudAuthenticatedLicensedClients.AccountHooks(
+	t.Run("OSS-authenticated-licensed", func(t *testing.T) {
+		client := s.OSSAuthenticatedLicensedClients.AccountHooks(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(
 			ctx,
-			s.HusonymCloudAuthenticatedLicensedClients.Users(
+			s.OSSAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 
 		t.Run("GetAccountHooks", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 			createdHook := s.createAccountHook_Webhook(
@@ -132,12 +131,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("GetAccountHook", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 			createdHook := s.createAccountHook_Webhook(
@@ -161,12 +159,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("CreateAccountHook", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 			s.createAccountHook_Webhook(
@@ -183,12 +180,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("DeleteAccountHook", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 
@@ -231,12 +227,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("IsAccountHookNameAvailable", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 
@@ -277,12 +272,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("SetAccountHookEnabled", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 
@@ -322,12 +316,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("GetActiveAccountHooksByEvent", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 			createdHook := s.createAccountHook_Webhook(
@@ -412,12 +405,11 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_GetActiveAccountHooksByE
 		})
 
 		t.Run("UpdateAccountHook", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
-				s.HusonymCloudAuthenticatedLicensedClients.Users(
+				s.OSSAuthenticatedLicensedClients.Users(
 					integrationtests_test.WithUserId(testAuthUserId),
 				),
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 			createdHook := s.createAccountHook_Webhook(
@@ -482,13 +474,13 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_Slack() {
 	t := s.T()
 	ctx := s.ctx
 
-	userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
+	userclient := s.OSSAuthenticatedLicensedClients.Users(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 	userId := s.setUser(ctx, userclient)
-	accountId := s.createBilledTeamAccount(ctx, userclient, uuid.NewString(), uuid.NewString())
+	accountId := s.createTeamAccount(ctx, userclient, uuid.NewString())
 
-	hookclient := s.HusonymCloudAuthenticatedLicensedClients.AccountHooks(
+	hookclient := s.OSSAuthenticatedLicensedClients.AccountHooks(
 		integrationtests_test.WithUserId(testAuthUserId),
 	)
 
@@ -594,10 +586,9 @@ func (s *IntegrationTestSuite) Test_AccountHooksService_Slack() {
 		})
 
 		t.Run("is not configured", func(t *testing.T) {
-			accountId := s.createBilledTeamAccount(
+			accountId := s.createTeamAccount(
 				ctx,
 				userclient,
-				uuid.NewString(),
 				uuid.NewString(),
 			)
 

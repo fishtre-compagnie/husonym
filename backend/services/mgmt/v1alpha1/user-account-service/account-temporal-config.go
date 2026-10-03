@@ -9,7 +9,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 )
 
@@ -17,9 +16,6 @@ func (s *Service) GetAccountTemporalConfig(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountTemporalConfigRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountTemporalConfigResponse], error) {
-	if s.cfg.IsHusonymCloud {
-		return nil, husonymerrors.NewNotImplemented("not enabled in Husonym Cloud")
-	}
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
 	if err != nil {
@@ -48,9 +44,6 @@ func (s *Service) SetAccountTemporalConfig(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.SetAccountTemporalConfigRequest],
 ) (*connect.Response[mgmtv1alpha1.SetAccountTemporalConfigResponse], error) {
-	if s.cfg.IsHusonymCloud {
-		return nil, husonymerrors.NewNotImplemented("not enabled in Husonym Cloud")
-	}
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
 	if err != nil {

@@ -126,7 +126,6 @@ AUTH_TRUST_HOST: {{ .Values.auth.trustHost | default "true" | quote }}
 {{- if .Values.auth.accountIssuerAllowPrivate }}
 AUTH_ACCOUNT_ISSUER_ALLOW_PRIVATE: "true"
 {{- end }}
-HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
 ENABLE_RUN_LOGS: {{ .Values.enableRunLogs | default "false" | quote }}
 {{- if and .Values.protometrics .Values.protometrics.enabled }}
 METRICS_SERVICE_ENABLED: {{ .Values.protometrics.enabled | default "false" | quote }}

@@ -22,7 +22,6 @@ type Service struct {
 }
 
 type Config struct {
-	IsHusonymCloud bool
 	// WorkerOnly guards what only the worker calls: the consistency key of an account.
 	WorkerOnly userdata.WorkerOnly
 

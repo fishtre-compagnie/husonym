@@ -31,8 +31,7 @@ A Helm chart for the Husonym App
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
 | husonymApi.url | string | `"http://husonym-api"` | The URL to the Husonym API instance |
-| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |

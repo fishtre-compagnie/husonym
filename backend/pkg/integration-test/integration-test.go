@@ -13,7 +13,6 @@ import (
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
@@ -38,7 +37,6 @@ type Mocks struct {
 	Authclient             *auth_client.MockInterface
 	Authmanagerclient      *authmgmt.MockInterface
 	Prometheusclient       *promapiv1mock.MockAPI
-	Billingclient          *billing.MockInterface
 	Presidio               Presidiomocks
 	Slackclient            *ee_slack.MockInterface
 }
@@ -67,8 +65,6 @@ type HusonymApiTestClient struct {
 	// OSS, Unauthenticated, Licensed with small usage caps — for exercising limit
 	// enforcement
 	OSSUnauthenticatedLimitedClients *HusonymClients
-	// NeoCloud, Authenticated, Licensed
-	HusonymCloudAuthenticatedLicensedClients *HusonymClients
 
 	Mocks *Mocks
 }
@@ -118,7 +114,6 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		Authclient:             auth_client.NewMockInterface(t),
 		Authmanagerclient:      authmgmt.NewMockInterface(t),
 		Prometheusclient:       promapiv1mock.NewMockAPI(t),
-		Billingclient:          billing.NewMockInterface(t),
 		Presidio: Presidiomocks{
 			Analyzer:   presidioapi.NewMockAnalyzeInterface(t),
 			Anonymizer: presidioapi.NewMockAnonymizeInterface(t),
@@ -172,15 +167,6 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceUnauthenticatedLimitedPostfix, ossLimitedMux),
 	)
 
-	neoCloudAuthdMux, err := s.setupNeoCloudMux(ctx, pgcontainer, logger)
-	if err != nil {
-		return fmt.Errorf("unable to setup neo cloud authenticated mux: %w", err)
-	}
-	rootmux.Handle(
-		neoCloudAuthenticatedLicensedPostfix+"/",
-		http.StripPrefix(neoCloudAuthenticatedLicensedPostfix, neoCloudAuthdMux),
-	)
-
 	s.httpsrv = startHTTPServer(t, rootmux)
 	rootmux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t.Logf("404 for URL: %s\n", r.URL.Path)
@@ -198,9 +184,6 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	)
 	s.OSSUnauthenticatedLimitedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedLimitedPostfix,
-	)
-	s.HusonymCloudAuthenticatedLicensedClients = newHusonymClients(
-		s.httpsrv.URL + neoCloudAuthenticatedLicensedPostfix,
 	)
 
 	return nil

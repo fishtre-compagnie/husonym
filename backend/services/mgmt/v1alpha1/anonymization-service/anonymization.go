@@ -185,17 +185,11 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 
-	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-	if err != nil {
+	if _, err := husonymdb.ToUuid(req.Msg.GetAccountId()); err != nil {
 		return nil, err
 	}
 
-	account, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-	if err != nil {
-		return nil, err
-	}
-	if !s.license.IsValid() ||
-		(s.cfg.IsHusonymCloud && account.AccountType == int16(husonymdb.AccountType_Personal)) {
+	if !s.license.IsValid() {
 		for _, mapping := range req.Msg.GetTransformerMappings() {
 			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
 				return nil, husonymerrors.NewForbidden(

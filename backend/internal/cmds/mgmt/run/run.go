@@ -1,7 +1,6 @@
 package run_cmd
 
 import (
-	run_stripe_usage_cmd "github.com/fishtre-compagnie/husonym/backend/internal/cmds/mgmt/run/stripe-usage"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +13,5 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(run_stripe_usage_cmd.NewCmd())
 	return cmd
 }

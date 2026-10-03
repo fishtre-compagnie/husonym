@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -76,9 +75,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/auth0"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
 	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
@@ -96,8 +93,6 @@ import (
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promconfig "github.com/prometheus/common/config"
-
-	"github.com/stripe/stripe-go/v86"
 )
 
 func NewCmd() *cobra.Command {
@@ -138,12 +133,7 @@ func serve(ctx context.Context) error {
 	}
 	slogger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
-	ncloudlicense, err := cloudlicense.NewFromEnv()
-	if err != nil {
-		return err
-	}
-	slogger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
-	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
+	cloudIdentity := cloudidentity.FromEnvironment()
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-api", slogger)
 	if err != nil {
@@ -157,14 +147,11 @@ func serve(ctx context.Context) error {
 		defer profiler.Stop() //nolint:errcheck
 	}
 
-	// A cloud license or a signed EE license, and nothing else. NewValidLicense() used to
-	// close this list; because the cascade stops at the first valid entry and that one is
-	// unconditionally valid, every gated feature was granted to everyone regardless of
-	// licensing. Do not reintroduce it here — it belongs in tests only.
-	cascadelicense := license.NewCascadeLicense(
-		ncloudlicense,
-		eelicense,
-	)
+	// A signed EE license, and nothing else. NewValidLicense() used to close this list;
+	// because the cascade stops at the first valid entry and that one is unconditionally
+	// valid, every gated feature was granted to everyone regardless of licensing. Do not
+	// reintroduce it here — it belongs in tests only.
+	cascadelicense := license.NewCascadeLicense(eelicense)
 
 	mux := http.NewServeMux()
 
@@ -399,17 +386,16 @@ func serve(ctx context.Context) error {
 	authSvcInterceptors = append(authSvcInterceptors, stdAuthInterceptors...)
 
 	isAuthEnabled := viper.GetBool("AUTH_ENABLED")
-	workerApiKeys, err := getAllowedWorkerApiKeys(ncloudlicense.IsValid())
+	workerApiKeys, err := getAllowedWorkerApiKeys()
 	if err != nil {
 		return err
 	}
 	workerOnly := userdata.WorkerOnly{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
+		IsAuthEnabled: isAuthEnabled,
 	}
 	if isAuthEnabled {
 		slogger.Debug("auth is enabled")
-		if err := requireWorkerApiKeys(workerApiKeys, ncloudlicense.IsValid()); err != nil {
+		if err := requireWorkerApiKeys(workerApiKeys); err != nil {
 			return err
 		}
 		if !cascadelicense.IsValid() {
@@ -540,26 +526,11 @@ func serve(ctx context.Context) error {
 		return err
 	}
 
-	stripeclient := getStripeApiClient()
-	var billingClient billing.Interface
-	if stripeclient != nil {
-		slogger.Debug("stripe client is enabled")
-		priceLookups, err := getStripePriceLookupMap()
-		if err != nil {
-			return err
-		}
-		billingClient = billing.New(stripeclient, &billing.Config{
-			AppBaseUrl:   getAppBaseUrl(),
-			PriceLookups: priceLookups,
-		})
-	}
-
 	useraccountService := v1alpha1_useraccountservice.New(&v1alpha1_useraccountservice.Config{
 		IsAuthEnabled:            isAuthEnabled,
-		IsHusonymCloud:           ncloudlicense.IsValid(),
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
-	}, db, temporalConfigProvider, authclient, authadminclient, billingClient, rbacclient, cascadelicense)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, cascadelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -575,7 +546,6 @@ func serve(ctx context.Context) error {
 	if settingsEncryptor != nil {
 		accountSettingHandler = v1alpha1_accountsettingservice.New(
 			&v1alpha1_accountsettingservice.Config{
-				IsHusonymCloud:              ncloudlicense.IsValid(),
 				WorkerOnly:                  workerOnly,
 				AcceptedSignatureAlgorithms: getAcceptedSignatureAlgorithms(),
 				IssuerPolicy:                getIssuerPolicy(),
@@ -697,7 +667,7 @@ func serve(ctx context.Context) error {
 	)
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsHusonymCloud: ncloudlicense.IsValid(), CloudIdentity: cloudIdentity},
+		&v1alpha1_connectionservice.Config{CloudIdentity: cloudIdentity},
 		db,
 		userdataclient,
 		mongoconnector,
@@ -735,10 +705,9 @@ func serve(ctx context.Context) error {
 	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
-		WorkerOnly:     workerOnly,
-		RunLogConfig:   runLogConfig,
+		IsAuthEnabled: isAuthEnabled,
+		WorkerOnly:    workerOnly,
+		RunLogConfig:  runLogConfig,
 	}
 	jobService := v1alpha1_jobservice.New(
 		jobServiceConfig,
@@ -804,7 +773,6 @@ func serve(ctx context.Context) error {
 		IsPresidioEnabled:       isPresidioEnabled,
 		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
 		IsAuthEnabled:           isAuthEnabled,
-		IsHusonymCloud:          ncloudlicense.IsValid(),
 	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presAnalyzeClient, presAnonClient, db, cascadelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
@@ -1213,19 +1181,11 @@ func getAuthApiProvider() string {
 	return viper.GetString("AUTH_API_PROVIDER")
 }
 
-// workerApiKeysVariable names where the keys a worker authenticates with are set.
-func workerApiKeysVariable(isHusonymCloud bool) string {
-	if isHusonymCloud {
-		return "HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS"
-	}
-	return "HUSONYM_ALLOWED_WORKER_API_KEYS"
-}
-
 // getAllowedWorkerApiKeys are the keys a worker authenticates with. A worker key opens only
 // what the worker calls, passes no RBAC, and is the only caller allowed to call what only the
 // worker calls. With authentication on, one is required.
-func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
-	variable := workerApiKeysVariable(isHusonymCloud)
+func getAllowedWorkerApiKeys() ([]string, error) {
+	const variable = "HUSONYM_ALLOWED_WORKER_API_KEYS"
 	keys, err := parseWorkerApiKeys(viper.GetString(variable))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", variable, err)
@@ -1236,11 +1196,10 @@ func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
 // requireWorkerApiKeys refuses an authenticated deployment whose worker has no key of its own.
 // An account key cannot be told from another one: were the worker to use one, any account key
 // allowed to edit jobs could write what a run executes.
-func requireWorkerApiKeys(keys []string, isHusonymCloud bool) error {
+func requireWorkerApiKeys(keys []string) error {
 	if len(keys) == 0 {
 		return fmt.Errorf(
-			"auth is enabled but no worker key is set (%s): give the worker a worker key of its own",
-			workerApiKeysVariable(isHusonymCloud),
+			"auth is enabled but no worker key is set (HUSONYM_ALLOWED_WORKER_API_KEYS): give the worker a worker key of its own",
 		)
 	}
 	return nil
@@ -1419,44 +1378,6 @@ func getDefaultMaxAllowedRecords() *int64 {
 		return nil
 	}
 	return &val
-}
-
-func getStripeApiClient() *stripe.Client {
-	apiKey := getStripeApiKey()
-	if apiKey != nil {
-		return stripe.NewClient(*apiKey)
-	}
-	return nil
-}
-
-func getStripeApiKey() *string {
-	value := viper.GetString("STRIPE_API_KEY")
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
-func getStripePriceLookupMap() (billing.PriceQuantity, error) {
-	value := viper.GetStringMapString("STRIPE_PRICE_LOOKUPS")
-
-	output := billing.PriceQuantity{}
-	for k, v := range value {
-		if v == "" {
-			output[k] = 0
-			continue
-		}
-		quantity, err := strconv.Atoi(v)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to parse value as int for billing quantity %q: %w",
-				v,
-				err,
-			)
-		}
-		output[k] = quantity
-	}
-	return output, nil
 }
 
 func getAppBaseUrl() string {

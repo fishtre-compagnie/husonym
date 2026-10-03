@@ -23,7 +23,6 @@ type Service struct {
 
 type Config struct {
 	IsAuthEnabled           bool
-	IsHusonymCloud          bool
 	IsPresidioEnabled       bool
 	PresidioDefaultLanguage *string
 }
