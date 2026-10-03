@@ -23,7 +23,7 @@ type Checker interface {
 	// never a refusal.
 	Allowed(ctx context.Context, user User, account Account, action Action) (bool, error)
 	// Enforce returns nothing when user may do action in account, and a permission error when
-	// not. A failure to decide is returned as it is.
+	// not. A failure to decide is the error Allowed gives, which is not a permission error.
 	Enforce(ctx context.Context, user User, account Account, action Action) error
 }
 
@@ -31,13 +31,19 @@ type Checker interface {
 type Interface interface {
 	Checker
 	// SetRole leaves user with that role in account, and no other. A role that is none is
-	// refused as an invalid argument, and changes nothing.
+	// refused as an invalid argument, and changes nothing. ErrRoleNotReadBack tells a role
+	// that is stored and not yet held on this instance.
 	SetRole(ctx context.Context, user User, account Account, role mgmtv1alpha1.AccountRole) error
 	// RemoveMember takes away every role user holds in account.
 	RemoveMember(ctx context.Context, user User, account Account) error
 	// Roles gives the role of each of the users that has one in account.
 	Roles(users []User, account Account) map[User]mgmtv1alpha1.AccountRole
 }
+
+// ErrRoleNotReadBack is what SetRole returns when the role is stored and the roles could not be
+// read again from the database afterwards. The change is made: the member holds the role on
+// this instance once the roles are read again, which they are every ten seconds.
+var ErrRoleNotReadBack = enforcer.ErrNotReadBack
 
 // Service is the access control of the API, on the role assignments its database stores.
 type Service struct {

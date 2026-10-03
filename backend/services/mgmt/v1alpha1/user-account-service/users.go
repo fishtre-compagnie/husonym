@@ -272,7 +272,7 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	}
 
 	newPersonalAccountId := husonymdb.UUIDString(resp.PersonalAccount.ID)
-	if err := s.rbacClient.SetRole(
+	if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(newPersonalAccountId),
@@ -310,7 +310,7 @@ func (s *Service) SetPersonalAccount(
 		return nil, err
 	}
 
-	if err := s.rbacClient.SetRole(
+	if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
@@ -398,7 +398,7 @@ func (s *Service) CreateTeamAccount(
 		return nil, err
 	}
 
-	if err := s.rbacClient.SetRole(
+	if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
@@ -744,7 +744,7 @@ func (s *Service) AcceptTeamAccountInvite(
 		return nil, err
 	}
 
-	if err := s.rbacClient.SetRole(
+	if err := s.setRole(
 		ctx,
 		rbac.NewUser(user.Msg.GetUserId()),
 		rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
@@ -805,10 +805,10 @@ func (s *Service) SetUserRole(
 		return nil, husonymerrors.NewBadRequest("provided user id is not in account")
 	}
 
-	err = s.rbacClient.SetRole(
+	err = s.setRole(
 		ctx,
 		rbac.NewPgUser(requestingUserUuid),
-		rbac.NewAccount(req.Msg.GetAccountId()),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 		req.Msg.GetRole(),
 	)
 	if err != nil {

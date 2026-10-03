@@ -17,16 +17,39 @@ import (
 )
 
 // memoryRows is the table of the rules, held in memory: each row is its kind followed by its
-// values, as the table stores them. It counts the writes it is asked, and can refuse removals.
+// values, as the table stores them. It counts the writes it is asked, and can refuse its writes
+// or its reads.
 type memoryRows struct {
 	mu     sync.Mutex
 	rows   [][]string
 	writes int
-	// failingRemovals fails every removal of a row.
-	failingRemovals error
+	// failingWrites fails every change of the rows, failingReads every read of them.
+	failingWrites, failingReads error
 }
 
 var _ enforcer.Rows = (*memoryRows)(nil)
+
+// fail makes the table refuse its writes, its reads, or neither.
+func (s *memoryRows) fail(writes, reads error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failingWrites, s.failingReads = writes, reads
+}
+
+// ReplaceAssignmentCtx leaves the person one role in the account, all at once.
+func (s *memoryRows) ReplaceAssignmentCtx(_ context.Context, user, role, account string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.writes++
+	if s.failingWrites != nil {
+		return s.failingWrites
+	}
+	s.rows = slices.DeleteFunc(s.rows, func(stored []string) bool {
+		return stored[0] == "g" && len(stored) == 4 && stored[1] == user && stored[3] == account
+	})
+	s.rows = append(s.rows, []string{"g", user, role, account})
+	return nil
+}
 
 func (s *memoryRows) stored() [][]string {
 	s.mu.Lock()
@@ -42,11 +65,35 @@ func (s *memoryRows) write(row ...string) {
 	s.rows = append(s.rows, row)
 }
 
+// erase takes a row out of the table without the service knowing.
+func (s *memoryRows) erase(row ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rows = slices.DeleteFunc(s.rows, func(stored []string) bool { return slices.Equal(stored, row) })
+}
+
+// storedFor gives the role assignments of a person, in every account.
+func (s *memoryRows) storedFor(user User) [][]string {
+	var rows [][]string
+	for _, row := range s.stored() {
+		if row[0] == "g" && row[1] == user.stored() {
+			rows = append(rows, row)
+		}
+	}
+	return rows
+}
+
 func (s *memoryRows) LoadPolicyCtx(context.Context, model.Model) error {
 	return errors.New("the whole table is never read")
 }
 
 func (s *memoryRows) LoadFilteredPolicyCtx(_ context.Context, m model.Model, filter any) error {
+	s.mu.Lock()
+	failing := s.failingReads
+	s.mu.Unlock()
+	if failing != nil {
+		return failing
+	}
 	kinds := filter.(*sqladapter.Filter).PType
 	for _, row := range s.stored() {
 		if !slices.Contains(kinds, row[0]) {
@@ -87,8 +134,8 @@ func (s *memoryRows) RemovePolicyCtx(_ context.Context, _, ptype string, rule []
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.writes++
-	if s.failingRemovals != nil {
-		return s.failingRemovals
+	if s.failingWrites != nil {
+		return s.failingWrites
 	}
 	row := append([]string{ptype}, rule...)
 	s.rows = slices.DeleteFunc(s.rows, func(stored []string) bool { return slices.Equal(stored, row) })
@@ -108,8 +155,8 @@ func (s *memoryRows) RemoveFilteredPolicyCtx(_ context.Context, _, ptype string,
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.writes++
-	if s.failingRemovals != nil {
-		return s.failingRemovals
+	if s.failingWrites != nil {
+		return s.failingWrites
 	}
 	s.rows = slices.DeleteFunc(s.rows, func(stored []string) bool {
 		if stored[0] != ptype {

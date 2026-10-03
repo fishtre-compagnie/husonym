@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -289,6 +290,119 @@ func TestRbacStoredRows(t *testing.T) {
 		require.Zero(t, granted)
 		require.Equal(t, stored, storedRows(ctx, t, db))
 		requireAccess(ctx, t, service, first, withoutRoles, allowedTo["account_admin"])
+	})
+
+	// A role assignment gives its role in the account it names, and that account is never a
+	// pattern: a row naming every account gives nothing anywhere.
+	t.Run("a role assigned to every account", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		everywhere, underAccounts, account := uuid.NewString(), uuid.NewString(), uuid.NewString()
+		storeRow(ctx, t, db, "g", "users/"+everywhere, "account_admin", "*")
+		storeRow(ctx, t, db, "g", "users/"+underAccounts, "account_admin", "accounts/*")
+
+		service, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		requireAccess(ctx, t, service, everywhere, account, nil)
+		requireAccess(ctx, t, service, underAccounts, account, nil)
+	})
+
+	storedFor := func(ctx context.Context, t *testing.T, userId string) []string {
+		t.Helper()
+		var roles []string
+		for _, row := range storedRows(ctx, t, db) {
+			if row.Kind == "g" && row.V0 == "users/"+userId {
+				roles = append(roles, row.V1)
+			}
+		}
+		return roles
+	}
+
+	// The role asked for is in the table once the change returns, even when the instance
+	// asked believed the member already held it and another instance had changed it since.
+	t.Run("a role this instance believed held", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		here, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		there, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		memberId, accountId := uuid.NewString(), uuid.NewString()
+		member, account := rbac.NewUser(memberId), rbac.NewAccount(accountId)
+
+		require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_DEVELOPER))
+		require.NoError(t, there.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER))
+		require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_DEVELOPER))
+
+		require.Equal(t, []string{"job_developer"}, storedFor(ctx, t, memberId))
+		requireAccess(ctx, t, here, memberId, accountId, allowedTo["job_developer"])
+	})
+
+	// Two instances that change the role of one member at once leave the member one of the two
+	// roles asked for: never both, never none.
+	t.Run("two instances changing the role of one member at once", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		here, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		there, err := rbac.New(ctx, db, testutil.GetTestLogger(t))
+		require.NoError(t, err)
+		account := rbac.NewAccount(uuid.NewString())
+
+		for range 100 {
+			memberId := uuid.NewString()
+			member := rbac.NewUser(memberId)
+			require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN))
+			var wg sync.WaitGroup
+			wg.Go(func() {
+				require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_EXECUTOR))
+			})
+			wg.Go(func() {
+				require.NoError(t, there.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER))
+			})
+			wg.Wait()
+
+			roles := storedFor(ctx, t, memberId)
+			require.Len(t, roles, 1, "the member holds %v", roles)
+			require.Contains(t, []string{"job_executor", "job_viewer"}, roles[0])
+		}
+	})
+
+	// The same holds for a member that had no role yet, on a database whose transactions take
+	// one snapshot for all their statements unless told otherwise: the change of a role reads
+	// what was committed before each of its statements, whatever the default of the server.
+	t.Run("two instances giving a first role at once, under repeatable read by default", func(t *testing.T) {
+		ctx := t.Context()
+		emptied(ctx, t)
+		repeatableRead := func() *rbac.Service {
+			config, err := pgxpool.ParseConfig(container.URL)
+			require.NoError(t, err)
+			config.ConnConfig.RuntimeParams["default_transaction_isolation"] = "repeatable read"
+			pool, err := pgxpool.NewWithConfig(ctx, config)
+			require.NoError(t, err)
+			t.Cleanup(pool.Close)
+			service, err := rbac.New(ctx, pool, testutil.GetTestLogger(t))
+			require.NoError(t, err)
+			return service
+		}
+		here, there := repeatableRead(), repeatableRead()
+		account := rbac.NewAccount(uuid.NewString())
+
+		for range 100 {
+			memberId := uuid.NewString()
+			member := rbac.NewUser(memberId)
+			var wg sync.WaitGroup
+			wg.Go(func() {
+				require.NoError(t, here.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_EXECUTOR))
+			})
+			wg.Go(func() {
+				require.NoError(t, there.SetRole(ctx, member, account, mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_JOB_VIEWER))
+			})
+			wg.Wait()
+
+			roles := storedFor(ctx, t, memberId)
+			require.Len(t, roles, 1, "the member holds %v", roles)
+		}
 	})
 
 	// Another instance of the API learns of a change of role when it reads the table again,

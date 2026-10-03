@@ -4,7 +4,7 @@ package enforcer
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -13,14 +13,9 @@ import (
 	"github.com/casbin/casbin/v3"
 	"github.com/casbin/casbin/v3/model"
 	"github.com/casbin/casbin/v3/persist"
-	"github.com/fishtre-compagnie/husonym/internal/rbac/sqladapter"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
-	// tableName is the table the role assignments are stored in.
-	tableName = "husonym_api.casbin_rule"
 	// reloadPeriod is how often the role assignments are read again from the table, which is
 	// how an instance of the API learns of the changes another one made.
 	reloadPeriod = 10 * time.Second
@@ -28,6 +23,10 @@ const (
 	// modelDocument says how a request (person, account, object, action) is decided: it is
 	// allowed when a rule grants the action on the object to a role the person holds in that
 	// account. A rule names its account, or every account with "*".
+	//
+	// The account of a role assignment is never a pattern: the account term is written with
+	// an equality, not with keyMatch, which would make the engine match the accounts of the
+	// assignments as patterns too, and walk every account at each check and each reload.
 	modelDocument = `
 [request_definition]
 r = sub, dom, obj, act
@@ -42,7 +41,7 @@ g = _, _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub, r.dom) && keyMatch(r.dom, p.dom) && keyMatch(r.obj, p.obj) && keyMatch(r.act, p.act)
+m = g(r.sub, p.sub, r.dom) && (p.dom == "*" || r.dom == p.dom) && keyMatch(r.obj, p.obj) && keyMatch(r.act, p.act)
 `
 )
 
@@ -54,41 +53,37 @@ m = g(r.sub, p.sub, r.dom) && keyMatch(r.dom, p.dom) && keyMatch(r.obj, p.obj) &
 // Checks wait for neither.
 type Enforcer struct {
 	inner *casbin.SyncedEnforcer
-	// reloading is held alone by a reload, and shared by the changes.
+	// reloading is held alone by a reload and by the replacement of a role, and shared by the
+	// other changes.
 	reloading sync.RWMutex
 	logger    *slog.Logger
+	// replaceAssignment leaves a person one role in an account, in the table, within the time
+	// a write is given.
+	replaceAssignment func(user, role, account string) error
 }
 
 // New builds the enforcer on the rows of the rule table and on the rules that are the same in
 // every account, loads the role assignments, and reads them again every ten seconds until ctx
 // ends. Each read and write of the rows is given a time limit, and ends with ctx.
 func New(ctx context.Context, rows Rows, fixedRules [][]string, logger *slog.Logger) (*Enforcer, error) {
-	e, err := newEnforcer(&boundedStore{
+	store := &boundedStore{
 		store:        &roleStore{Rows: rows, fixedRules: fixedRules, logger: logger},
 		ctx:          ctx,
 		readTimeout:  storeReadTimeout,
 		writeTimeout: storeWriteTimeout,
-	})
+	}
+	e, err := newEnforcer(store)
 	if err != nil {
 		return nil, err
 	}
 	e.logger = logger
+	e.replaceAssignment = func(user, role, account string) error {
+		return store.within(store.writeTimeout, func(ctx context.Context) error {
+			return rows.ReplaceAssignmentCtx(ctx, user, role, account)
+		})
+	}
 	go e.reloadEvery(ctx, reloadPeriod)
 	return e, nil
-}
-
-// OpenRows gives the rows of the rule table of the API database. It fails if the database does
-// not answer.
-func OpenRows(ctx context.Context, pool *pgxpool.Pool) (Rows, error) {
-	return openRows(ctx, stdlib.OpenDBFromPool(pool))
-}
-
-func openRows(ctx context.Context, db *sql.DB) (Rows, error) {
-	adapter, err := sqladapter.NewAdapterWithContext(ctx, db, "pgx", tableName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to reach the table of the access rules: %w", err)
-	}
-	return adapter, nil
 }
 
 // newEnforcer builds the enforcer on a store, and loads what it holds.
@@ -109,6 +104,32 @@ func (e *Enforcer) change(apply func() (bool, error)) (bool, error) {
 	e.reloading.RLock()
 	defer e.reloading.RUnlock()
 	return apply()
+}
+
+// ErrNotReadBack tells that a role was stored and that the roles could not be read again from
+// the table afterwards: the role is held on this instance once they are.
+var ErrNotReadBack = errors.New("the role is stored, and the roles could not be read again")
+
+// SetRoleForUserInDomain leaves a person that role in an account, and no other. The table is
+// changed first, in one transaction, whatever this instance holds in memory; the roles are then
+// read again from it, so that memory follows the table and never the reverse. Nothing else
+// changes the roles meanwhile on this instance.
+//
+// When it returns nil the table held that role for the person, and this instance holds what the
+// table held. When the table refuses the change, nothing has changed. When the change runs out
+// of time or loses the database while it is committed, the table may hold either the role held
+// before or the role asked for, never none; this instance keeps deciding from what it held, and
+// sees which at the next reload.
+func (e *Enforcer) SetRoleForUserInDomain(user, role, domain string) error {
+	e.reloading.Lock()
+	defer e.reloading.Unlock()
+	if err := e.replaceAssignment(user, role, domain); err != nil {
+		return err
+	}
+	if err := e.inner.LoadPolicy(); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotReadBack, err)
+	}
+	return nil
 }
 
 // Enforce says whether sub may do act on obj in dom, from the rules held in memory.

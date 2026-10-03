@@ -8,23 +8,18 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 )
 
-// SetRole gives the role first, then takes the others away: should it fail midway, the member
-// holds the role held before, with or without the new one, and never none.
+// SetRole replaces the role in the table all at once, whatever this instance believed the
+// member held, then reads the roles again: once it returns nil, the table held that role for
+// the member and no other, and this instance decides from it. Should the table refuse, the
+// member holds what they held. Two changes for one member, on this instance or on two, are
+// made one after the other: the member ends with the role of one of them, never with none.
 func (s *Service) SetRole(_ context.Context, user User, account Account, role mgmtv1alpha1.AccountRole) error {
 	word, ok := roleWord(role)
 	if !ok {
 		return husonymerrors.NewBadRequest(fmt.Sprintf("%d is not a role a member can be given", role))
 	}
-	if _, err := s.enforcer.AddRoleForUserInDomain(user.stored(), word, account.stored()); err != nil {
+	if err := s.enforcer.SetRoleForUserInDomain(user.stored(), word, account.stored()); err != nil {
 		return fmt.Errorf("unable to give the role %s: %w", word, err)
-	}
-	for _, other := range roles {
-		if other.word == word {
-			continue
-		}
-		if _, err := s.enforcer.DeleteRoleForUserInDomain(user.stored(), other.word, account.stored()); err != nil {
-			return fmt.Errorf("the role %s was given, but the role %s could not be taken away: %w", word, other.word, err)
-		}
 	}
 	return nil
 }
@@ -94,8 +89,14 @@ func (s *Service) GrantAdminWhereNoRole(ctx context.Context, accounts Accounts) 
 	if len(admins) == 0 {
 		return 0, nil
 	}
-	if _, err := s.enforcer.AddNamedGroupingPolicies("g", admins); err != nil {
+	given, err := s.enforcer.AddNamedGroupingPolicies("g", admins)
+	if err != nil {
 		return 0, fmt.Errorf("unable to give the role %s to the members of the accounts without roles: %w", roleAdmin, err)
+	}
+	if !given {
+		// One of them was given a role meanwhile: nothing was written, and the next start
+		// looks again.
+		return 0, nil
 	}
 	return len(admins), nil
 }
