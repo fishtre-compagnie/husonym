@@ -19,7 +19,7 @@ var ErrInvalidResponse = errors.New("presidio answered with an invalid response"
 // RefusedError is the error of a call Presidio answered and did not do. The next call may pass:
 // what is refused is this request, most often for what it carries.
 type RefusedError struct {
-	// Operation is what was asked: "analyze", "supported entities" or "anonymize".
+	// Operation is what was asked: "analyze" or "supported entities".
 	Operation string
 	// StatusCode is the HTTP status of the answer.
 	StatusCode int
