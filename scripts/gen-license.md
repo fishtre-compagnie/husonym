@@ -76,9 +76,3 @@ go run ./internal/license/cmd/husonym-license verify "$EE_LICENSE"
 
 Re-sending from `show` is preferable to issuing a replacement: two live licenses for one
 contract makes the registry ambiguous about what is actually in the field.
-
-### Cloud licenses
-
-`./scripts/gen-cust-license.sh` remains for the **cloud** license, which is signed with a
-different key (`husonym_cloud_ca.key`) and verified by `internal/ee/cloud-license`.
-`husonym-license` only mints EE licenses.

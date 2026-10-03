@@ -42,7 +42,8 @@ it works in an air-gapped environment, and we collect nothing about how you use 
 
 :::note
 The license must be set on the worker as well as the API. With it missing from the worker,
-jobs are accepted but never execute.
+job runs still execute, but their job hooks and the account-hook notifications are
+skipped, and initializing the schema of a Microsoft SQL Server destination fails.
 :::
 
 ## What the license covers

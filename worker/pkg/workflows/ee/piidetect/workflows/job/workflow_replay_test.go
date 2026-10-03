@@ -10,6 +10,12 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
+// About the JSON histories replayed here, kept under testdata: they were recorded on a
+// Temporal dev server started through the SDK testsuite, with the real workflows and stub
+// activities. The "-before" ones were recorded at the commit that precedes the introduction
+// of the "license-read-recorded" change, and guard the runs started before it. They can be
+// retired once no run started before that change can still be open.
+
 // The history was recorded under a valid license, its answer kept in the run. Replayed once
 // the license lapsed, the run follows the answer it recorded instead of refusing to run.
 func Test_PiiDetect_ReplaysTheLicenseAnswerOfTheRun(t *testing.T) {

@@ -204,7 +204,7 @@ kubernetes:
 
 # If runLogs are disabled, will fallback on the kubernetes configuration above for backwards compat
 runLogs:
-  # -- Enable this if planning to surface logs within Husonym API and UI (requires a valid license).
+  # -- Enable this if planning to surface logs within Husonym API and UI.
   enabled: false
   # -- Possible values: k8s-pods, loki
   type: k8s-pods

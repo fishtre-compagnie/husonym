@@ -25,7 +25,7 @@ func requireLicenseRefusal(t require.TestingT, err error) {
 
 // A license that lapses leaves an account able to look at and remove what it configured:
 // hooks included, which are registered whatever the license says. Creating, changing and
-// running are what the license pays for.
+// running are what needs a valid license.
 func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 	t := s.T()
 	ctx := s.ctx
@@ -133,7 +133,7 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 
 	s.Mocks.ExpiringLicense.SetValid(false)
 
-	t.Run("what the license pays for is refused", func(t *testing.T) {
+	t.Run("what needs a valid license is refused", func(t *testing.T) {
 		_, err := jobs.CreateJobHook(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobHookRequest{
 			JobId: job.GetId(),
 			Hook: &mgmtv1alpha1.NewJobHook{
