@@ -28,9 +28,12 @@ preconfigured environment.
 ### Running the stack
 
 The quickest way to get a working environment is the production compose file,
-which pulls published images and pre-seeds connections and jobs:
+which pulls published images and pre-seeds connections and jobs. It needs the version to
+run: set `HUSONYM_VERSION` to a released version (for example `0.2.1`) in the environment
+or in a `.env` file at the root.
 
 ```sh
+export HUSONYM_VERSION=0.2.1
 make compose/up     # start
 make compose/down   # stop
 ```
@@ -97,13 +100,13 @@ git tag -a v0.2.0 -m 'Husonym v0.2.0'
 git push origin v0.2.0
 ```
 
-The tag is what produces the `latest` image tag: `metadata-action` derives it from
-`type=semver`, so a push to `main` alone publishes `main` and `sha-…` tags but never
-`latest`. Since `compose.yml`, the README and the deploy docs all point at `:latest`,
+The tag is what produces the versioned image tags (`0.2.0` and `v0.2.0`, plus `0.2`, `0`
+and `latest`): `metadata-action` derives them from `type=semver`, so a push to `main`
+alone publishes `main` and `sha-…` tags but never a release tag. `compose.yml` and the
+deploy docs ask the operator to name a released version in `HUSONYM_VERSION`, so
 **a release is what makes those instructions true** — this is not a cosmetic step.
 
-Tagging is therefore outward-facing. It moves `latest`, which is the reference customers
-follow.
+Tagging is therefore outward-facing: the version you tag is the one customers pin.
 
 ### Release signing
 

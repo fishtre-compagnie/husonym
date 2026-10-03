@@ -19,10 +19,38 @@ We split out the Temporal compose file to make it easier to include in other pla
 
 **This main compose.yml file is made to easily try Husonym and should not be used as-is for production deployments.**
 
+### Choosing the version
+
+The three images (`app`, `api` and `worker`) always run the same version, and you choose it explicitly with the `HUSONYM_VERSION` variable. `compose.yml` refuses to start without it.
+
+Set it to a released version, written without the leading `v`. For example, for the release `v0.2.1`:
+
+```console
+HUSONYM_VERSION=0.2.1
+```
+
+Put this line in a `.env` file next to `compose.yml` (Compose reads it automatically), or export the variable in your environment.
+
+The list of released versions is on the [releases page](https://github.com/fishtre-compagnie/husonym/releases).
+
+### Starting
+
 To run this you can run one of the two following commands:
 
 ```console
 make compose/up
+docker compose up -d
+```
+
+### Moving to a newer version
+
+Migrations of the Husonym database run when the API starts, and they are not reversed when you go back to an older version.
+**Back up the Husonym database before every upgrade**: the `db` service (PostgreSQL, database `husonym`). Temporal has its own database, which this step does not cover.
+
+Then change the value of `HUSONYM_VERSION` and run:
+
+```console
+docker compose pull
 docker compose up -d
 ```
 
@@ -45,6 +73,8 @@ Husonym provides an auth friendly compose file that will stand up Husonym in aut
 make compose/auth/up
 docker compose -f compose.yml -f compose.auth.yml up -d
 ```
+
+Like the main `compose.yml`, these commands need `HUSONYM_VERSION` to be set, see [Choosing the version](#choosing-the-version).
 
 Keycloak comes default with two clients that allow the app and cli to login successfully.
 

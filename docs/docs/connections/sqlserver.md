@@ -38,12 +38,12 @@ We can change this around to enable the MS Sql Server compose.
 
 Note: If you wish to disable the `./compose/compose-db.yml`, you may, but you may want to also disable the `api-seed` and `temporal-seed` containers as those are set up to automatically seed and populate the test postgres databases.
 
-Afterwards, run `make compose/up` to stand up Husonym with two MS SQL Server containers that are available within the husonym docker network.
+Afterwards, run `make compose/up` (it needs `HUSONYM_VERSION` to be set, see [Choosing the version](/deploy/docker-compose#choosing-the-version)) to stand up Husonym with two MS SQL Server containers that are available within the husonym docker network.
 They are also both accessible via your laptop on ports `1433` and `1434`.
 
 You can also get away with just one if you wish to only stand up one MSSQL container as SQL Server is capable of database virtualization and is not required to have two physically separate containers for a basic sync.
 
-If you don't want to modify the compose, the compose command may be run directly with the MSSQL snippet layered on.
+If you don't want to modify the compose, the compose command may be run directly with the MSSQL snippet layered on (this also needs `HUSONYM_VERSION`).
 
 ```console
 docker compose -f compose.yml -f compose/compose-db-mssql.yml up -d

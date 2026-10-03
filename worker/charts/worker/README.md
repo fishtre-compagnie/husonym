@@ -31,7 +31,7 @@ A Helm chart for the Husonym Temporal Worker
 | husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/worker"` | The default image repository |
-| image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
+| image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
 | nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
