@@ -22,9 +22,6 @@ func TestFake_AnswersWhatItIsTold(t *testing.T) {
 	fake.OnAnalyze(func(_ context.Context, req *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
 		return []presidio.Finding{{EntityType: "PERSON", End: len(req.Text)}}, nil
 	})
-	fake.OnAnonymize(func(context.Context, *presidio.AnonymizeRequest) (*presidio.AnonymizeResult, error) {
-		return &presidio.AnonymizeResult{Text: "<PERSON>"}, nil
-	})
 	fake.OnSupportedEntities(func(_ context.Context, language string) ([]string, error) {
 		return []string{"PERSON", language}, nil
 	})
@@ -32,14 +29,11 @@ func TestFake_AnswersWhatItIsTold(t *testing.T) {
 	findings, err := fake.Analyze(context.Background(), &presidio.AnalyzeRequest{Text: "Jane"})
 	require.NoError(t, err)
 	require.Equal(t, []presidio.Finding{{EntityType: "PERSON", End: 4}}, findings)
-	result, err := fake.Anonymize(context.Background(), &presidio.AnonymizeRequest{Text: "Jane"})
-	require.NoError(t, err)
-	require.Equal(t, "<PERSON>", result.Text)
 	entities, err := fake.SupportedEntities(context.Background(), "fr")
 	require.NoError(t, err)
 	require.Equal(t, []string{"PERSON", "fr"}, entities)
 
-	require.Equal(t, Calls{Analyze: 1, Anonymize: 1, SupportedEntities: 1}, fake.Calls())
+	require.Equal(t, Calls{Analyze: 1, SupportedEntities: 1}, fake.Calls())
 }
 
 func TestFake_FailsTheTestOnACallItWasNotToldAbout(t *testing.T) {
@@ -48,10 +42,20 @@ func TestFake_FailsTheTestOnACallItWasNotToldAbout(t *testing.T) {
 
 	_, err := fake.Analyze(context.Background(), &presidio.AnalyzeRequest{})
 	require.Error(t, err)
-	_, err = fake.Anonymize(context.Background(), &presidio.AnonymizeRequest{})
-	require.Error(t, err)
 	_, err = fake.SupportedEntities(context.Background(), "en")
 	require.Error(t, err)
 
-	require.Equal(t, 3, recorder.messages)
+	require.Equal(t, 2, recorder.messages)
+}
+
+func TestFinding_CountsCharacters(t *testing.T) {
+	fake := Finding(t, "PERSON", "Zoé")
+
+	findings, err := fake.Analyze(context.Background(), &presidio.AnalyzeRequest{Text: "Très chère Zoé, bonjour"})
+	require.NoError(t, err)
+	require.Equal(t, []presidio.Finding{{EntityType: "PERSON", Start: 11, End: 14, Score: 0.85}}, findings)
+
+	findings, err = fake.Analyze(context.Background(), &presidio.AnalyzeRequest{Text: "nobody here"})
+	require.NoError(t, err)
+	require.Empty(t, findings)
 }

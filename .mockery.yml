@@ -85,9 +85,6 @@ packages:
       ConnectionDataBuilder: {}
       ConnectionDataService: {}
       SampleDataStream: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
-    interfaces:
-      HusonymOperatorApi: {}
   github.com/fishtre-compagnie/husonym/internal/encrypt/sym:
     interfaces:
       Interface: {}

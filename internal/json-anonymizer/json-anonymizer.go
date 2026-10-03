@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	transformer_executor "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/itchyny/gojq"
 )
@@ -28,16 +28,16 @@ type JsonAnonymizer struct {
 	compiledQuery              *gojq.Code
 	haltOnFailure              bool
 	skipPaths                  map[string]struct{}
-	anonymizeConfig            *anonymizeConfig
+	piiText                    *piiText
 
 	logger                  *slog.Logger
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver
 }
 
-type anonymizeConfig struct {
-	analyze         presidio.Analyzer
-	anonymize       presidio.Anonymizer
-	defaultLanguage *string
+// piiText is what TransformPiiText runs on, when it is enabled.
+type piiText struct {
+	engine  *piitext.Engine
+	hashKey *piitext.HashKey
 }
 
 // Option is a functional option for configuring the Anonymizer
@@ -65,7 +65,7 @@ func NewAnonymizer(ctx context.Context, opts ...Option) (*JsonAnonymizer, error)
 	a.transformerExecutors, err = initTransformerExecutors(
 		ctx,
 		a.transformerMappings,
-		a.anonymizeConfig,
+		a.piiText,
 		a.userDefinedTransformers,
 		a.logger,
 	)
@@ -78,7 +78,7 @@ func NewAnonymizer(ctx context.Context, opts ...Option) (*JsonAnonymizer, error)
 		a.defaultTransformerExecutor, err = initDefaultTransformerExecutors(
 			ctx,
 			a.defaultTransformers,
-			a.anonymizeConfig,
+			a.piiText,
 			a.userDefinedTransformers,
 			a.logger,
 		)
@@ -108,20 +108,19 @@ func WithUserDefinedTransformerResolver(resolver transformer_executor.UserDefine
 	}
 }
 
-// WithAnonymizeConfig sets the analyze and anonymize clients for use by the presidio transformers only if isEnabled is true
-func WithConditionalAnonymizeConfig(
-	isEnabled bool,
-	analyze presidio.Analyzer,
-	anonymize presidio.Anonymizer,
-	defaultLanguage *string,
-) Option {
+// WithPiiText enables TransformPiiText on the engine that anonymizes free text.
+//
+// licensed is the answer of the license for the request being served: the caller reads it and
+// says it here, every time. Without a license, or without an engine — a deployment with no
+// Presidio analyzer — the transformer is not enabled, and a mapping that asks for it fails to
+// build.
+//
+// hashKey is the key of the consistency scope the values belong to, nil when they belong to
+// none: the hashes are then computed under the key of the process.
+func WithPiiText(engine *piitext.Engine, licensed bool, hashKey *piitext.HashKey) Option {
 	return func(ja *JsonAnonymizer) {
-		if isEnabled && analyze != nil && anonymize != nil {
-			ja.anonymizeConfig = &anonymizeConfig{
-				analyze:         analyze,
-				anonymize:       anonymize,
-				defaultLanguage: defaultLanguage,
-			}
+		if engine != nil && licensed {
+			ja.piiText = &piiText{engine: engine, hashKey: hashKey}
 		}
 	}
 }
@@ -387,30 +386,31 @@ func (a *JsonAnonymizer) AnonymizeJSONObject(jsonStr string) (string, error) {
 	return string(processedJSON), nil
 }
 
-func initTransformerExecutors(
-	ctx context.Context,
-	transformerMappings []*mgmtv1alpha1.TransformerMapping,
-	anonymizeConfig *anonymizeConfig,
+// executorOptions are the options of every executor of an anonymizer.
+func executorOptions(
+	piiText *piiText,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
 	logger *slog.Logger,
-) ([]*transformer_executor.TransformerExecutor, error) {
-	executors := []*transformer_executor.TransformerExecutor{}
+) []transformer_executor.TransformerExecutorOption {
 	execOpts := []transformer_executor.TransformerExecutorOption{
 		transformer_executor.WithLogger(logger),
 		transformer_executor.WithUserDefinedTransformerResolver(userDefinedTransformers),
 	}
-	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
-		anonymizeConfig.anonymize != nil {
-		execOpts = append(
-			execOpts,
-			transformer_executor.WithTransformPiiTextConfig(
-				anonymizeConfig.analyze,
-				anonymizeConfig.anonymize,
-				newHusonymOperatorApi(execOpts),
-				anonymizeConfig.defaultLanguage,
-			),
-		)
+	if piiText != nil {
+		execOpts = append(execOpts, transformer_executor.WithPiiText(piiText.engine, piiText.hashKey))
 	}
+	return execOpts
+}
+
+func initTransformerExecutors(
+	ctx context.Context,
+	transformerMappings []*mgmtv1alpha1.TransformerMapping,
+	piiText *piiText,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
+	logger *slog.Logger,
+) ([]*transformer_executor.TransformerExecutor, error) {
+	executors := []*transformer_executor.TransformerExecutor{}
+	execOpts := executorOptions(piiText, userDefinedTransformers, logger)
 
 	for _, mapping := range transformerMappings {
 		executor, err := transformer_executor.InitializeTransformerByConfigType(
@@ -439,26 +439,11 @@ type DefaultExecutors struct {
 func initDefaultTransformerExecutors(
 	ctx context.Context,
 	defaultTransformer *mgmtv1alpha1.DefaultTransformersConfig,
-	anonymizeConfig *anonymizeConfig,
+	piiText *piiText,
 	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
 	logger *slog.Logger,
 ) (*DefaultExecutors, error) {
-	execOpts := []transformer_executor.TransformerExecutorOption{
-		transformer_executor.WithLogger(logger),
-		transformer_executor.WithUserDefinedTransformerResolver(userDefinedTransformers),
-	}
-	if anonymizeConfig != nil && anonymizeConfig.analyze != nil &&
-		anonymizeConfig.anonymize != nil {
-		execOpts = append(
-			execOpts,
-			transformer_executor.WithTransformPiiTextConfig(
-				anonymizeConfig.analyze,
-				anonymizeConfig.anonymize,
-				newHusonymOperatorApi(execOpts),
-				anonymizeConfig.defaultLanguage,
-			),
-		)
-	}
+	execOpts := executorOptions(piiText, userDefinedTransformers, logger)
 
 	var stringExecutor, numberExecutor, booleanExecutor *transformer_executor.TransformerExecutor
 	var err error

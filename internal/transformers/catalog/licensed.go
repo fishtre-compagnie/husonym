@@ -1,9 +1,15 @@
-package ee_transformers
+package catalog
 
 import mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 
-var (
-	TransformPiiText = &mgmtv1alpha1.SystemTransformer{
+// defaultPiiScoreThreshold is the confidence the analyzer must reach for a finding to count,
+// in the config TransformPiiText starts with.
+const defaultPiiScoreThreshold = 0.5
+
+// licensedSystemTransformers are the system transformers an account sees only under a valid
+// license.
+var licensedSystemTransformers = []*mgmtv1alpha1.SystemTransformer{
+	{
 		Name:        "Transform PII Text",
 		Description: "Transforms free-form text using PII analyzers",
 		DataTypes: []mgmtv1alpha1.TransformerDataType{
@@ -17,7 +23,7 @@ var (
 		Config: &mgmtv1alpha1.TransformerConfig{
 			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
 				TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{
-					ScoreThreshold: 0.5,
+					ScoreThreshold: defaultPiiScoreThreshold,
 					DefaultAnonymizer: &mgmtv1alpha1.PiiAnonymizer{
 						Config: &mgmtv1alpha1.PiiAnonymizer_Replace_{
 							Replace: &mgmtv1alpha1.PiiAnonymizer_Replace{},
@@ -26,9 +32,5 @@ var (
 				},
 			},
 		},
-	}
-
-	Transformers = []*mgmtv1alpha1.SystemTransformer{
-		TransformPiiText,
-	}
-)
+	},
+}

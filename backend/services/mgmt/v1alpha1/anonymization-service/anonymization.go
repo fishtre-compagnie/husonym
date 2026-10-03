@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"net/http"
 	"strings"
 	"time"
 
@@ -11,10 +12,12 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
@@ -107,12 +110,9 @@ func (s *Service) AnonymizeMany(
 		jsonanonymizer.WithTransformerMappings(req.Msg.TransformerMappings),
 		jsonanonymizer.WithDefaultTransformers(req.Msg.DefaultTransformers),
 		jsonanonymizer.WithHaltOnFailure(req.Msg.HaltOnFailure),
-		jsonanonymizer.WithConditionalAnonymizeConfig(
-			s.cfg.IsPresidioEnabled,
-			s.analyze,
-			s.anonymize,
-			s.cfg.PresidioDefaultLanguage,
-		),
+		// The license was read above, for the whole request. The values of a bulk request
+		// belong to no run: their hashes are computed under the key of the process.
+		jsonanonymizer.WithPiiText(s.piiText, true, nil),
 		jsonanonymizer.WithUserDefinedTransformerResolver(
 			transformer_executor.NewUserDefinedTransformerResolver(s.transformerClient, req.Msg.GetAccountId()),
 		),
@@ -189,7 +189,8 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 
-	if !s.license.IsValid() {
+	licensed := s.license.IsValid()
+	if !licensed {
 		for _, mapping := range req.Msg.GetTransformerMappings() {
 			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
 				return nil, husonymerrors.NewForbidden(
@@ -211,6 +212,11 @@ func (s *Service) AnonymizeSingle(
 		if err := validateTransformerConfig(cfg); err != nil {
 			return nil, err
 		}
+	}
+
+	hashKey, err := s.runHashKey(user, req.Header())
+	if err != nil {
+		return nil, err
 	}
 
 	requestedCount := uint64(len(req.Msg.InputData))
@@ -238,12 +244,7 @@ func (s *Service) AnonymizeSingle(
 		ctx,
 		jsonanonymizer.WithTransformerMappings(req.Msg.TransformerMappings),
 		jsonanonymizer.WithDefaultTransformers(req.Msg.DefaultTransformers),
-		jsonanonymizer.WithConditionalAnonymizeConfig(
-			s.cfg.IsPresidioEnabled,
-			s.analyze,
-			s.anonymize,
-			s.cfg.PresidioDefaultLanguage,
-		),
+		jsonanonymizer.WithPiiText(s.piiText, licensed, hashKey),
 		jsonanonymizer.WithUserDefinedTransformerResolver(
 			transformer_executor.NewUserDefinedTransformerResolver(s.transformerClient, req.Msg.GetAccountId()),
 		),
@@ -320,8 +321,25 @@ func getTraceID(ctx context.Context) string {
 	return ""
 }
 
-// ensures the transformer config is of a valid configuration
-// the main thing it does today is ensure that TransformPiiText is not being used recursively
+// runHashKey reads the key a run hands with its calls, under which the hashes of
+// TransformPiiText are computed: the same text then has the same hash in every table of the
+// run's consistency scope. Only the worker hands one, so the header counts from the worker
+// alone: from any other caller it is not read at all, and the hashes are computed under the
+// key of the process, as for a request that carries none.
+func (s *Service) runHashKey(user *userdata.User, header http.Header) (*piitext.HashKey, error) {
+	encoded := header.Get(piitext.HashKeyHeader)
+	if encoded == "" || s.cfg.WorkerOnly.Allow(user) != nil {
+		return nil, nil
+	}
+	key, err := piitext.ParseHashKey(encoded)
+	if err != nil {
+		return nil, husonymerrors.NewBadRequest(fmt.Sprintf("%s: %s", piitext.HashKeyHeader, err.Error()))
+	}
+	return &key, nil
+}
+
+// validateTransformerConfig refuses a transformer config that cannot be applied: none at all,
+// or a TransformPiiText one the transformer refuses, in its words.
 func validateTransformerConfig(cfg *mgmtv1alpha1.TransformerConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("transformer config is nil")
@@ -330,26 +348,8 @@ func validateTransformerConfig(cfg *mgmtv1alpha1.TransformerConfig) error {
 	if root == nil {
 		return nil
 	}
-	defaultAnonymizer := root.GetDefaultAnonymizer()
-	if defaultAnonymizer != nil {
-		child := defaultAnonymizer.GetTransform().GetConfig().GetTransformPiiTextConfig()
-		if child != nil {
-			return husonymerrors.NewBadRequest(
-				"found nested TransformPiiText config in default anonymizer. TransformPiiText may not be used deeply nested within itself.",
-			)
-		}
-	}
-	entityAnonymizers := root.GetEntityAnonymizers()
-	for entity, entityAnonymizer := range entityAnonymizers {
-		child := entityAnonymizer.GetTransform().GetConfig().GetTransformPiiTextConfig()
-		if child != nil {
-			return husonymerrors.NewBadRequest(
-				fmt.Sprintf(
-					"found nested TransformPiiText config in entity (%s) anonymizer. TransformPiiText may not be used deeply nested within itself.",
-					entity,
-				),
-			)
-		}
+	if err := piitext.Validate(root); err != nil {
+		return husonymerrors.NewBadRequest(err.Error())
 	}
 	return nil
 }
