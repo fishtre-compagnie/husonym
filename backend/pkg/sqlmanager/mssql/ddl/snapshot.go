@@ -10,7 +10,9 @@ type Snapshot struct {
 	// Tables holds the tables found, in request order, history tables included.
 	Tables []*Table
 	// Missing holds the requested tables the database does not have.
-	Missing      []sqlmanager_shared.SchemaTable
+	Missing []sqlmanager_shared.SchemaTable
+	// Views holds the requested names that are views of the database, not tables.
+	Views        []sqlmanager_shared.SchemaTable
 	Sequences    []*Sequence
 	Modules      []*Module
 	Dependencies []*Dependency
@@ -53,6 +55,8 @@ type Table struct {
 	IsExternal        bool
 	IsNode            bool
 	IsEdge            bool
+	// AnsiNullsOff tells a table created under ANSI_NULLS OFF.
+	AnsiNullsOff bool
 
 	Columns     []*Column
 	Indexes     []*Index
@@ -272,6 +276,8 @@ type Module struct {
 	HasDefinition bool
 	// IsDisabled tells a disabled trigger.
 	IsDisabled bool
+	// HasIndex tells a view that has an index.
+	HasIndex bool
 	// Definition is the text of sys.sql_modules, read only for the modules of the selection.
 	Definition string
 }
@@ -304,20 +310,27 @@ type Dependency struct {
 	ReferencedName   string
 }
 
-// Kinds of notices: attributes of a table that the plan leaves out.
+// Kinds of notices: attributes of a table that the plan leaves out. A kind is told when the
+// table has it, and for an option when it is not at its default.
 const (
-	NoticeFilegroup          = "filegroup"
-	NoticePartitioning       = "partitioning"
-	NoticeCompression        = "compression"
-	NoticeStatistics         = "statistics"
-	NoticeExtendedProperties = "extended properties"
-	NoticePermissions        = "permissions"
-	NoticeFullTextIndex      = "full-text index"
-	NoticeRowLevelSecurity   = "row-level security"
-	NoticeChangeTracking     = "change tracking"
-	NoticeChangeDataCapture  = "change data capture"
-	NoticeTriggerOrder       = "trigger order"
-	NoticeColumnstoreOrder   = "columnstore order"
+	NoticeFilegroup             = "filegroup"
+	NoticePartitioning          = "partitioning"
+	NoticeCompression           = "compression"
+	NoticeXMLCompression        = "XML compression"
+	NoticeStatistics            = "statistics"
+	NoticeExtendedProperties    = "extended properties"
+	NoticePermissions           = "permissions"
+	NoticeFullTextIndex         = "full-text index"
+	NoticeRowLevelSecurity      = "row-level security"
+	NoticeChangeTracking        = "change tracking"
+	NoticeChangeDataCapture     = "change data capture"
+	NoticeTriggerOrder          = "trigger order"
+	NoticeColumnstoreOrder      = "columnstore order"
+	NoticeSequentialKey         = "OPTIMIZE_FOR_SEQUENTIAL_KEY"
+	NoticeStatisticsNoRecompute = "STATISTICS_NORECOMPUTE"
+	NoticeLockEscalation        = "LOCK_ESCALATION"
+	NoticeTextInRow             = "text in row"
+	NoticeLargeValuesOutOfRow   = "large value types out of row"
 )
 
 // Notice is an attribute of a table that the plan leaves out: one per table and kind.

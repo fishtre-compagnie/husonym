@@ -2,6 +2,7 @@ package ddl
 
 import (
 	"cmp"
+	"maps"
 	"slices"
 )
 
@@ -21,7 +22,12 @@ type selection struct {
 	// sequences holds the ids of the sequences the defaults of the tables draw from.
 	sequences map[int64]bool
 	skipped   []*Skipped
+	// refusals tells the functions the tables call that cannot be created before them.
+	refusals []Refusal
 }
+
+// aliasTypes names alias types by schema and name.
+type aliasTypes map[[2]string]bool
 
 // trigger is a trigger with the table or view it belongs to.
 type trigger struct {
@@ -72,7 +78,11 @@ func unreadable(module *Module) string {
 
 // selectObjects works out the selection of a snapshot. It reads the headers of the modules and
 // the dependencies only, never a definition: it tells which definitions are worth reading.
-func selectObjects(s *Snapshot) *selection {
+//
+// created names the alias types the columns of the tables use, which the plan creates. It is nil
+// while the columns are not read: every alias type is then taken as created, so that the
+// selection is no smaller than the one the columns will give.
+func selectObjects(s *Snapshot, created aliasTypes) *selection {
 	sel := &selection{neededBy: map[int64]*Table{}, sequences: map[int64]bool{}}
 
 	tables := make(map[int64]*Table, len(s.Tables))
@@ -130,6 +140,16 @@ func selectObjects(s *Snapshot) *selection {
 		}
 	}
 
+	// The alias type of a sequence the defaults draw from is created with it.
+	if created != nil {
+		created = maps.Clone(created)
+		for _, sequence := range s.Sequences {
+			if sel.sequences[sequence.ObjectID] && sequence.IsUserDefinedType {
+				created[[2]string{sequence.TypeSchema, sequence.TypeName}] = true
+			}
+		}
+	}
+
 	// The views, functions and procedures of the schemas that hold a table, less those that
 	// cannot be read.
 	kept := map[int64]*Module{}
@@ -162,7 +182,7 @@ func selectObjects(s *Snapshot) *selection {
 				if d.ReferencedID == m.ObjectID && d.ReferencedClass == ClassObject {
 					continue
 				}
-				if reason := missingDependency(d, tables, reproduced); reason != "" {
+				if reason := missingDependency(d, tables, reproduced, created); reason != "" {
 					sel.skip(ViewsFunctionsLabel, QualifiedName(m.Schema, m.Name), reason)
 					delete(kept, m.ObjectID)
 					changed = true
@@ -186,6 +206,26 @@ func selectObjects(s *Snapshot) *selection {
 	sel.tableFunctions = orderModules(called, moduleReferences(called))
 	remaining := slices.DeleteFunc(candidates, func(m *Module) bool { return kept[m.ObjectID] == nil })
 	sel.modules = orderModules(remaining, moduleReferences(remaining))
+
+	// A function the tables call is created before every table and every other module: it is
+	// refused when it needs, to be created or to run, what comes later or never.
+	for _, function := range sel.tableFunctions {
+		reason := functionRefusal(function, references[function.ObjectID], tables, reproduced, created)
+		if reason == "" {
+			continue
+		}
+		table := sel.neededBy[function.ObjectID]
+		sel.refusals = append(sel.refusals, Refusal{
+			Object: QualifiedName(function.Schema, function.Name),
+			Reason: "needed by table " + QualifiedName(table.Schema, table.Name) + ": " + reason,
+		})
+	}
+
+	for _, view := range sel.modules {
+		if view.HasIndex {
+			sel.skip(TableIndexLabel, QualifiedName(view.Schema, view.Name), "the indexes of a view are not reproduced")
+		}
+	}
 
 	// The triggers of the tables and of the views that are kept.
 	for _, m := range s.Modules {
@@ -213,7 +253,60 @@ func selectObjects(s *Snapshot) *selection {
 			cmp.Compare(a.module.Name, b.module.Name),
 		)
 	})
+
+	// The sequences the modules of the selection draw from are created with those of the
+	// defaults.
+	drawing := slices.Concat(sel.tableFunctions, sel.modules)
+	for _, t := range sel.triggers {
+		drawing = append(drawing, t.module)
+	}
+	for _, m := range drawing {
+		for _, d := range references[m.ObjectID] {
+			if d.ReferencedClass == ClassObject && d.ReferencedType == TypeSequence {
+				sel.sequences[d.ReferencedID] = true
+			}
+		}
+	}
 	return sel
+}
+
+// functionRefusal tells why a function the tables call cannot be created before them on a
+// destination that holds the selection only, or nothing when it can. The server resolves the
+// tables and views a scalar or multi-statement function names when it runs; it resolves those
+// of an inline function when it is created.
+func functionRefusal(
+	function *Module,
+	references []*Dependency,
+	tables map[int64]*Table,
+	reproduced func(*Dependency) bool,
+	created aliasTypes,
+) string {
+	switch {
+	case isCLR(function.Type):
+		return "CLR function"
+	case !function.HasDefinition:
+		return "encrypted, its definition cannot be read"
+	}
+	for _, d := range references {
+		if d.ReferencedClass == ClassObject {
+			if d.ReferencedID == function.ObjectID {
+				continue
+			}
+			name := QualifiedName(d.ReferencedSchema, d.ReferencedName)
+			switch {
+			case d.ReferencedType == TypeTable && function.IsSchemaBound:
+				return "schema-bound to table " + name
+			case d.ReferencedType == TypeTable && function.Type == TypeInlineFunction:
+				return "inline function reads table " + name + ", which is created after it"
+			case d.ReferencedType == TypeView && function.Type == TypeInlineFunction:
+				return "inline function reads view " + name + ", which is created after it"
+			}
+		}
+		if reason := missingDependency(d, tables, reproduced, created); reason != "" {
+			return reason
+		}
+	}
+	return ""
 }
 
 func (sel *selection) skip(label, object, reason string) {
@@ -223,7 +316,12 @@ func (sel *selection) skip(label, object, reason string) {
 // missingDependency tells why a module cannot be created on a destination that holds the
 // selection only: what it references that the plan does not reproduce. References the server
 // did not resolve are not given to it: the server resolves them when the module runs.
-func missingDependency(d *Dependency, tables map[int64]*Table, reproduced func(*Dependency) bool) string {
+func missingDependency(
+	d *Dependency,
+	tables map[int64]*Table,
+	reproduced func(*Dependency) bool,
+	created aliasTypes,
+) string {
 	name := QualifiedName(d.ReferencedSchema, d.ReferencedName)
 	if d.ReferencedClass == ClassType {
 		switch {
@@ -231,6 +329,8 @@ func missingDependency(d *Dependency, tables map[int64]*Table, reproduced func(*
 			return "depends on table type " + name
 		case d.ReferencedIsAssemblyType:
 			return "depends on CLR type " + name
+		case created != nil && !created[[2]string{d.ReferencedSchema, d.ReferencedName}]:
+			return "depends on alias type " + name + ", which no column of the selection uses"
 		}
 		return ""
 	}
@@ -258,7 +358,7 @@ func missingDependency(d *Dependency, tables map[int64]*Table, reproduced func(*
 // order: the modules whose definition is to be read, and the sequences to read. It needs the
 // tables, the module headers and the dependencies of the snapshot, nothing else.
 func (s *Snapshot) Wanted() (modules, sequences []int64) {
-	sel := selectObjects(s)
+	sel := selectObjects(s, nil)
 	modules = []int64{}
 	for _, m := range sel.tableFunctions {
 		modules = append(modules, m.ObjectID)

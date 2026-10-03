@@ -29,8 +29,19 @@ func setting(on bool) string {
 // created with, which a rename does not change: the statement fails when running it did not
 // create the object under the name the catalog gives.
 func createModule(module *Module) string {
+	return createGuarded(module, objectMissing(module.Schema, module.Name, module.Type))
+}
+
+// createTrigger writes a trigger behind the test of its name on its parent: a trigger of that
+// name on another table or view is not this one, and the server refuses to create a second.
+func createTrigger(module *Module, parent string) string {
+	return createGuarded(module, triggerMissing(module.Schema, parent, module.Name))
+}
+
+// createGuarded runs the definition of a module when the test missing holds, and fails when it
+// still holds afterwards.
+func createGuarded(module *Module, missing string) string {
 	name := QualifiedName(module.Schema, module.Name)
-	missing := objectMissing(module.Schema, module.Name, module.Type)
 	batch := "SET ANSI_NULLS " + setting(module.UsesAnsiNulls) +
 		"; SET QUOTED_IDENTIFIER " + setting(module.UsesQuotedIdentifier) +
 		"; EXEC (" + QuoteLiteral(module.Definition) + ")"
@@ -50,7 +61,7 @@ func createModule(module *Module) string {
 // disableTrigger disables a trigger of a table or of a view for as long as it is enabled.
 func disableTrigger(schema, parent, name string) string {
 	return guarded(
-		triggerEnabled(schema, name),
+		triggerEnabled(schema, parent, name),
 		"DISABLE TRIGGER "+QualifiedName(schema, name)+" ON "+QualifiedName(schema, parent),
 	)
 }

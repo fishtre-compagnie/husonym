@@ -216,6 +216,79 @@ func Test_Build_Refusals(t *testing.T) {
 				Reason: "needed by table [dbo].[t]: schema-bound to table [ref].[rates]",
 			},
 		},
+		// A function a table calls is created before every table: it must need nothing that
+		// is created later, or never.
+		{
+			name: "inline function a table needs that reads a table",
+			snapshot: calledFunction(
+				&Module{Type: TypeInlineFunction, HasDefinition: true, Definition: "x"},
+				reference(10, TypeInlineFunction, 1, TypeTable, "dbo", "t"),
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: inline function reads table [dbo].[t], which is created after it",
+			},
+		},
+		{
+			name: "inline function a table needs that reads a view",
+			snapshot: calledFunction(
+				&Module{Type: TypeInlineFunction, HasDefinition: true, Definition: "x"},
+				reference(10, TypeInlineFunction, 20, TypeView, "dbo", "v"),
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: inline function reads view [dbo].[v], which is created after it",
+			},
+		},
+		{
+			name: "function a table needs that reads a table outside the selection",
+			snapshot: calledFunction(
+				&Module{Type: TypeScalarFunction, HasDefinition: true, Definition: "x"},
+				reference(10, TypeScalarFunction, 77, TypeTable, "other", "outside"),
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: depends on table [other].[outside], which is outside the selection",
+			},
+		},
+		{
+			name: "function a table needs that reads a view which is not reproduced",
+			snapshot: calledFunction(
+				&Module{Type: TypeScalarFunction, HasDefinition: true, Definition: "x"},
+				reference(10, TypeScalarFunction, 20, TypeView, "other", "v"),
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: depends on [other].[v], which is not reproduced",
+			},
+		},
+		{
+			name: "function a table needs that reads through a synonym",
+			snapshot: calledFunction(
+				&Module{Type: TypeScalarFunction, HasDefinition: true, Definition: "x"},
+				reference(10, TypeScalarFunction, 30, TypeSynonym, "dbo", "syn"),
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: depends on synonym [dbo].[syn]",
+			},
+		},
+		{
+			name: "function a table needs that takes an alias type no column uses",
+			snapshot: calledFunction(
+				&Module{Type: TypeScalarFunction, HasDefinition: true, Definition: "x"},
+				&Dependency{
+					ReferencingID: 10, ReferencingType: TypeScalarFunction,
+					ReferencedClass: ClassType, ReferencedID: 300,
+					ReferencedSchema: "dbo", ReferencedName: "only_in_module",
+				},
+			),
+			expected: Refusal{
+				Object: "[fn].[f]",
+				Reason: "needed by table [dbo].[t]: depends on alias type [dbo].[only_in_module], " +
+					"which no column of the selection uses",
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -297,6 +370,27 @@ func Test_Build_AcceptsWhatLooksLikeARefusal(t *testing.T) {
 		}}
 		_, err := Build(&Snapshot{Tables: []*Table{table}})
 		require.NoError(t, err)
+	})
+
+	t.Run("a scalar function a table calls that reads a view of the selection", func(t *testing.T) {
+		t.Parallel()
+		// The server resolves the view when the function runs, and by then the view exists.
+		table := plainTable(1, "dbo", "t")
+		plan, err := Build(&Snapshot{
+			Tables: []*Table{table},
+			Modules: []*Module{
+				readable(10, "fn", "f", TypeScalarFunction),
+				readable(20, "dbo", "v", TypeView),
+			},
+			Dependencies: []*Dependency{
+				reference(1, TypeTable, 10, TypeScalarFunction, "fn", "f"),
+				reference(10, TypeScalarFunction, 20, TypeView, "dbo", "v"),
+				reference(20, TypeView, 1, TypeTable, "dbo", "t"),
+			},
+		})
+		require.NoError(t, err)
+		require.Len(t, plan.Functions, 1)
+		require.Len(t, plan.Modules, 1)
 	})
 
 	t.Run("a function schema-bound to nothing but itself", func(t *testing.T) {

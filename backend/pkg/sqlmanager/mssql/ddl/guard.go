@@ -55,9 +55,18 @@ func indexEnabled(schema, table, name string) string {
 		" AND object_id = " + tableID(schema, table) + " AND is_disabled = 0)"
 }
 
-func triggerEnabled(schema, name string) string {
-	return "IF EXISTS (SELECT 1 FROM sys.triggers WHERE object_id = " + objectID(schema, name, TypeTrigger) +
-		" AND is_disabled = 0)"
+// onParent tells the trigger of a name on its parent, a table or a view of the same schema.
+func onParent(schema, parent, name string) string {
+	return "SELECT 1 FROM sys.triggers WHERE name = " + QuoteLiteral(name) +
+		" AND parent_id = OBJECT_ID(" + QuoteLiteral(QualifiedName(schema, parent)) + ")"
+}
+
+func triggerMissing(schema, parent, name string) string {
+	return "IF NOT EXISTS (" + onParent(schema, parent, name) + ")"
+}
+
+func triggerEnabled(schema, parent, name string) string {
+	return "IF EXISTS (" + onParent(schema, parent, name) + " AND is_disabled = 0)"
 }
 
 // notVersioned holds the statement that turns system versioning on.

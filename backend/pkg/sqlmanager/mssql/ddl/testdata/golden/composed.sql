@@ -116,20 +116,20 @@ IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE name = N'FK_lines_order' AND pare
 ALTER TABLE [sales].[Order ]] Lines] WITH CHECK ADD CONSTRAINT [FK_lines_order] FOREIGN KEY ([order id], [region]) REFERENCES [core].[Orders] ([id], [region]) ON DELETE CASCADE
 GO
 -- table triggers
-IF OBJECT_ID(N'[sales].[trg_audit]', N'TR') IS NULL
+IF NOT EXISTS (SELECT 1 FROM sys.triggers WHERE name = N'trg_audit' AND parent_id = OBJECT_ID(N'[sales].[Order ]] Lines]'))
 BEGIN
     EXEC (N'SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; EXEC (N''CREATE TRIGGER sales.trg_audit ON sales.[Order ]] Lines] AFTER INSERT AS RETURN'')');
-    IF OBJECT_ID(N'[sales].[trg_audit]', N'TR') IS NULL
+    IF NOT EXISTS (SELECT 1 FROM sys.triggers WHERE name = N'trg_audit' AND parent_id = OBJECT_ID(N'[sales].[Order ]] Lines]'))
         THROW 50000, N'the definition of trigger [sales].[trg_audit] did not create it under that name', 1;
 END
 GO
-IF EXISTS (SELECT 1 FROM sys.triggers WHERE object_id = OBJECT_ID(N'[sales].[trg_audit]', N'TR') AND is_disabled = 0)
+IF EXISTS (SELECT 1 FROM sys.triggers WHERE name = N'trg_audit' AND parent_id = OBJECT_ID(N'[sales].[Order ]] Lines]') AND is_disabled = 0)
 DISABLE TRIGGER [sales].[trg_audit] ON [sales].[Order ]] Lines]
 GO
-IF OBJECT_ID(N'[sales].[trg_view]', N'TR') IS NULL
+IF NOT EXISTS (SELECT 1 FROM sys.triggers WHERE name = N'trg_view' AND parent_id = OBJECT_ID(N'[sales].[v_open]'))
 BEGIN
     EXEC (N'SET ANSI_NULLS ON; SET QUOTED_IDENTIFIER ON; EXEC (N''CREATE TRIGGER sales.trg_view ON sales.v_open INSTEAD OF INSERT AS RETURN'')');
-    IF OBJECT_ID(N'[sales].[trg_view]', N'TR') IS NULL
+    IF NOT EXISTS (SELECT 1 FROM sys.triggers WHERE name = N'trg_view' AND parent_id = OBJECT_ID(N'[sales].[v_open]'))
         THROW 50000, N'the definition of trigger [sales].[trg_view] did not create it under that name', 1;
 END
 GO

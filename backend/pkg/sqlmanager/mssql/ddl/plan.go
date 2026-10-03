@@ -41,7 +41,7 @@ type Skipped struct{ Label, Object, Reason string }
 
 // Build turns a snapshot into a plan, or returns a *RefusalError naming every object it refuses.
 func Build(s *Snapshot) (*Plan, error) {
-	sel := selectObjects(s)
+	sel := selectObjects(s, columnAliasTypes(s))
 	if refused := refusals(s, sel); len(refused) > 0 {
 		return nil, &RefusalError{Refusals: refused}
 	}
@@ -69,6 +69,10 @@ func Build(s *Snapshot) (*Plan, error) {
 		b.skip(sqlmanager_shared.CreateTablesLabel, QualifiedName(missing.Schema, missing.Table),
 			"not found in the source database")
 	}
+	for _, view := range s.Views {
+		b.skip(sqlmanager_shared.CreateTablesLabel, QualifiedName(view.Schema, view.Table),
+			"a view, not a table: only tables are requested")
+	}
 	b.plan.Skipped = append(b.plan.Skipped, sel.skipped...)
 	b.sequences(s, sel)
 	b.modules(sel)
@@ -88,6 +92,24 @@ func Build(s *Snapshot) (*Plan, error) {
 		return cmp.Or(cmp.Compare(x.Schema, y.Schema), cmp.Compare(x.Name, y.Name))
 	})
 	return b.plan, nil
+}
+
+// columnAliasTypes names the alias types the columns of the tables are made of.
+func columnAliasTypes(s *Snapshot) aliasTypes {
+	created := aliasTypes{}
+	for _, table := range s.Tables {
+		for _, column := range table.Columns {
+			if isAliasTyped(column) {
+				created[[2]string{column.TypeSchema, column.TypeName}] = true
+			}
+		}
+	}
+	return created
+}
+
+// isAliasTyped tells a column whose type is an alias the plan creates.
+func isAliasTyped(column *Column) bool {
+	return column.IsUserDefinedType && !column.IsComputed
 }
 
 // builder gathers a plan, and what the statements need beside themselves: the schemas that
@@ -172,7 +194,7 @@ func (b *builder) modules(sel *selection) {
 			Table:         t.parent,
 			TriggerSchema: &t.module.Schema,
 			TriggerName:   t.module.Name,
-			Definition:    createModule(t.module),
+			Definition:    createTrigger(t.module, t.parent),
 		}
 		if t.module.IsDisabled {
 			created.EnabledState = triggerDisabled
@@ -186,9 +208,14 @@ func (b *builder) table(table *Table) {
 	b.schemas[table.Schema] = true
 	name := QualifiedName(table.Schema, table.Name)
 
+	if table.AnsiNullsOff {
+		b.skip(sqlmanager_shared.CreateTablesLabel, name,
+			"created under ANSI_NULLS OFF at the source: it is created under ANSI_NULLS ON")
+	}
+
 	followers := 0
 	for _, column := range table.Columns {
-		if !column.IsUserDefinedType || column.IsComputed {
+		if !isAliasTyped(column) {
 			continue
 		}
 		b.alias(column.TypeSchema, column.TypeName, column.BaseTypeName,
@@ -346,9 +373,6 @@ func (p *Plan) Blocks() []*sqlmanager_shared.InitSchemaStatements {
 		{Label: TableTriggersLabel, Statements: triggers},
 	}
 	for _, block := range blocks {
-		if block.Statements == nil {
-			block.Statements = []string{}
-		}
 		for _, skipped := range p.Skipped {
 			if skipped.Label == block.Label {
 				block.Skipped = append(block.Skipped, &sqlmanager_shared.SkippedObject{

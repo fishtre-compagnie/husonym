@@ -1,6 +1,7 @@
 package ddl
 
 import (
+	"strings"
 	"testing"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -165,14 +166,9 @@ func Test_Build_ModulesOfTheSelection(t *testing.T) {
 			}},
 		},
 		{
-			name:    "a procedure with an alias type and a reference the server did not resolve",
+			name:    "a procedure with a reference the server did not resolve",
 			modules: []*Module{readable(10, "sales", "p", TypeProcedure)},
 			dependencies: []*Dependency{
-				{
-					ReferencingID: 10, ReferencingType: TypeProcedure,
-					ReferencedClass: ClassType, ReferencedID: 300,
-					ReferencedSchema: "sales", ReferencedName: "money2",
-				},
 				{
 					ReferencingID: 10, ReferencingType: TypeProcedure,
 					ReferencedClass: ClassObject, ReferencedSchema: "elsewhere", ReferencedName: "gone",
@@ -223,8 +219,9 @@ func Test_Build_FunctionsCalledByATable(t *testing.T) {
 		Dependencies: []*Dependency{
 			reference(1, TypeTable, 10, TypeScalarFunction, "util", "double"),
 			reference(10, TypeScalarFunction, 11, TypeScalarFunction, "util", "a_helper"),
-			// A function created before the tables may read one: the server resolves it later.
-			reference(11, TypeScalarFunction, 99, TypeTable, "hr", "rates"),
+			// A scalar function created before the tables may read one of them: the server
+			// resolves the name when the function runs.
+			reference(11, TypeScalarFunction, 1, TypeTable, "sales", "orders"),
 			reference(13, TypeView, 10, TypeScalarFunction, "util", "double"),
 		},
 	}
@@ -305,6 +302,27 @@ func Test_Build_Triggers(t *testing.T) {
 	require.Equal(t, []int64{10, 20, 21, 24}, modules)
 }
 
+func Test_Build_TriggerIsGuardedByItsNameAndItsParent(t *testing.T) {
+	t.Parallel()
+	trigger := readable(20, "sales", "it's audit", TypeTrigger)
+	trigger.ParentID, trigger.IsDisabled = 1, true
+	plan, err := Build(&Snapshot{
+		Tables:  []*Table{plainTable(1, "sales", "Order ] Lines")},
+		Modules: []*Module{trigger},
+	})
+	require.NoError(t, err)
+
+	// A trigger of that name on another table or view is not this one: the statement runs,
+	// and the server refuses the name.
+	guard := "SELECT 1 FROM sys.triggers WHERE name = N'it''s audit' " +
+		"AND parent_id = OBJECT_ID(N'[sales].[Order ]] Lines]')"
+	statements := plan.Blocks()[7].Statements
+	require.Len(t, statements, 2)
+	require.True(t, strings.HasPrefix(statements[0], "IF NOT EXISTS ("+guard+")\nBEGIN\n"), statements[0])
+	require.Contains(t, statements[0], "    IF NOT EXISTS ("+guard+")\n        THROW 50000, ")
+	require.True(t, strings.HasPrefix(statements[1], "IF EXISTS ("+guard+" AND is_disabled = 0)\n"), statements[1])
+}
+
 func Test_Build_Sequences(t *testing.T) {
 	t.Parallel()
 	sequence := func(id int64, schema, name string) *Sequence {
@@ -319,9 +337,16 @@ func Test_Build_Sequences(t *testing.T) {
 	used.CurrentValue, used.IsUsed = "1042", true
 	table := plainTable(1, "sales", "orders")
 	snapshot := &Snapshot{
-		Tables:    []*Table{table},
-		Sequences: []*Sequence{sequence(30, "sales", "fresh"), used},
+		Tables: []*Table{table},
+		// The snapshot holds two more sequences than the defaults draw from: one that a kept
+		// procedure draws from, which is created, and one that nothing of the selection draws
+		// from, which is not.
+		Sequences: []*Sequence{
+			sequence(30, "sales", "fresh"), used, sequence(33, "sales", "of_a_procedure"), sequence(34, "sales", "idle"),
+		},
+		Modules: []*Module{readable(40, "sales", "p_next", TypeProcedure)},
 		Dependencies: []*Dependency{
+			reference(40, TypeProcedure, 33, TypeSequence, "sales", "of_a_procedure"),
 			{
 				ReferencingID: 5, ReferencingType: TypeDefault, ReferencingParentID: 1,
 				ReferencedClass: ClassObject, ReferencedID: 30, ReferencedType: TypeSequence,
@@ -344,14 +369,57 @@ func Test_Build_Sequences(t *testing.T) {
 	plan, err := Build(snapshot)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"core.used", "sales.fresh"}, dataTypeNames(plan.Sequences))
+	require.Equal(t, []string{"core.used", "sales.fresh", "sales.of_a_procedure"}, dataTypeNames(plan.Sequences))
 	require.Equal(t, []*Skipped{{
 		Label: DataTypesLabel, Object: "[core].[used]",
 		Reason: "created at its declared start 1000; the source is at 1042",
 	}}, plan.Skipped)
 
 	_, sequences := snapshot.Wanted()
-	require.Equal(t, []int64{30, 31}, sequences)
+	require.Equal(t, []int64{30, 31, 33}, sequences)
+}
+
+func Test_Build_AliasTypesOfModules(t *testing.T) {
+	t.Parallel()
+	aliasOf := func(module int64, moduleType, name string) *Dependency {
+		return &Dependency{
+			ReferencingID: module, ReferencingType: moduleType,
+			ReferencedClass: ClassType, ReferencedID: 300, ReferencedSchema: "sales", ReferencedName: name,
+		}
+	}
+	table := plainTable(1, "sales", "orders")
+	table.Columns = append(table.Columns, &Column{
+		ColumnID: 2, Name: "amount", TypeSchema: "sales", TypeName: "of_a_column", BaseTypeName: "decimal",
+		IsUserDefinedType: true, MaxLength: 9, Precision: 19, Scale: 4, IsNullable: true,
+	})
+	snapshot := &Snapshot{
+		Tables: []*Table{table},
+		Modules: []*Module{
+			readable(10, "sales", "p_column_type", TypeProcedure),
+			readable(11, "sales", "p_other_type", TypeProcedure),
+		},
+		Dependencies: []*Dependency{
+			aliasOf(10, TypeProcedure, "of_a_column"),
+			aliasOf(11, TypeProcedure, "only_in_module"),
+		},
+	}
+
+	plan, err := Build(snapshot)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"sales.p_column_type"}, dataTypeNames(plan.Modules))
+	require.Equal(t, []*Skipped{{
+		Label: ViewsFunctionsLabel, Object: "[sales].[p_other_type]",
+		Reason: "depends on alias type [sales].[only_in_module], which no column of the selection uses",
+	}}, plan.Skipped)
+
+	// Before the columns are read, nothing tells which alias types they use: the definitions of
+	// both procedures are asked for.
+	bare := &Snapshot{
+		Tables: []*Table{plainTable(1, "sales", "orders")}, Modules: snapshot.Modules, Dependencies: snapshot.Dependencies,
+	}
+	modules, _ := bare.Wanted()
+	require.Equal(t, []int64{10, 11}, modules)
 }
 
 func Test_Build_Skips(t *testing.T) {
@@ -420,6 +488,69 @@ func Test_Build_Skips(t *testing.T) {
 			Label: sqlmanager_shared.CreateTablesLabel, Object: "[dbo].[t]",
 			Reason: "collation of 2 alias-typed column(s) follows the default of the destination database",
 		}}, plan.Skipped)
+	})
+
+	t.Run("a requested name that is a view", func(t *testing.T) {
+		t.Parallel()
+		plan, err := Build(&Snapshot{
+			Tables: []*Table{plainTable(1, "dbo", "t")},
+			Views:  []sqlmanager_shared.SchemaTable{{Schema: "dbo", Table: "v_report"}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, []*Skipped{{
+			Label: sqlmanager_shared.CreateTablesLabel, Object: "[dbo].[v_report]",
+			Reason: "a view, not a table: only tables are requested",
+		}}, plan.Skipped)
+	})
+
+	t.Run("a table created under ANSI_NULLS OFF", func(t *testing.T) {
+		t.Parallel()
+		table := plainTable(1, "dbo", "t")
+		table.AnsiNullsOff = true
+		plan, err := Build(&Snapshot{Tables: []*Table{table}})
+		require.NoError(t, err)
+		require.Equal(t, []*Skipped{{
+			Label: sqlmanager_shared.CreateTablesLabel, Object: "[dbo].[t]",
+			Reason: "created under ANSI_NULLS OFF at the source: it is created under ANSI_NULLS ON",
+		}}, plan.Skipped)
+	})
+
+	t.Run("the indexes of an indexed view", func(t *testing.T) {
+		t.Parallel()
+		indexed := readable(10, "dbo", "v_indexed", TypeView)
+		indexed.HasIndex = true
+		// A view that is not created tells why, and nothing of its indexes.
+		outside := readable(11, "dbo", "v_outside", TypeView)
+		outside.HasIndex = true
+		plan, err := Build(&Snapshot{
+			Tables:       []*Table{plainTable(1, "dbo", "t")},
+			Modules:      []*Module{indexed, outside},
+			Dependencies: []*Dependency{reference(11, TypeView, 99, TypeTable, "hr", "staff")},
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{"dbo.v_indexed"}, dataTypeNames(plan.Modules))
+		require.ElementsMatch(t, []*Skipped{
+			{
+				Label: TableIndexLabel, Object: "[dbo].[v_indexed]",
+				Reason: "the indexes of a view are not reproduced",
+			},
+			{
+				Label: ViewsFunctionsLabel, Object: "[dbo].[v_outside]",
+				Reason: "depends on table [hr].[staff], which is outside the selection",
+			},
+		}, plan.Skipped)
+	})
+
+	t.Run("system versioning comes after the indexes of the table", func(t *testing.T) {
+		t.Parallel()
+		current, history := staff()
+		current.Indexes = append(current.Indexes, rowstore(2, "IX_staff_name", IndexNonClustered, key("name", 1)))
+		plan, err := Build(&Snapshot{Tables: []*Table{current, history}})
+		require.NoError(t, err)
+		statements := plan.Tables[1].IndexStatements
+		require.Len(t, statements, 2)
+		require.Contains(t, statements[0], "[IX_staff_name]")
+		require.Contains(t, statements[1], "SYSTEM_VERSIONING = ON")
 	})
 
 	t.Run("attributes of a table that are left out", func(t *testing.T) {

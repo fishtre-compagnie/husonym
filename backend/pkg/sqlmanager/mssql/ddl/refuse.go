@@ -45,7 +45,7 @@ func refusals(s *Snapshot, sel *selection) []Refusal {
 			}
 		}
 	}
-	return append(refused, functionRefusals(s, sel)...)
+	return append(refused, sel.refusals...)
 }
 
 func tableRefusal(table *Table) string {
@@ -117,37 +117,4 @@ func indexRefusal(index *Index) string {
 		return "disabled index backing a key"
 	}
 	return ""
-}
-
-// functionRefusals refuses the functions the tables call that cannot be created before them:
-// those whose definition cannot be read, and those bound to a table, which would have to exist
-// first.
-func functionRefusals(s *Snapshot, sel *selection) []Refusal {
-	boundTo := map[int64]*Dependency{}
-	for _, d := range s.Dependencies {
-		if d.ReferencedClass == ClassObject && d.ReferencedType == TypeTable && boundTo[d.ReferencingID] == nil {
-			boundTo[d.ReferencingID] = d
-		}
-	}
-	refused := []Refusal{}
-	for _, function := range sel.tableFunctions {
-		table := sel.neededBy[function.ObjectID]
-		var reason string
-		switch {
-		case isCLR(function.Type):
-			reason = "CLR function"
-		case !function.HasDefinition:
-			reason = "encrypted, its definition cannot be read"
-		case function.IsSchemaBound && boundTo[function.ObjectID] != nil:
-			d := boundTo[function.ObjectID]
-			reason = "schema-bound to table " + QualifiedName(d.ReferencedSchema, d.ReferencedName)
-		default:
-			continue
-		}
-		refused = append(refused, Refusal{
-			Object: QualifiedName(function.Schema, function.Name),
-			Reason: "needed by table " + QualifiedName(table.Schema, table.Name) + ": " + reason,
-		})
-	}
-	return refused
 }
