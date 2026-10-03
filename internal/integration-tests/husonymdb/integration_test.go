@@ -320,27 +320,22 @@ func (s *IntegrationTestSuite) Test_SetPersonalAccount() {
 		user := s.setUser(t, s.ctx, "foo2")
 		maxAllowed := int64(100)
 
-		errgrp, errctx := errgroup.WithContext(s.ctx)
+		// Neither call is cut short by the failure of the other: each one reports its own.
+		errgrp := new(errgroup.Group)
+		uids := make([]string, 2)
+		for i := range uids {
+			errgrp.Go(func() error {
+				resp, err := s.db.SetPersonalAccount(s.ctx, user.ID, &maxAllowed)
+				if err != nil {
+					return err
+				}
+				uids[i] = husonymdb.UUIDString(resp.ID)
+				return nil
+			})
+		}
 
-		var uid1 string
-		errgrp.Go(func() error {
-			resp, err := s.db.SetPersonalAccount(errctx, user.ID, &maxAllowed)
-			assertNoErrResp(t, resp, err)
-			uid1 = husonymdb.UUIDString(resp.ID)
-			return nil
-		})
-
-		var uid2 string
-		errgrp.Go(func() error {
-			resp, err := s.db.SetPersonalAccount(errctx, user.ID, &maxAllowed)
-			assertNoErrResp(t, resp, err)
-			uid2 = husonymdb.UUIDString(resp.ID)
-			return nil
-		})
-
-		err := errgrp.Wait()
-		require.NoError(t, err)
-		require.Equal(t, uid1, uid2)
+		require.NoError(t, errgrp.Wait(), "two calls at once for the same user")
+		require.Equal(t, uids[0], uids[1])
 	})
 }
 
