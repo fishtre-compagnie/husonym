@@ -96,38 +96,17 @@ func (a *Activity) ExecuteAccountHook(
 		}
 
 	case *mgmtv1alpha1.AccountHookConfig_Slack:
-		slogger.Debug("executing slack message")
-		if cfg.Slack == nil {
-			return nil, errors.New("slack config was nil for account hook configuration")
-		}
-		if err := executeSlackMessage(ctx, a.accounthookclient, req.HookId, req.Event); err != nil {
-			return nil, fmt.Errorf("unable to execute slack message: %w", err)
-		}
+		// The Slack kind is retired: the hook is skipped, so that the other hooks of the
+		// event still run and the workflow does not fail.
+		slogger.Warn(
+			"slack account hooks are no longer supported: hook skipped, replace it with a webhook",
+			"hookId", req.HookId,
+		)
 	default:
 		slogger.Warn(fmt.Sprintf("hook config type %T not supported", cfg))
 	}
 
 	return &ExecuteHookResponse{}, nil
-}
-
-func executeSlackMessage(
-	ctx context.Context,
-	client mgmtv1alpha1connect.AccountHookServiceClient,
-	hookId string,
-	event *accounthook_events.Event,
-) error {
-	bits, err := json.Marshal(event)
-	if err != nil {
-		return fmt.Errorf("unable to marshal event: %w", err)
-	}
-	_, err = client.SendSlackMessage(ctx, connect.NewRequest(&mgmtv1alpha1.SendSlackMessageRequest{
-		AccountHookId: hookId,
-		Event:         bits,
-	}))
-	if err != nil {
-		return fmt.Errorf("unable to send slack message to api: %w", err)
-	}
-	return nil
 }
 
 func executeWebhook(

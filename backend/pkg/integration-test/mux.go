@@ -326,11 +326,7 @@ func (s *HusonymApiTestClient) setupMux(
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(
-		accounthooks.New(
-			husonymDb,
-			userclient,
-			accounthooks.WithSlackClient(s.Mocks.Slackclient),
-		),
+		accounthooks.New(husonymDb, userclient),
 	)
 
 	// The settings of an account, with a password of their own: the tests exercise the

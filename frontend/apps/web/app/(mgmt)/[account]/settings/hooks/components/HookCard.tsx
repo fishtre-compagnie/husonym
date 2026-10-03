@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountHook } from '@husonym/sdk';
 import { ReactElement } from 'react';
+import DisableHookButton from './DisableHookButton';
 import EditHookButton from './EditHookButton';
 import RemoveHookButton from './RemoveHookButton';
 
@@ -13,6 +14,8 @@ interface Props {
 
 export default function HookCard(props: Props): ReactElement {
   const { hook, onDeleted, onEdited } = props;
+  // A Slack hook that is still stored is shown, turned off and deleted, never edited.
+  const isSlack = hook.config?.config.case === 'slack';
 
   return (
     <div id={`accounthook-${hook.id}`}>
@@ -34,13 +37,27 @@ export default function HookCard(props: Props): ReactElement {
                   {hook.enabled ? 'Enabled' : 'Disabled'}
                 </Badge>
                 {hook.config?.config.case && (
-                  <Badge variant="secondary">{hook.config?.config.case}</Badge>
+                  <Badge variant="secondary">
+                    {isSlack ? 'Slack' : hook.config?.config.case}
+                  </Badge>
                 )}
               </div>
+              {isSlack && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Slack hooks are no longer supported and are not run. Replace
+                  this hook with a webhook.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
-              <EditHookButton hook={hook} onEdited={onEdited} />
+              {isSlack ? (
+                hook.enabled && (
+                  <DisableHookButton hook={hook} onDisabled={onEdited} />
+                )
+              ) : (
+                <EditHookButton hook={hook} onEdited={onEdited} />
+              )}
               <RemoveHookButton hook={hook} onDeleted={onDeleted} />
             </div>
           </div>

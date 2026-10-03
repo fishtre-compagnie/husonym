@@ -80,7 +80,6 @@ import (
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
-	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -537,36 +536,8 @@ func serve(ctx context.Context) error {
 
 	slogger.Debug("enabling account hooks service")
 
-	accountHookOptions := []accounthooks.Option{
-		accounthooks.WithAppBaseUrl(getAppBaseUrl()),
-		accounthooks.WithWorkerOnly(workerOnly),
-	}
-	var slackClient ee_slack.Interface
-	if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
-		encryptor, err := getSymEncryptor()
-		if err != nil {
-			return err
-		}
-		if encryptor == nil {
-			return sym_encrypt.ErrEmptyPassword
-		}
-		slackClient = ee_slack.NewClient(
-			encryptor,
-			ee_slack.WithAuthClientCreds(
-				viper.GetString("SLACK_AUTH_CLIENT_ID"),
-				viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
-			),
-			ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
-			ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
-		)
-		accountHookOptions = append(
-			accountHookOptions,
-			accounthooks.WithSlackClient(slackClient),
-		)
-	}
-
 	accountHookService := v1alpha1_accounthookservice.New(
-		accounthooks.New(db, userdataclient, accountHookOptions...),
+		accounthooks.New(db, userdataclient),
 	)
 
 	api.Handle(
@@ -1342,10 +1313,6 @@ func getDefaultMaxAllowedRecords() *int64 {
 		return nil
 	}
 	return &val
-}
-
-func getAppBaseUrl() string {
-	return viper.GetString("APP_BASEURL")
 }
 
 // getSymEncryptor builds the encryptor of the deployment's secrets, or nothing when no

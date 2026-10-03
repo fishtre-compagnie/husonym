@@ -90,9 +90,6 @@ packages:
       AnalyzeInterface: {}
       AnonymizeInterface: {}
       EntityInterface: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/slack:
-    interfaces:
-      Interface: {}
   github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
     interfaces:
       HusonymOperatorApi: {}
