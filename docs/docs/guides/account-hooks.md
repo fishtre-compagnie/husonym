@@ -34,7 +34,7 @@ From here a new hook may be created. Click on the new hook button and you'll be 
 
 There are a few different configuration options available to you to further fine tune when the hook runs.
 
-Today, `Webhook` and `Slack` hooks are supported, with plans for, Discord, and other integrations in the future.
+Today, the `Webhook` hook is the supported kind. The `Slack` kind has been retired: a Slack hook that already exists is still listed, can be disabled and deleted, but is no longer run. Replace it with a webhook.
 
 ![New Hook Form](/img/accounthooks/new-hook-form.png)
 
@@ -189,35 +189,6 @@ func verifyHmac(secret string, payload []byte, signature string) (bool, error) {
 }
 
 ```
-
-## Slack
-
-The Slack configuration offers a first-party way of receiving notifications.
-
-Today the messages are fully controlled by Husonym and cannot be altered.
-
-Configuring the Slack hook requires using Oauth to install the `Husonym` Slack App into your Slack's workspace.
-The hook configuration itself asks for the `Channel Id` that will be used to send the notifications for your specific hook configuration.
-
-When creating the hook, the Slack app will attempt to automatically join the channel, provided it is public.
-
-> For private slack channels, the Husonym app will have to be manually invited to it, as Slack does not provide a way to automatically do this.
-
-### Setting up OAuth
-
-When in the slack hook form for the first time, you'll see a notice that says `Slack is not connected`.
-
-There are two buttons, `Verify` and `Connect`. Click the `Connect` button first. This will open a pop-up window that will
-take you through the Slack oauth flow of installing the Husonym app to your workspace. If all goes well, you'll land back on the Husonym page with a success and can simply close the window. If an error occurred, that will surface on the page as well.
-
-After closing the window, the hook form may still show that it is not connected. Click the `Verify` button to initiate a request to re-check that Husonym is now connected to your Slack. If so, you'll see a message like `Slack is connected to <team>`. You should only ever have to do this once, but if something needs to change, you can now click on the `Re-connect` button to go through the oauth flow a second time.
-
-You may now enter your channel id and submit the form!
-
-### Finding your Slack Channel Id.
-
-In slack, go to your channel. Click the name of your channel at the top of the app. This will open a channel info dialog.
-At the bottom if this dialog you will find your channel's id. Copy that and paste it into the slack configuration.
 
 ## Retries
 
