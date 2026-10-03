@@ -15,7 +15,6 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
 	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
@@ -38,7 +37,6 @@ type Mocks struct {
 	Authmanagerclient      *authmgmt.MockInterface
 	Prometheusclient       *promapiv1mock.MockAPI
 	Presidio               Presidiomocks
-	Slackclient            *ee_slack.MockInterface
 	// The license of the OSSAuthenticatedExpiringClients mode only. It starts valid; a
 	// test that changes it sets it back to valid in t.Cleanup.
 	ExpiringLicense *testutil.FakeEELicense
@@ -125,7 +123,6 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 			Anonymizer: presidioapi.NewMockAnonymizeInterface(t),
 			Entities:   presidioapi.NewMockEntityInterface(t),
 		},
-		Slackclient: ee_slack.NewMockInterface(t),
 	}
 
 	err = s.InitializeTest(ctx, t)

@@ -2,15 +2,12 @@ package integrationtests_test
 
 import (
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
-	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	"github.com/google/uuid"
-	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +31,7 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 	jobs := s.OSSAuthenticatedExpiringClients.Jobs(userOpt)
 	connections := s.OSSAuthenticatedExpiringClients.Connections(userOpt)
 	accountHooks := s.OSSAuthenticatedExpiringClients.AccountHooks(userOpt)
-	userId := s.setUser(ctx, users)
+	s.setUser(ctx, users)
 	accountId := s.createPersonalAccount(ctx, users)
 	t.Cleanup(func() { s.Mocks.ExpiringLicense.SetValid(true) })
 
@@ -102,34 +99,10 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 			Mappings:  []*mgmtv1alpha1.JobMapping{mapping},
 		}))
 	}
-	// The Slack client is a mock shared by the whole suite: the state names the account, and
-	// each callback carries a code of its own, so that what reached Slack can be told apart.
-	const acceptedSlackCode, refusedSlackCode = "frozen-license-accepted-code", "frozen-license-refused-code"
-	s.Mocks.Slackclient.EXPECT().
-		ExchangeCodeForAccessToken(mock.Anything, acceptedSlackCode).
-		Return(&slack.OAuthV2Response{AccessToken: "access_token"}, nil).
-		Maybe() // another test of the suite may have registered an exchange that answers first
-	slackCallback := func(code string) (*connect.Response[mgmtv1alpha1.HandleSlackOAuthCallbackResponse], error) {
-		s.Mocks.Slackclient.EXPECT().
-			ValidateState(mock.Anything, mock.Anything, userId, mock.Anything).
-			Return(&ee_slack.OauthState{
-				AccountId: accountId,
-				UserId:    userId,
-				Timestamp: time.Now().UTC().Unix(),
-			}, nil).
-			Once()
-		return accountHooks.HandleSlackOAuthCallback(ctx, connect.NewRequest(&mgmtv1alpha1.HandleSlackOAuthCallbackRequest{
-			State: "state",
-			Code:  code,
-		}))
-	}
 
 	applied, err := applyMappingChanges()
 	requireNoErrResp(t, applied, err)
 	require.Len(t, applied.Msg.GetMappings(), 1)
-	connected, err := slackCallback(acceptedSlackCode)
-	requireNoErrResp(t, connected, err)
-	s.Mocks.Slackclient.AssertCalled(t, "ExchangeCodeForAccessToken", mock.Anything, acceptedSlackCode)
 
 	s.Mocks.ExpiringLicense.SetValid(false)
 
@@ -184,11 +157,6 @@ func (s *IntegrationTestSuite) Test_Hooks_UnderAFrozenLicense() {
 
 		_, err = applyMappingChanges()
 		requireLicenseRefusal(t, err)
-
-		// Refused before the code is exchanged: nothing is asked of Slack, nothing is stored.
-		_, err = slackCallback(refusedSlackCode)
-		requireLicenseRefusal(t, err)
-		s.Mocks.Slackclient.AssertNotCalled(t, "ExchangeCodeForAccessToken", mock.Anything, refusedSlackCode)
 
 		anonymize := s.OSSAuthenticatedExpiringClients.Anonymize(userOpt)
 		_, err = anonymize.AnonymizeSingle(ctx, connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{

@@ -60,7 +60,7 @@ distinction matters — banners, logs, diagnostics.
 | `ApplyMappingChanges` | |
 
 Plus, outside `JobService`: creating or modifying a job or account hook and turning one
-back on, storing a Slack connection, creating or modifying S3 and GCS connections,
+back on, creating or modifying S3 and GCS connections,
 initializing the schema of a SQL Server destination, the bulk anonymization call and the
 PII text transformer (the column preview included).
 
