@@ -15,12 +15,19 @@ import (
 type AccountService struct {
 	db   *husonymdb.HusonymDb
 	gate gate
+	// workerOnly tells the worker from the other callers: the worker reads the secret a
+	// webhook is signed with.
+	workerOnly userdata.WorkerOnly
 }
 
-// NewAccountService builds the logic of account hooks on the database of the API and on what
-// tells who the caller is.
-func NewAccountService(db *husonymdb.HusonymDb, users userdata.Interface) *AccountService {
-	return &AccountService{db: db, gate: gate{users: users}}
+// NewAccountService builds the logic of account hooks on the database of the API, on what
+// tells who the caller is, and on the deployment's rule for what only the worker calls.
+func NewAccountService(
+	db *husonymdb.HusonymDb,
+	users userdata.Interface,
+	workerOnly userdata.WorkerOnly,
+) *AccountService {
+	return &AccountService{db: db, gate: gate{users: users}, workerOnly: workerOnly}
 }
 
 // account gives what an account id names. Whether the account exists is the access layer's

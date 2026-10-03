@@ -21,10 +21,12 @@ const (
 
 // rule is what a procedure asks of its caller.
 type rule struct {
-	// view is what lets the caller see the owner. Without it the object is answered as
-	// absent.
+	// view is what lets the caller see the owner. A caller who holds neither it nor all of
+	// what the request is asked is answered as if the object were absent.
 	view rbac.Action
-	// actions are asked of every request, in this order.
+	// actions are asked of every request, in this order. They are the permissions the
+	// contract declares, view among them where it declares it; a procedure that only reads
+	// asks view alone and lists nothing here.
 	actions []rbac.Action
 	// arming is asked in addition of a request that turns a hook on.
 	arming  []rbac.Action
@@ -47,11 +49,12 @@ var (
 	seesAccount = rule{view: rbac.AccountAction_View, license: licenseNever}
 )
 
-// rules is what each hook procedure of the contract asks.
+// rules is what each hook procedure of the contract asks: the permissions the contract
+// declares for it. One procedure asks more than it declares: SetJobHookEnabled asks for
+// execute when the request enables.
 //
-// The SQL of a job hook runs, at the next run, on a connection of the job, its source
-// included: writing or turning on a job hook therefore takes executing the job, on top of
-// creating or editing it.
+// Execute is asked by CreateJobHook, UpdateJobHook and an enabling SetJobHookEnabled, next to
+// create or edit.
 var rules = map[string]rule{
 	mgmtv1alpha1connect.JobServiceGetJobHooksProcedure:               seesJob,
 	mgmtv1alpha1connect.JobServiceGetJobHookProcedure:                seesJob,
@@ -64,12 +67,12 @@ var rules = map[string]rule{
 	},
 	mgmtv1alpha1connect.JobServiceUpdateJobHookProcedure: {
 		view:    rbac.JobAction_View,
-		actions: []rbac.Action{rbac.JobAction_Edit, rbac.JobAction_Execute},
+		actions: []rbac.Action{rbac.JobAction_View, rbac.JobAction_Edit, rbac.JobAction_Execute},
 		license: licenseAlways,
 	},
 	mgmtv1alpha1connect.JobServiceSetJobHookEnabledProcedure: {
 		view:    rbac.JobAction_View,
-		actions: []rbac.Action{rbac.JobAction_Edit},
+		actions: []rbac.Action{rbac.JobAction_View, rbac.JobAction_Edit},
 		arming:  []rbac.Action{rbac.JobAction_Execute},
 		license: licenseToArm,
 	},
@@ -90,12 +93,12 @@ var rules = map[string]rule{
 	},
 	mgmtv1alpha1connect.AccountHookServiceUpdateAccountHookProcedure: {
 		view:    rbac.AccountAction_View,
-		actions: []rbac.Action{rbac.AccountAction_Edit},
+		actions: []rbac.Action{rbac.AccountAction_View, rbac.AccountAction_Edit},
 		license: licenseAlways,
 	},
 	mgmtv1alpha1connect.AccountHookServiceSetAccountHookEnabledProcedure: {
 		view:    rbac.AccountAction_View,
-		actions: []rbac.Action{rbac.AccountAction_Edit},
+		actions: []rbac.Action{rbac.AccountAction_View, rbac.AccountAction_Edit},
 		license: licenseToArm,
 	},
 	mgmtv1alpha1connect.AccountHookServiceDeleteAccountHookProcedure: {

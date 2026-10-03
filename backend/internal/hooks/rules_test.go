@@ -1,14 +1,20 @@
 package hooks
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
+	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 // retiredProcedures are the procedures of the Slack kind: they check nothing and answer that
@@ -68,6 +74,50 @@ func TestEveryRuleStartsWithWhoMaySee(t *testing.T) {
 		}
 	}
 }
+
+// A rule asks what the contract declares for its procedure: a procedure that reads asks view,
+// any other asks the actions listed. Enabling a job hook asks execute on top of it.
+func TestEveryRuleAsksWhatTheContractDeclares(t *testing.T) {
+	for procedure, r := range rules {
+		service, name, _ := strings.Cut(strings.TrimPrefix(procedure, "/"), "/")
+		descriptor, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(service + "." + name))
+		require.NoError(t, err, procedure)
+		declared, ok := auth_apikey.Requires(descriptor.(protoreflect.MethodDescriptor))
+		require.True(t, ok, procedure)
+
+		asked := r.actions
+		if len(asked) == 0 {
+			asked = []rbac.Action{r.view}
+		}
+		names := []string{}
+		for _, action := range asked {
+			names = append(names, permission.Name(permission.Of(action)))
+		}
+		require.ElementsMatch(t, permission.Names(declared), names, procedure)
+
+		arming := []string{}
+		for _, action := range r.arming {
+			arming = append(arming, permission.Name(permission.Of(action)))
+		}
+		if procedure == mgmtv1alpha1connect.JobServiceSetJobHookEnabledProcedure {
+			require.Equal(t, []string{"job:execute"}, arming)
+		} else {
+			require.Empty(t, arming, procedure)
+		}
+	}
+}
+
+// A target with no owner and no answer for an absent object is a fault of the operation.
+func TestATargetWithNothingToActOnIsAFault(t *testing.T) {
+	g := gate{users: nobody{}}
+	admitted, err := g.admit(t.Context(), mgmtv1alpha1connect.JobServiceGetJobHookProcedure, target{}, intent{})
+	require.Nil(t, admitted)
+	require.ErrorContains(t, err, "was given nothing to act on")
+}
+
+type nobody struct{}
+
+func (nobody) GetUser(context.Context) (*userdata.User, error) { return &userdata.User{}, nil }
 
 func TestAnOperationWithoutARuleIsRefused(t *testing.T) {
 	_, err := gate{}.admit(t.Context(), "/mgmt.v1alpha1.JobService/NoSuchProcedure", target{}, intent{})

@@ -45,8 +45,11 @@ func (s *AccountService) CreateAccountHook(
 		UpdatedByUserID: admitted.caller.PgId(),
 		Enabled:         hook.GetEnabled(),
 	})
-	if err != nil {
-		return nil, writeFailed(err, "create account hook", "an account", hook.GetName(), "account")
+	switch {
+	case nameTaken(err, accountHookNameConstraint):
+		return nil, accountHookNameTaken(hook.GetName())
+	case err != nil:
+		return nil, fmt.Errorf("unable to create account hook: %w", err)
 	}
 	logger_interceptor.GetLoggerFromContextOrDefault(ctx).
 		Debug("account hook created", "hookId", husonymdb.UUIDString(row.ID), "hookName", row.Name)
@@ -93,8 +96,10 @@ func (s *AccountService) UpdateAccountHook(
 	switch {
 	case husonymdb.IsNoRows(err):
 		return nil, accountHookNotFound()
+	case nameTaken(err, accountHookNameConstraint):
+		return nil, accountHookNameTaken(req.Msg.GetName())
 	case err != nil:
-		return nil, writeFailed(err, "update account hook", "an account", req.Msg.GetName(), "account")
+		return nil, fmt.Errorf("unable to update account hook: %w", err)
 	}
 	logger_interceptor.GetLoggerFromContextOrDefault(ctx).
 		Debug("account hook updated", "hookId", husonymdb.UUIDString(row.ID), "hookName", row.Name)
@@ -106,9 +111,10 @@ func (s *AccountService) UpdateAccountHook(
 	return connect.NewResponse(&mgmtv1alpha1.UpdateAccountHookResponse{Hook: dto}), nil
 }
 
-// SetAccountHookEnabled turns a hook on or off. A hook the worker would not run is turned
-// off, never on. What is asked of the caller depends on what is asked, not on the state the
-// hook is in; nothing is written when that state is the one asked.
+// SetAccountHookEnabled sets the enabled flag of a hook. Enabling is refused unless the stored
+// configuration is a webhook; disabling is accepted for any stored configuration. The checks
+// are chosen from the requested value alone, and the row is written only when the flag
+// differs from it.
 func (s *AccountService) SetAccountHookEnabled(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.SetAccountHookEnabledRequest],
@@ -119,7 +125,7 @@ func (s *AccountService) SetAccountHookEnabled(
 	}
 	asked := intent{arming: req.Msg.GetEnabled()}
 	if asked.arming {
-		asked.refuse = refuseToArm(current)
+		asked.refuse = refuseToArm(ctx, current)
 	}
 	admitted, err := s.gate.admit(ctx, mgmtv1alpha1connect.AccountHookServiceSetAccountHookEnabledProcedure, t, asked)
 	if err != nil {

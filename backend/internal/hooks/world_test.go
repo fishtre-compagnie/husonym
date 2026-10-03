@@ -53,6 +53,8 @@ type store struct {
 	clock          time.Time
 	// beforeWrite runs before an update reaches the rows, as another caller's write would.
 	beforeWrite func()
+	// createFails is what the database answers a creation, when it refuses one.
+	createFails error
 }
 
 func (s *store) aboutToWrite() {
@@ -76,7 +78,11 @@ func (s *store) now() pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: s.clock, Valid: true}
 }
 
-var errUnique = &pgconn.PgError{Code: husonymdb.PqUniqueViolationCode}
+// The refusals of the two constraints that keep a name to one hook.
+var (
+	errJobHookName     = &pgconn.PgError{Code: husonymdb.PqUniqueViolationCode, ConstraintName: "job_hooks_name_unique"}
+	errAccountHookName = &pgconn.PgError{Code: husonymdb.PqUniqueViolationCode, ConstraintName: "account_hooks_name_unique"}
+)
 
 func (s *store) GetAccountIdFromJobId(_ context.Context, _ db_queries.DBTX, id pgtype.UUID) (pgtype.UUID, error) {
 	s.mu.Lock()
@@ -150,9 +156,12 @@ func (s *store) IsJobHookNameAvailable(_ context.Context, _ db_queries.DBTX, arg
 func (s *store) CreateJobHook(_ context.Context, _ db_queries.DBTX, arg db_queries.CreateJobHookParams) (db_queries.HusonymApiJobHook, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.createFails != nil {
+		return db_queries.HusonymApiJobHook{}, s.createFails
+	}
 	for _, existing := range s.jobHooks {
 		if existing.JobID == arg.JobID && existing.Name == arg.Name {
-			return db_queries.HusonymApiJobHook{}, errUnique
+			return db_queries.HusonymApiJobHook{}, errJobHookName
 		}
 	}
 	s.writes++
@@ -176,7 +185,7 @@ func (s *store) UpdateJobHook(_ context.Context, _ db_queries.DBTX, arg db_queri
 	}
 	for id, existing := range s.jobHooks {
 		if id != arg.ID && existing.JobID == hook.JobID && existing.Name == arg.Name {
-			return db_queries.HusonymApiJobHook{}, errUnique
+			return db_queries.HusonymApiJobHook{}, errJobHookName
 		}
 	}
 	s.writes++
@@ -256,9 +265,12 @@ func (s *store) IsAccountHookNameAvailable(_ context.Context, _ db_queries.DBTX,
 func (s *store) CreateAccountHook(_ context.Context, _ db_queries.DBTX, arg db_queries.CreateAccountHookParams) (db_queries.HusonymApiAccountHook, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.createFails != nil {
+		return db_queries.HusonymApiAccountHook{}, s.createFails
+	}
 	for _, existing := range s.accountHooks {
 		if existing.AccountID == arg.AccountID && existing.Name == arg.Name {
-			return db_queries.HusonymApiAccountHook{}, errUnique
+			return db_queries.HusonymApiAccountHook{}, errAccountHookName
 		}
 	}
 	s.writes++
@@ -283,7 +295,7 @@ func (s *store) UpdateAccountHook(_ context.Context, _ db_queries.DBTX, arg db_q
 	}
 	for id, existing := range s.accountHooks {
 		if id != arg.ID && existing.AccountID == hook.AccountID && existing.Name == arg.Name {
-			return db_queries.HusonymApiAccountHook{}, errUnique
+			return db_queries.HusonymApiAccountHook{}, errAccountHookName
 		}
 	}
 	s.writes++
@@ -453,7 +465,14 @@ func (w *world) settle(prefix string) place {
 	return p
 }
 
+// newWorld is a world of a deployment with authentication on: the worker is who holds the
+// worker's key.
 func newWorld(t *testing.T) *world {
+	t.Helper()
+	return newWorldOf(t, userdata.WorkerOnly{IsAuthEnabled: true})
+}
+
+func newWorldOf(t *testing.T, workerOnly userdata.WorkerOnly) *world {
 	t.Helper()
 	w := &world{store: newStore()}
 	w.people = &people{userID: uuid.NewString(), members: map[string]bool{}}
@@ -466,8 +485,17 @@ func newWorld(t *testing.T) *world {
 	db := husonymdb.New(nil, w.store)
 	users := userdata.NewClient(w.people, w.role, w.papers)
 	w.jobs = hooks.NewJobService(db, users)
-	w.account = v1alpha1_accounthookservice.New(hooks.NewAccountService(db, users))
+	w.account = v1alpha1_accounthookservice.New(hooks.NewAccountService(db, users, workerOnly))
 	return w
+}
+
+// asKey gives a context that carries an API key of an account, scoped to the permissions
+// named.
+func asKey(ctx context.Context, accountID pgtype.UUID, permissions ...string) context.Context {
+	return auth_apikey.SetTokenData(ctx, &auth_apikey.TokenContextData{
+		ApiKeyType: apikey.AccountApiKey,
+		ApiKey:     &db_queries.HusonymApiAccountApiKey{AccountID: accountID, Permissions: permissions},
+	})
 }
 
 // asWorker gives a context that carries the worker's key.

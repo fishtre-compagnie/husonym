@@ -118,11 +118,11 @@ func (s *AccountService) read(
 	caller *admission,
 	rows []db_queries.HusonymApiAccountHook,
 ) ([]*mgmtv1alpha1.AccountHook, error) {
-	readsSecret, err := caller.readsSecret(ctx)
+	readsSecret, err := s.readsSecret(ctx, caller)
 	if err != nil {
 		return nil, err
 	}
-	return toAccountHooks(rows, readsSecret)
+	return toAccountHooks(ctx, rows, readsSecret)
 }
 
 func (s *AccountService) readOne(
@@ -130,9 +130,9 @@ func (s *AccountService) readOne(
 	caller *admission,
 	row *db_queries.HusonymApiAccountHook,
 ) (*mgmtv1alpha1.AccountHook, error) {
-	readsSecret, err := caller.readsSecret(ctx)
+	readsSecret, err := s.readsSecret(ctx, caller)
 	if err != nil {
 		return nil, err
 	}
-	return toAccountHook(row, readsSecret)
+	return toAccountHook(ctx, row, readsSecret)
 }

@@ -1,11 +1,20 @@
 package hooks
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/jackc/pgx/v5/pgconn"
+)
+
+// The constraints that keep a name to one hook of a job, and to one hook of an account.
+const (
+	jobHookNameConstraint     = "job_hooks_name_unique"
+	accountHookNameConstraint = "account_hooks_name_unique"
 )
 
 // errNothingToRemove is what a delete is told when there is no hook to remove, or none the
@@ -23,13 +32,32 @@ func invalidID(what string) error {
 	return husonymerrors.NewBadRequest(what + " id is not a valid uuid")
 }
 
-// writeFailed tells why a write failed. A name is one hook's within its owner, which the
-// database enforces: its refusal is told as a name already taken.
-func writeFailed(err error, doing, kind, name, owner string) error {
-	if husonymdb.IsConflict(err) {
-		return husonymerrors.NewAlreadyExists(
-			fmt.Sprintf("%s hook named %q already exists for this %s", kind, name, owner),
-		)
-	}
-	return fmt.Errorf("unable to %s: %w", doing, err)
+// nameTaken says whether a write failed on the constraint that keeps a name to one hook. Any
+// other unique violation is not a name already taken.
+func nameTaken(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) &&
+		pgErr.Code == husonymdb.PqUniqueViolationCode &&
+		pgErr.ConstraintName == constraint
+}
+
+func jobHookNameTaken(name string) error {
+	return husonymerrors.NewAlreadyExists(fmt.Sprintf("a job hook named %q already exists for this job", name))
+}
+
+func accountHookNameTaken(name string) error {
+	return husonymerrors.NewAlreadyExists(
+		fmt.Sprintf("an account hook named %q already exists for this account", name),
+	)
+}
+
+// unreadableConfig is the answer for a hook whose stored configuration cannot be decoded. It
+// names the hook and nothing of what is stored: what the decoder says may quote a stored
+// value, a secret included, so it is neither returned nor logged.
+func unreadableConfig(ctx context.Context, kind, hookID string) error {
+	logger_interceptor.GetLoggerFromContextOrDefault(ctx).
+		Error("the stored config of a hook cannot be decoded", "hookKind", kind, "hookId", hookID)
+	return husonymerrors.NewInternalError(
+		fmt.Sprintf("the stored config of %s hook %s cannot be read", kind, hookID),
+	)
 }

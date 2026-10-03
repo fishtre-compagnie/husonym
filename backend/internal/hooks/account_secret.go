@@ -15,8 +15,10 @@ import (
 // other caller reads the mask in its place.
 
 // readsSecret says whether an admitted caller reads the secrets of the hooks of the account.
-func (a *admission) readsSecret(ctx context.Context) (bool, error) {
-	if a.caller.IsWorkerApiKey() {
+// Who the worker is, is the deployment's rule for what only the worker calls: its key where
+// authentication is on, any caller where it is off.
+func (s *AccountService) readsSecret(ctx context.Context, a *admission) (bool, error) {
+	if s.workerOnly.Allow(a.caller) == nil {
 		return true, nil
 	}
 	return a.caller.Account(ctx, userdata.NewIdentifier(a.accountID), rbac.AccountAction_Edit)

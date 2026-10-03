@@ -9,8 +9,9 @@
 // Every operation checks its caller in one order, in one place (admit):
 //
 //  1. the owner of what the request names is found: the account of the job, of the hook;
-//  2. the caller may see that owner — otherwise the answer is the one given for what does
-//     not exist, so that nothing is learnt of it;
+//  2. the caller sees that owner: by viewing it, or by belonging to its account and holding
+//     all that the operation asks — otherwise the answer is the one given for what does not
+//     exist, so that nothing is learnt of it;
 //  3. the caller holds each permission the operation asks;
 //  4. the object does not refuse the operation: a kind that is retired is neither created
 //     nor turned on;

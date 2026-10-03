@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -52,9 +53,9 @@ func refuseRetired(config *mgmtv1alpha1.AccountHookConfig) func() error {
 
 // refuseToArm refuses to turn on a hook the worker would not run: one of the retired kind,
 // or one whose configuration holds no kind this version knows.
-func refuseToArm(row *db_queries.HusonymApiAccountHook) func() error {
+func refuseToArm(ctx context.Context, row *db_queries.HusonymApiAccountHook) func() error {
 	return func() error {
-		config, err := decodeAccountConfig(row)
+		config, err := decodeAccountConfig(ctx, row)
 		if err != nil {
 			return err
 		}
@@ -117,18 +118,18 @@ func isHTTPAddress(raw string) bool {
 }
 
 // decodeAccountConfig reads a configuration the way the database holds it.
-func decodeAccountConfig(row *db_queries.HusonymApiAccountHook) (*mgmtv1alpha1.AccountHookConfig, error) {
+func decodeAccountConfig(ctx context.Context, row *db_queries.HusonymApiAccountHook) (*mgmtv1alpha1.AccountHookConfig, error) {
 	config := &mgmtv1alpha1.AccountHookConfig{}
 	if err := stored.Unmarshal(row.Config, config); err != nil {
-		return nil, fmt.Errorf("unable to read the config of account hook %s: %w", husonymdb.UUIDString(row.ID), err)
+		return nil, unreadableConfig(ctx, "account", husonymdb.UUIDString(row.ID))
 	}
 	return config, nil
 }
 
 // toAccountHook gives a hook as a caller reads it: with its secret, or with the mask in its
 // place.
-func toAccountHook(row *db_queries.HusonymApiAccountHook, readsSecret bool) (*mgmtv1alpha1.AccountHook, error) {
-	config, err := decodeAccountConfig(row)
+func toAccountHook(ctx context.Context, row *db_queries.HusonymApiAccountHook, readsSecret bool) (*mgmtv1alpha1.AccountHook, error) {
+	config, err := decodeAccountConfig(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +157,10 @@ func toAccountHook(row *db_queries.HusonymApiAccountHook, readsSecret bool) (*mg
 	}, nil
 }
 
-func toAccountHooks(rows []db_queries.HusonymApiAccountHook, readsSecret bool) ([]*mgmtv1alpha1.AccountHook, error) {
+func toAccountHooks(ctx context.Context, rows []db_queries.HusonymApiAccountHook, readsSecret bool) ([]*mgmtv1alpha1.AccountHook, error) {
 	hooks := make([]*mgmtv1alpha1.AccountHook, 0, len(rows))
 	for i := range rows {
-		hook, err := toAccountHook(&rows[i], readsSecret)
+		hook, err := toAccountHook(ctx, &rows[i], readsSecret)
 		if err != nil {
 			return nil, err
 		}

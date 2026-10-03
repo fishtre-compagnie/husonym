@@ -531,7 +531,7 @@ func serve(ctx context.Context) error {
 	slogger.Debug("enabling account hooks service")
 
 	accountHookService := v1alpha1_accounthookservice.New(
-		hooks.NewAccountService(db, userdataclient),
+		hooks.NewAccountService(db, userdataclient, workerOnly),
 	)
 
 	api.Handle(

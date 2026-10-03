@@ -554,5 +554,12 @@ func (s *IntegrationTestSuite) Test_Hooks_WhatTheWorkerAsks() {
 		got, err := open.AccountHooks().GetAccountHook(ctx, connect.NewRequest(&mgmtv1alpha1.GetAccountHookRequest{Id: hook.GetId()}))
 		requireNoErrResp(t, got, err)
 		require.Equal(t, "foo", got.Msg.GetHook().GetConfig().GetWebhook().GetSecret())
+
+		active, err := open.AccountHooks().GetActiveAccountHooksByEvent(ctx, connect.NewRequest(&mgmtv1alpha1.GetActiveAccountHooksByEventRequest{
+			AccountId: accountId, Event: mgmtv1alpha1.AccountHookEvent_ACCOUNT_HOOK_EVENT_JOB_RUN_FAILED,
+		}))
+		requireNoErrResp(t, active, err)
+		require.Len(t, active.Msg.GetHooks(), 1)
+		require.Equal(t, "foo", active.Msg.GetHooks()[0].GetConfig().GetWebhook().GetSecret())
 	})
 }

@@ -42,13 +42,16 @@ func (s *JobService) CreateJobHook(
 		Enabled:         hook.GetEnabled(),
 		Priority:        checked.priority,
 	})
-	if err != nil {
-		return nil, writeFailed(err, "create job hook", "a job", hook.GetName(), "job")
+	switch {
+	case nameTaken(err, jobHookNameConstraint):
+		return nil, jobHookNameTaken(hook.GetName())
+	case err != nil:
+		return nil, fmt.Errorf("unable to create job hook: %w", err)
 	}
 	logger_interceptor.GetLoggerFromContextOrDefault(ctx).
 		Debug("job hook created", "hookId", husonymdb.UUIDString(row.ID), "hookName", row.Name)
 
-	dto, err := toJobHook(&row)
+	dto, err := toJobHook(ctx, &row)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +89,15 @@ func (s *JobService) UpdateJobHook(
 	switch {
 	case husonymdb.IsNoRows(err):
 		return nil, jobHookNotFound()
+	case nameTaken(err, jobHookNameConstraint):
+		return nil, jobHookNameTaken(req.Msg.GetName())
 	case err != nil:
-		return nil, writeFailed(err, "update job hook", "a job", req.Msg.GetName(), "job")
+		return nil, fmt.Errorf("unable to update job hook: %w", err)
 	}
 	logger_interceptor.GetLoggerFromContextOrDefault(ctx).
 		Debug("job hook updated", "hookId", husonymdb.UUIDString(row.ID), "hookName", row.Name)
 
-	dto, err := toJobHook(&row)
+	dto, err := toJobHook(ctx, &row)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +139,7 @@ func (s *JobService) SetJobHookEnabled(
 			Debug("job hook turned on or off", "hookId", husonymdb.UUIDString(row.ID), "enabled", row.Enabled)
 	}
 
-	dto, err := toJobHook(&row)
+	dto, err := toJobHook(ctx, &row)
 	if err != nil {
 		return nil, err
 	}

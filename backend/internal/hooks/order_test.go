@@ -529,13 +529,42 @@ func TestWhatIsHiddenAnswersAsAbsent(t *testing.T) {
 }
 
 // A member who holds no role may do nothing in the account, seeing included.
+//
+// Naming a job or a hook, the member is answered as for what does not exist. Naming the
+// account, the member is told the permission that is missing.
 func TestAMemberWithoutARoleSeesNothing(t *testing.T) {
-	w := newWorld(t)
-	w.role.grants = map[string]bool{}
-	_, err := w.jobs.GetJobHook(t.Context(), connect.NewRequest(&mgmtv1alpha1.GetJobHookRequest{Id: str(w.own.jobHook)}))
-	requireAnswer(t, err, connect.CodeNotFound, jobHookNotFound)
-	_, err = w.account.GetAccountHook(t.Context(), connect.NewRequest(&mgmtv1alpha1.GetAccountHookRequest{Id: str(w.own.webhook)}))
-	requireAnswer(t, err, connect.CodeNotFound, accountHookNotFound)
+	named := map[string]string{
+		"GetAccountHooks":              "user does not have permission to view account",
+		"IsAccountHookNameAvailable":   "user does not have permission to view account",
+		"GetActiveAccountHooksByEvent": "user does not have permission to view account",
+		"CreateAccountHook":            "user does not have permission to edit account",
+	}
+	for i := range operations {
+		op := &operations[i]
+		if op.cells[allGood].code != 0 {
+			continue // retired: answered the same to everyone
+		}
+		t.Run(op.name, func(t *testing.T) {
+			w := newWorld(t)
+			w.role.grants = map[string]bool{}
+
+			_, err := op.call(t.Context(), w, w.own, false)
+
+			require.Zero(t, w.store.writes)
+			if op.byID {
+				want := op.cells[absent]
+				if want.code == 0 {
+					require.NoError(t, err)
+					return
+				}
+				requireAnswer(t, err, want.code, want.message)
+				return
+			}
+			message, ok := named[op.name]
+			require.True(t, ok, "the test says nothing of this operation")
+			requireAnswer(t, err, connect.CodePermissionDenied, message)
+		})
+	}
 }
 
 // Writing a job hook takes more than editing the job: its SQL runs on the job's connections.

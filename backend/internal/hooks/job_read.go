@@ -27,7 +27,7 @@ func (s *JobService) GetJobHooks(
 	if err != nil {
 		return nil, fmt.Errorf("unable to list the hooks of the job: %w", err)
 	}
-	hooks, err := toJobHooks(rows)
+	hooks, err := toJobHooks(ctx, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (s *JobService) GetJobHook(
 	if _, err := s.gate.admit(ctx, mgmtv1alpha1connect.JobServiceGetJobHookProcedure, t, intent{}); err != nil {
 		return nil, err
 	}
-	hook, err := toJobHook(row)
+	hook, err := toJobHook(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (s *JobService) GetActiveJobHooksByTiming(
 	if err != nil {
 		return nil, fmt.Errorf("unable to list the active hooks of the job: %w", err)
 	}
-	hooks, err := toJobHooks(rows)
+	hooks, err := toJobHooks(ctx, rows)
 	if err != nil {
 		return nil, err
 	}

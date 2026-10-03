@@ -129,7 +129,8 @@ func TestAStoredConfigurationOfNoKnownKind(t *testing.T) {
 }
 
 // A webhook is called over http or https, at a host. A stored address of another form is
-// still read, turned off and on, and deleted: only writing one is refused.
+// still read, listed, disabled, enabled and deleted: enabling does not write the address, and
+// only writing one is refused.
 func TestTheAddressOfAWebhook(t *testing.T) {
 	const message = "webhook url must be an http or https address"
 
@@ -166,14 +167,20 @@ func TestTheAddressOfAWebhook(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, list.Msg.GetHooks(), 4)
 
-		_, err = w.account.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{Id: str(id), Enabled: false}))
+		off, err := w.account.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{Id: str(id), Enabled: false}))
 		require.NoError(t, err)
+		require.False(t, off.Msg.GetHook().GetEnabled())
+		on, err := w.account.SetAccountHookEnabled(ctx, connect.NewRequest(&mgmtv1alpha1.SetAccountHookEnabledRequest{Id: str(id), Enabled: true}))
+		require.NoError(t, err)
+		require.True(t, on.Msg.GetHook().GetEnabled())
+		require.True(t, w.store.accountHooks[id].Enabled)
 
 		_, err = w.account.UpdateAccountHook(ctx, connect.NewRequest(&mgmtv1alpha1.UpdateAccountHookRequest{
 			Id: str(id), Name: "old", Description: "changed", Events: failedRun,
 			Config: webhook("ftp://files.example.com/hook", theSecret),
 		}))
 		requireAnswer(t, err, connect.CodeInvalidArgument, message)
+		require.Contains(t, string(w.store.accountHooks[id].Config), "ftp://files.example.com/hook")
 
 		_, err = w.account.DeleteAccountHook(ctx, connect.NewRequest(&mgmtv1alpha1.DeleteAccountHookRequest{Id: str(id)}))
 		require.NoError(t, err)

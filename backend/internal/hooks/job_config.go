@@ -65,10 +65,10 @@ func (s *JobService) checkJobHook(
 // configuration rather than failing the list it is in.
 var stored = protojson.UnmarshalOptions{DiscardUnknown: true}
 
-func toJobHook(row *db_queries.HusonymApiJobHook) (*mgmtv1alpha1.JobHook, error) {
+func toJobHook(ctx context.Context, row *db_queries.HusonymApiJobHook) (*mgmtv1alpha1.JobHook, error) {
 	config := &mgmtv1alpha1.JobHookConfig{}
 	if err := stored.Unmarshal(row.Config, config); err != nil {
-		return nil, fmt.Errorf("unable to read the config of job hook %s: %w", husonymdb.UUIDString(row.ID), err)
+		return nil, unreadableConfig(ctx, "job", husonymdb.UUIDString(row.ID))
 	}
 	return &mgmtv1alpha1.JobHook{
 		Id:              husonymdb.UUIDString(row.ID),
@@ -85,10 +85,10 @@ func toJobHook(row *db_queries.HusonymApiJobHook) (*mgmtv1alpha1.JobHook, error)
 	}, nil
 }
 
-func toJobHooks(rows []db_queries.HusonymApiJobHook) ([]*mgmtv1alpha1.JobHook, error) {
+func toJobHooks(ctx context.Context, rows []db_queries.HusonymApiJobHook) ([]*mgmtv1alpha1.JobHook, error) {
 	hooks := make([]*mgmtv1alpha1.JobHook, 0, len(rows))
 	for i := range rows {
-		hook, err := toJobHook(&rows[i])
+		hook, err := toJobHook(ctx, &rows[i])
 		if err != nil {
 			return nil, err
 		}
