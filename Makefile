@@ -113,14 +113,14 @@ clean/cli: ## Cleans the CLI
 	@cd ./cli && make clean
 
 # Compose Management
-compose/up: ## Pulls the latest images and stands up the production environment
+compose/up: ## Pulls the images of HUSONYM_VERSION and stands up the production environment
 	docker compose -f $(PROD_COMPOSE_FILE) pull
 	BUILDX_NO_DEFAULT_ATTESTATIONS=1 docker compose -f $(PROD_COMPOSE_FILE) up -d
 
 compose/down: ## Composes down the production environment
 	docker compose -f $(PROD_COMPOSE_FILE) down
 
-compose/auth/up: ## Pulls the latest images and stands up the production environment with auth - Requires a valid Husonym Enterprise license!
+compose/auth/up: ## Pulls the images of HUSONYM_VERSION and stands up the production environment with auth - Requires a valid Husonym Enterprise license!
 	docker compose -f $(PROD_COMPOSE_FILE) -f $(PROD_AUTH_COMPOSE_FILE) pull
 	BUILDX_NO_DEFAULT_ATTESTATIONS=1 docker compose -f $(PROD_COMPOSE_FILE) -f $(PROD_AUTH_COMPOSE_FILE) up -d
 

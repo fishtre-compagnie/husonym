@@ -13,7 +13,7 @@ include:
 services:
   app:
     container_name: husonym-app
-    image: ghcr.io/fishtre-compagnie/husonym/app:latest
+    image: ghcr.io/fishtre-compagnie/husonym/app:${HUSONYM_VERSION:?set HUSONYM_VERSION to a released version, e.g. 0.2.1 (app, api and worker share one version)}
     ports:
       - 3000:3000
     environment:
@@ -52,7 +52,7 @@ services:
 
   api:
     container_name: husonym-api
-    image: ghcr.io/fishtre-compagnie/husonym/api:latest
+    image: ghcr.io/fishtre-compagnie/husonym/api:${HUSONYM_VERSION:?set HUSONYM_VERSION to a released version, e.g. 0.2.1 (app, api and worker share one version)}
     ports:
       - 8080:8080
     command: serve connect
@@ -121,7 +121,7 @@ services:
 
   worker:
     container_name: husonym-worker
-    image: ghcr.io/fishtre-compagnie/husonym/worker:latest
+    image: ghcr.io/fishtre-compagnie/husonym/worker:${HUSONYM_VERSION:?set HUSONYM_VERSION to a released version, e.g. 0.2.1 (app, api and worker share one version)}
     environment:
       - HUSONYM_ENV=dev
       - TEMPORAL_URL=temporal:7233

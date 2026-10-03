@@ -64,9 +64,12 @@ A [compose.yml](./compose.yml) file at the root contains production image refs t
 
 Husonym uses the newer `docker compose` command, so be sure to have that installed on your machine.
 
+The version to run is chosen explicitly: set `HUSONYM_VERSION` to a [released version](https://github.com/fishtre-compagnie/husonym/releases) (without the leading `v`, for example `0.2.1`).
+
 To start Husonym, clone the repo into a local directory, be sure to have docker installed and running, and then run:
 
 ```sh
+export HUSONYM_VERSION=0.2.1
 make compose/up
 ```
 
