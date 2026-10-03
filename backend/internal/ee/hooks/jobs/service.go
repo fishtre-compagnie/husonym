@@ -8,7 +8,6 @@ import (
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
@@ -19,7 +18,6 @@ import (
 )
 
 type Service struct {
-	cfg            *config
 	db             *husonymdb.HusonymDb
 	userdataclient userdata.Interface
 }
@@ -61,41 +59,17 @@ type Interface interface {
 	) (*mgmtv1alpha1.GetActiveJobHooksByTimingResponse, error)
 }
 
-type config struct {
-	isEnabled bool
-}
-
-func WithEnabled() Option {
-	return func(c *config) {
-		c.isEnabled = true
-	}
-}
-
-type Option func(*config)
-
 func New(
 	db *husonymdb.HusonymDb,
 	userdataclient userdata.Interface,
-	opts ...Option,
 ) *Service {
-	cfg := &config{}
-	for _, opt := range opts {
-		opt(cfg)
-	}
-
-	return &Service{cfg: cfg, db: db, userdataclient: userdataclient}
+	return &Service{db: db, userdataclient: userdataclient}
 }
 
 func (s *Service) GetJobHooks(
 	ctx context.Context,
 	req *mgmtv1alpha1.GetJobHooksRequest,
 ) (*mgmtv1alpha1.GetJobHooksResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceGetJobHooksProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
@@ -123,12 +97,6 @@ func (s *Service) GetJobHook(
 	ctx context.Context,
 	req *mgmtv1alpha1.GetJobHookRequest,
 ) (*mgmtv1alpha1.GetJobHookResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceGetJobHookProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
@@ -170,12 +138,6 @@ func (s *Service) DeleteJobHook(
 	ctx context.Context,
 	req *mgmtv1alpha1.DeleteJobHookRequest,
 ) (*mgmtv1alpha1.DeleteJobHookResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceGetJobHooksProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("hookId", req.GetId())
 
@@ -216,12 +178,6 @@ func (s *Service) IsJobHookNameAvailable(
 	ctx context.Context,
 	req *mgmtv1alpha1.IsJobHookNameAvailableRequest,
 ) (*mgmtv1alpha1.IsJobHookNameAvailableResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceIsJobHookNameAvailableProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
@@ -252,12 +208,6 @@ func (s *Service) CreateJobHook(
 	ctx context.Context,
 	req *mgmtv1alpha1.CreateJobHookRequest,
 ) (*mgmtv1alpha1.CreateJobHookResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceCreateJobHookProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
@@ -270,6 +220,9 @@ func (s *Service) CreateJobHook(
 		return nil, err
 	}
 	if _, err := s.verifyUserHasJob(ctx, req.GetJobId(), rbac.JobAction_Execute); err != nil {
+		return nil, err
+	}
+	if err := verifyResp.user.EnforceLicense(ctx, husonymdb.UUIDString(verifyResp.AccountUuid)); err != nil {
 		return nil, err
 	}
 	logger = logger.With(
@@ -378,11 +331,14 @@ func (s *Service) UpdateJobHook(
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.verifyUserHasJob(ctx, husonymdb.UUIDString(jobuuid), rbac.JobAction_Edit)
+	verifyResp, err := s.verifyUserHasJob(ctx, husonymdb.UUIDString(jobuuid), rbac.JobAction_Edit)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := s.verifyUserHasJob(ctx, husonymdb.UUIDString(jobuuid), rbac.JobAction_Execute); err != nil {
+		return nil, err
+	}
+	if err := verifyResp.user.EnforceLicense(ctx, husonymdb.UUIDString(verifyResp.AccountUuid)); err != nil {
 		return nil, err
 	}
 
@@ -433,6 +389,9 @@ func (s *Service) SetJobHookEnabled(
 			return nil, err
 		}
 	}
+	if err := verifyResp.user.EnforceLicense(ctx, husonymdb.UUIDString(verifyResp.AccountUuid)); err != nil {
+		return nil, err
+	}
 
 	hookuuid, err := husonymdb.ToUuid(getResp.GetHook().GetId())
 	if err != nil {
@@ -467,12 +426,6 @@ func (s *Service) GetActiveJobHooksByTiming(
 	ctx context.Context,
 	req *mgmtv1alpha1.GetActiveJobHooksByTimingRequest,
 ) (*mgmtv1alpha1.GetActiveJobHooksByTimingResponse, error) {
-	if !s.cfg.isEnabled {
-		return nil, husonymerrors.NewNotImplementedProcedure(
-			mgmtv1alpha1connect.JobServiceGetActiveJobHooksByTimingProcedure,
-		)
-	}
-
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 	logger = logger.With("jobId", req.GetJobId())
 
@@ -527,6 +480,7 @@ type verifyUserJobResponse struct {
 	JobUuid     pgtype.UUID
 	AccountUuid pgtype.UUID
 	UserUuid    pgtype.UUID
+	user        *userdata.User
 }
 
 // A hook is SQL the next run executes, against any connection the job uses, its source
@@ -563,6 +517,7 @@ func (s *Service) verifyUserHasJob(
 		JobUuid:     jobuuid,
 		AccountUuid: accountUuid,
 		UserUuid:    user.PgId(),
+		user:        user,
 	}, nil
 }
 

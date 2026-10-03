@@ -131,7 +131,6 @@ func serve(ctx context.Context) error {
 	// Building the provider never fails: a license that cannot be read is logged and
 	// leaves the instance without one.
 	eelicense := license.NewProvider(license.SourceFromEnv(), slogger)
-	slogger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	cloudIdentity := cloudidentity.FromEnvironment()
 
@@ -164,9 +163,7 @@ func serve(ctx context.Context) error {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	if eelicense.IsValid() {
-		services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
-	}
+	services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
 
 	// The settings of an account carry secrets, so they are only held where the deployment
 	// can encrypt one. Without a password the handler answers Unimplemented, and health and
@@ -538,61 +535,49 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	if eelicense.IsValid() {
-		slogger.Debug("enabling account hooks service")
+	slogger.Debug("enabling account hooks service")
 
-		accountHookOptions := []accounthooks.Option{
-			accounthooks.WithAppBaseUrl(getAppBaseUrl()),
-			accounthooks.WithWorkerOnly(workerOnly),
+	accountHookOptions := []accounthooks.Option{
+		accounthooks.WithAppBaseUrl(getAppBaseUrl()),
+		accounthooks.WithWorkerOnly(workerOnly),
+	}
+	var slackClient ee_slack.Interface
+	if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
+		encryptor, err := getSymEncryptor()
+		if err != nil {
+			return err
 		}
-		var slackClient ee_slack.Interface
-		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
-			encryptor, err := getSymEncryptor()
-			if err != nil {
-				return err
-			}
-			if encryptor == nil {
-				return sym_encrypt.ErrEmptyPassword
-			}
-			slackClient = ee_slack.NewClient(
-				encryptor,
-				ee_slack.WithAuthClientCreds(
-					viper.GetString("SLACK_AUTH_CLIENT_ID"),
-					viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
-				),
-				ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
-				ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
-			)
-			accountHookOptions = append(
-				accountHookOptions,
-				accounthooks.WithSlackClient(slackClient),
-			)
+		if encryptor == nil {
+			return sym_encrypt.ErrEmptyPassword
 		}
-
-		accountHookService := v1alpha1_accounthookservice.New(
-			accounthooks.New(db, userdataclient, accountHookOptions...),
-		)
-
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				accountHookService,
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
+		slackClient = ee_slack.NewClient(
+			encryptor,
+			ee_slack.WithAuthClientCreds(
+				viper.GetString("SLACK_AUTH_CLIENT_ID"),
+				viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
 			),
+			ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
+			ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
 		)
-	} else {
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				mgmtv1alpha1connect.UnimplementedAccountHookServiceHandler{},
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
-			),
+		accountHookOptions = append(
+			accountHookOptions,
+			accounthooks.WithSlackClient(slackClient),
 		)
 	}
+
+	accountHookService := v1alpha1_accounthookservice.New(
+		accounthooks.New(db, userdataclient, accountHookOptions...),
+	)
+
+	api.Handle(
+		mgmtv1alpha1connect.NewAccountHookServiceHandler(
+			accountHookService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
 
 	apiKeyService := v1alpha1_apikeyservice.New(&v1alpha1_apikeyservice.Config{
 		IsAuthEnabled: isAuthEnabled,
@@ -652,16 +637,7 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	jobhookOpts := []jobhooks.Option{}
-	if eelicense.IsValid() {
-		jobhookOpts = append(jobhookOpts, jobhooks.WithEnabled())
-	}
-
-	jobhookService := jobhooks.New(
-		db,
-		userdataclient,
-		jobhookOpts...,
-	)
+	jobhookService := jobhooks.New(db, userdataclient)
 
 	runLogConfig, err := getRunLogConfig()
 	if err != nil {
@@ -696,29 +672,25 @@ func serve(ctx context.Context) error {
 	var presAnalyzeClient presidioapi.AnalyzeInterface
 	var presAnonClient presidioapi.AnonymizeInterface
 	var presEntityClient presidioapi.EntityInterface
-	if eelicense.IsValid() {
-		analyzeClient, ok, err := getPresidioAnalyzeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio analyze client is enabled")
-			presAnalyzeClient = analyzeClient
-			presEntityClient = analyzeClient
-		}
-		anonClient, ok, err := getPresidioAnonymizeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio anonymize client is enabled")
-			presAnonClient = anonClient
-		}
+	analyzeClient, ok, err := getPresidioAnalyzeClient()
+	if err != nil {
+		return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
+	}
+	if ok {
+		slogger.Debug("presidio analyze client is enabled")
+		presAnalyzeClient = analyzeClient
+		presEntityClient = analyzeClient
+	}
+	anonClient, ok, err := getPresidioAnonymizeClient()
+	if err != nil {
+		return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
+	}
+	if ok {
+		slogger.Debug("presidio anonymize client is enabled")
+		presAnonClient = anonClient
 	}
 
-	isPresidioEnabled := eelicense.IsValid() &&
-		presAnalyzeClient != nil &&
-		presAnonClient != nil
+	isPresidioEnabled := presAnalyzeClient != nil && presAnonClient != nil
 
 	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
 		IsPresidioEnabled: isPresidioEnabled,

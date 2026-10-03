@@ -294,6 +294,9 @@ func (s *Service) SetAccountHookEnabled(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(getResp.Hook.AccountId), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	if req.GetEnabled() == getResp.GetHook().GetEnabled() {
 		logger.Debug("hook is already in the desired state")
@@ -405,6 +408,9 @@ func (s *Service) CreateAccountHook(
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(req.GetAccountId()), rbac.AccountAction_Edit); err != nil {
 		return nil, err
 	}
+	if err := user.EnforceLicense(ctx, req.GetAccountId()); err != nil {
+		return nil, err
+	}
 
 	hookReq := req.GetHook()
 	logger.Debug(fmt.Sprintf("attempting to create new account hook %q", hookReq.GetName()))
@@ -514,6 +520,9 @@ func (s *Service) UpdateAccountHook(
 		return nil, err
 	}
 	if err := user.EnforceAccount(ctx, userdata.NewIdentifier(getResp.GetHook().GetAccountId()), rbac.AccountAction_Edit); err != nil {
+		return nil, err
+	}
+	if err := user.EnforceLicense(ctx, getResp.GetHook().GetAccountId()); err != nil {
 		return nil, err
 	}
 
