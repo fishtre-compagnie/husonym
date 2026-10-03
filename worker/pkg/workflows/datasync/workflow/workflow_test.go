@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	benthosbuilder "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder"
 	benthosbuilder_shared "github.com/fishtre-compagnie/husonym/internal/benthos/benthos-builder/shared"
 	runconfigs "github.com/fishtre-compagnie/husonym/internal/runconfigs"
@@ -247,9 +249,20 @@ func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
 			},
 		}}, nil)
 
+	// What the run tells the job hooks of each timing about its license.
+	var mu sync.Mutex
+	hooksLicensed := map[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_Timing]*bool{}
 	var jobHookTimingActivity *jobhooks_by_timing_activity.Activity
 	env.OnActivity(jobHookTimingActivity.RunJobHooksByTiming, mock.Anything, mock.Anything).
-		Return(&jobhooks_by_timing_activity.RunJobHooksByTimingResponse{}, nil)
+		Return(func(
+			_ context.Context,
+			req *jobhooks_by_timing_activity.RunJobHooksByTimingRequest,
+		) (*jobhooks_by_timing_activity.RunJobHooksByTimingResponse, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			hooksLicensed[req.Timing] = req.Licensed
+			return &jobhooks_by_timing_activity.RunJobHooksByTimingResponse{}, nil
+		})
 
 	syncWorkflow := tablesync_workflow.New(10)
 	env.OnWorkflow(syncWorkflow.TableSync, mock.Anything, mock.Anything).
@@ -264,6 +277,17 @@ func Test_Datasync_FinishesWhenTheLicenseLapsesMeanwhile(t *testing.T) {
 	require.True(t, env.IsWorkflowCompleted())
 	require.NoError(t, env.GetWorkflowError())
 	require.False(t, eelicense.IsValid(), "the license lapsed during the run")
+
+	// The hooks of the end of the run are told what the hooks of its start were told: a
+	// post-sync hook that undoes what a pre-sync one did is not left out halfway.
+	mu.Lock()
+	defer mu.Unlock()
+	presync := hooksLicensed[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_PRESYNC]
+	postsync := hooksLicensed[mgmtv1alpha1.GetActiveJobHooksByTimingRequest_TIMING_POSTSYNC]
+	require.NotNil(t, presync, "the pre-sync hooks are told the license answer of the run")
+	require.NotNil(t, postsync, "the post-sync hooks are told the license answer of the run")
+	require.True(t, *presync)
+	require.True(t, *postsync, "the license lapsed, the run keeps the answer it started with")
 
 	env.AssertExpectations(t)
 }
