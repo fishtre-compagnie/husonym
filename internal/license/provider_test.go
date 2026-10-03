@@ -67,11 +67,19 @@ func (f *providerFixture) newProvider(src Source) *Provider {
 	return newProvider(src, f.pub, f.clock.Now, logger)
 }
 
+// replaceFile swaps the content atomically and returns the error, so it is safe to call
+// from a goroutine other than the test's.
+func replaceFile(path, content string) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
 func writeLicenseFile(t *testing.T, path, content string) {
 	t.Helper()
-	tmp := path + ".tmp"
-	require.NoError(t, os.WriteFile(tmp, []byte(content), 0o600))
-	require.NoError(t, os.Rename(tmp, path))
+	require.NoError(t, replaceFile(path, content))
 }
 
 func maxJobsOf(t *testing.T, p *Provider) int {
@@ -269,16 +277,24 @@ func Test_Provider_FileWinsOverValue(t *testing.T) {
 	require.Contains(t, f.logs.String(), "level=WARN")
 }
 
+// Test_Provider_ConcurrentReads is meaningful under -race: each answer must come from
+// one key and one instant, whatever the file and the clock do meanwhile.
 func Test_Provider_ConcurrentReads(t *testing.T) {
 	f := newProviderFixture(t)
 	path := filepath.Join(t.TempDir(), "license")
 	keyA := f.issue(t, 90*day, 1)
 	keyB := f.issue(t, 90*day, 2)
+	parsedA, err := parseWith(keyA, f.pub)
+	require.NoError(t, err)
+	parsedB, err := parseWith(keyB, f.pub)
+	require.NoError(t, err)
 	writeLicenseFile(t, path, keyA)
 	p := f.newProvider(Source{File: path})
 
 	stop := make(chan struct{})
 	var writer sync.WaitGroup
+	var writeErr error
+	lastWritten := 1
 	writer.Add(1)
 	go func() {
 		defer writer.Done()
@@ -288,11 +304,14 @@ func Test_Provider_ConcurrentReads(t *testing.T) {
 				return
 			default:
 			}
-			if i%2 == 0 {
-				writeLicenseFile(t, path, keyB)
-			} else {
-				writeLicenseFile(t, path, keyA)
+			key, maxJobs := keyB, 2
+			if i%2 == 1 {
+				key, maxJobs = keyA, 1
 			}
+			if writeErr = replaceFile(path, key); writeErr != nil {
+				return
+			}
+			lastWritten = maxJobs
 			f.clock.Advance(61 * time.Second)
 		}
 	}()
@@ -302,18 +321,35 @@ func Test_Provider_ConcurrentReads(t *testing.T) {
 		readers.Add(1)
 		go func() {
 			defer readers.Done()
+			var previous time.Time
 			for range 200 {
-				valid := p.IsValid()
-				limits := p.Limits()
-				if !valid || limits == nil || limits.MaxJobs == nil ||
-					(*limits.MaxJobs != 1 && *limits.MaxJobs != 2) {
-					t.Errorf("incoherent read: valid=%v limits=%+v", valid, limits)
+				snap := p.snapshot()
+				switch {
+				case snap.key == nil:
+					t.Error("the key disappeared")
+					return
+				case snap.problem != nil:
+					t.Errorf("unexpected problem: %v", snap.problem)
+					return
+				case snap.key.Id == parsedA.Id && *snap.key.Limits.MaxJobs != 1,
+					snap.key.Id == parsedB.Id && *snap.key.Limits.MaxJobs != 2,
+					snap.key.Id != parsedA.Id && snap.key.Id != parsedB.Id:
+					t.Errorf("answer mixes two keys: %+v", snap.key)
+					return
+				case snap.now.Before(previous):
+					t.Errorf("the instant went backwards: %v after %v", snap.now, previous)
 					return
 				}
+				previous = snap.now
 			}
 		}()
 	}
 	readers.Wait()
 	close(stop)
 	writer.Wait()
+	require.NoError(t, writeErr)
+
+	// Once everything is quiet, one more interval brings the last key written.
+	f.clock.Advance(61 * time.Second)
+	require.Equal(t, lastWritten, maxJobsOf(t, p))
 }

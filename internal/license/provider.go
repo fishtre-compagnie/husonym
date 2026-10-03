@@ -154,7 +154,7 @@ func unwrapPathError(err error) error {
 
 // snapshot reads the file again when due, then returns the key and the clock under one
 // lock, so that an answer always comes from a single key.
-func (p *Provider) snapshot() (*Key, time.Time) {
+func (p *Provider) snapshot() snapshot {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := p.now()
@@ -162,16 +162,24 @@ func (p *Provider) snapshot() (*Key, time.Time) {
 		p.lastCheck = now
 		p.readFile()
 	}
-	return p.key, now
+	return snapshot{key: p.key, problem: p.problem, now: now}
+}
+
+// snapshot is one consistent answer: the key, the problem and the instant all come from
+// the same critical section.
+type snapshot struct {
+	key     *Key
+	problem error
+	now     time.Time
 }
 
 // State is where the current key stands in its lifecycle, or StateNone without a key.
 func (p *Provider) State() State {
-	key, now := p.snapshot()
-	if key == nil {
+	snap := p.snapshot()
+	if snap.key == nil {
 		return StateNone
 	}
-	return key.StateAt(now)
+	return snap.key.StateAt(snap.now)
 }
 
 // IsValid is true up to the end of the grace period.
@@ -182,36 +190,33 @@ func (p *Provider) IsValid() bool {
 
 // ExpiresAt is when the key stops being in force, or the current time without a key.
 func (p *Provider) ExpiresAt() time.Time {
-	key, now := p.snapshot()
-	if key == nil {
-		return now
+	snap := p.snapshot()
+	if snap.key == nil {
+		return snap.now
 	}
-	return key.ExpiresAt
+	return snap.key.ExpiresAt
 }
 
 // GracePeriodEndsAt is when the grace period runs out, or the current time without a key.
 func (p *Provider) GracePeriodEndsAt() time.Time {
-	key, now := p.snapshot()
-	if key == nil {
-		return now
+	snap := p.snapshot()
+	if snap.key == nil {
+		return snap.now
 	}
-	return key.GraceEndsAt()
+	return snap.key.GraceEndsAt()
 }
 
 // Limits is what the current key caps, or nil without a key.
 func (p *Provider) Limits() *Limits {
-	key, _ := p.snapshot()
-	if key == nil {
+	snap := p.snapshot()
+	if snap.key == nil {
 		return nil
 	}
-	return key.Limits
+	return snap.key.Limits
 }
 
 // Problem is the reason the last read of the license was refused, or nil once a good
 // read happens.
 func (p *Provider) Problem() error {
-	p.snapshot()
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.problem
+	return p.snapshot().problem
 }
