@@ -35,7 +35,7 @@ export default function AccountHookWebhookForm(props: Props): ReactElement {
       <div className="flex flex-col gap-3">
         <FormHeader
           title="Webhook Secret"
-          description="The secret that will be used to authenticate the webhook"
+          description="The secret the webhook is signed with. Only members who may edit the account see it and can change the hook."
           isErrored={!!errors['config.webhook.secret']}
           isRequired={true}
         />

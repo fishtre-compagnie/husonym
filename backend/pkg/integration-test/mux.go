@@ -16,8 +16,7 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
-	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
-	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -256,7 +255,7 @@ func (s *HusonymApiTestClient) setupMux(
 		&sqlconnect.SqlOpenConnector{},
 	)
 
-	jobhookService := jobhooks.New(husonymDb, userclient)
+	jobhookService := hooks.NewJobService(husonymDb, userclient)
 
 	awsManager := awsmanager.New(cloudidentity.Policy{})
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
@@ -327,7 +326,7 @@ func (s *HusonymApiTestClient) setupMux(
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(
-		accounthooks.New(husonymDb, userclient),
+		hooks.NewAccountService(husonymDb, userclient, userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled}),
 	)
 
 	// The settings of an account, with a password of their own: the tests exercise the

@@ -34,7 +34,7 @@ func Test_ConnectionConfig_MaskedSecret_NamesTheField(t *testing.T) {
 		field  string
 	}{
 		"postgres password": {
-			&ConnectionConfig{PgConfig: &PostgresConnectionConfig{Connection: &PostgresConnection{Pass: sensitiveValue}}},
+			&ConnectionConfig{PgConfig: &PostgresConnectionConfig{Connection: &PostgresConnection{Pass: SensitiveValue}}},
 			"password",
 		},
 		"mysql dsn": {
@@ -42,7 +42,7 @@ func Test_ConnectionConfig_MaskedSecret_NamesTheField(t *testing.T) {
 			"connection url",
 		},
 		"s3 session token": {
-			&ConnectionConfig{AwsS3Config: &AwsS3ConnectionConfig{Credentials: &AwsS3Credentials{SessionToken: ptr(sensitiveValue)}}},
+			&ConnectionConfig{AwsS3Config: &AwsS3ConnectionConfig{Credentials: &AwsS3Credentials{SessionToken: ptr(SensitiveValue)}}},
 			"session token",
 		},
 		"openai url": {
@@ -51,7 +51,7 @@ func Test_ConnectionConfig_MaskedSecret_NamesTheField(t *testing.T) {
 		},
 		"mongo client tls": {
 			&ConnectionConfig{
-				MongoConfig: &MongoConnectionConfig{Url: ptr("mongodb://db"), ClientTls: &ClientTls{ClientKey: ptr(sensitiveValue)}},
+				MongoConfig: &MongoConnectionConfig{Url: ptr("mongodb://db"), ClientTls: &ClientTls{ClientKey: ptr(SensitiveValue)}},
 			},
 			"client tls key",
 		},

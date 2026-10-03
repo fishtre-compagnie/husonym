@@ -48,8 +48,7 @@ import (
 	authlogging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth_logging"
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
-	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
-	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
@@ -532,7 +531,7 @@ func serve(ctx context.Context) error {
 	slogger.Debug("enabling account hooks service")
 
 	accountHookService := v1alpha1_accounthookservice.New(
-		accounthooks.New(db, userdataclient),
+		hooks.NewAccountService(db, userdataclient, workerOnly),
 	)
 
 	api.Handle(
@@ -603,7 +602,7 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	jobhookService := jobhooks.New(db, userdataclient)
+	jobhookService := hooks.NewJobService(db, userdataclient)
 
 	runLogConfig, err := getRunLogConfig()
 	if err != nil {
