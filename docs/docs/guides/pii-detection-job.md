@@ -4,7 +4,7 @@ description: What a PII detection job reads in a source database, what it sends 
 id: pii-detection-job
 hide_title: false
 slug: /guides/pii-detection-job
-# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama telefon apellido indirizzo woonplaats pesel senha nombre cliente customeremail dateofbirth Werkzeug
+# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama telefon apellido indirizzo woonplaats pesel senha nombre cliente customeremail dateofbirth Werkzeug PRÉNOM addressline lieunaissance passwordresettoken yescrypt
 ---
 
 ## Introduction
@@ -56,8 +56,10 @@ The rules call no service. The first one that answers wins:
    Italian, Dutch, Polish and Portuguese (`date_of_birth`, `prenom`, `telefon`, `apellido`,
    `indirizzo`, `woonplaats`, `pesel`, `senha`…):
    - A keyword is a word of the name, never letters inside a longer word: `mobile` is not
-     read in `automobile`. A name written without separators is read as its words
-     (`customeremail`, `dateofbirth`).
+     read in `automobile`. Case and accents do not count: `PRÉNOM` reads `prenom`. A name
+     written without separators is read as its words (`customeremail`, `dateofbirth`);
+     when a part of it is not a known word, a keyword of six letters or more that opens or
+     closes it is enough (`addressline1`, `lieunaissance`, `passwordresettoken`).
    - `product_name` names a thing, `user_id` and `id_user` refer to another row, and a name
      that qualifies a datum without being one (`email_format`, `phone_type`,
      `address_count`, `is_email_verified`, `country_code`, `password_changed_at`) is not
@@ -68,7 +70,9 @@ The rules call no service. The first one that answers wins:
      `nombre_articles` is a count.
    - A rule does not apply to a column whose type cannot hold its datum: an integer column
      named `nombre` is not a first name, a timestamp column named `password` is not a
-     password.
+     password. A type is told by its whole name: a type defined in the schema (a domain,
+     an enum) refuses no rule, whatever its name holds. A secret is also reported in a
+     `uuid` column.
    - Passwords, tokens, keys and verification codes are reported, hashed or not
      (`password_hash`, `api_key`, `refresh_token`, `verification_code`).
 2. **The format of the values**, when data sampling is enabled: when at least **half** of
@@ -76,8 +80,9 @@ The rules call no service. The first one that answers wins:
    its name. The checks are those of the GDPR detection: email address, IBAN (mod 97
    checksum), French social security number (mod 97 checksum), payment card (Luhn
    checksum and network prefix), IP address, French telephone number, civility, and
-   password hash (bcrypt, Argon2, scrypt, PBKDF2 and the crypt schemes, also as Django,
-   Werkzeug and LDAP directories store them). A SIRET or a
+   password hash (bcrypt, Argon2, scrypt, yescrypt, PBKDF2 and the crypt schemes, also as
+   Django, Werkzeug and LDAP directories store them, MySQL's own, and ASP.NET Identity
+   version 3; version 2 of the latter carries no mark and is not recognized). A SIRET or a
    SIREN identifies a company: it makes no finding of the rules, and is passed to the
    model as evidence.
 
@@ -114,8 +119,11 @@ characters of the values it may hold, under these conditions:
 - a layout in which every run is one character long is never in a profile: it would give
   the class of each character of a value;
 - a value made of punctuation only is never its own layout: it is written `?+`;
-- for a column with fewer than three values, or whose rows all hold the same value, the
-  profile holds counts and the kind of the values, nothing else.
+- for a column with fewer than three values, the profile holds counts and the kind of the
+  values, nothing else;
+- for a column whose rows all hold the same value, the profile holds those and the format
+  checks that value passes, which the rules read; the model is told the counts and the
+  kind only.
 
 When data sampling is disabled no row is read: only the names of the tables, the names of
 the columns and their types are used.
@@ -159,10 +167,15 @@ data), with a confidence from 0 to 1. The answer is checked: a column without a 
 answer is asked once more, then reported as unanswered. Only the answers whose confidence
 reaches the threshold of the deployment (0.5 by default) are in the report.
 
-What the model writes in a reasoning block (`<think>`, `<thinking>`, `<reasoning>`) is not
-read. Outside one, the answer is the last JSON object that names a column, also inside a
-fenced block; a column about which an object before it says something else is asked once
-more. An answer is read up to one megabyte.
+What the model writes in a reasoning block is not read: `<think>`, `<thinking>`,
+`<thought>`, `<thoughts>`, `<reasoning>`, `<reflection>`, `<scratchpad>`, `<seed:think>`
+and `[THINK]`, in any case. Outside one, the answer is the last JSON object that names a
+column, also inside a fenced block. An object inside another object is not an answer. A
+column about which an object before the answer says something else, or whose key the
+answer holds twice, is asked once more. When the endpoint reports that the completion did
+not stop by itself (a `finish_reason` other than `stop`), the last object is the answer
+only if nothing follows it but spaces or the end of a fenced block; otherwise every column
+is asked once more. An answer is read up to one megabyte.
 
 **What is recorded.** The sample values, the text of the request and the message of the
 endpoint are never written in the logs of the worker nor recorded in the history of the

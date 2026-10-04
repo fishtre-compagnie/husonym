@@ -4,9 +4,10 @@ import "strings"
 
 // A column name is read as words. Separators and case boundaries cut it into tokens
 // (tokenize); a token written without separators is cut again when it is made of known
-// words only (customeremail, telefonnummer, firstname). A keyword of a rule is compared
-// with a word, never searched inside one: "mobil" is not found in "automobile", nor
-// "city" in "capacity".
+// words only (customeremail, telefonnummer, firstname), or around a long keyword that
+// opens or closes it (addressline, lieunaissance). A keyword of a rule is compared with a
+// word, never searched inside one: "mobil" is not found in "automobile", nor "city" in
+// "capacity".
 
 // pattern is one word of a keyword.
 //

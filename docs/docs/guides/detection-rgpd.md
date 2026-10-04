@@ -41,9 +41,15 @@ certain au plus statistique.
 
 ### 1. Dictionnaire — le nom de la colonne
 
-Le nom est comparé à un catalogue de mots-clés FR/EN (`email`, `prenom`, `telephone`,
-`date_naissance`, `nir`…). C'est **déterministe** : même résultat à chaque
-introspection, aucune donnée n'est lue.
+Le nom est lu mot à mot et comparé à un catalogue de mots-clés en huit langues —
+français, anglais, allemand, espagnol, italien, néerlandais, polonais, portugais
+(`email`, `prenom`, `telephone`, `date_naissance`, `nir`, `apellido`, `indirizzo`,
+`woonplaats`…). La casse et les accents ne comptent pas : `PRÉNOM` se lit `prenom`.
+Un nom écrit sans séparateur est découpé en ses mots (`customeremail`,
+`dateofbirth`) ; quand une partie est inconnue, un mot-clé d'au moins six lettres
+placé au début ou à la fin suffit (`addressline1`, `lieunaissance`,
+`passwordresettoken`). C'est **déterministe** : même résultat à chaque introspection,
+aucune donnée n'est lue.
 
 C'est le seul moteur autorisé à **appliquer** un transformer automatiquement, et
 uniquement sur une colonne encore en _Passthrough_ — un choix explicite n'est jamais
@@ -54,10 +60,11 @@ La suggestion tient compte du **type SQL** : un téléphone en `bigint` reçoit
 type `date` natif reçoit un générateur de timestamp, alors que la même date stockée
 en `varchar` reçoit `Transform Character Scramble` (voir _Le cas des dates_ plus bas).
 
-**Toute colonne reconnue sensible a un transformer suggéré**, compatible avec son
-type. Quand la donnée n'a pas de générateur propre (mot de passe, jeton, clé,
-identifiant national, IBAN, compte bancaire, salaire, âge, origine ethnique, carte
-bancaire en texte, date de naissance en texte), la suggestion est :
+**Une colonne reconnue sensible a un transformer suggéré quand un transformer écrit
+son type** : texte, entier, décimal, booléen, date ou horodatage, UUID. Quand la
+donnée n'a pas de générateur propre (mot de passe, jeton, clé, identifiant national,
+IBAN, compte bancaire, salaire, âge, origine ethnique, situation de famille, adresse
+MAC, carte bancaire en texte, date de naissance en texte), la suggestion est :
 
 | Type de la colonne | Transformer suggéré            | Ce qu'il écrit                                                                                |
 | ------------------ | ------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -66,11 +73,82 @@ bancaire en texte, date de naissance en texte), la suggestion est :
 | Décimal            | `Generate Float64`             | Un décimal tiré au hasard                                                                     |
 | Booléen            | `Generate Boolean`             | Vrai ou faux, au hasard                                                                       |
 | Date, horodatage   | `Generate UTC Timestamp`       | Un horodatage tiré au hasard                                                                  |
+| UUID               | `Generate UUID`                | Un UUID tiré au hasard (seul un secret est reconnu dans une colonne de ce type)               |
 
-Ces transformers tirent leurs valeurs au hasard : deux lignes de même valeur ne
-reçoivent pas la même sortie, quel que soit le moteur. La cohérence déterministe
-d'Athanor porte sur les noms, les villes, les adresses, les pays, les emails et les
-téléphones.
+Un générateur propre à la donnée qui écrit des nombres de dix chiffres ou plus
+(`Generate Int64 Phone Number`, `Generate Card Number`) n'est suggéré que pour un
+`bigint` ; un entier plus étroit reçoit `Generate Random Int64`.
+
+**Une colonne sensible dont aucun transformer n'écrit le type n'a pas de
+suggestion** : JSON, tableau, binaire (`bytea`, `varbinary`), `inet`, `enum`, `set`,
+domaine ou tout autre type défini dans le schéma. Elle reste signalée comme donnée
+personnelle, reste en _Passthrough_ tant que personne ne choisit un transformer, et
+le badge indique qu'aucun transformer compatible n'existe.
+
+Une date de naissance stockée en texte reçoit `Transform Character Scramble` : le
+texte écrit n'est plus une date (voir _Le cas des dates_).
+
+**Valeurs NULL.** Un générateur (`Generate …`) ne lit pas la valeur qu'il remplace :
+il écrit une valeur aussi à la place d'un NULL. C'est le cas des suggestions pour un
+salaire, un âge, un genre, une date de naissance native, un téléphone ou un code
+postal stockés en nombre. `Transform Character Scramble` garde un NULL, et sous
+Athanor les transformers cohérents listés ci-dessous le gardent aussi.
+
+**Cohérence.** Les générateurs tirent leurs valeurs au hasard : deux lignes de même
+valeur ne reçoivent pas la même sortie. Sous Athanor, quand le compte a une clé de
+cohérence, les transformers suivants donnent la même sortie pour la même entrée dans
+toute la portée de cohérence, et aucun autre :
+
+- `Generate First Name`, `Transform First Name`, `Generate Last Name`,
+  `Transform Last Name`, `Generate Full Name`, `Transform Full Name` ;
+- `Generate City`, `Generate State`, `Generate Zipcode`, `Generate Street Address`,
+  `Generate Country`, `Generate Business Name` ;
+- `Generate Email`, `Transform Email` ;
+- `Transform Phone Number`, `Transform E164 Phone Number`,
+  `Generate E164 Phone Number` ;
+- `Transform Character Scramble`.
+
+`Generate Full Address`, `Generate Username`, `Generate Gender`, `Generate SSN`,
+`Generate IP Address` et les générateurs de nombres, de booléens, de dates et d'UUID
+ne sont pas cohérents. Sans clé de cohérence, aucun transformer ne l'est.
+
+Sous Athanor avec une clé, `Transform Character Scramble` tire chaque caractère à
+partir de la valeur entière : deux valeurs égales donnent la même sortie dans toutes
+les colonnes, deux valeurs qui diffèrent d'un caractère donnent des sorties sans
+rapport. La sortie a autant de caractères que l'entrée ; une lettre, accentuée ou
+non, devient une lettre ASCII de même casse, un chiffre un chiffre ASCII, un signe de
+la liste `!@#$%^&*()-+=_ []{}|\;"<>,./?` un autre signe de cette liste ; les espaces
+et les autres signes sont gardés. La sortie n'est jamais l'entrée elle-même, sauf
+quand la valeur ne contient aucun caractère à tirer. Deux valeurs différentes peuvent
+donner la même sortie, d'autant plus souvent qu'elles sont courtes.
+
+### Les nouvelles colonnes d'un run (AutoMap)
+
+Avec la stratégie _AutoMap_, un run applique la suggestion du dictionnaire aux
+colonnes apparues dans la source depuis le dernier run, et les signale pour revue.
+Trois cas restent en _Passthrough_ :
+
+- la colonne porte une **clé** — clé primaire, clé étrangère réelle ou virtuelle,
+  contrainte ou index unique — ou est référencée par une clé étrangère ;
+- la colonne est nommée par une **contrainte CHECK** de sa table : une valeur
+  réécrite ne la satisferait pas et le run s'arrêterait. Le catalogue donne ces
+  contraintes pour PostgreSQL et MySQL ; pour SQL Server elles ne sont pas lues, et
+  la colonne est réécrite ;
+- **aucun transformer n'écrit son type**, ou son type n'est pas connu du run.
+
+L'avertissement du run compte les colonnes laissées telles quelles qui sont des
+données personnelles, et nomme chacune avec sa catégorie et la raison :
+
+```text
+3 unmapped columns passed through as is, awaiting review, 2 of them personal data
+(named with the category and the reason): [public.people.dob (birth_date, under a
+CHECK constraint), public.people.notes, public.people.token (secret, covered by a key)]
+```
+
+La plage d'un nombre généré tient dans la colonne : 18 à 90 pour un âge, 20 000 à
+90 000 pour un salaire, coupée à ce que le type contient (`smallint` : 32 767 ;
+`numeric(4,2)` : 99). Quand le bas de la plage n'y tient pas non plus, elle part de
+zéro.
 
 ### 2. Clés de contrôle — la valeur se vérifie
 
