@@ -101,19 +101,30 @@ func newClient(transport *http.Transport, timeout time.Duration) *http.Client {
 }
 
 // Send posts the event to the receiver. A nil error means the receiver answered with a 2xx
-// status. A delivery that did not succeed is an *Error.
+// status. Any other outcome is an *Error.
 func (s *Sender) Send(ctx context.Context, d Delivery) error {
-	target, err := parseTarget(d.URL)
-	if err != nil {
-		return err
+	target, failure := parseTarget(d.URL)
+	if failure != nil {
+		return failure
+	}
+	// The host is written by the owner of the hook: like everything an Error holds that
+	// comes from outside, it is kept short and printable.
+	host := excerpt([]byte(target.Host))
+	if d.Event == nil {
+		return &Error{Reason: ReasonEvent, Host: host, Detail: "there is no event"}
 	}
 	body, err := bodyOf(d.Event)
 	if err != nil {
-		return err
+		return &Error{Reason: ReasonEvent, Host: host, Detail: excerpt([]byte(err.Error()))}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target.String(), bytes.NewReader(body))
 	if err != nil {
-		return &Error{Reason: ReasonInvalidURL, Host: target.Host, Detail: "the request cannot be built"}
+		return &Error{Reason: ReasonInvalidURL, Host: host, Detail: "the request cannot be built"}
+	}
+	client, failure := s.client(req, d.SkipTLSVerify)
+	if failure != nil {
+		failure.Host = host
+		return failure
 	}
 	timestamp := s.now().Unix()
 	req.Header.Set("Content-Type", "application/json")
@@ -124,9 +135,9 @@ func (s *Sender) Send(ctx context.Context, d Delivery) error {
 	req.Header.Set("webhook-timestamp", strconv.FormatInt(timestamp, 10))
 	req.Header.Set("webhook-signature", timestampedSignature(d.Secret, d.ID, timestamp, body))
 
-	resp, err := s.client(req, d.SkipTLSVerify).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return transportError(target.Host, err)
+		return transportError(host, err)
 	}
 	defer resp.Body.Close()
 	answer, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
@@ -135,32 +146,36 @@ func (s *Sender) Send(ctx context.Context, d Delivery) error {
 	if ok {
 		return nil
 	}
-	failure := &Error{Reason: reason, Status: resp.StatusCode, Host: target.Host, Detail: excerpt(answer)}
+	detail := answer
 	if reason == ReasonRedirected {
-		failure.Detail = ""
+		// What matters of a redirect is where it points, not what its body says.
+		detail = nil
 		if location, err := resp.Location(); err == nil {
-			failure.Detail = "to " + location.Host
+			detail = []byte("to " + location.Host)
 		}
 	}
-	return failure
+	return &Error{Reason: reason, Status: resp.StatusCode, Host: host, Detail: excerpt(detail)}
 }
 
 // client picks the way to the receiver of the request.
-func (s *Sender) client(req *http.Request, skipTLSVerify bool) *http.Client {
+func (s *Sender) client(req *http.Request, skipTLSVerify bool) (*http.Client, *Error) {
 	way := s.verified
 	if skipTLSVerify {
 		way = s.unverified
 	}
-	if proxy, err := s.proxy(req); proxy != nil || err != nil {
-		// The proxied transport asks the same question again and reports the error.
-		return way.proxied
+	proxy, err := s.proxy(req)
+	if err != nil {
+		// The error quotes the proxy setting, which may hold credentials: it is not kept.
+		return nil, &Error{Reason: ReasonTransport, Detail: "the proxy setting of the worker is not valid"}
 	}
-	return way.direct
+	if proxy != nil {
+		return way.proxied, nil
+	}
+	return way.direct, nil
 }
 
-// parseTarget accepts an http or https URL with a host. The API checks the same when a
-// hook is stored; hooks stored before it did are checked here.
-func parseTarget(raw string) (*url.URL, error) {
+// parseTarget accepts an http or https URL with a host, and nothing else.
+func parseTarget(raw string) (*url.URL, *Error) {
 	target, err := url.Parse(raw)
 	if err != nil {
 		// The error of the parser quotes the URL.
@@ -176,16 +191,21 @@ func parseTarget(raw string) (*url.URL, error) {
 }
 
 // transportError describes a request that got no answer. The error of the HTTP client
-// quotes the URL: only what it wraps is kept.
+// quotes the URL: only the text of what it wraps is kept, short and printable, since part
+// of it may come from what the request met on its way. The error itself is not kept as a
+// cause, except the cancellation of the context, which a caller has to recognize.
 func transportError(host string, err error) *Error {
-	cause := err
+	described := err
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
-		cause = urlErr.Err
+		described = urlErr.Err
 	}
-	reason := ReasonTransport
-	if errors.Is(cause, errDestinationRefused) {
-		reason = ReasonDestination
+	failure := &Error{Reason: ReasonTransport, Host: host, Detail: excerpt([]byte(described.Error()))}
+	switch {
+	case errors.Is(err, errDestinationRefused):
+		failure.Reason = ReasonDestination
+	case errors.Is(err, context.Canceled):
+		failure.cause = context.Canceled
 	}
-	return &Error{Reason: reason, Host: host, Detail: cause.Error(), cause: cause}
+	return failure
 }

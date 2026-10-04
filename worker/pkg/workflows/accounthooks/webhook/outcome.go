@@ -11,6 +11,7 @@ import (
 type Reason string
 
 const (
+	ReasonEvent       Reason = "invalid event"       // there is no event, or it cannot be encoded
 	ReasonInvalidURL  Reason = "invalid url"         // the URL is not http or https with a host
 	ReasonDestination Reason = "destination refused" // the address is one webhooks are not sent to
 	ReasonRedirected  Reason = "redirected"          // a 3xx answer: redirects are not followed
@@ -20,14 +21,16 @@ const (
 )
 
 // Error is a delivery that did not succeed. It never holds the URL, which may carry a
-// token: only its host.
+// token: only its host. Its texts end up in logs and in workflow histories, and part of
+// them is written by the receiver or by the owner of the hook: each is at most 512 bytes
+// of printable text.
 type Error struct {
 	Reason Reason
 	Status int    // 0 when no response was received
 	Host   string // the host of the URL, never the URL
 	Detail string // an excerpt of the response body, or the cause without the URL
 
-	cause error
+	cause error // context.Canceled, or nothing
 }
 
 func (e *Error) Error() string {
@@ -46,7 +49,8 @@ func (e *Error) Error() string {
 	return text.String()
 }
 
-// Unwrap returns the error of the HTTP client, when there is one.
+// Unwrap returns context.Canceled when the context of the request was canceled, and nil
+// otherwise.
 func (e *Error) Unwrap() error {
 	return e.cause
 }
@@ -56,7 +60,7 @@ func (e *Error) Unwrap() error {
 // permanent: a receiver that restarts, a network that drops.
 func (e *Error) Permanent() bool {
 	switch e.Reason {
-	case ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected:
+	case ReasonEvent, ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected:
 		return true
 	default:
 		return false

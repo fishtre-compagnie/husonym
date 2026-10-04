@@ -17,8 +17,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
 	"github.com/stretchr/testify/require"
 )
+
+// rightToLeftOverride is U+202E, a character that is not printable and that changes how
+// the text after it is displayed.
+const rightToLeftOverride = string(rune(0x202e))
 
 // received is what a receiver got of one request.
 type received struct {
@@ -213,11 +218,16 @@ func Test_Send_KeepsAnExcerptOfALargeAnswer(t *testing.T) {
 }
 
 func Test_Send_DoesNotReadAnAnswerToItsEnd(t *testing.T) {
+	written := make(chan int, 1)
 	srv, _ := newReceiver(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		chunk := bytes.Repeat([]byte("x"), 32<<10)
+		total := 0
+		defer func() { written <- total }()
 		for r.Context().Err() == nil {
-			if _, err := w.Write(chunk); err != nil {
+			n, err := w.Write(chunk)
+			total += n
+			if err != nil {
 				return
 			}
 		}
@@ -231,6 +241,127 @@ func Test_Send_DoesNotReadAnAnswerToItsEnd(t *testing.T) {
 	require.Less(t, time.Since(started), 10*time.Second)
 	require.Equal(t, ReasonRejected, failure.Reason)
 	require.Len(t, failure.Detail, 512)
+	// The sender reads 64 KiB and hangs up. What the receiver managed to write beyond
+	// that sits in the buffers of the connection, which hold far less than this.
+	require.Less(t, <-written, 32<<20)
+}
+
+// What a redirect says of its target is chosen by the receiver, like the body of an answer:
+// it is kept short and printable too.
+func Test_Send_BoundsWhatARedirectNames(t *testing.T) {
+	tests := []struct {
+		name     string
+		location string
+		check    func(t *testing.T, failure *Error)
+	}{
+		{
+			name:     "an oversized host",
+			location: "http://" + strings.Repeat("a", 20000) + ".example.com/",
+			check: func(t *testing.T, failure *Error) {
+				require.Equal(t, "to "+strings.Repeat("a", 509), failure.Detail)
+			},
+		},
+		{
+			name:     "a host with a character that is not printable",
+			location: "http://exa" + rightToLeftOverride + "mple.com/",
+			check: func(t *testing.T, failure *Error) {
+				require.Equal(t, "to exa mple.com", failure.Detail)
+			},
+		},
+		{
+			name:     "no target at all",
+			location: "",
+			check: func(t *testing.T, failure *Error) {
+				require.Empty(t, failure.Detail, "the body of a redirect is not kept")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, _ := newReceiver(t, func(w http.ResponseWriter, _ *http.Request) {
+				if tt.location != "" {
+					w.Header().Set("Location", tt.location)
+				}
+				w.WriteHeader(http.StatusTemporaryRedirect)
+				_, _ = io.WriteString(w, "the body of the redirect")
+			})
+
+			failure := requireError(t, NewSender().Send(t.Context(), goldenDelivery(srv.URL)))
+
+			require.Equal(t, ReasonRedirected, failure.Reason)
+			tt.check(t, failure)
+		})
+	}
+}
+
+// The error of the HTTP client is written by what the request met on its way: its text is
+// kept short and printable, and it is not kept as a cause.
+func Test_TransportError_BoundsItsDetail(t *testing.T) {
+	text := strings.Repeat("x", 500) + rightToLeftOverride + strings.Repeat("y", 20000)
+	cause := &url.Error{Op: "Post", URL: "http://example.com/hook?token=abc", Err: errors.New(text)}
+
+	failure := transportError("example.com", cause)
+
+	require.Equal(t, strings.Repeat("x", 500)+" "+strings.Repeat("y", 9), failure.Detail)
+	require.NoError(t, errors.Unwrap(failure))
+}
+
+// A request that ran out of time is a failure like another: only the cancellation of the
+// context is kept as a cause, for a caller to recognize.
+func Test_TransportError_KeepsNoCauseForADeadline(t *testing.T) {
+	failure := transportError("example.com", &url.Error{Op: "Post", URL: "http://example.com/", Err: context.DeadlineExceeded})
+
+	require.Equal(t, ReasonTransport, failure.Reason)
+	require.NoError(t, errors.Unwrap(failure))
+	require.ErrorIs(t, transportError("example.com", &url.Error{Err: context.Canceled}), context.Canceled)
+}
+
+// The proxy setting of the worker may hold credentials: an error never quotes it.
+func Test_Send_DoesNotQuoteTheProxySetting(t *testing.T) {
+	sender := newSender(func(*http.Request) (*url.URL, error) {
+		return nil, errors.New(`invalid proxy address "http://operator:hunter2@proxy.internal:3128"`)
+	}, requestTimeout)
+
+	failure := requireError(t, sender.Send(t.Context(), goldenDelivery("http://exa"+rightToLeftOverride+"mple.com/hook")))
+
+	require.Equal(t, ReasonTransport, failure.Reason)
+	require.False(t, failure.Permanent())
+	require.Equal(t, "exa mple.com", failure.Host)
+	for err := error(failure); err != nil; err = errors.Unwrap(err) {
+		require.NotContains(t, err.Error(), "hunter2")
+		require.NotContains(t, err.Error(), "proxy.internal")
+	}
+}
+
+func Test_Send_RefusesAnEventItCannotEncode(t *testing.T) {
+	for name, event := range map[string]*runevents.Event{
+		"no event":                  nil,
+		"an event that has no kind": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			srv, requests := newReceiver(t, status(http.StatusOK))
+			delivery := goldenDelivery(srv.URL)
+			delivery.Event = event
+
+			failure := requireError(t, NewSender().Send(t.Context(), delivery))
+
+			require.Equal(t, ReasonEvent, failure.Reason)
+			require.True(t, failure.Permanent())
+			require.Empty(t, requests())
+		})
+	}
+}
+
+func Test_Send_GivesUpOnOversizedResponseHeaders(t *testing.T) {
+	srv, _ := newReceiver(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Filler", strings.Repeat("x", 256<<10))
+		w.WriteHeader(http.StatusOK)
+	})
+
+	failure := requireError(t, NewSender().Send(t.Context(), goldenDelivery(srv.URL)))
+
+	require.Equal(t, ReasonTransport, failure.Reason)
+	require.LessOrEqual(t, len(failure.Detail), 512)
 }
 
 func Test_Send_MakesTheExcerptPrintable(t *testing.T) {
@@ -307,7 +438,8 @@ func Test_Send_ReportsAnUnreachableReceiverWithoutItsURL(t *testing.T) {
 	for _, private := range []string{"token", "/hook", "password", "user"} {
 		require.NotContains(t, failure.Error(), private)
 	}
-	require.Error(t, errors.Unwrap(failure))
+	require.Contains(t, failure.Detail, "connection refused")
+	require.NoError(t, errors.Unwrap(failure), "the error of the client is described, not kept")
 }
 
 func Test_Send_VerifiesTheCertificateUnlessToldNotTo(t *testing.T) {
@@ -442,9 +574,9 @@ func Test_Error_SaysWhatHappenedWithoutTheURL(t *testing.T) {
 }
 
 func Test_Reasons_ArePermanentOrTransient(t *testing.T) {
-	permanent := []Reason{ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected}
+	permanent := []Reason{ReasonEvent, ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected}
 	for _, reason := range []Reason{
-		ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected, ReasonUnavailable, ReasonTransport,
+		ReasonEvent, ReasonInvalidURL, ReasonDestination, ReasonRedirected, ReasonRejected, ReasonUnavailable, ReasonTransport,
 	} {
 		require.Equal(t, slices.Contains(permanent, reason), (&Error{Reason: reason}).Permanent(), reason)
 	}
