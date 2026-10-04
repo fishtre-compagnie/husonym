@@ -10,7 +10,10 @@ import (
 
 type OrderedTablesResult struct {
 	OrderedTables []*sqlmanager_shared.SchemaTable
-	HasCycles     bool
+	// OrderedKeys holds, in the same order, the keys of the dependency map as they were given:
+	// a schema or a table whose name holds a dot cannot be told from its split key.
+	OrderedKeys []string
+	HasCycles   bool
 }
 
 func getMultiTableCircularDependencies(dependencyMap map[string][]string) [][]string {
@@ -36,6 +39,7 @@ func GetTablesOrderedByDependency(dependencyMap map[string][]string) (*OrderedTa
 		tableMap[t] = struct{}{}
 	}
 	orderedTables := []*sqlmanager_shared.SchemaTable{}
+	orderedKeys := []string{}
 	seenTables := map[string]struct{}{}
 	for table := range tableMap {
 		dep, ok := dependencyMap[table]
@@ -45,6 +49,7 @@ func GetTablesOrderedByDependency(dependencyMap map[string][]string) (*OrderedTa
 				orderedTables,
 				&sqlmanager_shared.SchemaTable{Schema: s, Table: t},
 			)
+			orderedKeys = append(orderedKeys, table)
 			seenTables[table] = struct{}{}
 			delete(tableMap, table)
 		}
@@ -65,13 +70,14 @@ func GetTablesOrderedByDependency(dependencyMap map[string][]string) (*OrderedTa
 					orderedTables,
 					&sqlmanager_shared.SchemaTable{Schema: s, Table: t},
 				)
+				orderedKeys = append(orderedKeys, table)
 				seenTables[table] = struct{}{}
 				delete(tableMap, table)
 			}
 		}
 	}
 
-	return &OrderedTablesResult{OrderedTables: orderedTables, HasCycles: hasCycles}, nil
+	return &OrderedTablesResult{OrderedTables: orderedTables, OrderedKeys: orderedKeys, HasCycles: hasCycles}, nil
 }
 
 // returns all cycles table is in

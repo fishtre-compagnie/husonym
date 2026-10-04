@@ -12,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cenkalti/backoff/v7"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func catalogChanged() error {
 func fastRetryOptions() []backoff.RetryOption {
 	return []backoff.RetryOption{
 		backoff.WithBackOff(&backoff.ConstantBackOff{Interval: time.Millisecond}),
-		backoff.WithMaxTries(catalogReadAttempts),
+		backoff.WithMaxTries(sqlmanager_shared.CatalogReadAttempts),
 	}
 }
 
@@ -114,7 +115,7 @@ func Test_catalogRetryQuerier_ReadsDomainsAgainWhenADefinitionIsGone(t *testing.
 	t.Run("and fails rather than tell a constraint without definition", func(t *testing.T) {
 		inner := pg_queries.NewMockQuerier(t)
 		inner.EXPECT().GetDomainsByTables(mock.Anything, mock.Anything, mock.Anything).
-			Return(gone, nil).Times(catalogReadAttempts)
+			Return(gone, nil).Times(sqlmanager_shared.CatalogReadAttempts)
 		wrapped := &catalogRetryQuerier{inner: inner, retryOpts: fastRetryOptions}
 
 		_, err := wrapped.GetDomainsByTables(context.Background(), nil, []string{"app.t"})
@@ -145,7 +146,7 @@ func Test_retryOnCatalogChange(t *testing.T) {
 			return "", catalogChanged()
 		})
 		require.True(t, isCatalogChange(err))
-		require.Equal(t, catalogReadAttempts, reads)
+		require.Equal(t, sqlmanager_shared.CatalogReadAttempts, reads)
 	})
 
 	t.Run("does not read again on another error", func(t *testing.T) {
@@ -164,7 +165,7 @@ func Test_retryOnCatalogChange(t *testing.T) {
 		cancel()
 		reads := 0
 		// The waits of the manager: a caller who gave up is not made to sit through them.
-		_, err := retryOnCatalogChange(ctx, catalogRetryOptions, func() (string, error) {
+		_, err := retryOnCatalogChange(ctx, sqlmanager_shared.CatalogRetryOptions, func() (string, error) {
 			reads++
 			return "", catalogChanged()
 		})
@@ -218,11 +219,11 @@ func Test_NewManager_ReadsTheCatalogAgain(t *testing.T) {
 func Test_catalogRetryOptions_GivesUpInUnderASecond(t *testing.T) {
 	reads := 0
 	start := time.Now()
-	_, err := retryOnCatalogChange(context.Background(), catalogRetryOptions, func() (string, error) {
+	_, err := retryOnCatalogChange(context.Background(), sqlmanager_shared.CatalogRetryOptions, func() (string, error) {
 		reads++
 		return "", catalogChanged()
 	})
 	require.True(t, isCatalogChange(err), "the error of the last read is the one returned: %v", err)
-	require.Equal(t, catalogReadAttempts, reads)
+	require.Equal(t, sqlmanager_shared.CatalogReadAttempts, reads)
 	require.Less(t, time.Since(start), time.Second)
 }

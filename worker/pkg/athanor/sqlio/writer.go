@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
@@ -143,11 +144,9 @@ func (MySQLDialect) DiscardSessionStatement() (string, bool) {
 // positionnellement par go-mssqldb) et identifiants entre crochets.
 type MSSQLDialect struct{}
 
-func (MSSQLDialect) Placeholder(n int) string { return "@p" + strconv.Itoa(n) }
-func (MSSQLDialect) QuoteIdent(s string) string {
-	return "[" + strings.ReplaceAll(s, "]", "]]") + "]"
-}
-func (MSSQLDialect) Driver() string { return sqlmanager_shared.MssqlDriver }
+func (MSSQLDialect) Placeholder(n int) string   { return "@p" + strconv.Itoa(n) }
+func (MSSQLDialect) QuoteIdent(s string) string { return ddl.QuoteIdentifier(s) }
+func (MSSQLDialect) Driver() string             { return sqlmanager_shared.MssqlDriver }
 
 // SQL Server : max 2100 paramètres par requête ET max 1000 tuples par clause
 // VALUES. On budgète 2000 paramètres (marge sous 2100 : la limite inclut un léger
