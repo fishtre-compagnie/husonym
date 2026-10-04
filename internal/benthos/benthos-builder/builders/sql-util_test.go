@@ -1,11 +1,13 @@
 package benthosbuilder_builders
 
 import (
+	"strings"
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_isSourceMissingColumns(t *testing.T) {
@@ -311,17 +313,83 @@ func Test_autoMapNewColumns(t *testing.T) {
 		require.True(t, configOf(out, "telephone").GetTransformPhoneNumberConfig().GetPreserveFormat())
 		require.NotNil(t, configOf(out, "champ_libre").GetPassthroughConfig())
 		require.Equal(t, []string{"public.users.email (email)", "public.users.telephone (phone_number)"}, anonymized)
-		require.Equal(t, []string{"public.users.champ_libre"}, passedThrough)
+		require.Equal(t, []string{"public.users.champ_libre"}, passedThrough.columns)
+		require.Zero(t, passedThrough.sensitive)
 	})
 
 	t.Run("a unique column stays in passthrough, even when recognised", func(t *testing.T) {
 		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			passthrough("public", "users", "login"),
+			passthrough("public", "users", "champ_libre"),
 		}, columnInfo, constraints, nil, true)
 
 		require.NotNil(t, configOf(out, "login").GetPassthroughConfig())
 		require.Empty(t, anonymized)
-		require.Equal(t, []string{"public.users.login"}, passedThrough)
+		// A sensitive column is named with its category and with why it stays as it is.
+		require.Equal(t, []string{"public.users.champ_libre", "public.users.login (username, covered by a key)"}, passedThrough.columns)
+		require.Equal(t, 1, passedThrough.sensitive)
+	})
+
+	t.Run("the warning counts the personal data that passed through", func(t *testing.T) {
+		_, _, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
+			passthrough("public", "users", "login"),
+			passthrough("public", "users", "champ_libre"),
+		}, columnInfo, constraints, nil, true)
+		require.Equal(t,
+			"2 unmapped columns passed through as is, awaiting review, 1 of them personal data "+
+				"(named with the category and the reason): "+
+				"[public.users.champ_libre, public.users.login (username, covered by a key)]",
+			passedThroughWarning(passedThrough),
+		)
+	})
+
+	t.Run("a column under a CHECK constraint stays in passthrough", func(t *testing.T) {
+		people := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+			"public.people": {
+				"dob":        {DataType: "character varying(10)"},
+				"dob_text":   {DataType: "text"},
+				"Phone":      {DataType: "text"},
+				"email":      {DataType: "text"},
+				"channel":    {DataType: "text"},
+				"salary":     {DataType: "integer"},
+				"first_name": {DataType: "text"},
+			},
+			"shop.people": {
+				"dob":   {DataType: "varchar(10)"},
+				"email": {DataType: "varchar(255)"},
+			},
+		}
+		checks := &sqlmanager_shared.TableConstraints{CheckConstraints: map[string][]string{
+			"public.people": {
+				`CHECK (((dob)::text ~ '^\d{4}-\d{2}-\d{2}$'::text))`,
+				`CHECK (("Phone" ~ '^\+'::text))`,
+				// The name of a column inside a text is not the column.
+				`CHECK ((channel = ANY (ARRAY['email'::text, 'first_name''s'::text])))`,
+				`CHECK (((salary >= 0) AND (salary < 100000)))`,
+			},
+			"shop.people": {"regexp_like(`dob`,_utf8mb4'^[0-9]{4}-[0-9]{2}-[0-9]{2}$')"},
+		}}
+		var mappings []*mgmtv1alpha1.JobMapping
+		for table, columns := range people {
+			schema, name, _ := strings.Cut(table, ".")
+			for column := range columns {
+				mappings = append(mappings, passthrough(schema, name, column))
+			}
+		}
+		_, anonymized, passedThrough := autoMapNewColumns(mappings, people, checks, nil, true)
+
+		require.Equal(t, []string{
+			"public.people.Phone (phone_number, under a CHECK constraint)",
+			"public.people.channel",
+			"public.people.dob (birth_date, under a CHECK constraint)",
+			"public.people.salary (salary, under a CHECK constraint)",
+			"shop.people.dob (birth_date, under a CHECK constraint)",
+		}, passedThrough.columns)
+		require.Equal(t, 4, passedThrough.sensitive)
+		require.Equal(t, []string{
+			"public.people.dob_text (birth_date)", "public.people.email (email)",
+			"public.people.first_name (person_first_name)", "shop.people.email (email)",
+		}, anonymized)
 	})
 
 	t.Run("without a derivation key, the phone is anonymized without keeping its format", func(t *testing.T) {
@@ -351,6 +419,10 @@ func Test_autoMapNewColumns(t *testing.T) {
 				"age":                     {DataType: "smallint"},
 				"national_id":             {DataType: "character varying(20)"},
 				"untyped_secret":          nil,
+				"refresh_token":           {DataType: "jsonb"},
+				"session_token":           {DataType: "uuid"},
+				"pay_grade_salary":        {DataType: "smallint"},
+				"age_ratio":               {DataType: "numeric(3,2)"},
 			},
 		}
 		// A national identifier under a unique constraint is a key: it stays as it is.
@@ -371,9 +443,31 @@ func Test_autoMapNewColumns(t *testing.T) {
 		require.InDelta(t, 90000, configOf(out, "salary").GetGenerateFloat64Config().GetMax(), 0)
 		require.EqualValues(t, 18, configOf(out, "age").GetGenerateInt64Config().GetMin())
 		require.EqualValues(t, 90, configOf(out, "age").GetGenerateInt64Config().GetMax())
-		require.Len(t, anonymized, 9)
-		// Left as they are: the key, and the column whose type the run does not know.
-		require.Equal(t, []string{"public.accounts.national_id", "public.accounts.untyped_secret"}, passedThrough)
+		// A token in a uuid column gets another uuid.
+		require.NotNil(t, configOf(out, "session_token").GetGenerateUuidConfig())
+		// The range is cut at what the column holds.
+		require.EqualValues(t, 20000, configOf(out, "pay_grade_salary").GetGenerateInt64Config().GetMin())
+		require.EqualValues(t, 32767, configOf(out, "pay_grade_salary").GetGenerateInt64Config().GetMax())
+		require.Len(t, anonymized, 11)
+		// Left as they are: the key, and the columns whose type no transformer writes or the
+		// run does not know.
+		require.Equal(t, []string{
+			"public.accounts.age_ratio",
+			"public.accounts.national_id (national_id, covered by a key)",
+			"public.accounts.refresh_token (secret, no transformer for its type)",
+			"public.accounts.untyped_secret (secret, no transformer for its type)",
+		}, passedThrough.columns)
+		require.Equal(t, 3, passedThrough.sensitive)
+	})
+
+	t.Run("the character scramble has no option to turn off without a derivation key", func(t *testing.T) {
+		accounts := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+			"public.accounts": {"tax_id": {DataType: "character varying(20)"}},
+		}
+		with, _, _ := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{passthrough("public", "accounts", "tax_id")}, accounts, nil, nil, true)
+		without, _, _ := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{passthrough("public", "accounts", "tax_id")}, accounts, nil, nil, false)
+		require.NotNil(t, configOf(without, "tax_id").GetTransformCharacterScrambleConfig())
+		require.True(t, proto.Equal(configOf(with, "tax_id"), configOf(without, "tax_id")))
 	})
 
 	t.Run("a column the destination recomputes keeps its GenerateDefault", func(t *testing.T) {
@@ -383,7 +477,7 @@ func Test_autoMapNewColumns(t *testing.T) {
 
 		require.NotNil(t, configOf(out, "email_normalise").GetGenerateDefaultConfig())
 		require.Empty(t, anonymized)
-		require.Empty(t, passedThrough)
+		require.Empty(t, passedThrough.columns)
 	})
 }
 

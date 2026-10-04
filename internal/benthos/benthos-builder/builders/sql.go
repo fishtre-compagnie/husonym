@@ -187,14 +187,10 @@ func (b *sqlSyncBuilder) BuildSourceConfigs(
 				strings.Join(anonymized, ", "),
 			))
 		}
-		if len(passedThrough) > 0 {
+		if len(passedThrough.columns) > 0 {
 			// At warning level: this is data leaving the source untransformed, and the log line is
 			// the first place anybody looks.
-			logger.Warn(fmt.Sprintf(
-				"%s passed through as is, no transformer suggested or a key covers them, awaiting review: [%s]",
-				unmappedColumns(len(passedThrough)),
-				strings.Join(passedThrough, ", "),
-			))
+			logger.Warn(passedThroughWarning(passedThrough))
 		}
 		params.MappingChanges.Added = append(params.MappingChanges.Added, extraMappings...)
 		existingSourceMappings = append(existingSourceMappings, extraMappings...)

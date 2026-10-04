@@ -496,6 +496,7 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 	}
 	primaryKeyMap := map[string][]string{}
 	uniqueConstraintsMap := map[string][][]string{}
+	checkConstraintsMap := map[string][]string{}
 	for _, row := range nonFkConstraints {
 		tableName := sqlmanager_shared.BuildTable(row.SchemaName, row.TableName)
 		switch row.ConstraintType {
@@ -509,6 +510,8 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 		case "u":
 			columns := sqlmanager_shared.DedupeSlice(row.ConstraintColumns)
 			uniqueConstraintsMap[tableName] = append(uniqueConstraintsMap[tableName], columns)
+		case "c":
+			checkConstraintsMap[tableName] = append(checkConstraintsMap[tableName], row.ConstraintDefinition)
 		}
 	}
 
@@ -557,6 +560,7 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 		PrimaryKeyConstraints: primaryKeyMap,
 		UniqueConstraints:     uniqueConstraintsMap,
 		UniqueIndexes:         uniqueIndexesMap,
+		CheckConstraints:      checkConstraintsMap,
 	}, nil
 }
 
