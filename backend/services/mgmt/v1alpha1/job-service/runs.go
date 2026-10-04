@@ -279,7 +279,10 @@ func (s *Service) getEventsByWorkflowId(
 			isRunComplete = true
 
 		case enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_FAILED:
-			isRunComplete = true
+			attributes := event.GetStartChildWorkflowExecutionFailedEventAttributes()
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 		case enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED:
 			activityOrder = append(activityOrder, event.GetEventId())
 			attributes := event.GetStartChildWorkflowExecutionInitiatedEventAttributes()
@@ -353,14 +356,18 @@ func (s *Service) getEventsByWorkflowId(
 			errorDto := dtomaps.ToJobRunEventTaskErrorDto(attributes.Failure, attributes.RetryState)
 			activity.Tasks = append(activity.Tasks, dtomaps.ToJobRunEventTaskDto(event, errorDto))
 
-			isRunComplete = true
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 
 		case enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_TIMED_OUT:
 			attributes := event.GetChildWorkflowExecutionTimedOutEventAttributes()
 			activity := activityMap[attributes.InitiatedEventId]
 			activity.CloseTime = event.EventTime
 			activity.Tasks = append(activity.Tasks, dtomaps.ToJobRunEventTaskDto(event, nil))
-			isRunComplete = true
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 
 		case enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_CANCELED:
 			attributes := event.GetChildWorkflowExecutionCanceledEventAttributes()
@@ -1248,7 +1255,7 @@ func (s *Service) GetPiiDetectionReport(
 		return nil, err
 	}
 
-	tableRunContexts, err := s.getTableRunContextsFromJobReport(ctx, jobRun, accountUuid)
+	tableRunContexts, err := s.getTableRunContextsFromJobReport(ctx, jobRun, accountUuid, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get table run contexts from job report: %w", err)
 	}
@@ -1301,6 +1308,7 @@ func (s *Service) getTableRunContextsFromJobReport(
 	ctx context.Context,
 	jobRun *mgmtv1alpha1.JobRun,
 	accountUuid pgtype.UUID,
+	logger *slog.Logger,
 ) ([]*db_queries.HusonymApiRuncontext, error) {
 	runContext, err := s.db.Q.GetRunContextByKey(ctx, s.db.Db, db_queries.GetRunContextByKeyParams{
 		WorkflowId: jobRun.GetId(),
@@ -1325,16 +1333,19 @@ func (s *Service) getTableRunContextsFromJobReport(
 	for _, tableReport := range jobReport.SuccessfulTableReports {
 		tableRunContextKeys = append(tableRunContextKeys, tableReport.ReportKey)
 	}
-	tableRunContexts, err := s.getDbRunContextsFromKeys(ctx, tableRunContextKeys)
+	tableRunContexts, err := s.getDbRunContextsFromKeys(ctx, tableRunContextKeys, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get table run contexts from job report: %w", err)
 	}
 	return tableRunContexts, nil
 }
 
+// getDbRunContextsFromKeys reads the run contexts the keys name. A key that names none is
+// passed over, with a warning: the others are returned.
 func (s *Service) getDbRunContextsFromKeys(
 	ctx context.Context,
 	keys []*mgmtv1alpha1.RunContextKey,
+	logger *slog.Logger,
 ) ([]*db_queries.HusonymApiRuncontext, error) {
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.SetLimit(10)
@@ -1360,6 +1371,13 @@ func (s *Service) getDbRunContextsFromKeys(
 					AccountId:  accountUuid,
 				},
 			)
+			if err != nil && husonymdb.IsNoRows(err) {
+				logger.Warn(
+					"a table report named by the report of the run was not found, it is left out",
+					"reportRunId", key.GetJobRunId(), "externalId", key.GetExternalId(),
+				)
+				return nil
+			}
 			if err != nil {
 				return fmt.Errorf("unable to get run context: %w", err)
 			}
@@ -1424,4 +1442,11 @@ func getTableReportDtos(
 		}
 	}
 	return reportDtos
+}
+
+// childFailureEndsRun tells whether the failure of a child workflow of this type ends the
+// run of its parent. The run of a PII detection job goes on with the other tables when
+// the run of a table fails.
+func childFailureEndsRun(childWorkflowType string) bool {
+	return childWorkflowType != piidetect.TableWorkflowName
 }

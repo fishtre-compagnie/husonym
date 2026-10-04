@@ -72,3 +72,13 @@ func Test_PiiDetectionReport_ATableInWhichNothingWasFound(t *testing.T) {
 	require.Equal(t, "empty", tables[0].GetTable())
 	require.Empty(t, tables[0].GetColumns())
 }
+
+// The run of a table that fails does not end the run of a PII detection job, which goes on
+// with the other tables: the events of the run are then not all there yet. The failure of
+// any other child ends the run of its parent.
+func Test_childFailureEndsRun(t *testing.T) {
+	require.False(t, childFailureEndsRun("TablePiiDetect"))
+	require.True(t, childFailureEndsRun("TableSync"))
+	require.True(t, childFailureEndsRun("ProcessAccountHook"))
+	require.True(t, childFailureEndsRun(""))
+}

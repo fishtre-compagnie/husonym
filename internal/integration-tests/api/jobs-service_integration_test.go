@@ -1084,6 +1084,22 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 		require.Nil(t, tables[0].GetColumns()[0].GetLlmReport())
 	})
 
+	// An index may name a table report that is not there: the others are returned.
+	s.T().Run("an index that names a table report that is missing", func(t *testing.T) {
+		jobRunId := fmt.Sprintf("%s-%s-missing", jobId, time.Now().Format(time.RFC3339))
+		store(t, jobRunId, "public.users--table-pii-report",
+			`{"table_schema":"public","table_name":"users","column_reports":[]}`)
+		store(t, jobRunId, jobId+"--job-pii-report", `{"successfulTableReports":[
+			{"tableSchema": "public", "tableName": "users", "reportKey": `+tableKey(jobRunId, "users")+`, "scanFingerprint": "a"},
+			{"tableSchema": "public", "tableName": "gone", "reportKey": `+tableKey(jobRunId, "gone")+`, "scanFingerprint": "b"}
+		]}`)
+
+		tables := read(t, jobRunId)
+		require.Len(t, tables, 1)
+		require.Equal(t, "users", tables[0].GetTable())
+		require.Empty(t, tables[0].GetColumns())
+	})
+
 	s.T().Run("empty", func(t *testing.T) {
 		jobRunId := fmt.Sprintf("%s-%s-empty", jobId, time.Now().Format(time.RFC3339))
 		s.MockTemporalForDescribeWorkflowExecution(accountId, jobId, jobRunId, "JobPiiDetect")
