@@ -10523,6 +10523,29 @@
           ]
         },
         {
+          "name": "ModelInput",
+          "longName": "JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput",
+          "fullName": "mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput",
+          "description": "",
+          "values": [
+            {
+              "name": "MODEL_INPUT_UNSPECIFIED",
+              "number": "0",
+              "description": "Statistics, as MODEL_INPUT_PROFILES. What a job that never set the field has."
+            },
+            {
+              "name": "MODEL_INPUT_PROFILES",
+              "number": "1",
+              "description": "Statistics computed in the worker on the sampled rows. No value is sent to the model."
+            },
+            {
+              "name": "MODEL_INPUT_VALUES",
+              "number": "2",
+              "description": "The statistics and, for each column, at most 5 distinct values, each cut to 64 characters."
+            }
+          ]
+        },
+        {
           "name": "LogLevel",
           "longName": "LogLevel",
           "fullName": "mgmt.v1alpha1.LogLevel",
@@ -15307,6 +15330,18 @@
               "type": "bool",
               "longType": "bool",
               "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "model_input",
+              "description": "What the language model receives about the sampled rows. Read only when data sampling\nis enabled: without it no row is read and the model receives names and types.",
+              "label": "",
+              "type": "ModelInput",
+              "longType": "JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput",
+              "fullType": "mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",

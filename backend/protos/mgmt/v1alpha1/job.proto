@@ -625,6 +625,19 @@ message JobTypeConfig {
     message DataSampling {
       // Whether to enable data sampling
       bool is_enabled = 1;
+
+      // What the language model receives about the sampled rows. Read only when data sampling
+      // is enabled: without it no row is read and the model receives names and types.
+      ModelInput model_input = 2 [(buf.validate.field).enum.defined_only = true];
+
+      enum ModelInput {
+        // Statistics, as MODEL_INPUT_PROFILES. What a job that never set the field has.
+        MODEL_INPUT_UNSPECIFIED = 0;
+        // Statistics computed in the worker on the sampled rows. No value is sent to the model.
+        MODEL_INPUT_PROFILES = 1;
+        // The statistics and, for each column, at most 5 distinct values, each cut to 64 characters.
+        MODEL_INPUT_VALUES = 2;
+      }
     }
 
     // Filter configuration for table scanning

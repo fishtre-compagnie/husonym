@@ -672,10 +672,20 @@ class JobTypeConfig(_message.Message):
             is_enabled: bool
             def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
         class DataSampling(_message.Message):
-            __slots__ = ("is_enabled",)
+            __slots__ = ("is_enabled", "model_input")
+            class ModelInput(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+                __slots__ = ()
+                MODEL_INPUT_UNSPECIFIED: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput]
+                MODEL_INPUT_PROFILES: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput]
+                MODEL_INPUT_VALUES: _ClassVar[JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput]
+            MODEL_INPUT_UNSPECIFIED: JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput
+            MODEL_INPUT_PROFILES: JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput
+            MODEL_INPUT_VALUES: JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput
             IS_ENABLED_FIELD_NUMBER: _ClassVar[int]
+            MODEL_INPUT_FIELD_NUMBER: _ClassVar[int]
             is_enabled: bool
-            def __init__(self, is_enabled: _Optional[bool] = ...) -> None: ...
+            model_input: JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput
+            def __init__(self, is_enabled: _Optional[bool] = ..., model_input: _Optional[_Union[JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput, str]] = ...) -> None: ...
         class TableScanFilter(_message.Message):
             __slots__ = ("include_all", "include", "exclude")
             INCLUDE_ALL_FIELD_NUMBER: _ClassVar[int]
