@@ -44,6 +44,30 @@ func TestCharacterScrambler_EqualInputsGiveEqualOutputs(t *testing.T) {
 	require.NotEqual(t, scrambled(t, first, "abcdefgh"), scrambled(t, first, "abcdefgh "), "so does a trailing space")
 }
 
+// The scrambler reads a value as it is, whatever the domain it is built on reads: its
+// seeds are those of the exact canonicalizer, and neither the case nor a surrounding space
+// is dropped before the derivation.
+func TestCharacterScrambler_DerivesFromTheExactValue(t *testing.T) {
+	domain := consistency.New([]byte("key"), "job:a").Domain("text.scramble")
+	exact := domain.WithCanonicalizer(consistency.Exact)
+	s := NewCharacterScrambler(domain.WithCanonicalizer(consistency.DefaultCanonicalizer), nil)
+
+	values := []string{"Alice Martin", "alice martin", " Alice Martin", "Alice Martin ", "ALICE MARTIN"}
+	seeds := map[consistency.Seed]string{}
+	for _, value := range values {
+		seed := s.domain.Seed(value)
+		require.Equal(t, exact.Seed(value), seed, value)
+		if earlier, seen := seeds[seed]; seen {
+			t.Errorf("%q and %q derive the same seed", earlier, value)
+		}
+		seeds[seed] = value
+	}
+	// The outputs differ beyond the case of their letters.
+	require.NotEqual(t,
+		strings.ToLower(scrambled(t, s, "abcdefgh")), strings.ToLower(scrambled(t, s, "ABCDEFGH")),
+	)
+}
+
 func TestCharacterScrambler_KeepsTheClassOfEachCharacter(t *testing.T) {
 	const value = "Jean Dupont 42, rue de l'Abbé #7"
 	out := scrambled(t, scramblerUnder("key", "job:a", nil), value)

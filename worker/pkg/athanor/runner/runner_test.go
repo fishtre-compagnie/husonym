@@ -291,6 +291,32 @@ func TestDeterministicCharacterScramble(t *testing.T) {
 	}
 }
 
+// The character scramble derives its outputs from the domain "text.scramble". The name
+// enters every output of the JOB and ACCOUNT scopes: under another name, a value a run
+// scrambled would come out otherwise in the next one.
+func TestDeterministicCharacterScramble_DerivesFromItsDomain(t *testing.T) {
+	ctx := transform.Background()
+	deriver := consistency.New([]byte("test-key"), "job:a")
+	vt, ok := deterministicValueTransformer(deriver, characterScramble(nil))
+	if !ok {
+		t.Fatal("the character scramble is a consistent transformer")
+	}
+	named := native.NewCharacterScrambler(deriver.Domain("text.scramble"), nil)
+	other := native.NewCharacterScrambler(deriver.Domain("text.scramble.other"), nil)
+	for _, value := range []string{"1 87 04 75 123 456 78", "Alice Martin", " alice martin "} {
+		got, err := vt.TransformValue(ctx, value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want, _ := named.TransformValue(ctx, value); got != want {
+			t.Fatalf("%q: %v, expected the output of the domain text.scramble, %v", value, got, want)
+		}
+		if elsewhere, _ := other.TransformValue(ctx, value); got == elsewhere {
+			t.Fatalf("%q: the name of the domain does not enter the output %v", value, got)
+		}
+	}
+}
+
 // An expression that does not compile is left to the catalogue's transformer, which reports it.
 func TestDeterministicCharacterScramble_InvalidExpression(t *testing.T) {
 	broken := `([0-9]`
