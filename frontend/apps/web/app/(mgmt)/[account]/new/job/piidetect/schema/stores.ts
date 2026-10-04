@@ -1,6 +1,9 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { BaseHookStore } from '@/util/zustand.stores.util';
-import { Job } from '@husonym/sdk';
+import {
+  Job,
+  JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput,
+} from '@husonym/sdk';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StorageValue } from 'zustand/middleware';
 import {
@@ -13,6 +16,7 @@ function getInitialFormState(): PiiDetectionSchemaFormValues {
   return {
     dataSampling: {
       isEnabled: true,
+      modelInput: 'profiles',
     },
     tableScanFilter: {
       mode: 'include_all',
@@ -149,6 +153,7 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
     return {
       dataSampling: {
         isEnabled: true,
+        modelInput: 'profiles',
       },
       tableScanFilter: {
         mode: 'include_all',
@@ -185,6 +190,11 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
   return {
     dataSampling: {
       isEnabled: jobTypeConfig.dataSampling?.isEnabled ?? true,
+      modelInput:
+        jobTypeConfig.dataSampling?.modelInput ===
+        JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput.VALUES
+          ? 'values'
+          : 'profiles',
     },
     tableScanFilter: tableScanFilter,
     userPrompt: jobTypeConfig.userPrompt ?? '',

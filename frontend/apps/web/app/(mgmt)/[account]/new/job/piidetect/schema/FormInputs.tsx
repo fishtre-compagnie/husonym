@@ -13,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -139,15 +141,15 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
     <div className="flex flex-col gap-4">
       <FormHeader
         title="Data Sampling"
-        description="Allow the job to sample data from the source. If disabled, only the table DDLs will be used to detect PII. For more accurate results, enable data sampling."
+        description="Let the job read rows of each table. Up to 200 rows per table are read by the worker, inside your deployment, to recognise formats such as email addresses, IBANs or card numbers. When disabled, no row is read: only table names, column names and column types are used."
         isErrored={!!errors?.['isEnabled']}
         labelClassName="text-lg"
       />
       <ToggleGroup
         className="flex justify-start"
         type="single"
-        onValueChange={(value) => {
-          onChange({ isEnabled: value === 'enabled' });
+        onValueChange={(newValue) => {
+          onChange({ ...value, isEnabled: newValue === 'enabled' });
         }}
         value={value.isEnabled ? 'enabled' : 'disabled'}
       >
@@ -155,6 +157,63 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
         <ToggleGroupItem value="disabled">Disabled</ToggleGroupItem>
       </ToggleGroup>
       <FormErrorMessage message={errors?.['isEnabled']} />
+      {value.isEnabled && (
+        <div className="flex flex-col gap-4">
+          <FormHeader
+            title="What the model receives"
+            description="Choose what the language model is given about the sampled rows."
+            isErrored={!!errors?.['modelInput']}
+            labelClassName="text-base"
+          />
+          <RadioGroup
+            onValueChange={(newValue) => {
+              onChange({
+                ...value,
+                modelInput: newValue === 'values' ? 'values' : 'profiles',
+              });
+            }}
+            value={value.modelInput}
+          >
+            <ModelInputRadioItem
+              value="profiles"
+              label="Statistics only"
+              description="The language model receives the table name, the column names and types, and statistics computed from the sampled rows: counts, lengths, kinds of characters, formats. No value of your data is sent to the model."
+            />
+            <ModelInputRadioItem
+              value="values"
+              label="Statistics and sample values"
+              description="In addition, the language model receives up to 5 distinct values of each column, each cut to 64 characters. These values leave the worker for the model endpoint configured on this deployment. Choose this only if that endpoint may receive this data, for example a model hosted inside your network."
+            />
+          </RadioGroup>
+          <FormErrorMessage message={errors?.['modelInput']} />
+          <p className="text-[0.8rem] text-muted-foreground">
+            With no model configured, nothing is sent anywhere: detection uses
+            the rules only.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ModelInputRadioItemProps {
+  value: DataSamplingFormValue['modelInput'];
+  label: string;
+  description: string;
+}
+
+function ModelInputRadioItem(props: ModelInputRadioItemProps): ReactElement {
+  const { value, label, description } = props;
+  const id = `data-sampling-model-input-${value}`;
+  return (
+    <div className="flex items-start gap-2">
+      <RadioGroupItem value={value} id={id} className="mt-1 cursor-pointer" />
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={id} className="cursor-pointer">
+          {label}
+        </Label>
+        <p className="text-[0.8rem] text-muted-foreground">{description}</p>
+      </div>
     </div>
   );
 }
