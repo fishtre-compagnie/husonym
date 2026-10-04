@@ -1,0 +1,34 @@
+{
+  "de": {
+    "precision": 0.6667,
+    "recall": 0.3077
+  },
+  "en": {
+    "precision": 0.84,
+    "recall": 0.8077
+  },
+  "es": {
+    "precision": 0.6923,
+    "recall": 0.3462
+  },
+  "fr": {
+    "precision": 0.8261,
+    "recall": 0.7308
+  },
+  "it": {
+    "precision": 0.6667,
+    "recall": 0.3077
+  },
+  "nl": {
+    "precision": 0.6923,
+    "recall": 0.3462
+  },
+  "pl": {
+    "precision": 0.6667,
+    "recall": 0.3077
+  },
+  "pt": {
+    "precision": 0.6923,
+    "recall": 0.3462
+  }
+}
