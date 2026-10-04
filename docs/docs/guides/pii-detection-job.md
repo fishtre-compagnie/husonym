@@ -4,7 +4,7 @@ description: What a PII detection job reads in a source database, what it sends 
 id: pii-detection-job
 hide_title: false
 slug: /guides/pii-detection-job
-# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama
+# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama telefon apellido indirizzo woonplaats pesel senha nombre cliente customeremail dateofbirth Werkzeug
 ---
 
 ## Introduction
@@ -50,21 +50,34 @@ that names the kind of the source.
 
 The rules call no service. The first one that answers wins:
 
-1. **The name of the column.** Whole names (`email`, `date_of_birth`,
-   `credit_card_number`, `password`…) and the dictionary of the
-   [GDPR detection](/guides/detection-rgpd), which reads English, French, German, Spanish,
-   Italian, Dutch, Polish and Portuguese (`prenom`, `telefon`, `apellido`, `indirizzo`,
-   `woonplaats`, `pesel`, `senha`…), with its exclusions: `product_name` names a thing,
-   `user_id` refers to another row, and a name that qualifies a datum without being one
-   (`email_format`, `phone_type`, `address_count`, `is_email_verified`, `country_code`) is
-   not reported. Passwords, tokens and keys are reported, hashed or not (`password_hash`,
-   `api_key`, `refresh_token`).
+1. **The name of the column**, read by the name rules of the
+   [GDPR detection](/guides/detection-rgpd): the scan of a connection and this job answer
+   from the same rules. They read the words of a name in English, French, German, Spanish,
+   Italian, Dutch, Polish and Portuguese (`date_of_birth`, `prenom`, `telefon`, `apellido`,
+   `indirizzo`, `woonplaats`, `pesel`, `senha`…):
+   - A keyword is a word of the name, never letters inside a longer word: `mobile` is not
+     read in `automobile`. A name written without separators is read as its words
+     (`customeremail`, `dateofbirth`).
+   - `product_name` names a thing, `user_id` and `id_user` refer to another row, and a name
+     that qualifies a datum without being one (`email_format`, `phone_type`,
+     `address_count`, `is_email_verified`, `country_code`, `password_changed_at`) is not
+     reported. A name that holds two data is reported for the one the qualifier belongs
+     to: `address_zip_code` is a postal code.
+   - A word that is ordinary in another language is a finding as the whole name, or beside
+     a word of its own language: `nombre` and `nombre_cliente` are first names,
+     `nombre_articles` is a count.
+   - A rule does not apply to a column whose type cannot hold its datum: an integer column
+     named `nombre` is not a first name, a timestamp column named `password` is not a
+     password.
+   - Passwords, tokens, keys and verification codes are reported, hashed or not
+     (`password_hash`, `api_key`, `refresh_token`, `verification_code`).
 2. **The format of the values**, when data sampling is enabled: when at least **half** of
    the non-blank values of a column pass a format check, the column is reported whatever
    its name. The checks are those of the GDPR detection: email address, IBAN (mod 97
    checksum), French social security number (mod 97 checksum), payment card (Luhn
    checksum and network prefix), IP address, French telephone number, civility, and
-   password hash (bcrypt, Argon2, scrypt, PBKDF2 and the crypt schemes). A SIRET or a
+   password hash (bcrypt, Argon2, scrypt, PBKDF2 and the crypt schemes, also as Django,
+   Werkzeug and LDAP directories store them). A SIRET or a
    SIREN identifies a company: it makes no finding of the rules, and is passed to the
    model as evidence.
 
@@ -86,10 +99,23 @@ of letters and of digits, the most frequent layouts (`a+.a+@a+.a+` for an email 
 and the share of the values that pass each format check. The rows do not leave the step
 that read them.
 
-A profile holds no value, no part of a value, no hash of a value, and no smallest or
-largest value. A layout or a format enters a profile only when at least three rows have
-it, and a value made of punctuation only is never its own layout. For a column with fewer
-than three values the profile holds counts and the kind of the values, nothing else.
+A layout is what a value looks like once its characters are replaced by their class. Each
+run of characters of one class is written once: `A+` for uppercase letters, `a+` for other
+letters, `9+` for digits, `?+` for the characters a layout does not show, one space for
+spaces. Eleven punctuation characters (`@ . , - _ / : + ( ) #`) are written as they are,
+where they stand between runs: `1985-03-12` has the layout `9+-9+-9+`. A layout is cut at
+32 characters.
+
+A profile holds no value, no letter and no digit of a value, no hash of a value, and no
+smallest or largest value. The punctuation characters above, in a layout, are the only
+characters of the values it may hold, under these conditions:
+
+- a layout or a format enters a profile only when at least three rows have it;
+- a layout in which every run is one character long is never in a profile: it would give
+  the class of each character of a value;
+- a value made of punctuation only is never its own layout: it is written `?+`;
+- for a column with fewer than three values, or whose rows all hold the same value, the
+  profile holds counts and the kind of the values, nothing else.
 
 When data sampling is disabled no row is read: only the names of the tables, the names of
 the columns and their types are used.
@@ -112,28 +138,43 @@ the job, cut to 2,000 characters. It goes to the endpoint configured on the work
 nowhere else.
 
 With _Statistics and sample values_, the table is read a second time to take these
-values, which are written neither in the history of the run nor in the logs. Choose it
-only if the endpoint of the model may receive this data, for example a model hosted inside
-your network.
+values, which are neither recorded in the history of the run nor written in the logs.
+Choose it only if the endpoint of the model may receive this data, for example a model
+hosted inside your network.
 
 A binary column never sends a value. It is known by its type in the catalogue of the
 database, whatever the driver returns for it: `bytea` and the bit strings of PostgreSQL;
 `binary`, `varbinary`, the `blob` family, `bit` and the spatial types of MySQL; `binary`,
 `varbinary`, `image`, `rowversion` (and `timestamp`, its other name), `geography`,
-`geometry` and `hierarchyid` of SQL Server. A text that is not valid UTF-8 is not sent
-either.
+`geometry`, `hierarchyid` and `sql_variant` of SQL Server, and the arrays of these types.
+
+The catalogue lists a column of a domain under the name of the domain, not under its base
+type: a domain over a binary type is told by its values. A value is not sent when it is
+not valid UTF-8, when it holds a control character other than a tab or an end of line, or
+when it is bytes as PostgreSQL writes them (`\x` and hexadecimal digits), alone or as the
+elements of an array.
 
 The model answers, for each column, one of the six categories or `none` (not personal
 data), with a confidence from 0 to 1. The answer is checked: a column without a valid
 answer is asked once more, then reported as unanswered. Only the answers whose confidence
-reaches the threshold of the deployment (0.5 by default) are in the report. An answer is
-read for the JSON object it holds, also after a reasoning block or inside a fenced block,
-and up to one megabyte.
+reaches the threshold of the deployment (0.5 by default) are in the report.
 
-Nothing of what is sent to the model, and nothing of what it answers, is written in the
-logs of the worker or in the history of the run. When a request fails, what is kept of
-the endpoint's answer is its HTTP status and the type and the code of its error, when
-they are short identifiers: never its message, which may quote the request.
+What the model writes in a reasoning block (`<think>`, `<thinking>`, `<reasoning>`) is not
+read. Outside one, the answer is the last JSON object that names a column, also inside a
+fenced block; a column about which an object before it says something else is asked once
+more. An answer is read up to one megabyte.
+
+**What is recorded.** The sample values, the text of the request and the message of the
+endpoint are never written in the logs of the worker nor recorded in the history of the
+run. The history of the run holds what the model step is given and what it returns: the
+name of the table, the names and the types of its columns, their profiles and the User
+Prompt of the job; then the category and the confidence of each answer, which are also the
+stored report.
+
+When a request fails, what is kept of the endpoint's answer is its HTTP status and, for a
+request without sample values, the type and the code of its error when they are short
+identifiers. Its message, which may quote the request, is never kept; with sample values
+the status alone is.
 
 Beside the request itself, the client library adds headers that describe it: a
 `User-Agent` with its version, and `X-Stainless-*` headers with the operating system, the
@@ -177,9 +218,9 @@ The worker reads these settings and no other for the model:
 - `OPENAI_BASE_URL` alone, without a key and without `PII_DETECT_LLM_MODEL`, configures
   no model: the worker says so when it starts.
 
-`PII_DETECT_LLM_URL` without the name of a model, an address that holds a user, a password
-or a query, or a threshold outside 0 to 1, stops the worker when it starts, with a message
-that says so.
+`PII_DETECT_LLM_URL` without the name of a model, `PII_DETECT_LLM_MODEL` with neither an
+address nor a key, an address that holds a user, a password or a query, or a threshold
+outside 0 to 1, stops the worker when it starts, with a message that names the setting.
 
 When it starts, the worker writes in its log where the requests go:
 `PII detection asks the model <name> at <host>`, or
@@ -221,21 +262,15 @@ _exclude_ **Table Scan Mode**.
 
 ## Upgrading
 
-A deployment that already runs PII detection jobs takes these steps when it upgrades to
-this version:
+A deployment that runs PII detection jobs takes these steps when it upgrades:
 
-1. Stop the workers of the earlier version, or pause the PII detection jobs, before
-   starting the new workers. A worker of the earlier version sends whole values to the
-   model for a job with data sampling, and cannot continue a run that tolerated a model
-   failure, that failed for an incomplete table, or that scanned two tables of the same
-   sanitized name.
-2. Expect the first incremental run to scan every table again: what identifies an
-   unchanged table now includes the types of its columns and the settings of the job.
-3. Expect a run with a table that failed, or that the model could not scan, to end
-   failed, once its reports are stored.
-4. Before rolling the API back to the earlier version, set the jobs that send sample
-   values back to _Statistics only_: the earlier API cannot read a job that holds that
-   choice.
+1. Stop every worker before starting the new ones, or pause the PII detection jobs
+   meanwhile: a run must not be shared between two versions of the worker.
+2. The first incremental run after an upgrade scans every table.
+3. A run with a table that failed, or that the model could not scan, ends failed, once
+   its reports are stored.
+4. Before going back to a previous version of the API, set the jobs that send sample
+   values back to _Statistics only_.
 
 ## Reading the report
 
