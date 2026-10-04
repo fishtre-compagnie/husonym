@@ -53,6 +53,10 @@ type rule struct {
 	// à préserver : le driver écrit une vraie date. C'est ce qui permet de
 	// suggérer un générateur là où une date stockée en texte l'interdit.
 	suggestIfTemporal mgmtv1alpha1.TransformerSource
+	// ownTokens are tokens that are part of the datum in a name this rule matches,
+	// where they would otherwise say that the name is a reference or a qualifier: the
+	// "code" of a postal code, the "id" of a tax id, the "key" of an API key.
+	ownTokens []string
 }
 
 // objectTokens : tokens qui disent que la colonne nomme une CHOSE, pas une personne.
@@ -75,16 +79,54 @@ var objectTokens = []string{
 	"fichier", "produit", "societe", "marque", "magasin",
 	"projet", "tache", "regle", "groupe", "categorie", "etiquette",
 	"modele", "evenement", "dossier", "chemin", "etat", "devise", "unite",
+	// German, Spanish, Italian, Dutch, Polish and Portuguese words for the same things.
+	"datei", "produkt", "firma", "marke", "projekt", "gruppe", "kategorie", "vorlage", "ordner", "pfad",
+	"rolle", "aufgabe", "tabelle", "spalte",
+	"archivo", "empresa", "marca", "tienda", "proyecto", "tarea", "regla", "grupo", "categoria",
+	"producto", //nolint:misspell // a Spanish word
+	"etiqueta", "plantilla", "evento", "carpeta", "ruta", "tabla", "columna", "campo",
+	"prodotto", "azienda", "societa", "negozio", "progetto", "gruppo", "etichetta", "modello", "cartella",
+	"percorso", "tabella", "colonna",
+	"bestand", "bedrijf", "merk", "winkel", "taak", "regel", "groep", "categorie", "sjabloon", "map", "pad",
+	"tabel", "kolom", "veld",
+	"plik", "pliku", "produktu", "marka", "sklep", "zadanie", "regula", "grupa", "kategoria", "etykieta",
+	"szablon", "sciezka", "tabela", "kolumna", "pole",
+	"arquivo", "ficheiro", "produto", "loja", "projeto", "tarefa", "regra", "modelo", "pasta", "caminho",
+	"coluna",
 }
+
+// The words a code is called by. In most names a code qualifies (country_code); in a
+// few it is the datum (postal_code, pin_code).
+var codeTokens = []string{"code", "codigo", "codice", "kod"}
 
 // L'ordre est significatif : première règle qui matche = gagnante. Les règles les
 // plus spécifiques (username, prénom) précèdent les plus génériques (nom, name).
 var rules = []rule{
 	{
+		// What lets someone act as a person: a password, a token, a key, a secret, in
+		// clear or hashed. No transformer is suggested: none keeps a hash valid.
+		category:  "secret",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		keywords: []string{
+			"password", "passwd", "passphrase", "motdepasse", "passwort", "kennwort", "contrasena", "claveacceso",
+			"senha", "palavrapasse", "wachtwoord", "haslo", "parolachiave", "paroladordine",
+			"apikey", "apitoken", "accesstoken", "refreshtoken", "authtoken", "bearertoken", "sessiontoken",
+			"secretkey", "privatekey", "clientsecret", "securitycode", "credential",
+		},
+		tokenOnly: []string{
+			"token", "secret", "pwd", "mdp", "jeton", "pin", "clave",
+			"secreto", "segreto", "segredo", "geheim", "sekret",
+		},
+		// clave_primaria, clave_foranea: the keys of a table, not of a person.
+		excludeTokens: []string{"primaria", "foranea", "externa"},
+		ownTokens:     append([]string{"key"}, codeTokens...),
+	},
+	{
 		category:  "email",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL,
-		keywords:  []string{"email", "mail", "courriel"},
+		keywords:  []string{"email", "mail", "courriel", "correo", "correio", "postaelettronica", "pocztaelektroniczna"},
 	},
 	{
 		// Transform, not Generate: its default keeps the prefix, separators and length of
@@ -93,31 +135,59 @@ var rules = []rule{
 		sensitive:        true,
 		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		suggestIfNumeric: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
-		keywords:         []string{"phone", "telephone", "mobile", "cellphone"},
-		tokenOnly:        []string{"tel", "gsm", "fax"},
+		keywords: []string{
+			"phone", "telephone", "mobile", "cellphone",
+			"telefon", "telefoon", "mobil", "mobiel", "movil", "celular", "cellular", "telemovel", "komork",
+			"rufnummer",
+		},
+		tokenOnly: []string{"tel", "gsm", "fax", "handy"},
 	},
 	{
 		category:  "username",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_USERNAME,
-		keywords:  []string{"username", "login"},
-		tokenOnly: []string{"user", "pseudo"},
+		keywords: []string{
+			"username", "login",
+			"benutzername", "nutzername", "nombreusuario", "nombredeusuario", "nomeutente", "gebruikersnaam",
+			"nazwauzytkownika", "nomeutilizador", "nomeusuario", "nomedeusuario", "nomdutilisateur",
+		},
+		tokenOnly: []string{"user", "pseudo", "usuario", "utilizador", "identifiant"},
 		// created_by_user, updated_by_user : colonnes d'audit qui référencent un
 		// utilisateur, pas son login.
 		excludeTokens: []string{"by"},
 	},
 	{
+		// A name that says it is whole, before the rules of its parts: nombre_completo
+		// holds the word of a first name, imie_i_nazwisko those of both.
+		category:  "person_full_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
+		keywords: []string{
+			"nombrecompleto", "nomecompleto", "imieinazwisko", "vollstaendigername", "vollername",
+			"volledigenaam",
+		},
+	},
+	{
 		category:  "person_first_name",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FIRST_NAME,
-		keywords:  []string{"firstname", "givenname", "forename", "prenom"},
-		tokenOnly: []string{"fname"},
+		keywords: []string{
+			"firstname", "givenname", "forename", "prenom",
+			"vorname", "rufname", "primernombre", "nombredepila", "voornaam", "primeironome",
+		},
+		// "nombre" is a first name in Spanish and a count in French: it is reported.
+		tokenOnly:     []string{"fname", "nombre", "imie"},
+		excludeTokens: objectTokens,
 	},
 	{
-		category:      "person_last_name",
-		sensitive:     true,
-		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
-		keywords:      []string{"lastname", "surname", "familyname", "patronyme"},
+		category:  "person_last_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
+		keywords: []string{
+			"lastname", "surname", "familyname", "patronyme",
+			"nachname", "familienname", "zuname", "apellido", "apelido", "sobrenome", "cognome", "achternaam",
+			"familienaam", "nazwisko",
+		},
 		tokenOnly:     []string{"lname", "nom"},
 		excludeTokens: append([]string{"complet", "full", "entier"}, objectTokens...),
 	},
@@ -126,7 +196,7 @@ var rules = []rule{
 		sensitive:     true,
 		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
 		keywords:      []string{"fullname", "nomcomplet"},
-		tokenOnly:     []string{"name"},
+		tokenOnly:     []string{"name", "naam", "nome"},
 		excludeTokens: objectTokens,
 	},
 	{
@@ -141,54 +211,92 @@ var rules = []rule{
 		category:  "street_address",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS,
-		keywords:  []string{"address", "adresse", "street"},
-		tokenOnly: []string{"rue"},
+		keywords: []string{
+			"address", "adresse", "street",
+			"anschrift", "strasse", "direccion", "domicilio", "indirizz", "straat", "ulica", "enderec",
+			"adres", //nolint:misspell // a Dutch and Polish word
+			"morada", "logradouro",
+		},
+		tokenOnly: []string{"rue", "calle", "rua"},
 	},
 	{
 		// Champs géo rapportés à une personne = donnée personnelle (RGPD).
 		category:  "city",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY,
-		keywords:  []string{"city", "ville"},
+		keywords: []string{
+			"city", "ville",
+			"stadt", "wohnort", "ciudad", "localidad", "citta", "woonplaats", "miasto", "miejscowosc", "cidade",
+		},
+		tokenOnly: []string{"ort", "stad", "plaats"},
 	},
 	{
 		category:  "state",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STATE,
-		keywords:  []string{"province"},
-		tokenOnly: []string{"state", "region"},
+		keywords:  []string{"provinc", "bundesland", "wojewodztwo"},
+		tokenOnly: []string{"state", "region", "regione", "distrito"},
 	},
 	{
 		category:  "postal_code",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE,
-		keywords:  []string{"zipcode", "zip", "postal", "postcode"},
-		tokenOnly: []string{"cp"},
+		keywords:  []string{"zipcode", "zip", "postal", "postcode", "postleitzahl", "pocztow"},
+		tokenOnly: []string{"cp", "plz", "cap", "cep"},
+		ownTokens: codeTokens,
 	},
 	{
 		category:  "country",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_COUNTRY,
 		keywords:  []string{"country", "pays"},
+		tokenOnly: []string{"land", "pais", "paese", "nazione", "kraj"},
 	},
 	{
 		category:  "ssn",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN,
-		keywords:  []string{"ssn", "socialsecurity", "securitesociale"},
-		tokenOnly: []string{"nir"},
+		keywords: []string{
+			"socialsecurity", "securitesociale",
+			"sozialversicherung", "seguridadsocial", "segurancasocial",
+		},
+		// "ssn" as a whole word: Reisepassnummer holds its letters.
+		tokenOnly: []string{"ssn", "nir"},
+		ownTokens: []string{"id"},
+	},
+	{
+		// An identifier an authority issues to a person, other than a social security
+		// number. No transformer is suggested: each has a format of its own.
+		category:  "national_id",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		keywords: []string{
+			"taxid", "nationalid", "passport", "passeport", "pasaporte", "passaporto", "passaporte", "paspoort",
+			"paszport", "reisepass", "personalausweis", "steuerid", "steueridentifikation", "steuernummer",
+			"codicefiscale", "burgerservicenummer", "contribuinte",
+		},
+		tokenOnly: []string{"dni", "nie", "nif", "bsn", "pesel", "cpf", "curp"},
+		ownTokens: append([]string{"id"}, codeTokens...),
 	},
 	{
 		category:  "credit_card",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
-		keywords:  []string{"cardnumber", "creditcard", "ccnumber", "cardno"},
+		keywords: []string{
+			"cardnumber", "creditcard", "ccnumber", "cardno",
+			"kreditkarte", "numerotarjeta", "tarjetacredito", "tarjetadecredito", "cartadicredito", "numerocarta",
+			"numerkarty", "kartakredytowa", "numerocartao", "cartaocredito", "cartaodecredito", "cartebancaire",
+		},
 	},
 	{
 		category:  "gender",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER,
-		keywords:  []string{"gender", "sexe", "genre"},
+		keywords: []string{
+			"gender", "sexe", "genre",
+			"geschlecht", "anrede", "sexo", "genero", "sesso", "geslacht", "aanhef", "civilite", "salutation",
+		},
+		tokenOnly: []string{"plec"},
 	},
 	{
 		// Date de naissance : la suggestion dépend du TYPE de la colonne, cf.
@@ -205,6 +313,7 @@ var rules = []rule{
 		keywords: []string{
 			"birthdate", "birthday", "dateofbirth", "datenaissance",
 			"datedenaissance", "naissance",
+			"geburtsdatum", "geburtstag", "nacimiento", "nascita", "geboortedatum", "urodzenia", "nascimento",
 		},
 		tokenOnly: []string{"dob", "ddn"},
 	},
@@ -224,7 +333,7 @@ var (
 
 // normalize met le nom en minuscules et retire les séparateurs (garde a-z0-9).
 func normalize(name string) string {
-	return nonAlnum.ReplaceAllString(strings.ToLower(name), "")
+	return nonAlnum.ReplaceAllString(fold(name), "")
 }
 
 // tokenize découpe le nom en tokens sur les séparateurs et les frontières de casse
@@ -233,7 +342,7 @@ func tokenize(name string) []string {
 	var out []string
 	var cur strings.Builder
 	var prevLower bool
-	for _, r := range name {
+	for _, r := range accents.Replace(name) {
 		switch {
 		case r >= 'A' && r <= 'Z':
 			if prevLower && cur.Len() > 0 {
@@ -277,15 +386,13 @@ func Classify(columnName, dataType string) (Classification, bool) {
 		return Classification{}, false
 	}
 	tokens := tokenize(columnName)
-	if len(tokens) > 1 && referenceSuffixes[tokens[len(tokens)-1]] {
-		return Classification{}, false
-	}
 	tokenSet := make(map[string]struct{}, len(tokens))
 	for _, t := range tokens {
 		tokenSet[t] = struct{}{}
 	}
 
-	for _, ru := range rules {
+	for i := range rules {
+		ru := &rules[i]
 		excluded := false
 		for _, ex := range ru.excludeTokens {
 			if _, ok := tokenSet[ex]; ok {
@@ -314,6 +421,18 @@ func Classify(columnName, dataType string) (Classification, bool) {
 		}
 		if !matched {
 			continue
+		}
+
+		// The first rule that matches decides, also that the name is no finding: a
+		// reference to another row (user_id, email_uuid) or a qualifier of the datum
+		// (email_format). A later rule does not get a name an earlier one set aside.
+		own := wordSet(ru.ownTokens...)
+		last := tokens[len(tokens)-1]
+		if len(tokens) > 1 && referenceSuffixes[last] && !own[last] {
+			return Classification{}, false
+		}
+		if qualifies(tokens, own) {
+			return Classification{}, false
 		}
 
 		suggested := ru.suggested

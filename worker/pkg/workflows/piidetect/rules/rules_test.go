@@ -95,6 +95,16 @@ func Test_Find_ByNameTokens(t *testing.T) {
 		"pays":             report.Location,
 		"nir":              report.NationalID,
 		"card_number":      report.Financial,
+		"vorname":          report.Personal,
+		"apellido":         report.Personal,
+		"indirizzo":        report.Location,
+		"woonplaats":       report.Location,
+		"pesel":            report.NationalID,
+		"codice_fiscale":   report.NationalID,
+		"senha":            report.Authentication,
+		"api_key":          report.Authentication,
+		"refresh_token":    report.Authentication,
+		"password_hash":    report.Authentication,
 	} {
 		finding, ok := Find(name, "text", nil)
 		require.True(t, ok, name)
@@ -107,6 +117,8 @@ func Test_Find_NamesThatAreNotPersonalData(t *testing.T) {
 	for _, name := range []string{
 		"product_name", "file_name", "nom_fichier", "user_id", "email_uuid", "customer_ref",
 		"created_by_user", "id", "quantity", "created_at", "c17", "status", "",
+		// A name that qualifies a datum is not one.
+		"email_format", "phone_type", "address_count", "is_email_verified", "country_code", "token_type",
 	} {
 		_, ok := Find(name, "text", nil)
 		require.False(t, ok, name)
@@ -121,13 +133,14 @@ func withHits(hits ...profile.Share) *profile.Profile {
 // the values up.
 func Test_Find_ByValueFormat(t *testing.T) {
 	for detector, category := range map[string]report.Category{
-		"email":        report.Contact,
-		"phone_number": report.Contact,
-		"iban":         report.Financial,
-		"credit_card":  report.Financial,
-		"nir":          report.NationalID,
-		"ip_address":   report.Location,
-		"gender":       report.Personal,
+		"email":         report.Contact,
+		"phone_number":  report.Contact,
+		"iban":          report.Financial,
+		"credit_card":   report.Financial,
+		"nir":           report.NationalID,
+		"ip_address":    report.Location,
+		"gender":        report.Personal,
+		"password_hash": report.Authentication,
 	} {
 		_, ok := Find("c17", "text", withHits(profile.Share{Name: detector, Share: 0.49}))
 		require.False(t, ok, detector)
@@ -186,9 +199,9 @@ func Test_Detectors(t *testing.T) {
 	for _, detector := range detectors {
 		names = append(names, detector.Name)
 	}
-	require.Equal(t, []string{"email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}, names)
-	require.True(t, detectors[1].Match("FR76 3000 6000 0112 3456 7890 189"))
-	require.False(t, detectors[1].Match("FR76 3000 6000 0112 3456 7890 180"))
+	require.Equal(t, []string{"password_hash", "email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}, names)
+	require.True(t, detectors[2].Match("FR76 3000 6000 0112 3456 7890 189"))
+	require.False(t, detectors[2].Match("FR76 3000 6000 0112 3456 7890 180"))
 }
 
 // From sampled values to a finding: a column of IBANs under a neutral name.

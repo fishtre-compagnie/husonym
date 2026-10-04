@@ -25,13 +25,14 @@ func Detectors() []profile.Detector {
 // The category of the report each format belongs to. A format that is not here makes no
 // finding: a SIRET or a SIREN identifies a company, and is left to the model as evidence.
 var formatCategories = map[string]report.Category{
-	"email":        report.Contact,
-	"phone_number": report.Contact,
-	"iban":         report.Financial,
-	"credit_card":  report.Financial,
-	"nir":          report.NationalID,
-	"ip_address":   report.Location,
-	"gender":       report.Personal,
+	"email":         report.Contact,
+	"phone_number":  report.Contact,
+	"iban":          report.Financial,
+	"credit_card":   report.Financial,
+	"nir":           report.NationalID,
+	"ip_address":    report.Location,
+	"gender":        report.Personal,
+	"password_hash": report.Authentication,
 }
 
 // byValueFormat reads the most frequent format of a profile, whose hits come the most

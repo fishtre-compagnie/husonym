@@ -426,11 +426,11 @@ func Test_GetTablesToPiiScan_Fingerprint(t *testing.T) {
 
 	// The columns in the order of their names, each with its type.
 	plain := fingerprint(&GetTablesToPiiScanRequest{}, nil)
-	require.Equal(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "1"), plain)
+	require.Equal(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "2"), plain)
 
 	full := fingerprint(&GetTablesToPiiScanRequest{Sampling: true, ModelInput: "values", UserPrompt: "notes"}, classifier)
 	require.Equal(t,
-		fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "1"),
+		fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "2"),
 		full,
 	)
 

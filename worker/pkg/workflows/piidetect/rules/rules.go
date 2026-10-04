@@ -9,7 +9,7 @@ import (
 
 // Version names the rules. It enters the fingerprint of a table, so that tables scanned
 // under other rules are scanned again; it changes with what Find answers.
-const Version = "1"
+const Version = "2"
 
 // Evidence of a finding that rests on the name of the column.
 const evidenceName = "name"

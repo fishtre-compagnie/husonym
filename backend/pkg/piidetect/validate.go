@@ -65,6 +65,14 @@ type validator struct {
 // from claiming a value that a specific one (NIR mod 97) legitimately owns.
 var validators = []validator{
 	{
+		// The most constrained of all: a scheme, its parameters, a salt and a digest of
+		// fixed alphabets. No transformer is suggested: none keeps a hash valid.
+		category:  "password_hash",
+		label:     "empreinte de mot de passe",
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		fn:        IsPasswordHash,
+	},
+	{
 		category:  "email",
 		label:     "adresse e-mail",
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL,
@@ -410,4 +418,25 @@ func IsCivility(v string) bool {
 	}
 	_, ok := civilities[s]
 	return ok
+}
+
+// The encodings password hashing schemes store their output in: bcrypt, Argon2, scrypt,
+// PBKDF2 (the modular crypt form and Django's), the crypt schemes of the C library and
+// PHPass. Each names its scheme and carries a salt and a digest.
+var passwordHashRe = regexp.MustCompile(`^(?:` + strings.Join([]string{
+	`\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`,
+	`\$argon2(?:id|i|d)\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`,
+	`\$scrypt\$[a-z0-9=,]+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\$pbkdf2(?:-sha(?:1|256|512))?\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+`,
+	`pbkdf2_sha(?:1|256|512)\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\$6\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}`,
+	`\$5\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43}`,
+	`\$1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}`,
+	`\$[PH]\$[./A-Za-z0-9]{31}`,
+}, "|") + `)$`)
+
+// IsPasswordHash recognizes the stored form of a hashed password. A bare hexadecimal
+// digest is not one: it may be the hash of anything.
+func IsPasswordHash(v string) bool {
+	return len(v) <= 512 && passwordHashRe.MatchString(v)
 }

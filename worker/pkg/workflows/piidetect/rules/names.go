@@ -56,11 +56,14 @@ var tokenCategories = map[string]report.Category{
 	"postal_code":       report.Location,
 	"country":           report.Location,
 	"ssn":               report.NationalID,
+	"national_id":       report.NationalID,
 	"credit_card":       report.Financial,
+	"secret":            report.Authentication,
 }
 
 // byNameTokens asks the API's detection by name, which reads the words of a name in
-// English and in French and sets aside the names of things and of references.
+// eight languages and sets aside the names of things, of references, and the names that
+// qualify a datum without being one.
 func byNameTokens(name, dataType string) (report.Category, bool) {
 	classification, ok := piidetect.Classify(name, dataType)
 	if !ok || !classification.Sensitive {

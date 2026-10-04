@@ -26,16 +26,17 @@ var (
 // category it gives, and each is the check ClassifyValues runs.
 func TestValueDetectors(t *testing.T) {
 	passing := map[string]string{
-		"email":        "jean.dupont@example.org",
-		"iban":         validIBANs[0],
-		"nir":          validNIRs[0],
-		"siret":        validSirets[0],
-		"credit_card":  validCards[0],
-		"ip_address":   "192.0.2.17",
-		"phone_number": "06 12 34 56 78",
-		"gender":       "Mme",
+		"password_hash": "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"email":         "jean.dupont@example.org",
+		"iban":          validIBANs[0],
+		"nir":           validNIRs[0],
+		"siret":         validSirets[0],
+		"credit_card":   validCards[0],
+		"ip_address":    "192.0.2.17",
+		"phone_number":  "06 12 34 56 78",
+		"gender":        "Mme",
 	}
-	want := []string{"email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}
+	want := []string{"password_hash", "email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}
 
 	detectors := ValueDetectors()
 	got := make([]string, 0, len(detectors))
@@ -268,5 +269,54 @@ func TestClassifyValues_SalaireNestPasUnCodePostal(t *testing.T) {
 	// Le contrôle unitaire reste disponible pour valider une valeur ponctuelle.
 	if !IsFrenchPostalCode("33000") {
 		t.Error("IsFrenchPostalCode ne doit pas avoir été supprimé")
+	}
+}
+
+// The encodings password hashing schemes store their output in. A bare hexadecimal
+// digest is not one: it may be the hash of anything.
+func TestIsPasswordHash(t *testing.T) {
+	for _, v := range []string{
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2y$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2a$04$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		"$argon2i$v=19$m=16,t=2,p=1$c29tZXNhbHQ$u1eU6mZFG4/OOoTdAtM5SQ",
+		"$scrypt$ln=16,r=8,p=1$aM15713r3Xsvxbi31lqr1Q$nFNh2CVHVjNldFVKDHDlm4CbdRSCdEBsjjJxD+iCs5E",
+		"$pbkdf2-sha256$29000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33N23OSgQYThBYRfk",
+		"pbkdf2_sha256$260000$sIbDS1bDWp1mxJKmJqgAxO$O3UUmRPhrW5aUNzMVjWxDwYNYNrCrGwWz2kVn0GQx4E=",
+		"$6$rounds=5000$usesomesillystri$D4IrlXatmP7rx3P3InaxBeoomnAihCKRVQP22JkLQ4hAGBrKwJzFzs1k2sTUYhW0sAFSJ.qNFTOvjN4sk7.EO1",
+		"$5$saltsalt$5B8vYYiY.CVt1RlTTf8KbXBH3hsxY/GNooZaBBGWEc5",
+		"$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"$P$BWQ4EyG4lqVM8p0bqg1vE7xTdy2pQ6.",
+	} {
+		if !IsPasswordHash(v) {
+			t.Errorf("IsPasswordHash(%q) = false, want true", v)
+		}
+	}
+	for _, v := range []string{
+		"", "password", "hunter2", "$2b$12$tooshort", "5f4dcc3b5aa765d61d8327deb882cf99",
+		"da39a3ee5e6b4b0d3255bfef95601890afd80709", "$notascheme$abc$def", "jean.dupont@example.org",
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW and more",
+	} {
+		if IsPasswordHash(v) {
+			t.Errorf("IsPasswordHash(%q) = true, want false", v)
+		}
+	}
+}
+
+// A column of password hashes is found by its values, whatever its name.
+func TestClassifyValues_PasswordHashes(t *testing.T) {
+	got, ok := ClassifyValues([]string{
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2b$12$Q9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2b$12$S9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+	}, "varchar")
+	if !ok {
+		t.Fatal("ClassifyValues finds nothing")
+	}
+	if got.Category != "password_hash" || !got.Sensitive ||
+		got.Confidence != mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED ||
+		got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
+		t.Errorf("ClassifyValues = %+v", got)
 	}
 }
