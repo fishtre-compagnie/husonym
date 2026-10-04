@@ -64,8 +64,12 @@ func (e *Error) Permanent() bool {
 //
 // status is the HTTP status of the answer, 0 when none came. It decides alone whether the
 // failure may heal, whatever the body of the answer is: the error object of the API, a
-// text, a page of a proxy. sent are the values the request carried.
-func failure(ctx context.Context, err error, status int, sent []string) error {
+// text, a page of a proxy.
+//
+// sentValues says that the request carried values. Nothing the endpoint wrote is then
+// kept, its type and its code included: they are words it chose, and a part of a value
+// could be in them. The status alone is kept.
+func failure(ctx context.Context, err error, status int, sentValues bool) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -87,8 +91,8 @@ func failure(ctx context.Context, err error, status int, sent []string) error {
 		status >= http.StatusInternalServerError:
 		failed.Reason = ReasonUnavailable
 	}
-	if isAPIError {
-		failed.Detail = strings.TrimSpace(identifier(apiErr.Type, sent) + " " + identifier(apiErr.Code, sent))
+	if isAPIError && !sentValues {
+		failed.Detail = strings.TrimSpace(identifier(apiErr.Type) + " " + identifier(apiErr.Code))
 	}
 	return failed
 }
@@ -97,25 +101,14 @@ func failure(ctx context.Context, err error, status int, sent []string) error {
 // the API are written.
 var identifierRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,39}$`)
 
-// identifier keeps a type or a code of an error when it is an identifier and nothing
-// that was sent: anything else could be a text that quotes the request, or a value. An
-// identifier that is a value, or that holds one of some length, is not kept.
-func identifier(word string, sent []string) string {
+// identifier keeps a type or a code of an error when it is an identifier: anything else
+// could be a text that quotes the request.
+func identifier(word string) string {
 	if !identifierRe.MatchString(word) {
 		return ""
 	}
-	for _, value := range sent {
-		value = strings.ToLower(strings.TrimSpace(value))
-		if value == word || (len(value) >= minQuotedValue && strings.Contains(word, value)) {
-			return ""
-		}
-	}
 	return word
 }
-
-// minQuotedValue is the length from which a value found inside an identifier is taken
-// for a quotation: a shorter one is in many words by chance.
-const minQuotedValue = 4
 
 // lastCause is the message of the innermost error: the outer ones repeat the URL.
 func lastCause(err error) string {

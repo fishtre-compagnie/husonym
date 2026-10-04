@@ -225,12 +225,7 @@ func (c *Classifier) ask(ctx context.Context, t Table, columns []Column, result 
 			},
 		},
 	}
-	var sent []string
-	for _, column := range columns {
-		sent = append(sent, column.Values...)
-	}
-
-	completion, err := c.send(ctx, &params, t.SendsValues, sent)
+	completion, err := c.send(ctx, &params, t.SendsValues)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +248,6 @@ func (c *Classifier) send(
 	ctx context.Context,
 	params *openai.ChatCompletionNewParams,
 	sendsValues bool,
-	sent []string,
 ) (*openai.ChatCompletion, error) {
 	var waits []time.Duration
 	if sendsValues {
@@ -267,7 +261,7 @@ func (c *Classifier) send(
 		if err == nil {
 			return completion, nil
 		}
-		failed := failure(ctx, err, status, sent)
+		failed := failure(ctx, err, status, sendsValues)
 		var modelErr *Error
 		if !errors.As(failed, &modelErr) || modelErr.Permanent() || try >= len(waits) {
 			return nil, failed

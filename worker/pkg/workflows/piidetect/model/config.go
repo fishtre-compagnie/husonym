@@ -85,7 +85,8 @@ type Settings struct {
 // organization and the project of the account are sent to the OpenAI API only.
 //
 // A model is configured when a model is named, or when a key is set: a deployment that
-// only ever set a key keeps the model and the endpoint it has.
+// only ever set a key keeps the model and the endpoint it has. A model named with neither
+// a URL nor a key is refused: it would be asked at the OpenAI API, without a key.
 func NewConfig(s *Settings) (Config, error) {
 	cfg := Config{
 		BaseURL:       strings.TrimSpace(s.URL),
@@ -123,6 +124,13 @@ func NewConfig(s *Settings) (Config, error) {
 			return Config{MinConfidence: cfg.MinConfidence}, nil
 		}
 		cfg.Model = defaultModel
+	}
+	if cfg.BaseURL == "" && cfg.APIKey == "" {
+		// The client would ask the OpenAI API, without a key, and send it the profiles.
+		return Config{}, errors.New(
+			"PII_DETECT_LLM_MODEL is set without PII_DETECT_LLM_URL or PII_DETECT_LLM_API_KEY: " +
+				"set the URL of the endpoint that serves the model, or the key of the account that does",
+		)
 	}
 	if cfg.BaseURL != "" {
 		if err := checkURL(cfg.BaseURL, urlSetting); err != nil {

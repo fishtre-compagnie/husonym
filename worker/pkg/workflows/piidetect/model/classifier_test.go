@@ -566,6 +566,8 @@ func Test_Classify_SendsOnlyTheCredentialsOfItsConfiguration(t *testing.T) {
 // An answer is read up to a bound: an endpoint cannot make the worker hold an answer of
 // any size.
 func Test_Classify_AnAnswerLargerThanTheBoundIsAFailure(t *testing.T) {
+	require.Equal(t, 1048576, maxAnswerBytes, "the bound is one mebibyte")
+
 	huge := piitest.Completion(`{"c1":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", 2*maxAnswerBytes) + `"}`)
 	e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, huge })
 	c, _ := e.classifier(t, Config{})

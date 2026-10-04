@@ -404,7 +404,7 @@ func Test_DetectPiiLLM_FallsBackWhenNoValueCanBeSent(t *testing.T) {
 }
 
 // An endpoint may quote the request in its error. With values in the request, the
-// failure of the activity names the status, the type and the code of the error only.
+// failure of the activity names the status of the answer and nothing the endpoint wrote.
 func Test_DetectPiiLLM_AFailureWithValuesQuotesNoValue(t *testing.T) {
 	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		body, _ := json.Marshal(map[string]any{"error": map[string]any{
@@ -417,7 +417,9 @@ func Test_DetectPiiLLM_AFailureWithValuesQuotesNoValue(t *testing.T) {
 
 	_, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", valueRequest())
 	requireNotRetried(t, err, "ModelRejected")
-	require.ErrorContains(t, err, "invalid_request_error context_length_exceeded")
+	require.ErrorContains(t, err, "400")
+	require.NotContains(t, fmt.Sprintf("%v %+v", err, err), "invalid_request_error")
+	require.NotContains(t, fmt.Sprintf("%v %+v", err, err), "context_length_exceeded")
 	require.NotContains(t, fmt.Sprintf("%v %+v", err, err), "MARKER")
 	require.NotContains(t, run.logs.all(), "MARKER")
 }
