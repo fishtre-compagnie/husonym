@@ -52,7 +52,25 @@ uniquement sur une colonne encore en _Passthrough_ — un choix explicite n'est 
 La suggestion tient compte du **type SQL** : un téléphone en `bigint` reçoit
 `Generate Int64 Phone Number` et non sa variante texte ; une date de naissance en
 type `date` natif reçoit un générateur de timestamp, alors que la même date stockée
-en `varchar` n'en reçoit aucun (voir _Le cas des dates_ plus bas).
+en `varchar` reçoit `Transform Character Scramble` (voir _Le cas des dates_ plus bas).
+
+**Toute colonne reconnue sensible a un transformer suggéré**, compatible avec son
+type. Quand la donnée n'a pas de générateur propre (mot de passe, jeton, clé,
+identifiant national, IBAN, compte bancaire, salaire, âge, origine ethnique, carte
+bancaire en texte, date de naissance en texte), la suggestion est :
+
+| Type de la colonne | Transformer suggéré            | Ce qu'il écrit                                                                                |
+| ------------------ | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| Texte              | `Transform Character Scramble` | Même longueur ; une lettre devient une lettre, un chiffre un chiffre, un signe un autre signe |
+| Entier             | `Generate Random Int64`        | Un entier tiré au hasard                                                                      |
+| Décimal            | `Generate Float64`             | Un décimal tiré au hasard                                                                     |
+| Booléen            | `Generate Boolean`             | Vrai ou faux, au hasard                                                                       |
+| Date, horodatage   | `Generate UTC Timestamp`       | Un horodatage tiré au hasard                                                                  |
+
+Ces transformers tirent leurs valeurs au hasard : deux lignes de même valeur ne
+reçoivent pas la même sortie, quel que soit le moteur. La cohérence déterministe
+d'Athanor porte sur les noms, les villes, les adresses, les pays, les emails et les
+téléphones.
 
 ### 2. Clés de contrôle — la valeur se vérifie
 
@@ -119,10 +137,12 @@ c'est indécidable par les données. Husonym **ne devine pas** : la colonne pass
 L'enjeu n'est pas cosmétique : si la source contient `25/12/1980` et qu'on écrit
 `1985-03-14`, l'application qui relit la base cible ne parse plus rien.
 
-C'est pourquoi **une date en texte ne reçoit aucun transformer suggéré** : aucun
-générateur ne sait restituer la date dans son format d'origine. La colonne reste
-🔴 avec la mention « aucun transformer compatible » — c'est un signalement, pas un
-oubli.
+Aucun générateur ne sait restituer une date dans son format d'origine. **Une date de
+naissance en texte reçoit donc `Transform Character Scramble`** : la longueur est
+gardée, chaque chiffre est remplacé par un chiffre et chaque séparateur par un signe
+de ponctuation. La valeur écrite n'est pas une date (`83!47&2916`) : si l'application
+cible relit cette colonne comme une date, choisissez un autre transformer avant le
+run.
 
 Les mois en lettres (`25 decembre 1980`, accentué ou non) sont reconnus et, par
 construction, non ambigus.
