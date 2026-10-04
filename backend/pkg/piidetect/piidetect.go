@@ -31,10 +31,7 @@ type Classification struct {
 }
 
 var (
-	nonAlnum      = regexp.MustCompile(`[^a-z0-9]+`)
-	numericTypeRe = regexp.MustCompile(`int|serial|numeric|decimal|number|float|double|real`)
-	// timestamptz, datetime2, smalldatetime... sont couverts par les racines.
-	temporalTypeRe = regexp.MustCompile(`date|timestamp|datetime`)
+	nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
 // normalize met le nom en minuscules et retire les séparateurs (garde a-z0-9).
@@ -84,13 +81,8 @@ func tokenize(name string) []string {
 }
 
 func isNumericType(dataType string) bool {
-	return numericTypeRe.MatchString(strings.ToLower(dataType))
-}
-
-// isTemporalType reconnaît les types date/heure natifs, par opposition à une date
-// stockée dans une colonne texte.
-func isTemporalType(dataType string) bool {
-	return temporalTypeRe.MatchString(strings.ToLower(dataType))
+	kind := kindOf(dataType)
+	return kind == kindInteger || kind == kindDecimal
 }
 
 // SuggestionForEntity maps a Presidio entity (content analysis) to a

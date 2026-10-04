@@ -27,7 +27,7 @@ func TestTokenize_FoldsMarksInEitherCase(t *testing.T) {
 		"ÉtatCivil":        "etat civil",
 		"Łódź_ŻÓŁĆ":        "lodz zolc",
 		"Ærø_ŒUVRE":        "aero oeuvre",
-		"prénom":     "prenom",
+		"prénom":          "prenom",
 		"GRÖSSE_größe":     "grosse grosse",
 		"İstanbul_ıslak":   "istanbul islak",
 		"Đorđe":            "dorde",

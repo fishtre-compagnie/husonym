@@ -138,7 +138,8 @@ var rules = []rule{
 			{word: "pass", among: []string{"hash", "hashed", "user", "login", "salt", "word", "admin", "crypt"}},
 		},
 		ownTokens: append([]string{"key"}, codeTokens...),
-		alsoHolds: []columnKind{kindNumber},
+		// A token is often drawn as a UUID, and stored in a column of that type.
+		alsoHolds: []columnKind{kindNumber, kindReference},
 	},
 	{
 		category:  "email",

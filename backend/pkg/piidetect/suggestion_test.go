@@ -18,15 +18,15 @@ func sampleName(ru *rule) string {
 
 // The types a column of each kind is declared with.
 var typesOfKind = map[columnKind][]string{
-	kindAny:     {"", "text", "character varying(255)", "varchar(64)", "nvarchar", "jsonb"},
+	kindText:    {"", "text", "character varying(255)", "varchar(64)", "nvarchar"},
 	kindInteger: {"integer", "bigint", "smallint", "int", "tinyint"},
 	kindDecimal: {"numeric(10,2)", "decimal(12,0)", "double precision", "float", "money"},
 	kindMoment:  {"date", "timestamp without time zone", "datetime2"},
 	kindBoolean: {"boolean", "tinyint(1)", "bit"},
 }
 
-// A column a rule reports is never left without a transformer to suggest: whatever the
-// rule and whatever the type the rule accepts. A rule added without one fails here.
+// A column a rule reports is never left without a transformer to suggest, whatever the
+// rule, when its type is one a transformer writes. A rule added without one fails here.
 func TestClassify_EverySensitiveFindingSuggestsATransformer(t *testing.T) {
 	for i := range rules {
 		ru := &rules[i]
@@ -34,7 +34,7 @@ func TestClassify_EverySensitiveFindingSuggestsATransformer(t *testing.T) {
 		for kind, dataTypes := range typesOfKind {
 			for _, dataType := range dataTypes {
 				c, ok := Classify(name, dataType)
-				if kind == kindAny && !ok {
+				if kind == kindText && !ok {
 					t.Fatalf("Classify(%q, %q) finds nothing: the sample name of %s matches no rule", name, dataType, ru.category)
 				}
 				if !ok {
