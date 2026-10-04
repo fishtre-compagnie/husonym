@@ -25,9 +25,11 @@ type columnAnswer struct {
 // to 1 answers for none either. Nothing is repaired: a confidence of 95 is not read as
 // 0.95, an unknown label is not taken for the nearest one.
 //
-// The object is read where it is: after a reasoning block, inside a fenced block, before
-// a closing sentence. Why the model stopped is not asked: an object that is complete and
-// valid is an answer, and one that was cut is not an object.
+// The object is read where it is: inside a fenced block, between sentences. What the
+// model wrote in a reasoning block is not read. Outside one, the last object that names
+// a column of the request is the answer; a column for which an object before it says
+// something else is not answered, by either. Why the model stopped is not asked: an
+// object that is complete and valid is an answer, and one that was cut is not an object.
 func readAnswer(completion *openai.ChatCompletion, count int) (answers map[string]columnAnswer, ignored int) {
 	answers = map[string]columnAnswer{}
 	if completion == nil || len(completion.Choices) == 0 {
@@ -37,46 +39,106 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 	if choice.Message.Refusal != "" {
 		return answers, 0
 	}
-	members, ok := answerObject(choice.Message.Content)
-	if !ok {
-		return answers, 0
-	}
-
 	asked := make(map[string]bool, count)
 	for i := range count {
 		asked[columnId(i)] = true
 	}
-	for id, raw := range members {
+	objects := answerObjects(withoutReasoning(choice.Message.Content), asked)
+	if len(objects) == 0 {
+		return answers, 0
+	}
+
+	last := objects[len(objects)-1]
+	for id, raw := range last {
 		if !asked[id] {
 			ignored++
 			continue
 		}
-		if answer, ok := readColumnAnswer(raw); ok {
-			answers[id] = answer
+		answer, ok := readColumnAnswer(raw)
+		if !ok || disputed(objects[:len(objects)-1], id, answer) {
+			continue
 		}
+		answers[id] = answer
 	}
 	return answers, ignored
 }
 
-// A block in which a model writes its reasoning before its answer.
-var reasoningBlock = regexp.MustCompile(`(?s)^\s*<(think|thinking|reasoning)>.*?</(think|thinking|reasoning)>`)
+// disputed tells whether one of the earlier objects holds, for a column, anything else
+// than the answer.
+func disputed(earlier []map[string]json.RawMessage, id string, answer columnAnswer) bool {
+	for _, object := range earlier {
+		raw, held := object[id]
+		if !held {
+			continue
+		}
+		if other, ok := readColumnAnswer(raw); !ok || other != answer {
+			return true
+		}
+	}
+	return false
+}
 
-// answerObject finds the JSON object of an answer: the first one that starts after the
-// reasoning block, if any, and that decodes whole. What follows it is not read.
-func answerObject(content string) (map[string]json.RawMessage, bool) {
-	content = reasoningBlock.ReplaceAllString(content, "")
+// The tags of a block in which a model writes its reasoning, opening or closing, in any
+// case, with or without attributes.
+var reasoningTag = regexp.MustCompile(`(?i)<(/?)(?:think|thinking|reasoning)(?:\s[^>]*)?>`)
+
+// withoutReasoning returns the content outside the reasoning blocks. Blocks may follow
+// each other or hold one another. A block that is not closed runs to the end; a block
+// that is closed without having been opened started at the beginning.
+func withoutReasoning(content string) string {
+	var kept strings.Builder
+	depth, from := 0, 0
+	for _, tag := range reasoningTag.FindAllStringSubmatchIndex(content, -1) {
+		start, end, closing := tag[0], tag[1], tag[3] > tag[2]
+		switch {
+		case !closing:
+			if depth == 0 {
+				kept.WriteString(content[from:start])
+			}
+			depth++
+		case depth > 0:
+			depth--
+		default:
+			kept.Reset()
+		}
+		from = end
+	}
+	if depth == 0 {
+		kept.WriteString(content[from:])
+	}
+	return kept.String()
+}
+
+// answerObjects finds, in their order, the JSON objects that decode whole and name at
+// least one column of the request. An object inside another is part of it.
+func answerObjects(content string, asked map[string]bool) []map[string]json.RawMessage {
+	var objects []map[string]json.RawMessage
 	for start := strings.IndexByte(content, '{'); start >= 0; {
 		var members map[string]json.RawMessage
-		if err := json.NewDecoder(strings.NewReader(content[start:])).Decode(&members); err == nil {
-			return members, true
+		decoder := json.NewDecoder(strings.NewReader(content[start:]))
+		step := 1
+		if err := decoder.Decode(&members); err == nil {
+			step = int(decoder.InputOffset())
+			if namesAColumn(members, asked) {
+				objects = append(objects, members)
+			}
 		}
-		next := strings.IndexByte(content[start+1:], '{')
+		next := strings.IndexByte(content[start+step:], '{')
 		if next < 0 {
 			break
 		}
-		start += 1 + next
+		start += step + next
 	}
-	return nil, false
+	return objects
+}
+
+func namesAColumn(members map[string]json.RawMessage, asked map[string]bool) bool {
+	for id := range members {
+		if asked[id] {
+			return true
+		}
+	}
+	return false
 }
 
 func readColumnAnswer(raw json.RawMessage) (columnAnswer, bool) {
