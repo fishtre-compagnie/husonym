@@ -73,7 +73,7 @@ func (a *Activities) store(ctx context.Context, key *mgmtv1alpha1.RunContextKey,
 	}
 	_, err = a.jobs.SetRunContext(ctx, connect.NewRequest(&mgmtv1alpha1.SetRunContextRequest{Id: key, Value: encoded}))
 	if err != nil {
-		return fmt.Errorf("unable to set run context: %w", err)
+		return fmt.Errorf("the API did not store the report: %w", err)
 	}
 	return nil
 }

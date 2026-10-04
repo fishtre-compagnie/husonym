@@ -426,13 +426,13 @@ func Test_GetTablesToPiiScan_Fingerprint(t *testing.T) {
 
 	// The columns in the order of their names, each with its type.
 	plain := fingerprint(&GetTablesToPiiScanRequest{}, nil)
-	require.Equal(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "2", "false"), plain)
+	require.Equal(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "3", "false"), plain)
 
 	full := fingerprint(
 		&GetTablesToPiiScanRequest{Sampling: true, ModelInput: "values", UserPrompt: "notes", MarksIncomplete: true}, classifier,
 	)
 	require.Equal(t,
-		fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "2", "true"),
+		fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "3", "true"),
 		full,
 	)
 
@@ -672,5 +672,5 @@ func Test_SaveJobPiiDetectReport_FailsWhenTheIndexCannotBeStored(t *testing.T) {
 	_, _, err := execute[SaveJobPiiDetectReportResponse](t, run, "SaveJobPiiDetectReport", &SaveJobPiiDetectReportRequest{
 		AccountId: "account-1", JobId: "job-1", Report: &report.JobReport{},
 	})
-	require.ErrorContains(t, err, "unable to set run context")
+	require.ErrorContains(t, err, "the API did not store the report")
 }

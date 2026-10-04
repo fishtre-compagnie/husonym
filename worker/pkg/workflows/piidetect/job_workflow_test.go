@@ -392,9 +392,9 @@ func Test_JobPiiDetect_FailsWhenAStepFails(t *testing.T) {
 		failing string
 		message string
 	}{
-		"the earlier run cannot be looked up": {"GetLastSuccessfulWorkflowId", "unable to get last successful workflow id: "},
+		"the earlier run cannot be looked up": {"GetLastSuccessfulWorkflowId", "the previous successful run of the job was not found out: "},
 		"the tables cannot be listed":         {"GetTablesToPiiScan", ""},
-		"the index cannot be saved":           {"SaveJobPiiDetectReport", "unable to save job pii detect report: "},
+		"the index cannot be saved":           {"SaveJobPiiDetectReport", "the index of the table reports was not saved: "},
 	} {
 		t.Run(name, func(t *testing.T) {
 			run := newJobRun(t, 3)

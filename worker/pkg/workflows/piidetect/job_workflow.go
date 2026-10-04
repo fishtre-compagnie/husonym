@@ -99,7 +99,7 @@ func (w *JobWorkflow) scan(
 			&GetLastSuccessfulWorkflowIdRequest{AccountId: details.AccountId, JobId: jobId},
 		).Get(ctx, &last)
 		if err != nil {
-			return nil, fmt.Errorf("unable to get last successful workflow id: %w", err)
+			return nil, fmt.Errorf("the previous successful run of the job was not found out: %w", err)
 		}
 		if last.WorkflowId != nil {
 			incremental = &IncrementalConfig{LastWorkflowId: *last.WorkflowId}
@@ -151,7 +151,7 @@ func (w *JobWorkflow) scan(
 		},
 	).Get(ctx, &saved)
 	if err != nil {
-		return nil, fmt.Errorf("unable to save job pii detect report: %w", err)
+		return nil, fmt.Errorf("the index of the table reports was not saved: %w", err)
 	}
 
 	// A run that ends well says that every table was scanned. The version is only read

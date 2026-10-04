@@ -382,7 +382,7 @@ var rules = []rule{
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
 		keywords: []string{
-			"card number", "card num", "card no", "credit card", "cc number", "cc num",
+			"card number", "card num", "card no", "credit card", "cc number", "cc num", "ccnumber", "ccnum",
 			"kreditkarte*", "numero tarjeta", "tarjeta credito", "tarjeta de credito", "carta di credito",
 			"carta credito", "numero carta", "numer karty", "karta kredytowa", "numero cartao", "cartao credito",
 			"cartao de credito", "carte bancaire", "numero carte",
@@ -476,7 +476,7 @@ var rules = []rule{
 // number or the hash it is stored as.
 var gluedWords = []string{
 	"customer", "cust", "client", "user", "emp", "employee", "patient", "member", "contact", "owner",
-	"home", "work", "office", "billing", "shipping", "primary", "secondary", "alt", "personal", "private",
+	"home", "work", "office", "billing", "shipping", "mailing", "delivery", "current", "primary", "secondary", "alt", "personal", "private",
 	"number", "num", "nummer", "numero", "hash", "hashed", "encrypted", "display",
 	"kunde", "kunden", "klant", "privat",
 }

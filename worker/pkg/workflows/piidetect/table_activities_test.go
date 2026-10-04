@@ -308,5 +308,5 @@ func Test_SaveTablePiiDetectReport_FailsWhenTheReportCannotBeStored(t *testing.T
 	_, _, err := execute[SaveTablePiiDetectReportResponse](t, run, "SaveTablePiiDetectReport", &SaveTablePiiDetectReportRequest{
 		AccountId: "account-1", TableSchema: "public", TableName: "users",
 	})
-	require.ErrorContains(t, err, "unable to set run context")
+	require.ErrorContains(t, err, "the API did not store the report")
 }

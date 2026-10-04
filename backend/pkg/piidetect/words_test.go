@@ -127,6 +127,7 @@ func TestClassify_AKeywordIsAWord(t *testing.T) {
 		"firstname": "person_first_name", "lastname": "person_last_name", "fullname": "person_full_name",
 		"custfirstname": "person_first_name", "dateofbirth": "birth_date", "birthdate": "birth_date",
 		"streetaddress": "street_address", "address1": "street_address", "zipcode": "postal_code",
+		"mailingaddress": "street_address", "currentsalary": "salary", "bankaccountnumber": "bank_account",
 		"userpassword": "secret", "passwordhash": "secret", "apikey": "secret", "creditcardnumber": "credit_card",
 		"emails": "email", "phones": "phone_number", "addresses": "street_address", "passwords": "secret",
 		"nombredeusuario": "username", "kreditkartennummer": "credit_card",
@@ -286,18 +287,18 @@ func TestClassify_MoneyAndAge(t *testing.T) {
 
 func TestWordsOf(t *testing.T) {
 	for name, want := range map[string][]string{
-		"customerEmail_2":  {"customer", "email"},
-		"telefonnummer":    {"telefonnummer"},
-		"homephone":        {"home", "phone"},
-		"dateofbirth":      {"date", "of", "birth"},
-		"immobilier":       {"immobilier"},
-		"EMPSSN":           {"empssn"},
-		"userid":           {"user", "id"},
-		"island":           {"island"},
-		"card_last4":       {"card", "last"},
-		"IPAddress":        {"ipaddress"},
-		"capacidade":       {"capacidade"},
-		"code_postal":      {"code", "postal"},
+		"customerEmail_2": {"customer", "email"},
+		"telefonnummer":   {"telefonnummer"},
+		"homephone":       {"home", "phone"},
+		"dateofbirth":     {"date", "of", "birth"},
+		"immobilier":      {"immobilier"},
+		"EMPSSN":          {"empssn"},
+		"userid":          {"user", "id"},
+		"island":          {"island"},
+		"card_last4":      {"card", "last"},
+		"IPAddress":       {"ipaddress"},
+		"capacidade":      {"capacidade"},
+		"code_postal":     {"code", "postal"},
 	} {
 		got := wordsOf(name)
 		if len(got) != len(want) {

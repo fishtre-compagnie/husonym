@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The names that are recognized as a whole, whatever their case, with an underscore, a
-// dash or nothing between their words.
-func Test_Find_ByNameForm(t *testing.T) {
+// Usual English names, whatever their case, with an underscore, a dash or nothing between
+// their words, each under the category of the report.
+func Test_Find_UsualNames(t *testing.T) {
 	forms := map[report.Category][]string{
 		report.NationalID: {
 			"ssn", "social_security_number", "social_security", "social_security_no", "tax_id",
@@ -31,10 +31,6 @@ func Test_Find_ByNameForm(t *testing.T) {
 	for category, names := range forms {
 		for _, name := range names {
 			for _, spelling := range spellings(name) {
-				got, ok := byNameForm(spelling)
-				require.True(t, ok, spelling)
-				require.Equal(t, category, got, spelling)
-
 				finding, ok := Find(spelling, "text", nil)
 				require.True(t, ok, spelling)
 				require.Equal(t, Finding{Category: category, Evidence: "name"}, finding, spelling)
@@ -62,20 +58,27 @@ func spellings(name string) []string {
 	return []string{name, string(upper), string(dashed), string(joined)}
 }
 
-// A form is the whole name, not a part of it.
-func Test_ByNameForm_IsTheWholeName(t *testing.T) {
-	for _, name := range []string{
-		"phone", "telephone", "mobile", "customer_email", "email_format", "age_group", "cc_type",
-		"address_count", "secret_santa", "passwords", "xssn", "", "account",
+// Every category the shared name rules answer has a category of the report: a datum they
+// find is never dropped for want of one.
+func Test_EveryCategoryOfTheNameRulesIsReported(t *testing.T) {
+	for name, category := range map[string]report.Category{
+		"email": report.Contact, "phone": report.Contact, "username": report.Personal,
+		"first_name": report.Personal, "last_name": report.Personal, "full_name": report.Personal,
+		"gender": report.Personal, "birth_date": report.Personal, "age": report.Personal,
+		"ethnicity": report.Personal, "ip_address": report.Location, "street": report.Location,
+		"city": report.Location, "state": report.Location, "postal_code": report.Location,
+		"country": report.Location, "ssn": report.NationalID, "passport": report.NationalID,
+		"card_number": report.Financial, "iban": report.Financial, "bank_account": report.Financial,
+		"salary": report.Financial, "password": report.Authentication,
 	} {
-		_, ok := byNameForm(name)
-		require.False(t, ok, name)
+		finding, ok := Find(name, "", nil)
+		require.True(t, ok, name)
+		require.Equal(t, category, finding.Category, name)
 	}
 }
 
-// Names the token rules of the API's detection recognize, in English and in French, each
-// under the category of the report.
-func Test_Find_ByNameTokens(t *testing.T) {
+// Names in other languages and with other words around them.
+func Test_Find_NamesInOtherLanguages(t *testing.T) {
 	for name, category := range map[string]report.Category{
 		"phone":            report.Contact,
 		"customer_email":   report.Contact,
