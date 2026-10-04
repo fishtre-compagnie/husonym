@@ -43,11 +43,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
-	piidetect_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/register"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	piidetect_model "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -445,8 +444,6 @@ func serve(ctx context.Context) error {
 	// restart then finds its workflows and activities there.
 	accounthooks.Register(w, accounthookclient, webhook.NewSender())
 
-	openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
-
 	husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
 	conndatabuilder := connectiondata.NewConnectionDataBuilder(
 		sqlConnector,
@@ -459,14 +456,34 @@ func serve(ctx context.Context) error {
 		husonymtyperegistry,
 	)
 
-	piidetect_workflow_register.Register(
+	piidetectConfig, err := piiDetectConfig()
+	if err != nil {
+		return err
+	}
+	piidetectClassifier, err := piidetect_model.NewClassifier(piidetectConfig.Model)
+	if err != nil {
+		return fmt.Errorf("unable to set up the model of PII detection: %w", err)
+	}
+	// An operator reads here where the column names and what is sampled of a table go.
+	if piidetectConfig.Model.Enabled() {
+		logger.Info(fmt.Sprintf(
+			"PII detection asks the model %s at %s", piidetectConfig.Model.Model, piidetectConfig.Model.Host(),
+		))
+	} else {
+		logger.Info("PII detection runs without a model")
+	}
+	piidetect.Register(
 		w,
-		connclient,
-		jobclient,
-		&openaiclient,
-		conndatabuilder,
 		eelicense,
-		temporalClient.ScheduleClient(),
+		piidetect.NewActivities(
+			jobclient,
+			connclient,
+			conndatabuilder,
+			temporalClient.ScheduleClient(),
+			piidetectClassifier,
+			piidetectConfig,
+		),
+		piidetectConfig,
 	)
 
 	if err := w.Start(); err != nil {
@@ -495,6 +512,26 @@ func serve(ctx context.Context) error {
 	}
 	logger.Info("worker stopped successfully, fully shutting down")
 	return nil
+}
+
+// piiDetectConfig reads the settings of the PII detection jobs. Settings that cannot work
+// stop the worker here, with a message that names them.
+func piiDetectConfig() (piidetect.Config, error) {
+	modelConfig, err := piidetect_model.NewConfig(&piidetect_model.Settings{
+		URL:           viper.GetString("PII_DETECT_LLM_URL"),
+		APIKey:        viper.GetString("PII_DETECT_LLM_API_KEY"),
+		Model:         viper.GetString("PII_DETECT_LLM_MODEL"),
+		MinConfidence: viper.GetString("PII_DETECT_LLM_MIN_CONFIDENCE"),
+		OpenAIBaseURL: viper.GetString("OPENAI_BASE_URL"),
+		OpenAIAPIKey:  viper.GetString("OPENAI_API_KEY"),
+	})
+	if err != nil {
+		return piidetect.Config{}, fmt.Errorf("the settings of PII detection cannot be used: %w", err)
+	}
+	return piidetect.Config{
+		TablesAtOnce: viper.GetInt("TABLE_PII_DETECT_MAX_CONCURRENCY"),
+		Model:        modelConfig,
+	}, nil
 }
 
 func getHttpServer(logger *log.Logger) *http.Server {

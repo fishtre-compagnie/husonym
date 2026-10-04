@@ -109,9 +109,6 @@ packages:
   github.com/fishtre-compagnie/husonym/worker/pkg/rng:
     interfaces:
       Rand: {}
-  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
-    interfaces:
-      OpenAiCompletionsClient: {}
   github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared:
     interfaces:
       BlockAllocator: {}

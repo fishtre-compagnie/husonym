@@ -25,9 +25,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
-	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
-	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
-	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	tablesync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.temporal.io/api/enums/v1"
@@ -315,8 +314,8 @@ func (s *Service) getEventsByWorkflowId(
 						},
 					}
 					jobRunEvent.Metadata = metadata
-				case "TablePiiDetect":
-					var piiDetectTableRequest piidetect_table_workflow.TablePiiDetectRequest
+				case piidetect.TableWorkflowName:
+					var piiDetectTableRequest piidetect.TablePiiDetectRequest
 					err := converter.GetDefaultDataConverter().
 						FromPayload(attributes.Input.Payloads[0], &piiDetectTableRequest)
 					if err != nil {
@@ -1263,7 +1262,7 @@ func (s *Service) GetPiiDetectionReport(
 			s.db.Db,
 			db_queries.GetRunContextsByExternalIdSuffixParams{
 				WorkflowId:       jobRun.GetId(),
-				ExternalIdSuffix: piidetect_table_activities.PiiTableReportSuffix,
+				ExternalIdSuffix: piidetect_report.TableReportSuffix,
 				AccountId:        accountUuid,
 			},
 		)
@@ -1305,7 +1304,7 @@ func (s *Service) getTableRunContextsFromJobReport(
 ) ([]*db_queries.HusonymApiRuncontext, error) {
 	runContext, err := s.db.Q.GetRunContextByKey(ctx, s.db.Db, db_queries.GetRunContextByKeyParams{
 		WorkflowId: jobRun.GetId(),
-		ExternalId: piidetect_job_activities.BuildJobReportExternalId(jobRun.GetJobId()),
+		ExternalId: piidetect_report.JobReportExternalId(jobRun.GetJobId()),
 		AccountId:  accountUuid,
 	})
 	if err != nil && !husonymdb.IsNoRows(err) {
@@ -1313,7 +1312,7 @@ func (s *Service) getTableRunContextsFromJobReport(
 	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nil
 	}
-	var jobReport piidetect_job_activities.JobPiiDetectReport
+	var jobReport piidetect_report.JobReport
 	err = json.Unmarshal(runContext.Value, &jobReport)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal run context for job pii detect report: %w", err)
@@ -1378,11 +1377,11 @@ func (s *Service) getDbRunContextsFromKeys(
 
 func getReportsFromTableContexts(
 	tableContexts []*db_queries.HusonymApiRuncontext,
-) ([]*piidetect_table_activities.TableReport, error) {
-	reports := make([]*piidetect_table_activities.TableReport, len(tableContexts))
+) ([]*piidetect_report.TableReport, error) {
+	reports := make([]*piidetect_report.TableReport, len(tableContexts))
 	for i := range tableContexts {
 		runContext := tableContexts[i]
-		var report *piidetect_table_activities.TableReport
+		var report *piidetect_report.TableReport
 		err := json.Unmarshal(runContext.Value, &report)
 		if err != nil {
 			return nil, fmt.Errorf("unable to unmarshal run context: %w", err)
@@ -1393,7 +1392,7 @@ func getReportsFromTableContexts(
 }
 
 func getTableReportDtos(
-	reports []*piidetect_table_activities.TableReport,
+	reports []*piidetect_report.TableReport,
 ) []*mgmtv1alpha1.PiiDetectionReport_TableReport {
 	reportDtos := make([]*mgmtv1alpha1.PiiDetectionReport_TableReport, len(reports))
 	for i, report := range reports {
@@ -1412,7 +1411,7 @@ func getTableReportDtos(
 			}
 			if columnReport.Report.Regex != nil {
 				columnReportDto.RegexReport = &mgmtv1alpha1.PiiDetectionReport_TableReport_ColumnReport_Regex{
-					Category: columnReport.Report.Regex.Category.String(),
+					Category: string(columnReport.Report.Regex.Category),
 				}
 			}
 			if columnReport.Report.LLM != nil {

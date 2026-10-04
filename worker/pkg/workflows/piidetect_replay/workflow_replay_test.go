@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	piidetect_job_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job"
-	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/log"
@@ -85,7 +84,7 @@ func Test_JobPiiDetect_ReplaysARecordedRun(t *testing.T) {
 			eelicense.SetValid(history.licensed)
 
 			replayer := worker.NewWorkflowReplayer()
-			replayer.RegisterWorkflow(piidetect_job_workflow.New(eelicense).JobPiiDetect)
+			replayer.RegisterWorkflow(piidetect.NewJobWorkflow(eelicense, viper.GetInt(tablesAtOnceKey)).JobPiiDetect)
 
 			err := testutil.ReplayWorkflowHistoryFileToItsResult(
 				replayer, logger, filepath.Join("testdata", history.name+".json"),
@@ -128,7 +127,7 @@ func Test_TablePiiDetect_ReplaysARecordedRun(t *testing.T) {
 	} {
 		t.Run(history, func(t *testing.T) {
 			replayer := worker.NewWorkflowReplayer()
-			replayer.RegisterWorkflow(piidetect_table_workflow.New().TablePiiDetect)
+			replayer.RegisterWorkflow(piidetect.TablePiiDetect)
 
 			err := testutil.ReplayWorkflowHistoryFileToItsResult(
 				replayer, logger, filepath.Join("testdata", history+".json"),

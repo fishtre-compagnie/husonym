@@ -63,7 +63,6 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.44.0
-	github.com/tiktoken-go/tokenizer v0.8.1
 	github.com/toqueteos/webbrowser v1.2.1
 	github.com/veqryn/slog-dedup v0.6.0
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
