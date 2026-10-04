@@ -44,14 +44,14 @@ func (a *Activities) ExecuteAccountHook(
 		"Attempt", info.Attempt,
 	)
 
-	logger.Debug("retrieving hook")
+	logger.Debug("reading the hook from the API")
 	hook, err := a.readHook(ctx, req.HookId)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		logger.Info("the account hook no longer exists, skipping")
 		return &ExecuteAccountHookResponse{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve hook: %w", err)
+		return nil, fmt.Errorf("the hook cannot be read: %w", err)
 	}
 
 	if !hook.GetEnabled() {
@@ -74,7 +74,7 @@ func (a *Activities) ExecuteAccountHook(
 	case *mgmtv1alpha1.AccountHookConfig_Webhook:
 		if config.Webhook == nil {
 			return nil, temporal.NewNonRetryableApplicationError(
-				"webhook config was nil for account hook configuration",
+				"the hook is a webhook that has no configuration",
 				errorTypeWebhookConfigMissing,
 				nil,
 			)
@@ -84,9 +84,9 @@ func (a *Activities) ExecuteAccountHook(
 			return nil, err
 		}
 	case *mgmtv1alpha1.AccountHookConfig_Slack:
-		logger.Warn("slack account hooks are no longer supported, skipping: replace this hook with a webhook")
+		logger.Warn("nothing is sent for this hook: the Slack kind is retired, a webhook takes its place")
 	default:
-		logger.Warn(fmt.Sprintf("hook config type %T is not supported, skipping", config))
+		logger.Warn(fmt.Sprintf("nothing is sent for this hook: the worker does not know its kind (%T)", config))
 	}
 	return &ExecuteAccountHookResponse{}, nil
 }
@@ -117,16 +117,18 @@ func (a *Activities) deliver(
 	logger log.Logger,
 ) error {
 	// The API hides the secret from a caller it does not know as the worker. A webhook
-	// signed with the mask is one that no receiver can verify.
+	// signed with the mask is one that no receiver can verify. The worker cannot tell
+	// that case from a secret stored as the mask itself, so the message names both.
 	if config.GetSecret() == pg_models.SensitiveValue {
 		return temporal.NewNonRetryableApplicationError(
-			"the API returned a masked secret: the worker is not identified by its API key",
+			"the API returned the masked value in place of the secret: either the worker is not identified "+
+				"by its API key, or the stored secret is that very value and must be set again",
 			errorTypeWebhookSecretMasked,
 			nil,
 		)
 	}
 
-	logger.Debug("executing webhook")
+	logger.Debug("sending the webhook")
 	err := a.sender.Send(ctx, webhook.Delivery{
 		ID:            id,
 		URL:           config.GetUrl(),

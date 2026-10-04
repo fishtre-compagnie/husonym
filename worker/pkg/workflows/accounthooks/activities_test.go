@@ -186,7 +186,7 @@ func Test_GetAccountHooksByEvent_FailsWhenTheAPIDoes(t *testing.T) {
 
 	_, err := env.ExecuteActivity(activities.GetAccountHooksByEvent, &GetAccountHooksByEventRequest{AccountId: "account-1"})
 
-	require.ErrorContains(t, err, "unable to retrieve active hooks by event: unavailable: connection refused")
+	require.ErrorContains(t, err, "the hooks of the event cannot be listed: unavailable: connection refused")
 	requireRetryable(t, err)
 }
 
@@ -332,13 +332,14 @@ func Test_ExecuteAccountHook_RefusesForGood(t *testing.T) {
 				hook.Config = &mgmtv1alpha1.AccountHookConfig{Config: &mgmtv1alpha1.AccountHookConfig_Webhook{}}
 			},
 			errorType: "WebhookConfigMissing",
-			message:   "webhook config was nil for account hook configuration",
+			message:   "the hook is a webhook that has no configuration",
 		},
 		{
 			name:      "a masked secret",
 			change:    func(hook *mgmtv1alpha1.AccountHook) { hook.GetConfig().GetWebhook().Secret = "********" },
 			errorType: "WebhookSecretMasked",
-			message:   "the API returned a masked secret: the worker is not identified by its API key",
+			message: "the API returned the masked value in place of the secret: either the worker is not identified " +
+				"by its API key, or the stored secret is that very value and must be set again",
 		},
 		{
 			name:      "a URL that is not http",
@@ -385,7 +386,7 @@ func Test_ExecuteAccountHook_RetriesWhenTheHookCannotBeRead(t *testing.T) {
 
 	err := executeHook(t, NewActivities(hooks, webhook.NewSender()), &ExecuteAccountHookRequest{HookId: "hook-1", Event: testEvent()})
 
-	require.ErrorContains(t, err, "unable to retrieve hook: unavailable: connection refused")
+	require.ErrorContains(t, err, "the hook cannot be read: unavailable: connection refused")
 	requireRetryable(t, err)
 }
 
@@ -410,7 +411,7 @@ func Test_ExecuteAccountHook_RetriesOnlyWhatCanHeal(t *testing.T) {
 
 			err := executeHook(t, NewActivities(hooks, webhook.NewSender()), &ExecuteAccountHookRequest{HookId: "hook-1", Event: testEvent()})
 
-			require.ErrorContains(t, err, "unable to execute webhook")
+			require.ErrorContains(t, err, "the webhook was not delivered")
 			require.ErrorContains(t, err, strconv.Itoa(tt.status))
 			require.NotContains(t, err.Error(), "token")
 			require.Equal(t, 1, target.called())

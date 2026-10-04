@@ -15,7 +15,7 @@ func lookupOptions() workflow.ActivityOptions {
 	return workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute,
 		RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
-		Summary:             "Retrieves the configured account hooks for the given event",
+		Summary:             "Lists the hooks of the account that listen to the event",
 	}
 }
 
@@ -30,6 +30,6 @@ func executeOptions() workflow.ActivityOptions {
 			BackoffCoefficient: 3,
 			MaximumAttempts:    5,
 		},
-		Summary: "Runs the configured account hook",
+		Summary: "Delivers the event to one hook of the account",
 	}
 }

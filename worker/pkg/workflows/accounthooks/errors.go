@@ -15,6 +15,7 @@ const (
 	errorTypeHookOfAnotherAccount      = "HookOfAnotherAccount"
 	errorTypeWebhookConfigMissing      = "WebhookConfigMissing"
 	errorTypeWebhookSecretMasked       = "WebhookSecretMasked"
+	errorTypeWebhookInvalidEvent       = "WebhookInvalidEvent"
 	errorTypeWebhookInvalidURL         = "WebhookInvalidURL"
 	errorTypeWebhookDestinationRefused = "WebhookDestinationRefused"
 	errorTypeWebhookRedirected         = "WebhookRedirected"
@@ -22,6 +23,7 @@ const (
 )
 
 var permanentErrorTypes = map[webhook.Reason]string{
+	webhook.ReasonEvent:       errorTypeWebhookInvalidEvent,
 	webhook.ReasonInvalidURL:  errorTypeWebhookInvalidURL,
 	webhook.ReasonDestination: errorTypeWebhookDestinationRefused,
 	webhook.ReasonRedirected:  errorTypeWebhookRedirected,
@@ -35,10 +37,10 @@ func deliveryError(err error) error {
 	var failure *webhook.Error
 	if errors.As(err, &failure) && failure.Permanent() {
 		return temporal.NewNonRetryableApplicationError(
-			"unable to execute webhook",
+			"the webhook was not delivered",
 			permanentErrorTypes[failure.Reason],
 			failure,
 		)
 	}
-	return fmt.Errorf("unable to execute webhook: %w", err)
+	return fmt.Errorf("the webhook was not delivered: %w", err)
 }

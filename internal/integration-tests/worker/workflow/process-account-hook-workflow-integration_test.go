@@ -151,7 +151,7 @@ func Test_ProcessAccountHookWorkflow(t *testing.T) {
 
 		err := process(t, clients.AccountHooks(viewer))
 
-		require.ErrorContains(t, err, "the API returned a masked secret")
+		require.ErrorContains(t, err, "the API returned the masked value in place of the secret")
 		require.ErrorContains(t, err, "type: WebhookSecretMasked, retryable: false")
 		mu.Lock()
 		defer mu.Unlock()

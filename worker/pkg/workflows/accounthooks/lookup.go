@@ -37,7 +37,7 @@ func (a *Activities) GetAccountHooksByEvent(
 	ctx, cancel := context.WithTimeout(ctx, a.lookupTimeout)
 	defer cancel()
 
-	logger.Debug("retrieving hooks by event")
+	logger.Debug("asking the API for the hooks of the event")
 	resp, err := a.hooks.GetActiveAccountHooksByEvent(
 		ctx,
 		connect.NewRequest(&mgmtv1alpha1.GetActiveAccountHooksByEventRequest{
@@ -46,10 +46,10 @@ func (a *Activities) GetAccountHooksByEvent(
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve active hooks by event: %w", err)
+		return nil, fmt.Errorf("the hooks of the event cannot be listed: %w", err)
 	}
 	hooks := resp.Msg.GetHooks()
-	logger.Debug(fmt.Sprintf("found %d active hooks", len(hooks)))
+	logger.Debug("the API listed the hooks of the event", "count", len(hooks))
 
 	hookIds := make([]string, 0, len(hooks))
 	for _, hook := range hooks {
