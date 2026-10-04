@@ -431,11 +431,11 @@ func Test_BinaryType(t *testing.T) {
 		enginePostgres: {"bytea", "BYTEA", "bytea[]", "_bytea", "bit", "bit(8)", "bit varying", "bit varying(16)", "varbit"},
 		engineMysql: {
 			"binary", "binary(16)", "varbinary", "varbinary(255)", "tinyblob", "blob", "mediumblob", "longblob",
-			"bit", "bit(1)", "geometry", "point",
+			"bit", "bit(1)", "geometry", "point", "geometrycollection", "geomcollection",
 		},
 		engineMssql: {
 			"binary", "varbinary", "varbinary(max)", "image", "timestamp", "rowversion", "geography", "geometry",
-			"hierarchyid",
+			"hierarchyid", "sql_variant",
 		},
 	}
 	for engine, types := range binary {
@@ -453,6 +453,35 @@ func Test_BinaryType(t *testing.T) {
 			require.False(t, binaryType(engine, dataType), "%s: %s", engine, dataType)
 		}
 	}
+}
+
+// The catalogue names a domain by its own name: a column of a domain over bytea, or of an
+// array of one, is not known as binary by its type. Its values are: PostgreSQL writes
+// bytes as "\x" and hexadecimal digits, alone or as the elements of an array. And a text
+// that holds a control character is not a text to show.
+func Test_ValuePicker_SendsNoBytesWrittenAsText(t *testing.T) {
+	picker := newValuePicker(enginePostgres, []*ColumnData{
+		{Column: "secret", DataType: "encbytes"}, {Column: "secrets", DataType: "encbytes[]"},
+		{Column: "raw", DataType: "text"}, {Column: "note", DataType: "text"},
+	})
+	picker.add(map[string]any{
+		"secret":  `\x4353454352455431`,
+		"secrets": `{"\\x4353454352455431","\\x4353454352455432"}`,
+		"raw":     "RAWMARKER\x00\x01\x1b[0m",
+		"note":    "a note\twith a tab,\na new line\r\nand nothing else",
+	})
+	picker.add(map[string]any{
+		"secret":  `\X43534543`,
+		"secrets": `{\\x43534543}`,
+		"raw":     "RAWMARKER\u0085next",
+		"note":    `C:\x86\bin is a path, {"a":"\\x"} is JSON`,
+	})
+	require.Empty(t, picker.values["secret"])
+	require.Empty(t, picker.values["secrets"])
+	require.Empty(t, picker.values["raw"])
+	require.Equal(t, []string{
+		"a note\twith a tab,\na new line\r\nand nothing else", `C:\x86\bin is a path, {"a":"\\x"} is JSON`,
+	}, picker.values["note"])
 }
 
 // A binary column sends no value, on any engine, whatever the Go type its values arrive

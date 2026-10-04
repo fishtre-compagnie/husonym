@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"regexp"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -22,21 +24,39 @@ type sampled struct {
 	moment time.Time
 }
 
+// Bytes as PostgreSQL writes them in a text: "\x" and pairs of hexadecimal digits, alone
+// or as the elements of an array. The driver returns that text for a column whose type
+// it does not know, as an array of a domain over bytea.
+var (
+	writtenBytes      = regexp.MustCompile(`(?i)^\\x(?:[0-9a-f]{2})+$`)
+	writtenBytesArray = regexp.MustCompile(
+		`(?i)^\{(?:"?\\\\x(?:[0-9a-f]{2})+"?|NULL)(?:,(?:"?\\\\x(?:[0-9a-f]{2})+"?|NULL))*\}$`,
+	)
+)
+
+// readText tells what a text holds: a text, or bytes. A text that is not valid UTF-8 is
+// bytes whatever its column says, and so is one PostgreSQL wrote bytes in.
+func readText(text string) sampled {
+	switch {
+	case !utf8.ValidString(text):
+		return sampled{kind: KindBinary, size: len(text)}
+	case writtenBytes.MatchString(text):
+		return sampled{kind: KindBinary, size: (len(text) - len(`\x`)) / 2}
+	case strings.Contains(text, `\\x`) && writtenBytesArray.MatchString(text):
+		return sampled{kind: KindArray}
+	}
+	return sampled{kind: KindText, text: text}
+}
+
 // read tells what kind of value the record mapper of a database returned. The kind comes
 // from the Go type: the type of the column in the catalogue does not always say what the
 // driver returns.
 func read(value any) sampled {
 	switch v := value.(type) {
 	case string:
-		if utf8.ValidString(v) {
-			return sampled{kind: KindText, text: v}
-		}
-		return sampled{kind: KindBinary, size: len(v)}
+		return readText(v)
 	case []byte:
-		if utf8.Valid(v) {
-			return sampled{kind: KindText, text: string(v)}
-		}
-		return sampled{kind: KindBinary, size: len(v)}
+		return readText(string(v))
 	case bool:
 		return sampled{kind: KindBoolean}
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:

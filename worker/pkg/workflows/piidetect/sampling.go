@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"slices"
 	"strings"
+	"unicode"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
@@ -100,7 +101,7 @@ func (p *valuePicker) add(row map[string]any) {
 		// A value that has no text form is not shown: among them a text that is not valid
 		// UTF-8, which is bytes whatever its column says.
 		text, ok := profile.TextOf(value)
-		if !ok {
+		if !ok || strings.ContainsFunc(text, unprintable) {
 			continue
 		}
 		text = cutValue(strings.TrimSpace(text))
@@ -109,6 +110,12 @@ func (p *valuePicker) add(row map[string]any) {
 		}
 		p.values[column] = append(picked, text)
 	}
+}
+
+// unprintable tells whether a character is a control character other than a tab and the
+// ends of a line. A text that holds one is bytes read as text, and is not shown.
+func unprintable(r rune) bool {
+	return unicode.IsControl(r) && r != '\t' && r != '\n' && r != '\r'
 }
 
 // The engines whose tables are scanned.
@@ -133,13 +140,18 @@ func engineOf(connection *mgmtv1alpha1.Connection) string {
 
 // The types whose values are bytes, by the name each catalogue gives them: bytea and the
 // bit strings of PostgreSQL; the binary, blob, bit and spatial types of MySQL; binary,
-// varbinary, image, rowversion and the types SQL Server stores serialized.
+// varbinary, image, rowversion and the types SQL Server stores serialized. A sql_variant
+// of SQL Server holds a value of any type, bytes among them.
+//
+// A domain is named by its own name in the catalogue, not by its base type: a domain over
+// one of these types is not found here, and is told by its values (see profile.TextOf).
 var binaryTypes = map[string]bool{
 	"bytea": true, "bit": true, "bit varying": true, "varbit": true,
 	"binary": true, "varbinary": true, "tinyblob": true, "blob": true, "mediumblob": true, "longblob": true,
-	"image": true, "rowversion": true, "hierarchyid": true,
+	"image": true, "rowversion": true, "hierarchyid": true, "sql_variant": true,
 	"geometry": true, "geography": true, "point": true, "linestring": true, "polygon": true,
 	"multipoint": true, "multilinestring": true, "multipolygon": true, "geometrycollection": true,
+	"geomcollection": true,
 }
 
 // binaryType tells whether a type of the catalogue of an engine holds bytes. The name is

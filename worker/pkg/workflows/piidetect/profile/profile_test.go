@@ -62,14 +62,14 @@ func Test_Table_AColumnNeverSeenHasNoProfile(t *testing.T) {
 // and the kind of the values, nothing else. Whatever the kind.
 func Test_Table_CountsOnlyUnderThreeValues(t *testing.T) {
 	table := newTestTable(endsWithAt)
-	addValues(table, "c", "a@", "b@", "", nil)
+	addValues(table, "c", "aa@", "bb@", "", nil)
 	require.Equal(t, &Profile{Rows: 4, Nulls: 1, Blank: 1, Distinct: 3, Kind: KindText}, table.Profile("c"))
 
-	addValues(table, "c", "c@")
+	addValues(table, "c", "cc@")
 	p := table.Profile("c")
 	require.Equal(t, []Share{{"a+@", 1}}, p.Shapes)
 	require.Equal(t, []Share{{"at", 1}}, p.Hits)
-	require.Equal(t, &Spread{2, 2, 2}, p.Len)
+	require.Equal(t, &Spread{3, 3, 3}, p.Len)
 	require.NotZero(t, p.Letters)
 	require.NotZero(t, p.Words)
 
@@ -84,17 +84,48 @@ func Test_Table_CountsOnlyUnderThreeValues(t *testing.T) {
 	require.Equal(t, &Profile{Rows: 8, Nulls: 6, Distinct: 2, Kind: KindBinary}, few.Profile("b"))
 }
 
+// A column that holds one value, however many rows repeat it, publishes nothing that
+// describes that value: no layout, no length, no share of a class of characters, no
+// format. The same for a number, a moment and bytes.
+func Test_Table_ASingleDistinctValuePublishesCountsOnly(t *testing.T) {
+	table := newTestTable(endsWithAt)
+	for range 5 {
+		addValues(table, "secret", "Xk9$mQ2@")
+		addValues(table, "pin", int64(482913))
+		addValues(table, "born", time.Date(1985, 3, 12, 0, 0, 0, 0, time.UTC))
+		addValues(table, "blob", &husonymtypes.Binary{Bytes: []byte("abcdef")})
+	}
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindText}, table.Profile("secret"))
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindInteger}, table.Profile("pin"))
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindDate}, table.Profile("born"))
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindBinary}, table.Profile("blob"))
+
+	// A second value, and the column is described again.
+	addValues(table, "secret", "other@", "other@", "other@")
+	require.NotEmpty(t, table.Profile("secret").Shapes)
+	require.NotNil(t, table.Profile("secret").Len)
+}
+
+// A layout in which every run is one character long gives the class of each character of
+// the values that have it: it is not published, even when several rows share it.
+func Test_Table_ALayoutThatSpellsEachCharacterIsNotPublished(t *testing.T) {
+	table := newTestTable(endsWithAt)
+	addValues(table, "code", "aB3$", "xY7!", "pQ1?", "M.", "A.", "Z.", "ab12", "cd34", "ef56")
+
+	require.Equal(t, []Share{{"a+9+", 0.33}}, table.Profile("code").Shapes)
+}
+
 // A layout, or a format, that fewer than three rows have is theirs, not the column's: it
 // is not published, whatever its share.
 func Test_Table_ALayoutOfFewRowsIsNotPublished(t *testing.T) {
 	table := newTestTable(endsWithAt)
-	addValues(table, "c", "ab", "cd", "ef", "x1", "y2", "z@", "w@")
+	addValues(table, "c", "ab", "cd", "ef", "xx1", "yy2", "zz@", "ww@")
 
 	p := table.Profile("c")
 	require.Equal(t, []Share{{"a+", 0.42}}, p.Shapes, "a+9+ and a+@ are held by two rows each")
 	require.Empty(t, p.Hits, "two rows pass the check")
 
-	addValues(table, "c", "v@")
+	addValues(table, "c", "vv@")
 	p = table.Profile("c")
 	require.Equal(t, []Share{{"a+", 0.37}, {"a+@", 0.37}}, p.Shapes)
 	require.Equal(t, []Share{{"at", 0.37}}, p.Hits)
@@ -127,7 +158,7 @@ func Test_Table_KeepsTheThreeMostFrequentHits(t *testing.T) {
 
 func Test_Table_KeepsTheThreeMostFrequentShapes(t *testing.T) {
 	table := newTestTable()
-	addValues(table, "c", "a", "a", "a", "a", "1", "1", "1", "A", "A", "A", "a1", "a1", "a1", "-")
+	addValues(table, "c", "aa", "bb", "cc", "dd", "11", "22", "33", "AA", "BB", "CC", "aa1", "bb1", "cc1", "-")
 
 	require.Equal(t, []Share{{"a+", 0.28}, {"9+", 0.21}, {"A+", 0.21}}, table.Profile("c").Shapes)
 }
@@ -136,8 +167,8 @@ func Test_Table_KeepsTheThreeMostFrequentShapes(t *testing.T) {
 // its length counts all of them. A value longer than that passes no format check.
 func Test_Table_ReadsTheFirst256CharactersOfAValue(t *testing.T) {
 	table := newTestTable(Detector{Name: "any", Match: func(string) bool { return true }})
-	long := strings.Repeat("a", 256) + strings.Repeat("1", 244)
-	addValues(table, "c", long, long, long)
+	long := func(letter string) string { return strings.Repeat(letter, 256) + strings.Repeat("1", 244) }
+	addValues(table, "c", long("a"), long("b"), long("c"))
 
 	p := table.Profile("c")
 	require.Equal(t, &Spread{500, 500, 500}, p.Len)
@@ -180,14 +211,16 @@ func Test_Table_ProfilesDates(t *testing.T) {
 	addValues(table, "created", testNow.Add(-time.Hour), testNow.Add(-48*time.Hour), day(2026))
 	addValues(table, "due", testNow.Add(time.Hour), testNow.AddDate(1, 0, 0), testNow.Add(-time.Hour))
 	addValues(table, "old", day(1900), day(1920), day(2020))
-	typed := &husonymtypes.HusonymDateTime{Year: 2023, Month: 5, Day: 2, Hour: 9}
-	addValues(table, "typed", typed, typed, typed)
+	typed := func(hour int) *husonymtypes.HusonymDateTime {
+		return &husonymtypes.HusonymDateTime{Year: 2023, Month: 5, Day: 2, Hour: hour}
+	}
+	addValues(table, "typed", typed(9), typed(10), typed(11))
 
 	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 3, Kind: KindDate, Age: "20-60y"}, table.Profile("birth"))
 	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 3, Kind: KindDateTime, Midnight: 0.33, Age: "<1y"}, table.Profile("created"))
 	require.Equal(t, "future", table.Profile("due").Age)
 	require.Equal(t, ">60y", table.Profile("old").Age)
-	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 1, Kind: KindDateTime, Age: "1-5y"}, table.Profile("typed"))
+	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 3, Kind: KindDateTime, Age: "1-5y"}, table.Profile("typed"))
 }
 
 func Test_Table_AgeBuckets(t *testing.T) {
@@ -199,8 +232,13 @@ func Test_Table_AgeBuckets(t *testing.T) {
 		"20-60y": testNow.AddDate(-20, 0, -1),
 		">60y":   testNow.AddDate(-61, 0, 0),
 	} {
+		// Three moments of the same bucket, a few seconds further from now each.
+		away := -time.Second
+		if want == "future" {
+			away = time.Second
+		}
 		table := newTestTable()
-		addValues(table, "c", moment, moment, moment)
+		addValues(table, "c", moment, moment.Add(away), moment.Add(2*away))
 		require.Equal(t, want, table.Profile("c").Age, want)
 	}
 }
@@ -402,6 +440,13 @@ func Test_TextOf(t *testing.T) {
 		{nil, "", false},
 		{[]byte{0xff, 0xfe}, "", false},
 		{"text that is not \xff\xfe UTF-8", "", false},
+		// Bytes as PostgreSQL writes them, alone and as the elements of an array.
+		{`\x4353454352455431`, "", false},
+		{`{"\\x4353454352455431","\\x43"}`, "", false},
+		{`{\\x4353}`, "", false},
+		{`\x`, `\x`, true},
+		{`\xyz`, `\xyz`, true},
+		{`{"a":"\\x41 is an escape"}`, `{"a":"\\x41 is an escape"}`, true},
 		{&husonymtypes.Binary{Bytes: []byte("abc")}, "", false},
 		{&husonymtypes.Bits{Bytes: []byte{1}, Len: 1}, "", false},
 		{&husonymtypes.Interval{Days: 1}, "", false},

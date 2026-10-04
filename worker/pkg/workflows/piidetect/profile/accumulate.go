@@ -155,7 +155,11 @@ func (c *column) addText(t *Table, text string) {
 		}
 	}
 	c.words += len(strings.Fields(head))
-	c.shapes[mask(head)]++
+	// A layout that gathers no character is the class of each one: it is not counted, so
+	// that it is never published.
+	if layout, gathers := layoutOf(head); gathers {
+		c.shapes[layout]++
+	}
 
 	c.checkedTexts++
 	if len(head) == len(trimmed) {
@@ -223,6 +227,15 @@ func (t *Table) Profile(name string) *Profile {
 		Distinct: len(c.distinct),
 		Kind:     c.kind(),
 	}
+	moments := c.kinds[KindDateTime]
+	if p.Kind == KindDateTime && moments >= minValues && c.midnight == moments {
+		p.Kind = KindDate
+	}
+	// One value, however many rows hold it: a statistic of the column would be a
+	// description of that value.
+	if p.Distinct <= 1 {
+		return p
+	}
 	switch p.Kind {
 	case KindText:
 		texts := len(c.lengths)
@@ -254,16 +267,13 @@ func (t *Table) Profile(name string) *Profile {
 		if p.Kind == KindInteger {
 			p.Hits = c.hitShares(t, c.checkedNumbers)
 		}
+	case KindDate:
+		p.Age = medianAge(c.ages, moments)
 	case KindDateTime:
-		moments := c.kinds[KindDateTime]
 		if moments < minValues {
 			break
 		}
-		if c.midnight == moments {
-			p.Kind = KindDate
-		} else {
-			p.Midnight = share(c.midnight, moments)
-		}
+		p.Midnight = share(c.midnight, moments)
 		p.Age = medianAge(c.ages, moments)
 	}
 	return p

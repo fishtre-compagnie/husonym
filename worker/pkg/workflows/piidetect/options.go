@@ -70,8 +70,9 @@ func rulesOptions() workflow.ActivityOptions {
 }
 
 // The model activity is the long one: a request per batch of columns, each of which a
-// local model may take minutes to answer. It reports that it is alive after each batch,
-// which is also how a cancellation reaches it.
+// local model may take minutes to answer. It reports that it is alive every 30 seconds,
+// while a request is answered and between two requests, with the batches answered so far;
+// that report is also how a cancellation reaches it.
 //
 // When it sends values it has a single attempt: another one would read the table again
 // and could pick other values. It then repeats a failed request by itself.

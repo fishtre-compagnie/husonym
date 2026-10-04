@@ -174,15 +174,15 @@ func Test_GetColumnData_ARowThatCannotBeDecoded(t *testing.T) {
 func Test_GetColumnData_AVeryWideTable(t *testing.T) {
 	for count, withShapes := range map[int]bool{1000: true, 1001: false} {
 		catalogue := make([]*mgmtv1alpha1.DatabaseColumn, 0, count)
-		row := map[string]any{}
+		rows := []map[string]any{{}, {}, {}}
 		for i := range count {
 			name := fmt.Sprintf("c%d", i)
 			catalogue = append(catalogue, column("public", "users", name, "text"))
-			row[name] = "some text"
+			rows[0][name], rows[1][name], rows[2][name] = "some text", "more text", "last text"
 		}
 		builder, data := source(t)
 		data.EXPECT().GetTableSchema(mock.Anything, "public", "users").Return(catalogue, nil)
-		sends(data, []map[string]any{row, row, row}, nil)
+		sends(data, rows, nil)
 		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
 
 		response, _, err := execute[GetColumnDataResponse](t, run, "GetColumnData", usersRequest(true))

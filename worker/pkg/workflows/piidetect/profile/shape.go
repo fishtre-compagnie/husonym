@@ -21,6 +21,14 @@ const (
 // A mask never spells a value: one that would hold no letter and no digit class, as the
 // mask of ":-)" or of "-", is written "?+".
 func mask(value string) string {
+	layout, _ := layoutOf(value)
+	return layout
+}
+
+// layoutOf returns the mask of a value, and whether it gathers characters: whether one
+// of its runs stands for more than one character. A mask that gathers none gives the
+// class of every character of the value, one by one.
+func layoutOf(value string) (layout string, gathers bool) {
 	var b strings.Builder
 	var last rune
 	abstracts := false
@@ -31,6 +39,7 @@ func mask(value string) string {
 		class := maskClass(r)
 		repeats := class == 'A' || class == 'a' || class == '9' || class == '?'
 		if class == last && (repeats || class == ' ') {
+			gathers = true
 			continue
 		}
 		b.WriteRune(class)
@@ -42,14 +51,14 @@ func mask(value string) string {
 	}
 	if !abstracts {
 		if b.Len() == 0 {
-			return ""
+			return "", false
 		}
-		return "?+"
+		return "?+", gathers
 	}
 	if b.Len() > maskLimit {
-		return b.String()[:maskLimit]
+		return b.String()[:maskLimit], gathers
 	}
-	return b.String()
+	return b.String(), gathers
 }
 
 func maskClass(r rune) rune {
