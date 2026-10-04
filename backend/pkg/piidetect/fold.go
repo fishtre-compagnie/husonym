@@ -18,14 +18,7 @@ var unmarked = strings.NewReplacer(
 // unmark writes a name without the marks of its letters, in the case it was written in:
 // "PRÉNOM" gives "PRENOM", "Straße" gives "Strasse".
 func unmark(name string) string {
-	ascii := true
-	for i := 0; i < len(name); i++ {
-		if name[i] >= 0x80 {
-			ascii = false
-			break
-		}
-	}
-	if ascii {
+	if isASCII(name) {
 		return name
 	}
 	var out strings.Builder
@@ -38,7 +31,36 @@ func unmark(name string) string {
 	return unmarked.Replace(out.String())
 }
 
+func isASCII(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
 // fold writes a name in lowercase letters without marks.
 func fold(name string) string {
 	return strings.ToLower(unmark(name))
+}
+
+// transliterated are the umlauts beside the letters German writes in their place.
+var transliterated = strings.NewReplacer("ä", "ae", "ö", "oe", "ü", "ue", "Ä", "AE", "Ö", "OE", "Ü", "UE")
+
+// spellings gives the ways the words of the dictionary are written in a name. The
+// dictionary writes a word with its marks. A name is read without them (see unmark), so
+// every word is known folded; a word with an umlaut is also known with the letters that
+// stand for it: "staatsangehörigkeit" is read in "staatsangehorigkeit" and in
+// "staatsangehoerigkeit".
+func spellings(words ...string) []string {
+	out := make([]string, 0, len(words))
+	for _, word := range words {
+		folded := fold(word)
+		out = append(out, folded)
+		if other := fold(transliterated.Replace(word)); other != folded {
+			out = append(out, other)
+		}
+	}
+	return out
 }

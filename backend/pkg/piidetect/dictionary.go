@@ -109,7 +109,10 @@ const unspecified = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIE
 // The order counts: the first rule that matches a name and does not set it aside
 // decides. The more specific rules (username, first name) come before the more general
 // ones (last name, name).
-var rules = []rule{
+//
+// A word is written here as its language writes it, marks included; the rules read it in
+// every spelling a name gives it (see spellings).
+var dictionary = []rule{
 	{
 		// What lets someone act as a person: a password, a token, a key, a secret, a code
 		// sent to prove who they are, in clear or hashed. No transformer keeps a hash
@@ -209,7 +212,7 @@ var rules = []rule{
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
 		keywords: []string{
-			"nombre completo", "nome completo", "imie i nazwisko", "imieinazwisko", "vollstaendiger name",
+			"nombre completo", "nome completo", "imie i nazwisko", "imieinazwisko", "vollständiger name",
 			"voller name", "volledige naam",
 		},
 	},
@@ -363,7 +366,7 @@ var rules = []rule{
 			"geburtsland", "herkunftsland", "heimatland", "wohnland",
 			// The country someone is a citizen of.
 			"nationalite", //nolint:misspell // a French word
-			"nationality", "citizenship", "citoyennete", "nationalitaet", "staatsangehoerigkeit",
+			"nationality", "citizenship", "citoyennete", "nationalität", "staatsangehörigkeit",
 			"nacionalidad", "ciudadania", "nazionalita", "cittadinanza", "nationaliteit", "narodowosc",
 			"obywatelstwo", "nacionalidade", "cidadania",
 		},
@@ -408,7 +411,7 @@ var rules = []rule{
 			"carte identite", //nolint:misspell // French words
 			"passeport", "permis de conduire", "permis conduire",
 			"reisepass*", "pass nummer", "pass nr", "ausweis", "personalausweis*", "steuer id",
-			"steueridentifikation*", "steuernummer", "fuehrerschein", "fuhrerschein",
+			"steueridentifikation*", "steuernummer", "führerschein",
 			"pasaporte", "nif", "curp", "cedula", "numero fiscal",
 			"passaporto", "codice fiscale", "carta identita",
 			"paspoort", "bsn", "burgerservicenummer", "rijksregisternummer", "sofi nummer", "rijbewijs",
@@ -497,7 +500,7 @@ var rules = []rule{
 		category:  "ethnicity",
 		sensitive: true,
 		suggested: scrambleText,
-		keywords:  []string{"ethnicity", "ethnic", "ethnie", "etnia", "ethnizitaet", "etniciteit"},
+		keywords:  []string{"ethnicity", "ethnic", "ethnie", "etnia", "ethnizität", "etniciteit"},
 	},
 	{
 		category:  "gender",

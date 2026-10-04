@@ -19,7 +19,7 @@ var qualifierNouns = wordSet(
 	"wersja", "versao",
 	// how many, how long, how much of it
 	"count", "nb", "anzahl", "cantidad", "conteggio", "aantal", "liczba", "quantidade", "total",
-	"length", "len", "longueur", "laenge", "longitud", "lunghezza", "lengte", "dlugosc", "comprimento", "ratio",
+	"length", "len", "longueur", "länge", "longitud", "lunghezza", "lengte", "dlugosc", "comprimento", "ratio",
 	// its state
 	"status", "statut", "estado", "stato", "stan",
 	// a code that stands for it; a rule may own the word (see rule.ownTokens)
@@ -32,9 +32,9 @@ var qualifierAdjectives = wordSet(
 	"verified", "verifie", "verifiee", "verifiziert", "verificado", "verificada",
 	"verificato", "verificata", //nolint:misspell // Italian words
 	"geverifieerd", "zweryfikowany", "zweryfikowana",
-	"confirmed", "confirme", "confirmee", "bestaetigt", "confirmado", "confirmada", "confermato",
+	"confirmed", "confirme", "confirmee", "bestätigt", "confirmado", "confirmada", "confermato",
 	"confermata", "bevestigd", "potwierdzony", "potwierdzona",
-	"valid", "valide", "gueltig", "valido", "valida", "geldig",
+	"valid", "valide", "gültig", "valido", "valida", "geldig",
 	"enabled", "disabled", "active", "actif", "aktiv", "activo", "activa", "attivo", "attiva", "actief",
 	"aktywny", "aktywna", "ativo", "ativa",
 	"consent", "optin", "optout", "subscribed", "visible", "hidden", "required",
@@ -62,9 +62,10 @@ var referenceSuffixes = wordSet("id", "uuid", "guid", "fk", "ref", "key")
 // the identifier first: id_usuario, id_pays.
 const referencePrefix = "id"
 
+// wordSet holds words in every spelling a name gives them.
 func wordSet(words ...string) map[string]bool {
 	set := make(map[string]bool, len(words))
-	for _, word := range words {
+	for _, word := range spellings(words...) {
 		set[word] = true
 	}
 	return set

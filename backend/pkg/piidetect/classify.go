@@ -11,9 +11,31 @@ type matcher struct {
 }
 
 var (
+	rules      = spelled(dictionary)
 	vocabulary = newVocabulary()
 	matchers   = newMatchers()
 )
+
+// spelled gives the rules of the dictionary with every spelling of their words.
+func spelled(dictionary []rule) []rule {
+	out := make([]rule, len(dictionary))
+	for i := range dictionary {
+		ru := dictionary[i]
+		ru.keywords = spellings(ru.keywords...)
+		ru.excludeTokens = spellings(ru.excludeTokens...)
+		ru.ownTokens = spellings(ru.ownTokens...)
+		ru.guarded = nil
+		for _, g := range dictionary[i].guarded {
+			g.among, g.unless, g.despite = spellings(g.among...), spellings(g.unless...), spellings(g.despite...)
+			for _, word := range spellings(g.word) {
+				g.word = word
+				ru.guarded = append(ru.guarded, g)
+			}
+		}
+		out[i] = ru
+	}
+	return out
+}
 
 // newVocabulary gathers every word the rules and the qualifiers hold.
 func newVocabulary() *lexicon {
@@ -34,7 +56,7 @@ func newVocabulary() *lexicon {
 			l.add(g.despite...)
 		}
 	}
-	l.add(gluedWords...)
+	l.add(spellings(gluedWords...)...)
 	for _, set := range []map[string]bool{
 		qualifierNouns, qualifierAdjectives, qualifierFlags, qualifierEvents, referenceSuffixes,
 	} {
