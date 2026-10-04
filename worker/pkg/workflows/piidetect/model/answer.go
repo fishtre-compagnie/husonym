@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"math"
+	"strings"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/openai/openai-go/v3"
@@ -29,10 +30,13 @@ type columnAnswer struct {
 // which an object before it says something else is not answered, by either, and neither
 // is a column whose key the object holds twice.
 //
-// A completion that did not stop by itself — its finish reason is given and is not
-// "stop" — may have been cut after a draft. Its last object is the answer only when
-// nothing follows it but spaces or the end of a code fence; otherwise it answers for no
-// column.
+// A completion whose content ends inside a reasoning block answers for no column: what
+// stands before the block may be a draft.
+//
+// A completion that did not stop by itself — its finish reason is given and is not one
+// of a stop (see stopped) — may have been cut after a draft. Its last object is the
+// answer only when nothing follows it but spaces or the end of a code fence; otherwise it
+// answers for no column.
 func readAnswer(completion *openai.ChatCompletion, count int) (answers map[string]columnAnswer, ignored int) {
 	answers = map[string]columnAnswer{}
 	if completion == nil || len(completion.Choices) == 0 {
@@ -47,13 +51,16 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 		asked[columnId(i)] = true
 	}
 	pieces, reachesEnd := outsideReasoning(choice.Message.Content)
-	objects := answerObjects(pieces, reachesEnd, asked)
+	if !reachesEnd {
+		return answers, 0
+	}
+	objects := answerObjects(pieces, asked)
 	if len(objects) == 0 {
 		return answers, 0
 	}
 
 	last := objects[len(objects)-1]
-	if stopped := choice.FinishReason == "" || choice.FinishReason == finishStop; !stopped && !last.closes {
+	if !stopped(choice.FinishReason) && !last.closes {
 		return answers, 0
 	}
 	for id, raw := range last.members {
@@ -70,8 +77,15 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 	return answers, ignored
 }
 
-// The finish reason of a completion the model ended by itself.
-const finishStop = "stop"
+// The finish reasons of a completion the model ended by itself, as the endpoints spell
+// them, in lowercase.
+var finishStops = map[string]bool{"stop": true, "eos_token": true, "end_turn": true, "stop_sequence": true}
+
+// stopped tells whether a completion ended by itself: its finish reason says so in any
+// case, or is not given.
+func stopped(finishReason string) bool {
+	return finishReason == "" || finishStops[strings.ToLower(finishReason)]
+}
 
 // disputed tells whether one of the earlier objects holds, for a column, anything else
 // than the answer.

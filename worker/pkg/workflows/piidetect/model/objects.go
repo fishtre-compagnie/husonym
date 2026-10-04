@@ -57,11 +57,12 @@ var afterAnswer = regexp.MustCompile("^\\s*(?:```)?\\s*$")
 
 // answerObjects finds, in their order, the JSON objects that decode whole and name at
 // least one column of the request. An object inside braces that are open — those of
-// another object, whole, cut or malformed — is not one of them.
-func answerObjects(pieces []string, reachesEnd bool, asked map[string]bool) []answerObject {
+// another object, whole, cut or malformed — is not one of them. The last piece runs to
+// the end of the content.
+func answerObjects(pieces []string, asked map[string]bool) []answerObject {
 	var objects []answerObject
 	for i, piece := range pieces {
-		last := reachesEnd && i == len(pieces)-1
+		last := i == len(pieces)-1
 		for at := 0; at < len(piece); {
 			open := strings.IndexByte(piece[at:], '{')
 			if open < 0 {

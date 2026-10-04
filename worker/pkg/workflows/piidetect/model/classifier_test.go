@@ -420,6 +420,70 @@ func Test_Classify_ACompletionThatWasCut(t *testing.T) {
 	}
 }
 
+// completionWithFinish is the body of a completion whose finish reason is written as
+// given: `"finish_reason":null,`, or nothing at all.
+func completionWithFinish(t *testing.T, content, finish string) string {
+	t.Helper()
+	const stop = `"finish_reason":"stop",`
+	body := piitest.Completion(content)
+	require.Contains(t, body, stop)
+	return strings.Replace(body, stop, finish, 1)
+}
+
+// The ways an endpoint says that the model ended by itself, or says nothing.
+var stoppedFinishes = map[string]string{
+	"stop":   `"finish_reason":"stop",`,
+	"empty":  `"finish_reason":"",`,
+	"null":   `"finish_reason":null,`,
+	"absent": ``,
+}
+
+// A reasoning block left open holds everything that follows it. The object written
+// before it may be a draft: it is not the answer, however the completion ended.
+func Test_Classify_ADraftBeforeAReasoningBlockLeftOpen(t *testing.T) {
+	const draft = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	for name, finish := range stoppedFinishes {
+		t.Run(name, func(t *testing.T) {
+			body := completionWithFinish(t, draft+"\n<think>c1 could also be something else", finish)
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, 2, e.calls())
+			require.Equal(t, &Result{Unanswered: []string{"a", "b"}}, result)
+		})
+	}
+}
+
+// A completion the model ended by itself holds its answer wherever it is: prose may
+// follow it. The endpoints spell that end in several ways, and some do not say how the
+// completion ended: it is then taken as ended by the model.
+func Test_Classify_TheAnswerOfACompletionThatStopped(t *testing.T) {
+	const document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	finishes := map[string]string{}
+	for name, finish := range stoppedFinishes {
+		finishes[name] = finish
+	}
+	for _, reason := range []string{"eos_token", "STOP", "end_turn", "stop_sequence", "Stop"} {
+		finishes[reason] = `"finish_reason":"` + reason + `",`
+	}
+	for name, finish := range finishes {
+		t.Run(name, func(t *testing.T) {
+			body := completionWithFinish(t, document+"\nThat is my answer.", finish)
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, 1, e.calls())
+			require.Equal(t,
+				&Result{Findings: map[string]report.ModelFinding{"a": {Category: report.Contact, Confidence: 0.9}}}, result,
+			)
+		})
+	}
+}
+
 // The blocks a model reasons in, by the tags the models in use write them with.
 func Test_Classify_ReasoningBlocks(t *testing.T) {
 	const (
