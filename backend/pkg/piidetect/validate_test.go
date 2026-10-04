@@ -22,6 +22,41 @@ var (
 	validCards  = []string{"4970100123456788", "5555123400001234", "4000000123456784"}
 )
 
+// The checks are handed out in the order ClassifyValues applies them, each under the
+// category it gives, and each is the check ClassifyValues runs.
+func TestValueDetectors(t *testing.T) {
+	passing := map[string]string{
+		"email":        "jean.dupont@example.org",
+		"iban":         validIBANs[0],
+		"nir":          validNIRs[0],
+		"siret":        validSirets[0],
+		"credit_card":  validCards[0],
+		"ip_address":   "192.0.2.17",
+		"phone_number": "06 12 34 56 78",
+		"gender":       "Mme",
+	}
+	want := []string{"email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}
+
+	detectors := ValueDetectors()
+	got := make([]string, 0, len(detectors))
+	for _, detector := range detectors {
+		got = append(got, detector.Category)
+		value, known := passing[detector.Category]
+		if !known {
+			t.Fatalf("a check of an unexpected category: %q", detector.Category)
+		}
+		if !detector.Match(value) {
+			t.Errorf("the %s check refuses %q", detector.Category, value)
+		}
+		if detector.Match("not a formatted value") {
+			t.Errorf("the %s check accepts a plain sentence", detector.Category)
+		}
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("checks = %v, want %v", got, want)
+	}
+}
+
 func TestIsNIR(t *testing.T) {
 	for _, v := range validNIRs {
 		if !IsNIR(v) {

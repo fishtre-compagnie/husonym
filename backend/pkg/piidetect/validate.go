@@ -129,6 +129,23 @@ var validators = []validator{
 	// IsFrenchPostalCode reste exporté pour valider une valeur ponctuelle.
 }
 
+// ValueDetector is one of the checks ClassifyValues applies to a value.
+type ValueDetector struct {
+	Category string
+	Match    func(string) bool
+}
+
+// ValueDetectors returns the checks of ClassifyValues in the order it applies them, from
+// the most constrained to the least. A caller that counts their hits over a sample of its
+// own then counts with the very checks ClassifyValues decides on.
+func ValueDetectors() []ValueDetector {
+	detectors := make([]ValueDetector, 0, len(validators))
+	for i := range validators {
+		detectors = append(detectors, ValueDetector{Category: validators[i].category, Match: validators[i].fn})
+	}
+	return detectors
+}
+
 // ClassifyValues examines the sampled values of a column and returns the most
 // specific classification that reaches a usable threshold. ok is false when no
 // validator stands out.
