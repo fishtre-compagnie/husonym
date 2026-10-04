@@ -155,6 +155,8 @@ func TestClassify_WordsOfTwoLanguages(t *testing.T) {
 		"estado_provincia": "state",
 		// Italian "via" is a street.
 		"via": "street_address", "via_residenza": "street_address",
+		// French "portable" is a mobile phone, English "portable" an adjective.
+		"portable": "phone_number", "numero_portable": "phone_number", "portable_client": "phone_number",
 	})
 	expectNone(t,
 		"nombre_articles", "nombre_pages", "nombre_de_lignes", "nombre_max", "nombre_jours", "nombre_heures",
@@ -166,6 +168,7 @@ func TestClassify_WordsOfTwoLanguages(t *testing.T) {
 		"genero_musical", "genero_pelicula", "genre_musical", "genre_film", "music_genre", "book_genre",
 		"estado", "estado_pedido",
 		"via_api", "sent_via",
+		"portable_device", "is_portable",
 	)
 }
 
@@ -190,6 +193,7 @@ func TestClassify_TokensAndPins(t *testing.T) {
 // The name of a thing is not the name of a person.
 func TestClassify_NamesOfOrdinaryThings(t *testing.T) {
 	expectNone(t,
+		"nom_commercial", "nom_de_domaine", "tel_aviv_office", "gender_neutral_flag", "email_flag",
 		"nome_corso", "nome_banca", "nome_piano", "nom_article", "nom_banque", "hotel_name", "bank_name",
 		"plan_name", "item_name", "course_name", "nombre_banco", "nombre_curso", "naam_cursus", "name_artikel",
 		"nome_artigo", "businessname", "process_name",

@@ -42,7 +42,7 @@ var qualifierAdjectives = wordSet(
 	"consent", "optin", "optout", "subscribed", "visible", "hidden", "required",
 	// what was done to it, how often, under which rule
 	"changed", "updated", "expires", "expired", "sent", "bounced", "attempts", "policy", "strength", "opt",
-	"set",
+	"set", "flag",
 	// what carries it or shows it: email_provider, mail_server, login_url, postal_service
 	"provider", "server", "queue", "subject", "method", "page", "url", "brand", "service",
 	// when something happened to it: password_changed_at, last_login_at

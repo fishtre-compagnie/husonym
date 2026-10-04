@@ -13,21 +13,16 @@ const (
 	maskPunctuation = "@.,-_/:+()#"
 )
 
-// mask replaces every character of a value by its class: "A" for an uppercase letter,
-// "a" for another letter, "9" for a digit, "?" for a character it does not show. A run of
-// one class is written once, followed by "+"; a run of spaces is one space; a punctuation
-// character of maskPunctuation stands for itself.
+// layoutOf returns the mask of a value: every character replaced by its class, "A" for
+// an uppercase letter, "a" for another letter, "9" for a digit, "?" for a character it
+// does not show. A run of one class is written once, followed by "+"; a run of spaces is
+// one space; a punctuation character of maskPunctuation stands for itself.
 //
 // A mask never spells a value: one that would hold no letter and no digit class, as the
 // mask of ":-)" or of "-", is written "?+".
-func mask(value string) string {
-	layout, _ := layoutOf(value)
-	return layout
-}
-
-// layoutOf returns the mask of a value, and whether it gathers characters: whether one
-// of its runs stands for more than one character. A mask that gathers none gives the
-// class of every character of the value, one by one.
+//
+// gathers tells whether one of the runs stands for more than one character. A mask that
+// gathers none gives the class of every character of the value, one by one.
 func layoutOf(value string) (layout string, gathers bool) {
 	var b strings.Builder
 	var last rune

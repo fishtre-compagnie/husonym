@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func mask(value string) string {
+	layout, _ := layoutOf(value)
+	return layout
+}
+
+// A mask that gathers no character gives the class of each one.
+func Test_LayoutOf_Gathers(t *testing.T) {
+	for value, want := range map[string]bool{
+		"aB3$": false, "M.": false, "a@b.c": false, "x": false, "": false, "-": false,
+		"ab": true, "a  b": true, "A1b22": true, "M..": false, "$$": true,
+	} {
+		_, gathers := layoutOf(value)
+		require.Equal(t, want, gathers, value)
+	}
+}
+
 // A mask keeps the layout of a value and none of its characters.
 func Test_Mask(t *testing.T) {
 	for value, want := range map[string]string{

@@ -63,7 +63,7 @@ var objectTokens = []string{
 	"fichier", "produit", "societe", "marque", "magasin",
 	"projet", "tache", "regle", "groupe", "categorie", "etiquette",
 	"modele", "evenement", "dossier", "chemin", "etat", "devise", "unite",
-	"banque", "cours", "entreprise",
+	"banque", "cours", "entreprise", "commercial", "domaine",
 	// German
 	"datei", "produkt", "firma", "marke", "projekt", "gruppe", "kategorie", "vorlage", "ordner", "pfad",
 	"rolle", "aufgabe", "tabelle", "spalte", "artikel", "kurs", "unternehmen",
@@ -162,7 +162,9 @@ var rules = []rule{
 		},
 		guarded: []guarded{
 			// French "tel quel": as it is.
-			{word: "tel", unless: []string{"quel"}},
+			{word: "tel", unless: []string{"quel", "aviv"}},
+			// French "portable" is a mobile phone, English "portable" an adjective.
+			{word: "portable", among: []string{"numero", "num", "telephone", "client", "contact"}},
 		},
 		alsoHolds: []columnKind{kindNumber},
 	},
