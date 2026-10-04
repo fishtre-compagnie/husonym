@@ -278,12 +278,14 @@ func Test_Classify_ReadsAnAnswerThatIsWrapped(t *testing.T) {
 		"a fenced block without language": piitest.Completion("```\n" + document + "\n```"),
 		"a reasoning block before it":     piitest.Completion("<think>\nThe first column holds {emails}.\n</think>\n\n" + document),
 		"a reasoning block and a fence":   piitest.Completion("<think>c1 is contact</think>\n```json\n" + document + "\n```\n"),
-		"a sentence before it":            piitest.Completion("Here is the classification:\n" + document),
-		"a sentence after it":             piitest.Completion(document + "\nLet me know if you need anything else."),
-		"spaces around it":                piitest.Completion("\n  " + document + "  \n"),
-		"a complete document, cut after":  piitest.CompletionEnding(document, "length"),
-		"another reason to end":           piitest.CompletionEnding(document, "eos"),
-		"no reason to end":                piitest.CompletionEnding(document, ""),
+		"a reasoning block that holds a draft": piitest.Completion(
+			`<think>First guess: {"c1":{"category":"none","confidence":0.1},"c2":{"category":"contact","confidence":1}}</think>` + document),
+		"a sentence before it":           piitest.Completion("Here is the classification:\n" + document),
+		"a sentence after it":            piitest.Completion(document + "\nLet me know if you need anything else."),
+		"spaces around it":               piitest.Completion("\n  " + document + "  \n"),
+		"a complete document, cut after": piitest.CompletionEnding(document, "length"),
+		"another reason to end":          piitest.CompletionEnding(document, "eos"),
+		"no reason to end":               piitest.CompletionEnding(document, ""),
 	} {
 		t.Run(name, func(t *testing.T) {
 			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
