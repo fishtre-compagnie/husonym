@@ -13,14 +13,7 @@ import (
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	commonpb "go.temporal.io/api/common/v1"
-	"go.temporal.io/api/enums/v1"
-	workflowpb "go.temporal.io/api/workflow/v1"
-	"go.temporal.io/api/workflowservice/v1"
-	"go.temporal.io/sdk/converter"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *IntegrationTestSuite) Test_GetJobs_Empty() {
@@ -997,28 +990,9 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 		)
 		requireNoErrResp(t, setResp, err)
 	}
-	// read reads the report of a run of the job. The run names its job as a run started
-	// by a schedule does, in a search attribute: the index of a run is stored under the
-	// id of its job.
 	read := func(t *testing.T, jobRunId string) []*mgmtv1alpha1.PiiDetectionReport_TableReport {
 		t.Helper()
-		scheduledBy, err := converter.GetDefaultDataConverter().ToPayload(jobId)
-		require.NoError(t, err)
-		s.Mocks.TemporalClientManager.EXPECT().
-			DescribeWorklowExecution(mock.Anything, accountId, jobRunId, mock.Anything).
-			Return(&workflowservice.DescribeWorkflowExecutionResponse{
-				WorkflowExecutionInfo: &workflowpb.WorkflowExecutionInfo{
-					Execution: &commonpb.WorkflowExecution{WorkflowId: jobRunId},
-					StartTime: timestamppb.New(time.Now().Add(-time.Minute)),
-					CloseTime: timestamppb.New(time.Now()),
-					Status:    enums.WORKFLOW_EXECUTION_STATUS_COMPLETED,
-					Type:      &commonpb.WorkflowType{Name: "JobPiiDetect"},
-					SearchAttributes: &commonpb.SearchAttributes{
-						IndexedFields: map[string]*commonpb.Payload{"TemporalScheduledById": scheduledBy},
-					},
-				},
-			}, nil).
-			Once()
+		s.MockTemporalForDescribeWorkflowExecution(accountId, jobId, jobRunId, "JobPiiDetect")
 		getResp, err := jobclient.GetPiiDetectionReport(
 			s.ctx,
 			connect.NewRequest(&mgmtv1alpha1.GetPiiDetectionReportRequest{JobRunId: jobRunId, AccountId: accountId}),

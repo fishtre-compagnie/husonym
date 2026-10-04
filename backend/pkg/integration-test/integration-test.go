@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/converter"
 	tmprl_mocks "go.temporal.io/sdk/mocks"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -220,6 +221,12 @@ func (s *HusonymApiTestClient) MockTemporalForCreateJob(returnId string) {
 func (s *HusonymApiTestClient) MockTemporalForDescribeWorkflowExecution(
 	accountId, jobId, jobRunId, workflowName string,
 ) {
+	// The run names its job as a run started by a schedule does: in a search attribute,
+	// encoded as Temporal encodes it, so that the API reads the id of the job from it.
+	scheduledBy, err := converter.GetDefaultDataConverter().ToPayload(jobId)
+	if err != nil {
+		panic(fmt.Errorf("unable to encode the id of the job: %w", err))
+	}
 	s.Mocks.TemporalClientManager.EXPECT().
 		DescribeWorklowExecution(mock.Anything, accountId, jobRunId, mock.Anything).
 		Return(&workflowservice.DescribeWorkflowExecutionResponse{
@@ -234,14 +241,7 @@ func (s *HusonymApiTestClient) MockTemporalForDescribeWorkflowExecution(
 					Name: workflowName,
 				},
 				SearchAttributes: &common.SearchAttributes{
-					IndexedFields: map[string]*common.Payload{
-						"TemporalScheduledById": {
-							Data: []byte(jobId),
-							Metadata: map[string][]byte{
-								"jobId": []byte(jobId),
-							}, // this doesnt seem to work as it's not the correct format for what temporal expects
-						},
-					},
+					IndexedFields: map[string]*common.Payload{"TemporalScheduledById": scheduledBy},
 				},
 			},
 		}, nil).

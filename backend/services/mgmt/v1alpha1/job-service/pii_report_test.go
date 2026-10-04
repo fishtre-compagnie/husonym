@@ -1,10 +1,20 @@
 package v1alpha1_jobservice
 
 import (
+	"errors"
+	"log/slog"
 	"testing"
 
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
+	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/api/enums/v1"
+	failurepb "go.temporal.io/api/failure/v1"
+	historypb "go.temporal.io/api/history/v1"
+	"go.temporal.io/sdk/converter"
 )
 
 // A table report is read whether or not it holds the members a worker may add to it: the
@@ -81,4 +91,94 @@ func Test_childFailureEndsRun(t *testing.T) {
 	require.True(t, childFailureEndsRun("TableSync"))
 	require.True(t, childFailureEndsRun("ProcessAccountHook"))
 	require.True(t, childFailureEndsRun(""))
+}
+
+// events is the history of a run, as the events reader walks it.
+type events struct {
+	events []*historypb.HistoryEvent
+	next   int
+}
+
+func (e *events) HasNext() bool { return e.next < len(e.events) }
+
+func (e *events) Next() (*historypb.HistoryEvent, error) {
+	e.next++
+	return e.events[e.next-1], nil
+}
+
+// The events of a run whose child ended one of the ways a table may end without being
+// scanned: failed, not started, timed out. For the run of a table of a PII detection job
+// the run goes on, and its events are not all there yet; for any other child the run is
+// over. The metadata of the table come from the input of its child.
+func Test_getEventsByWorkflowId_AChildThatDidNotComplete(t *testing.T) {
+	input, err := converter.GetDefaultDataConverter().ToPayloads(
+		&piidetect.TablePiiDetectRequest{TableSchema: "public", TableName: "users"},
+	)
+	require.NoError(t, err)
+	initiated := func(workflowType string) *historypb.HistoryEvent {
+		return &historypb.HistoryEvent{
+			EventId: 5, EventType: enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED,
+			Attributes: &historypb.HistoryEvent_StartChildWorkflowExecutionInitiatedEventAttributes{
+				StartChildWorkflowExecutionInitiatedEventAttributes: &historypb.StartChildWorkflowExecutionInitiatedEventAttributes{
+					WorkflowId: "child", WorkflowType: &commonpb.WorkflowType{Name: workflowType}, Input: input,
+				},
+			},
+		}
+	}
+	endings := map[string]func(workflowType string) *historypb.HistoryEvent{
+		"failed": func(workflowType string) *historypb.HistoryEvent {
+			return &historypb.HistoryEvent{
+				EventId: 6, EventType: enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_FAILED,
+				Attributes: &historypb.HistoryEvent_ChildWorkflowExecutionFailedEventAttributes{
+					ChildWorkflowExecutionFailedEventAttributes: &historypb.ChildWorkflowExecutionFailedEventAttributes{
+						InitiatedEventId: 5, WorkflowType: &commonpb.WorkflowType{Name: workflowType},
+						Failure: &failurepb.Failure{Message: "the columns cannot be read"},
+					},
+				},
+			}
+		},
+		"not started": func(workflowType string) *historypb.HistoryEvent {
+			return &historypb.HistoryEvent{
+				EventId: 6, EventType: enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_FAILED,
+				Attributes: &historypb.HistoryEvent_StartChildWorkflowExecutionFailedEventAttributes{
+					StartChildWorkflowExecutionFailedEventAttributes: &historypb.StartChildWorkflowExecutionFailedEventAttributes{
+						InitiatedEventId: 5, WorkflowType: &commonpb.WorkflowType{Name: workflowType},
+					},
+				},
+			}
+		},
+		"timed out": func(workflowType string) *historypb.HistoryEvent {
+			return &historypb.HistoryEvent{
+				EventId: 6, EventType: enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_TIMED_OUT,
+				Attributes: &historypb.HistoryEvent_ChildWorkflowExecutionTimedOutEventAttributes{
+					ChildWorkflowExecutionTimedOutEventAttributes: &historypb.ChildWorkflowExecutionTimedOutEventAttributes{
+						InitiatedEventId: 5, WorkflowType: &commonpb.WorkflowType{Name: workflowType},
+					},
+				},
+			}
+		},
+	}
+	for ending, event := range endings {
+		for workflowType, wantComplete := range map[string]bool{"TablePiiDetect": false, "TableSync": true} {
+			t.Run(ending+" "+workflowType, func(t *testing.T) {
+				temporal := clientmanager.NewMockInterface(t)
+				temporal.On("GetWorkflowHistory", mock.Anything, "account-1", "run-1", mock.Anything).
+					Return(&events{events: []*historypb.HistoryEvent{initiated(workflowType), event(workflowType)}}, nil)
+				// A run that is over is asked about the children it did not see end.
+				temporal.On("GetWorkflowExecutionById", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, errors.New("not asked in this test")).Maybe()
+				svc := New(&Config{}, nil, temporal, nil, nil, nil, nil, nil)
+
+				resp, err := svc.getEventsByWorkflowId(t.Context(), "account-1", "run-1", slog.Default())
+				require.NoError(t, err)
+				require.Equal(t, wantComplete, resp.GetIsRunComplete())
+				require.Len(t, resp.GetEvents(), 1)
+				require.Equal(t, workflowType, resp.GetEvents()[0].GetType())
+				if workflowType == "TablePiiDetect" {
+					require.Equal(t, "public", resp.GetEvents()[0].GetMetadata().GetSyncMetadata().GetSchema())
+					require.Equal(t, "users", resp.GetEvents()[0].GetMetadata().GetSyncMetadata().GetTable())
+				}
+			})
+		}
+	}
 }
