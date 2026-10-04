@@ -356,6 +356,173 @@ func Test_Classify_ADraftIsNotTheAnswer(t *testing.T) {
 	}
 }
 
+// A completion the endpoint cut holds an answer only when the answer is the last thing it
+// wrote: an object followed by anything else, or by a reasoning block, may be a draft of
+// the answer that was cut.
+func Test_Classify_ACompletionThatWasCut(t *testing.T) {
+	const (
+		draft    = `{"c1":{"category":"none","confidence":0.9},"c2":{"category":"contact","confidence":1}}`
+		document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	)
+	answered := &Result{Findings: map[string]report.ModelFinding{"a": {Category: report.Contact, Confidence: 0.9}}}
+	unanswered := &Result{Unanswered: []string{"a", "b"}}
+	for name, tc := range map[string]struct {
+		body  string
+		calls int
+		want  *Result
+	}{
+		"a draft in prose, then the answer cut": {
+			piitest.CompletionEnding("A first guess: "+draft+" On reflection, the answer is "+`{"c1":{"categ`, "length"), 2, unanswered,
+		},
+		"a draft, then prose that was cut": {
+			piitest.CompletionEnding(draft+"\nWait, c1 looks like", "length"), 2, unanswered,
+		},
+		"a draft before a reasoning block that was cut": {
+			piitest.CompletionEnding(draft+"\n<think>c1 could also be", "length"), 2, unanswered,
+		},
+		"a draft before a reasoning block, then nothing": {
+			piitest.CompletionEnding(draft+"\n<think>c1 is fine</think>", "length"), 2, unanswered,
+		},
+		"a draft inside [THINK], cut": {
+			piitest.CompletionEnding("[THINK]"+draft+" hmm", "length"), 2, unanswered,
+		},
+		"a draft inside <thought>, cut": {
+			piitest.CompletionEnding("<thought>"+draft+" hmm", "length"), 2, unanswered,
+		},
+		"a draft inside <seed:think>, cut": {
+			piitest.CompletionEnding("<seed:think>"+draft+" hmm", "length"), 2, unanswered,
+		},
+		"a wrapper that was cut, whose draft is whole": {
+			piitest.CompletionEnding(`{"draft":`+draft+`,"final":{"c1":{"categ`, "length"), 2, unanswered,
+		},
+		"a draft stopped by a content filter": {
+			piitest.CompletionEnding(draft+" but", "content_filter"), 2, unanswered,
+		},
+		"the answer, then the end of its fence": {
+			piitest.CompletionEnding("```json\n"+document+"\n```\n", "length"), 1, answered,
+		},
+		"the answer after a reasoning block": {
+			piitest.CompletionEnding("<think>"+draft+"</think>\n"+document+"\n", "length"), 1, answered,
+		},
+		"a draft then the answer, both whole": {
+			piitest.CompletionEnding(document+" Checked again: "+document, "length"), 1, answered,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, tc.body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, tc.calls, e.calls())
+			require.Equal(t, tc.want, result)
+		})
+	}
+}
+
+// The blocks a model reasons in, by the tags the models in use write them with.
+func Test_Classify_ReasoningBlocks(t *testing.T) {
+	const (
+		draft    = `{"c1":{"category":"none","confidence":0.9},"c2":{"category":"contact","confidence":1}}`
+		document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	)
+	answered := &Result{Findings: map[string]report.ModelFinding{"a": {Category: report.Contact, Confidence: 0.9}}}
+	for _, block := range [][2]string{
+		{"<think>", "</think>"}, {"<thinking>", "</thinking>"}, {"<thought>", "</thought>"},
+		{"<Thoughts>", "</Thoughts>"}, {"<reasoning>", "</reasoning>"}, {"<reflection>", "</reflection>"},
+		{"<REFLECTION>", "</REFLECTION>"}, {"<scratchpad>", "</scratchpad>"}, {"<seed:think>", "</seed:think>"},
+		{"[THINK]", "[/THINK]"}, {"[think]", "[/think]"}, {`<thought id="1">`, "</thought>"},
+	} {
+		t.Run(block[0], func(t *testing.T) {
+			body := piitest.Completion(block[0] + draft + block[1] + document)
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, 1, e.calls())
+			require.Equal(t, answered, result)
+		})
+	}
+
+	// A closing tag that nothing opened closes a block that started at the beginning: what
+	// stood before it is not read, earlier blocks included.
+	body := piitest.Completion(draft + "<think>x</think> so </think>" + document)
+	e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
+	c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+	result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+	require.NoError(t, err)
+	require.Equal(t, 1, e.calls())
+	require.Equal(t, answered, result)
+}
+
+// An object is an answer where it stands alone: not inside another object, whole or not,
+// and not when it names no column of the request.
+func Test_Classify_ObjectsThatAreNoAnswer(t *testing.T) {
+	const document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	answered := &Result{Findings: map[string]report.ModelFinding{"a": {Category: report.Contact, Confidence: 0.9}}}
+	unanswered := &Result{Unanswered: []string{"a", "b"}}
+	for name, tc := range map[string]struct {
+		body  string
+		calls int
+		want  *Result
+	}{
+		"inside an object that is whole": {piitest.Completion(`{"answer":` + document + `}`), 2, unanswered},
+		"inside an object that is not JSON": {
+			piitest.Completion(`{answer: ` + document + `}`), 2, unanswered,
+		},
+		"inside an object that is not closed": {
+			piitest.Completion(`{"draft":` + document + `, "final": `), 2, unanswered,
+		},
+		"after braces in a sentence": {piitest.Completion("The set {a, b} gives " + document), 1, answered},
+		"before an object that names no column": {
+			piitest.Completion(document + ` {"summary":{"category":"none","confidence":1}}`), 1, answered,
+		},
+		"a brace inside a text of a broken object": {
+			piitest.Completion(`{"note": "a } here", oops} ` + document), 1, answered,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, tc.body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, tc.calls, e.calls())
+			require.Equal(t, tc.want, result)
+		})
+	}
+}
+
+// A key written twice in an object answers nothing for its column: which of the two the
+// model meant is not guessed.
+func Test_Classify_AKeyWrittenTwice(t *testing.T) {
+	bodies := []string{
+		piitest.Completion(`{"c1":{"category":"none","confidence":0.9},"c2":{"category":"location","confidence":0.8},"c1":{"category":"contact","confidence":0.9}}`),
+		piitest.Completion(`{"c1":{"category":"none","category":"contact","confidence":0.9},"c2":{"category":"location","confidence":0.8}}`),
+		piitest.Completion(`{"c1":{"category":"contact","confidence":0.1,"confidence":0.9},"c2":{"category":"location","confidence":0.8}}`),
+		// In a draft too: the draft says something else than the answer.
+		piitest.Completion(`{"c1":{"category":"contact","confidence":0.9},"c1":{"category":"contact","confidence":0.9}} then ` +
+			`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"location","confidence":0.8}}`),
+	}
+	for _, body := range bodies {
+		e := newEndpoint(t, func(call int, _ map[string]any) (int, string) {
+			if call == 1 {
+				return http.StatusOK, body
+			}
+			return http.StatusOK, answers(map[string]answer{"c1": {Category: "none", Confidence: 0.9}})
+		})
+		c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+		result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{"c1": "a"}, askedNames(t, e.Requests()[1].JSON), "only the column written twice is asked again")
+		require.Equal(t, &Result{
+			Findings: map[string]report.ModelFinding{"b": {Category: report.Location, Confidence: 0.8}},
+		}, result)
+	}
+}
+
 // Two objects outside a reasoning block: the last one answers, except for the columns
 // they do not agree on.
 func Test_Classify_TwoObjectsThatPartlyAgree(t *testing.T) {

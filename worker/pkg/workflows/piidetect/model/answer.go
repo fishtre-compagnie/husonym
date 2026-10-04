@@ -3,8 +3,6 @@ package model
 import (
 	"encoding/json"
 	"math"
-	"regexp"
-	"strings"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/openai/openai-go/v3"
@@ -26,10 +24,15 @@ type columnAnswer struct {
 // 0.95, an unknown label is not taken for the nearest one.
 //
 // The object is read where it is: inside a fenced block, between sentences. What the
-// model wrote in a reasoning block is not read. Outside one, the last object that names
-// a column of the request is the answer; a column for which an object before it says
-// something else is not answered, by either. Why the model stopped is not asked: an
-// object that is complete and valid is an answer, and one that was cut is not an object.
+// model wrote in a reasoning block is not read, nor an object inside another. Outside
+// those, the last object that names a column of the request is the answer; a column for
+// which an object before it says something else is not answered, by either, and neither
+// is a column whose key the object holds twice.
+//
+// A completion that did not stop by itself — its finish reason is given and is not
+// "stop" — may have been cut after a draft. Its last object is the answer only when
+// nothing follows it but spaces or the end of a code fence; otherwise it answers for no
+// column.
 func readAnswer(completion *openai.ChatCompletion, count int) (answers map[string]columnAnswer, ignored int) {
 	answers = map[string]columnAnswer{}
 	if completion == nil || len(completion.Choices) == 0 {
@@ -43,13 +46,17 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 	for i := range count {
 		asked[columnId(i)] = true
 	}
-	objects := answerObjects(withoutReasoning(choice.Message.Content), asked)
+	pieces, reachesEnd := outsideReasoning(choice.Message.Content)
+	objects := answerObjects(pieces, reachesEnd, asked)
 	if len(objects) == 0 {
 		return answers, 0
 	}
 
 	last := objects[len(objects)-1]
-	for id, raw := range last {
+	if stopped := choice.FinishReason == "" || choice.FinishReason == finishStop; !stopped && !last.closes {
+		return answers, 0
+	}
+	for id, raw := range last.members {
 		if !asked[id] {
 			ignored++
 			continue
@@ -63,11 +70,14 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 	return answers, ignored
 }
 
+// The finish reason of a completion the model ended by itself.
+const finishStop = "stop"
+
 // disputed tells whether one of the earlier objects holds, for a column, anything else
 // than the answer.
-func disputed(earlier []map[string]json.RawMessage, id string, answer columnAnswer) bool {
+func disputed(earlier []answerObject, id string, answer columnAnswer) bool {
 	for _, object := range earlier {
-		raw, held := object[id]
+		raw, held := object.members[id]
 		if !held {
 			continue
 		}
@@ -78,85 +88,28 @@ func disputed(earlier []map[string]json.RawMessage, id string, answer columnAnsw
 	return false
 }
 
-// The tags of a block in which a model writes its reasoning, opening or closing, in any
-// case, with or without attributes.
-var reasoningTag = regexp.MustCompile(`(?i)<(/?)(?:think|thinking|reasoning)(?:\s[^>]*)?>`)
-
-// withoutReasoning returns the content outside the reasoning blocks. Blocks may follow
-// each other or hold one another. A block that is not closed runs to the end; a block
-// that is closed without having been opened started at the beginning.
-func withoutReasoning(content string) string {
-	var kept strings.Builder
-	depth, from := 0, 0
-	for _, tag := range reasoningTag.FindAllStringSubmatchIndex(content, -1) {
-		start, end, closing := tag[0], tag[1], tag[3] > tag[2]
-		switch {
-		case !closing:
-			if depth == 0 {
-				kept.WriteString(content[from:start])
-			}
-			depth++
-		case depth > 0:
-			depth--
-		default:
-			kept.Reset()
-		}
-		from = end
-	}
-	if depth == 0 {
-		kept.WriteString(content[from:])
-	}
-	return kept.String()
-}
-
-// answerObjects finds, in their order, the JSON objects that decode whole and name at
-// least one column of the request. An object inside another is part of it.
-func answerObjects(content string, asked map[string]bool) []map[string]json.RawMessage {
-	var objects []map[string]json.RawMessage
-	for start := strings.IndexByte(content, '{'); start >= 0; {
-		var members map[string]json.RawMessage
-		decoder := json.NewDecoder(strings.NewReader(content[start:]))
-		step := 1
-		if err := decoder.Decode(&members); err == nil {
-			step = int(decoder.InputOffset())
-			if namesAColumn(members, asked) {
-				objects = append(objects, members)
-			}
-		}
-		next := strings.IndexByte(content[start+step:], '{')
-		if next < 0 {
-			break
-		}
-		start += step + next
-	}
-	return objects
-}
-
-func namesAColumn(members map[string]json.RawMessage, asked map[string]bool) bool {
-	for id := range members {
-		if asked[id] {
-			return true
-		}
-	}
-	return false
-}
-
+// readColumnAnswer reads the answer for one column: an object with an allowed category
+// and a confidence from 0 to 1, each written once.
 func readColumnAnswer(raw json.RawMessage) (columnAnswer, bool) {
-	var member struct {
-		Category   *string  `json:"category"`
-		Confidence *float64 `json:"confidence"`
-	}
-	if err := json.Unmarshal(raw, &member); err != nil || member.Category == nil || member.Confidence == nil {
+	members, _, ok := decodeObject(string(raw))
+	if !ok {
 		return columnAnswer{}, false
 	}
-	confidence := *member.Confidence
-	if math.IsNaN(confidence) || confidence < 0 || confidence > 1 {
+	var category *string
+	var confidence *float64
+	if json.Unmarshal(members["category"], &category) != nil || category == nil {
 		return columnAnswer{}, false
 	}
-	if *member.Category != categoryNone && !report.Category(*member.Category).Valid() {
+	if json.Unmarshal(members["confidence"], &confidence) != nil || confidence == nil {
 		return columnAnswer{}, false
 	}
-	return columnAnswer{category: *member.Category, confidence: confidence}, true
+	if math.IsNaN(*confidence) || *confidence < 0 || *confidence > 1 {
+		return columnAnswer{}, false
+	}
+	if *category != categoryNone && !report.Category(*category).Valid() {
+		return columnAnswer{}, false
+	}
+	return columnAnswer{category: *category, confidence: *confidence}, true
 }
 
 // Result is what the model found in the columns of one request.
