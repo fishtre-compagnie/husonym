@@ -38,6 +38,8 @@ import (
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks/webhook"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
@@ -45,7 +47,6 @@ import (
 	"github.com/openai/openai-go/v3/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
-	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	piidetect_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/register"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
@@ -442,7 +443,7 @@ func serve(ctx context.Context) error {
 	// Registered whatever the license: the worker follows its configuration, and the
 	// workflows ask the license when they run. A license that becomes valid without a
 	// restart then finds its workflows and activities there.
-	accounthook_workflow_register.Register(w, accounthookclient)
+	accounthooks.Register(w, accounthookclient, webhook.NewSender())
 
 	openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
 

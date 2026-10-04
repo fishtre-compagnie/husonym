@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -76,12 +76,12 @@ func Test_HandleWorkflowEventLifecycle_Events(t *testing.T) {
 
 			var mu sync.Mutex
 			var events []string
-			env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
-			env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
+			env.RegisterWorkflow(accounthooks.ProcessAccountHook)
+			env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
 				Return(func(
 					_ workflow.Context,
-					req *accounthook_workflow.ProcessAccountHookRequest,
-				) (*accounthook_workflow.ProcessAccountHookResponse, error) {
+					req *accounthooks.ProcessAccountHookRequest,
+				) (*accounthooks.ProcessAccountHookResponse, error) {
 					encoded, err := json.Marshal(req.Event)
 					if err != nil {
 						return nil, err
@@ -89,7 +89,7 @@ func Test_HandleWorkflowEventLifecycle_Events(t *testing.T) {
 					mu.Lock()
 					defer mu.Unlock()
 					events = append(events, string(encoded))
-					return &accounthook_workflow.ProcessAccountHookResponse{}, nil
+					return &accounthooks.ProcessAccountHookResponse{}, nil
 				}).Times(2)
 
 			env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
@@ -134,11 +134,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow calls
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Times(2)
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Times(2)
 
 		// Setup test data
 		jobId := "job-123"
@@ -181,11 +181,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow - should never be called
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Never()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Never()
 
 		// Setup test data
 		jobId := "job-123"
@@ -228,11 +228,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow - should never be called since getAccountId fails
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Never()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Never()
 
 		// Setup test data
 		jobId := "job-123"
@@ -274,11 +274,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow calls - expect created and failed events
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Times(2)
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Times(2)
 
 		// Setup test data
 		jobId := "job-123"

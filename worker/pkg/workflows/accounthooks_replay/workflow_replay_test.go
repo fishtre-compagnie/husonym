@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
@@ -39,7 +39,7 @@ func Test_ProcessAccountHook_ReplaysARecordedRun(t *testing.T) {
 	} {
 		t.Run(history, func(t *testing.T) {
 			replayer := worker.NewWorkflowReplayer()
-			replayer.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+			replayer.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 			err := testutil.ReplayWorkflowHistoryFile(
 				replayer, logger, filepath.Join("testdata", history+".json"),

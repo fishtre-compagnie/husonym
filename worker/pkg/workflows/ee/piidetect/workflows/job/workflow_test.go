@@ -5,7 +5,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
 	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		tableWf := piidetect_table_workflow.New()
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 		var activities *piidetect_job_activities.Activities
 
@@ -132,8 +132,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		tableWf := piidetect_table_workflow.New()
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 		var activities *piidetect_job_activities.Activities
 
@@ -213,8 +213,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		wf := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 		env.RegisterWorkflow(wf.JobPiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Never()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Never()
 
 		var activities *piidetect_job_activities.Activities
 
@@ -243,8 +243,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		tableWf := piidetect_table_workflow.New()
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 		var activities *piidetect_job_activities.Activities
 
@@ -327,8 +327,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		tableWf := piidetect_table_workflow.New()
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 		var activities *piidetect_job_activities.Activities
 
@@ -449,8 +449,8 @@ func Test_JobPiiDetect(t *testing.T) {
 		tableWf := piidetect_table_workflow.New()
 		env.RegisterWorkflow(tableWf.TablePiiDetect)
 
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 		var activities *piidetect_job_activities.Activities
 

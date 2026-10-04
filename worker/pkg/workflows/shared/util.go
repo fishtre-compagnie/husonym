@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/internal/runevents"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
@@ -100,8 +100,8 @@ func spawnLifecycleHook(
 			WorkflowID:        getAccountHookChildWorkflowId(run.RunID, hook.name, now),
 			StaticSummary:     hook.summary,
 		}),
-		accounthook_workflow.ProcessAccountHook,
-		&accounthook_workflow.ProcessAccountHookRequest{
+		accounthooks.ProcessAccountHook,
+		&accounthooks.ProcessAccountHookRequest{
 			Event: hook.event(run, now),
 		},
 	)
