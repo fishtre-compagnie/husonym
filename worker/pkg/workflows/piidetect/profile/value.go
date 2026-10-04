@@ -37,11 +37,9 @@ func read(value any) sampled {
 	case bool:
 		return sampled{kind: KindBoolean}
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		number, _ := toFloat(v)
-		return sampled{kind: KindInteger, text: fmt.Sprint(v), number: number}
+		return sampled{kind: KindInteger, text: fmt.Sprint(v), number: toFloat(v)}
 	case float32, float64:
-		number, _ := toFloat(v)
-		return sampled{kind: KindDecimal, number: number}
+		return sampled{kind: KindDecimal, number: toFloat(v)}
 	case time.Time:
 		return sampled{kind: KindDateTime, moment: v}
 	case *time.Time:
@@ -74,34 +72,34 @@ func read(value any) sampled {
 	return sampled{kind: KindOther}
 }
 
-func toFloat(value any) (float64, bool) {
+func toFloat(value any) float64 {
 	switch v := value.(type) {
 	case int:
-		return float64(v), true
+		return float64(v)
 	case int8:
-		return float64(v), true
+		return float64(v)
 	case int16:
-		return float64(v), true
+		return float64(v)
 	case int32:
-		return float64(v), true
+		return float64(v)
 	case int64:
-		return float64(v), true
+		return float64(v)
 	case uint:
-		return float64(v), true
+		return float64(v)
 	case uint8:
-		return float64(v), true
+		return float64(v)
 	case uint16:
-		return float64(v), true
+		return float64(v)
 	case uint32:
-		return float64(v), true
+		return float64(v)
 	case uint64:
-		return float64(v), true
+		return float64(v)
 	case float32:
-		return float64(v), true
+		return float64(v)
 	case float64:
-		return v, true
+		return v
 	}
-	return 0, false
+	return 0
 }
 
 func momentOf(dt *husonymtypes.HusonymDateTime) time.Time {

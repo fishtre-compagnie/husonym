@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The names that are recognised as a whole, whatever their case, with an underscore, a
+// The names that are recognized as a whole, whatever their case, with an underscore, a
 // dash or nothing between their words.
 func Test_Find_ByNameForm(t *testing.T) {
 	forms := map[report.Category][]string{
@@ -73,7 +73,7 @@ func Test_ByNameForm_IsTheWholeName(t *testing.T) {
 	}
 }
 
-// Names the token rules of the API's detection recognise, in English and in French, each
+// Names the token rules of the API's detection recognize, in English and in French, each
 // under the category of the report.
 func Test_Find_ByNameTokens(t *testing.T) {
 	for name, category := range map[string]report.Category{

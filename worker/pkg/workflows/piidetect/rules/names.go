@@ -8,7 +8,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 )
 
-// The names recognised as a whole, whatever their case. Between two words an underscore,
+// The names recognized as a whole, whatever their case. Between two words an underscore,
 // a dash or nothing is accepted. The first form that fits decides.
 var nameForms = []struct {
 	category report.Category
