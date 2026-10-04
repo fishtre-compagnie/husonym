@@ -209,6 +209,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guides/pii-detection-job',
+      label: 'PII Detection Jobs',
+    },
+    {
+      type: 'doc',
       id: 'guides/custom-code-transformers',
       label: 'Custom Code Transformers',
     },
