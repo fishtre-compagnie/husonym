@@ -161,11 +161,16 @@ var rules = []rule{
 		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
 		suggestIfInteger: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		keywords: []string{
-			"phone", "telephone", "mobile", "cellphone",
+			"phone", "telephone", "cellphone",
 			"telefon*", "telefoon*", "mobil", "mobiel*", "movil", "celular", "cellular", "cellulare",
 			"telemovel", "komork*", "rufnummer", "gsm", "fax", "handy", "tlf",
 		},
 		guarded: []guarded{
+			// A mobile is a phone; what is mobile is not one.
+			{word: "mobile", unless: []string{
+				"app", "apps", "device", "devices", "os", "web", "browser", "platform", "sdk", "money", "banking",
+				"first", "friendly",
+			}},
 			// French "tel quel": as it is.
 			{word: "tel", unless: []string{"quel", "aviv"}},
 			// French "portable" is a mobile phone, English "portable" an adjective.
@@ -547,19 +552,26 @@ var rules = []rule{
 	},
 }
 
-// Ordinary words that end with a long keyword. Known as they stand, they are never cut.
-var ordinaryWords = []string{
-	"reconnaissance", "connaissance", "renacimiento", "renascimento", "rinascita", "countryside",
-}
-
-// Words a glued token may hold beside a keyword: whose datum it is, which one, the part
-// of it, and the number or the hash it is stored as.
+// Words a glued token may hold beside a keyword. The list is closed: a token that holds
+// a word that is neither here nor elsewhere in the rules is not cut (see lexicon.split).
 var gluedWords = []string{
+	// whose datum it is
 	"customer", "cust", "client", "user", "emp", "employee", "patient", "member", "contact", "owner",
 	"father", "mother", "spouse",
-	"home", "work", "office", "billing", "shipping", "mailing", "delivery", "current", "primary", "secondary", "alt", "personal", "private",
-	"old", "reset", "residence",
-	"ext", "prefix", "plus", "masked",
-	"number", "num", "nummer", "numero", "hash", "hashed", "encrypted", "display",
-	"kunde", "kunden", "klant", "privat",
+	"kunde", "kunden", "klant",
+	// which one
+	"home", "work", "office", "billing", "shipping", "mailing", "delivery", "current", "primary", "secondary",
+	"alt", "personal", "private", "privat", "old", "reset", "residence",
+	"livraison", "facturation", "electronico", "electronica", "electronique",
+	// the part of it, and the number or the hash it is stored as
+	"ext", "prefix", "plus", "masked", "line", "haus",
+	"number", "num", "nummer", "numero", "hash", "hashed", "encrypted", "display", "digest", "hint",
+	// when and where: the date and the place of a birth, the issue of a document
+	"fecha", "data", "datum", "lieu", "luogo", "lugar", "miejsce", "issue",
+	// what a secret opens
+	"webhook", "mfa", "twofactor",
+	// how a pay is counted
+	"annual", "yearly", "monthly", "weekly", "hourly", "annuel", "mensuel", "jahres", "monats",
+	"anual", //nolint:misspell // a Spanish and Portuguese word
+	"mensual", "annuo", "mensile", "jaar", "maand", "mensal", "brut", "brutto", "bruto",
 }

@@ -1,6 +1,12 @@
 {
   "en": [
     {"name": "market_cap", "type": "numeric", "expected": "none"},
+    {"name": "addressbook", "type": "varchar", "expected": "none"},
+    {"name": "streetview", "type": "varchar", "expected": "none"},
+    {"name": "pseudorandom", "type": "varchar", "expected": "none"},
+    {"name": "mobile_device", "type": "varchar", "expected": "none"},
+    {"name": "capacities", "type": "varchar", "expected": "none"},
+    {"name": "addressline1", "type": "varchar", "expected": "location"},
     {"name": "salary_cap", "type": "numeric", "expected": "none"},
     {"name": "land_use", "type": "varchar", "expected": "none"},
     {"name": "land_area", "type": "numeric", "expected": "none"},
@@ -43,6 +49,9 @@
   ],
   "de": [
     {"name": "immobilien", "type": "varchar", "expected": "none"},
+    {"name": "strassenbahn", "type": "varchar", "expected": "none"},
+    {"name": "gehaltsklasse", "type": "varchar", "expected": "none"},
+    {"name": "fettgehalt", "type": "numeric", "expected": "none"},
     {"name": "bestellstatus", "type": "varchar", "expected": "none"},
     {"name": "sortierung", "type": "integer", "expected": "none"},
     {"name": "transportart", "type": "varchar", "expected": "none"},
@@ -88,6 +97,8 @@
   ],
   "nl": [
     {"name": "landcode", "type": "char(2)", "expected": "none"},
+    {"name": "plaatsvervanger", "type": "varchar", "expected": "none"},
+    {"name": "gemeentehuis", "type": "varchar", "expected": "none"},
     {"name": "plaatsing", "type": "integer", "expected": "none"},
     {"name": "stadium", "type": "varchar", "expected": "none"},
     {"name": "bedrijfsnaam", "type": "varchar", "expected": "none"},

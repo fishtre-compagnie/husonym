@@ -4,10 +4,11 @@ import "strings"
 
 // A column name is read as words. Separators and case boundaries cut it into tokens
 // (tokenize); a token written without separators is cut again when it is made of known
-// words only (customeremail, telefonnummer, firstname), or around a long keyword that
-// opens or closes it (addressline, lieunaissance). A keyword of a rule is compared with a
-// word, never searched inside one: "mobil" is not found in "automobile", nor "city" in
-// "capacity".
+// words only (customeremail, telefonnummer, addressline, lieunaissance), or of them and two
+// last letters after a long keyword (postcodenl). A token that holds a word the rules do
+// not know is not cut: it is another word (addressbook, pseudorandom). A keyword of a rule
+// is compared with a word, never searched inside one: "mobil" is not found in
+// "automobile", nor "city" in "capacity".
 
 // pattern is one word of a keyword.
 //
@@ -80,25 +81,23 @@ type lexicon struct {
 	words map[string]bool
 	stems []pattern
 	// anchors are the keywords of one word and six letters or more: long enough to be
-	// read at an end of a glued token whose other end the rules do not know.
+	// read before two letters the rules do not know.
 	anchors map[string]bool
 }
 
-// The shortest keyword read at an end of a token the rules cannot cut entirely.
+// The shortest keyword read before letters the rules do not know.
 const anchorMinLength = 6
 
-// Keywords that also end ordinary words, as a suffix of their language does: automobile,
-// capacidade, destinazione, werkplaats. They are not read at the end of a token.
-var ordinaryEndings = wordSet("mobile", "cidade", "nazione", "plaats")
+// What a token may end with after a long keyword without being made of known words: two
+// letters, as the code of a country or the name of a hash is (postcodenl, passwordmd5).
+// Three letters or more are a word, and a word the rules do not know makes the token
+// another word: addressbook, strassenbahn, pseudorandom.
+const unknownEndingLength = 2
 
-// Keywords that also open ordinary words: secretary, secretaria. They are not read at
-// the start of a token.
-var ordinaryOpenings = wordSet("secret")
-
-// What derives an ordinary word from a keyword: adressage, addressable, gendered. A
-// token that ends with one of them after a keyword is not cut.
-var derivations = wordSet(
-	"age", "ed", "er", "ee", "es", "ing", "able", "less", "ment", "ary", "ive", "al", "ly", "ness", "ship",
+// The endings of two letters that derive a word from another, or inflect it: addressed,
+// passporten, secretly. A token that ends with one of them after a keyword is not cut.
+var inflections = wordSet(
+	"ed", "er", "ee", "es", "en", "al", "ly", "ic", "ty", "ry", "or", "ar", "ia", "ie", "um", "wy", "ny",
 )
 
 // addAnchors records the keywords of one word among keywords.
@@ -153,13 +152,14 @@ const shortOpening = "id"
 const gluedMinLength = 3
 
 // split cuts a glued token into words. A token known as it stands stays whole. One made
-// of known words only is cut into them. Otherwise a long keyword at one of its ends is
-// cut from the rest (see around). Anything else stays whole.
+// of known words only is cut into them. Otherwise the known words that open it, a long
+// keyword among them, are cut from the two letters that close it (see before). Anything
+// else stays whole: a token that holds a word the rules do not know is another word.
 func (l *lexicon) split(token string) []string {
 	if parts, ok := l.whole(token); ok {
 		return parts
 	}
-	if parts, ok := l.around(token); ok {
+	if parts, ok := l.before(token); ok {
 		return parts
 	}
 	return []string{token}
@@ -173,22 +173,21 @@ func (l *lexicon) whole(token string) ([]string, bool) {
 	return l.cut(token, true)
 }
 
-// around cuts a token the rules do not know entirely into the known words that open or
-// close it and the rest, taken as one word, when one of those known words is a long
-// keyword: "addressline" gives address and line, "lieunaissance" lieu and naissance. The
-// longest known side wins, and the rest is two letters or more.
-func (l *lexicon) around(token string) ([]string, bool) {
-	for size := len(token) - 2; size >= anchorMinLength; size-- {
-		if parts, ok := l.whole(token[:size]); ok && l.anchored(parts) &&
-			!ordinaryOpenings[parts[len(parts)-1]] && !derivations[token[size:]] {
-			return append(parts, token[size:]), true
-		}
-		at := len(token) - size
-		if parts, ok := l.whole(token[at:]); ok && l.anchored(parts) && !ordinaryEndings[parts[0]] {
-			return append([]string{token[:at]}, parts...), true
-		}
+// before cuts a token into the known words that open it and the two letters that close
+// it, when one of those words is a long keyword: "postcodenl" gives postcode and nl,
+// "codigopostalpt" codigo, postal and pt. Nothing the rules do not know opens a token:
+// what comes before a keyword in one word is a prefix of it (renaissance, intercommune,
+// capacities).
+func (l *lexicon) before(token string) ([]string, bool) {
+	at := len(token) - unknownEndingLength
+	if at < anchorMinLength || inflections[token[at:]] {
+		return nil, false
 	}
-	return nil, false
+	parts, ok := l.whole(token[:at])
+	if !ok || !l.anchored(parts) {
+		return nil, false
+	}
+	return append(parts, token[at:]), true
 }
 
 // anchored tells whether one of the words is a long keyword.

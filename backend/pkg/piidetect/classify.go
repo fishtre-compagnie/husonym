@@ -34,7 +34,6 @@ func newVocabulary() *lexicon {
 		}
 	}
 	l.add(gluedWords...)
-	l.add(ordinaryWords...)
 	for _, set := range []map[string]bool{
 		qualifierNouns, qualifierAdjectives, qualifierFlags, qualifierEvents, referenceSuffixes,
 	} {
@@ -88,15 +87,15 @@ func (g *guarded) in(words []string) bool {
 	if g.alone {
 		return false
 	}
-	for _, word := range g.unless {
-		if slices.Contains(words, word) {
-			return false
-		}
+	if holdsOneOf(words, g.unless) {
+		return false
 	}
-	if len(g.among) == 0 {
-		return true
-	}
-	for _, word := range g.among {
+	return len(g.among) == 0 || holdsOneOf(words, g.among)
+}
+
+// holdsOneOf tells whether one of among is a word of the name.
+func holdsOneOf(words, among []string) bool {
+	for _, word := range among {
 		if slices.Contains(words, word) {
 			return true
 		}
