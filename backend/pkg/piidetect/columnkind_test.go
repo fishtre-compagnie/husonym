@@ -163,6 +163,44 @@ func TestEnrich_ASensitiveColumnOfATypeNoTransformerWrites(t *testing.T) {
 	}
 }
 
+// The values refine what an entity of the content analysis is — a full name or a first
+// name, an address or a city — and its transformer with it, when the column takes the
+// text transformer of the entity. A column of another type keeps what its type takes.
+func TestRefineByValues_KeepsTheSuggestionOfTheType(t *testing.T) {
+	const (
+		fullName = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME
+		city     = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY
+		address  = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS
+	)
+	names := []string{"Jean Dupont", "Marie Martin", "Luc Bernard"}
+	addresses := []string{"12 rue de la Paix", "3 avenue Foch", "45 boulevard Voltaire"}
+
+	for _, tc := range []struct {
+		entity, dataType string
+		values           []string
+		category         string
+		want             mgmtv1alpha1.TransformerSource
+	}{
+		{"PERSON", "text", names, "person_full_name", fullName},
+		{"PERSON", "", names, "person_full_name", fullName},
+		{"PERSON", "jsonb", names, "person_full_name", unspecified},
+		{"PERSON", "text[]", names, "person_full_name", unspecified},
+		{"LOCATION", "character varying(80)", addresses, "street_address", address},
+		{"LOCATION", "text", []string{"Lyon", "Paris", "Lille"}, "city", city},
+		{"LOCATION", "jsonb", addresses, "street_address", unspecified},
+		{"LOCATION", "integer", addresses, "street_address", generateInteger},
+	} {
+		suggestion, ok := SuggestionForEntity(tc.entity, tc.dataType)
+		if !ok {
+			t.Fatalf("SuggestionForEntity(%s, %q) finds nothing", tc.entity, tc.dataType)
+		}
+		category, suggested := RefineByValues(suggestion.Category, suggestion.Suggested, tc.values)
+		if category != tc.category || suggested != tc.want {
+			t.Errorf("%s in %q: %s, %s; want %s, %s", tc.entity, tc.dataType, category, suggested, tc.category, tc.want)
+		}
+	}
+}
+
 // A generator that writes numbers of ten digits or more is suggested for a column that
 // holds them; a narrower integer gets the generator of integers, which is given a range.
 func TestClassify_ANarrowIntegerGetsTheGeneratorOfIntegers(t *testing.T) {
