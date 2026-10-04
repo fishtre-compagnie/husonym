@@ -31,6 +31,7 @@ func newVocabulary() *lexicon {
 			}
 			l.add(g.among...)
 			l.add(g.unless...)
+			l.add(g.despite...)
 		}
 	}
 	l.add(gluedWords...)
@@ -87,7 +88,7 @@ func (g *guarded) in(words []string) bool {
 	if g.alone {
 		return false
 	}
-	if holdsOneOf(words, g.unless) {
+	if holdsOneOf(words, g.unless) && !holdsOneOf(words, g.despite) {
 		return false
 	}
 	return len(g.among) == 0 || holdsOneOf(words, g.among)

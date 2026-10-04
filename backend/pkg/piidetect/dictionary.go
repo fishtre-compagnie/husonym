@@ -37,14 +37,16 @@ type rule struct {
 // guarded is a keyword of one word that names the datum in some names and something
 // ordinary in others. As the whole name it matches, unless beside is set. Beside other
 // words it matches when one of among is there, if among is given, and none of unless;
-// never when alone is set. With apart, it is not a word a glued token is cut into.
+// never when alone is set. One of despite beside it sets unless aside: it says whose
+// datum it is. With apart, it is not a word a glued token is cut into.
 type guarded struct {
-	word   string
-	among  []string
-	unless []string
-	alone  bool
-	beside bool
-	apart  bool
+	word    string
+	among   []string
+	unless  []string
+	despite []string
+	alone   bool
+	beside  bool
+	apart   bool
 }
 
 // objectTokens say that the column names a thing, not a person. "name" and "nom" do not
@@ -162,7 +164,7 @@ var rules = []rule{
 		suggestIfInteger: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		keywords: []string{
 			"phone", "telephone", "cellphone",
-			"telefon*", "telefoon*", "mobil", "mobiel*", "movil", "celular", "cellular", "cellulare",
+			"telefon*", "telefoon*", "mobil", "mobiel*", "movil", "celular", "cellulare",
 			"telemovel", "komork*", "rufnummer", "gsm", "fax", "handy", "tlf",
 		},
 		guarded: []guarded{
@@ -171,6 +173,7 @@ var rules = []rule{
 				"app", "apps", "device", "devices", "os", "web", "browser", "platform", "sdk", "money", "banking",
 				"first", "friendly",
 			}},
+			{word: "cellular", unless: []string{"network", "data", "plan", "carrier", "provider"}},
 			// French "tel quel": as it is.
 			{word: "tel", unless: []string{"quel", "aviv"}},
 			// French "portable" is a mobile phone, English "portable" an adjective.
@@ -481,10 +484,11 @@ var rules = []rule{
 		keywords: []string{
 			"salary", "salaire", "gehalt", "salario", "stipendio", "wynagrodzenie", "pensja",
 			"salaris", //nolint:misspell // a Dutch word
-			// What someone earns, whatever it is paid as.
-			"income", "wage", "wages", "revenu", "revenus", "einkommen", "lohn", "ingresos", "sueldo", "reddito",
-			"inkomen", "dochod", "rendimento",
+			"lohn", "sueldo",
 		},
+		// What someone earns, whatever it is paid as, when the name is not a line of the
+		// accounts.
+		guarded: earningGuards(),
 		// A limit on salaries is not a salary.
 		excludeTokens: []string{"cap"},
 		alsoHolds:     []columnKind{kindNumber},
@@ -522,8 +526,13 @@ var rules = []rule{
 		suggestIfTemporal: generateMoment,
 		keywords: []string{
 			"birth date", "birthday", "date of birth", "date naissance", "date de naissance", "date naiss",
-			"naissance", "dob", "ddn", "birth", "born", "place of birth", "year of birth",
+			"naissance", "dob", "ddn", "place of birth", "year of birth",
 			"geburtsdatum", "geburtstag", "nacimiento", "nascita", "geboortedatum", "urodzenia", "nascimento",
+		},
+		guarded: []guarded{
+			{word: "birth", unless: birthFigures, despite: englishPersons},
+			// What is born digital is a document.
+			{word: "born", unless: []string{"digital"}},
 		},
 		alsoHolds: []columnKind{kindMoment, kindNumber},
 	},
@@ -535,12 +544,9 @@ var rules = []rule{
 			// The age of a person, not a class of ages nor a bound on them. Many ordinary
 			// words end in "age" (paysage, postage): it is read as a word of its own only.
 			{
-				word:  "age",
-				apart: true,
-				among: []string{
-					"user", "customer", "client", "patient", "employee", "member", "person", "student",
-					"applicant", "years",
-				},
+				word:   "age",
+				apart:  true,
+				among:  append([]string{"years"}, englishPersons...),
 				unless: []string{"group", "range", "bracket", "limit", "min", "max", "minimum", "maximum"},
 			},
 			{word: "edad", among: append([]string{"anos"}, spanishPersons...)},

@@ -104,7 +104,9 @@ func TestClassify_AMobileAndWhatIsMobile(t *testing.T) {
 	expectNone(t,
 		"mobiledevice", "mobileos", "mobile_device", "mobile_os", "mobile_app", "mobileapp",
 		"mobile_banking", "automobile", "immobile",
+		"cellularnetwork", "cellular_network", "cellular_data", "multicellular",
 	)
+	expectCategories(t, map[string]string{"cellular": "phone_number", "cellular_number": "phone_number"})
 }
 
 // A keyword found at the end or at the start of an ordinary word is not a finding.
