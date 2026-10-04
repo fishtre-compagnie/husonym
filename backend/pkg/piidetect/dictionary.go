@@ -8,6 +8,8 @@ import (
 type rule struct {
 	category  string
 	sensitive bool
+	// suggested is the transformer suggested for a column that holds text, or whose
+	// type is not given. Every rule has one. See suggestionFor for the other types.
 	suggested mgmtv1alpha1.TransformerSource
 	// keywords are words, or several words that follow each other, written with spaces.
 	// See pattern for "word*" and "*word".
@@ -17,12 +19,11 @@ type rule struct {
 	// excludeTokens set the rule aside when the name holds one of them: "nom_complet"
 	// holds the word of a last name and is a full name.
 	excludeTokens []string
-	// suggestIfNumeric is the transformer suggested when the column holds numbers (a
-	// phone number stored as an integer).
-	suggestIfNumeric mgmtv1alpha1.TransformerSource
-	// suggestIfTemporal is the transformer suggested when the column holds dates or
-	// times: a native date has no display format to keep, where a date stored as text
-	// has one that a generator would break.
+	// suggestIfInteger is the transformer of the datum for an integer column, when one
+	// exists (a phone number stored as an integer).
+	suggestIfInteger mgmtv1alpha1.TransformerSource
+	// suggestIfTemporal is the transformer of the datum for a column that holds dates or
+	// times: a native date has no display format to keep.
 	suggestIfTemporal mgmtv1alpha1.TransformerSource
 	// ownTokens are words that are part of the datum in a name this rule matches, where
 	// they would otherwise say that the name is a reference or a qualifier: the "code"
@@ -108,11 +109,11 @@ const unspecified = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIE
 var rules = []rule{
 	{
 		// What lets someone act as a person: a password, a token, a key, a secret, a code
-		// sent to prove who they are, in clear or hashed. No transformer is suggested:
-		// none keeps a hash valid.
+		// sent to prove who they are, in clear or hashed. No transformer keeps a hash
+		// valid: the scramble keeps its length, and what it writes opens nothing.
 		category:  "secret",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords: []string{
 			"password", "passwd", "passphrase", "mot de passe", "mot passe", "motdepasse", "passwort", "kennwort",
 			"contrasena", "senha", "palavra passe", "wachtwoord", "haslo", "hasla", "parola chiave",
@@ -154,7 +155,7 @@ var rules = []rule{
 		category:         "phone_number",
 		sensitive:        true,
 		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
-		suggestIfNumeric: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
+		suggestIfInteger: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		keywords: []string{
 			"phone", "telephone", "mobile", "cellphone",
 			"telefon*", "telefoon*", "mobil", "mobiel*", "movil", "celular", "cellular", "cellulare",
@@ -346,10 +347,11 @@ var rules = []rule{
 	},
 	{
 		// An identifier an authority issues to a person, other than a social security
-		// number. No transformer is suggested: each has a format of its own.
+		// number. Each has a format of its own: the scramble keeps its length and where
+		// its letters and its digits are.
 		category:  "national_id",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords: []string{
 			"tax id", "tax number", "tax code", "national id", "national insurance number", "nino",
 			"identity card", "id card", "passport",
@@ -380,9 +382,12 @@ var rules = []rule{
 		alsoHolds: []columnKind{kindNumber},
 	},
 	{
-		category:  "credit_card",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
+		// The generator of card numbers writes integers: it is suggested for an integer
+		// column, and a card number stored as text is scrambled.
+		category:         "credit_card",
+		sensitive:        true,
+		suggested:        scrambleText,
+		suggestIfInteger: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
 		keywords: []string{
 			"card number", "card num", "card no", "credit card", "cc number", "cc num", "ccnumber", "ccnum",
 			"kreditkarte*", "numero tarjeta", "tarjeta credito", "tarjeta de credito", "carta di credito",
@@ -393,17 +398,16 @@ var rules = []rule{
 		alsoHolds: []columnKind{kindNumber},
 	},
 	{
-		// No generator of bank account numbers: the datum is reported and nothing is
-		// suggested.
+		// No generator writes bank account numbers: they are scrambled.
 		category:  "iban",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords:  []string{"iban"},
 	},
 	{
 		category:  "bank_account",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords: []string{
 			"bank account", "account number", "account num", "compte bancaire", "numero de compte",
 			"numero compte", "bankkonto", "kontonummer", "cuenta bancaria", "numero cuenta", "numero de cuenta",
@@ -415,7 +419,7 @@ var rules = []rule{
 	{
 		category:  "salary",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords: []string{
 			"salary", "salaire", "gehalt", "salario", "stipendio", "wynagrodzenie", "pensja",
 			"salaris", //nolint:misspell // a Dutch word
@@ -427,7 +431,7 @@ var rules = []rule{
 	{
 		category:  "ethnicity",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		keywords:  []string{"ethnicity", "ethnie", "etnia", "ethnizitaet", "etniciteit"},
 	},
 	{
@@ -448,12 +452,13 @@ var rules = []rule{
 		alsoHolds: []columnKind{kindNumber, kindBoolean},
 	},
 	{
-		// The suggestion depends on the type of the column: see suggestIfTemporal, and
-		// DetectDateFormat for dates stored as text.
+		// A date stored as text has a format no generator writes back (see
+		// DetectDateFormat): it is scrambled, which keeps its length and gives no date.
+		// A native date gets a generated one.
 		category:          "birth_date",
 		sensitive:         true,
-		suggested:         unspecified,
-		suggestIfTemporal: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP,
+		suggested:         scrambleText,
+		suggestIfTemporal: generateMoment,
 		keywords: []string{
 			"birth date", "birthday", "date of birth", "date naissance", "date de naissance", "date naiss",
 			"naissance", "dob", "ddn",
@@ -464,7 +469,7 @@ var rules = []rule{
 	{
 		category:  "age",
 		sensitive: true,
-		suggested: unspecified,
+		suggested: scrambleText,
 		guarded: []guarded{
 			{word: "age", alone: true}, {word: "edad", alone: true}, {word: "eta", alone: true},
 			{word: "leeftijd", alone: true}, {word: "wiek", alone: true},

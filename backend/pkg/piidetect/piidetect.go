@@ -94,10 +94,26 @@ func isTemporalType(dataType string) bool {
 }
 
 // SuggestionForEntity maps a Presidio entity (content analysis) to a
-// Classification (category, sensitivity, suggested transformer). ok is false when
-// the entity has no suitable transformer. dataType selects the numeric flavor of
-// the phone transformer.
+// Classification (category, sensitivity, suggested transformer). ok is false for an
+// entity that is not reported. The suggested transformer is the one of the entity for a
+// text column and, when it has one, for an integer column; a column of another type
+// gets a transformer that writes a value of its type (see suggestionFor).
 func SuggestionForEntity(entity, dataType string) (Classification, bool) {
+	text, ok := entityFinding(entity, "")
+	if !ok {
+		return Classification{}, false
+	}
+	integer, _ := entityFinding(entity, "integer")
+	if integer.Suggested == text.Suggested {
+		integer.Suggested = unspecified
+	}
+	text.Suggested = suggestionFor(dataType, text.Suggested, integer.Suggested, unspecified)
+	return text, true
+}
+
+// entityFinding is the finding of an entity with the transformer of the entity itself:
+// its text flavor, or its integer flavor for a numeric type.
+func entityFinding(entity, dataType string) (Classification, bool) {
 	switch strings.ToUpper(entity) {
 	case "EMAIL_ADDRESS":
 		return Classification{"email", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL}, true
@@ -112,7 +128,12 @@ func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 	case "LOCATION", "LOCATION_CITY", "GPE":
 		return Classification{"city", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY}, true
 	case "CREDIT_CARD":
-		return Classification{"credit_card", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER}, true
+		// The generator of card numbers writes integers.
+		src := scrambleText
+		if isNumericType(dataType) {
+			src = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
+		}
+		return Classification{"credit_card", true, src}, true
 	case "IP_ADDRESS":
 		return Classification{"ip_address", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS}, true
 	case "US_SSN", "FR_NIR":
@@ -126,11 +147,11 @@ func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 	case "FR_POSTAL_CODE":
 		return Classification{"postal_code", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE}, true
 	case "IBAN_CODE":
-		// Pas de générateur d'IBAN : on signale la sensibilité sans suggérer de
-		// transformer, plutôt que d'en imposer un qui produirait un IBAN invalide.
-		return Classification{"iban", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+		// No generator writes an IBAN: it is scrambled, which keeps its length and not
+		// its checksum.
+		return Classification{"iban", true, scrambleText}, true
 	case "FR_SIRET":
-		return Classification{"siret", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+		return Classification{"siret", true, scrambleText}, true
 	// DATE_TIME est volontairement ABSENT : Presidio l'émet sur presque tout texte
 	// contenant une date, y compris du texte libre truffé de PII. Comme l'entité
 	// dominante est celle qui couvre le plus de valeurs, DATE_TIME supplanterait

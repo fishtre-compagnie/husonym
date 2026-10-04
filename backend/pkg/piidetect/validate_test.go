@@ -332,7 +332,7 @@ func TestClassifyValues_PasswordHashes(t *testing.T) {
 	}
 	if got.Category != "password_hash" || !got.Sensitive ||
 		got.Confidence != mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED ||
-		got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
+		got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE {
 		t.Errorf("ClassifyValues = %+v", got)
 	}
 	// What is checked is how the value is written: no key is computed.

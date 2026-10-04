@@ -52,8 +52,9 @@ type validator struct {
 	category  string
 	label     string // libellé lisible utilisé dans Evidence
 	suggested mgmtv1alpha1.TransformerSource
-	// numericSuggested : variante quand la colonne est de type numérique.
-	numericSuggested mgmtv1alpha1.TransformerSource
+	// integerSuggested is the transformer of the datum for an integer column, when one
+	// exists.
+	integerSuggested mgmtv1alpha1.TransformerSource
 	// weak : forme trop peu contrainte pour conclure seule (ex: code postal =
 	// n'importe quel entier à 5 chiffres). Plafonné à NEEDS_REVIEW.
 	weak bool
@@ -85,10 +86,10 @@ func (v *validator) confirmed(matched, total int) string {
 var validators = []validator{
 	{
 		// The most constrained of all: a scheme, its parameters, a salt and a digest of
-		// fixed alphabets. No transformer is suggested: none keeps a hash valid.
+		// fixed alphabets. No transformer keeps a hash valid: it is scrambled.
 		category:  "password_hash",
 		label:     "format d'empreinte de mot de passe",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		suggested: scrambleText,
 		format:    true,
 		fn:        IsPasswordHash,
 	},
@@ -101,7 +102,7 @@ var validators = []validator{
 	{
 		category:  "iban",
 		label:     "IBAN (clé mod 97)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		suggested: scrambleText,
 		fn:        IsIBAN,
 	},
 	{
@@ -116,14 +117,15 @@ var validators = []validator{
 	{
 		category:  "siret",
 		label:     "SIRET/SIREN (Luhn)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		suggested: scrambleText,
 		fn:        IsSiretOrSiren,
 	},
 	{
-		category:  "credit_card",
-		label:     "carte bancaire (Luhn)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
-		fn:        IsCreditCard,
+		category:         "credit_card",
+		label:            "carte bancaire (Luhn)",
+		suggested:        scrambleText,
+		integerSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
+		fn:               IsCreditCard,
 	},
 	{
 		category:  "ip_address",
@@ -135,7 +137,7 @@ var validators = []validator{
 		category:         "phone_number",
 		label:            "téléphone français",
 		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
-		numericSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
+		integerSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		fn:               IsFrenchPhone,
 	},
 	{
@@ -204,11 +206,7 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 		}
 		ratio := float64(matched) / float64(len(clean))
 
-		suggested := val.suggested
-		if val.numericSuggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
-			isNumericType(dataType) {
-			suggested = val.numericSuggested
-		}
+		suggested := suggestionFor(dataType, val.suggested, val.integerSuggested, unspecified)
 
 		switch {
 		case ratio >= confirmRatio && !val.weak:

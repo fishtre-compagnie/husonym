@@ -123,14 +123,23 @@ func Classify(columnName, dataType string) (Classification, bool) {
 		if refers(words, m.own) || qualifies(words, m.own) {
 			continue
 		}
-		suggested := m.rule.suggested
-		if m.rule.suggestIfNumeric != unspecified && isNumericType(dataType) {
-			suggested = m.rule.suggestIfNumeric
-		}
-		if m.rule.suggestIfTemporal != unspecified && isTemporalType(dataType) {
-			suggested = m.rule.suggestIfTemporal
-		}
-		return Classification{Category: m.rule.category, Sensitive: m.rule.sensitive, Suggested: suggested}, true
+		return Classification{
+			Category:  m.rule.category,
+			Sensitive: m.rule.sensitive,
+			Suggested: suggestionFor(dataType, m.rule.suggested, m.rule.suggestIfInteger, m.rule.suggestIfTemporal),
+		}, true
 	}
 	return Classification{}, false
+}
+
+// NameCategories are the categories the name rules answer, each once, in the order of
+// the rules.
+func NameCategories() []string {
+	var categories []string
+	for i := range rules {
+		if !slices.Contains(categories, rules[i].category) {
+			categories = append(categories, rules[i].category)
+		}
+	}
+	return categories
 }
