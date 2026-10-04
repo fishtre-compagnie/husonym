@@ -1,0 +1,482 @@
+package piidetect
+
+import (
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+)
+
+// rule finds one kind of datum from the words of a column name.
+type rule struct {
+	category  string
+	sensitive bool
+	suggested mgmtv1alpha1.TransformerSource
+	// keywords are words, or several words that follow each other, written with spaces.
+	// See pattern for "word*" and "*word".
+	keywords []string
+	// guarded are keywords that are ordinary words in other names.
+	guarded []guarded
+	// excludeTokens set the rule aside when the name holds one of them: "nom_complet"
+	// holds the word of a last name and is a full name.
+	excludeTokens []string
+	// suggestIfNumeric is the transformer suggested when the column holds numbers (a
+	// phone number stored as an integer).
+	suggestIfNumeric mgmtv1alpha1.TransformerSource
+	// suggestIfTemporal is the transformer suggested when the column holds dates or
+	// times: a native date has no display format to keep, where a date stored as text
+	// has one that a generator would break.
+	suggestIfTemporal mgmtv1alpha1.TransformerSource
+	// ownTokens are words that are part of the datum in a name this rule matches, where
+	// they would otherwise say that the name is a reference or a qualifier: the "code"
+	// of a postal code, the "id" of a tax id, the "key" of an API key.
+	ownTokens []string
+	// alsoHolds are the kinds of column, other than text, that can hold the datum. A
+	// rule is not applied to a column of another kind: no first name is an integer.
+	alsoHolds []columnKind
+}
+
+// guarded is a keyword of one word that names the datum in some names and something
+// ordinary in others. As the whole name it matches, unless beside is set. Beside other
+// words it matches when one of among is there, if among is given, and none of unless;
+// never when alone is set.
+type guarded struct {
+	word   string
+	among  []string
+	unless []string
+	alone  bool
+	beside bool
+}
+
+// objectTokens say that the column names a thing, not a person. "name" and "nom" do not
+// say what is named, and most columns that hold them name an object: file_name,
+// product_name, nom_fichier.
+var objectTokens = []string{
+	"file", "product", "table", "column", "field", "schema", "index",
+	"host", "domain", "server", "cluster", "node", "database", "db",
+	"company", "brand", "store", "shop", "site", "business", "bank", "hotel",
+	"service", "app", "application", "module", "package", "class", "method", "process",
+	"project", "task", "job", "step", "rule", "policy", "role", "group",
+	"type", "category", "tag", "label", "template", "theme", "style",
+	"event", "queue", "topic", "bucket", "folder", "directory", "path",
+	"param", "variable", "attribute", "property", "status", "state",
+	"image", "icon", "color", "currency", "unit", "measure",
+	"plan", "item", "sku", "menu", "article", "course", "campaign", "feature", "warehouse",
+	// French
+	"fichier", "produit", "societe", "marque", "magasin",
+	"projet", "tache", "regle", "groupe", "categorie", "etiquette",
+	"modele", "evenement", "dossier", "chemin", "etat", "devise", "unite",
+	"banque", "cours", "entreprise",
+	// German
+	"datei", "produkt", "firma", "marke", "projekt", "gruppe", "kategorie", "vorlage", "ordner", "pfad",
+	"rolle", "aufgabe", "tabelle", "spalte", "artikel", "kurs", "unternehmen",
+	// Spanish
+	"archivo", "empresa", "marca", "tienda", "proyecto", "tarea", "regla", "grupo", "categoria",
+	"producto", //nolint:misspell // a Spanish word
+	"etiqueta", "plantilla", "evento", "carpeta", "ruta", "tabla", "columna", "campo",
+	"banco", "articulo", "curso",
+	// Italian
+	"prodotto", "azienda", "societa", "negozio", "progetto", "gruppo", "etichetta", "modello", "cartella",
+	"percorso", "tabella", "colonna", "banca", "corso", "piano", "articolo",
+	// Dutch
+	"bestand", "bedrijf", "merk", "winkel", "taak", "regel", "groep", "sjabloon", "map", "pad",
+	"tabel", "kolom", "veld", "cursus",
+	// Polish
+	"plik", "pliku", "produktu", "marka", "sklep", "zadanie", "regula", "grupa", "kategoria", "etykieta",
+	"szablon", "sciezka", "tabela", "kolumna", "pole",
+	// Portuguese
+	"arquivo", "ficheiro", "produto", "loja", "projeto", "tarefa", "regra", "modelo", "pasta", "caminho",
+	"coluna", "artigo",
+}
+
+// The words a code is called by. In most names a code qualifies (country_code); in a
+// few it is the datum (postal_code, pin_code).
+var codeTokens = []string{"code", "codes", "codigo", "codice", "kod"}
+
+// The words of a person in Spanish and in French, beside which "nombre", "genero" and
+// "genre" are about that person.
+var (
+	spanishPersons = []string{
+		"apellido", "apellidos", "cliente", "usuario", "persona", "empleado", "contacto", "titular", "paciente",
+		"alumno", "pila", "primer", "segundo", "propio",
+	}
+	frenchPersons = []string{"client", "utilisateur", "personne", "patient", "salarie", "employe", "contact"}
+)
+
+const unspecified = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED
+
+// The order counts: the first rule that matches a name and does not set it aside
+// decides. The more specific rules (username, first name) come before the more general
+// ones (last name, name).
+var rules = []rule{
+	{
+		// What lets someone act as a person: a password, a token, a key, a secret, a code
+		// sent to prove who they are, in clear or hashed. No transformer is suggested:
+		// none keeps a hash valid.
+		category:  "secret",
+		sensitive: true,
+		suggested: unspecified,
+		keywords: []string{
+			"password", "passwd", "passphrase", "mot de passe", "mot passe", "motdepasse", "passwort", "kennwort",
+			"contrasena", "senha", "palavra passe", "wachtwoord", "haslo", "hasla", "parola chiave",
+			"parola dordine", "parola d ordine",
+			"api key", "api token", "access token", "refresh token", "auth token", "bearer token", "session token",
+			"secret key", "private key", "client secret", "access key", "encryption key", "ssh key",
+			"security code", "verification code", "auth code", "access code", "code acces", "recovery code",
+			"recovery codes", "backup code", "backup codes", "security answer",
+			"credential", "secret", "pwd", "mdp", "jeton", "salt",
+			"secreto", "segreto", "segredo", "geheim", "sekret",
+		},
+		guarded: []guarded{
+			// A token that turns a page or resumes a sync opens nothing.
+			{word: "token", unless: []string{
+				"page", "next", "continuation", "sync", "cursor", "usage", "previous", "prev",
+			}},
+			// A pin on a map.
+			{word: "pin", unless: []string{"map", "lat", "lng", "lon", "color", "icon", "x", "y", "location"}},
+			// Spanish "clave" is also the key of a thing: clave_unidad.
+			{word: "clave", among: []string{"acceso", "usuario", "secreta", "privada", "cifrada", "hash", "api"}},
+			// "pass" is also a boarding pass and a pass rate.
+			{word: "pass", among: []string{"hash", "hashed", "user", "login", "salt", "word", "admin", "crypt"}},
+		},
+		ownTokens: append([]string{"key"}, codeTokens...),
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "email",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL,
+		keywords: []string{
+			"email*", "mail", "e mail", "gmail", "mailbox", "courriel", "correo", "correio",
+			"posta elettronica", "poczta elektroniczna",
+		},
+	},
+	{
+		// Transform, not Generate: its default keeps the prefix, separators and length of
+		// the source number (06…, +33 6…) and gives distinct numbers distinct outputs.
+		category:         "phone_number",
+		sensitive:        true,
+		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
+		suggestIfNumeric: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
+		keywords: []string{
+			"phone", "telephone", "mobile", "cellphone",
+			"telefon*", "telefoon*", "mobil", "mobiel*", "movil", "celular", "cellular", "cellulare",
+			"telemovel", "komork*", "rufnummer", "gsm", "fax", "handy", "tlf",
+		},
+		guarded: []guarded{
+			// French "tel quel": as it is.
+			{word: "tel", unless: []string{"quel"}},
+		},
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "username",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_USERNAME,
+		keywords: []string{
+			"username", "user name", "login", "nickname",
+			"benutzername", "nutzername", "nombre usuario", "nombre de usuario", "nome utente",
+			"gebruikersnaam", "nazwa uzytkownika", "nome utilizador", "nome usuario", "nome de usuario",
+			"nom utilisateur", "nom d utilisateur", "nom dutilisateur",
+			"pseudo", "identifiant",
+		},
+		guarded: []guarded{
+			// Alone, the user is its login; beside other words it says whose datum it is.
+			{word: "user", alone: true},
+			{word: "usuario", alone: true},
+			{word: "utilizador", alone: true},
+		},
+		// created_by_user, updated_by: audit columns that refer to a user. last_login:
+		// when, not who.
+		excludeTokens: []string{"by", "last"},
+	},
+	{
+		// A name that says it is whole, before the rules of its parts: nombre_completo
+		// holds the word of a first name, imie_i_nazwisko those of both.
+		category:  "person_full_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
+		keywords: []string{
+			"nombre completo", "nome completo", "imie i nazwisko", "imieinazwisko", "vollstaendiger name",
+			"voller name", "volledige naam",
+		},
+	},
+	{
+		category:  "person_first_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FIRST_NAME,
+		keywords: []string{
+			"first name", "given name", "forename", "prenom", "fname",
+			"vorname", "rufname", "primer nombre", "nombre de pila", "nombre pila", "voornaam", "primeiro nome",
+			"imie",
+		},
+		guarded: []guarded{
+			// Spanish "nombre" is a first name, French "nombre" a count.
+			{word: "nombre", among: append([]string{"y"}, spanishPersons...)},
+			{word: "nombres", among: append([]string{"y"}, spanishPersons...)},
+		},
+		excludeTokens: objectTokens,
+	},
+	{
+		category:  "person_last_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
+		keywords: []string{
+			"last name", "surname", "family name", "patronyme", "lname",
+			"nachname", "familienname", "zuname", "apellido", "apelido", "sobrenome", "cognome", "achternaam",
+			"familienaam", "nazwisko", "nom",
+		},
+		excludeTokens: append([]string{"complet", "full", "entier"}, objectTokens...),
+	},
+	{
+		category:      "person_full_name",
+		sensitive:     true,
+		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
+		keywords:      []string{"full name", "nom complet", "name", "naam", "nome"},
+		excludeTokens: objectTokens,
+	},
+	{
+		// Before street_address: "ip_address" holds the word "address".
+		category:  "ip_address",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS,
+		keywords:  []string{"ipaddress", "ipaddr", "ip", "ipv"},
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "street_address",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS,
+		keywords: []string{
+			"address", "addresses", "addr", "street",
+			"adres", //nolint:misspell // a Dutch and Polish word
+			"adresse", "adresses", "adressen", "adresu", "adresy", "adresow",
+			"adress", //nolint:misspell // a German and Swedish spelling
+			"anschrift", "strasse", "hausnummer", "direccion", "direcciones", "domicilio", "indirizz*", "straat",
+			"huisnummer", "ulica", "enderec*", "morada", "logradouro", "rue", "calle", "rua",
+		},
+		guarded: []guarded{
+			// Italian "via" is a street, English "via" a way through.
+			{word: "via", among: []string{"indirizzo", "civico", "cap", "comune", "citta", "residenza", "numero"}},
+		},
+	},
+	{
+		// A place, when it is where a person lives, is personal data.
+		category:  "city",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY,
+		keywords: []string{
+			"city", "cities", "town", "ville", "commune",
+			"stadt", "wohnort", "ort", "ciudad", "localidad", "municipio", "citta", "comune", "localita",
+			"woonplaats", "stad", "plaats", "gemeente", "miasto", "miejscowosc", "cidade", "localidade",
+		},
+	},
+	{
+		category:  "state",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STATE,
+		keywords:  []string{"provinc*", "bundesland", "wojewodztwo", "regione", "distrito"},
+		guarded: []guarded{
+			{word: "state", unless: []string{"order", "workflow", "machine", "task", "job", "sync", "run"}},
+			{word: "region", unless: []string{"aws", "cloud", "gcp", "azure"}},
+			// Spanish and Portuguese "estado" is a state beside the words of an address,
+			// a status elsewhere.
+			{word: "estado", beside: true, among: []string{
+				"direccion", "endereco", "domicilio", "ciudad", "cidade", "provincia", "pais", "residencia",
+				"morada", "municipio", "cep", "nacimiento", "envio", "entrega", "facturacion",
+			}},
+		},
+		ownTokens: []string{"estado"},
+	},
+	{
+		// The code of the state of an address is how that state is written. The code of
+		// a state on its own (state_code) is the key of a list of states.
+		category:  "state",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STATE,
+		keywords:  []string{"address state", "address province", "address region"},
+		ownTokens: codeTokens,
+	},
+	{
+		category:  "postal_code",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE,
+		keywords:  []string{"zipcode", "postal", "postale", "postcode", "post code", "postleitzahl", "pocztow*", "plz", "cep"},
+		guarded: []guarded{
+			{word: "zip", unless: []string{"file", "archive", "size", "path"}},
+			// French "cp" is also paid leave.
+			{word: "cp", unless: []string{"solde", "acquis", "pris", "restant"}},
+			// Italian "cap" is a postal code, English "cap" a limit.
+			{word: "cap", among: []string{
+				"comune", "citta", "indirizzo", "provincia", "residenza", "via", "localita", "spedizione",
+				"fatturazione", "domicilio",
+			}},
+		},
+		ownTokens: codeTokens,
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "country",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_COUNTRY,
+		keywords: []string{
+			"country", "countries", "pays", "pais", "paese", "nazione", "kraj",
+			"geburtsland", "herkunftsland", "heimatland", "wohnland",
+		},
+		guarded: []guarded{
+			// German and Dutch "land" is a country, English "land" is ground.
+			{word: "land", among: []string{
+				"ort", "stadt", "plz", "strasse", "wohnort", "postleitzahl", "anschrift", "kunde", "kunden",
+				"straat", "plaats", "postcode", "woonplaats", "stad", "klant",
+			}},
+		},
+	},
+	{
+		category:  "ssn",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN,
+		keywords: []string{
+			// "ssn" opens or closes a word (ssnum, empssn); inside one it is an accident
+			// of spelling (classname, Reisepassnummer).
+			"ssn*", "*ssn",
+			"social security", "securite sociale", "num secu", "numero secu", "numero ss", "nuss",
+			"sozialversicherung*", "svnr", "seguridad social", "seguranca social", "nir",
+		},
+		ownTokens: []string{"id"},
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		// An identifier an authority issues to a person, other than a social security
+		// number. No transformer is suggested: each has a format of its own.
+		category:  "national_id",
+		sensitive: true,
+		suggested: unspecified,
+		keywords: []string{
+			"tax id", "tax number", "tax code", "national id", "national insurance number", "nino",
+			"identity card", "id card", "passport",
+			"drivers license", "driver license", "driving license",
+			"drivers licence", "driver licence", "driving licence", //nolint:misspell // the British spelling
+			"carte identite", //nolint:misspell // French words
+			"passeport", "permis de conduire", "permis conduire",
+			"reisepass*", "pass nummer", "pass nr", "ausweis", "personalausweis*", "steuer id",
+			"steueridentifikation*", "steuernummer", "fuehrerschein", "fuhrerschein",
+			"pasaporte", "nif", "curp", "cedula", "numero fiscal",
+			"passaporto", "codice fiscale", "carta identita",
+			"paspoort", "bsn", "burgerservicenummer", "rijksregisternummer", "sofi nummer", "rijbewijs",
+			"paszport*", "pesel", "nip", "nr dowodu", "numer dowodu", "dowod osobisty", "prawo jazdy",
+			"passaporte", "cpf", "contribuinte",
+		},
+		guarded: []guarded{
+			// Spanish identity numbers; Polish "dni" are days and "nie" is no.
+			{word: "dni", among: []string{
+				"numero", "num", "nro", "cliente", "usuario", "titular", "persona", "documento", "letra", "id",
+			}},
+			{word: "nie", among: []string{
+				"numero", "num", "nro", "cliente", "usuario", "titular", "persona", "documento", "id",
+			}},
+			// The Brazilian identity card.
+			{word: "rg", alone: true},
+		},
+		ownTokens: append([]string{"id"}, codeTokens...),
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "credit_card",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
+		keywords: []string{
+			"card number", "card num", "card no", "credit card", "cc number", "cc num",
+			"kreditkarte*", "numero tarjeta", "tarjeta credito", "tarjeta de credito", "carta di credito",
+			"carta credito", "numero carta", "numer karty", "karta kredytowa", "numero cartao", "cartao credito",
+			"cartao de credito", "carte bancaire", "numero carte",
+		},
+		guarded:   []guarded{{word: "cc", alone: true}},
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		// No generator of bank account numbers: the datum is reported and nothing is
+		// suggested.
+		category:  "iban",
+		sensitive: true,
+		suggested: unspecified,
+		keywords:  []string{"iban"},
+	},
+	{
+		category:  "bank_account",
+		sensitive: true,
+		suggested: unspecified,
+		keywords: []string{
+			"bank account", "account number", "account num", "compte bancaire", "numero de compte",
+			"numero compte", "bankkonto", "kontonummer", "cuenta bancaria", "numero cuenta", "numero de cuenta",
+			"conto bancario", "numero conto", "bankrekening", "rekeningnummer", "konto bankowe", "numer konta",
+			"conta bancaria", "numero conta", "numero da conta",
+		},
+		alsoHolds: []columnKind{kindNumber},
+	},
+	{
+		category:  "salary",
+		sensitive: true,
+		suggested: unspecified,
+		keywords: []string{
+			"salary", "salaire", "gehalt", "salario", "stipendio", "wynagrodzenie", "pensja",
+			"salaris", //nolint:misspell // a Dutch word
+		},
+		// A limit on salaries is not a salary.
+		excludeTokens: []string{"cap"},
+		alsoHolds:     []columnKind{kindNumber},
+	},
+	{
+		category:  "ethnicity",
+		sensitive: true,
+		suggested: unspecified,
+		keywords:  []string{"ethnicity", "ethnie", "etnia", "ethnizitaet", "etniciteit"},
+	},
+	{
+		category:  "gender",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER,
+		keywords: []string{
+			"gender", "sex", "sexe", "civilite", "salutation",
+			"geschlecht", "anrede", "sexo", "sesso", "geslacht", "aanhef", "plec",
+		},
+		guarded: []guarded{
+			// Of a person, or of a film.
+			{word: "genre", among: append([]string{"code", "customer", "user", "person"}, frenchPersons...)},
+			{word: "genero", among: append([]string{"codigo"}, spanishPersons...)},
+		},
+		// A gender is often stored as its code or its type.
+		ownTokens: append([]string{"type", "typ", "tipo"}, codeTokens...),
+		alsoHolds: []columnKind{kindNumber, kindBoolean},
+	},
+	{
+		// The suggestion depends on the type of the column: see suggestIfTemporal, and
+		// DetectDateFormat for dates stored as text.
+		category:          "birth_date",
+		sensitive:         true,
+		suggested:         unspecified,
+		suggestIfTemporal: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP,
+		keywords: []string{
+			"birth date", "birthday", "date of birth", "date naissance", "date de naissance", "date naiss",
+			"naissance", "dob", "ddn",
+			"geburtsdatum", "geburtstag", "nacimiento", "nascita", "geboortedatum", "urodzenia", "nascimento",
+		},
+		alsoHolds: []columnKind{kindMoment, kindNumber},
+	},
+	{
+		category:  "age",
+		sensitive: true,
+		suggested: unspecified,
+		guarded: []guarded{
+			{word: "age", alone: true}, {word: "edad", alone: true}, {word: "eta", alone: true},
+			{word: "leeftijd", alone: true}, {word: "wiek", alone: true},
+			{word: "idade", alone: true},
+		},
+		alsoHolds: []columnKind{kindNumber},
+	},
+}
+
+// Words a glued token may hold beside a keyword: whose datum it is, which one, and the
+// number or the hash it is stored as.
+var gluedWords = []string{
+	"customer", "cust", "client", "user", "emp", "employee", "patient", "member", "contact", "owner",
+	"home", "work", "office", "billing", "shipping", "primary", "secondary", "alt", "personal", "private",
+	"number", "num", "nummer", "numero", "hash", "hashed", "encrypted", "display",
+	"kunde", "kunden", "klant", "privat",
+}
