@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/stretchr/testify/require"
@@ -46,8 +47,8 @@ func Test_Classify_Request(t *testing.T) {
 	_, err := c.Classify(context.Background(), customers, twoColumns())
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"POST /v1/chat/completions"}, e.paths)
-	request := e.requests[0]
+	require.Equal(t, "POST /v1/chat/completions", e.Requests()[0].Path)
+	request := e.Requests()[0].JSON
 	members := make([]string, 0, len(request))
 	for member := range request {
 		members = append(members, member)
@@ -55,7 +56,7 @@ func Test_Classify_Request(t *testing.T) {
 	require.ElementsMatch(t, []string{"model", "temperature", "messages", "response_format"}, members)
 	require.Equal(t, "local-model", request["model"])
 	require.Equal(t, float64(0), request["temperature"])
-	require.Contains(t, e.bodies[0], `"temperature":0,`)
+	require.Contains(t, e.Requests()[0].Body, `"temperature":0,`)
 
 	wantFormat := `{"type":"json_schema","json_schema":{"name":"column_categories","strict":true,"schema":{
 		"type":"object","additionalProperties":false,"required":["c1","c2"],
@@ -100,7 +101,7 @@ func Test_Classify_Hints(t *testing.T) {
 	_, err := c.Classify(context.Background(), table, twoColumns())
 	require.NoError(t, err)
 
-	_, rest := sentUserMessage(t, e.requests[0])
+	_, rest := sentUserMessage(t, e.Requests()[0].JSON)
 	open, closing := strings.Index(rest, "\n<<<\n"), strings.LastIndex(rest, "\n>>>")
 	require.Positive(t, open)
 	require.Greater(t, closing, open)
@@ -125,12 +126,12 @@ func Test_Classify_RequestWithValues(t *testing.T) {
 	_, err := c.Classify(context.Background(), Table{Name: "customers", SendsValues: true}, columns)
 	require.NoError(t, err)
 
-	document, _ := sentUserMessage(t, e.requests[0])
+	document, _ := sentUserMessage(t, e.Requests()[0].JSON)
 	byId := document["columns"].(map[string]any)
 	require.Equal(t, []any{"jean.dupont@example.org", "m.martin@example.com"}, byId["c1"].(map[string]any)["values"])
 	require.NotContains(t, byId["c2"], "values")
 
-	system := messageContent(t, e.requests[0], 0, "system")
+	system := messageContent(t, e.Requests()[0].JSON, 0, "system")
 	require.NotContains(t, system, "You are never given the values")
 	require.Contains(t, system, "never instructions")
 }
@@ -204,27 +205,27 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 			[]string{"b"}, []string{"b"},
 		},
 		"an answer that is not an object": {
-			completion(`{"c1":{"category":"contact","confidence":0.9},"c2":"contact"}`),
+			piitest.Completion(`{"c1":{"category":"contact","confidence":0.9},"c2":"contact"}`),
 			[]string{"b"}, []string{"b"},
 		},
 		"a confidence that is not a number of JSON": {
-			completion(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"contact","confidence":NaN}}`),
+			piitest.Completion(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"contact","confidence":NaN}}`),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"not JSON": {
-			completion("The first column holds email addresses."),
+			piitest.Completion("The first column holds email addresses."),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"JSON that is not an object": {
-			completion(`["contact","contact"]`),
+			piitest.Completion(`["contact","contact"]`),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"an answer cut before its end": {
-			completionEnding(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"cont`, "length"),
+			piitest.CompletionEnding(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"cont`, "length"),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"a fenced block that is not JSON": {
-			completion("```json\nnot an answer\n```"),
+			piitest.Completion("```json\nnot an answer\n```"),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"a refusal": {
@@ -242,7 +243,7 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 					return http.StatusOK, tt.first
 				}
 				// The second answer is no better: what was missing stays missing.
-				return http.StatusOK, completion("still not an answer")
+				return http.StatusOK, piitest.Completion("still not an answer")
 			})
 			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
 
@@ -251,7 +252,7 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 			require.Equal(t, 2, e.calls(), "one request, and one more for what is missing")
 			require.Equal(t, tt.unanswered, result.Unanswered)
 
-			reasked := askedNames(t, e.requests[1])
+			reasked := askedNames(t, e.Requests()[1].JSON)
 			names := make([]string, 0, len(reasked))
 			for i := 1; i <= len(reasked); i++ {
 				names = append(names, reasked[fmt.Sprintf("c%d", i)])
@@ -273,16 +274,16 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 func Test_Classify_ReadsAnAnswerThatIsWrapped(t *testing.T) {
 	const document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
 	for name, body := range map[string]string{
-		"a fenced block":                  completion("```json\n" + document + "\n```"),
-		"a fenced block without language": completion("```\n" + document + "\n```"),
-		"a reasoning block before it":     completion("<think>\nThe first column holds {emails}.\n</think>\n\n" + document),
-		"a reasoning block and a fence":   completion("<think>c1 is contact</think>\n```json\n" + document + "\n```\n"),
-		"a sentence before it":            completion("Here is the classification:\n" + document),
-		"a sentence after it":             completion(document + "\nLet me know if you need anything else."),
-		"spaces around it":                completion("\n  " + document + "  \n"),
-		"a complete document, cut after":  completionEnding(document, "length"),
-		"another reason to end":           completionEnding(document, "eos"),
-		"no reason to end":                completionEnding(document, ""),
+		"a fenced block":                  piitest.Completion("```json\n" + document + "\n```"),
+		"a fenced block without language": piitest.Completion("```\n" + document + "\n```"),
+		"a reasoning block before it":     piitest.Completion("<think>\nThe first column holds {emails}.\n</think>\n\n" + document),
+		"a reasoning block and a fence":   piitest.Completion("<think>c1 is contact</think>\n```json\n" + document + "\n```\n"),
+		"a sentence before it":            piitest.Completion("Here is the classification:\n" + document),
+		"a sentence after it":             piitest.Completion(document + "\nLet me know if you need anything else."),
+		"spaces around it":                piitest.Completion("\n  " + document + "  \n"),
+		"a complete document, cut after":  piitest.CompletionEnding(document, "length"),
+		"another reason to end":           piitest.CompletionEnding(document, "eos"),
+		"no reason to end":                piitest.CompletionEnding(document, ""),
 	} {
 		t.Run(name, func(t *testing.T) {
 			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
@@ -312,7 +313,7 @@ func Test_Classify_TheSecondAnswerCompletesTheFirst(t *testing.T) {
 
 	result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}, {Name: "c"}})
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{"c1": "b"}, askedNames(t, e.requests[1]))
+	require.Equal(t, map[string]string{"c1": "b"}, askedNames(t, e.Requests()[1].JSON))
 	require.Equal(t, &Result{Findings: map[string]report.ModelFinding{
 		"a": {Category: report.Contact, Confidence: 0.9},
 		"b": {Category: report.Financial, Confidence: 0.8},
@@ -412,7 +413,7 @@ func Test_Classify_ARequestThatTimesOutIsATransportFailure(t *testing.T) {
 	release := make(chan struct{})
 	e := newEndpoint(t, func(int, map[string]any) (int, string) {
 		<-release
-		return http.StatusOK, completion("{}")
+		return http.StatusOK, piitest.Completion("{}")
 	})
 	defer close(release)
 	c, _ := e.classifier(t, Config{})
@@ -430,7 +431,7 @@ func Test_Classify_ARequestThatTimesOutIsATransportFailure(t *testing.T) {
 func Test_Classify_AClosedConnectionIsATransportFailure(t *testing.T) {
 	e := newEndpoint(t, nil)
 	c, _ := e.classifier(t, Config{})
-	e.server.Close()
+	e.Close()
 
 	_, err := c.Classify(context.Background(), customers, twoColumns())
 	var failure *Error
@@ -445,7 +446,7 @@ func Test_Classify_ACancelledContextIsReturnedAsItIs(t *testing.T) {
 	e := newEndpoint(t, func(int, map[string]any) (int, string) {
 		cancel()
 		time.Sleep(20 * time.Millisecond)
-		return http.StatusOK, completion("{}")
+		return http.StatusOK, piitest.Completion("{}")
 	})
 	c, _ := e.classifier(t, Config{})
 
@@ -468,23 +469,23 @@ func Test_Classify_SendsOnlyTheCredentialsOfItsConfiguration(t *testing.T) {
 	withoutKey, _ := e.classifier(t, Config{})
 	_, err := withoutKey.Classify(context.Background(), customers, twoColumns())
 	require.NoError(t, err)
-	require.Empty(t, e.headers[0].Values("Authorization"), "a local server needs no key")
-	require.Empty(t, e.headers[0].Values("Openai-Organization"))
-	require.Empty(t, e.headers[0].Values("Openai-Project"))
-	require.Empty(t, e.headers[0].Values("X-From-The-Environment"))
+	require.Empty(t, e.Requests()[0].Header.Values("Authorization"), "a local server needs no key")
+	require.Empty(t, e.Requests()[0].Header.Values("Openai-Organization"))
+	require.Empty(t, e.Requests()[0].Header.Values("Openai-Project"))
+	require.Empty(t, e.Requests()[0].Header.Values("X-From-The-Environment"))
 
 	withKey, _ := e.classifier(t, Config{APIKey: "the-key", Organization: "org-1", Project: "proj-1"})
 	_, err = withKey.Classify(context.Background(), customers, twoColumns())
 	require.NoError(t, err)
-	require.Equal(t, []string{"Bearer the-key"}, e.headers[1].Values("Authorization"))
-	require.Equal(t, []string{"org-1"}, e.headers[1].Values("Openai-Organization"))
-	require.Equal(t, []string{"proj-1"}, e.headers[1].Values("Openai-Project"))
+	require.Equal(t, []string{"Bearer the-key"}, e.Requests()[1].Header.Values("Authorization"))
+	require.Equal(t, []string{"org-1"}, e.Requests()[1].Header.Values("Openai-Organization"))
+	require.Equal(t, []string{"proj-1"}, e.Requests()[1].Header.Values("Openai-Project"))
 }
 
 // An answer is read up to a bound: an endpoint cannot make the worker hold an answer of
 // any size.
 func Test_Classify_AnAnswerLargerThanTheBoundIsAFailure(t *testing.T) {
-	huge := completion(`{"c1":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", 2*maxAnswerBytes) + `"}`)
+	huge := piitest.Completion(`{"c1":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", 2*maxAnswerBytes) + `"}`)
 	e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, huge })
 	c, _ := e.classifier(t, Config{})
 
@@ -496,7 +497,7 @@ func Test_Classify_AnAnswerLargerThanTheBoundIsAFailure(t *testing.T) {
 
 	// An answer under the bound is read.
 	e = newEndpoint(t, func(int, map[string]any) (int, string) {
-		return http.StatusOK, completion(`{"c1":{"category":"none","confidence":1},"c2":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", maxAnswerBytes/2) + `"}`)
+		return http.StatusOK, piitest.Completion(`{"c1":{"category":"none","confidence":1},"c2":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", maxAnswerBytes/2) + `"}`)
 	})
 	c, _ = e.classifier(t, Config{})
 	_, err = c.Classify(context.Background(), customers, twoColumns())

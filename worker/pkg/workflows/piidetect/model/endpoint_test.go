@@ -3,69 +3,36 @@ package model
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
 	"github.com/stretchr/testify/require"
 )
 
-// endpoint is a server that speaks the chat completion API. It keeps what it was asked.
+// endpoint is a chat completion server whose answers are given the rank of the request
+// and its decoded body.
 type endpoint struct {
-	server *httptest.Server
-	answer func(call int, request map[string]any) (status int, body string)
-
-	mu       sync.Mutex
-	bodies   []string
-	requests []map[string]any
-	headers  []http.Header
-	paths    []string
+	*piitest.ChatServer
 }
 
 func newEndpoint(t *testing.T, answer func(call int, request map[string]any) (int, string)) *endpoint {
 	t.Helper()
-	e := &endpoint{answer: answer}
-	e.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		var request map[string]any
-		_ = json.Unmarshal(body, &request)
-
-		e.mu.Lock()
-		e.bodies = append(e.bodies, string(body))
-		e.requests = append(e.requests, request)
-		e.headers = append(e.headers, r.Header.Clone())
-		e.paths = append(e.paths, r.Method+" "+r.URL.Path)
-		call := len(e.bodies)
-		e.mu.Unlock()
-
-		status, answer := e.answer(call, request)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_, _ = io.WriteString(w, answer)
-	}))
-	t.Cleanup(e.server.Close)
-	return e
+	return &endpoint{piitest.NewChatServer(t, func(request *piitest.Request) (int, string) {
+		return answer(request.Call, request.JSON)
+	})}
 }
 
 func (e *endpoint) calls() int {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return len(e.bodies)
+	return len(e.Requests())
 }
 
 // classifier returns a classifier that asks the endpoint and does not wait between two
 // tries; the waits it was asked for are kept in waited.
 func (e *endpoint) classifier(t *testing.T, cfg Config) (c *Classifier, waited *[]time.Duration) {
 	t.Helper()
-	cfg.BaseURL = e.server.URL + "/v1"
+	cfg.BaseURL = e.URL
 	if cfg.Model == "" {
 		cfg.Model = "test-model"
 	}
@@ -112,30 +79,16 @@ func askedNames(t *testing.T, request map[string]any) map[string]string {
 	return names
 }
 
+// answer is what a test makes the model say of a column: any member may be left out or
+// be of a wrong type.
 type answer struct {
 	Category   any `json:"category,omitempty"`
 	Confidence any `json:"confidence,omitempty"`
 }
 
-// completion is the body of a successful answer whose message holds content.
-func completion(content string) string {
-	return completionEnding(content, "stop")
-}
-
-func completionEnding(content, finishReason string) string {
-	body, _ := json.Marshal(map[string]any{
-		"id": "chatcmpl-1", "object": "chat.completion", "created": 1, "model": "test-model",
-		"choices": []any{map[string]any{
-			"index": 0, "finish_reason": finishReason,
-			"message": map[string]any{"role": "assistant", "content": content},
-		}},
-	})
-	return string(body)
-}
-
 func answers(byId map[string]answer) string {
 	content, _ := json.Marshal(byId)
-	return completion(string(content))
+	return piitest.Completion(string(content))
 }
 
 func errorBody(kind, code, message string) string {

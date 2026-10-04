@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/activity"
@@ -193,7 +194,7 @@ func newActivityRun(t *testing.T, activities *Activities) *activityRun {
 	var ts testsuite.WorkflowTestSuite
 	ts.SetLogger(run.logs)
 	run.env = ts.NewTestActivityEnvironment()
-	Register(activityRegistry{run.env}, nil, activities, &Config{})
+	Register(piitest.ActivityRegistry{Env: run.env}, nil, activities, &Config{})
 	run.env.SetOnActivityHeartbeatListener(func(_ *activity.Info, details converter.EncodedValues) {
 		var raw any
 		_ = details.Get(&raw)
@@ -203,15 +204,6 @@ func newActivityRun(t *testing.T, activities *Activities) *activityRun {
 	})
 	return run
 }
-
-// activityRegistry registers the activities of the package in an environment that runs
-// activities only.
-type activityRegistry struct {
-	env *testsuite.TestActivityEnvironment
-}
-
-func (r activityRegistry) RegisterWorkflow(any)   {}
-func (r activityRegistry) RegisterActivity(a any) { r.env.RegisterActivity(a) }
 
 // execute runs an activity and decodes its result. It returns the serialized result too.
 func execute[T any](t *testing.T, run *activityRun, fn, request any) (*T, string, error) {

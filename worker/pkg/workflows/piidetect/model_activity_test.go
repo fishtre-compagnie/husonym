@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
@@ -23,96 +22,25 @@ import (
 	"go.temporal.io/sdk/temporal"
 )
 
-// modelEndpoint is a server that speaks the chat completion API. It keeps the bodies it
-// was sent, and answers each request with what answer returns for it.
-type modelEndpoint struct {
-	server *httptest.Server
-	mu     sync.Mutex
-	bodies []string
-}
-
-// asked is what a request asks about: the columns of its document, by id.
-type asked struct {
-	call    int
-	columns map[string]map[string]any
-	body    string
-}
-
-func (a asked) ids() []string {
-	ids := make([]string, 0, len(a.columns))
-	for i := 1; i <= len(a.columns); i++ {
-		ids = append(ids, fmt.Sprintf("c%d", i))
-	}
-	return ids
-}
-
-func newModelEndpoint(t *testing.T, answer func(request asked) (status int, body string)) (*modelEndpoint, *model.Classifier) {
+// newModelEndpoint starts a chat completion server and returns a classifier that asks it.
+func newModelEndpoint(
+	t *testing.T,
+	answer func(request *piitest.Request) (status int, body string),
+) (*piitest.ChatServer, *model.Classifier) {
 	t.Helper()
-	e := &modelEndpoint{}
-	e.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var request struct {
-			Messages []struct {
-				Content string `json:"content"`
-			} `json:"messages"`
-		}
-		_ = json.Unmarshal(body, &request)
-		var document struct {
-			Columns map[string]map[string]any `json:"columns"`
-		}
-		if len(request.Messages) == 2 {
-			_ = json.NewDecoder(strings.NewReader(request.Messages[1].Content)).Decode(&document)
-		}
-
-		e.mu.Lock()
-		e.bodies = append(e.bodies, string(body))
-		call := len(e.bodies)
-		e.mu.Unlock()
-
-		status, answer := answer(asked{call: call, columns: document.Columns, body: string(body)})
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_, _ = io.WriteString(w, answer)
-	}))
-	t.Cleanup(e.server.Close)
-
-	classifier, err := model.NewClassifier(&model.Config{BaseURL: e.server.URL + "/v1", Model: "local-model", MinConfidence: 0.5})
+	server := piitest.NewChatServer(t, answer)
+	classifier, err := model.NewClassifier(&model.Config{BaseURL: server.URL, Model: "local-model", MinConfidence: 0.5})
 	require.NoError(t, err)
-	return e, classifier
+	return server, classifier
 }
 
-func (e *modelEndpoint) requests() []string {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return append([]string{}, e.bodies...)
-}
-
-// completionOf is the body of an answer that gives each id a category and a confidence.
-func completionOf(byId map[string][2]any) string {
-	content := map[string]any{}
-	for id, answer := range byId {
-		content[id] = map[string]any{"category": answer[0], "confidence": answer[1]}
+// bodies returns the bodies of the requests a server was sent.
+func bodies(server *piitest.ChatServer) []string {
+	sent := []string{}
+	for _, request := range server.Requests() {
+		sent = append(sent, request.Body)
 	}
-	encoded, _ := json.Marshal(content)
-	body, _ := json.Marshal(map[string]any{
-		"id": "chatcmpl-1", "object": "chat.completion", "model": "local-model",
-		"choices": []any{map[string]any{
-			"index": 0, "finish_reason": "stop",
-			"message": map[string]any{"role": "assistant", "content": string(encoded)},
-		}},
-	})
-	return string(body)
-}
-
-// everyColumn answers the same for every column of a request.
-func everyColumn(category string, confidence float64) func(asked) (int, string) {
-	return func(request asked) (int, string) {
-		byId := map[string][2]any{}
-		for _, id := range request.ids() {
-			byId[id] = [2]any{category, confidence}
-		}
-		return http.StatusOK, completionOf(byId)
-	}
+	return sent
 }
 
 func manyColumns(count int) []*ColumnData {
@@ -136,24 +64,24 @@ func Test_DetectPiiLLM_WithoutAModel(t *testing.T) {
 }
 
 func Test_DetectPiiLLM_ATableWithoutColumnAsksNothing(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, everyColumn("contact", 0.9))
+	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("contact", 0.9))
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 
 	_, payload, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{TableSchema: "public", TableName: "empty"})
 	require.NoError(t, err)
 	require.JSONEq(t, `{"PiiColumns":{},"Status":"answered","Model":"local-model"}`, payload)
-	require.Empty(t, endpoint.requests())
+	require.Empty(t, bodies(endpoint))
 }
 
 // The columns are asked a batch per request, in their order; a heartbeat follows each
 // answer, with what was learned so far.
 func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, func(request asked) (int, string) {
+	endpoint, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		byId := map[string][2]any{}
-		for _, id := range request.ids() {
+		for _, id := range request.IDs() {
 			byId[id] = [2]any{"none", 0.9}
 		}
-		switch request.call {
+		switch request.Call {
 		case 1:
 			byId["c1"] = [2]any{"contact", 0.9}
 		case 2:
@@ -161,7 +89,7 @@ func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
 		case 3:
 			byId["c10"] = [2]any{"location", 0.7}
 		}
-		return http.StatusOK, completionOf(byId)
+		return http.StatusOK, piitest.Answers(byId)
 	})
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 
@@ -171,7 +99,7 @@ func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
 		ShouldSample: true, ConnectionId: "connection-1",
 	})
 	require.NoError(t, err)
-	require.Len(t, endpoint.requests(), 3)
+	require.Len(t, bodies(endpoint), 3)
 	require.Equal(t, &DetectPiiLLMResponse{
 		PiiColumns: map[string]report.ModelFinding{
 			"column_00": {Category: report.Contact, Confidence: 0.9},
@@ -192,7 +120,7 @@ func Test_DetectPiiLLM_AsksInBatches(t *testing.T) {
 
 // What the model was given: names when no row was sampled, profiles when rows were.
 func Test_DetectPiiLLM_Input(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, everyColumn("none", 1))
+	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 
 	response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
@@ -205,8 +133,8 @@ func Test_DetectPiiLLM_Input(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "profiles", response.Input)
-	require.Len(t, endpoint.requests(), 1)
-	body := endpoint.requests()[0]
+	require.Len(t, bodies(endpoint), 1)
+	body := bodies(endpoint)[0]
 	require.Contains(t, body, `\"sample\":{\"rows\":200,\"kind\":\"text\"}`)
 	require.Contains(t, body, "Columns named ref_* hold customer references.")
 	require.Contains(t, body, `\"table\":\"users\"`)
@@ -215,8 +143,8 @@ func Test_DetectPiiLLM_Input(t *testing.T) {
 // A column without a valid answer is asked once more. An answer for an id the request
 // does not hold is ignored, and the worker says so.
 func Test_DetectPiiLLM_AColumnAnsweredAtTheSecondRequest(t *testing.T) {
-	_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
-		return http.StatusOK, completionOf(map[string][2]any{"c1": {"contact", 0.9}, "c2": {"something else", 0.9}})
+	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
+		return http.StatusOK, piitest.Answers(map[string][2]any{"c1": {"contact", 0.9}, "c2": {"something else", 0.9}})
 	})
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 
@@ -233,11 +161,11 @@ func Test_DetectPiiLLM_AColumnAnsweredAtTheSecondRequest(t *testing.T) {
 }
 
 func Test_DetectPiiLLM_AColumnThatStaysWithoutAnswer(t *testing.T) {
-	_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
-		if request.call == 1 {
-			return http.StatusOK, completionOf(map[string][2]any{"c1": {"contact", 0.9}})
+	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
+		if request.Call == 1 {
+			return http.StatusOK, piitest.Answers(map[string][2]any{"c1": {"contact", 0.9}})
 		}
-		return http.StatusOK, completionOf(map[string][2]any{"c1": {"contact", 12}})
+		return http.StatusOK, piitest.Answers(map[string][2]any{"c1": {"contact", 12}})
 	})
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 
@@ -254,11 +182,11 @@ func Test_DetectPiiLLM_AColumnThatStaysWithoutAnswer(t *testing.T) {
 // An attempt that follows another starts from what the heartbeats of the other recorded:
 // it asks only the batches that are missing.
 func Test_DetectPiiLLM_ASecondAttemptAsksOnlyTheMissingBatches(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, func(request asked) (int, string) {
-		if request.call == 2 {
+	endpoint, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
+		if request.Call == 2 {
 			return http.StatusServiceUnavailable, `{"error":{"type":"server_error","message":"overloaded"}}`
 		}
-		return everyColumn("contact", 0.9)(request)
+		return piitest.EveryColumn("contact", 0.9)(request)
 	})
 	request := &DetectPiiLLMRequest{TableSchema: "public", TableName: "wide", ColumnData: manyColumns(60)}
 
@@ -267,7 +195,7 @@ func Test_DetectPiiLLM_ASecondAttemptAsksOnlyTheMissingBatches(t *testing.T) {
 	var appErr *temporal.ApplicationError
 	require.ErrorAs(t, err, &appErr)
 	require.False(t, appErr.NonRetryable(), "an endpoint that cannot answer now may answer at the next attempt")
-	require.Len(t, endpoint.requests(), 2)
+	require.Len(t, bodies(endpoint), 2)
 	require.Len(t, first.heartbeats, 1)
 
 	second := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
@@ -278,15 +206,15 @@ func Test_DetectPiiLLM_ASecondAttemptAsksOnlyTheMissingBatches(t *testing.T) {
 	second.env.SetHeartbeatDetails(recorded)
 	response, _, err := execute[DetectPiiLLMResponse](t, second, "DetectPiiLLM", request)
 	require.NoError(t, err)
-	require.Len(t, endpoint.requests(), 4, "two more requests: the second and the third batch")
+	require.Len(t, bodies(endpoint), 4, "two more requests: the second and the third batch")
 	require.Len(t, response.PiiColumns, 60)
-	require.Contains(t, endpoint.requests()[2], "column_25")
-	require.NotContains(t, endpoint.requests()[2], "column_24")
+	require.Contains(t, bodies(endpoint)[2], "column_25")
+	require.NotContains(t, bodies(endpoint)[2], "column_24")
 }
 
 // A request the endpoint refuses is not attempted again.
 func Test_DetectPiiLLM_ARefusedRequestIsNotRetried(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, func(asked) (int, string) {
+	endpoint, classifier := newModelEndpoint(t, func(*piitest.Request) (int, string) {
 		return http.StatusUnauthorized, `{"error":{"type":"invalid_request_error","code":"invalid_api_key","message":"bad key"}}`
 	})
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
@@ -297,7 +225,7 @@ func Test_DetectPiiLLM_ARefusedRequestIsNotRetried(t *testing.T) {
 	appErr := requireNotRetried(t, err, "ModelRejected")
 	require.Equal(t, "the model could not be asked", appErr.Message())
 	require.ErrorContains(t, err, "HTTP 401")
-	require.Len(t, endpoint.requests(), 1)
+	require.Len(t, bodies(endpoint), 1)
 	require.Contains(t, run.logs.all(), "WARN a request to the model failed")
 	require.Contains(t, run.logs.all(), "status401")
 }
@@ -305,7 +233,7 @@ func Test_DetectPiiLLM_ARefusedRequestIsNotRetried(t *testing.T) {
 // A user prompt longer than what the model is given is cut, and the worker says so
 // without quoting it.
 func Test_DetectPiiLLM_ALongUserPromptIsCut(t *testing.T) {
-	endpoint, classifier := newModelEndpoint(t, everyColumn("none", 1))
+	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
 	prompt := strings.Repeat("PROMPTMARKER ", 400)
 
@@ -315,7 +243,7 @@ func Test_DetectPiiLLM_ALongUserPromptIsCut(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, run.logs.all(), "WARN the user prompt of the job is longer than what the model is given: it is cut")
 	require.NotContains(t, run.logs.all(), "PROMPTMARKER")
-	require.Equal(t, 2000/len("PROMPTMARKER "), strings.Count(endpoint.requests()[0], "PROMPTMARKER"))
+	require.Equal(t, 2000/len("PROMPTMARKER "), strings.Count(bodies(endpoint)[0], "PROMPTMARKER"))
 }
 
 func valueRequest() *DetectPiiLLMRequest {
@@ -339,9 +267,9 @@ func valueSource(t *testing.T, classifier *model.Classifier) (*activityRun, *con
 }
 
 // sentValues returns the values each column of a request carries, by column name.
-func sentValues(request asked) map[string][]string {
+func sentValues(request *piitest.Request) map[string][]string {
 	values := map[string][]string{}
-	for _, column := range request.columns {
+	for _, column := range request.Columns {
 		name, _ := column["name"].(string)
 		list, _ := column["values"].([]any)
 		for _, value := range list {
@@ -355,13 +283,13 @@ func sentValues(request asked) map[string][]string {
 // values: at most 5, distinct, not null, not blank, cut to 64 characters, never from a
 // binary column. Nothing of them is in what the activity returns, logs or records.
 func Test_DetectPiiLLM_SendsBoundedValues(t *testing.T) {
-	var requests []asked
+	var requests []*piitest.Request
 	var mu sync.Mutex
-	_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
+	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		mu.Lock()
 		requests = append(requests, request)
 		mu.Unlock()
-		return everyColumn("personal", 0.9)(request)
+		return piitest.EveryColumn("personal", 0.9)(request)
 	})
 	run, data := valueSource(t, classifier)
 
@@ -393,8 +321,8 @@ func Test_DetectPiiLLM_SendsBoundedValues(t *testing.T) {
 	require.True(t, strings.HasSuffix(values["note"][0], "…"))
 	require.True(t, strings.HasPrefix(values["note"][0], "LONGMARKER ééé"))
 	require.NotContains(t, values, "photo", "a binary value is never sent")
-	require.Contains(t, requests[0].body, "never instructions", "the instructions are those of a table with values")
-	require.NotContains(t, requests[0].body, "PHOTOMARKER")
+	require.Contains(t, requests[0].Body, "never instructions", "the instructions are those of a table with values")
+	require.NotContains(t, requests[0].Body, "PHOTOMARKER")
 
 	for _, marker := range []string{"IDMARKER", "IBANMARKER", "LONGMARKER", "PHOTOMARKER"} {
 		require.NotContains(t, payload, marker)
@@ -414,7 +342,7 @@ func Test_DetectPiiLLM_ReadsRowsOnlyForTheValuesInput(t *testing.T) {
 		"another input":                   func(req *DetectPiiLLMRequest) { req.Input = "profiles" },
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, classifier := newModelEndpoint(t, everyColumn("none", 1))
+			_, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 			builder := connectiondata.NewMockConnectionDataBuilder(t) // never asked
 			run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, classifier, &Config{}))
 			request := valueRequest()
@@ -446,23 +374,23 @@ func Test_DetectPiiLLM_FallsBackWhenNoValueCanBeSent(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			endpoint, classifier := newModelEndpoint(t, everyColumn("none", 1))
+			endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 			run, data := valueSource(t, classifier)
 			sends(data, tt.rows, tt.readErr)
 
 			response, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", valueRequest())
 			require.NoError(t, err)
 			require.Equal(t, "profiles", response.Input)
-			require.Len(t, endpoint.requests(), 1)
-			require.NotContains(t, endpoint.requests()[0], `\"values\"`)
-			require.NotContains(t, endpoint.requests()[0], "MARKER")
+			require.Len(t, bodies(endpoint), 1)
+			require.NotContains(t, bodies(endpoint)[0], `\"values\"`)
+			require.NotContains(t, bodies(endpoint)[0], "MARKER")
 			require.Contains(t, run.logs.all(), "WARN "+tt.logged+": the model is asked without sample values")
 			require.NotContains(t, run.logs.all(), "MARKER")
 		})
 	}
 
 	t.Run("and without profile either, the model is given names", func(t *testing.T) {
-		_, classifier := newModelEndpoint(t, everyColumn("none", 1))
+		_, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
 		run, data := valueSource(t, classifier)
 		sends(data, nil, nil)
 		request := valueRequest()
@@ -478,9 +406,9 @@ func Test_DetectPiiLLM_FallsBackWhenNoValueCanBeSent(t *testing.T) {
 // An endpoint may quote the request in its error. With values in the request, the
 // failure of the activity names the status, the type and the code of the error only.
 func Test_DetectPiiLLM_AFailureWithValuesQuotesNoValue(t *testing.T) {
-	_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
+	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		body, _ := json.Marshal(map[string]any{"error": map[string]any{
-			"type": "invalid_request_error", "code": "context_length_exceeded", "message": "too long: " + request.body,
+			"type": "invalid_request_error", "code": "context_length_exceeded", "message": "too long: " + request.Body,
 		}})
 		return http.StatusBadRequest, string(body)
 	})
@@ -543,13 +471,13 @@ func Test_DetectPiiLLM_NeverSendsTheValuesOfABinaryColumn(t *testing.T) {
 		}},
 	} {
 		t.Run(engine, func(t *testing.T) {
-			var requests []asked
+			var requests []*piitest.Request
 			var mu sync.Mutex
-			_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
+			_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 				mu.Lock()
 				requests = append(requests, request)
 				mu.Unlock()
-				return everyColumn("none", 1)(request)
+				return piitest.EveryColumn("none", 1)(request)
 			})
 			run, data := valueSource(t, classifier)
 
@@ -585,8 +513,8 @@ func Test_DetectPiiLLM_NeverSendsTheValuesOfABinaryColumn(t *testing.T) {
 			values := sentValues(requests[0])
 			require.Equal(t, []string{"NOTEMARKER-0", "NOTEMARKER-1", "NOTEMARKER-2"}, values["note"])
 			require.Len(t, values, 1, "only the text column sends values: %v", values)
-			require.NotContains(t, requests[0].body, "BINARYMARKER")
-			require.NotContains(t, requests[0].body, "BROKENMARKER")
+			require.NotContains(t, requests[0].Body, "BINARYMARKER")
+			require.NotContains(t, requests[0].Body, "BROKENMARKER")
 		})
 	}
 }
@@ -594,9 +522,9 @@ func Test_DetectPiiLLM_NeverSendsTheValuesOfABinaryColumn(t *testing.T) {
 // While a request is in flight the activity keeps saying that it is alive, with what it
 // has learned so far: a slow model is not a dead worker.
 func Test_DetectPiiLLM_HeartbeatsWhileTheModelAnswers(t *testing.T) {
-	_, classifier := newModelEndpoint(t, func(request asked) (int, string) {
+	_, classifier := newModelEndpoint(t, func(request *piitest.Request) (int, string) {
 		time.Sleep(300 * time.Millisecond)
-		return everyColumn("contact", 0.9)(request)
+		return piitest.EveryColumn("contact", 0.9)(request)
 	})
 	activities := NewActivities(nil, nil, nil, nil, classifier, &Config{})
 	require.Less(t, activities.heartbeatEvery, modelOptions(false).HeartbeatTimeout/2,
@@ -636,15 +564,15 @@ func Test_DetectPiiLLM_HeartbeatsWhileTheModelAnswers(t *testing.T) {
 // model: the activity fails, and is not attempted again since the answers would be the
 // same. Up to half of the columns, the table is scanned and the columns are reported.
 func Test_DetectPiiLLM_MostColumnsUnansweredIsAFailure(t *testing.T) {
-	answering := func(valid int) func(asked) (int, string) {
-		return func(request asked) (int, string) {
+	answering := func(valid int) func(*piitest.Request) (int, string) {
+		return func(request *piitest.Request) (int, string) {
 			byId := map[string][2]any{}
-			if request.call == 1 {
+			if request.Call == 1 {
 				for i := 1; i <= valid; i++ {
 					byId[fmt.Sprintf("c%d", i)] = [2]any{"contact", 0.9}
 				}
 			}
-			return http.StatusOK, completionOf(byId)
+			return http.StatusOK, piitest.Answers(byId)
 		}
 	}
 
@@ -664,7 +592,7 @@ func Test_DetectPiiLLM_MostColumnsUnansweredIsAFailure(t *testing.T) {
 	})
 	appErr := requireNotRetried(t, err, "ModelUnanswered")
 	require.Equal(t, "the model gave no valid answer for 3 of the 4 columns of the table", appErr.Message())
-	require.Len(t, endpoint.requests(), 2)
+	require.Len(t, bodies(endpoint), 2)
 
 	// Two of three is most of them.
 	_, classifier = newModelEndpoint(t, answering(1))

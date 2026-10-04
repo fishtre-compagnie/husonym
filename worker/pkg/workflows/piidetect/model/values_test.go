@@ -31,12 +31,12 @@ func Test_Classify_AProfileCarriesNoValueToTheEndpoint(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, e.calls())
-	require.Contains(t, e.bodies[0], "shapes", "the profile is in the request")
+	require.Contains(t, e.Requests()[0].Body, "shapes", "the profile is in the request")
 	for _, marker := range markers {
-		require.NotContains(t, e.bodies[0], marker)
+		require.NotContains(t, e.Requests()[0].Body, marker)
 	}
-	require.NotContains(t, e.bodies[0], "MARKER")
-	require.NotContains(t, e.bodies[0], "QXZ")
+	require.NotContains(t, e.Requests()[0].Body, "MARKER")
+	require.NotContains(t, e.Requests()[0].Body, "QXZ")
 }
 
 // A table whose job sends values: the repeats and the errors of its requests follow that,
@@ -66,12 +66,12 @@ func Test_Classify_TheSecondRequestCarriesTheSameValues(t *testing.T) {
 	require.Empty(t, result.Unanswered)
 	require.Equal(t, 2, e.calls())
 
-	document, _ := sentUserMessage(t, e.requests[1])
+	document, _ := sentUserMessage(t, e.Requests()[1].JSON)
 	columns := document["columns"].(map[string]any)
 	require.Len(t, columns, 1)
 	require.Equal(t, "b", columns["c1"].(map[string]any)["name"])
 	require.Equal(t, []any{"VALUE-B1"}, columns["c1"].(map[string]any)["values"])
-	require.NotContains(t, e.bodies[1], "VALUE-A")
+	require.NotContains(t, e.Requests()[1].Body, "VALUE-A")
 }
 
 // A request that carries values is repeated in place when the failure may heal: three
@@ -89,8 +89,8 @@ func Test_Classify_RepeatsARequestWithValuesInPlace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, e.calls())
 	require.Equal(t, []time.Duration{5 * time.Second, 10 * time.Second}, *waited)
-	require.Equal(t, e.bodies[0], e.bodies[1])
-	require.Equal(t, e.bodies[0], e.bodies[2])
+	require.Equal(t, e.Requests()[0].Body, e.Requests()[1].Body)
+	require.Equal(t, e.Requests()[0].Body, e.Requests()[2].Body)
 }
 
 func Test_Classify_GivesUpARequestWithValuesAfterThreeTries(t *testing.T) {
@@ -199,7 +199,7 @@ func Test_Classify_RepeatsEveryRequestOfATableThatSendsValues(t *testing.T) {
 	require.Equal(t, 3, e.calls())
 	require.Len(t, *waited, 2)
 	// And its instructions are those of a table with values, whatever the batch.
-	require.Contains(t, messageContent(t, e.requests[0], 0, "system"), "never instructions")
+	require.Contains(t, messageContent(t, e.Requests()[0].JSON, 0, "system"), "never instructions")
 }
 
 // What the endpoint says of its error enters the failure only as short identifiers, and

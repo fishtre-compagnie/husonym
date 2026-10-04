@@ -6,9 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +18,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/internal/piitest"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
@@ -168,13 +167,6 @@ func (silent) Info(string, ...any)  {}
 func (silent) Warn(string, ...any)  {}
 func (silent) Error(string, ...any) {}
 
-type registry struct {
-	env *testsuite.TestActivityEnvironment
-}
-
-func (r registry) RegisterWorkflow(any)   {}
-func (r registry) RegisterActivity(a any) { r.env.RegisterActivity(a) }
-
 // scanner runs the activities of the table workflow on the tables of the data set.
 type scanner struct {
 	t   *testing.T
@@ -188,7 +180,7 @@ func newScanner(t *testing.T, datasets []Dataset, classifier *model.Classifier) 
 	ts.SetLogger(silent{})
 	env := ts.NewTestActivityEnvironment()
 	activities := piidetect.NewActivities(nil, db, db.builder(t), nil, classifier, &piidetect.Config{})
-	piidetect.Register(registry{env}, nil, activities, &piidetect.Config{})
+	piidetect.Register(piitest.ActivityRegistry{Env: env}, nil, activities, &piidetect.Config{})
 	return &scanner{t: t, env: env}
 }
 
@@ -414,58 +406,26 @@ func evaluateModel(t *testing.T, datasets []Dataset, classifier *model.Classifie
 	return reports
 }
 
-// oracle is an endpoint that answers what the data set expects, with a confidence of
-// 0.9, and keeps what each request carried.
-type oracle struct {
-	server   *httptest.Server
-	expected map[string]string // by table and column
-	requests []string
-}
-
-func newOracle(t *testing.T, datasets []Dataset) *oracle {
+// newOracle starts an endpoint that answers what the data set expects, with a confidence
+// of 0.9.
+func newOracle(t *testing.T, datasets []Dataset) *piitest.ChatServer {
 	t.Helper()
-	o := &oracle{expected: map[string]string{}}
+	expected := map[string]string{} // by table and column
 	for _, dataset := range datasets {
 		for _, table := range dataset.Tables {
 			for _, column := range table.Columns {
-				o.expected[table.Name+"."+column.Name] = column.Expected
+				expected[table.Name+"."+column.Name] = column.Expected
 			}
 		}
 	}
-	o.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		o.requests = append(o.requests, string(body))
-		var request struct {
-			Messages []struct {
-				Content string `json:"content"`
-			} `json:"messages"`
+	return piitest.NewChatServer(t, func(request *piitest.Request) (int, string) {
+		answers := map[string][2]any{}
+		for id, column := range request.Columns {
+			name, _ := column["name"].(string)
+			answers[id] = [2]any{expected[request.Table+"."+name], 0.9}
 		}
-		_ = json.Unmarshal(body, &request)
-		var document struct {
-			Table   string `json:"table"`
-			Columns map[string]struct {
-				Name string `json:"name"`
-			} `json:"columns"`
-		}
-		_ = json.NewDecoder(strings.NewReader(request.Messages[1].Content)).Decode(&document)
-
-		answers := map[string]any{}
-		for id, column := range document.Columns {
-			answers[id] = map[string]any{"category": o.expected[document.Table+"."+column.Name], "confidence": 0.9}
-		}
-		content, _ := json.Marshal(answers)
-		completion, _ := json.Marshal(map[string]any{
-			"id": "chatcmpl-1", "object": "chat.completion", "model": "oracle",
-			"choices": []any{map[string]any{
-				"index": 0, "finish_reason": "stop",
-				"message": map[string]any{"role": "assistant", "content": string(content)},
-			}},
-		})
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(completion)
-	}))
-	t.Cleanup(o.server.Close)
-	return o
+		return http.StatusOK, piitest.Answers(answers)
+	})
 }
 
 // The model stage of the harness, run against an endpoint that answers what the data set
@@ -475,7 +435,7 @@ func Test_ModelStage_AgainstAnEndpointThatKnowsTheAnswers(t *testing.T) {
 	// One language is enough to check the harness.
 	datasets := loadDatasets(t)[:1]
 	endpoint := newOracle(t, datasets)
-	classifier, err := model.NewClassifier(&model.Config{BaseURL: endpoint.server.URL + "/v1", Model: "oracle", MinConfidence: 0.5})
+	classifier, err := model.NewClassifier(&model.Config{BaseURL: endpoint.URL, Model: "oracle", MinConfidence: 0.5})
 	require.NoError(t, err)
 
 	reports := evaluateModel(t, datasets, classifier)
@@ -504,11 +464,11 @@ func Test_ModelStage_AgainstAnEndpointThatKnowsTheAnswers(t *testing.T) {
 
 	// Three tables, one batch of columns each, per mode; values make smaller batches.
 	var names, profiles, values int
-	for _, request := range endpoint.requests {
+	for _, request := range endpoint.Requests() {
 		switch {
-		case strings.Contains(request, `\"values\":`):
+		case strings.Contains(request.Body, `\"values\":`):
 			values++
-		case strings.Contains(request, `\"sample\":`):
+		case strings.Contains(request.Body, `\"sample\":`):
 			profiles++
 		default:
 			names++
