@@ -240,3 +240,80 @@ func TestDeterministicPhone_PreserveFormat(t *testing.T) {
 		t.Fatalf("sans preserve_format, attendu PhoneFaker, obtenu %T", vt)
 	}
 }
+
+func characterScramble(regex *string) *mgmtv1alpha1.TransformerConfig {
+	return &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformCharacterScrambleConfig{
+		TransformCharacterScrambleConfig: &mgmtv1alpha1.TransformCharacterScramble{UserProvidedRegex: regex},
+	}}
+}
+
+// The character scramble follows the consistency scope: the same value gives the same output
+// in every column of the scope, and another output in another scope.
+func TestDeterministicCharacterScramble(t *testing.T) {
+	ctx := transform.Background()
+	under := func(scope string, cfg *mgmtv1alpha1.TransformerConfig) transform.ValueTransformer {
+		t.Helper()
+		vt, ok := deterministicValueTransformer(consistency.New([]byte("test-key"), scope), cfg)
+		if !ok {
+			t.Fatal("the character scramble is a consistent transformer")
+		}
+		if _, isNative := vt.(*native.CharacterScrambler); !isNative {
+			t.Fatalf("expected the native scrambler, got %T", vt)
+		}
+		return vt
+	}
+	const value = "1 87 04 75 123 456 78"
+
+	a, err := under("job:a", characterScramble(nil)).TransformValue(ctx, value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, _ := under("job:a", characterScramble(nil)).TransformValue(ctx, value)
+	if a != again {
+		t.Fatalf("same scope, different outputs: %v then %v", a, again)
+	}
+	if other, _ := under("job:b", characterScramble(nil)).TransformValue(ctx, value); other == a {
+		t.Fatalf("two scopes give the same output %v", a)
+	}
+	if null, err := under("job:a", characterScramble(nil)).TransformValue(ctx, nil); err != nil || null != nil {
+		t.Fatalf("a NULL stays a NULL, got %v, %v", null, err)
+	}
+
+	// The expression of the config limits what is redrawn; an empty one limits nothing.
+	lastBlock := `[0-9]{2}$`
+	kept, _ := under("job:a", characterScramble(&lastBlock)).TransformValue(ctx, value)
+	if s, _ := kept.(string); len(s) != len(value) || s[:19] != value[:19] || s == value {
+		t.Fatalf("only the match is redrawn, got %v", kept)
+	}
+	empty := ""
+	if whole, _ := under("job:a", characterScramble(&empty)).TransformValue(ctx, value); whole != a {
+		t.Fatalf("an empty expression is no expression: %v, expected %v", whole, a)
+	}
+}
+
+// An expression that does not compile is left to the catalogue's transformer, which reports it.
+func TestDeterministicCharacterScramble_InvalidExpression(t *testing.T) {
+	broken := `([0-9]`
+	if _, ok := deterministicValueTransformer(consistency.New([]byte("test-key"), "job:a"), characterScramble(&broken)); ok {
+		t.Fatal("an expression that does not compile has no consistent transformer")
+	}
+}
+
+// Without a consistency scope the scramble is the catalogue's, which draws at random and
+// keeps a NULL.
+func TestSpecForTable_CharacterScrambleWithoutDeriver(t *testing.T) {
+	mappings := []*mgmtv1alpha1.JobMapping{
+		{Schema: "public", Table: "clients", Column: "tax_id", Transformer: &mgmtv1alpha1.JobMappingTransformer{Config: characterScramble(nil)}},
+	}
+	_, spec, err := SpecForTable(context.Background(), mappings, "public", "clients", nil, nil)
+	if err != nil {
+		t.Fatalf("SpecForTable: %v", err)
+	}
+	if _, isNative := spec.Values[0].T.(*native.CharacterScrambler); isNative {
+		t.Fatal("without a deriver, not the consistent scrambler")
+	}
+	out, err := spec.Values[0].T.TransformValue(transform.Background(), nil)
+	if err != nil || out != nil {
+		t.Fatalf("a NULL stays a NULL, got %v, %v", out, err)
+	}
+}

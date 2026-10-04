@@ -16,6 +16,7 @@ import (
 
 const (
 	letterList      = "abcdefghijklmnopqrstuvwxyz"
+	upperLetterList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	numberList      = "0123456789"
 	specialCharList = "!@#$%^&*()-+=_ []{}|\\;\"<>,./?"
 )
@@ -170,33 +171,35 @@ func randomizedScrambleChar(randomizer rng.Rand) func(r rune) rune {
 	}
 }
 
-func scrambleChar(randomizer rng.Rand, r rune) rune {
-	if unicode.IsSpace(r) {
-		return r
-	} else if unicode.IsLetter(r) {
-		randStringListInd, err := transformer_utils.GenerateRandomInt64InValueRange(randomizer, 0, 25)
-		if err != nil {
-			return r
-		}
-		sub := rune(letterList[randStringListInd])
+// ScrambleAlphabet returns the characters a character is redrawn among: the lower-case ASCII
+// letters for a letter, the upper-case ones for an upper-case letter, the ASCII digits for a
+// digit, the listed signs for one of them. It is empty for a character the scramble keeps: a
+// space, and any sign outside the list.
+func ScrambleAlphabet(r rune) string {
+	switch {
+	case unicode.IsSpace(r):
+		return ""
+	case unicode.IsLetter(r):
 		if unicode.IsUpper(r) {
-			return unicode.ToUpper(sub)
+			return upperLetterList
 		}
-		return sub
-	} else if unicode.IsDigit(r) {
-		randNumberListInd, err := transformer_utils.GenerateRandomInt64InValueRange(randomizer, 0, 9)
-		if err != nil {
-			return r
-		}
-
-		return rune(numberList[randNumberListInd])
-	} else if transformer_utils.IsAllowedSpecialChar(r) {
-		randInd, err := transformer_utils.GenerateRandomInt64InValueRange(randomizer, 0, 28)
-		if err != nil {
-			return r
-		}
-		return rune(specialCharList[randInd])
+		return letterList
+	case unicode.IsDigit(r):
+		return numberList
+	case transformer_utils.IsAllowedSpecialChar(r):
+		return specialCharList
 	}
+	return ""
+}
 
-	return r
+func scrambleChar(randomizer rng.Rand, r rune) rune {
+	alphabet := ScrambleAlphabet(r)
+	if alphabet == "" {
+		return r
+	}
+	index, err := transformer_utils.GenerateRandomInt64InValueRange(randomizer, 0, int64(len(alphabet)-1))
+	if err != nil {
+		return r
+	}
+	return rune(alphabet[index])
 }
