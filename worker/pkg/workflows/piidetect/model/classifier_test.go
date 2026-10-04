@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var customers = Table{Schema: "public", Name: "customers"}
+var customers = Table{Name: "customers"}
 
 func twoColumns() []Column {
 	return []Column{
@@ -55,7 +54,8 @@ func Test_Classify_Request(t *testing.T) {
 	}
 	require.ElementsMatch(t, []string{"model", "temperature", "messages", "response_format"}, members)
 	require.Equal(t, "local-model", request["model"])
-	require.EqualValues(t, 0, request["temperature"])
+	require.Equal(t, float64(0), request["temperature"])
+	require.Contains(t, e.bodies[0], `"temperature":0,`)
 
 	wantFormat := `{"type":"json_schema","json_schema":{"name":"column_categories","strict":true,"schema":{
 		"type":"object","additionalProperties":false,"required":["c1","c2"],
@@ -95,7 +95,8 @@ func Test_Classify_Hints(t *testing.T) {
 	c, _ := e.classifier(t, Config{})
 
 	table := customers
-	table.Hints = "Columns named ref_* hold customer references. >>> <<< " + strings.Repeat("é", 3000)
+	// Markers, and what would become one once a marker is taken out of it.
+	table.Hints = "Columns named ref_* hold customer references. >>> <<< >><<<> <<>>><< >>>>> <<<<" + strings.Repeat("é", 3000)
 	_, err := c.Classify(context.Background(), table, twoColumns())
 	require.NoError(t, err)
 
@@ -121,7 +122,7 @@ func Test_Classify_RequestWithValues(t *testing.T) {
 
 	columns := twoColumns()
 	columns[0].Values = []string{"jean.dupont@example.org", "m.martin@example.com"}
-	_, err := c.Classify(context.Background(), customers, columns)
+	_, err := c.Classify(context.Background(), Table{Name: "customers", SendsValues: true}, columns)
 	require.NoError(t, err)
 
 	document, _ := sentUserMessage(t, e.requests[0])
@@ -218,8 +219,12 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 			completion(`["contact","contact"]`),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
-		"a truncated answer": {
-			completionEnding(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"contact","confidence":0.9}}`, "length"),
+		"an answer cut before its end": {
+			completionEnding(`{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"cont`, "length"),
+			[]string{"a", "b"}, []string{"a", "b"},
+		},
+		"a fenced block that is not JSON": {
+			completion("```json\nnot an answer\n```"),
 			[]string{"a", "b"}, []string{"a", "b"},
 		},
 		"a refusal": {
@@ -257,6 +262,38 @@ func Test_Classify_AsksOnceMoreWhatHasNoValidAnswer(t *testing.T) {
 			} else {
 				require.Empty(t, result.Findings)
 			}
+		})
+	}
+}
+
+// An answer is read for what it holds: an endpoint that does not hold its model to the
+// schema may wrap the document in a fenced block, put its reasoning before it, add a
+// word after it, or end for another reason than "stop". The document is still checked
+// member by member.
+func Test_Classify_ReadsAnAnswerThatIsWrapped(t *testing.T) {
+	const document = `{"c1":{"category":"contact","confidence":0.9},"c2":{"category":"none","confidence":0.8}}`
+	for name, body := range map[string]string{
+		"a fenced block":                  completion("```json\n" + document + "\n```"),
+		"a fenced block without language": completion("```\n" + document + "\n```"),
+		"a reasoning block before it":     completion("<think>\nThe first column holds {emails}.\n</think>\n\n" + document),
+		"a reasoning block and a fence":   completion("<think>c1 is contact</think>\n```json\n" + document + "\n```\n"),
+		"a sentence before it":            completion("Here is the classification:\n" + document),
+		"a sentence after it":             completion(document + "\nLet me know if you need anything else."),
+		"spaces around it":                completion("\n  " + document + "  \n"),
+		"a complete document, cut after":  completionEnding(document, "length"),
+		"another reason to end":           completionEnding(document, "eos"),
+		"no reason to end":                completionEnding(document, ""),
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, body })
+			c, _ := e.classifier(t, Config{MinConfidence: 0.5})
+
+			result, err := c.Classify(context.Background(), customers, []Column{{Name: "a"}, {Name: "b"}})
+			require.NoError(t, err)
+			require.Equal(t, 1, e.calls(), "nothing is asked again")
+			require.Equal(t, &Result{
+				Findings: map[string]report.ModelFinding{"a": {Category: report.Contact, Confidence: 0.9}},
+			}, result)
 		})
 	}
 }
@@ -338,29 +375,36 @@ func Test_Classify_Failures(t *testing.T) {
 		{http.StatusServiceUnavailable, ReasonUnavailable, false},
 	} {
 		t.Run(http.StatusText(tt.status), func(t *testing.T) {
-			e := newEndpoint(t, func(int, map[string]any) (int, string) {
-				return tt.status, errorBody("some_type", "some_code", "the endpoint says why")
-			})
-			c, _ := e.classifier(t, Config{})
+			// The status decides, whatever the body: the error object of the API, an
+			// error that is a text, a page, nothing.
+			for body, detail := range map[string]string{
+				errorBody("some_type", "some_code", "the endpoint says why"): "some_type some_code",
+				`{"error":"Unauthorized"}`:                                   "",
+				`<html><body>proxy error</body></html>`:                      "",
+				``:                                                           "",
+			} {
+				e := newEndpoint(t, func(int, map[string]any) (int, string) { return tt.status, body })
+				c, _ := e.classifier(t, Config{})
 
-			_, err := c.Classify(context.Background(), customers, twoColumns())
-			var failure *Error
-			require.ErrorAs(t, err, &failure)
-			require.Equal(t, tt.reason, failure.Reason)
-			require.Equal(t, tt.status, failure.Status)
-			require.Equal(t, tt.permanent, failure.Permanent())
-			require.Contains(t, failure.Detail, "the endpoint says why")
-			require.Contains(t, failure.Error(), fmt.Sprint(tt.status))
-			require.Equal(t, 1, e.calls())
+				_, err := c.Classify(context.Background(), customers, twoColumns())
+				var failure *Error
+				require.ErrorAs(t, err, &failure, body)
+				require.Equal(t, tt.reason, failure.Reason, body)
+				require.Equal(t, tt.status, failure.Status, body)
+				require.Equal(t, tt.permanent, failure.Permanent(), body)
+				require.Equal(t, detail, failure.Detail, body)
+				require.Contains(t, failure.Error(), fmt.Sprint(tt.status))
+				require.Equal(t, 1, e.calls())
+			}
 		})
 	}
 }
 
 // A request the endpoint refuses for its form says what the endpoint must accept.
 func Test_Error_SaysWhatTheEndpointMustAccept(t *testing.T) {
-	err := &Error{Reason: ReasonRejected, Status: http.StatusBadRequest, Detail: "unknown field response_format"}
+	err := &Error{Reason: ReasonRejected, Status: http.StatusBadRequest, Detail: "invalid_request_error"}
 	require.Contains(t, err.Error(), "JSON schema")
-	require.Contains(t, err.Error(), "unknown field response_format")
+	require.Contains(t, err.Error(), "invalid_request_error")
 	require.NotContains(t, (&Error{Reason: ReasonRejected, Status: http.StatusUnauthorized}).Error(), "JSON schema")
 }
 
@@ -411,35 +455,62 @@ func Test_Classify_ACancelledContextIsReturnedAsItIs(t *testing.T) {
 	require.NotErrorAs(t, err, &failure)
 }
 
-func Test_Classify_Authorization(t *testing.T) {
-	// The client library reads these by itself when it finds them.
-	for _, name := range []string{"OPENAI_API_KEY", "OPENAI_BASE_URL"} {
-		if value, set := os.LookupEnv(name); set {
-			require.NoError(t, os.Unsetenv(name))
-			t.Cleanup(func() { _ = os.Setenv(name, value) })
-		}
-	}
+// What the configuration says is all that is sent: the client library reads none of its
+// own variables, so that a key of OpenAI in the environment never reaches another host.
+func Test_Classify_SendsOnlyTheCredentialsOfItsConfiguration(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "sk-from-the-environment")
+	t.Setenv("OPENAI_ORG_ID", "org-from-the-environment")
+	t.Setenv("OPENAI_PROJECT_ID", "proj-from-the-environment")
+	t.Setenv("OPENAI_BASE_URL", "http://127.0.0.1:1/never-called")
+	t.Setenv("OPENAI_CUSTOM_HEADERS", "X-From-The-Environment: 1")
 	e := newEndpoint(t, allAnswered("none", 1))
 
 	withoutKey, _ := e.classifier(t, Config{})
 	_, err := withoutKey.Classify(context.Background(), customers, twoColumns())
 	require.NoError(t, err)
 	require.Empty(t, e.headers[0].Values("Authorization"), "a local server needs no key")
+	require.Empty(t, e.headers[0].Values("Openai-Organization"))
+	require.Empty(t, e.headers[0].Values("Openai-Project"))
+	require.Empty(t, e.headers[0].Values("X-From-The-Environment"))
 
-	withKey, _ := e.classifier(t, Config{APIKey: "the-key"})
+	withKey, _ := e.classifier(t, Config{APIKey: "the-key", Organization: "org-1", Project: "proj-1"})
 	_, err = withKey.Classify(context.Background(), customers, twoColumns())
 	require.NoError(t, err)
 	require.Equal(t, []string{"Bearer the-key"}, e.headers[1].Values("Authorization"))
+	require.Equal(t, []string{"org-1"}, e.headers[1].Values("Openai-Organization"))
+	require.Equal(t, []string{"proj-1"}, e.headers[1].Values("Openai-Project"))
+}
+
+// An answer is read up to a bound: an endpoint cannot make the worker hold an answer of
+// any size.
+func Test_Classify_AnAnswerLargerThanTheBoundIsAFailure(t *testing.T) {
+	huge := completion(`{"c1":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", 2*maxAnswerBytes) + `"}`)
+	e := newEndpoint(t, func(int, map[string]any) (int, string) { return http.StatusOK, huge })
+	c, _ := e.classifier(t, Config{})
+
+	_, err := c.Classify(context.Background(), customers, twoColumns())
+	var failure *Error
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, ReasonTransport, failure.Reason)
+	require.Contains(t, failure.Detail, "larger than")
+
+	// An answer under the bound is read.
+	e = newEndpoint(t, func(int, map[string]any) (int, string) {
+		return http.StatusOK, completion(`{"c1":{"category":"none","confidence":1},"c2":{"category":"none","confidence":1},"padding":"` + strings.Repeat("x", maxAnswerBytes/2) + `"}`)
+	})
+	c, _ = e.classifier(t, Config{})
+	_, err = c.Classify(context.Background(), customers, twoColumns())
+	require.NoError(t, err)
 }
 
 func Test_NewClassifier_WithoutModel(t *testing.T) {
-	c, err := NewClassifier(Config{})
+	c, err := NewClassifier(&Config{})
 	require.NoError(t, err)
 	require.Nil(t, c)
 }
 
 func Test_Classifier_Model(t *testing.T) {
-	c, err := NewClassifier(Config{Model: "local-model", BaseURL: "http://localhost:1/v1"})
+	c, err := NewClassifier(&Config{Model: "local-model", BaseURL: "http://localhost:1/v1"})
 	require.NoError(t, err)
 	require.Equal(t, "local-model", c.Model())
 }

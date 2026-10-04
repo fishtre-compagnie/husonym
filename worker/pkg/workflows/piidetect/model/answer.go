@@ -3,6 +3,8 @@ package model
 import (
 	"encoding/json"
 	"math"
+	"regexp"
+	"strings"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/openai/openai-go/v3"
@@ -18,21 +20,25 @@ type columnAnswer struct {
 // enforce: an endpoint may ignore the schema it was given. It returns the valid answers
 // by column id, and the number of members that name no column of the request.
 //
-// Only the form is checked. An answer that is cut, refused or not a JSON object answers
-// for no column; a member without an allowed category and a confidence from 0 to 1
-// answers for none either. Nothing is repaired: a confidence of 95 is not read as 0.95,
-// an unknown label is not taken for the nearest one.
+// Only the form is checked. An answer that is refused, or that holds no JSON object,
+// answers for no column; a member without an allowed category and a confidence from 0
+// to 1 answers for none either. Nothing is repaired: a confidence of 95 is not read as
+// 0.95, an unknown label is not taken for the nearest one.
+//
+// The object is read where it is: after a reasoning block, inside a fenced block, before
+// a closing sentence. Why the model stopped is not asked: an object that is complete and
+// valid is an answer, and one that was cut is not an object.
 func readAnswer(completion *openai.ChatCompletion, count int) (answers map[string]columnAnswer, ignored int) {
 	answers = map[string]columnAnswer{}
 	if completion == nil || len(completion.Choices) == 0 {
 		return answers, 0
 	}
 	choice := completion.Choices[0]
-	if choice.FinishReason != "stop" || choice.Message.Refusal != "" {
+	if choice.Message.Refusal != "" {
 		return answers, 0
 	}
-	var members map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(choice.Message.Content), &members); err != nil {
+	members, ok := answerObject(choice.Message.Content)
+	if !ok {
 		return answers, 0
 	}
 
@@ -50,6 +56,27 @@ func readAnswer(completion *openai.ChatCompletion, count int) (answers map[strin
 		}
 	}
 	return answers, ignored
+}
+
+// A block in which a model writes its reasoning before its answer.
+var reasoningBlock = regexp.MustCompile(`(?s)^\s*<(think|thinking|reasoning)>.*?</(think|thinking|reasoning)>`)
+
+// answerObject finds the JSON object of an answer: the first one that starts after the
+// reasoning block, if any, and that decodes whole. What follows it is not read.
+func answerObject(content string) (map[string]json.RawMessage, bool) {
+	content = reasoningBlock.ReplaceAllString(content, "")
+	for start := strings.IndexByte(content, '{'); start >= 0; {
+		var members map[string]json.RawMessage
+		if err := json.NewDecoder(strings.NewReader(content[start:])).Decode(&members); err == nil {
+			return members, true
+		}
+		next := strings.IndexByte(content[start+1:], '{')
+		if next < 0 {
+			break
+		}
+		start += 1 + next
+	}
+	return nil, false
 }
 
 func readColumnAnswer(raw json.RawMessage) (columnAnswer, bool) {

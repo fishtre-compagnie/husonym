@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
@@ -17,19 +18,20 @@ type Reason string
 const (
 	ReasonRejected    Reason = "rejected"    // the endpoint refuses the request: permanent
 	ReasonUnavailable Reason = "unavailable" // the endpoint cannot answer now: transient
-	ReasonTransport   Reason = "transport"   // connection, TLS, timeout: transient
+	ReasonTransport   Reason = "transport"   // connection, TLS, timeout, an answer that is too large: transient
 )
 
-// maxDetail is the length the message of an endpoint is cut at.
+// maxDetail is the length the cause of a transport failure is cut at.
 const maxDetail = 300
 
 // Error is the failure of a request to the model.
 type Error struct {
 	Reason Reason
 	Status int // the HTTP status, 0 when no answer came
-	// Detail is what the endpoint said of its refusal. It is never the request; when the
-	// request carried values it is not the endpoint's message either, which may quote
-	// the request, only the type and the code of its error.
+	// Detail is what is kept of the endpoint's refusal: the type and the code of its
+	// error, when they are identifiers. It is never the request, and never the message of
+	// the endpoint, which may quote the request. For a failure without an answer it is the
+	// cause of the transport.
 	Detail string
 }
 
@@ -59,46 +61,61 @@ func (e *Error) Permanent() bool {
 
 // failure turns the error of a request into an Error. A canceled context is returned as
 // it is: it is not a failure of the endpoint.
-func failure(ctx context.Context, err error, carriesValues bool) error {
+//
+// status is the HTTP status of the answer, 0 when none came. It decides alone whether the
+// failure may heal, whatever the body of the answer is: the error object of the API, a
+// text, a page of a proxy. sent are the values the request carried.
+func failure(ctx context.Context, err error, status int, sent []string) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	var apiErr *openai.Error
-	if !errors.As(err, &apiErr) {
+	isAPIError := errors.As(err, &apiErr)
+	if status == 0 && isAPIError {
+		status = apiErr.StatusCode
+	}
+	if status < http.StatusBadRequest {
 		// What a transport error says holds addresses, not the request.
 		return &Error{Reason: ReasonTransport, Detail: profile.FirstRunes(lastCause(err), maxDetail)}
 	}
-	failed := &Error{Reason: ReasonRejected, Status: apiErr.StatusCode}
+
+	failed := &Error{Reason: ReasonRejected, Status: status}
 	switch {
-	case apiErr.StatusCode == http.StatusRequestTimeout,
-		apiErr.StatusCode == http.StatusConflict,
-		apiErr.StatusCode == http.StatusTooManyRequests,
-		apiErr.StatusCode >= http.StatusInternalServerError:
+	case status == http.StatusRequestTimeout,
+		status == http.StatusConflict,
+		status == http.StatusTooManyRequests,
+		status >= http.StatusInternalServerError:
 		failed.Reason = ReasonUnavailable
 	}
-	if carriesValues {
-		failed.Detail = strings.TrimSpace(identifier(apiErr.Type) + " " + identifier(apiErr.Code))
-	} else {
-		failed.Detail = profile.FirstRunes(apiErr.Message, maxDetail)
+	if isAPIError {
+		failed.Detail = strings.TrimSpace(identifier(apiErr.Type, sent) + " " + identifier(apiErr.Code, sent))
 	}
 	return failed
 }
 
-// identifier keeps a type or a code of an error when it looks like one: a short word.
-// Anything else could be a text that quotes the request.
-func identifier(value string) string {
-	if len(value) > 64 {
+// An identifier of an error: a short word in lowercase, as the types and the codes of
+// the API are written.
+var identifierRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,39}$`)
+
+// identifier keeps a type or a code of an error when it is an identifier and nothing
+// that was sent: anything else could be a text that quotes the request, or a value. An
+// identifier that is a value, or that holds one of some length, is not kept.
+func identifier(word string, sent []string) string {
+	if !identifierRe.MatchString(word) {
 		return ""
 	}
-	for _, r := range value {
-		word := r == '_' || r == '-' || r == '.' ||
-			(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
-		if !word {
+	for _, value := range sent {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == word || (len(value) >= minQuotedValue && strings.Contains(word, value)) {
 			return ""
 		}
 	}
-	return value
+	return word
 }
+
+// minQuotedValue is the length from which a value found inside an identifier is taken
+// for a quotation: a shorter one is in many words by chance.
+const minQuotedValue = 4
 
 // lastCause is the message of the innermost error: the outer ones repeat the URL.
 func lastCause(err error) string {

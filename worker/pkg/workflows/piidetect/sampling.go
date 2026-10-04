@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"slices"
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -71,38 +72,90 @@ const (
 // The rows come in the random order of the sampling query, so that the first ones are a
 // draw among the rows read, without a draw of its own.
 type valuePicker struct {
-	values map[string][]string
+	// sendable are the columns whose values may be shown: those of the catalogue whose
+	// type is not binary.
+	sendable map[string]bool
+	values   map[string][]string
 }
 
-func newValuePicker() *valuePicker {
-	return &valuePicker{values: map[string][]string{}}
+// newValuePicker returns a picker for the columns of a table on an engine. A column of
+// a binary type is left out by its type in the catalogue, whatever the driver returns
+// for it: the blobs of MySQL and the image and rowversion of SQL Server arrive as texts.
+func newValuePicker(engine string, columns []*ColumnData) *valuePicker {
+	picker := &valuePicker{sendable: map[string]bool{}, values: map[string][]string{}}
+	for _, column := range columns {
+		if column != nil && !binaryType(engine, column.DataType) {
+			picker.sendable[column.Column] = true
+		}
+	}
+	return picker
 }
 
 func (p *valuePicker) add(row map[string]any) {
 	for column, value := range row {
 		picked := p.values[column]
-		if len(picked) >= maxValues {
+		if !p.sendable[column] || len(picked) >= maxValues {
 			continue
 		}
+		// A value that has no text form is not shown: among them a text that is not valid
+		// UTF-8, which is bytes whatever its column says.
 		text, ok := profile.TextOf(value)
 		if !ok {
 			continue
 		}
 		text = cutValue(strings.TrimSpace(text))
-		if text == "" || containsValue(picked, text) {
+		if text == "" || slices.Contains(picked, text) {
 			continue
 		}
 		p.values[column] = append(picked, text)
 	}
 }
 
-func containsValue(values []string, value string) bool {
-	for _, known := range values {
-		if known == value {
-			return true
-		}
+// The engines whose tables are scanned.
+const (
+	enginePostgres = "postgres"
+	engineMysql    = "mysql"
+	engineMssql    = "mssql"
+)
+
+// engineOf names the engine of a connection, "" for one whose tables are not scanned.
+func engineOf(connection *mgmtv1alpha1.Connection) string {
+	switch connection.GetConnectionConfig().GetConfig().(type) {
+	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
+		return enginePostgres
+	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
+		return engineMysql
+	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
+		return engineMssql
 	}
-	return false
+	return ""
+}
+
+// The types whose values are bytes, by the name each catalogue gives them: bytea and the
+// bit strings of PostgreSQL; the binary, blob, bit and spatial types of MySQL; binary,
+// varbinary, image, rowversion and the types SQL Server stores serialized.
+var binaryTypes = map[string]bool{
+	"bytea": true, "bit": true, "bit varying": true, "varbit": true,
+	"binary": true, "varbinary": true, "tinyblob": true, "blob": true, "mediumblob": true, "longblob": true,
+	"image": true, "rowversion": true, "hierarchyid": true,
+	"geometry": true, "geography": true, "point": true, "linestring": true, "polygon": true,
+	"multipoint": true, "multilinestring": true, "multipolygon": true, "geometrycollection": true,
+}
+
+// binaryType tells whether a type of the catalogue of an engine holds bytes. The name is
+// read without its length and without the marks of an array. On SQL Server, timestamp is
+// the earlier name of rowversion; elsewhere it is a moment.
+func binaryType(engine, dataType string) bool {
+	name := strings.ToLower(strings.TrimSpace(dataType))
+	if open := strings.IndexByte(name, '('); open >= 0 {
+		closing := strings.IndexByte(name, ')')
+		if closing < open {
+			closing = len(name) - 1
+		}
+		name = name[:open] + name[closing+1:]
+	}
+	name = strings.TrimSpace(strings.TrimPrefix(strings.TrimSuffix(strings.TrimSpace(name), "[]"), "_"))
+	return binaryTypes[name] || (engine == engineMssql && name == "timestamp")
 }
 
 // cutValue cuts a value to maxValueLength characters, the cut marked by its last one.

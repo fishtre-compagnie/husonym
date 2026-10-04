@@ -38,6 +38,34 @@ func Test_NewConfig(t *testing.T) {
 			Config{BaseURL: "https://proxy.example/v1", APIKey: "sk-1", Model: "gpt-4o-mini", MinConfidence: 0.5},
 		},
 		{
+			"the key of OpenAI is not sent to the endpoint of the setting: no key is said by setting none",
+			Settings{URL: "http://llama:8080/v1", Model: "m", OpenAIAPIKey: "sk-1", OpenAIBaseURL: "https://proxy.example/v1"},
+			Config{BaseURL: "http://llama:8080/v1", Model: "m", MinConfidence: 0.5},
+		},
+		{
+			"the key of the setting goes with the URL of the client library's variable",
+			Settings{APIKey: "local", Model: "m", OpenAIBaseURL: "https://proxy.example/v1", OpenAIAPIKey: "sk-1"},
+			Config{BaseURL: "https://proxy.example/v1", APIKey: "local", Model: "m", MinConfidence: 0.5},
+		},
+		{
+			"the organization and the project of OpenAI go to the OpenAI API only",
+			Settings{OpenAIAPIKey: "sk-1", OpenAIOrganization: "org-1", OpenAIProject: "proj-1"},
+			Config{APIKey: "sk-1", Model: "gpt-4o-mini", MinConfidence: 0.5, Organization: "org-1", Project: "proj-1"},
+		},
+		{
+			"and to no other endpoint",
+			Settings{
+				OpenAIBaseURL: "https://proxy.example/v1", OpenAIAPIKey: "sk-1",
+				OpenAIOrganization: "org-1", OpenAIProject: "proj-1",
+			},
+			Config{BaseURL: "https://proxy.example/v1", APIKey: "sk-1", Model: "gpt-4o-mini", MinConfidence: 0.5},
+		},
+		{
+			"a URL of the client library's variable without a key names no model",
+			Settings{OpenAIBaseURL: "https://proxy.example/v1"},
+			Config{MinConfidence: 0.5},
+		},
+		{
 			"the settings win over the client library's variables",
 			Settings{
 				URL: "http://llama:8080/v1", APIKey: "local", Model: "m",
@@ -87,6 +115,18 @@ func Test_NewConfig_RefusesWhatCannotWork(t *testing.T) {
 			Settings{URL: "llama:8080", Model: "m"},
 			"PII_DETECT_LLM_URL",
 		},
+		"a URL with a query, which would not be sent": {
+			Settings{URL: "http://llama:8080/v1?api-version=2", Model: "m"},
+			"must not hold a query",
+		},
+		"a URL with a user and a password, which would not be sent": {
+			Settings{URL: "http://user:secret@llama:8080/v1", Model: "m"},
+			"must not hold a user",
+		},
+		"the same in the client library's variable": {
+			Settings{OpenAIBaseURL: "https://user:secret@proxy.example/v1", OpenAIAPIKey: "sk-1"},
+			"must not hold a user",
+		},
 		"a threshold that is not a number": {
 			Settings{Model: "m", MinConfidence: "high"},
 			"PII_DETECT_LLM_MIN_CONFIDENCE",
@@ -107,19 +147,20 @@ func Test_NewConfig_RefusesWhatCannotWork(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := NewConfig(&tt.settings)
 			require.ErrorContains(t, err, tt.message)
+			require.NotContains(t, err.Error(), "secret", "the message does not repeat the URL")
 		})
 	}
 }
 
 func Test_Config_Enabled(t *testing.T) {
-	require.False(t, Config{}.Enabled())
-	require.False(t, Config{BaseURL: "http://llama:8080/v1", APIKey: "key"}.Enabled())
-	require.True(t, Config{Model: "m"}.Enabled())
+	require.False(t, (&Config{}).Enabled())
+	require.False(t, (&Config{BaseURL: "http://llama:8080/v1", APIKey: "key"}).Enabled())
+	require.True(t, (&Config{Model: "m"}).Enabled())
 }
 
 // The host is what the worker logs when it starts: where the requests go.
 func Test_Config_Host(t *testing.T) {
-	require.Equal(t, "api.openai.com", Config{Model: "m"}.Host())
-	require.Equal(t, "llama:8080", Config{BaseURL: "http://llama:8080/v1", Model: "m"}.Host())
-	require.Equal(t, "models.example", Config{BaseURL: "https://user:secret@models.example/v1?key=secret"}.Host())
+	require.Equal(t, "api.openai.com", (&Config{Model: "m"}).Host())
+	require.Equal(t, "llama:8080", (&Config{BaseURL: "http://llama:8080/v1", Model: "m"}).Host())
+	require.Equal(t, "models.example", (&Config{BaseURL: "https://user:secret@models.example/v1?key=secret"}).Host())
 }

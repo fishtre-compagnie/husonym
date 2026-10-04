@@ -89,6 +89,17 @@ func serve(ctx context.Context) error {
 	eelicense := license.NewProvider(license.SourceFromEnv(), logger)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
+	// The settings of PII detection are read before anything is dialed: a setting that
+	// cannot work is then the error an operator sees.
+	piidetectConfig, err := piiDetectConfig()
+	if err != nil {
+		return err
+	}
+	piidetectClassifier, err := piidetect_model.NewClassifier(&piidetectConfig.Model)
+	if err != nil {
+		return fmt.Errorf("unable to set up the model of PII detection: %w", err)
+	}
+
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-worker", logger)
 	if err != nil {
 		return fmt.Errorf("unable to initialize pyroscope from env: %w", err)
@@ -456,20 +467,16 @@ func serve(ctx context.Context) error {
 		husonymtyperegistry,
 	)
 
-	piidetectConfig, err := piiDetectConfig()
-	if err != nil {
-		return err
-	}
-	piidetectClassifier, err := piidetect_model.NewClassifier(piidetectConfig.Model)
-	if err != nil {
-		return fmt.Errorf("unable to set up the model of PII detection: %w", err)
-	}
 	// An operator reads here where the column names and what is sampled of a table go.
-	if piidetectConfig.Model.Enabled() {
+	switch {
+	case piidetectConfig.Model.Enabled():
 		logger.Info(fmt.Sprintf(
 			"PII detection asks the model %s at %s", piidetectConfig.Model.Model, piidetectConfig.Model.Host(),
 		))
-	} else {
+	case viper.GetString("OPENAI_BASE_URL") != "":
+		logger.Info("PII detection runs without a model: OPENAI_BASE_URL is set, and neither a key nor " +
+			"PII_DETECT_LLM_MODEL names a model to ask there")
+	default:
 		logger.Info("PII detection runs without a model")
 	}
 	piidetect.Register(
@@ -481,9 +488,9 @@ func serve(ctx context.Context) error {
 			conndatabuilder,
 			temporalClient.ScheduleClient(),
 			piidetectClassifier,
-			piidetectConfig,
+			&piidetectConfig,
 		),
-		piidetectConfig,
+		&piidetectConfig,
 	)
 
 	if err := w.Start(); err != nil {
@@ -518,12 +525,14 @@ func serve(ctx context.Context) error {
 // stop the worker here, with a message that names them.
 func piiDetectConfig() (piidetect.Config, error) {
 	modelConfig, err := piidetect_model.NewConfig(&piidetect_model.Settings{
-		URL:           viper.GetString("PII_DETECT_LLM_URL"),
-		APIKey:        viper.GetString("PII_DETECT_LLM_API_KEY"),
-		Model:         viper.GetString("PII_DETECT_LLM_MODEL"),
-		MinConfidence: viper.GetString("PII_DETECT_LLM_MIN_CONFIDENCE"),
-		OpenAIBaseURL: viper.GetString("OPENAI_BASE_URL"),
-		OpenAIAPIKey:  viper.GetString("OPENAI_API_KEY"),
+		URL:                viper.GetString("PII_DETECT_LLM_URL"),
+		APIKey:             viper.GetString("PII_DETECT_LLM_API_KEY"),
+		Model:              viper.GetString("PII_DETECT_LLM_MODEL"),
+		MinConfidence:      viper.GetString("PII_DETECT_LLM_MIN_CONFIDENCE"),
+		OpenAIBaseURL:      viper.GetString("OPENAI_BASE_URL"),
+		OpenAIAPIKey:       viper.GetString("OPENAI_API_KEY"),
+		OpenAIOrganization: viper.GetString("OPENAI_ORG_ID"),
+		OpenAIProject:      viper.GetString("OPENAI_PROJECT_ID"),
 	})
 	if err != nil {
 		return piidetect.Config{}, fmt.Errorf("the settings of PII detection cannot be used: %w", err)

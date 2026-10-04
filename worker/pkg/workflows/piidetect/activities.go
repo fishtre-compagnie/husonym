@@ -9,6 +9,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	husonymgob "github.com/fishtre-compagnie/husonym/internal/gob"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 )
 
@@ -17,6 +18,10 @@ const (
 	sampledRows = 200
 	// samplingTimeout bounds the reading of those rows.
 	samplingTimeout = 30 * time.Second
+	// heartbeatEvery is how often the model activity says that it is alive. The workflow
+	// gives it minutes between two heartbeats: several fit, so that one that is late
+	// does not end the attempt.
+	heartbeatEvery = 30 * time.Second
 )
 
 // Config is what a deployment sets. It is read once, when the worker starts.
@@ -64,6 +69,9 @@ type Activities struct {
 
 	tablesAtOnce    int
 	samplingTimeout time.Duration
+	// The model activity says that it is alive every heartbeatEvery, through heartbeat.
+	heartbeatEvery time.Duration
+	heartbeat      func(ctx context.Context, details ...any)
 }
 
 func NewActivities(
@@ -72,25 +80,23 @@ func NewActivities(
 	data connectiondata.ConnectionDataBuilder,
 	schedules client.ScheduleClient,
 	classifier *model.Classifier,
-	cfg Config,
+	cfg *Config,
 ) *Activities {
 	// The sampled rows arrive encoded, and decoding them needs the types of their values
 	// to be registered. The activities ask for it themselves rather than count on
 	// another package of the worker having done so.
 	husonymgob.RegisterGobTypes()
 
-	tablesAtOnce := cfg.TablesAtOnce
-	if tablesAtOnce <= 0 {
-		tablesAtOnce = defaultTablesAtOnce
-	}
 	return &Activities{
 		jobs:            jobs,
 		connections:     connections,
 		data:            data,
 		schedules:       schedules,
 		classifier:      classifier,
-		tablesAtOnce:    tablesAtOnce,
+		tablesAtOnce:    tablesAtOnceOr(cfg.TablesAtOnce, defaultTablesAtOnce),
 		samplingTimeout: samplingTimeout,
+		heartbeatEvery:  heartbeatEvery,
+		heartbeat:       activity.RecordHeartbeat,
 	}
 }
 

@@ -3,6 +3,10 @@ package piidetect
 import (
 	"context"
 	"errors"
+	"fmt"
+	"maps"
+	"slices"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -11,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/temporal"
 )
 
 type DetectPiiLLMRequest struct {
@@ -61,8 +66,13 @@ type modelProgress struct {
 // column a few values, bounded in number and in length: values are never carried by a
 // payload. When they cannot be read the model is asked without them.
 //
-// After each batch a heartbeat records what was learned; an attempt that follows another
-// asks only the batches that are missing. Nothing of a request or of an answer is logged.
+// The activity says that it is alive at a steady pace, also while a request is in flight
+// or waited for, each time with what it has learned so far; an attempt that follows
+// another asks only the batches that are missing. Nothing of a request or of an answer is
+// logged.
+//
+// A table for which most columns are left without a valid answer was not scanned by the
+// model: the activity then fails, see unansweredError.
 func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest) (*DetectPiiLLMResponse, error) {
 	if a.classifier == nil {
 		return &DetectPiiLLMResponse{PiiColumns: map[string]report.ModelFinding{}, Status: report.ModelNone}, nil
@@ -93,9 +103,10 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 			Profile:  column.Profile,
 		})
 	}
+	table := model.Table{Name: req.TableName, Hints: req.UserPrompt}
 	if req.Input == report.InputValues && req.ConnectionId != "" {
 		if a.addValues(ctx, req, columns, logger) {
-			response.Input = report.InputValues
+			response.Input, table.SendsValues = report.InputValues, true
 		} else if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -103,7 +114,6 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 	if utf8.RuneCountInString(req.UserPrompt) > model.MaxHints {
 		logger.Warn("the user prompt of the job is longer than what the model is given: it is cut", "limit", model.MaxHints)
 	}
-	table := model.Table{Schema: req.TableSchema, Name: req.TableName, Hints: req.UserPrompt}
 
 	var progress modelProgress
 	if activity.HasHeartbeatDetails(ctx) {
@@ -111,6 +121,16 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 			progress = modelProgress{}
 		}
 	}
+	// What the heartbeats carry: the progress as of the last batch that was answered.
+	var mu sync.Mutex
+	learned := progress.clone()
+	stop := a.keepAlive(ctx, func() modelProgress {
+		mu.Lock()
+		defer mu.Unlock()
+		return learned
+	})
+	defer stop()
+
 	batches := model.Batches(columns)
 	ignored := 0
 	for i := min(progress.Batches, len(batches)); i < len(batches); i++ {
@@ -144,7 +164,17 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 		progress.Unanswered = append(progress.Unanswered, result.Unanswered...)
 		ignored += result.Ignored
 		progress.Batches = i + 1
-		activity.RecordHeartbeat(ctx, progress)
+		mu.Lock()
+		learned = progress.clone()
+		mu.Unlock()
+		a.heartbeat(ctx, learned)
+	}
+	if err := unansweredError(len(progress.Unanswered), len(columns)); err != nil {
+		logger.Warn(
+			"the model gave no valid answer for most columns of the table",
+			"columns", len(columns), "unanswered", len(progress.Unanswered),
+		)
+		return nil, err
 	}
 
 	for column, finding := range progress.Findings {
@@ -160,6 +190,61 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 		logger.Warn("the model answered for columns it was not asked about: these answers are ignored", "answers", ignored)
 	}
 	return response, nil
+}
+
+// clone copies the progress, so that a heartbeat does not read what a batch is writing.
+func (p modelProgress) clone() modelProgress {
+	return modelProgress{
+		Batches:        p.Batches,
+		Findings:       maps.Clone(p.Findings),
+		BelowThreshold: slices.Clone(p.BelowThreshold),
+		Unanswered:     slices.Clone(p.Unanswered),
+	}
+}
+
+// keepAlive records a heartbeat every heartbeatEvery until stop is called, each with the
+// progress of the moment. The heartbeat timeout of the activity then only ends an attempt
+// whose worker is gone: a request may last longer than that timeout, and so may the waits
+// between the tries of a request.
+func (a *Activities) keepAlive(ctx context.Context, progress func() modelProgress) (stop func()) {
+	done := make(chan struct{})
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		ticker := time.NewTicker(a.heartbeatEvery)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				a.heartbeat(ctx, progress())
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-stopped
+	}
+}
+
+// unansweredError is the failure of a table whose model left most columns without a
+// valid answer, nil otherwise. "Most" is more than half: up to half, what the model said
+// of the other columns is worth storing and the unanswered ones are listed in the report;
+// past it the report would rest on the rules for most of the table while saying that the
+// model answered. The failure is not retried: at a temperature of 0 the answers would be
+// the same.
+func unansweredError(unanswered, columns int) error {
+	if unanswered*2 <= columns {
+		return nil
+	}
+	return temporal.NewNonRetryableApplicationError(
+		fmt.Sprintf("the model gave no valid answer for %d of the %d columns of the table", unanswered, columns),
+		errorTypeModelUnanswered,
+		nil,
+	)
 }
 
 // addValues reads rows of the table and gives each column the values it may show. It
@@ -183,7 +268,7 @@ func (a *Activities) addValues(
 		logger.Warn("the source could not be opened: "+without, "error", err)
 		return false
 	}
-	picker := newValuePicker()
+	picker := newValuePicker(engineOf(connection), req.ColumnData)
 	stream, err := a.sample(ctx, data, req.TableSchema, req.TableName, picker.add)
 	if err != nil {
 		// The error of a row that could not be read may quote the row: it is not logged.

@@ -70,6 +70,7 @@ func Test_TableReport_StoredFormWithEveryMember(t *testing.T) {
 			Input:          "profiles",
 			Model:          "local-model",
 			ModelStatus:    "partial",
+			Sources:        []string{SourceRules, SourceModel},
 			Unanswered:     []string{"note"},
 			BelowThreshold: []Dismissed{{ColumnName: "iban", Category: Financial, Confidence: 0.3}},
 		},
@@ -87,6 +88,7 @@ func Test_TableReport_StoredFormWithEveryMember(t *testing.T) {
 			"input": "profiles",
 			"model": "local-model",
 			"model_status": "partial",
+			"sources": ["rules", "model"],
 			"unanswered": ["note"],
 			"below_threshold": [{"column_name": "iban", "category": "financial", "confidence": 0.3}]
 		}

@@ -3,6 +3,9 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
@@ -21,10 +24,14 @@ const (
 	// requestTimeout bounds one request. A local model on a processor may take tens of
 	// seconds for a batch.
 	requestTimeout = 2 * time.Minute
+
+	// maxAnswerBytes bounds the body of an answer. The answer about a batch is a few
+	// kilobytes; a megabyte leaves room for a reasoning block before it.
+	maxAnswerBytes = 1 << 20
 )
 
-// A request that carries values is tried this many times, after these waits, when its
-// failure may heal.
+// A request of a table that sends values is tried this many times, after these waits,
+// when its failure may heal.
 var triesWithValues = []time.Duration{5 * time.Second, 10 * time.Second}
 
 // Column is what the model is told of a column.
@@ -36,11 +43,16 @@ type Column struct {
 	Values []string
 }
 
-// Table is what the model is told of the table of the columns.
+// Table is what the model is told of the table of the columns, and how its requests are
+// made.
 type Table struct {
-	Schema, Name string
+	Name string
 	// Hints are the notes of the job's owner about the schema.
 	Hints string
+	// SendsValues says that columns of the table carry values. Every request of the
+	// table then follows the rules of values, whether or not its own columns hold some:
+	// its instructions say so, and a failed request is repeated in place.
+	SendsValues bool
 }
 
 // Classifier asks the configured model.
@@ -53,23 +65,31 @@ type Classifier struct {
 
 // NewClassifier returns the classifier of a configuration, nil when it names no model.
 //
-// The client does not retry by itself: the caller's retries are the only ones, so that a
-// failed request is counted once.
-func NewClassifier(cfg Config) (*Classifier, error) {
+// The client is given the URL, the key and the account of the configuration and nothing
+// else: it does not read the environment, so that a key never goes to a host the
+// configuration did not pair it with. It does not retry by itself: the caller's retries
+// are the only ones, so that a failed request is counted once.
+func NewClassifier(cfg *Config) (*Classifier, error) {
 	if !cfg.Enabled() {
 		return nil, nil
 	}
-	options := []option.RequestOption{option.WithMaxRetries(0)}
-	if cfg.BaseURL != "" {
-		options = append(options, option.WithBaseURL(cfg.BaseURL))
+	options := []option.RequestOption{
+		option.WithBaseURL(cfg.baseURL()),
+		option.WithHTTPClient(&http.Client{Transport: boundedTransport{}}),
+		option.WithMaxRetries(0),
 	}
 	if cfg.APIKey != "" {
 		options = append(options, option.WithAPIKey(cfg.APIKey))
 	}
-	client := openai.NewClient(options...)
+	if cfg.Organization != "" {
+		options = append(options, option.WithOrganization(cfg.Organization))
+	}
+	if cfg.Project != "" {
+		options = append(options, option.WithProject(cfg.Project))
+	}
 	return &Classifier{
-		cfg:            cfg,
-		chat:           client.Chat.Completions,
+		cfg:            *cfg,
+		chat:           openai.NewChatCompletionService(options...),
 		requestTimeout: requestTimeout,
 		wait:           wait,
 	}, nil
@@ -91,12 +111,54 @@ func wait(ctx context.Context, d time.Duration) error {
 	}
 }
 
+type statusKey struct{}
+
+// boundedTransport notes the status of an answer for the request that asked, and bounds
+// the size of its body.
+type boundedTransport struct{}
+
+func (boundedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	if status, ok := req.Context().Value(statusKey{}).(*int); ok {
+		*status = resp.StatusCode
+	}
+	resp.Body = &boundedBody{body: resp.Body, left: maxAnswerBytes}
+	return resp, nil
+}
+
+type boundedBody struct {
+	body io.ReadCloser
+	left int
+}
+
+func (b *boundedBody) Read(p []byte) (int, error) {
+	if b.left <= 0 {
+		return 0, fmt.Errorf("the answer of the model endpoint is larger than %d bytes", maxAnswerBytes)
+	}
+	if len(p) > b.left {
+		p = p[:b.left]
+	}
+	n, err := b.body.Read(p)
+	b.left -= n
+	return n, err
+}
+
+func (b *boundedBody) Close() error {
+	return b.body.Close()
+}
+
 // Batches cuts the columns of a table into the requests they are asked in, in their
 // order.
 func Batches(columns []Column) [][]Column {
 	size := batchSize
-	if carryValues(columns) {
-		size = batchSizeWithValues
+	for _, column := range columns {
+		if len(column.Values) > 0 {
+			size = batchSizeWithValues
+			break
+		}
 	}
 	var batches [][]Column
 	for len(columns) > size {
@@ -109,22 +171,13 @@ func Batches(columns []Column) [][]Column {
 	return batches
 }
 
-func carryValues(columns []Column) bool {
-	for _, column := range columns {
-		if len(column.Values) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 // Classify asks the model about one batch. A column without a valid answer is asked once
 // more, with the others in its case, in one request; what is still missing is returned as
 // unanswered. The error is an *Error, or the error of a context that ended.
 //
-// A request that carries values is repeated in place when its failure may heal. The
-// values of a table are picked once: the caller cannot run again without picking others,
-// so it leaves the repeats to this call, which sends the very same request.
+// A request of a table that sends values is repeated in place when its failure may heal.
+// The values of a table are picked once: the caller cannot run again without picking
+// others, so it leaves the repeats to this call, which sends the very same request.
 func (c *Classifier) Classify(ctx context.Context, t Table, batch []Column) (*Result, error) {
 	result := &Result{}
 	missing, err := c.ask(ctx, t, batch, result)
@@ -151,7 +204,6 @@ func (c *Classifier) Classify(ctx context.Context, t Table, batch []Column) (*Re
 // ask sends one request about the columns, files their valid answers in result, and
 // returns the columns that have none.
 func (c *Classifier) ask(ctx context.Context, t Table, columns []Column, result *Result) ([]Column, error) {
-	withValues := carryValues(columns)
 	content, err := userMessage(t, columns)
 	if err != nil {
 		return nil, &Error{Reason: ReasonRejected, Detail: "the request could not be written"}
@@ -160,7 +212,7 @@ func (c *Classifier) ask(ctx context.Context, t Table, columns []Column, result 
 		Model:       c.cfg.Model,
 		Temperature: openai.Float(0),
 		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(systemMessage(withValues)),
+			openai.SystemMessage(systemMessage(t.SendsValues)),
 			openai.UserMessage(content),
 		},
 		ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
@@ -173,8 +225,12 @@ func (c *Classifier) ask(ctx context.Context, t Table, columns []Column, result 
 			},
 		},
 	}
+	var sent []string
+	for _, column := range columns {
+		sent = append(sent, column.Values...)
+	}
 
-	completion, err := c.send(ctx, &params, withValues)
+	completion, err := c.send(ctx, &params, t.SendsValues, sent)
 	if err != nil {
 		return nil, err
 	}
@@ -196,18 +252,22 @@ func (c *Classifier) ask(ctx context.Context, t Table, columns []Column, result 
 func (c *Classifier) send(
 	ctx context.Context,
 	params *openai.ChatCompletionNewParams,
-	withValues bool,
+	sendsValues bool,
+	sent []string,
 ) (*openai.ChatCompletion, error) {
 	var waits []time.Duration
-	if withValues {
+	if sendsValues {
 		waits = triesWithValues
 	}
 	for try := 0; ; try++ {
-		completion, err := c.chat.New(ctx, *params, option.WithRequestTimeout(c.requestTimeout))
+		status := 0
+		completion, err := c.chat.New(
+			context.WithValue(ctx, statusKey{}, &status), *params, option.WithRequestTimeout(c.requestTimeout),
+		)
 		if err == nil {
 			return completion, nil
 		}
-		failed := failure(ctx, err, withValues)
+		failed := failure(ctx, err, status, sent)
 		var modelErr *Error
 		if !errors.As(failed, &modelErr) || modelErr.Permanent() || try >= len(waits) {
 			return nil, failed

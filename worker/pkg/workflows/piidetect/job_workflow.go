@@ -119,6 +119,7 @@ func (w *JobWorkflow) scan(
 			Sampling:           config.GetDataSampling().GetIsEnabled(),
 			UserPrompt:         config.GetUserPrompt(),
 			ModelInput:         details.ModelInput,
+			MarksIncomplete:    true,
 		},
 	).Get(ctx, &listed)
 	if err != nil {
@@ -128,13 +129,7 @@ func (w *JobWorkflow) scan(
 	// The number recorded by the first activity of the run is the one every replay of
 	// the run reads. A run whose history holds none uses the number its worker was
 	// registered with.
-	tablesAtOnce := details.TablesAtOnce
-	if tablesAtOnce <= 0 {
-		tablesAtOnce = w.tablesAtOnce
-	}
-	if tablesAtOnce <= 0 {
-		tablesAtOnce = defaultTablesAtOnce
-	}
+	tablesAtOnce := tablesAtOnceOr(details.TablesAtOnce, tablesAtOnceOr(w.tablesAtOnce, defaultTablesAtOnce))
 	outcome := scanTables(ctx, &tableScan{
 		jobId:        jobId,
 		details:      details,
@@ -170,6 +165,15 @@ func (w *JobWorkflow) scan(
 	}
 	logger.Info("PII detection completed")
 	return &JobPiiDetectResponse{ReportKey: saved.Key}, nil
+}
+
+// tablesAtOnceOr returns a number of tables to scan at once when it can be worked with,
+// and otherwise the one to use in its place.
+func tablesAtOnceOr(tablesAtOnce, otherwise int) int {
+	if tablesAtOnce > 0 {
+		return tablesAtOnce
+	}
+	return otherwise
 }
 
 // scanOutcome is what became of the tables of a run.

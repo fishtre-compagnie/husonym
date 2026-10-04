@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -62,7 +63,7 @@ func newTableEnv(t *testing.T) (*testsuite.TestWorkflowEnvironment, *Activities)
 	var ts testsuite.WorkflowTestSuite
 	env := ts.NewTestWorkflowEnvironment()
 	env.SetTestTimeout(30 * time.Second)
-	activities := NewActivities(nil, nil, nil, nil, nil, Config{})
+	activities := NewActivities(nil, nil, nil, nil, nil, &Config{})
 	env.RegisterActivity(activities.GetColumnData)
 	env.RegisterActivity(activities.DetectPiiRegex)
 	env.RegisterActivity(activities.DetectPiiLLM)
@@ -141,6 +142,7 @@ func Test_TablePiiDetect_ScansATable(t *testing.T) {
 		ScannedColumns: []string{"id", "email", "c17", "note"},
 		Scan: &report.Scan{
 			SampledRows: 200, Input: report.InputProfiles, Model: "local-model", ModelStatus: report.ModelPartial,
+			Sources:        []string{report.SourceRules, report.SourceModel},
 			Unanswered:     []string{"id"},
 			BelowThreshold: []report.Dismissed{{ColumnName: "c17", Category: report.Financial, Confidence: 0.3}},
 		},
@@ -170,7 +172,8 @@ func Test_TablePiiDetect_WithAnswersThatHoldNoneOfTheOptionalMembers(t *testing.
 	env.OnActivity(activities.DetectPiiLLM, mock.Anything, mock.Anything).
 		Return(&DetectPiiLLMResponse{PiiColumns: map[string]report.ModelFinding{}}, nil)
 	env.OnActivity(activities.SaveTablePiiDetectReport, mock.Anything, mock.MatchedBy(func(req *SaveTablePiiDetectReportRequest) bool {
-		return req.Scan != nil && req.Scan.ModelStatus == report.ModelAnswered && req.Scan.Input == "" && req.Scan.SampledRows == 0
+		return req.Scan != nil && req.Scan.ModelStatus == report.ModelAnswered && req.Scan.Input == "" && req.Scan.SampledRows == 0 &&
+			slices.Equal(req.Scan.Sources, []string{report.SourceRules, report.SourceModel})
 	})).Return(&SaveTablePiiDetectReportResponse{Key: tableKey}, nil).Once()
 
 	env.ExecuteWorkflow(TablePiiDetect, tableRequest())
@@ -191,7 +194,9 @@ func Test_TablePiiDetect_NothingFound(t *testing.T) {
 	env.OnActivity(activities.DetectPiiRegex, mock.Anything, mock.Anything).Return(&DetectPiiRegexResponse{}, nil)
 	env.OnActivity(activities.DetectPiiLLM, mock.Anything, mock.Anything).Return(&DetectPiiLLMResponse{Status: report.ModelNone}, nil)
 	env.OnActivity(activities.SaveTablePiiDetectReport, mock.Anything, mock.MatchedBy(func(req *SaveTablePiiDetectReportRequest) bool {
-		return req.Report != nil && len(req.Report) == 0 && req.Scan.ModelStatus == report.ModelNone
+		// A table scanned without a model says that its report rests on the rules alone.
+		return req.Report != nil && len(req.Report) == 0 && req.Scan.ModelStatus == report.ModelNone &&
+			slices.Equal(req.Scan.Sources, []string{report.SourceRules})
 	})).Return(&SaveTablePiiDetectReportResponse{Key: tableKey}, nil).Once()
 
 	env.ExecuteWorkflow(TablePiiDetect, tableRequest())
@@ -276,7 +281,8 @@ func Test_TablePiiDetect_AFailedModelIsTolerated(t *testing.T) {
 		})
 	env.OnActivity(activities.SaveTablePiiDetectReport, mock.Anything, mock.MatchedBy(func(req *SaveTablePiiDetectReportRequest) bool {
 		return len(req.Report) == 1 && req.Report["email"].Regex != nil && req.Report["email"].LLM == nil &&
-			req.Scan.ModelStatus == report.ModelFailed && req.Scan.SampledRows == 200 && req.Scan.Input == ""
+			req.Scan.ModelStatus == report.ModelFailed && req.Scan.SampledRows == 200 && req.Scan.Input == "" &&
+			slices.Equal(req.Scan.Sources, []string{report.SourceRules})
 	})).Return(&SaveTablePiiDetectReportResponse{Key: tableKey}, nil).Once()
 
 	env.ExecuteWorkflow(TablePiiDetect, tableRequest())
@@ -369,6 +375,24 @@ func Test_TablePiiDetect_CanceledWhileTheModelIsAsked(t *testing.T) {
 			env.CancelWorkflow()
 			return nil, errors.New("interrupted")
 		})
+
+	env.ExecuteWorkflow(TablePiiDetect, tableRequest())
+
+	require.True(t, env.IsWorkflowCompleted())
+	require.True(t, temporal.IsCanceledError(env.GetWorkflowError()), "%v", env.GetWorkflowError())
+	env.AssertNotCalled(t, "SaveTablePiiDetectReport", mock.Anything, mock.Anything)
+	require.Empty(t, versions.all())
+}
+
+// A model activity that ends canceled is not a failure of the model to tolerate, whether
+// or not the run itself was asked to cancel: the table ends on it, and no version is read.
+func Test_TablePiiDetect_AModelActivityThatEndsCanceled(t *testing.T) {
+	env, activities := newTableEnv(t)
+	versions := watchVersions(env)
+	env.OnActivity(activities.GetColumnData, mock.Anything, mock.Anything).Return(sampledColumns(), nil)
+	env.OnActivity(activities.DetectPiiRegex, mock.Anything, mock.Anything).Return(&DetectPiiRegexResponse{}, nil)
+	env.OnActivity(activities.DetectPiiLLM, mock.Anything, mock.Anything).
+		Return(nil, temporal.NewCanceledError("the worker is stopping"))
 
 	env.ExecuteWorkflow(TablePiiDetect, tableRequest())
 

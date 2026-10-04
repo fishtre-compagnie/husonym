@@ -17,6 +17,12 @@ const (
 	InputValues   = "values"
 )
 
+// The detections a report rests on, as stored in Scan.Sources.
+const (
+	SourceRules = "rules"
+	SourceModel = "model"
+)
+
 // What became of the model step of a table, as stored in Scan.ModelStatus.
 const (
 	ModelAnswered = "answered" // every column has a valid answer
@@ -96,6 +102,11 @@ type Scan struct {
 	// BelowThreshold are the answers of the model that its confidence kept out of the
 	// report.
 	BelowThreshold []Dismissed `json:"below_threshold,omitempty"`
+	// Sources are the detections the report rests on: SourceRules alone when no model
+	// was asked or when it could not be, SourceRules and SourceModel otherwise. A report
+	// that rests on the rules alone finds no personal data under a neutral column name
+	// unless the values have a format the rules check.
+	Sources []string `json:"sources,omitempty"`
 }
 
 type Dismissed struct {

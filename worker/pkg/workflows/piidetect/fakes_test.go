@@ -107,7 +107,22 @@ var (
 			Config: &mgmtv1alpha1.ConnectionConfig_MongoConfig{MongoConfig: &mgmtv1alpha1.MongoConnectionConfig{}},
 		},
 	}
-	connections = fakeConnections{"connection-1": postgresConnection, "connection-mongo": mongoConnection}
+	mysqlConnection = &mgmtv1alpha1.Connection{
+		Id: "connection-mysql",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_MysqlConfig{MysqlConfig: &mgmtv1alpha1.MysqlConnectionConfig{}},
+		},
+	}
+	mssqlConnection = &mgmtv1alpha1.Connection{
+		Id: "connection-mssql",
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_MssqlConfig{MssqlConfig: &mgmtv1alpha1.MssqlConnectionConfig{}},
+		},
+	}
+	connections = fakeConnections{
+		"connection-1": postgresConnection, "connection-mongo": mongoConnection,
+		"connection-mysql": mysqlConnection, "connection-mssql": mssqlConnection,
+	}
 )
 
 // source returns the reader of the data of the connections, and its builder.
@@ -178,7 +193,7 @@ func newActivityRun(t *testing.T, activities *Activities) *activityRun {
 	var ts testsuite.WorkflowTestSuite
 	ts.SetLogger(run.logs)
 	run.env = ts.NewTestActivityEnvironment()
-	Register(activityRegistry{run.env}, nil, activities, Config{})
+	Register(activityRegistry{run.env}, nil, activities, &Config{})
 	run.env.SetOnActivityHeartbeatListener(func(_ *activity.Info, details converter.EncodedValues) {
 		var raw any
 		_ = details.Get(&raw)

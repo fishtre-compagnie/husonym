@@ -34,7 +34,7 @@ func columnRead(t *testing.T) (*activityRun, *connectiondata.MockConnectionDataS
 	t.Helper()
 	builder, data := source(t)
 	data.EXPECT().GetTableSchema(mock.Anything, "public", "users").Return(usersCatalogue(), nil).Maybe()
-	return newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{})), data
+	return newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{})), data
 }
 
 func usersRequest(sample bool) *GetColumnDataRequest {
@@ -141,7 +141,7 @@ func Test_GetColumnData_ASamplingThatLastsTooLong(t *testing.T) {
 			<-ctx.Done()
 			return ctx.Err()
 		})
-	activities := NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{})
+	activities := NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{})
 	require.Equal(t, 30*time.Second, activities.samplingTimeout)
 	activities.samplingTimeout = 20 * time.Millisecond
 	run := newActivityRun(t, activities)
@@ -183,7 +183,7 @@ func Test_GetColumnData_AVeryWideTable(t *testing.T) {
 		builder, data := source(t)
 		data.EXPECT().GetTableSchema(mock.Anything, "public", "users").Return(catalogue, nil)
 		sends(data, []map[string]any{row, row, row}, nil)
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
 
 		response, _, err := execute[GetColumnDataResponse](t, run, "GetColumnData", usersRequest(true))
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func Test_GetColumnData_AVeryWideTable(t *testing.T) {
 func Test_GetColumnData_Failures(t *testing.T) {
 	t.Run("a connection whose tables cannot be scanned", func(t *testing.T) {
 		builder := connectiondata.NewMockConnectionDataBuilder(t) // never asked
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
 		request := usersRequest(true)
 		request.ConnectionId = "connection-mongo"
 		_, _, err := execute[GetColumnDataResponse](t, run, "GetColumnData", request)
@@ -205,7 +205,7 @@ func Test_GetColumnData_Failures(t *testing.T) {
 	t.Run("a reader that cannot read columns", func(t *testing.T) {
 		builder, data := source(t)
 		data.EXPECT().GetTableSchema(mock.Anything, "public", "users").Return(nil, errors.ErrUnsupported)
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
 		_, _, err := execute[GetColumnDataResponse](t, run, "GetColumnData", usersRequest(false))
 		requireNotRetried(t, err, "UnsupportedSource")
 	})
@@ -213,7 +213,7 @@ func Test_GetColumnData_Failures(t *testing.T) {
 	t.Run("columns that cannot be read fail the activity, which is retried", func(t *testing.T) {
 		builder, data := source(t)
 		data.EXPECT().GetTableSchema(mock.Anything, "public", "users").Return(nil, errors.New("connection refused"))
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
 		_, _, err := execute[GetColumnDataResponse](t, run, "GetColumnData", usersRequest(true))
 		var appErr *temporal.ApplicationError
 		require.ErrorAs(t, err, &appErr)
@@ -224,7 +224,7 @@ func Test_GetColumnData_Failures(t *testing.T) {
 
 // The rules read the name, the type and the profile of each column.
 func Test_DetectPiiRegex(t *testing.T) {
-	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, Config{}))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, nil, &Config{}))
 
 	response, payload, err := execute[DetectPiiRegexResponse](t, run, "DetectPiiRegex", &DetectPiiRegexRequest{ColumnData: []*ColumnData{
 		{Column: "id", DataType: "uuid"},
@@ -257,7 +257,7 @@ func Test_DetectPiiRegex(t *testing.T) {
 
 func Test_SaveTablePiiDetectReport(t *testing.T) {
 	jobs := &fakeJobs{}
-	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, Config{}))
+	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
 	parent := "run-1"
 
 	// With every member.
@@ -304,7 +304,7 @@ func Test_SaveTablePiiDetectReport(t *testing.T) {
 
 func Test_SaveTablePiiDetectReport_FailsWhenTheReportCannotBeStored(t *testing.T) {
 	jobs := &fakeJobs{setErr: connect.NewError(connect.CodeUnavailable, errors.New("connection refused"))}
-	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, Config{}))
+	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
 	_, _, err := execute[SaveTablePiiDetectReportResponse](t, run, "SaveTablePiiDetectReport", &SaveTablePiiDetectReportRequest{
 		AccountId: "account-1", TableSchema: "public", TableName: "users",
 	})

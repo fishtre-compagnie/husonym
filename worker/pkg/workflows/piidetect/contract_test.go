@@ -41,7 +41,7 @@ func functionName(function any) string {
 // its workflow. The API reads the two workflow names as well.
 func Test_Register_KeepsTheRegisteredNames(t *testing.T) {
 	names := &registered{}
-	Register(names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, Config{}), Config{})
+	Register(names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, &Config{}), &Config{})
 
 	require.Equal(t, []string{"JobPiiDetect", "TablePiiDetect"}, names.workflows)
 	require.Equal(t, []string{
@@ -170,10 +170,10 @@ func Test_SerializedForms(t *testing.T) {
 						IncludeAll: &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect_IncludeAll{},
 					},
 				},
-				Sampling: true, UserPrompt: "notes", ModelInput: "values",
+				Sampling: true, UserPrompt: "notes", ModelInput: "values", MarksIncomplete: true,
 			},
 			`{"AccountId":"","JobId":"","SourceConnectionId":"","Filter":{"includeAll":{}},"IncrementalConfig":null,` +
-				`"Sampling":true,"UserPrompt":"notes","ModelInput":"values"}`,
+				`"Sampling":true,"UserPrompt":"notes","ModelInput":"values","MarksIncomplete":true}`,
 		},
 		{
 			"the table listing's output",
@@ -268,10 +268,13 @@ func Test_SerializedForms(t *testing.T) {
 			&SaveTablePiiDetectReportRequest{
 				AccountId: "account-1", TableSchema: "public", TableName: "users",
 				Report: map[string]report.Combined{}, ScannedColumns: []string{},
-				Scan: &report.Scan{SampledRows: 200, Input: "values", Model: "local-model", ModelStatus: "answered"},
+				Scan: &report.Scan{
+					SampledRows: 200, Input: "values", Model: "local-model", ModelStatus: "answered",
+					Sources: []string{"rules", "model"},
+				},
 			},
 			`{"ParentRunId":null,"AccountId":"account-1","TableSchema":"public","TableName":"users","Report":{},"ScannedColumns":[],` +
-				`"Scan":{"sampled_rows":200,"input":"values","model":"local-model","model_status":"answered"}}`,
+				`"Scan":{"sampled_rows":200,"input":"values","model":"local-model","model_status":"answered","sources":["rules","model"]}}`,
 		},
 		{"the report save's output", &SaveTablePiiDetectReportResponse{Key: contractKey}, `{"Key":` + contractKeyJSON + `}`},
 	}

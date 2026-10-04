@@ -248,10 +248,12 @@ func Test_Table_KindsOfValues(t *testing.T) {
 	table := newTestTable()
 	addValues(table, "bytes", []byte("abc"))
 	addValues(table, "raw", []byte{0xff, 0xfe})
+	addValues(table, "rawtext", "\xff\xfe bytes that a driver returned as a text")
 	addValues(table, "bits", &husonymtypes.Bits{Bytes: []byte{1}, Len: 3})
 	addValues(table, "list", &husonymtypes.HusonymArray{})
 	require.Equal(t, KindText, table.Profile("bytes").Kind)
 	require.Equal(t, KindBinary, table.Profile("raw").Kind)
+	require.Equal(t, KindBinary, table.Profile("rawtext").Kind)
 	require.Equal(t, KindBinary, table.Profile("bits").Kind)
 	require.Equal(t, KindArray, table.Profile("list").Kind)
 }
@@ -399,6 +401,7 @@ func Test_TextOf(t *testing.T) {
 		{[]any{1, "two"}, `[1,"two"]`, true},
 		{nil, "", false},
 		{[]byte{0xff, 0xfe}, "", false},
+		{"text that is not \xff\xfe UTF-8", "", false},
 		{&husonymtypes.Binary{Bytes: []byte("abc")}, "", false},
 		{&husonymtypes.Bits{Bytes: []byte{1}, Len: 1}, "", false},
 		{&husonymtypes.Interval{Days: 1}, "", false},

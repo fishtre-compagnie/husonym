@@ -15,6 +15,7 @@ const (
 	errorTypeNotPiiDetectJob   = "NotPiiDetectJob"
 	errorTypeUnsupportedSource = "UnsupportedSource"
 	errorTypeModelRejected     = "ModelRejected"
+	errorTypeModelUnanswered   = "ModelUnanswered"
 	errorTypeIncompleteScan    = "ScanIncomplete"
 )
 

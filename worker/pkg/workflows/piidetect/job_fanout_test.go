@@ -4,6 +4,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,19 +109,35 @@ func Test_JobPiiDetect_ReadsNoSettingOfTheProcess(t *testing.T) {
 }
 
 // The files that hold workflow code import nothing that reads the environment or the
-// settings of the process.
+// settings of the process, nor the client of the model. They are found, not listed: every
+// file of the package that imports the workflow API of Temporal.
 func Test_WorkflowCode_ImportsNoSettingsReader(t *testing.T) {
-	for _, file := range []string{"job_workflow.go", "job_fanout.go", "table_workflow.go", "options.go", "versions.go"} {
-		parsed, err := parser.ParseFile(token.NewFileSet(), filepath.Join(".", file), nil, parser.ImportsOnly)
+	files, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+	var workflowFiles []string
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		parsed, err := parser.ParseFile(token.NewFileSet(), file, nil, parser.ImportsOnly)
 		require.NoError(t, err)
+		var imports []string
 		for _, imported := range parsed.Imports {
 			path, err := strconv.Unquote(imported.Path.Value)
 			require.NoError(t, err)
+			imports = append(imports, path)
+		}
+		if !slices.Contains(imports, "go.temporal.io/sdk/workflow") {
+			continue
+		}
+		workflowFiles = append(workflowFiles, file)
+		for _, path := range imports {
 			require.NotEqual(t, "os", path, file)
 			require.False(t, strings.Contains(path, "viper"), "%s imports %s", file, path)
 			require.False(t, strings.HasSuffix(path, "/model"), "%s imports %s", file, path)
 		}
 	}
+	require.Subset(t, workflowFiles, []string{"job_workflow.go", "job_fanout.go", "table_workflow.go", "options.go"})
 }
 
 // The id of the run of a table is the id of the job run, the name of the table and the

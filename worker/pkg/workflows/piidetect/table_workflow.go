@@ -80,11 +80,8 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 		return nil, err
 	}
 
-	// ShouldSample stays false whatever the job says. In a deployment whose workers are
-	// not all of one version, the activity may run on a worker that reads that flag and
-	// answers it with values that nothing bounds. Values are asked for through Input,
-	// which only an activity that bounds them knows; the connection is given with it and
-	// not otherwise.
+	// ShouldSample is never set. Values are asked for through Input, and the connection
+	// is given with it and not otherwise.
 	modelRequest := &DetectPiiLLMRequest{
 		TableSchema: req.TableSchema,
 		TableName:   req.TableName,
@@ -104,7 +101,8 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 	).Get(ctx, &byModel)
 	modelStatus := ""
 	if err != nil {
-		if temporal.IsCanceledError(err) || ctx.Err() != nil {
+		// An activity that ends canceled did not fail: the run is ending.
+		if temporal.IsCanceledError(err) {
 			return nil, err
 		}
 		// What the rules found does not depend on the model. The version is only read
@@ -124,7 +122,14 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 	for _, column := range columns.ColumnData {
 		scannedColumns = append(scannedColumns, column.Column)
 	}
+	// The report says what it rests on: the rules alone when no model is configured or
+	// when it could not be asked.
+	sources := []string{report.SourceRules}
+	if modelStatus != report.ModelFailed && modelStatus != report.ModelNone {
+		sources = append(sources, report.SourceModel)
+	}
 	scan := &report.Scan{
+		Sources:        sources,
 		SampledRows:    columns.SampledRows,
 		Input:          byModel.Input,
 		Model:          byModel.Model,

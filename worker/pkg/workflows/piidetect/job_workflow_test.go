@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
@@ -54,7 +56,7 @@ func newJobRunUnder(t *testing.T, license *testutil.FakeEELicense, tablesAtOnce 
 	var ts testsuite.WorkflowTestSuite
 	run := &jobRun{env: ts.NewTestWorkflowEnvironment()}
 	run.env.SetTestTimeout(30 * time.Second)
-	run.activities = NewActivities(nil, nil, nil, nil, nil, Config{})
+	run.activities = NewActivities(nil, nil, nil, nil, nil, &Config{})
 	run.env.RegisterWorkflow(NewJobWorkflow(license, tablesAtOnce).JobPiiDetect)
 	run.env.RegisterWorkflow(TablePiiDetect)
 	run.env.RegisterWorkflow(accounthooks.ProcessAccountHook)
@@ -214,7 +216,7 @@ func Test_JobPiiDetect_ScansTheTablesOfTheJob(t *testing.T) {
 	run.env.OnActivity(run.activities.GetTablesToPiiScan, mock.Anything, mock.MatchedBy(func(req *GetTablesToPiiScanRequest) bool {
 		return req.AccountId == "account-1" && req.JobId == "job-1" && req.SourceConnectionId == "connection-1" &&
 			req.Filter.GetInclude().GetSchemas()[0] == "public" && req.IncrementalConfig == nil &&
-			req.Sampling && req.UserPrompt == prompt && req.ModelInput == "values"
+			req.Sampling && req.UserPrompt == prompt && req.ModelInput == "values" && req.MarksIncomplete
 	})).Return(&GetTablesToPiiScanResponse{Tables: []TableToScan{
 		{Schema: "public", Table: "orders", Fingerprint: "fingerprint-orders"},
 		{Schema: "public", Table: "customers", Fingerprint: "fingerprint-customers"},
@@ -286,7 +288,7 @@ func Test_JobPiiDetect_NoTable(t *testing.T) {
 	run := newJobRun(t, 3)
 	run.withDetails(plainDetails())
 	run.env.OnActivity(run.activities.GetTablesToPiiScan, mock.Anything, &GetTablesToPiiScanRequest{
-		AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-1",
+		AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-1", MarksIncomplete: true,
 	}).Return(&GetTablesToPiiScanResponse{Tables: []TableToScan{}}, nil).Once()
 	saved := run.savesReport()
 
@@ -494,6 +496,26 @@ func Test_JobPiiDetect_ATableThatFailsLeavesARunThatStartedEarlierComplete(t *te
 	require.Equal(t, []string{createdKind, succeededKind}, run.started())
 }
 
+// The failed tables are listed in the order of their names, whatever the order they
+// failed in.
+func Test_JobPiiDetect_TheFailedTablesAreInTheOrderOfTheirNames(t *testing.T) {
+	run := newJobRun(t, 1)
+	run.env.OnGetVersion("pii-detect-incomplete-run-fails", workflow.DefaultVersion, 1).Return(workflow.DefaultVersion)
+	run.withDetails(plainDetails())
+	run.withTables("zebra", "mango", "apple")
+	run.scanTables(func(*TablePiiDetectRequest) (string, error) { return "", errors.New("the columns cannot be read") })
+	saved := run.savesReport()
+
+	run.execute()
+
+	require.NoError(t, run.env.GetWorkflowError())
+	names := []string{}
+	for _, failed := range (*saved).FailedTables {
+		names = append(names, failed.TableName)
+	}
+	require.Equal(t, []string{"apple", "mango", "zebra"}, names)
+}
+
 // The reason of a failure is cut, so that a long one does not weigh on the index.
 func Test_JobPiiDetect_TheReasonOfAFailedTableIsCut(t *testing.T) {
 	run := newJobRun(t, 3)
@@ -509,7 +531,16 @@ func Test_JobPiiDetect_TheReasonOfAFailedTableIsCut(t *testing.T) {
 	run.execute()
 
 	require.Len(t, (*saved).FailedTables, 1)
-	require.Len(t, []rune((*saved).FailedTables[0].Reason), 300)
+	require.Len(t, (*saved).FailedTables[0].Reason, 300)
+}
+
+// A reason is cut on a character, never inside one.
+func Test_CutReason(t *testing.T) {
+	require.Equal(t, "short", cutReason("short"))
+	cut := cutReason(strings.Repeat("é", 200))
+	require.Equal(t, strings.Repeat("é", 150), cut)
+	require.LessOrEqual(t, len(cutReason("a"+strings.Repeat("é", 200))), 300)
+	require.True(t, utf8.ValidString(cutReason("a"+strings.Repeat("é", 200))))
 }
 
 func Test_IncompleteMessage(t *testing.T) {

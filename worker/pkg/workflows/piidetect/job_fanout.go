@@ -3,9 +3,9 @@ package piidetect
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	workflow_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/shared"
 	"go.temporal.io/sdk/log"
@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	// maxReason is the length the reason of a failed table is cut at in the index.
+	// maxReason is the length, in bytes, the reason of a failed table is cut at in the
+	// index.
 	maxReason = 300
 	// maxWorkflowId is the length an id of a workflow is cut at.
 	maxWorkflowId = 1000
@@ -98,7 +99,7 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 					outcome.failed = append(outcome.failed, &report.FailedTable{
 						TableSchema: table.Schema,
 						TableName:   table.Table,
-						Reason:      profile.FirstRunes(cause(err), maxReason),
+						Reason:      cutReason(cause(err)),
 					})
 					continue
 				}
@@ -130,6 +131,14 @@ func uniqueChildId(id string, started map[string]bool) string {
 			return candidate
 		}
 	}
+}
+
+// cutReason cuts a reason to maxReason, on a character.
+func cutReason(reason string) string {
+	if len(reason) <= maxReason {
+		return reason
+	}
+	return strings.ToValidUTF8(reason[:maxReason], "")
 }
 
 // cause is the message of the innermost error of a failed child: the outer ones name the

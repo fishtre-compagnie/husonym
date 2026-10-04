@@ -187,8 +187,8 @@ func newScanner(t *testing.T, datasets []Dataset, classifier *model.Classifier) 
 	var ts testsuite.WorkflowTestSuite
 	ts.SetLogger(silent{})
 	env := ts.NewTestActivityEnvironment()
-	activities := piidetect.NewActivities(nil, db, db.builder(t), nil, classifier, piidetect.Config{})
-	piidetect.Register(registry{env}, nil, activities, piidetect.Config{})
+	activities := piidetect.NewActivities(nil, db, db.builder(t), nil, classifier, &piidetect.Config{})
+	piidetect.Register(registry{env}, nil, activities, &piidetect.Config{})
 	return &scanner{t: t, env: env}
 }
 
@@ -461,7 +461,7 @@ func Test_ModelStage_AgainstAnEndpointThatKnowsTheAnswers(t *testing.T) {
 	// One language is enough to check the harness.
 	datasets := loadDatasets(t)[:1]
 	endpoint := newOracle(t, datasets)
-	classifier, err := model.NewClassifier(model.Config{BaseURL: endpoint.server.URL + "/v1", Model: "oracle", MinConfidence: 0.5})
+	classifier, err := model.NewClassifier(&model.Config{BaseURL: endpoint.server.URL + "/v1", Model: "oracle", MinConfidence: 0.5})
 	require.NoError(t, err)
 
 	reports := evaluateModel(t, datasets, classifier)
@@ -524,7 +524,7 @@ func Test_ModelStage_OnDemand(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, cfg.Enabled(), "no model is configured: set PII_DETECT_LLM_MODEL")
-	classifier, err := model.NewClassifier(cfg)
+	classifier, err := model.NewClassifier(&cfg)
 	require.NoError(t, err)
 
 	datasets := loadDatasets(t)

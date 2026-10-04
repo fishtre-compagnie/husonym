@@ -10,7 +10,7 @@ type Registry interface {
 
 // Register registers the two workflows and their eight activities under the names of
 // their functions.
-func Register(r Registry, lic license.EEInterface, activities *Activities, cfg Config) {
+func Register(r Registry, lic license.EEInterface, activities *Activities, cfg *Config) {
 	r.RegisterWorkflow(NewJobWorkflow(lic, cfg.TablesAtOnce).JobPiiDetect)
 	r.RegisterWorkflow(TablePiiDetect)
 

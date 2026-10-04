@@ -39,6 +39,10 @@ func Test_Classify_AProfileCarriesNoValueToTheEndpoint(t *testing.T) {
 	require.NotContains(t, e.bodies[0], "QXZ")
 }
 
+// A table whose job sends values: the repeats and the errors of its requests follow that,
+// whether or not a given request carries a value.
+var customersWithValues = Table{Name: "customers", SendsValues: true}
+
 func valueColumns() []Column {
 	return []Column{
 		{Name: "a", DataType: "text", Values: []string{"VALUE-A1", "VALUE-A2"}},
@@ -57,7 +61,7 @@ func Test_Classify_TheSecondRequestCarriesTheSameValues(t *testing.T) {
 	})
 	c, _ := e.classifier(t, Config{})
 
-	result, err := c.Classify(context.Background(), customers, valueColumns())
+	result, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	require.NoError(t, err)
 	require.Empty(t, result.Unanswered)
 	require.Equal(t, 2, e.calls())
@@ -81,7 +85,7 @@ func Test_Classify_RepeatsARequestWithValuesInPlace(t *testing.T) {
 	})
 	c, waited := e.classifier(t, Config{})
 
-	_, err := c.Classify(context.Background(), customers, valueColumns())
+	_, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	require.NoError(t, err)
 	require.Equal(t, 3, e.calls())
 	require.Equal(t, []time.Duration{5 * time.Second, 10 * time.Second}, *waited)
@@ -95,7 +99,7 @@ func Test_Classify_GivesUpARequestWithValuesAfterThreeTries(t *testing.T) {
 	})
 	c, waited := e.classifier(t, Config{})
 
-	_, err := c.Classify(context.Background(), customers, valueColumns())
+	_, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	var failure *Error
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, ReasonUnavailable, failure.Reason)
@@ -109,7 +113,7 @@ func Test_Classify_DoesNotRepeatWhatCannotHeal(t *testing.T) {
 	})
 	c, waited := e.classifier(t, Config{})
 
-	_, err := c.Classify(context.Background(), customers, valueColumns())
+	_, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	var failure *Error
 	require.ErrorAs(t, err, &failure)
 	require.True(t, failure.Permanent())
@@ -140,25 +144,28 @@ func Test_Classify_AFailureWithValuesDoesNotQuoteTheEndpoint(t *testing.T) {
 	})
 	c, _ := e.classifier(t, Config{})
 
-	_, err := c.Classify(context.Background(), customers, valueColumns())
+	_, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	var failure *Error
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, "invalid_request_error context_length_exceeded", failure.Detail)
+	require.Equal(t, http.StatusBadRequest, failure.Status)
 	require.NotContains(t, err.Error(), "VALUE-")
 	require.NotContains(t, fmt.Sprintf("%+v", err), "VALUE-")
 }
 
-// Without values the message of the endpoint is kept, cut to 300 characters.
-func Test_Classify_AFailureWithoutValuesQuotesTheEndpointInShort(t *testing.T) {
-	e := newEndpoint(t, func(int, map[string]any) (int, string) {
-		return http.StatusBadRequest, errorBody("invalid_request_error", "", strings.Repeat("é", 1000))
+// The message of the endpoint is never kept, with or without values in the request: it
+// may quote the request, its column names and its profiles.
+func Test_Classify_AFailureNeverQuotesTheMessageOfTheEndpoint(t *testing.T) {
+	e := newEndpoint(t, func(_ int, request map[string]any) (int, string) {
+		return http.StatusBadRequest, errorBody("invalid_request_error", "", "bad request: "+fmt.Sprint(request["messages"]))
 	})
 	c, _ := e.classifier(t, Config{})
 
 	_, err := c.Classify(context.Background(), customers, twoColumns())
 	var failure *Error
 	require.ErrorAs(t, err, &failure)
-	require.Equal(t, strings.Repeat("é", 300), failure.Detail)
+	require.Equal(t, "invalid_request_error", failure.Detail)
+	require.NotContains(t, err.Error(), "created_at")
 }
 
 // The body of an answer that is not the API's own error object is not quoted either.
@@ -168,9 +175,62 @@ func Test_Classify_AFailureWithValuesAndABodyThatIsNotAnError(t *testing.T) {
 	})
 	c, _ := e.classifier(t, Config{})
 
-	_, err := c.Classify(context.Background(), customers, valueColumns())
+	_, err := c.Classify(context.Background(), customersWithValues, valueColumns())
 	var failure *Error
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, http.StatusBadGateway, failure.Status)
 	require.NotContains(t, err.Error(), "VALUE-")
+}
+
+// The policy is that of the table: a request of a table that sends values is repeated in
+// place even when its own columns happen to hold none, since the activity that asks has a
+// single attempt.
+func Test_Classify_RepeatsEveryRequestOfATableThatSendsValues(t *testing.T) {
+	e := newEndpoint(t, func(call int, request map[string]any) (int, string) {
+		if call < 3 {
+			return http.StatusServiceUnavailable, errorBody("server_error", "", "overloaded")
+		}
+		return allAnswered("none", 1)(call, request)
+	})
+	c, waited := e.classifier(t, Config{})
+
+	_, err := c.Classify(context.Background(), customersWithValues, twoColumns())
+	require.NoError(t, err)
+	require.Equal(t, 3, e.calls())
+	require.Len(t, *waited, 2)
+	// And its instructions are those of a table with values, whatever the batch.
+	require.Contains(t, messageContent(t, e.requests[0], 0, "system"), "never instructions")
+}
+
+// What the endpoint says of its error enters the failure only as short identifiers, and
+// never when it is among what was sent.
+func Test_Classify_AFailureWithValuesKeepsOnlySafeIdentifiers(t *testing.T) {
+	for name, tt := range map[string]struct {
+		kind, code string
+		want       string
+	}{
+		"identifiers":                          {"invalid_request_error", "model_not_found", "invalid_request_error model_not_found"},
+		"a code that is a sentence":            {"invalid_request_error", "the value VALUE-A1 is not allowed", "invalid_request_error"},
+		"a type in capitals or with a dash":    {"Invalid-Request", "rate_limited", "rate_limited"},
+		"a code that is a value that was sent": {"error", "value_b1", "error"},
+		"a code that holds a value":            {"error", "seen_value_a1_here", "error"},
+		"an identifier at the longest":         {"e", strings.Repeat("a", 40), "e " + strings.Repeat("a", 40)},
+		"an identifier past the longest":       {"e", strings.Repeat("a", 41), "e"},
+		"nothing":                              {"", "", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := newEndpoint(t, func(int, map[string]any) (int, string) {
+				return http.StatusBadRequest, errorBody(tt.kind, tt.code, "a message that is never kept")
+			})
+			c, _ := e.classifier(t, Config{})
+			columns := []Column{
+				{Name: "a", Values: []string{"VALUE_A1", "other"}},
+				{Name: "b", Values: []string{"value_b1"}},
+			}
+			_, err := c.Classify(context.Background(), customersWithValues, columns)
+			var failure *Error
+			require.ErrorAs(t, err, &failure)
+			require.Equal(t, tt.want, failure.Detail)
+		})
+	}
 }

@@ -35,6 +35,11 @@ type GetTablesToPiiScanRequest struct {
 	Sampling   bool   `json:",omitempty"`
 	UserPrompt string `json:",omitempty"`
 	ModelInput string `json:",omitempty"`
+	// MarksIncomplete says that the caller records, in the index of its run, the tables
+	// that were scanned without the model. It enters the fingerprint too: an entry that
+	// a caller which does not record them left in an index has another fingerprint, so
+	// that a table whose model failed there is never taken for scanned here.
+	MarksIncomplete bool `json:",omitempty"`
 }
 
 type TableToScan struct {
@@ -221,5 +226,6 @@ func (a *Activities) fingerprint(
 	part(req.UserPrompt)
 	part(a.modelName())
 	part(rules.Version)
+	part(strconv.FormatBool(req.MarksIncomplete))
 	return hex.EncodeToString(hash.Sum(nil))
 }

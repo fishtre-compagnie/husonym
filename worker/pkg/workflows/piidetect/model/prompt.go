@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
@@ -53,8 +54,8 @@ const promptRules = `2. The name of a column is evidence, in any language. A nam
 
 Answer for every column id, and nothing else.`
 
-// systemMessage is the instruction of a request; withValues says whether its columns
-// carry values.
+// systemMessage is the instruction of a request; withValues says whether the columns of
+// its table carry values.
 func systemMessage(withValues bool) string {
 	if withValues {
 		return promptTask + promptGivenValues + promptCategories + promptRuleStatistics + promptRuleValues + promptRules
@@ -126,8 +127,14 @@ func writeJSON(b *strings.Builder, value any) error {
 }
 
 // boundedHints cuts the notes and takes the markers out of them: notes cannot close
-// their own section.
+// their own section. Every run of three or more of a marker's character goes, so that
+// what is left cannot hold a marker, nor become one when another is taken out.
 func boundedHints(hints string) string {
-	hints = strings.NewReplacer("<<<", "", ">>>", "").Replace(hints)
+	hints = markerRuns.ReplaceAllString(hints, "")
+	for strings.Contains(hints, "<<<") || strings.Contains(hints, ">>>") {
+		hints = strings.NewReplacer("<<<", "", ">>>", "").Replace(hints)
+	}
 	return strings.TrimSpace(profile.FirstRunes(strings.TrimSpace(hints), MaxHints))
 }
+
+var markerRuns = regexp.MustCompile(`<{3,}|>{3,}`)

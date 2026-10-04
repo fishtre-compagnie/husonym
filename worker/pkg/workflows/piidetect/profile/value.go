@@ -28,7 +28,10 @@ type sampled struct {
 func read(value any) sampled {
 	switch v := value.(type) {
 	case string:
-		return sampled{kind: KindText, text: v}
+		if utf8.ValidString(v) {
+			return sampled{kind: KindText, text: v}
+		}
+		return sampled{kind: KindBinary, size: len(v)}
 	case []byte:
 		if utf8.Valid(v) {
 			return sampled{kind: KindText, text: string(v)}

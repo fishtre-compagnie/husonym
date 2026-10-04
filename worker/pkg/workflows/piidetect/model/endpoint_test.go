@@ -69,7 +69,7 @@ func (e *endpoint) classifier(t *testing.T, cfg Config) (c *Classifier, waited *
 	if cfg.Model == "" {
 		cfg.Model = "test-model"
 	}
-	c, err := NewClassifier(cfg)
+	c, err := NewClassifier(&cfg)
 	require.NoError(t, err)
 	waited = &[]time.Duration{}
 	c.wait = func(_ context.Context, d time.Duration) error {
