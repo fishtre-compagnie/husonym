@@ -212,6 +212,11 @@ func Test_HandleWorkflowEventLifecycle_EarlierRunsEndWhenTheHooksCannotBeStarted
 	})
 }
 
+// The id of the change is written in the histories of the runs that met it: it stays.
+func Test_LifecycleHookStartToleratedChangeId(t *testing.T) {
+	require.Equal(t, "lifecycle-hook-start-tolerated", lifecycleHookStartToleratedChangeId)
+}
+
 // A run whose hooks start reads no version: its history holds no marker of the change, and
 // the runs recorded earlier replay as they are.
 func Test_HandleWorkflowEventLifecycle_ReadsNoVersionWhenTheHooksStart(t *testing.T) {
