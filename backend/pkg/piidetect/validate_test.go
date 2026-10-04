@@ -302,6 +302,27 @@ func TestIsPasswordHash(t *testing.T) {
 		"{SSHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNA==",
 		"{SSHA512}0Fh2kXv3G9Lw1y6mT8uQ4pZr7sN5bV2cX9jK3dH6fA1gE4iO0lM7nB8qW5tY2uR3xC6vZ9aS1dF4gH7jK0lQ2w==",
 		"{ssha256}W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNDU2Nzg5MGFiY2RlZg==",
+		// A scheme named the LDAP way before a hash that names its own, or PBKDF2.
+		"{CRYPT}$6$rounds=5000$usesomesillystri$D4IrlXatmP7rx3P3InaxBeoomnAihCKRVQP22JkLQ4hAGBrKwJzFzs1k2sTUYhW0sAFSJ.qNFTOvjN4sk7.EO1",
+		"{crypt}$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"{BCRYPT}$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"{ARGON2}$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		"{PBKDF2-SHA256}29000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33N23OSgQYThBYRfk",
+		"{PBKDF2}10000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33",
+		// Django's other hashers: scrypt, and the salted MD5 and SHA-1 of old accounts.
+		"scrypt$cGVwcGVyc2FsdA$16384$8$1$Qj3mZ0e9Lw1y6mT8uQ4pZr7sN5bV2cX9jK3dH6fA1gE4iO0lM7nB8qW5tY2uR3xC6vZ9aS1dF4gH7jK0lQ2w==",
+		"md5$kT4hXq9z$5f4dcc3b5aa765d61d8327deb882cf99",
+		"sha1$kT4hXq9z$da39a3ee5e6b4b0d3255bfef95601890afd80709",
+		// Apache's MD5, yescrypt and the scrypt of crypt(3).
+		"$apr1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"$y$j9T$F5Jx5fExrKuPp53xLKQ..1$X3DX6M94c7o.9agCG9G317fhZg9SqC.5i5rd.RhAtQ7",
+		"$7$C6..../....SodiumChloride$kBGj9fHznVYFQMEn/qDCfrDevf9YDtcDdKvEqHJLV8D",
+		// Argon2 with a key identifier and associated data.
+		"$argon2id$v=19$m=65536,t=2,p=1,keyid=Hj5+dsK0,data=sRlHhRmKUGzdOmXn01XmXygd5Kc$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		// MySQL's own: a star and forty hexadecimal digits.
+		"*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
+		// ASP.NET Identity, version 3: its header is the same in every hash.
+		"AQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3w==",
 	} {
 		if !IsPasswordHash(v) {
 			t.Errorf("IsPasswordHash(%q) = false, want true", v)
@@ -313,6 +334,14 @@ func TestIsPasswordHash(t *testing.T) {
 		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW and more",
 		"{SSHA}", "{SSHA}short", "{MD5}W6ph5Mm5Pz8GgiULbPgzGw==", "bcrypt$", "argon2$", "scrypt:32768:8:1",
 		"pbkdf2:sha256:260000", "sha256:abc$def$0123", "{note} W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNA==",
+		"{CRYPT}", "{CRYPT}plain", "{BCRYPT}hunter2", "{PBKDF2-SHA256}29000", "scrypt$salt", "scrypt$salt$16384$8$1$",
+		"md5$salt$not-hexadecimal", "sha1$salt$5f4dcc3b5aa765d61d8327deb882cf99", "md5$5f4dcc3b5aa765d61d8327deb882cf99",
+		"$apr1$saltsalt$short", "$y$j9T$salt", "$7$C6..../....$short", "*", "*2470C0C06DEE42FD1618BB99005ADCA2",
+		"2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19", "* 2470C0C06DEE42FD1618BB99005ADCA2EC9D1E1",
+		// Base64 without a header that names a scheme: ASP.NET Identity version 2, or anything.
+		"AJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3wAbCdEfGh==",
+		"BQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3w==",
+		"AQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU",
 	} {
 		if IsPasswordHash(v) {
 			t.Errorf("IsPasswordHash(%q) = true, want false", v)

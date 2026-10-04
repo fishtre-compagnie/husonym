@@ -437,24 +437,57 @@ func IsCivility(v string) bool {
 	return ok
 }
 
-// The encodings password hashing schemes store their output in: bcrypt, Argon2 (with or
-// without its version), scrypt, PBKDF2, the crypt schemes of the C library and PHPass,
-// each also as Django stores it (the name of the hasher first), PBKDF2 and scrypt as
-// Werkzeug stores them, and the salted SHA schemes of LDAP directories. Each names its
-// scheme and carries a salt and a digest.
+const (
+	bcryptHash = `\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`
+	// Argon2 with or without its version, a key identifier and associated data.
+	argon2Hash = `argon2(?:id|i|d)\$(?:v=\d+\$)?m=\d+,t=\d+,p=\d+(?:,keyid=[A-Za-z0-9+/]*)?(?:,data=[A-Za-z0-9+/]*)?` +
+		`\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`
+)
+
+// The hashes that name their scheme after a dollar sign, as crypt(3) and its relatives
+// write them: bcrypt, Argon2, scrypt, PBKDF2, SHA-512, SHA-256, MD5 and Apache's, PHPass,
+// yescrypt.
+var modularHashes = `(?:` + strings.Join([]string{
+	bcryptHash,
+	`\$` + argon2Hash,
+	`\$scrypt\$[a-z0-9=,]+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\$7\$[./A-Za-z0-9]{11,}\$[./A-Za-z0-9]{43}`,
+	`\$pbkdf2(?:-sha(?:1|256|512))?\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+`,
+	`\$6\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}`,
+	`\$5\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43}`,
+	`\$(?:1|apr1)\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}`,
+	`\$[PH]\$[./A-Za-z0-9]{31}`,
+	`\$y\$[./A-Za-z0-9]+\$[./A-Za-z0-9]{1,86}\$[./A-Za-z0-9]{43}`,
+}, "|") + `)`
+
+// The encodings password hashing schemes store their output in. Each names its scheme
+// and carries a salt and a digest, MySQL's and ASP.NET Identity's aside, which are told
+// by a mark of their own:
+//
+//   - the hashes that name their scheme after a dollar sign (modularHashes), alone or
+//     after the scheme an LDAP directory writes in braces;
+//   - what Django stores: the name of the hasher, then the hash (bcrypt, Argon2, PBKDF2,
+//     scrypt, salted MD5 and SHA-1);
+//   - what Werkzeug stores: PBKDF2 and scrypt, their parameters between colons;
+//   - the salted SHA and PBKDF2 schemes of LDAP directories;
+//   - MySQL's: a star and forty hexadecimal digits;
+//   - ASP.NET Identity version 3: 61 bytes in base64 that open with the version and the
+//     four null bytes of its header. Version 2 is base64 with nothing to tell it by, and
+//     is not recognized.
 var passwordHashRe = regexp.MustCompile(`^(?:` + strings.Join([]string{
-	`(?:bcrypt(?:_sha256)?\$)?\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`,
-	`(?:argon2\$)?\$?argon2(?:id|i|d)\$(?:v=\d+\$)?m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`,
+	`(?i:\{(?:crypt|bcrypt|argon2)\})?` + modularHashes,
+	`bcrypt(?:_sha256)?\$` + bcryptHash,
+	`(?:argon2\$)?` + argon2Hash,
+	`pbkdf2_sha(?:1|256|512)\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`scrypt\$[A-Za-z0-9+/=.]+\$\d+\$\d+\$\d+\$[A-Za-z0-9+/]{20,}={0,2}`,
+	`md5\$[A-Za-z0-9]*\$[0-9a-f]{32}`,
+	`sha1\$[A-Za-z0-9]*\$[0-9a-f]{40}`,
 	`pbkdf2:sha(?:1|224|256|384|512)(?::\d+)?\$[A-Za-z0-9]+\$[0-9a-f]{40,128}`,
 	`scrypt:\d+:\d+:\d+\$[A-Za-z0-9]+\$[0-9a-f]{64,128}`,
 	`(?i:\{ssha(?:256|384|512)?\})[A-Za-z0-9+/]{32,}={0,2}`,
-	`\$scrypt\$[a-z0-9=,]+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
-	`\$pbkdf2(?:-sha(?:1|256|512))?\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+`,
-	`pbkdf2_sha(?:1|256|512)\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
-	`\$6\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}`,
-	`\$5\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43}`,
-	`\$1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}`,
-	`\$[PH]\$[./A-Za-z0-9]{31}`,
+	`(?i:\{pbkdf2(?:-sha(?:1|256|512))?\})\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\*[0-9A-Fa-f]{40}`,
+	`AQAAAA[A-Za-z0-9+/]{76}==`,
 }, "|") + `)$`)
 
 // IsPasswordHash recognizes the stored form of a hashed password. A bare hexadecimal
