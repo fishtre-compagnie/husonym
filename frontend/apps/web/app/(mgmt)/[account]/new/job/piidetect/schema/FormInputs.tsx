@@ -172,7 +172,7 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
                 modelInput: newValue === 'values' ? 'values' : 'profiles',
               });
             }}
-            value={value.modelInput}
+            value={value.modelInput === 'values' ? 'values' : 'profiles'}
           >
             <ModelInputRadioItem
               value="profiles"
@@ -188,7 +188,10 @@ export function DataSampling(props: DataSamplingProps): ReactElement {
           <FormErrorMessage message={errors?.['modelInput']} />
           <p className="text-[0.8rem] text-muted-foreground">
             With no model configured, nothing is sent anywhere: detection uses
-            the rules only.
+            the rules only. Rules alone do not find personal data in a column
+            with a neutral name, unless its values have a format the rules
+            check, such as email addresses, IBANs, card numbers or password
+            hashes.
           </p>
         </div>
       )}

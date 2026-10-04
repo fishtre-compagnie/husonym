@@ -4,7 +4,8 @@ import {
   JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput,
 } from '@husonym/sdk';
 import { toPiiDetectJobTypeConfig } from '../../../../jobs/util';
-import { setInitialFormStateFromJob } from './stores';
+import { PiiDetectionSchemaFormValues } from '../../job-form-validations';
+import { setInitialFormStateFromJob, withModelInputDefault } from './stores';
 
 function piiDetectJob(
   modelInput: JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput
@@ -74,5 +75,44 @@ describe('PII detection data sampling form mapping', () => {
       userPrompt: '',
     });
     expect(config.dataSampling?.modelInput).toBe(UNSPECIFIED);
+  });
+
+  it('leaves the field unset when sampling is disabled, whatever the choice', () => {
+    const config = toPiiDetectJobTypeConfig({
+      dataSampling: { isEnabled: false, modelInput: 'values' },
+      incremental: { isEnabled: false },
+      tableScanFilter: {
+        mode: 'include_all',
+        patterns: { schemas: [], tables: [] },
+      },
+      userPrompt: '',
+    });
+    expect(config.dataSampling?.isEnabled).toBe(false);
+    expect(config.dataSampling?.modelInput).toBe(UNSPECIFIED);
+  });
+
+  it('reads statistics only from a stored form that holds no choice', () => {
+    const stored = {
+      dataSampling: { isEnabled: true },
+      incremental: { isEnabled: false },
+      tableScanFilter: {
+        mode: 'include_all',
+        patterns: { schemas: [], tables: [] },
+      },
+      userPrompt: '',
+    } as unknown as PiiDetectionSchemaFormValues;
+    expect(withModelInputDefault(stored).dataSampling).toEqual({
+      isEnabled: true,
+      modelInput: 'profiles',
+    });
+  });
+
+  it('keeps the values choice of a stored form', () => {
+    const stored = {
+      dataSampling: { isEnabled: true, modelInput: 'values' },
+    } as unknown as PiiDetectionSchemaFormValues;
+    expect(withModelInputDefault(stored).dataSampling.modelInput).toBe(
+      'values'
+    );
   });
 });

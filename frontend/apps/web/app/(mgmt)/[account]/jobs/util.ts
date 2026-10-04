@@ -446,14 +446,15 @@ export function toPiiDetectJobTypeConfig(
 }
 
 // The statistics-only choice leaves model_input unset, so a job that never
-// chose to send values stays free of the field.
+// chose to send values stays free of the field. So does a job that samples no
+// data: no row is read, and the choice the form still holds means nothing.
 function toPiiDetectDataSampling(
   values: DataSamplingFormValue
 ): JobTypeConfig_JobTypePiiDetect_DataSampling {
   return create(JobTypeConfig_JobTypePiiDetect_DataSamplingSchema, {
     isEnabled: values.isEnabled,
     modelInput:
-      values.modelInput === 'values'
+      values.isEnabled && values.modelInput === 'values'
         ? JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput.VALUES
         : JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput.UNSPECIFIED,
   });

@@ -83,9 +83,34 @@ export const usePiiDetectionSchemaStore = create<PiiDetectionSchemaStore>()(
       partialize: (state): PersistedState => ({
         formData: state.formData,
       }),
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<PersistedState> | undefined;
+        return {
+          ...current,
+          ...stored,
+          formData: withModelInputDefault(
+            stored?.formData ?? current.formData
+          ),
+        };
+      },
     }
   )
 );
+
+// A form kept in the session before the choice of what the model receives
+// existed holds none: it reads as the statistics choice.
+export function withModelInputDefault(
+  formData: PiiDetectionSchemaFormValues
+): PiiDetectionSchemaFormValues {
+  return {
+    ...formData,
+    dataSampling: {
+      ...formData.dataSampling,
+      modelInput:
+        formData.dataSampling?.modelInput === 'values' ? 'values' : 'profiles',
+    },
+  };
+}
 
 // Hack to allow dynamic zustand store persistence keys
 // https://github.com/pmndrs/zustand/issues/513

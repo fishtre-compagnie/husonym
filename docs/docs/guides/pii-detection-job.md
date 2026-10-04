@@ -51,19 +51,31 @@ that names the kind of the source.
 The rules call no service. The first one that answers wins:
 
 1. **The name of the column.** Whole names (`email`, `date_of_birth`,
-   `credit_card_number`, `password`…) and the French and English dictionary of the
-   [GDPR detection](/guides/detection-rgpd) (`prenom`, `telephone`, `ville`, `nir`…), with
-   its exclusions: `product_name` names a thing, `user_id` refers to another row.
+   `credit_card_number`, `password`…) and the dictionary of the
+   [GDPR detection](/guides/detection-rgpd), which reads English, French, German, Spanish,
+   Italian, Dutch, Polish and Portuguese (`prenom`, `telefon`, `apellido`, `indirizzo`,
+   `woonplaats`, `pesel`, `senha`…), with its exclusions: `product_name` names a thing,
+   `user_id` refers to another row, and a name that qualifies a datum without being one
+   (`email_format`, `phone_type`, `address_count`, `is_email_verified`, `country_code`) is
+   not reported. Passwords, tokens and keys are reported, hashed or not (`password_hash`,
+   `api_key`, `refresh_token`).
 2. **The format of the values**, when data sampling is enabled: when at least **half** of
    the non-blank values of a column pass a format check, the column is reported whatever
    its name. The checks are those of the GDPR detection: email address, IBAN (mod 97
    checksum), French social security number (mod 97 checksum), payment card (Luhn
-   checksum and network prefix), IP address, French telephone number, civility. A SIRET
-   or a SIREN identifies a company: it makes no finding of the rules, and is passed to the
+   checksum and network prefix), IP address, French telephone number, civility, and
+   password hash (bcrypt, Argon2, scrypt, PBKDF2 and the crypt schemes). A SIRET or a
+   SIREN identifies a company: it makes no finding of the rules, and is passed to the
    model as evidence.
 
 A name that says personal data is not withdrawn because the values pass no check: a check
 that stays silent proves nothing.
+
+**Rules alone do not find personal data in a column with a neutral name**, unless its
+values have one of the formats above: a column `c17` of first names, or a free text about
+a person, is found by the model only. A job that runs without a model ends well and says
+so: the stored report of each table names the detections it rests on (`sources`: `rules`,
+or `rules` and `model`).
 
 ## Data sampling
 
@@ -75,7 +87,9 @@ and the share of the values that pass each format check. The rows do not leave t
 that read them.
 
 A profile holds no value, no part of a value, no hash of a value, and no smallest or
-largest value.
+largest value. A layout or a format enters a profile only when at least three rows have
+it, and a value made of punctuation only is never its own layout. For a column with fewer
+than three values the profile holds counts and the kind of the values, nothing else.
 
 When data sampling is disabled no row is read: only the names of the tables, the names of
 the columns and their types are used.
@@ -87,11 +101,11 @@ its names and types.
 
 The **What the model receives** setting shows only when data sampling is enabled.
 
-| Choice                           | What is sent to the model, for each column                                                                  |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Data sampling disabled           | The name, the SQL type, whether it is nullable                                                              |
-| **Statistics only** (default)    | The name, the SQL type, whether it is nullable, and the profile. No value.                                  |
-| **Statistics and sample values** | In addition: at most **5 distinct values**, none null, each cut to **64 characters**. Never a binary value. |
+| Choice                           | What is sent to the model, for each column                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Data sampling disabled           | The name, the SQL type, whether it is nullable                                                                  |
+| **Statistics only** (default)    | The name, the SQL type, whether it is nullable, and the profile. No value.                                      |
+| **Statistics and sample values** | In addition: at most **5 distinct values**, none null, each cut to **64 characters**. Never of a binary column. |
 
 In every case the request also carries the name of the table and the **User Prompt** of
 the job, cut to 2,000 characters. It goes to the endpoint configured on the worker, and
@@ -102,13 +116,28 @@ values, which are written neither in the history of the run nor in the logs. Cho
 only if the endpoint of the model may receive this data, for example a model hosted inside
 your network.
 
+A binary column never sends a value. It is known by its type in the catalogue of the
+database, whatever the driver returns for it: `bytea` and the bit strings of PostgreSQL;
+`binary`, `varbinary`, the `blob` family, `bit` and the spatial types of MySQL; `binary`,
+`varbinary`, `image`, `rowversion` (and `timestamp`, its other name), `geography`,
+`geometry` and `hierarchyid` of SQL Server. A text that is not valid UTF-8 is not sent
+either.
+
 The model answers, for each column, one of the six categories or `none` (not personal
 data), with a confidence from 0 to 1. The answer is checked: a column without a valid
 answer is asked once more, then reported as unanswered. Only the answers whose confidence
-reaches the threshold of the deployment (0.5 by default) are in the report.
+reaches the threshold of the deployment (0.5 by default) are in the report. An answer is
+read for the JSON object it holds, also after a reasoning block or inside a fenced block,
+and up to one megabyte.
 
 Nothing of what is sent to the model, and nothing of what it answers, is written in the
-logs of the worker.
+logs of the worker or in the history of the run. When a request fails, what is kept of
+the endpoint's answer is its HTTP status and the type and the code of its error, when
+they are short identifiers: never its message, which may quote the request.
+
+Beside the request itself, the client library adds headers that describe it: a
+`User-Agent` with its version, and `X-Stainless-*` headers with the operating system, the
+processor architecture, the Go version, the retry count and the timeout of the request.
 
 ## Configuring the model
 
@@ -137,11 +166,20 @@ temperature of 0, which llama.cpp, vLLM and Ollama offer.
 **Without a configured model** the job runs on the rules alone, and its report holds
 `regex` findings only.
 
-A deployment that only sets `OPENAI_API_KEY` asks `gpt-4o-mini` at the OpenAI API;
-`OPENAI_BASE_URL` and `OPENAI_API_KEY` stand in for the address and the key when
-`PII_DETECT_LLM_URL` and `PII_DETECT_LLM_API_KEY` are not set. An address set without the
-name of a model, or a threshold outside 0 to 1, stops the worker when it starts, with a
-message that says so.
+The worker reads these settings and no other for the model:
+
+- The address is `PII_DETECT_LLM_URL`, else `OPENAI_BASE_URL`, else the OpenAI API.
+- The key is `PII_DETECT_LLM_API_KEY`. `OPENAI_API_KEY` stands in for it only when the
+  address is not `PII_DETECT_LLM_URL`: the key of an OpenAI account is never sent to the
+  endpoint that setting names. To ask such an endpoint without a key, set none.
+- `OPENAI_ORG_ID` and `OPENAI_PROJECT_ID` are sent to the OpenAI API only.
+- A deployment that only sets `OPENAI_API_KEY` asks `gpt-4o-mini` at the OpenAI API.
+- `OPENAI_BASE_URL` alone, without a key and without `PII_DETECT_LLM_MODEL`, configures
+  no model: the worker says so when it starts.
+
+`PII_DETECT_LLM_URL` without the name of a model, an address that holds a user, a password
+or a query, or a threshold outside 0 to 1, stops the worker when it starts, with a message
+that says so.
 
 When it starts, the worker writes in its log where the requests go:
 `PII detection asks the model <name> at <host>`, or
@@ -171,13 +209,33 @@ every table is scanned.
 - **The model cannot be asked** (the endpoint is unreachable, the key is refused): what
   the rules found is kept and stored for the table, and the run ends failed as above. A
   refused key or request is not attempted again.
-- **The model does not answer for some columns**: the table is complete, and the run does
-  not fail for it.
+- **The model does not answer for some columns**: up to half of the columns of a table,
+  the table is complete, the columns are listed in its stored report, and the run does
+  not fail for it. Past half, the model did not scan the table: it counts as a model that
+  cannot be asked.
 - **The run is canceled**: the tables being scanned are canceled and no index is stored.
   The reports of the tables that had completed stay readable.
 
 To keep a table that always fails from failing every scheduled run, leave it out with the
 _exclude_ **Table Scan Mode**.
+
+## Upgrading
+
+A deployment that already runs PII detection jobs takes these steps when it upgrades to
+this version:
+
+1. Stop the workers of the earlier version, or pause the PII detection jobs, before
+   starting the new workers. A worker of the earlier version sends whole values to the
+   model for a job with data sampling, and cannot continue a run that tolerated a model
+   failure, that failed for an incomplete table, or that scanned two tables of the same
+   sanitized name.
+2. Expect the first incremental run to scan every table again: what identifies an
+   unchanged table now includes the types of its columns and the settings of the job.
+3. Expect a run with a table that failed, or that the model could not scan, to end
+   failed, once its reports are stored.
+4. Before rolling the API back to the earlier version, set the jobs that send sample
+   values back to _Statistics only_: the earlier API cannot read a job that holds that
+   choice.
 
 ## Reading the report
 
