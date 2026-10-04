@@ -21,7 +21,7 @@ var qualifierNouns = wordSet(
 	"wersja", "versao",
 	// how many, how long, how much of it
 	"count", "nb", "anzahl", "cantidad", "conteggio", "aantal", "liczba", "quantidade", "total",
-	"length", "longueur", "laenge", "longitud", "lunghezza", "lengte", "dlugosc", "comprimento", "ratio",
+	"length", "len", "longueur", "laenge", "longitud", "lunghezza", "lengte", "dlugosc", "comprimento", "ratio",
 	// its state
 	"status", "statut", "estado", "stato", "stan",
 	// a code that stands for it; a rule may own the word (see rule.ownTokens)

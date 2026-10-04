@@ -11,7 +11,7 @@ func TestClassify_QualifierNames(t *testing.T) {
 			"name_format", "city_code", "country_code", "ip_version", "gender_ratio", "email_enabled",
 			"email_status", "name_length", "has_phone", "email_verified", "phone_confirmed", "password_format",
 			"password_length", "token_type", "is_password_set", "count_emails", "format_of_address", "type_of_phone",
-			"email_template", "email_optin", "email_consent", "password_status", "username_valid",
+			"email_template", "email_optin", "email_consent", "password_status", "username_valid", "fname_len",
 		},
 		"fr": {
 			"format_email", "type_telephone", "nb_adresses", "email_verifie", "modele_telephone", "type_adresse",
