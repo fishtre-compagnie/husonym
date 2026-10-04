@@ -4,7 +4,7 @@ description: Learn how to use Account Hooks to add further customization to your
 id: account-hooks
 hide_title: false
 slug: /guides/account-hooks
-# cSpell:words Errorf
+# cSpell:words Errorf strconv whsec
 ---
 
 ## Introduction
@@ -40,7 +40,11 @@ Today, the `Webhook` hook is the supported kind. The `Slack` kind has been retir
 
 ## Execution order strategy
 
-When an event is emitted, Husonym retrieves all active hooks for the event and executes each hook in order of creation. Today they are executed in synchronous fashion, meaning that each hook is executed one at a time. This may change in the future to allow for parallel execution of hooks.
+When an event is emitted, Husonym retrieves all active hooks for the event and starts them all, in order of creation, without waiting for one to finish before starting the next. The hooks run concurrently: no order of completion is guaranteed, and a hook that fails does not stop or delay the others.
+
+A hook that is disabled or deleted while an event is being processed is not called for that event.
+
+Hooks never change the outcome of a job run: a run does not wait for its hooks, and a hook that fails leaves the run as it is.
 
 ## Enabling/Disabling Hooks
 
@@ -116,9 +120,29 @@ The secret key is set when the webhook is created and is used to verify that the
 
 The HMAC hash is generated using the SHA256 algorithm and the secret key.
 
-The HMAC hash is sent in the `X-Husonym-Signature` header.
+The HMAC hash is sent in the `X-Husonym-Signature` header, in lowercase hexadecimal.
 
 The HMAC hash algorithm is sent in the `X-Husonym-Signature-Type` header.
+
+This signature covers the request body alone. A second signature, described below, also covers the time of the request, which lets a receiver refuse a request that is replayed later.
+
+### Delivery Id, Timestamp and Timestamped Signature
+
+Each request also carries the three headers of the [Standard Webhooks](https://www.standardwebhooks.com/) specification:
+
+| Header              | Value                                                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `webhook-id`        | The id of the delivery of one event to one hook. Every attempt of the same delivery carries the same id.                    |
+| `webhook-timestamp` | The time of the attempt, in seconds since the Unix epoch. Each attempt carries its own.                                     |
+| `webhook-signature` | `v1,` followed by the base64 of the HMAC-SHA256 of `<webhook-id>.<webhook-timestamp>.<body>`, computed with the secret key. |
+
+To verify a request, compute the signature from the two other headers and the exact bytes of the body, compare it with the one received, and refuse a request whose timestamp is too far from the current time. A tolerance of 5 minutes is a common choice.
+
+The key of both signatures is the secret exactly as it was typed when the hook was saved. It is not a `whsec_` value: a Standard Webhooks library expects its secret in base64, so give it the base64 encoding of your secret.
+
+### Duplicate Deliveries
+
+A webhook is delivered at least once. When an attempt fails after the receiver has processed the request, for instance because the response did not arrive within the timeout, the next attempt delivers the same event again. A receiver must therefore tolerate duplicates: the `webhook-id` header is the same for every attempt of a delivery and can be used to recognize a request that was already processed.
 
 ### Who Sees the Secret
 
@@ -132,6 +156,12 @@ An API client that reads a hook with one identity and saves it with another must
 
 The URL of a webhook is an `http` or `https` address with a host, such as `https://example.com/webhook`. A hook is not saved with a URL of another form.
 
+The URL must be the final address of the receiver: redirects are not followed. A response with a 3xx status is a failure, and the request is not sent to the address it names.
+
+A receiver may live on the network of the deployment: private and loopback addresses are reachable. Link-local addresses (`169.254.0.0/16`, `fe80::/10`), where the metadata service of a cloud host lives, are never called, nor is `fd00:ec2::254`. The check is made on the address the name of the URL resolves to, each time a connection is made.
+
+When the worker is configured with a proxy (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`), webhooks go through it, whether or not the certificate verification of the hook is disabled. The worker then connects to the proxy and does not check the address of the receiver: the proxy is where a deployment restricts where webhooks may go.
+
 ### More Request Details and Response Information
 
 Each webhook is sent as a POST request to the webhook URL.
@@ -142,7 +172,9 @@ If the webhook does not respond within 10 seconds, it is considered to have fail
 
 The webhook is considered to have failed if the response status code is not in the 200-299 range.
 
-The webhook request body is sent as JSON and the content type is `application/json`.
+The webhook request body is sent as JSON and the content type is `application/json`. The `User-Agent` header is `husonym`.
+
+The response body is not used. When a webhook fails, at most the first 512 bytes of the response are kept with the failure, for the operator of the deployment to read.
 
 ### Example Verification in Go
 
@@ -202,12 +234,59 @@ func verifyHmac(secret string, payload []byte, signature string) (bool, error) {
 
 ```
 
+### Example Verification of the Timestamped Signature in Go
+
+```go
+package webhook
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+const tolerance = 5 * time.Minute
+
+// verifyTimestamped checks the webhook-signature header of a request received at now,
+// and refuses a request whose timestamp is too far from now.
+func verifyTimestamped(secret string, header http.Header, payload []byte, now time.Time) bool {
+	id := header.Get("webhook-id")
+	timestamp := header.Get("webhook-timestamp")
+
+	seconds, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return false
+	}
+	if age := now.Sub(time.Unix(seconds, 0)); age > tolerance || age < -tolerance {
+		return false
+	}
+
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(id + "." + timestamp + "."))
+	mac.Write(payload)
+	expected := "v1," + base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(header.Get("webhook-signature")), []byte(expected))
+}
+```
+
 ## Retries
 
-If any account hook fails, it will be retried up to 3 times.
+A webhook that fails for a reason that may pass is attempted up to 5 times in all: the attempts that follow the first are made 5, 15, 45 and 135 seconds after the previous one. These failures are retried:
 
-The backoff coefficient is 2.0, with an initial interval of 1 second.
+- no response: the connection failed, the certificate was refused, or the timeout was reached;
+- a response with a 5xx status, or with `408`, `425` or `429`.
 
-The maximum interval is 100x the initial interval.
+A webhook that fails for a reason that a new attempt cannot change is not retried:
+
+- a response with any other 4xx status;
+- a response with a 3xx status, since redirects are not followed;
+- a URL that is not an `http` or `https` address with a host, or an address that is never called.
 
 The retry policy is applied per hook execution.
+
+### Secret Not Available to the Worker
+
+The worker reads the secret of a hook from the API, which returns it to the worker only when the worker is identified by its API key. When the API hides the secret from the worker, the webhook is not sent, and the failure says that the API returned a masked secret: check the API key of the worker.
