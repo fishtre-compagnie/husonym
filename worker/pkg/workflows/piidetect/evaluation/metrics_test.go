@@ -38,6 +38,22 @@ func Test_Detection(t *testing.T) {
 	require.Equal(t, Counts{TruePositives: 2, FalsePositives: 1, FalseNegatives: 1, TrueNegatives: 2}, counts)
 }
 
+// Whether a column was found under the category it is expected under: a finding in
+// another category is not a hit. It is a false alarm for the category it names and a miss
+// for the one that was expected.
+func Test_Categorized(t *testing.T) {
+	counts := Categorized([]Outcome{
+		outcome("contact", "contact"),
+		outcome("contact", "personal"), // found, under another category
+		outcome("personal", "none"),
+		outcome("none", "location"),
+		outcome("none", "none"),
+	})
+	require.Equal(t, Counts{TruePositives: 1, FalsePositives: 2, FalseNegatives: 2, TrueNegatives: 1}, counts)
+	require.InDelta(t, 1.0/3, counts.Precision(), 1e-9)
+	require.InDelta(t, 1.0/3, counts.Recall(), 1e-9)
+}
+
 func Test_ByCategory_And_Confusion(t *testing.T) {
 	outcomes := []Outcome{
 		outcome("contact", "contact"),

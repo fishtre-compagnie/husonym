@@ -281,10 +281,13 @@ func evaluate(s *scanner, datasets []Dataset, mode string) (own, joined []Outcom
 	return own, withRules(own, byRules)
 }
 
-// languageScore is the detection of a language, as the baseline holds it.
+// languageScore is the detection of a language, as the baseline holds it: whether
+// personal data was found, and whether it was found under its category.
 type languageScore struct {
-	Precision float64 `json:"precision"`
-	Recall    float64 `json:"recall"`
+	Precision         float64 `json:"precision"`
+	Recall            float64 `json:"recall"`
+	CategoryPrecision float64 `json:"category_precision"`
+	CategoryRecall    float64 `json:"category_recall"`
 }
 
 func byLanguage(outcomes []Outcome) map[string][]Outcome {
@@ -319,12 +322,17 @@ func Test_Rules_HoldTheBaseline(t *testing.T) {
 	}
 	sort.Strings(languages)
 	for _, language := range languages {
-		counts := Detection(grouped[language])
-		measured[language] = languageScore{Precision: round(counts.Precision()), Recall: round(counts.Recall())}
-		t.Logf("rules, %s: precision %.4f, recall %.4f, F2 %.4f (%+v)", language, counts.Precision(), counts.Recall(), counts.F2(), counts)
+		counts, categorized := Detection(grouped[language]), Categorized(grouped[language])
+		measured[language] = languageScore{
+			Precision: round(counts.Precision()), Recall: round(counts.Recall()),
+			CategoryPrecision: round(categorized.Precision()), CategoryRecall: round(categorized.Recall()),
+		}
+		t.Logf("rules, %s: precision %.4f, recall %.4f, F2 %.4f; in the category: precision %.4f, recall %.4f",
+			language, counts.Precision(), counts.Recall(), counts.F2(), categorized.Precision(), categorized.Recall())
 	}
-	all := Detection(outcomes)
-	t.Logf("rules, all languages: precision %.4f, recall %.4f, F2 %.4f (%+v)", all.Precision(), all.Recall(), all.F2(), all)
+	all, allCategorized := Detection(outcomes), Categorized(outcomes)
+	t.Logf("rules, all languages: precision %.4f, recall %.4f, F2 %.4f; in the category: precision %.4f, recall %.4f (%+v)",
+		all.Precision(), all.Recall(), all.F2(), allCategorized.Precision(), allCategorized.Recall(), all)
 
 	raised := false
 	for _, language := range languages {
@@ -332,6 +340,10 @@ func Test_Rules_HoldTheBaseline(t *testing.T) {
 		require.True(t, known, "no baseline for %s", language)
 		require.GreaterOrEqual(t, measured[language].Precision, held.Precision, "the precision of the rules is lower for %s", language)
 		require.GreaterOrEqual(t, measured[language].Recall, held.Recall, "the recall of the rules is lower for %s", language)
+		require.GreaterOrEqual(t, measured[language].CategoryPrecision, held.CategoryPrecision,
+			"fewer findings of the rules are in the expected category for %s", language)
+		require.GreaterOrEqual(t, measured[language].CategoryRecall, held.CategoryRecall,
+			"fewer columns are found in their category by the rules for %s", language)
 		raised = raised || measured[language] != held
 	}
 	require.Len(t, baseline, len(languages))
@@ -341,7 +353,7 @@ func Test_Rules_HoldTheBaseline(t *testing.T) {
 		t.Logf("the rules do better than their baseline: testdata/baseline.json can be raised to\n%s", encoded)
 	}
 	for _, outcome := range outcomes {
-		if (outcome.Expected != None) != (outcome.Predicted != None) {
+		if outcome.Expected != outcome.Predicted {
 			t.Logf("  %s %s.%s: expected %s, the rules say %s", outcome.Language, outcome.Table, outcome.Column, outcome.Expected, outcome.Predicted)
 		}
 	}
@@ -349,15 +361,17 @@ func Test_Rules_HoldTheBaseline(t *testing.T) {
 
 // modeReport is what the harness says of a mode.
 type modeReport struct {
-	Mode       string                    `json:"mode"`
-	Detection  Counts                    `json:"detection"`
-	Precision  float64                   `json:"precision"`
-	Recall     float64                   `json:"recall"`
-	F2         float64                   `json:"f2"`
-	ByLanguage map[string]Counts         `json:"by_language"`
-	ByCategory map[string]Counts         `json:"by_category"`
-	Confusion  map[string]map[string]int `json:"confusion"`
-	Unanswered float64                   `json:"unanswered"`
+	Mode      string  `json:"mode"`
+	Detection Counts  `json:"detection"`
+	Precision float64 `json:"precision"`
+	Recall    float64 `json:"recall"`
+	F2        float64 `json:"f2"`
+	// Categorized counts a finding only when it is in the expected category.
+	Categorized Counts                    `json:"categorized"`
+	ByLanguage  map[string]Counts         `json:"by_language"`
+	ByCategory  map[string]Counts         `json:"by_category"`
+	Confusion   map[string]map[string]int `json:"confusion"`
+	Unanswered  float64                   `json:"unanswered"`
 	// Of the model alone, for the modes that ask it.
 	Reliability []Bin   `json:"reliability,omitempty"`
 	Thresholds  []Point `json:"thresholds,omitempty"`
@@ -368,7 +382,7 @@ type modeReport struct {
 func reportOf(mode string, outcomes []Outcome, ofModel bool) modeReport {
 	detection := Detection(outcomes)
 	r := modeReport{
-		Mode: mode, Detection: detection,
+		Mode: mode, Detection: detection, Categorized: Categorized(outcomes),
 		Precision: detection.Precision(), Recall: detection.Recall(), F2: detection.F2(),
 		ByLanguage: map[string]Counts{}, ByCategory: ByCategory(outcomes), Confusion: Confusion(outcomes),
 		Unanswered: Unanswered(outcomes), Wrong: []Outcome{},

@@ -1,34 +1,50 @@
 {
   "de": {
-    "precision": 0.6667,
-    "recall": 0.3077
+    "category_precision": 1,
+    "category_recall": 0.7143,
+    "precision": 1,
+    "recall": 0.7143
   },
   "en": {
-    "precision": 0.84,
-    "recall": 0.8077
+    "category_precision": 1,
+    "category_recall": 0.7857,
+    "precision": 1,
+    "recall": 0.7857
   },
   "es": {
-    "precision": 0.6923,
-    "recall": 0.3462
+    "category_precision": 1,
+    "category_recall": 0.6786,
+    "precision": 1,
+    "recall": 0.6786
   },
   "fr": {
-    "precision": 0.8261,
-    "recall": 0.7308
+    "category_precision": 1,
+    "category_recall": 0.8214,
+    "precision": 1,
+    "recall": 0.8214
   },
   "it": {
-    "precision": 0.6667,
-    "recall": 0.3077
+    "category_precision": 0.95,
+    "category_recall": 0.6786,
+    "precision": 0.95,
+    "recall": 0.6786
   },
   "nl": {
-    "precision": 0.6923,
-    "recall": 0.3462
+    "category_precision": 1,
+    "category_recall": 0.7143,
+    "precision": 1,
+    "recall": 0.7143
   },
   "pl": {
-    "precision": 0.6667,
-    "recall": 0.3077
+    "category_precision": 1,
+    "category_recall": 0.6786,
+    "precision": 1,
+    "recall": 0.6786
   },
   "pt": {
-    "precision": 0.6923,
-    "recall": 0.3462
+    "category_precision": 0.95,
+    "category_recall": 0.6786,
+    "precision": 0.95,
+    "recall": 0.6786
   }
 }

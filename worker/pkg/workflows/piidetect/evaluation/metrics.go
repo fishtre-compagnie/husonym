@@ -82,6 +82,29 @@ func Detection(outcomes []Outcome) Counts {
 	return counts
 }
 
+// Categorized counts whether personal data was found under the category it is expected
+// under. A finding under another category is not a hit: it is a false alarm, since what
+// it says is wrong, and a miss, since what is there was not said.
+func Categorized(outcomes []Outcome) Counts {
+	var counts Counts
+	for _, o := range outcomes {
+		switch {
+		case o.Expected == o.Predicted && o.Expected != None:
+			counts.TruePositives++
+		case o.Expected == o.Predicted:
+			counts.TrueNegatives++
+		default:
+			if o.Predicted != None {
+				counts.FalsePositives++
+			}
+			if o.Expected != None {
+				counts.FalseNegatives++
+			}
+		}
+	}
+	return counts
+}
+
 // ByCategory counts, for each category that is expected or predicted somewhere, the
 // columns it was expected for and predicted for.
 func ByCategory(outcomes []Outcome) map[string]Counts {
