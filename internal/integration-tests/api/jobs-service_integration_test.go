@@ -13,7 +13,14 @@ import (
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	commonpb "go.temporal.io/api/common/v1"
+	"go.temporal.io/api/enums/v1"
+	workflowpb "go.temporal.io/api/workflow/v1"
+	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/converter"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *IntegrationTestSuite) Test_GetJobs_Empty() {
@@ -990,9 +997,28 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 		)
 		requireNoErrResp(t, setResp, err)
 	}
+	// read reads the report of a run of the job. The run names its job as a run started
+	// by a schedule does, in a search attribute: the index of a run is stored under the
+	// id of its job.
 	read := func(t *testing.T, jobRunId string) []*mgmtv1alpha1.PiiDetectionReport_TableReport {
 		t.Helper()
-		s.MockTemporalForDescribeWorkflowExecution(accountId, jobId, jobRunId, "JobPiiDetect")
+		scheduledBy, err := converter.GetDefaultDataConverter().ToPayload(jobId)
+		require.NoError(t, err)
+		s.Mocks.TemporalClientManager.EXPECT().
+			DescribeWorklowExecution(mock.Anything, accountId, jobRunId, mock.Anything).
+			Return(&workflowservice.DescribeWorkflowExecutionResponse{
+				WorkflowExecutionInfo: &workflowpb.WorkflowExecutionInfo{
+					Execution: &commonpb.WorkflowExecution{WorkflowId: jobRunId},
+					StartTime: timestamppb.New(time.Now().Add(-time.Minute)),
+					CloseTime: timestamppb.New(time.Now()),
+					Status:    enums.WORKFLOW_EXECUTION_STATUS_COMPLETED,
+					Type:      &commonpb.WorkflowType{Name: "JobPiiDetect"},
+					SearchAttributes: &commonpb.SearchAttributes{
+						IndexedFields: map[string]*commonpb.Payload{"TemporalScheduledById": scheduledBy},
+					},
+				},
+			}, nil).
+			Once()
 		getResp, err := jobclient.GetPiiDetectionReport(
 			s.ctx,
 			connect.NewRequest(&mgmtv1alpha1.GetPiiDetectionReportRequest{JobRunId: jobRunId, AccountId: accountId}),
@@ -1007,10 +1033,13 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 	}
 
 	// A table report and an index that hold only the members every report has, as stored
-	// rows may: they are read as they always were.
+	// rows may: they are read as they always were. The table report is stored under an
+	// earlier run, as the report of a table that an incremental run did not scan again:
+	// only the index of the run leads to it.
 	s.T().Run("a report stored without the optional members", func(t *testing.T) {
 		jobRunId := fmt.Sprintf("%s-%s-plain", jobId, time.Now().Format(time.RFC3339))
-		store(t, jobRunId, "public.users--table-pii-report", `{
+		earlierRunId := jobRunId + "-earlier"
+		store(t, earlierRunId, "public.users--table-pii-report", `{
 			"table_schema": "public", "table_name": "users",
 			"column_reports": [
 				{"column_name": "email", "report": {"regex": {"category": "contact"}, "llm": {"category": "contact", "confidence": 0.95}}},
@@ -1019,16 +1048,15 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 			"scanned_columns": ["id", "email", "ref"]
 		}`)
 
-		// While the run has no index, its table reports are found by their suffix.
-		tables := read(t, jobRunId)
-		require.Len(t, tables, 1)
+		// The run has no index yet, and no table report of its own.
+		require.Empty(t, read(t, jobRunId))
 
 		store(t, jobRunId, jobId+"--job-pii-report", `{"successfulTableReports":[{
 			"tableSchema": "public", "tableName": "users",
-			"reportKey": `+tableKey(jobRunId, "users")+`,
+			"reportKey": `+tableKey(earlierRunId, "users")+`,
 			"scanFingerprint": "0a1b2c"
 		}]}`)
-		tables = read(t, jobRunId)
+		tables := read(t, jobRunId)
 		require.Len(t, tables, 1)
 		require.Equal(t, "public", tables[0].GetSchema())
 		require.Equal(t, "users", tables[0].GetTable())
@@ -1046,6 +1074,7 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 	// The members a worker may add to a report and to an index do not change what is read.
 	s.T().Run("a report stored with every member", func(t *testing.T) {
 		jobRunId := fmt.Sprintf("%s-%s-full", jobId, time.Now().Format(time.RFC3339))
+		earlierRunId := jobRunId + "-earlier"
 		table, err := json.Marshal(&piidetect_report.TableReport{
 			TableSchema: "public",
 			TableName:   "users",
@@ -1065,11 +1094,11 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 			},
 		})
 		require.NoError(t, err)
-		store(t, jobRunId, piidetect_report.TableReportExternalId("public", "users"), string(table))
+		store(t, earlierRunId, piidetect_report.TableReportExternalId("public", "users"), string(table))
 		store(t, jobRunId, piidetect_report.JobReportExternalId(jobId), `{
 			"successfulTableReports": [{
 				"tableSchema": "public", "tableName": "users",
-				"reportKey": `+tableKey(jobRunId, "users")+`,
+				"reportKey": `+tableKey(earlierRunId, "users")+`,
 				"scanFingerprint": "0a1b2c", "incomplete": true
 			}],
 			"failedTables": [{"tableSchema": "public", "tableName": "orders", "reason": "the columns cannot be read"}]
@@ -1087,11 +1116,12 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 	// An index may name a table report that is not there: the others are returned.
 	s.T().Run("an index that names a table report that is missing", func(t *testing.T) {
 		jobRunId := fmt.Sprintf("%s-%s-missing", jobId, time.Now().Format(time.RFC3339))
-		store(t, jobRunId, "public.users--table-pii-report",
+		earlierRunId := jobRunId + "-earlier"
+		store(t, earlierRunId, "public.users--table-pii-report",
 			`{"table_schema":"public","table_name":"users","column_reports":[]}`)
 		store(t, jobRunId, jobId+"--job-pii-report", `{"successfulTableReports":[
-			{"tableSchema": "public", "tableName": "users", "reportKey": `+tableKey(jobRunId, "users")+`, "scanFingerprint": "a"},
-			{"tableSchema": "public", "tableName": "gone", "reportKey": `+tableKey(jobRunId, "gone")+`, "scanFingerprint": "b"}
+			{"tableSchema": "public", "tableName": "users", "reportKey": `+tableKey(earlierRunId, "users")+`, "scanFingerprint": "a"},
+			{"tableSchema": "public", "tableName": "gone", "reportKey": `+tableKey(earlierRunId, "gone")+`, "scanFingerprint": "b"}
 		]}`)
 
 		tables := read(t, jobRunId)
