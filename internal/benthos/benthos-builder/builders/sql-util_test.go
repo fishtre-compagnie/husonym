@@ -337,6 +337,45 @@ func Test_autoMapNewColumns(t *testing.T) {
 		require.Equal(t, []string{"public.users.telephone (phone_number)"}, anonymized)
 	})
 
+	t.Run("a secret, an identifier, a salary and an age are rewritten, each by its type", func(t *testing.T) {
+		accounts := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+			"public.accounts": {
+				"user_pass":               {DataType: "character varying(72)"},
+				"email_verification_code": {DataType: "character(6)"},
+				"api_key":                 {DataType: "text"},
+				"tax_id":                  {DataType: "character varying(20)"},
+				"passnummer":              {DataType: "bigint"},
+				"iban":                    {DataType: "character varying(34)"},
+				"ethnicity":               {DataType: "text"},
+				"salary":                  {DataType: "numeric(10,2)"},
+				"age":                     {DataType: "smallint"},
+				"national_id":             {DataType: "character varying(20)"},
+				"untyped_secret":          nil,
+			},
+		}
+		// A national identifier under a unique constraint is a key: it stays as it is.
+		unique := &sqlmanager_shared.TableConstraints{
+			UniqueConstraints: map[string][][]string{"public.accounts": {{"national_id"}}},
+		}
+		var mappings []*mgmtv1alpha1.JobMapping
+		for column := range accounts["public.accounts"] {
+			mappings = append(mappings, passthrough("public", "accounts", column))
+		}
+		out, anonymized, passedThrough := autoMapNewColumns(mappings, accounts, unique, nil, true)
+
+		for _, column := range []string{"user_pass", "email_verification_code", "api_key", "tax_id", "iban", "ethnicity"} {
+			require.NotNil(t, configOf(out, column).GetTransformCharacterScrambleConfig(), column)
+		}
+		require.NotNil(t, configOf(out, "passnummer").GetGenerateInt64Config())
+		require.InDelta(t, 20000, configOf(out, "salary").GetGenerateFloat64Config().GetMin(), 0)
+		require.InDelta(t, 90000, configOf(out, "salary").GetGenerateFloat64Config().GetMax(), 0)
+		require.EqualValues(t, 18, configOf(out, "age").GetGenerateInt64Config().GetMin())
+		require.EqualValues(t, 90, configOf(out, "age").GetGenerateInt64Config().GetMax())
+		require.Len(t, anonymized, 9)
+		// Left as they are: the key, and the column whose type the run does not know.
+		require.Equal(t, []string{"public.accounts.national_id", "public.accounts.untyped_secret"}, passedThrough)
+	})
+
 	t.Run("a column the destination recomputes keeps its GenerateDefault", func(t *testing.T) {
 		out, anonymized, passedThrough := autoMapNewColumns([]*mgmtv1alpha1.JobMapping{
 			generateDefault("public", "users", "email_normalise"),

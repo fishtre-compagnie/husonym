@@ -20,7 +20,6 @@ import (
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
-	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"golang.org/x/sync/errgroup"
 )
@@ -190,9 +189,9 @@ func autoMapNewColumns(
 			passedThrough = append(passedThrough, name)
 			continue
 		}
-		// The base catalogue: a run has no license to check, and the suggestions are base
-		// transformers anyway.
-		config, ok := catalog.DefaultConfig(source, false)
+		// The config of the base catalogue: a run has no license to check, and the
+		// suggestions are base transformers anyway.
+		config, ok := job_util.SuggestedConfig(source, category)
 		if !ok {
 			out = append(out, m)
 			passedThrough = append(passedThrough, name)
