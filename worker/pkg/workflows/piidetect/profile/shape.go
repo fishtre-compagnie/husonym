@@ -17,9 +17,13 @@ const (
 // "a" for another letter, "9" for a digit, "?" for a character it does not show. A run of
 // one class is written once, followed by "+"; a run of spaces is one space; a punctuation
 // character of maskPunctuation stands for itself.
+//
+// A mask never spells a value: one that would hold no letter and no digit class, as the
+// mask of ":-)" or of "-", is written "?+".
 func mask(value string) string {
 	var b strings.Builder
 	var last rune
+	abstracts := false
 	for _, r := range value {
 		if b.Len() >= maskLimit {
 			break
@@ -33,7 +37,14 @@ func mask(value string) string {
 		if repeats {
 			b.WriteByte('+')
 		}
+		abstracts = abstracts || class == 'A' || class == 'a' || class == '9'
 		last = class
+	}
+	if !abstracts {
+		if b.Len() == 0 {
+			return ""
+		}
+		return "?+"
 	}
 	if b.Len() > maskLimit {
 		return b.String()[:maskLimit]

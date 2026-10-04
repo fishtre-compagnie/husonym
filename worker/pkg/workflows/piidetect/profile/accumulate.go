@@ -13,9 +13,14 @@ import (
 )
 
 const (
-	// Under this number of non-blank values a share says nothing: the profile then holds
-	// neither shapes nor hits.
-	minValuesForShares = 3
+	// Under this number of values a statistic describes one row or two rather than the
+	// column: the profile then holds counts and the kind of the values, nothing else.
+	minValues = 3
+	// A layout, or a format, is published when at least this many rows have it. Under
+	// it, it is what one row or two look like. Three is the smallest number for which
+	// "several rows" holds, and the floor the format checks of the API's scan use; a
+	// higher one would hide the second format of a small sample, which is evidence.
+	minRowsForShare = 3
 	// Only the first characters of a value feed the shapes and the character classes,
 	// and a longer value passes no format check.
 	readLimit = 256
@@ -221,6 +226,9 @@ func (t *Table) Profile(name string) *Profile {
 	switch p.Kind {
 	case KindText:
 		texts := len(c.lengths)
+		if texts < minValues {
+			break
+		}
 		p.Len = spread(c.lengths)
 		if characters := c.letters + c.digits + c.spaces + c.marks; characters > 0 {
 			p.Letters = share(c.letters, characters)
@@ -228,25 +236,29 @@ func (t *Table) Profile(name string) *Profile {
 			p.Spaces = share(c.spaces, characters)
 			p.Marks = share(c.marks, characters)
 		}
-		if texts > 0 {
-			p.Words = float64(c.words*10/texts) / 10
-		}
-		if texts >= minValuesForShares {
-			p.Shapes = topShares(c.shapes, texts)
-			p.Hits = c.hitShares(t, c.checkedTexts)
-		}
+		p.Words = float64(c.words*10/texts) / 10
+		p.Shapes = topShares(c.shapes, texts)
+		p.Hits = c.hitShares(t, c.checkedTexts)
 	case KindBinary:
-		p.Len = spread(c.sizes)
+		if len(c.sizes) >= minValues {
+			p.Len = spread(c.sizes)
+		}
 	case KindInteger, KindDecimal:
 		numbers := len(c.intDigits)
+		if numbers < minValues {
+			break
+		}
 		p.IntDigits = spread(c.intDigits)
 		p.Fraction = share(c.fractional, numbers)
 		p.Negative = share(c.negative, numbers)
-		if p.Kind == KindInteger && c.checkedNumbers >= minValuesForShares {
+		if p.Kind == KindInteger {
 			p.Hits = c.hitShares(t, c.checkedNumbers)
 		}
 	case KindDateTime:
 		moments := c.kinds[KindDateTime]
+		if moments < minValues {
+			break
+		}
 		if c.midnight == moments {
 			p.Kind = KindDate
 		} else {
@@ -288,12 +300,12 @@ func topShares(counts map[string]int, total int) []Share {
 }
 
 // topSharesBy returns the most frequent names with their share of total, the most
-// frequent first; tie decides between two that are as frequent. A share that is cut to
-// zero is left out.
+// frequent first; tie decides between two that are as frequent. A name that fewer than
+// minRowsForShare rows have is left out, and so is a share that is cut to zero.
 func topSharesBy(counts map[string]int, total int, tie func(a, b string) int) []Share {
 	names := make([]string, 0, len(counts))
 	for name, count := range counts {
-		if share(count, total) > 0 {
+		if count >= minRowsForShare && share(count, total) > 0 {
 			names = append(names, name)
 		}
 	}

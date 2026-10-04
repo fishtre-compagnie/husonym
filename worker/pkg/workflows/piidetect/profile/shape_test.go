@@ -19,7 +19,6 @@ func Test_Mask(t *testing.T) {
 		"Éloïse":                            "A+a+",
 		"50%!":                              "9+?+",
 		"a_b/c:d,e#f":                       "a+_a+/a+:a+,a+#a+",
-		"..":                                "..",
 		"":                                  "",
 	} {
 		require.Equal(t, want, mask(value), value)
@@ -30,4 +29,12 @@ func Test_Mask_IsCutAt32Characters(t *testing.T) {
 	long := mask(strings.Repeat("a1", 40))
 	require.Len(t, long, 32)
 	require.Equal(t, strings.Repeat("a+9+", 8), long)
+}
+
+// A value made of punctuation only has no letter and no digit to stand for: its mask
+// would be the value itself. It is written as one run of characters that are not shown.
+func Test_Mask_NeverSpellsAValue(t *testing.T) {
+	for _, value := range []string{":-)", "-", "(+)", "#", "..", "@", "+ -", "§", "?", "?!"} {
+		require.Equal(t, "?+", mask(value), value)
+	}
 }

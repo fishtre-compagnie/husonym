@@ -44,8 +44,9 @@ func Test_Table_ProfilesATextColumn(t *testing.T) {
 		Spaces:   0.15,
 		Marks:    0.1,
 		Words:    1.7, // 7 words in 4 values, cut to one decimal
-		Shapes:   []Share{{"a+ 9+", 0.75}, {"A+a+-9+@", 0.25}},
-		Hits:     []Share{{"at", 0.25}},
+		// The layout and the format of the one other value are those of one row: they
+		// are not published.
+		Shapes: []Share{{"a+ 9+", 0.75}},
 	}, table.Profile("c"))
 }
 
@@ -57,21 +58,46 @@ func Test_Table_AColumnNeverSeenHasNoProfile(t *testing.T) {
 	require.Nil(t, table.Profile("other"))
 }
 
-// Under three non-blank values a share says nothing: the profile holds counts only.
-func Test_Table_NoShapeAndNoHitUnderThreeValues(t *testing.T) {
+// Under three values a statistic describes one row or two: the profile then holds counts
+// and the kind of the values, nothing else. Whatever the kind.
+func Test_Table_CountsOnlyUnderThreeValues(t *testing.T) {
 	table := newTestTable(endsWithAt)
 	addValues(table, "c", "a@", "b@", "", nil)
-
-	p := table.Profile("c")
-	require.Empty(t, p.Shapes)
-	require.Empty(t, p.Hits)
-	require.Equal(t, 4, p.Rows)
-	require.Equal(t, &Spread{2, 2, 2}, p.Len)
+	require.Equal(t, &Profile{Rows: 4, Nulls: 1, Blank: 1, Distinct: 3, Kind: KindText}, table.Profile("c"))
 
 	addValues(table, "c", "c@")
-	p = table.Profile("c")
+	p := table.Profile("c")
 	require.Equal(t, []Share{{"a+@", 1}}, p.Shapes)
 	require.Equal(t, []Share{{"at", 1}}, p.Hits)
+	require.Equal(t, &Spread{2, 2, 2}, p.Len)
+	require.NotZero(t, p.Letters)
+	require.NotZero(t, p.Words)
+
+	few := newTestTable(endsWithAt)
+	addValues(few, "n", int64(-5), int64(1234))
+	addValues(few, "d", 0.5, -12.25)
+	addValues(few, "at", testNow.AddDate(-40, 0, 0), time.Date(1985, 3, 12, 0, 0, 0, 0, time.UTC))
+	addValues(few, "b", &husonymtypes.Binary{Bytes: []byte("abc")}, &husonymtypes.Binary{Bytes: []byte("abcdef")})
+	require.Equal(t, &Profile{Rows: 8, Nulls: 6, Distinct: 2, Kind: KindInteger}, few.Profile("n"))
+	require.Equal(t, &Profile{Rows: 8, Nulls: 6, Distinct: 2, Kind: KindDecimal}, few.Profile("d"))
+	require.Equal(t, &Profile{Rows: 8, Nulls: 6, Distinct: 2, Kind: KindDateTime}, few.Profile("at"))
+	require.Equal(t, &Profile{Rows: 8, Nulls: 6, Distinct: 2, Kind: KindBinary}, few.Profile("b"))
+}
+
+// A layout, or a format, that fewer than three rows have is theirs, not the column's: it
+// is not published, whatever its share.
+func Test_Table_ALayoutOfFewRowsIsNotPublished(t *testing.T) {
+	table := newTestTable(endsWithAt)
+	addValues(table, "c", "ab", "cd", "ef", "x1", "y2", "z@", "w@")
+
+	p := table.Profile("c")
+	require.Equal(t, []Share{{"a+", 0.42}}, p.Shapes, "a+9+ and a+@ are held by two rows each")
+	require.Empty(t, p.Hits, "two rows pass the check")
+
+	addValues(table, "c", "v@")
+	p = table.Profile("c")
+	require.Equal(t, []Share{{"a+", 0.37}, {"a+@", 0.37}}, p.Shapes)
+	require.Equal(t, []Share{{"at", 0.37}}, p.Hits)
 }
 
 // A share is cut, never rounded up: 99 values of 200 are 0.49, under a half.
@@ -101,9 +127,9 @@ func Test_Table_KeepsTheThreeMostFrequentHits(t *testing.T) {
 
 func Test_Table_KeepsTheThreeMostFrequentShapes(t *testing.T) {
 	table := newTestTable()
-	addValues(table, "c", "a", "a", "a", "1", "1", "A", "A", "-", "a1")
+	addValues(table, "c", "a", "a", "a", "a", "1", "1", "1", "A", "A", "A", "a1", "a1", "a1", "-")
 
-	require.Equal(t, []Share{{"a+", 0.33}, {"9+", 0.22}, {"A+", 0.22}}, table.Profile("c").Shapes)
+	require.Equal(t, []Share{{"a+", 0.28}, {"9+", 0.21}, {"A+", 0.21}}, table.Profile("c").Shapes)
 }
 
 // Only the first 256 characters of a value feed the shapes and the character classes;
@@ -142,9 +168,9 @@ func Test_Table_ProfilesNumbers(t *testing.T) {
 // telephone number.
 func Test_Table_ChecksTheFormatOfWholeNumbers(t *testing.T) {
 	table := newTestTable(Detector{Name: "nine", Match: func(v string) bool { return len(v) == 9 }})
-	addValues(table, "n", int64(612345678), int64(712345678), int64(42))
+	addValues(table, "n", int64(612345678), int64(712345678), int64(812345678), int64(42))
 
-	require.Equal(t, []Share{{"nine", 0.66}}, table.Profile("n").Hits)
+	require.Equal(t, []Share{{"nine", 0.75}}, table.Profile("n").Hits)
 }
 
 func Test_Table_ProfilesDates(t *testing.T) {
@@ -154,13 +180,14 @@ func Test_Table_ProfilesDates(t *testing.T) {
 	addValues(table, "created", testNow.Add(-time.Hour), testNow.Add(-48*time.Hour), day(2026))
 	addValues(table, "due", testNow.Add(time.Hour), testNow.AddDate(1, 0, 0), testNow.Add(-time.Hour))
 	addValues(table, "old", day(1900), day(1920), day(2020))
-	addValues(table, "typed", &husonymtypes.HusonymDateTime{Year: 2023, Month: 5, Day: 2, Hour: 9})
+	typed := &husonymtypes.HusonymDateTime{Year: 2023, Month: 5, Day: 2, Hour: 9}
+	addValues(table, "typed", typed, typed, typed)
 
-	require.Equal(t, &Profile{Rows: 13, Nulls: 10, Distinct: 3, Kind: KindDate, Age: "20-60y"}, table.Profile("birth"))
-	require.Equal(t, &Profile{Rows: 13, Nulls: 10, Distinct: 3, Kind: KindDateTime, Midnight: 0.33, Age: "<1y"}, table.Profile("created"))
+	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 3, Kind: KindDate, Age: "20-60y"}, table.Profile("birth"))
+	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 3, Kind: KindDateTime, Midnight: 0.33, Age: "<1y"}, table.Profile("created"))
 	require.Equal(t, "future", table.Profile("due").Age)
 	require.Equal(t, ">60y", table.Profile("old").Age)
-	require.Equal(t, &Profile{Rows: 13, Nulls: 12, Distinct: 1, Kind: KindDateTime, Age: "1-5y"}, table.Profile("typed"))
+	require.Equal(t, &Profile{Rows: 15, Nulls: 12, Distinct: 1, Kind: KindDateTime, Age: "1-5y"}, table.Profile("typed"))
 }
 
 func Test_Table_AgeBuckets(t *testing.T) {
@@ -173,9 +200,30 @@ func Test_Table_AgeBuckets(t *testing.T) {
 		">60y":   testNow.AddDate(-61, 0, 0),
 	} {
 		table := newTestTable()
-		addValues(table, "c", moment)
+		addValues(table, "c", moment, moment, moment)
 		require.Equal(t, want, table.Profile("c").Age, want)
 	}
+}
+
+// The age is that of the median moment, the lower one of the two when their number is
+// even.
+func Test_Table_AgeOfTheMedianMoment(t *testing.T) {
+	recent, ancient := testNow.AddDate(0, -1, 0), testNow.AddDate(-70, 0, 0)
+
+	even := newTestTable()
+	addValues(even, "c", recent, ancient, recent, ancient)
+	require.Equal(t, "<1y", even.Profile("c").Age)
+
+	odd := newTestTable()
+	addValues(odd, "c", recent, ancient, ancient, recent, ancient)
+	require.Equal(t, ">60y", odd.Profile("c").Age)
+}
+
+// The length of a text is counted in characters, not in bytes.
+func Test_Table_LengthsAreInCharacters(t *testing.T) {
+	table := newTestTable()
+	addValues(table, "c", "éé", "ééé", "éééé")
+	require.Equal(t, &Spread{2, 3, 4}, table.Profile("c").Len)
 }
 
 func Test_Table_KindsOfValues(t *testing.T) {
@@ -192,7 +240,7 @@ func Test_Table_KindsOfValues(t *testing.T) {
 		KindOther:    &husonymtypes.Interval{Days: 3},
 	} {
 		table := newTestTable()
-		addValues(table, "c", value)
+		addValues(table, "c", value, value, value)
 		require.Equal(t, want, table.Profile("c").Kind, want)
 	}
 
@@ -222,11 +270,11 @@ func Test_Table_ProfilesBinaryValues(t *testing.T) {
 // The statistics are those of the kind most values are of.
 func Test_Table_AColumnOfSeveralKindsIsProfiledAsItsMostFrequentOne(t *testing.T) {
 	table := newTestTable()
-	addValues(table, "c", "abc", "abd", 7, true)
+	addValues(table, "c", "abc", "abd", "abe", 7, true)
 
 	p := table.Profile("c")
 	require.Equal(t, KindText, p.Kind)
-	require.Equal(t, 4, p.Distinct)
+	require.Equal(t, 5, p.Distinct)
 	require.Nil(t, p.IntDigits)
 	require.Equal(t, &Spread{3, 3, 3}, p.Len)
 }
