@@ -34,7 +34,7 @@ There are a few prerequisites that the SDK needs in order to be properly configu
 
 If you are using Husonym locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
 
-If you are using Husonym locally in `auth mode` or using **Husonym Cloud**, you can authenticate with the Husonym server using an API Key or Access Token. Here is an example showing how to authenticate with Husonym's server.
+If you are using Husonym in `auth mode`, you can authenticate with the Husonym server using an API Key or Access Token. Here is an example showing how to authenticate with Husonym's server.
 
 ```python
 from husonym import Husonym

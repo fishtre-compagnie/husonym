@@ -247,9 +247,9 @@ extraEnvVars: []
 # -- Provide sidecars that will be appended directly to the deployment next to the user-container
 sidecarContainers: []
 
-# Configure Husonym Enterprise
+# Configure the Husonym license
 ee:
-  # -- Husonym Enterprise-Edition License Key
+  # -- Husonym License Key
   license:
 
 connections:

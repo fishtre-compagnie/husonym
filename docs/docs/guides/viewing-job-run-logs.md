@@ -13,18 +13,7 @@ This section details the variety of ways that job run logs can be accessed depen
 
 ![Job Run Logs](/img/runlogs.png)
 
-## Husonym Cloud
-
-Job Run Logs can only be accessed through the UI.
-Navigate to [Husonym Cloud](https://app.husonym.com), then click on the Runs tab in the top nav.
-
-Select the run you wish to see logs for. Select the run.
-
-You'll see a section in the middle of the page for logs.
-
-## Open Source
-
-For the open source variant, you have a few options at your disposal.
+You have a few options at your disposal.
 
 ### Docker Compose
 
