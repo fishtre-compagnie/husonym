@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"testing"
 	"time"
@@ -74,6 +75,26 @@ func Test_IsPublicAddress(t *testing.T) {
 			ip := net.ParseIP(tc.ip)
 			require.NotNil(t, ip)
 			require.True(t, IsPublicAddress(ip))
+		})
+	}
+}
+
+func Test_UnwrapIPv4(t *testing.T) {
+	tests := []struct {
+		name string
+		addr string
+		want string
+	}{
+		{"an IPv4 address", "169.254.169.254", "169.254.169.254"},
+		{"an IPv6 address that carries none", "2606:2800:220:1::1", "2606:2800:220:1::1"},
+		{"IPv4-mapped", "::ffff:169.254.169.254", "169.254.169.254"},
+		{"SIIT", "::ffff:0:7f00:1", "127.0.0.1"},
+		{"NAT64", "64:ff9b::a9fe:a9fe", "169.254.169.254"},
+		{"6to4", "2002:0a00:0001::", "10.0.0.1"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, netip.MustParseAddr(tc.want), UnwrapIPv4(netip.MustParseAddr(tc.addr)))
 		})
 	}
 }

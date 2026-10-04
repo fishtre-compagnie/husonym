@@ -231,16 +231,23 @@ func IsPublicAddress(ip net.IP) bool {
 	if !ok {
 		return false
 	}
-	addr = addr.Unmap()
-	if embedded, ok := embeddedIPv4(addr); ok {
-		addr = embedded
-	}
+	addr = UnwrapIPv4(addr)
 	for _, prefix := range blockedPrefixes {
 		if prefix.Contains(addr) {
 			return false
 		}
 	}
 	return true
+}
+
+// UnwrapIPv4 returns the IPv4 address that addr carries when it is one written in an IPv6
+// form, and addr itself otherwise: the address a check on ranges has to look at.
+func UnwrapIPv4(addr netip.Addr) netip.Addr {
+	addr = addr.Unmap()
+	if embedded, ok := embeddedIPv4(addr); ok {
+		return embedded
+	}
+	return addr
 }
 
 // embeddedIPv4 is the IPv4 address an IPv6 one carries: SIIT (::ffff:0:a.b.c.d), NAT64
