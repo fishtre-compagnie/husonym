@@ -8,10 +8,10 @@ package v1alpha1_accountsettingservice
 
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 )
 
 type Service struct {

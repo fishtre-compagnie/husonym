@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 )
 
 // Trying a setting means fetching a URL somebody typed into a form. That is a request the

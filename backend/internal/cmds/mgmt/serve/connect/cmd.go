@@ -49,7 +49,6 @@ import (
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -79,6 +78,7 @@ import (
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
 	"github.com/spf13/cobra"
