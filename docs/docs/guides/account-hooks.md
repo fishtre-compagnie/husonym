@@ -60,19 +60,32 @@ Today, there are 3 events that can trigger a hook:
 - `Job Run Failed`
 - `Job Run Succeeded`
 
-Each event follows the same format, with the only difference being the payload.
+Each event follows the same format, with the only difference being the payload. The body of a webhook names the event and carries it:
 
 ```jsonc
 {
-  "name": "1", // The enum value of the event name
-  "accountId": "<account-id>", // The account ID the event occurred in
-  "timestamp": "<timestamp>", // The timestamp the event occurred in UTC time.
+  // The name of the event: ACCOUNT_HOOK_EVENT_JOB_RUN_CREATED,
+  // ACCOUNT_HOOK_EVENT_JOB_RUN_FAILED or ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED
+  "event_name": "ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED",
+  "event_data": {
+    "name": 3, // The event as a number: 1 created, 2 failed, 3 succeeded
+    "accountId": "<account-id>", // The account ID the event occurred in
+    "timestamp": "2026-10-03T07:51:53.058540394Z", // When the event occurred, in UTC time
 
-  // The payload for the event. The presence of the key depends on which event occurred.
-  "jobRunCreated": {},
-  "jobRunSucceeded": {},
-  "jobRunFailed": {},
+    // The payload for the event. Only the key of the event that occurred is present:
+    // jobRunCreated, jobRunFailed or jobRunSucceeded.
+    "jobRunSucceeded": {
+      "jobId": "<job-id>",
+      "jobRunId": "<job-run-id>",
+    },
+  },
 }
+```
+
+The body is sent compact, on one line and without the comments. This is the exact body of a `Job Run Succeeded` event, the bytes that the signatures are computed on:
+
+```text
+{"event_name":"ACCOUNT_HOOK_EVENT_JOB_RUN_SUCCEEDED","event_data":{"name":3,"accountId":"acc-replay","timestamp":"2026-10-03T07:51:53.058540394Z","jobRunSucceeded":{"jobId":"job-replay","jobRunId":"datasync-before"}}}
 ```
 
 ### Job Run Created
@@ -158,9 +171,15 @@ The URL of a webhook is an `http` or `https` address with a host, such as `https
 
 The URL must be the final address of the receiver: redirects are not followed. A response with a 3xx status is a failure, and the request is not sent to the address it names.
 
-A receiver may live on the network of the deployment: private and loopback addresses are reachable. Link-local addresses (`169.254.0.0/16`, `fe80::/10`), where the metadata service of a cloud host lives, are never called, nor is `fd00:ec2::254`. The check is made on the address the name of the URL resolves to, each time a connection is made.
+A receiver may live on the network of the deployment: private and loopback addresses are reachable. These addresses are never called:
 
-When the worker is configured with a proxy (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`), webhooks go through it, whether or not the certificate verification of the hook is disabled. The worker then connects to the proxy and does not check the address of the receiver: the proxy is where a deployment restricts where webhooks may go.
+- link-local addresses (`169.254.0.0/16`, `fe80::/10`), where the metadata service of a cloud host usually lives;
+- the metadata addresses outside those ranges: `100.100.100.200`, `192.0.0.192`, `fd00:ec2::254` and `fd20:ce::254`;
+- the unspecified address (`0.0.0.0`, `::`) and multicast addresses (`224.0.0.0/4`, `ff00::/8`).
+
+An IPv4 address of this list is also refused when an IPv6 address carries it in one of these forms: IPv4-mapped (`::ffff:a.b.c.d`), IPv4-translated (`::ffff:0:a.b.c.d`), IPv4-compatible (`::a.b.c.d`), NAT64 under `64:ff9b::/96`, and 6to4 (`2002::/16`). No other form is recognized. The check is made on the address the name of the URL resolves to, each time a connection is made.
+
+The worker follows the proxy settings of its environment (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`), whether or not the certificate verification of the hook is disabled. A webhook that these settings send to a proxy is handed to the proxy: the worker connects to the proxy and does not check the address of the receiver, so the proxy is where a deployment restricts where such webhooks may go. A webhook that the settings do not send to a proxy is sent directly, and the address of its receiver is checked as described above: this is the case of a host that `NO_PROXY` lists, of a URL whose scheme has no proxy set, and of `localhost` and loopback addresses, which never go through a proxy.
 
 ### More Request Details and Response Information
 
@@ -289,4 +308,7 @@ The retry policy is applied per hook execution.
 
 ### Secret Not Available to the Worker
 
-The worker reads the secret of a hook from the API, which returns it to the worker only when the worker is identified by its API key. When the API hides the secret from the worker, the webhook is not sent, and the failure says that the API returned a masked secret: check the API key of the worker.
+The worker reads the secret of a hook from the API. When what it reads is the masked value `********`, the webhook is not sent, and the failure says that the API returned the masked value in place of the secret. There are two causes:
+
+- the worker is not identified by its API key, so the API hides every secret from it: check the API key of the worker;
+- the stored secret of the hook is that very value: set the secret of the hook again.
