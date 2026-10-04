@@ -91,9 +91,15 @@ func (t *TransformCharacterScramble) Transform(value, opts any) (any, error) {
 
 	var strPtr *string
 	switch v := value.(type) {
+	case nil:
+		// A NULL stays a NULL.
+		return nil, nil
 	case string:
 		strPtr = &v
 	case *string:
+		if v == nil {
+			return nil, nil
+		}
 		strPtr = v
 	default:
 		return nil, fmt.Errorf("transform_character_scramble: value is not string or *string, got %T", value)
