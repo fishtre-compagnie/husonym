@@ -140,6 +140,32 @@ func Test_DetectPiiLLM_Input(t *testing.T) {
 	require.Contains(t, body, `\"table\":\"users\"`)
 }
 
+// The format checks of a column of one distinct value serve the rules; the model is not
+// told them.
+func Test_DetectPiiLLM_SaysNothingOfASingleValue(t *testing.T) {
+	endpoint, classifier := newModelEndpoint(t, piitest.EveryColumn("none", 1))
+	run := newActivityRun(t, NewActivities(nil, nil, nil, nil, classifier, &Config{}))
+
+	single := &profile.Profile{
+		Rows: 20, Distinct: 1, Kind: profile.KindText, Hits: []profile.Share{{Name: "email", Share: 1}},
+	}
+	_, _, err := execute[DetectPiiLLMResponse](t, run, "DetectPiiLLM", &DetectPiiLLMRequest{
+		TableSchema: "public", TableName: "users",
+		ColumnData: []*ColumnData{
+			{Column: "c3", DataType: "text", Profile: single},
+			{Column: "c4", DataType: "text", Profile: &profile.Profile{
+				Rows: 20, Distinct: 7, Kind: profile.KindText, Hits: []profile.Share{{Name: "iban", Share: 0.9}},
+			}},
+		},
+	})
+	require.NoError(t, err)
+	body := bodies(endpoint)[0]
+	require.Contains(t, body, `\"sample\":{\"rows\":20,\"distinct\":1,\"kind\":\"text\"}`)
+	require.Equal(t, 1, strings.Count(body, `\"hits\":`), "only the column of several values has hits")
+	require.Contains(t, body, `\"hits\":[[\"iban\",0.9]]`)
+	require.Len(t, single.Hits, 1, "the profile the activity was given is left as it is")
+}
+
 // A column without a valid answer is asked once more. An answer for an id the request
 // does not hold is ignored, and the worker says so.
 func Test_DetectPiiLLM_AColumnAnsweredAtTheSecondRequest(t *testing.T) {

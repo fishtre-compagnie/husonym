@@ -223,6 +223,32 @@ func Test_Detectors(t *testing.T) {
 	require.False(t, detectors[2].Match("FR76 3000 6000 0112 3456 7890 180"))
 }
 
+// A column in which every sampled row holds the same value is still read by its format;
+// what goes to the model of its profile says nothing of that value.
+func Test_Find_OnAColumnOfOneValue(t *testing.T) {
+	table := profile.NewTable(Detectors())
+	for range 20 {
+		table.Add(map[string]any{"c3": "jean.dupont@example.org", "c4": "the same note"})
+	}
+	finding, ok := Find("c3", "text", table.Profile("c3"))
+	require.True(t, ok)
+	require.Equal(t, Finding{Category: report.Contact, Evidence: "values:email 1"}, finding)
+	require.Equal(t,
+		&profile.Profile{Rows: 20, Distinct: 1, Kind: profile.KindText},
+		table.Profile("c3").ForModel(),
+	)
+
+	_, ok = Find("c4", "text", table.Profile("c4"))
+	require.False(t, ok)
+
+	// Two rows are not a column.
+	few := profile.NewTable(Detectors())
+	few.Add(map[string]any{"c3": "jean.dupont@example.org"})
+	few.Add(map[string]any{"c3": "jean.dupont@example.org"})
+	_, ok = Find("c3", "text", few.Profile("c3"))
+	require.False(t, ok)
+}
+
 // From sampled values to a finding: a column of IBANs under a neutral name.
 func Test_Find_OnAProfiledColumn(t *testing.T) {
 	table := profile.NewTable(Detectors())

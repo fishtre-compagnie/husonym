@@ -83,6 +83,18 @@ func (p *Profile) WithoutShapes() *Profile {
 	return &smaller
 }
 
+// ForModel returns what a model is told of the profile. A column of one distinct value
+// keeps its counts and its kind: the format checks that value passes, which serve the
+// rules, would describe it.
+func (p *Profile) ForModel() *Profile {
+	if p == nil || p.Distinct > 1 || len(p.Hits) == 0 {
+		return p
+	}
+	told := *p
+	told.Hits = nil
+	return &told
+}
+
 // Spread is the smallest, the median and the largest of a series of sizes.
 type Spread [3]int
 

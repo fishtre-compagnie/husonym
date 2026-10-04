@@ -100,7 +100,7 @@ func (a *Activities) DetectPiiLLM(ctx context.Context, req *DetectPiiLLMRequest)
 			Name:     column.Column,
 			DataType: column.DataType,
 			Nullable: column.IsNullable,
-			Profile:  column.Profile,
+			Profile:  column.Profile.ForModel(),
 		})
 	}
 	table := model.Table{Name: req.TableName, Hints: req.UserPrompt}

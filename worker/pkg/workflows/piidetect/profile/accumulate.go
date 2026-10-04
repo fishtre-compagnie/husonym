@@ -232,8 +232,10 @@ func (t *Table) Profile(name string) *Profile {
 		p.Kind = KindDate
 	}
 	// One value, however many rows hold it: a statistic of the column would be a
-	// description of that value.
+	// description of that value. The format checks it passes are counted all the same,
+	// for the rules; ForModel leaves them out of what the model is told.
 	if p.Distinct <= 1 {
+		p.Hits = c.formatHits(t, p.Kind)
 		return p
 	}
 	switch p.Kind {
@@ -251,7 +253,7 @@ func (t *Table) Profile(name string) *Profile {
 		}
 		p.Words = float64(c.words*10/texts) / 10
 		p.Shapes = topShares(c.shapes, texts)
-		p.Hits = c.hitShares(t, c.checkedTexts)
+		p.Hits = c.formatHits(t, p.Kind)
 	case KindBinary:
 		if len(c.sizes) >= minValues {
 			p.Len = spread(c.sizes)
@@ -264,9 +266,7 @@ func (t *Table) Profile(name string) *Profile {
 		p.IntDigits = spread(c.intDigits)
 		p.Fraction = share(c.fractional, numbers)
 		p.Negative = share(c.negative, numbers)
-		if p.Kind == KindInteger {
-			p.Hits = c.hitShares(t, c.checkedNumbers)
-		}
+		p.Hits = c.formatHits(t, p.Kind)
 	case KindDate:
 		p.Age = medianAge(c.ages, moments)
 	case KindDateTime:
@@ -293,6 +293,18 @@ func (c *column) kind() string {
 
 var kindOrder = []string{
 	KindText, KindInteger, KindDecimal, KindDateTime, KindBoolean, KindBinary, KindJSON, KindArray, KindOther,
+}
+
+// formatHits are the format checks the values of a column pass, for the kinds whose
+// values are checked — texts and integers — once enough of them were seen.
+func (c *column) formatHits(t *Table, kind string) []Share {
+	switch {
+	case kind == KindText && len(c.lengths) >= minValues:
+		return c.hitShares(t, c.checkedTexts)
+	case kind == KindInteger && len(c.intDigits) >= minValues:
+		return c.hitShares(t, c.checkedNumbers)
+	}
+	return nil
 }
 
 func (c *column) hitShares(t *Table, checked int) []Share {

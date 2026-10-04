@@ -95,10 +95,18 @@ func Test_Table_ASingleDistinctValuePublishesCountsOnly(t *testing.T) {
 		addValues(table, "born", time.Date(1985, 3, 12, 0, 0, 0, 0, time.UTC))
 		addValues(table, "blob", &husonymtypes.Binary{Bytes: []byte("abcdef")})
 	}
-	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindText}, table.Profile("secret"))
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindText}, table.Profile("secret").ForModel())
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindInteger}, table.Profile("pin").ForModel())
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindDate}, table.Profile("born").ForModel())
+	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindBinary}, table.Profile("blob").ForModel())
+
+	// The format checks are still counted, for the rules: nothing else describes the value.
+	require.Equal(t,
+		&Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindText, Hits: []Share{{"at", 1}}},
+		table.Profile("secret"),
+	)
 	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindInteger}, table.Profile("pin"))
-	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindDate}, table.Profile("born"))
-	require.Equal(t, &Profile{Rows: 20, Nulls: 15, Distinct: 1, Kind: KindBinary}, table.Profile("blob"))
+	require.Nil(t, (*Profile)(nil).ForModel())
 
 	// A second value, and the column is described again.
 	addValues(table, "secret", "other@", "other@", "other@")
