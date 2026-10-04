@@ -31,6 +31,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   salary: 'Salary',
   age: 'Age',
   ethnicity: 'Ethnicity',
+  marital_status: 'Marital status',
+  mac_address: 'MAC address',
   siret: 'SIRET',
   credit_card: 'Credit card',
   ip_address: 'IP address',
@@ -59,9 +61,10 @@ interface Props {
   // true si un transformer d'anonymisation est réellement appliqué. Faux pour
   // Passthrough : la valeur d'origine est alors recopiée telle quelle.
   isAnonymized?: boolean;
-  // true si un transformer adapté existe pour cette colonne. Faux pour une date
-  // en texte ou un IBAN, faute de générateur qui préserve le format : le message
-  // doit alors dire « aucun transformer compatible » et non « non anonymisée ».
+  // true si un transformer adapté existe pour cette colonne. Faux pour une
+  // colonne dont aucun transformer n'écrit le type (JSON, tableau, binaire, type
+  // défini dans le schéma) : le message doit alors dire « aucun transformer
+  // compatible » et non « non anonymisée ».
   hasSuggestion?: boolean;
   // true si le scan de contenu n'a pas pu analyser la colonne : son nom seul a
   // parlé, et l'absence de détection ne dit rien de ce qu'elle contient.

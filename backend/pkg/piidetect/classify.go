@@ -17,15 +17,16 @@ var (
 
 // newVocabulary gathers every word the rules and the qualifiers hold.
 func newVocabulary() *lexicon {
-	l := &lexicon{words: map[string]bool{}}
+	l := &lexicon{words: map[string]bool{}, anchors: map[string]bool{}}
 	for i := range rules {
 		ru := &rules[i]
 		l.add(ru.keywords...)
+		l.addAnchors(ru.keywords...)
 		l.add(ru.excludeTokens...)
 		l.add(ru.ownTokens...)
 		for _, g := range ru.guarded {
 			// A word that only counts as the whole name is not part of a glued one.
-			if !g.alone {
+			if !g.alone && !g.apart {
 				l.add(g.word)
 			}
 			l.add(g.among...)
@@ -33,6 +34,7 @@ func newVocabulary() *lexicon {
 		}
 	}
 	l.add(gluedWords...)
+	l.add(ordinaryWords...)
 	for _, set := range []map[string]bool{
 		qualifierNouns, qualifierAdjectives, qualifierFlags, qualifierEvents, referenceSuffixes,
 	} {

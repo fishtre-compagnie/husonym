@@ -78,6 +78,36 @@ func (p phrase) in(words []string) bool {
 type lexicon struct {
 	words map[string]bool
 	stems []pattern
+	// anchors are the keywords of one word and six letters or more: long enough to be
+	// read at an end of a glued token whose other end the rules do not know.
+	anchors map[string]bool
+}
+
+// The shortest keyword read at an end of a token the rules cannot cut entirely.
+const anchorMinLength = 6
+
+// Keywords that also end ordinary words, as a suffix of their language does: automobile,
+// capacidade, destinazione, werkplaats. They are not read at the end of a token.
+var ordinaryEndings = wordSet("mobile", "cidade", "nazione", "plaats")
+
+// Keywords that also open ordinary words: secretary, secretaria. They are not read at
+// the start of a token.
+var ordinaryOpenings = wordSet("secret")
+
+// What derives an ordinary word from a keyword: adressage, addressable, gendered. A
+// token that ends with one of them after a keyword is not cut.
+var derivations = wordSet(
+	"age", "ed", "er", "ee", "es", "ing", "able", "less", "ment", "ary", "ive", "al", "ly", "ness", "ship",
+)
+
+// addAnchors records the keywords of one word among keywords.
+func (l *lexicon) addAnchors(keywords ...string) {
+	for _, keyword := range keywords {
+		p := parsePhrase(keyword)
+		if len(p) == 1 && !p[0].prefix && !p[0].suffix && len(p[0].text) >= anchorMinLength {
+			l.anchors[p[0].text] = true
+		}
+	}
 }
 
 func (l *lexicon) add(keywords ...string) {
@@ -109,30 +139,83 @@ func (l *lexicon) knows(token string) bool {
 }
 
 // Words of two letters a glued token may hold after its first word: the links of a
-// phrase (dateofbirth, nombredeusuario) and what a number or a reference ends with
-// (telno, userid).
-var shortWords = wordSet("of", "de", "di", "du", "da", "do", "nr", "no", "id")
+// phrase (dateofbirth, nombredeusuario), what a number or a reference ends with (telno,
+// userid) and the address of a machine (clientip).
+var shortWords = wordSet("of", "de", "di", "du", "da", "do", "nr", "no", "id", "ip")
+
+// The one word of two letters that may open a glued token: idcard, idfiscal. The others
+// open ordinary words (noemail, deville).
+const shortOpening = "id"
 
 // The shortest word a glued token is cut into, the short words above aside. Shorter ones
 // are found by accident in ordinary words.
 const gluedMinLength = 3
 
-// split cuts a glued token into known words, or returns it whole when it is known as it
-// stands or holds anything the rules do not know.
+// split cuts a glued token into words. A token known as it stands stays whole. One made
+// of known words only is cut into them. Otherwise a long keyword at one of its ends is
+// cut from the rest (see around). Anything else stays whole.
 func (l *lexicon) split(token string) []string {
-	if l.knows(token) {
-		return []string{token}
+	if parts, ok := l.whole(token); ok {
+		return parts
 	}
-	if parts, ok := l.cut(token, true); ok {
+	if parts, ok := l.around(token); ok {
 		return parts
 	}
 	return []string{token}
 }
 
+// whole reads a token made of known words only.
+func (l *lexicon) whole(token string) ([]string, bool) {
+	if l.knows(token) {
+		return []string{token}, true
+	}
+	return l.cut(token, true)
+}
+
+// around cuts a token the rules do not know entirely into the known words that open or
+// close it and the rest, taken as one word, when one of those known words is a long
+// keyword: "addressline" gives address and line, "lieunaissance" lieu and naissance. The
+// longest known side wins, and the rest is two letters or more.
+func (l *lexicon) around(token string) ([]string, bool) {
+	for size := len(token) - 2; size >= anchorMinLength; size-- {
+		if parts, ok := l.whole(token[:size]); ok && l.anchored(parts) &&
+			!ordinaryOpenings[parts[len(parts)-1]] && !derivations[token[size:]] {
+			return append(parts, token[size:]), true
+		}
+		at := len(token) - size
+		if parts, ok := l.whole(token[at:]); ok && l.anchored(parts) && !ordinaryEndings[parts[0]] {
+			return append([]string{token[:at]}, parts...), true
+		}
+	}
+	return nil, false
+}
+
+// anchored tells whether one of the words is a long keyword.
+func (l *lexicon) anchored(words []string) bool {
+	for _, word := range words {
+		if l.anchors[word] {
+			return true
+		}
+	}
+	return false
+}
+
+// shortWordAt tells whether a word of two letters may stand at the start of a glued
+// token, or after its first word.
+func shortWordAt(word string, first bool) bool {
+	if first {
+		return word == shortOpening
+	}
+	return shortWords[word]
+}
+
 func (l *lexicon) cut(rest string, first bool) ([]string, bool) {
 	for end := len(rest) - 1; end >= 2; end-- {
 		head := rest[:end]
-		if !l.words[head] || (len(head) < gluedMinLength && (first || !shortWords[head])) {
+		if !l.words[head] {
+			continue
+		}
+		if len(head) < gluedMinLength && !shortWordAt(head, first) {
 			continue
 		}
 		tail := rest[end:]

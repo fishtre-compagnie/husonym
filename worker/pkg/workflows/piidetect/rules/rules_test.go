@@ -3,10 +3,26 @@ package rules
 import (
 	"testing"
 
+	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/stretchr/testify/require"
 )
+
+// Every category the name rules answer belongs to a category of the report: one added to
+// the rules without a place in the report fails here.
+func Test_NameCategories_AllBelongToTheReport(t *testing.T) {
+	for _, category := range piidetect.NameCategories() {
+		_, ok := nameCategories[category]
+		require.True(t, ok, "the category %s of the name rules has no category in the report", category)
+	}
+	finding, ok := Find("mac_address", "text", nil)
+	require.True(t, ok)
+	require.Equal(t, report.Location, finding.Category)
+	finding, ok = Find("marital_status", "text", nil)
+	require.True(t, ok)
+	require.Equal(t, report.Personal, finding.Category)
+}
 
 // Usual English names, whatever their case, with an underscore, a dash or nothing between
 // their words, each under the category of the report.

@@ -37,13 +37,14 @@ type rule struct {
 // guarded is a keyword of one word that names the datum in some names and something
 // ordinary in others. As the whole name it matches, unless beside is set. Beside other
 // words it matches when one of among is there, if among is given, and none of unless;
-// never when alone is set.
+// never when alone is set. With apart, it is not a word a glued token is cut into.
 type guarded struct {
 	word   string
 	among  []string
 	unless []string
 	alone  bool
 	beside bool
+	apart  bool
 }
 
 // objectTokens say that the column names a thing, not a person. "name" and "nom" do not
@@ -96,7 +97,7 @@ var codeTokens = []string{"code", "codes", "codigo", "codice", "kod"}
 var (
 	spanishPersons = []string{
 		"apellido", "apellidos", "cliente", "usuario", "persona", "empleado", "contacto", "titular", "paciente",
-		"alumno", "pila", "primer", "segundo", "propio",
+		"alumno", "pila", "primer", "segundo", "propio", "padre", "madre", "padres",
 	}
 	frenchPersons = []string{"client", "utilisateur", "personne", "patient", "salarie", "employe", "contact"}
 )
@@ -121,8 +122,10 @@ var rules = []rule{
 			"api key", "api token", "access token", "refresh token", "auth token", "bearer token", "session token",
 			"secret key", "private key", "client secret", "access key", "encryption key", "ssh key",
 			"security code", "verification code", "auth code", "access code", "code acces", "recovery code",
-			"recovery codes", "backup code", "backup codes", "security answer",
-			"credential", "secret", "pwd", "mdp", "jeton", "salt",
+			"recovery codes", "backup code", "backup codes", "security answer", "security question",
+			"credential", "secret", "pwd", "mdp", "jeton", "salt", "passcode", "otp", "totp",
+			// The code printed on a payment card.
+			"cvv", "cvc",
 			"secreto", "segreto", "segredo", "geheim", "sekret",
 		},
 		guarded: []guarded{
@@ -175,7 +178,7 @@ var rules = []rule{
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_USERNAME,
 		keywords: []string{
-			"username", "user name", "login", "nickname",
+			"username", "user name", "user names", "login", "nickname",
 			"benutzername", "nutzername", "nombre usuario", "nombre de usuario", "nome utente",
 			"gebruikersnaam", "nazwa uzytkownika", "nome utilizador", "nome usuario", "nome de usuario",
 			"nom utilisateur", "nom d utilisateur", "nom dutilisateur",
@@ -225,15 +228,22 @@ var rules = []rule{
 		keywords: []string{
 			"last name", "surname", "family name", "patronyme", "lname",
 			"nachname", "familienname", "zuname", "apellido", "apelido", "sobrenome", "cognome", "achternaam",
-			"familienaam", "nazwisko", "nom",
+			"familienaam", "nazwisko", "nom", "nom de famille", "nom famille",
+			// The name someone was born with, and the Dutch particle of a last name.
+			"maiden name", "nom de jeune fille", "nom jeune fille", "geburtsname", "tussenvoegsel", "tussenvoegsels",
 		},
 		excludeTokens: append([]string{"complet", "full", "entier"}, objectTokens...),
 	},
 	{
-		category:      "person_full_name",
-		sensitive:     true,
-		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
-		keywords:      []string{"full name", "nom complet", "name", "naam", "nome"},
+		category:  "person_full_name",
+		sensitive: true,
+		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
+		keywords: []string{
+			"full name", "nom complet", "name", "naam", "nome",
+			// Who holds a card or an account, and who to call for someone: a person.
+			"cardholder", "card holder", "account holder", "kontoinhaber", "karteninhaber", "titulaire",
+			"intestatario", "emergency contact", "contact urgence", "notfallkontakt", "contacto emergencia",
+		},
 		excludeTokens: objectTokens,
 	},
 	{
@@ -245,11 +255,19 @@ var rules = []rule{
 		alsoHolds: []columnKind{kindNumber},
 	},
 	{
+		// The address of a network card identifies a device, and through it its owner. No
+		// generator writes one: the scramble keeps its length and its separators.
+		category:  "mac_address",
+		sensitive: true,
+		suggested: scrambleText,
+		keywords:  []string{"mac address", "mac addr", "mac adresse", "adresse mac", "direccion mac", "indirizzo mac"},
+	},
+	{
 		category:  "street_address",
 		sensitive: true,
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS,
 		keywords: []string{
-			"address", "addresses", "addr", "street",
+			"address", "addresses", "addr", "street", "house number", "house no",
 			"adres", //nolint:misspell // a Dutch and Polish word
 			"adresse", "adresses", "adressen", "adresu", "adresy", "adresow",
 			"adress", //nolint:misspell // a German and Swedish spelling
@@ -271,6 +289,18 @@ var rules = []rule{
 			"stadt", "wohnort", "ort", "ciudad", "localidad", "municipio", "citta", "comune", "localita",
 			"woonplaats", "stad", "plaats", "gemeente", "miasto", "miejscowosc", "cidade", "localidade",
 		},
+	},
+	{
+		// Before state: Spanish "estado civil" holds the word of a state. The status is
+		// the datum here, not a qualifier of it.
+		category:  "marital_status",
+		sensitive: true,
+		suggested: scrambleText,
+		keywords: []string{
+			"marital", "marital status", "civil status", "estado civil", "etat civil", "situation familiale",
+			"situation matrimoniale", "familienstand", "stato civile", "burgerlijke staat", "stan cywilny",
+		},
+		ownTokens: []string{"status", "estado", "etat", "stato", "stan"},
 	},
 	{
 		category:  "state",
@@ -323,6 +353,11 @@ var rules = []rule{
 		keywords: []string{
 			"country", "countries", "pays", "pais", "paese", "nazione", "kraj",
 			"geburtsland", "herkunftsland", "heimatland", "wohnland",
+			// The country someone is a citizen of.
+			"nationalite", //nolint:misspell // a French word
+			"nationality", "citizenship", "citoyennete", "nationalitaet", "staatsangehoerigkeit",
+			"nacionalidad", "ciudadania", "nazionalita", "cittadinanza", "nationaliteit", "narodowosc",
+			"obywatelstwo", "nacionalidade", "cidadania",
 		},
 		guarded: []guarded{
 			// German and Dutch "land" is a country, English "land" is ground.
@@ -342,6 +377,10 @@ var rules = []rule{
 			"ssn*", "*ssn",
 			"social security", "securite sociale", "num secu", "numero secu", "numero ss", "nuss",
 			"sozialversicherung*", "svnr", "seguridad social", "seguranca social", "nir",
+		},
+		guarded: []guarded{
+			// The French number of a person; "code insee" is the code of a town.
+			{word: "insee", unless: []string{"code", "commune", "communes"}},
 		},
 		ownTokens: []string{"id"},
 		alsoHolds: []columnKind{kindNumber},
@@ -367,6 +406,10 @@ var rules = []rule{
 			"paspoort", "bsn", "burgerservicenummer", "rijksregisternummer", "sofi nummer", "rijbewijs",
 			"paszport*", "pesel", "nip", "nr dowodu", "numer dowodu", "dowod osobisty", "prawo jazdy",
 			"passaporte", "cpf", "contribuinte",
+			// The identifier written first, and the number of an identity document.
+			"id fiscal", "id national", "id nacional", "id tax", "id number",
+			"numero documento", "numero de documento", "nro documento", "num documento",
+			"documento identidad", "documento de identidad", "documento identita",
 		},
 		guarded: []guarded{
 			// Spanish identity numbers; Polish "dni" are days and "nie" is no.
@@ -376,6 +419,12 @@ var rules = []rule{
 			{word: "nie", among: []string{
 				"numero", "num", "nro", "cliente", "usuario", "titular", "persona", "documento", "id",
 			}},
+			// The Chilean tax number; English "rut" is a groove.
+			{word: "rut", among: []string{
+				"numero", "num", "nro", "cliente", "usuario", "titular", "persona", "empresa", "dv", "id",
+			}},
+			// Alone, the identity document of a person; beside other words, any document.
+			{word: "documento", alone: true},
 			// The Brazilian identity card.
 			{word: "rg", alone: true},
 		},
@@ -394,6 +443,8 @@ var rules = []rule{
 			"kreditkarte*", "numero tarjeta", "tarjeta credito", "tarjeta de credito", "carta di credito",
 			"carta credito", "numero carta", "numer karty", "karta kredytowa", "numero cartao", "cartao credito",
 			"cartao de credito", "carte bancaire", "numero carte",
+			// When a card expires and its last digits.
+			"card expiry", "card expiration", "card last",
 		},
 		guarded:   []guarded{{word: "cc", alone: true}},
 		alsoHolds: []columnKind{kindNumber},
@@ -404,6 +455,7 @@ var rules = []rule{
 		sensitive: true,
 		suggested: scrambleText,
 		keywords:  []string{"iban"},
+		ownTokens: codeTokens,
 	},
 	{
 		category:  "bank_account",
@@ -424,6 +476,9 @@ var rules = []rule{
 		keywords: []string{
 			"salary", "salaire", "gehalt", "salario", "stipendio", "wynagrodzenie", "pensja",
 			"salaris", //nolint:misspell // a Dutch word
+			// What someone earns, whatever it is paid as.
+			"income", "wage", "wages", "revenu", "revenus", "einkommen", "lohn", "ingresos", "sueldo", "reddito",
+			"inkomen", "dochod", "rendimento",
 		},
 		// A limit on salaries is not a salary.
 		excludeTokens: []string{"cap"},
@@ -433,7 +488,7 @@ var rules = []rule{
 		category:  "ethnicity",
 		sensitive: true,
 		suggested: scrambleText,
-		keywords:  []string{"ethnicity", "ethnie", "etnia", "ethnizitaet", "etniciteit"},
+		keywords:  []string{"ethnicity", "ethnic", "ethnie", "etnia", "ethnizitaet", "etniciteit"},
 	},
 	{
 		category:  "gender",
@@ -462,7 +517,7 @@ var rules = []rule{
 		suggestIfTemporal: generateMoment,
 		keywords: []string{
 			"birth date", "birthday", "date of birth", "date naissance", "date de naissance", "date naiss",
-			"naissance", "dob", "ddn",
+			"naissance", "dob", "ddn", "birth", "born", "place of birth", "year of birth",
 			"geburtsdatum", "geburtstag", "nacimiento", "nascita", "geboortedatum", "urodzenia", "nascimento",
 		},
 		alsoHolds: []columnKind{kindMoment, kindNumber},
@@ -472,7 +527,19 @@ var rules = []rule{
 		sensitive: true,
 		suggested: scrambleText,
 		guarded: []guarded{
-			{word: "age", alone: true}, {word: "edad", alone: true}, {word: "eta", alone: true},
+			// The age of a person, not a class of ages nor a bound on them. Many ordinary
+			// words end in "age" (paysage, postage): it is read as a word of its own only.
+			{
+				word:  "age",
+				apart: true,
+				among: []string{
+					"user", "customer", "client", "patient", "employee", "member", "person", "student",
+					"applicant", "years",
+				},
+				unless: []string{"group", "range", "bracket", "limit", "min", "max", "minimum", "maximum"},
+			},
+			{word: "edad", among: append([]string{"anos"}, spanishPersons...)},
+			{word: "eta", alone: true},
 			{word: "leeftijd", alone: true}, {word: "wiek", alone: true},
 			{word: "idade", alone: true},
 		},
@@ -480,11 +547,19 @@ var rules = []rule{
 	},
 }
 
-// Words a glued token may hold beside a keyword: whose datum it is, which one, and the
-// number or the hash it is stored as.
+// Ordinary words that end with a long keyword. Known as they stand, they are never cut.
+var ordinaryWords = []string{
+	"reconnaissance", "connaissance", "renacimiento", "renascimento", "rinascita", "countryside",
+}
+
+// Words a glued token may hold beside a keyword: whose datum it is, which one, the part
+// of it, and the number or the hash it is stored as.
 var gluedWords = []string{
 	"customer", "cust", "client", "user", "emp", "employee", "patient", "member", "contact", "owner",
+	"father", "mother", "spouse",
 	"home", "work", "office", "billing", "shipping", "mailing", "delivery", "current", "primary", "secondary", "alt", "personal", "private",
+	"old", "reset", "residence",
+	"ext", "prefix", "plus", "masked",
 	"number", "num", "nummer", "numero", "hash", "hashed", "encrypted", "display",
 	"kunde", "kunden", "klant", "privat",
 }

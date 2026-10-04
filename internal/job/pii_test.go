@@ -89,6 +89,7 @@ var nameOfCategory = map[string]string{
 	"postal_code": "postal_code", "country": "country", "ssn": "ssn", "national_id": "passport",
 	"credit_card": "card_number", "iban": "iban", "bank_account": "bank_account", "salary": "salary",
 	"ethnicity": "ethnicity", "gender": "gender", "birth_date": "birth_date", "age": "age",
+	"mac_address": "mac_address", "marital_status": "marital_status",
 }
 
 // A column the name rules find sensitive has a transformer its type takes, for every

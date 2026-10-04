@@ -270,7 +270,7 @@ func TestClassify_TheTypeOfTheColumn(t *testing.T) {
 	}
 }
 
-// Data the job's own name rules knew and the shared ones now hold.
+// Bank accounts, salaries, ages, licences and card numbers.
 func TestClassify_MoneyAndAge(t *testing.T) {
 	expectCategories(t, map[string]string{
 		"iban": "iban", "bank_account": "bank_account", "bank_account_number": "bank_account",
