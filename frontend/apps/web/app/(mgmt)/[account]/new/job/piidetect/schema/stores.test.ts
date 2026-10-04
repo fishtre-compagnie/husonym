@@ -5,7 +5,8 @@ import {
 } from '@husonym/sdk';
 import { toPiiDetectJobTypeConfig } from '../../../../jobs/util';
 import { PiiDetectionSchemaFormValues } from '../../job-form-validations';
-import { setInitialFormStateFromJob, withModelInputDefault } from './stores';
+import { withModelInputDefault } from './model-input';
+import { setInitialFormStateFromJob } from './stores';
 
 function piiDetectJob(
   modelInput: JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput

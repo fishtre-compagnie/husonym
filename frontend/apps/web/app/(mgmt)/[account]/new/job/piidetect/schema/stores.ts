@@ -11,6 +11,7 @@ import {
   PiiDetectionSchemaFormValues,
   TableScanFilterFormValue,
 } from '../../job-form-validations';
+import { withModelInputDefault } from './model-input';
 
 function getInitialFormState(): PiiDetectionSchemaFormValues {
   return {
@@ -94,21 +95,6 @@ export const usePiiDetectionSchemaStore = create<PiiDetectionSchemaStore>()(
     }
   )
 );
-
-// A form kept in the session may hold no choice of what the model receives: it
-// then reads as the statistics choice.
-export function withModelInputDefault(
-  formData: PiiDetectionSchemaFormValues
-): PiiDetectionSchemaFormValues {
-  return {
-    ...formData,
-    dataSampling: {
-      ...formData.dataSampling,
-      modelInput:
-        formData.dataSampling?.modelInput === 'values' ? 'values' : 'profiles',
-    },
-  };
-}
 
 // Hack to allow dynamic zustand store persistence keys
 // https://github.com/pmndrs/zustand/issues/513
