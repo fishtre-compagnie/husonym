@@ -11,16 +11,22 @@ import (
 )
 
 // The highest value an integer type holds when it is signed, by the name the three
-// dialects give it. SQL Server's tinyint holds up to 255: the signed bound fits it too.
+// dialects give it. SQL Server's tinyint holds up to 255, and an unsigned type of MySQL
+// twice what the signed one does: the signed bound fits them too. A serial type holds
+// what the integer type it stands for does. The types of eight bytes (bigint, int8,
+// bigserial, serial8) are not here: they hold every number that is generated.
 var highestIntegers = map[string]int64{
-	"tinyint":   math.MaxInt8,
-	"smallint":  math.MaxInt16,
-	"int2":      math.MaxInt16,
-	"mediumint": 1<<23 - 1,
-	"int":       math.MaxInt32,
-	"integer":   math.MaxInt32,
-	"int4":      math.MaxInt32,
-	"serial":    math.MaxInt32,
+	"tinyint":     math.MaxInt8,
+	"smallint":    math.MaxInt16,
+	"int2":        math.MaxInt16,
+	"smallserial": math.MaxInt16,
+	"serial2":     math.MaxInt16,
+	"mediumint":   1<<23 - 1,
+	"int":         math.MaxInt32,
+	"integer":     math.MaxInt32,
+	"int4":        math.MaxInt32,
+	"serial":      math.MaxInt32,
+	"serial4":     math.MaxInt32,
 }
 
 // The types that hold a number of digits and no more: numeric(p,s).
