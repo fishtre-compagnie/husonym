@@ -57,7 +57,26 @@ type validator struct {
 	// weak : forme trop peu contrainte pour conclure seule (ex: code postal =
 	// n'importe quel entier à 5 chiffres). Plafonné à NEEDS_REVIEW.
 	weak bool
-	fn   func(string) bool
+	// format: the check reads how the value is written and computes no key. The
+	// detection is then reported as one by format.
+	format bool
+	fn     func(string) bool
+}
+
+// method names what the check rests on.
+func (v *validator) method() mgmtv1alpha1.PiiDetectionMethod {
+	if v.format {
+		return mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT
+	}
+	return mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM
+}
+
+// confirmed words the evidence of a check that most values pass.
+func (v *validator) confirmed(matched, total int) string {
+	if v.format {
+		return fmt.Sprintf("%s reconnu sur %d/%d valeurs", v.label, matched, total)
+	}
+	return fmt.Sprintf("%s vérifié sur %d/%d valeurs", v.label, matched, total)
 }
 
 // ORDER MATTERS: from the most constrained check to the least. The first validator
@@ -68,8 +87,9 @@ var validators = []validator{
 		// The most constrained of all: a scheme, its parameters, a salt and a digest of
 		// fixed alphabets. No transformer is suggested: none keeps a hash valid.
 		category:  "password_hash",
-		label:     "empreinte de mot de passe",
+		label:     "format d'empreinte de mot de passe",
 		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		format:    true,
 		fn:        IsPasswordHash,
 	},
 	{
@@ -197,9 +217,8 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 				Sensitive:  true,
 				Suggested:  suggested,
 				Confidence: mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED,
-				Method:     mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM,
-				Evidence: fmt.Sprintf("%s vérifié sur %d/%d valeurs",
-					val.label, matched, len(clean)),
+				Method:     val.method(),
+				Evidence:   val.confirmed(matched, len(clean)),
 			}, true
 		case ratio >= reviewRatio:
 			// On mémorise le meilleur candidat douteux, mais on continue à
@@ -216,7 +235,7 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 					Sensitive:  true,
 					Suggested:  suggested,
 					Confidence: mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
-					Method:     mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM,
+					Method:     val.method(),
 					Evidence:   reason,
 				}
 				hasFallback = true
@@ -420,12 +439,17 @@ func IsCivility(v string) bool {
 	return ok
 }
 
-// The encodings password hashing schemes store their output in: bcrypt, Argon2, scrypt,
-// PBKDF2 (the modular crypt form and Django's), the crypt schemes of the C library and
-// PHPass. Each names its scheme and carries a salt and a digest.
+// The encodings password hashing schemes store their output in: bcrypt, Argon2 (with or
+// without its version), scrypt, PBKDF2, the crypt schemes of the C library and PHPass,
+// each also as Django stores it (the name of the hasher first), PBKDF2 and scrypt as
+// Werkzeug stores them, and the salted SHA schemes of LDAP directories. Each names its
+// scheme and carries a salt and a digest.
 var passwordHashRe = regexp.MustCompile(`^(?:` + strings.Join([]string{
-	`\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`,
-	`\$argon2(?:id|i|d)\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`,
+	`(?:bcrypt(?:_sha256)?\$)?\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`,
+	`(?:argon2\$)?\$?argon2(?:id|i|d)\$(?:v=\d+\$)?m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`,
+	`pbkdf2:sha(?:1|224|256|384|512)(?::\d+)?\$[A-Za-z0-9]+\$[0-9a-f]{40,128}`,
+	`scrypt:\d+:\d+:\d+\$[A-Za-z0-9]+\$[0-9a-f]{64,128}`,
+	`(?i:\{ssha(?:256|384|512)?\})[A-Za-z0-9+/]{32,}={0,2}`,
 	`\$scrypt\$[a-z0-9=,]+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
 	`\$pbkdf2(?:-sha(?:1|256|512))?\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+`,
 	`pbkdf2_sha(?:1|256|512)\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
