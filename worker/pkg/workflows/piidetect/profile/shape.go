@@ -1,0 +1,58 @@
+package profile
+
+import (
+	"strings"
+	"unicode"
+)
+
+const (
+	// maskLimit is the length a mask is cut at.
+	maskLimit = 32
+	// The punctuation a mask shows as it is. Any other character that is neither a
+	// letter, a digit nor a space is shown as "?".
+	maskPunctuation = "@.,-_/:+()#"
+)
+
+// mask replaces every character of a value by its class: "A" for an uppercase letter,
+// "a" for another letter, "9" for a digit, "?" for a character it does not show. A run of
+// one class is written once, followed by "+"; a run of spaces is one space; a punctuation
+// character of maskPunctuation stands for itself.
+func mask(value string) string {
+	var b strings.Builder
+	var last rune
+	for _, r := range value {
+		if b.Len() >= maskLimit {
+			break
+		}
+		class := maskClass(r)
+		repeats := class == 'A' || class == 'a' || class == '9' || class == '?'
+		if class == last && (repeats || class == ' ') {
+			continue
+		}
+		b.WriteRune(class)
+		if repeats {
+			b.WriteByte('+')
+		}
+		last = class
+	}
+	if b.Len() > maskLimit {
+		return b.String()[:maskLimit]
+	}
+	return b.String()
+}
+
+func maskClass(r rune) rune {
+	switch {
+	case unicode.IsUpper(r):
+		return 'A'
+	case unicode.IsLetter(r):
+		return 'a'
+	case unicode.IsDigit(r):
+		return '9'
+	case unicode.IsSpace(r):
+		return ' '
+	case r < unicode.MaxASCII && strings.ContainsRune(maskPunctuation, r):
+		return r
+	}
+	return '?'
+}
