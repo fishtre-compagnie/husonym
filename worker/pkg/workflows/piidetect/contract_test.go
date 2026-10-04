@@ -301,6 +301,11 @@ func Test_RecordedPayloads_DecodeAndEncodeBack(t *testing.T) {
 	files, err := filepath.Glob(filepath.Join("..", "piidetect_replay", "testdata", "*.json"))
 	require.NoError(t, err)
 	require.Len(t, files, 30)
+	// And those of the runs recorded with the later members.
+	later, err := filepath.Glob(filepath.Join("testdata", "*.json"))
+	require.NoError(t, err)
+	require.NotEmpty(t, later)
+	files = append(files, later...)
 
 	dc := converter.GetDefaultDataConverter()
 	roundTrip := func(t *testing.T, payloads *commonpb.Payloads, into any) {
