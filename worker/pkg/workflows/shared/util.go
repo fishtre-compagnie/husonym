@@ -11,8 +11,11 @@ import (
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
+
+const lifecycleHookStartToleratedChangeId = "lifecycle-hook-start-tolerated"
 
 // Utility function that handles spawning job run lifecycle hooks: created, success, failed
 // Should only be used by root workflows that are responsible for handling the lifecycle of a job run
@@ -40,23 +43,51 @@ func HandleWorkflowEventLifecycle[T any](
 
 	run := runevents.Run{AccountID: accountId, JobID: jobId, RunID: runId}
 
-	if err := spawnLifecycleHook(ctx, run, jobRunCreatedHook, logger); err != nil {
+	if err := announce(ctx, run, jobRunCreatedHook, logger); err != nil {
 		return nil, err
 	}
 
 	resp, err := fn(ctx, logger)
 	if err != nil {
-		if spawnErr := spawnLifecycleHook(ctx, run, jobRunFailedHook, logger); spawnErr != nil {
+		if spawnErr := announce(ctx, run, jobRunFailedHook, logger); spawnErr != nil {
 			return nil, errors.Join(err, spawnErr)
 		}
 		return nil, err
 	}
 
-	if err := spawnLifecycleHook(ctx, run, jobRunSucceededHook, logger); err != nil {
+	if err := announce(ctx, run, jobRunSucceededHook, logger); err != nil {
 		return nil, err
 	}
 
 	return resp, nil
+}
+
+// announce starts the account hooks of the event. A run does not depend on its hooks:
+// when they cannot be started, the run goes on and the failure is logged.
+//
+// Runs started before the failure was tolerated replay as they ran: they get the error,
+// which ends them. The version is only read once a start has failed, so that a run whose
+// hooks start records nothing of it.
+func announce(
+	ctx workflow.Context,
+	run runevents.Run,
+	hook lifecycleHook,
+	logger log.Logger,
+) error {
+	err := spawnLifecycleHook(ctx, run, hook, logger)
+	if err == nil {
+		return nil
+	}
+	// A canceled run starts nothing more: it ends canceled, and no event of its end is
+	// sent.
+	if temporal.IsCanceledError(err) {
+		return err
+	}
+	if workflow.GetVersion(ctx, lifecycleHookStartToleratedChangeId, workflow.DefaultVersion, 1) == workflow.DefaultVersion {
+		return err
+	}
+	logger.Error("account hooks of the event were not started", "event", hook.name, "error", err)
+	return nil
 }
 
 // lifecycleHook is one of the moments of a job run that account hooks are told about.
