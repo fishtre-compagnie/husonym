@@ -191,7 +191,7 @@ func autoMapNewColumns(
 		}
 		// The config of the base catalogue: a run has no license to check, and the
 		// suggestions are base transformers anyway.
-		config, ok := job_util.SuggestedConfig(source, category)
+		config, ok := job_util.SuggestedConfig(source, category, columnInfo[table][m.GetColumn()])
 		if !ok {
 			out = append(out, m)
 			passedThrough = append(passedThrough, name)

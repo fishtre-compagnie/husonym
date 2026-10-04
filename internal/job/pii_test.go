@@ -5,6 +5,7 @@ import (
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/stretchr/testify/require"
 )
 
@@ -179,29 +180,118 @@ func Test_SuggestedConfig(t *testing.T) {
 	generateInt := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64
 	generateFloat := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FLOAT64
 
-	age, ok := SuggestedConfig(generateInt, "age")
+	age, ok := SuggestedConfig(generateInt, "age", nil)
 	require.True(t, ok)
 	require.EqualValues(t, 18, age.GetGenerateInt64Config().GetMin())
 	require.EqualValues(t, 90, age.GetGenerateInt64Config().GetMax())
 
-	salary, ok := SuggestedConfig(generateInt, "salary")
+	salary, ok := SuggestedConfig(generateInt, "salary", nil)
 	require.True(t, ok)
 	require.EqualValues(t, 20000, salary.GetGenerateInt64Config().GetMin())
 	require.EqualValues(t, 90000, salary.GetGenerateInt64Config().GetMax())
 
-	salary, ok = SuggestedConfig(generateFloat, "salary")
+	salary, ok = SuggestedConfig(generateFloat, "salary", nil)
 	require.True(t, ok)
 	require.InDelta(t, 20000, salary.GetGenerateFloat64Config().GetMin(), 0)
 	require.InDelta(t, 90000, salary.GetGenerateFloat64Config().GetMax(), 0)
 
 	// Another category keeps the catalogue's own config, and a config is never shared.
-	pin, ok := SuggestedConfig(generateInt, "secret")
+	pin, ok := SuggestedConfig(generateInt, "secret", nil)
 	require.True(t, ok)
 	require.EqualValues(t, 1, pin.GetGenerateInt64Config().GetMin())
 	require.EqualValues(t, 40, pin.GetGenerateInt64Config().GetMax())
-	again, _ := SuggestedConfig(generateInt, "age")
+	again, _ := SuggestedConfig(generateInt, "age", nil)
 	require.NotSame(t, age, again)
 
-	_, ok = SuggestedConfig(mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED, "age")
+	_, ok = SuggestedConfig(mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED, "age", nil)
 	require.False(t, ok)
+}
+
+// The range a number is generated in fits the column: the plausible range of the category
+// where the column holds it, cut at what the column holds otherwise, from zero when the
+// lowest plausible value does not fit either.
+func Test_SuggestedConfig_FitsTheColumn(t *testing.T) {
+	generateInt := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64
+	generateFloat := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FLOAT64
+	column := func(dataType string) *sqlmanager_shared.DatabaseSchemaRow {
+		return &sqlmanager_shared.DatabaseSchemaRow{DataType: dataType, NumericPrecision: -1, NumericScale: -1}
+	}
+
+	for _, tc := range []struct {
+		category, dataType string
+		min, max           int64
+	}{
+		{"salary", "bigint", 20000, 90000},
+		{"salary", "integer", 20000, 90000},
+		{"salary", "int(11)", 20000, 90000},
+		{"salary", "int unsigned", 20000, 90000},
+		{"salary", "mediumint", 20000, 90000},
+		{"salary", "smallint", 20000, 32767},
+		{"salary", "smallint(6)", 20000, 32767},
+		{"salary", "smallint unsigned", 20000, 32767},
+		{"salary", "tinyint", 0, 127},
+		{"salary", "tinyint(4)", 0, 127},
+		{"age", "smallint", 18, 90},
+		{"age", "tinyint", 18, 90},
+		{"age", "tinyint unsigned", 18, 90},
+		{"secret", "tinyint", 1, 40},
+		{"secret", "bigint", 1, 40},
+		// A type the table of widths does not know keeps the range of the category.
+		{"salary", "int64", 20000, 90000},
+	} {
+		config, ok := SuggestedConfig(generateInt, tc.category, column(tc.dataType))
+		require.True(t, ok)
+		generated := config.GetGenerateInt64Config()
+		require.Equalf(t, tc.min, generated.GetMin(), "%s %s: min", tc.category, tc.dataType)
+		require.Equalf(t, tc.max, generated.GetMax(), "%s %s: max", tc.category, tc.dataType)
+	}
+
+	for _, tc := range []struct {
+		category, dataType string
+		min, max           float64
+	}{
+		{"salary", "numeric(10,2)", 20000, 90000},
+		{"salary", "numeric(7,2)", 20000, 90000},
+		{"salary", "numeric(6,2)", 0, 9999},
+		{"salary", "numeric(4,2)", 0, 99},
+		{"salary", "decimal(5,0)", 20000, 90000},
+		{"salary", "decimal(5)", 20000, 90000},
+		{"salary", "decimal(4)", 0, 9999},
+		{"salary", "decimal(8,2) unsigned", 20000, 90000},
+		{"salary", "numeric", 20000, 90000},
+		{"salary", "double precision", 20000, 90000},
+		{"salary", "real", 20000, 90000},
+		{"salary", "money", 20000, 90000},
+		{"age", "numeric(3,2)", 0, 9},
+		{"age", "numeric(3,1)", 18, 90},
+		{"age", "numeric(2,0)", 18, 90},
+		{"age", "numeric(1,0)", 0, 9},
+		// No digit before the point: scale equal to precision.
+		{"age", "numeric(2,2)", 0, 0.99},
+		{"age", "numeric(4,4)", 0, 0.9999},
+		{"secret", "numeric(2,2)", 0, 0.99},
+		{"secret", "numeric(3,2)", 1, 9},
+		{"secret", "numeric(10,2)", 1, 100},
+	} {
+		config, ok := SuggestedConfig(generateFloat, tc.category, column(tc.dataType))
+		require.True(t, ok)
+		generated := config.GetGenerateFloat64Config()
+		require.InDeltaf(t, tc.min, generated.GetMin(), 1e-9, "%s %s: min", tc.category, tc.dataType)
+		require.InDeltaf(t, tc.max, generated.GetMax(), 1e-9, "%s %s: max", tc.category, tc.dataType)
+	}
+
+	// SQL Server names the type alone and gives its precision and scale beside it.
+	config, ok := SuggestedConfig(generateFloat, "salary", &sqlmanager_shared.DatabaseSchemaRow{
+		DataType: "decimal", NumericPrecision: 4, NumericScale: 2,
+	})
+	require.True(t, ok)
+	require.InDelta(t, 0, config.GetGenerateFloat64Config().GetMin(), 0)
+	require.InDelta(t, 99, config.GetGenerateFloat64Config().GetMax(), 0)
+
+	// The bits of an integer, which the catalogues report as a precision, bound nothing.
+	config, ok = SuggestedConfig(generateFloat, "salary", &sqlmanager_shared.DatabaseSchemaRow{
+		DataType: "double precision", NumericPrecision: 32, NumericScale: 0,
+	})
+	require.True(t, ok)
+	require.InDelta(t, 90000, config.GetGenerateFloat64Config().GetMax(), 0)
 }
