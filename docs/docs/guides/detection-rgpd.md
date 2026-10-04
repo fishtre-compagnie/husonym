@@ -44,12 +44,24 @@ certain au plus statistique.
 Le nom est lu mot à mot et comparé à un catalogue de mots-clés en huit langues —
 français, anglais, allemand, espagnol, italien, néerlandais, polonais, portugais
 (`email`, `prenom`, `telephone`, `date_naissance`, `nir`, `apellido`, `indirizzo`,
-`woonplaats`…). La casse et les accents ne comptent pas : `PRÉNOM` se lit `prenom`.
-Un nom écrit sans séparateur est découpé en ses mots (`customeremail`,
-`dateofbirth`) ; quand une partie est inconnue, un mot-clé d'au moins six lettres
-placé au début ou à la fin suffit (`addressline1`, `lieunaissance`,
-`passwordresettoken`). C'est **déterministe** : même résultat à chaque introspection,
-aucune donnée n'est lue.
+`woonplaats`…). La casse et les accents ne comptent pas : `PRÉNOM` se lit `prenom`,
+et un mot allemand se lit avec son tréma ou avec les lettres qui le remplacent
+(`staatsangehörigkeit`, `staatsangehoerigkeit`). Un nom écrit sans séparateur est
+découpé en ses mots quand les règles les connaissent tous (`customeremail`,
+`dateofbirth`, `addressline1`, `lieunaissance`, `passwordresettoken`) ; deux
+dernières lettres peuvent suivre un mot-clé d'au moins six lettres (`postcodenl`).
+Un nom qui contient un mot inconnu des règles est un autre mot, et n'est pas
+signalé : `addressbook`, `streetview`, `pseudorandom`.
+
+Un revenu, un salaire horaire et une naissance sont signalés comme ceux d'une
+personne (`annual_income`, `employee_income`, `hourly_wage`, `birth_date`). À côté
+d'un mot de la comptabilité ou de la statistique, ils ne le sont pas : `net_income`,
+`gross_income`, `income_tax`, `revenu_fiscal`, `minimum_wage`, `birth_rate`. Le mot
+d'une personne à côté d'eux en refait une détection (`employee_net_income`). Un
+`salary` ou un `salaire` est toujours signalé.
+
+C'est **déterministe** : même résultat à chaque introspection, aucune donnée n'est
+lue.
 
 C'est le seul moteur autorisé à **appliquer** un transformer automatiquement, et
 uniquement sur une colonne encore en _Passthrough_ — un choix explicite n'est jamais

@@ -4,7 +4,7 @@ description: What a PII detection job reads in a source database, what it sends 
 id: pii-detection-job
 hide_title: false
 slug: /guides/pii-detection-job
-# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama telefon apellido indirizzo woonplaats pesel senha nombre cliente customeremail dateofbirth Werkzeug PRÉNOM addressline lieunaissance passwordresettoken yescrypt
+# cSpell:words IBAN IBANs Luhn SIRET SIREN prenom ville llama Ollama telefon apellido indirizzo woonplaats pesel senha nombre cliente customeremail dateofbirth Werkzeug PRÉNOM addressline lieunaissance passwordresettoken yescrypt staatsangehörigkeit staatsangehoerigkeit postcodenl addressbook streetview
 ---
 
 ## Introduction
@@ -56,10 +56,19 @@ The rules call no service. The first one that answers wins:
    Italian, Dutch, Polish and Portuguese (`date_of_birth`, `prenom`, `telefon`, `apellido`,
    `indirizzo`, `woonplaats`, `pesel`, `senha`…):
    - A keyword is a word of the name, never letters inside a longer word: `mobile` is not
-     read in `automobile`. Case and accents do not count: `PRÉNOM` reads `prenom`. A name
-     written without separators is read as its words (`customeremail`, `dateofbirth`);
-     when a part of it is not a known word, a keyword of six letters or more that opens or
-     closes it is enough (`addressline1`, `lieunaissance`, `passwordresettoken`).
+     read in `automobile`. Case and accents do not count: `PRÉNOM` reads `prenom`, and a
+     German word is read with its umlaut or with the letters that stand for it
+     (`staatsangehörigkeit`, `staatsangehoerigkeit`). A name written without separators is
+     read as its words when the rules know them all (`customeremail`, `dateofbirth`,
+     `addressline1`, `lieunaissance`, `passwordresettoken`); two last letters may follow a
+     keyword of six letters or more (`postcodenl`). A name that holds a word the rules do
+     not know is another word, and is not reported: `addressbook`, `streetview`,
+     `pseudorandom`.
+   - An income, a wage and a birth are reported as a person's (`annual_income`,
+     `employee_income`, `hourly_wage`, `birth_date`). Beside a word of the accounts or of
+     statistics they are not: `net_income`, `gross_income`, `income_tax`, `minimum_wage`,
+     `birth_rate`. The word of a person beside them makes the name a finding again
+     (`employee_net_income`). A salary is always reported.
    - `product_name` names a thing, `user_id` and `id_user` refer to another row, and a name
      that qualifies a datum without being one (`email_format`, `phone_type`,
      `address_count`, `is_email_verified`, `country_code`, `password_changed_at`) is not
@@ -248,6 +257,8 @@ scanned again when one of these changes:
 - its columns, or the type of one of them;
 - the data sampling setting, what the model receives, or the User Prompt of the job;
 - the model configured on the worker;
+- the rules of the worker: an upgrade of the worker that changes what the rules answer
+  scans every table again;
 - or when the earlier run could not ask the model about that table.
 
 Unchanged tables keep their earlier report. A table that was dropped from the source, or
