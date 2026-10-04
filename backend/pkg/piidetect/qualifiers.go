@@ -1,7 +1,5 @@
 package piidetect
 
-import "strings"
-
 // A name may hold the word of a datum without holding the datum: email_format says how
 // an email is written, address_count how many addresses there are, is_email_verified
 // whether an email was checked. Such a name is not a finding.
@@ -103,23 +101,4 @@ func qualifies(words []string, own map[string]bool) bool {
 	}
 	before := words[len(words)-2]
 	return qualifierAdjectives[before] && !own[before]
-}
-
-// accents are the letters with a mark that column names hold, each beside the letter
-// the rules know it by.
-var accents = strings.NewReplacer(
-	"à", "a", "á", "a", "â", "a", "ã", "a", "ä", "a", "ą", "a",
-	"ç", "c", "ć", "c",
-	"è", "e", "é", "e", "ê", "e", "ë", "e", "ę", "e",
-	"ì", "i", "í", "i", "î", "i", "ï", "i",
-	"ł", "l", "ñ", "n", "ń", "n",
-	"ò", "o", "ó", "o", "ô", "o", "õ", "o", "ö", "o",
-	"ś", "s", "ß", "ss",
-	"ù", "u", "ú", "u", "û", "u", "ü", "u",
-	"ź", "z", "ż", "z",
-)
-
-// fold writes a name in lowercase letters without marks.
-func fold(name string) string {
-	return accents.Replace(strings.ToLower(name))
 }

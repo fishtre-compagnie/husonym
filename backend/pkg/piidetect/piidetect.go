@@ -54,7 +54,7 @@ func tokenize(name string) []string {
 			cur.Reset()
 		}
 	}
-	for _, r := range accents.Replace(name) {
+	for _, r := range unmark(name) {
 		switch {
 		case r >= 'A' && r <= 'Z':
 			if prevLower || prevDigit {
