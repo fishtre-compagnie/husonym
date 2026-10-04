@@ -136,7 +136,7 @@ func (c *column) addText(t *Table, text string) {
 	}
 	c.lengths = append(c.lengths, utf8.RuneCountInString(text))
 
-	head := firstRunes(trimmed, readLimit)
+	head := FirstRunes(trimmed, readLimit)
 	for _, r := range head {
 		switch {
 		case unicode.IsLetter(r):
@@ -192,7 +192,9 @@ func (t *Table) hash(s sampled, value any) uint64 {
 	return h.Sum64()
 }
 
-func firstRunes(text string, limit int) string {
+// FirstRunes returns the first limit characters of a text, the whole text when it has
+// no more.
+func FirstRunes(text string, limit int) string {
 	count := 0
 	for i := range text {
 		if count == limit {

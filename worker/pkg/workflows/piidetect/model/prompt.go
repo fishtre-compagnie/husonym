@@ -129,5 +129,5 @@ func writeJSON(b *strings.Builder, value any) error {
 // their own section.
 func boundedHints(hints string) string {
 	hints = strings.NewReplacer("<<<", "", ">>>", "").Replace(hints)
-	return strings.TrimSpace(cut(strings.TrimSpace(hints), MaxHints))
+	return strings.TrimSpace(profile.FirstRunes(strings.TrimSpace(hints), MaxHints))
 }

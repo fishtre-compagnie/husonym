@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/openai/openai-go/v3"
 )
 
@@ -65,7 +66,7 @@ func failure(ctx context.Context, err error, carriesValues bool) error {
 	var apiErr *openai.Error
 	if !errors.As(err, &apiErr) {
 		// What a transport error says holds addresses, not the request.
-		return &Error{Reason: ReasonTransport, Detail: cut(lastCause(err), maxDetail)}
+		return &Error{Reason: ReasonTransport, Detail: profile.FirstRunes(lastCause(err), maxDetail)}
 	}
 	failed := &Error{Reason: ReasonRejected, Status: apiErr.StatusCode}
 	switch {
@@ -78,7 +79,7 @@ func failure(ctx context.Context, err error, carriesValues bool) error {
 	if carriesValues {
 		failed.Detail = strings.TrimSpace(identifier(apiErr.Type) + " " + identifier(apiErr.Code))
 	} else {
-		failed.Detail = cut(apiErr.Message, maxDetail)
+		failed.Detail = profile.FirstRunes(apiErr.Message, maxDetail)
 	}
 	return failed
 }
@@ -108,12 +109,4 @@ func lastCause(err error) string {
 		}
 		err = inner
 	}
-}
-
-func cut(text string, limit int) string {
-	runes := []rune(text)
-	if len(runes) <= limit {
-		return text
-	}
-	return string(runes[:limit])
 }
