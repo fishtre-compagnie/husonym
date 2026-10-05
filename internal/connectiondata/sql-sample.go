@@ -283,9 +283,8 @@ func mysqlKeySlicesQuery(
 		slices[i] = querybuilder.KeyRange{From: pick(part.From, part.To), To: part.To}
 	}
 
-	// Parts of the span that hold no key give empty slices. The rows of the slices are
-	// counted on the key first: too few of them are fewer places of the table than the
-	// window reads.
+	// The rows of the slices are counted on the key first: when they hold fewer than
+	// SampleSlicesMinRows, the window is read.
 	countQuery, err := querybuilder.BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, qualified, key, slices)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)

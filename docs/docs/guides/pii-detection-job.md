@@ -115,14 +115,14 @@ that read them.
 
 On PostgreSQL and SQL Server, the rows of a table of more than 1000 rows are drawn from
 pages taken at random over the whole table: about fifty pages, or the pages that hold
-about 1000 rows when that is more; a table of fewer than fifty pages is read whole. On
+about 1000 rows when that is more; a table of fifty pages or fewer is read whole. On
 MySQL and MariaDB, when the primary key is a single column of an integer type, they are
 drawn from ten ranges of the key that follow one another from its lowest to its highest
-value, up to 100 consecutive rows in each. In every other case (on PostgreSQL and SQL
-Server, a table of 1000 rows or fewer; a PostgreSQL table that was never analyzed, or a
-partitioned one none of whose partitions was; a MySQL or MariaDB table with another kind
-of primary key, whose key values span less than 1000, or whose ten ranges hold fewer than
-500 rows together) the rows are drawn from the first 1000 rows of the table, and whenever
+value, up to 100 consecutive rows in each. In every other case — among them, on PostgreSQL and SQL Server, a table of 1000 rows or
+fewer; a PostgreSQL table that was never analyzed, or a partitioned one none of whose
+partitions was, or one of whose partitions is a foreign table; a view; a MySQL or MariaDB
+table without such a primary key, whose key values span less than 1000, or whose ten
+ranges hold fewer than 500 rows together — the rows are drawn from the first 1000 rows of the table, and whenever
 the draw over the whole table fails or returns fewer rows than asked, the missing rows are
 taken from those first 1000 rows, where a row already read can be read again. Two scans of
 the same table can read different rows.

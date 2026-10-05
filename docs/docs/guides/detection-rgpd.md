@@ -265,14 +265,15 @@ Le scan lit **20 lignes par table**. Il n'écrase jamais un transformer déjà c
 
 Avec PostgreSQL et SQL Server, les lignes d'une table de plus de 1000 lignes sont tirées
 de pages prises au hasard sur toute la table : une cinquantaine de pages, ou les pages qui
-contiennent environ 1000 lignes quand c'est davantage ; une table de moins de cinquante
-pages est lue en entier. Avec MySQL et MariaDB, quand la clé primaire tient en une seule
+contiennent environ 1000 lignes quand c'est davantage ; une table de cinquante pages
+ou moins est lue en entier. Avec MySQL et MariaDB, quand la clé primaire tient en une seule
 colonne de type entier, elles sont tirées de dix plages de la clé qui se suivent de sa
 plus petite à sa plus grande valeur, jusqu'à 100 lignes consécutives dans chacune. Dans
-tous les autres cas (avec PostgreSQL et SQL Server, table de 1000 lignes ou moins ; table
-PostgreSQL jamais analysée, ou partitionnée sans aucune partition analysée ; table MySQL
-ou MariaDB dont la clé primaire est d'une autre nature, dont les valeurs s'étendent sur
-moins de 1000, ou dont les dix plages contiennent ensemble moins de 500 lignes), elles
+tous les autres cas — notamment, avec PostgreSQL et SQL Server, table de 1000 lignes ou
+moins ; table PostgreSQL jamais analysée, ou partitionnée sans aucune partition analysée,
+ou dont une partition est une table étrangère ; vue ; table MySQL ou MariaDB sans clé
+primaire de ce type, dont les valeurs de clé s'étendent sur moins de 1000, ou dont les dix
+plages contiennent ensemble moins de 500 lignes —, elles
 sont tirées parmi les 1000 premières lignes de la table ; et quand le tirage sur toute la
 table échoue ou rend moins de lignes que demandé, les lignes manquantes sont prises parmi
 ces 1000 premières lignes, où une ligne déjà lue peut être relue. Deux scans de la même
