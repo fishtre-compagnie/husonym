@@ -561,7 +561,7 @@ func Test_OddNames_TableInitStatements(t *testing.T) {
 			Return([]*pg_queries.GetPartitionedTablesBySchemaRow{
 				{SchemaName: schema.name, TableName: table.name, PartitionKey: "RANGE (" + column.ident + ")"},
 			}, nil)
-		querier.EXPECT().GetPartitionHierarchyByTable(mock.Anything, mock.Anything, key).
+		querier.EXPECT().GetPartitionHierarchyByTable(mock.Anything, mock.Anything, schema.ident+"."+table.ident).
 			Return([]*pg_queries.GetPartitionHierarchyByTableRow{
 				{SchemaName: schema.name, TableName: table.name},
 				{

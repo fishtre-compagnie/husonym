@@ -941,11 +941,13 @@ func (p *PostgresManager) GetTableInitStatements(
 			// of the schema are not told, and one of them dropped meanwhile would fail the read.
 			if !record.IsPartitioned && slices.Contains(combined, key.String()) {
 				ks := key.String()
+				// The server parses the argument as a relation name (regclass): it is given quoted.
+				relation := pg.Qualified(key.Schema, key.Table)
 				errgrp.Go(func() error {
 					partitionhierarchy, err := p.querier.GetPartitionHierarchyByTable(
 						errctx,
 						p.db,
-						ks,
+						relation,
 					)
 					if err != nil {
 						return err

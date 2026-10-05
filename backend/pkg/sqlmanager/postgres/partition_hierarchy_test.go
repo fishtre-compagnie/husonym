@@ -28,7 +28,7 @@ func Test_GetTableInitStatements_ReadsThePartitionsOfTheTablesAskedFor(t *testin
 			{SchemaName: "app", TableName: "audit", PartitionKey: "RANGE (id)"},
 		}, nil)
 	// The only one: the mock fails the test on a read of the partitions of app.audit.
-	querier.EXPECT().GetPartitionHierarchyByTable(mock.Anything, mock.Anything, "app.events").
+	querier.EXPECT().GetPartitionHierarchyByTable(mock.Anything, mock.Anything, `"app"."events"`).
 		Return([]*pg_queries.GetPartitionHierarchyByTableRow{
 			{SchemaName: "app", TableName: "events"},
 			{
@@ -51,4 +51,42 @@ func Test_GetTableInitStatements_ReadsThePartitionsOfTheTablesAskedFor(t *testin
 	require.Equal(t,
 		[]string{`CREATE TABLE IF NOT EXISTS "app"."events_1" PARTITION OF "app"."events" FOR VALUES FROM (1) TO (100) ;`},
 		statements[0].PartitionStatements)
+}
+
+// The server reads the table asked for the partitions as the text of a relation name
+// (pg_partition_tree takes a regclass): the querier is given the qualified name quoted, while
+// the table keeps its plain "schema.table" key everywhere else.
+func Test_GetTableInitStatements_ReadsAPartitionedTableByItsQuotedName(t *testing.T) {
+	for _, c := range []struct{ name, arg string }{
+		{`MixedCase`, `"MixedCase"."MixedCase"`},
+		{`sp ace`, `"sp ace"."sp ace"`},
+		{`we"ird`, `"we""ird"."we""ird"`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			key := c.name + "." + c.name
+			querier := pg_queries.NewMockQuerier(t)
+			querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, []string{key}).
+				Return([]*pg_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
+					SchemaName: c.name, TableName: c.name, ColumnName: "id", DataType: "integer", IsNullable: "NO",
+				}}, nil)
+			querier.EXPECT().GetNonForeignKeyTableConstraintsBySchema(mock.Anything, mock.Anything, []string{c.name}).Return(nil, nil)
+			querier.EXPECT().GetForeignKeyConstraintsBySchemas(mock.Anything, mock.Anything, []string{c.name}).Return(nil, nil)
+			querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, []string{key}).Return(nil, nil)
+			querier.EXPECT().GetPartitionedTablesBySchema(mock.Anything, mock.Anything, []string{c.name}).
+				Return([]*pg_queries.GetPartitionedTablesBySchemaRow{
+					{SchemaName: c.name, TableName: c.name, PartitionKey: "RANGE (id)"},
+				}, nil)
+			querier.EXPECT().GetPartitionHierarchyByTable(mock.Anything, mock.Anything, c.arg).
+				Return([]*pg_queries.GetPartitionHierarchyByTableRow{
+					{SchemaName: c.name, TableName: c.name},
+				}, nil).Once()
+
+			statements, err := NewManager(querier, nil, func() {}).GetTableInitStatements(
+				context.Background(), []*sqlmanager_shared.SchemaTable{{Schema: c.name, Table: c.name}},
+			)
+
+			require.NoError(t, err)
+			require.Len(t, statements, 1)
+		})
+	}
 }
