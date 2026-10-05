@@ -57,8 +57,8 @@ type recordMapper interface {
 }
 
 // sampleQueryError is a query the database refused; sampleRowError is a failure while
-// reading or converting a row. The second kind may quote a value of the row, so its text
-// is never logged.
+// reading or converting a row; sampleSendError is a row its receiver refused. The second
+// kind may quote a value of the row, so its text is never logged.
 type sampleQueryError struct{ err error }
 
 func (e *sampleQueryError) Error() string { return e.err.Error() }
@@ -69,8 +69,18 @@ type sampleRowError struct{ err error }
 func (e *sampleRowError) Error() string { return e.err.Error() }
 func (e *sampleRowError) Unwrap() error { return e.err }
 
-// wrapSampleError gives an error of readSample the message SampleData reports.
+type sampleSendError struct{ err error }
+
+func (e *sampleSendError) Error() string { return e.err.Error() }
+func (e *sampleSendError) Unwrap() error { return e.err }
+
+// wrapSampleError gives an error of readSample the message SampleData reports. The error
+// of the receiver of the rows is reported as it is.
 func wrapSampleError(err error, schemaTable, driver string) error {
+	var sendErr *sampleSendError
+	if errors.As(err, &sendErr) {
+		return sendErr.err
+	}
 	var rowErr *sampleRowError
 	if errors.As(err, &rowErr) {
 		return fmt.Errorf(
@@ -289,10 +299,18 @@ func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string
 	return column, nil
 }
 
-// readSample reads the spread query when there is one. When it fails or returns fewer
-// than numRows rows, the window is read as well and the larger result is returned. If
-// the window fails after a short spread, the spread rows are returned, unless the
-// context is done. Errors are a *sampleQueryError or a *sampleRowError.
+// readSample hands the rows of a sample to send as they are read, numRows at most, one
+// row being held at a time.
+//
+// The spread query is read first when there is one. When it ends with fewer than numRows
+// rows sent, because it returned too few or failed, the window is read and gives the
+// rows that are missing. The two queries do not know of each other, so a row may then be
+// sent by both. A done context ends the sample with the error of the context, before the
+// window is read. If the window fails after rows of the spread were sent, the sample ends
+// there without an error.
+//
+// Errors are a *sampleQueryError, a *sampleRowError, a *sampleSendError for the error of
+// send, which ends the sample at once, or the error of the context.
 func readSample(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -302,65 +320,79 @@ func readSample(
 	hasSpread bool,
 	window string,
 	numRows uint,
-) ([]map[string]any, error) {
-	var spreadRows []map[string]any
+	send func(row map[string]any) error,
+) error {
+	var sent uint
 	if hasSpread {
 		var err error
-		spreadRows, err = readRows(ctx, db, mapper, spread, numRows)
+		sent, err = streamRows(ctx, db, mapper, spread, numRows, send)
+		if isSendError(err) {
+			return err
+		}
+		if sent >= numRows {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if err != nil {
 			logSampleFailure(ctx, logger, "spread sample query failed, reading the window", err)
-			spreadRows = nil
-		}
-		if uint(len(spreadRows)) >= numRows {
-			return spreadRows, nil
 		}
 	}
 
-	windowRows, err := readRows(ctx, db, mapper, window, numRows)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		if len(spreadRows) == 0 {
-			return nil, err
-		}
-		logSampleFailure(ctx, logger, "window query failed, keeping the short spread sample", err)
-		return spreadRows, nil
+	_, err := streamRows(ctx, db, mapper, window, numRows-sent, send)
+	if err == nil || isSendError(err) {
+		return err
 	}
-	if len(spreadRows) > len(windowRows) {
-		return spreadRows, nil
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
-	return windowRows, nil
+	if sent == 0 {
+		return err
+	}
+	logSampleFailure(ctx, logger, "window query failed, keeping the short spread sample", err)
+	return nil
 }
 
-func readRows(
+func isSendError(err error) bool {
+	var sendErr *sampleSendError
+	return errors.As(err, &sendErr)
+}
+
+// streamRows runs a query and hands its rows to send as they are read, limit at most. It
+// returns the number of rows sent, also when it fails.
+func streamRows(
 	ctx context.Context,
 	db sampleQuerier,
 	mapper recordMapper,
 	query string,
-	numRows uint,
-) ([]map[string]any, error) {
+	limit uint,
+	send func(row map[string]any) error,
+) (uint, error) {
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		if husonymdb.IsNoRows(err) {
-			return nil, nil
+			return 0, nil
 		}
-		return nil, &sampleQueryError{err: err}
+		return 0, &sampleQueryError{err: err}
 	}
 	defer rows.Close()
 
-	var out []map[string]any
-	for uint(len(out)) < numRows && rows.Next() {
+	var sent uint
+	for sent < limit && rows.Next() {
 		record, err := mapper.MapRecord(rows)
 		if err != nil {
-			return nil, &sampleRowError{err: err}
+			return sent, &sampleRowError{err: err}
 		}
-		out = append(out, record)
+		if err := send(record); err != nil {
+			return sent, &sampleSendError{err: err}
+		}
+		sent++
 	}
 	if err := rows.Err(); err != nil {
-		return nil, &sampleRowError{err: err}
+		return sent, &sampleRowError{err: err}
 	}
-	return out, nil
+	return sent, nil
 }
 
 // randomInRange draws a value in [lo, hi], both ends included. It needs hi - lo to be

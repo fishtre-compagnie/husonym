@@ -314,18 +314,39 @@ func sequence(from, count int64) []int64 {
 	return ids
 }
 
+// sentIDs collects the ids of the rows a sample sends, in order.
+type sentIDs struct{ ids []int64 }
+
+func (s *sentIDs) send(row map[string]any) error {
+	s.ids = append(s.ids, row["id"].(int64))
+	return nil
+}
+
 func read(
 	t *testing.T,
 	db sampleQuerier,
 	mapper recordMapper,
 	hasSpread bool,
-) ([]map[string]any, error) {
+) ([]int64, error) {
 	t.Helper()
 	logger, _ := capturedLogger()
-	return readSample(t.Context(), logger, db, mapper, "SPREAD", hasSpread, "WINDOW", 20)
+	sent := &sentIDs{}
+	err := readSample(t.Context(), logger, db, mapper, "SPREAD", hasSpread, "WINDOW", 20, sent.send)
+	return sent.ids, err
 }
 
-func Test_readSample_ShortSpreadFallsBackOnTheWindow(t *testing.T) {
+func Test_readSample_SpreadEnough(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 25)...))
+
+	got, err := read(t, db, idMapper{}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, sequence(1, 20), got)
+	require.Equal(t, []string{"SPREAD"}, db.statements)
+}
+
+func Test_readSample_WindowGivesTheRowsAShortSpreadMisses(t *testing.T) {
 	db, mock := newSampleDB(t)
 	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
 	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(100, 20)...))
@@ -333,62 +354,104 @@ func Test_readSample_ShortSpreadFallsBackOnTheWindow(t *testing.T) {
 	got, err := read(t, db, idMapper{}, true)
 
 	require.NoError(t, err)
-	require.Len(t, got, 20)
-	require.Equal(t, int64(100), got[0]["id"])
+	require.Equal(t, append([]int64{1, 2, 3}, sequence(100, 17)...), got)
 	require.Equal(t, []string{"SPREAD", "WINDOW"}, db.statements)
 }
 
-func Test_readSample_ShortSpreadIsKeptWhenTheWindowIsShorter(t *testing.T) {
+// The window does not know the rows the spread sent: a row of both is sent twice.
+func Test_readSample_ARowOfBothQueriesIsSentTwice(t *testing.T) {
 	db, mock := newSampleDB(t)
-	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 8)...))
-	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(1, 2))
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(1, 20)...))
 
 	got, err := read(t, db, idMapper{}, true)
 
 	require.NoError(t, err)
-	require.Len(t, got, 8)
+	require.Equal(t, append([]int64{1, 2, 3}, sequence(1, 17)...), got)
 }
 
-func Test_readSample_FailingSpreadFallsBackOnTheWindow(t *testing.T) {
+func Test_readSample_ShortSpreadAndShortWindow(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 8)...))
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(50, 51))
+
+	got, err := read(t, db, idMapper{}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, append(sequence(1, 8), 50, 51), got)
+}
+
+func Test_readSample_RefusedSpreadGivesTheRowsOfTheWindow(t *testing.T) {
 	db, mock := newSampleDB(t)
 	mock.ExpectQuery("SPREAD").WillReturnError(errors.New("TABLESAMPLE clause can only be used with local tables"))
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(100, 25)...))
+
+	got, err := read(t, db, idMapper{}, true)
+
+	require.NoError(t, err)
+	require.Equal(t, sequence(100, 20), got)
+}
+
+func Test_readSample_SpreadFailingWhileReadIsCompletedFromTheWindow(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3, 4).RowError(2, errors.New("connection lost")))
 	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(100, 20)...))
 
 	got, err := read(t, db, idMapper{}, true)
 
 	require.NoError(t, err)
-	require.Len(t, got, 20)
-}
-
-func Test_readSample_SpreadEnough(t *testing.T) {
-	db, mock := newSampleDB(t)
-	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 20)...))
-
-	got, err := read(t, db, idMapper{}, true)
-
-	require.NoError(t, err)
-	require.Len(t, got, 20)
-	require.Equal(t, []string{"SPREAD"}, db.statements)
+	require.Equal(t, append([]int64{1, 2}, sequence(100, 18)...), got)
 }
 
 func Test_readSample_NoSpreadReadsTheWindowOnly(t *testing.T) {
 	db, mock := newSampleDB(t)
-	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(1, 2, 3))
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(1, 25)...))
 
 	got, err := read(t, db, idMapper{}, false)
 
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Equal(t, sequence(1, 20), got)
 	require.Equal(t, []string{"WINDOW"}, db.statements)
 }
 
-func Test_readSample_WindowFails(t *testing.T) {
+// countingMapper counts the rows it converted.
+type countingMapper struct {
+	recordMapper
+	calls int
+}
+
+func (m *countingMapper) MapRecord(record any) (map[string]any, error) {
+	m.calls++
+	return m.recordMapper.MapRecord(record)
+}
+
+// A row is sent before the next one is read, so one row is held at a time.
+func Test_readSample_SendsEachRowBeforeReadingTheNext(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(100, 101, 102))
+	mapper := &countingMapper{recordMapper: idMapper{}}
+	logger, _ := capturedLogger()
+	var readWhenSent []int
+	send := func(map[string]any) error {
+		readWhenSent = append(readWhenSent, mapper.calls)
+		return nil
+	}
+
+	err := readSample(t.Context(), logger, db, mapper, "SPREAD", true, "WINDOW", 20, send)
+
+	require.NoError(t, err)
+	require.Equal(t, []int{1, 2, 3, 4, 5, 6}, readWhenSent)
+}
+
+func Test_readSample_WindowFailsWithNoRowSent(t *testing.T) {
 	db, mock := newSampleDB(t)
 	mock.ExpectQuery("SPREAD").WillReturnError(errors.New("spread refused"))
 	mock.ExpectQuery("WINDOW").WillReturnError(errors.New("window refused"))
 
-	_, err := read(t, db, idMapper{}, true)
+	got, err := read(t, db, idMapper{}, true)
 
+	require.Empty(t, got)
 	require.Error(t, err)
 	require.EqualError(
 		t,
@@ -397,34 +460,104 @@ func Test_readSample_WindowFails(t *testing.T) {
 	)
 }
 
-func Test_readSample_ShortSpreadSurvivesAFailingWindow(t *testing.T) {
+func Test_readSample_WindowAloneFailingWhileReadIsAnError(t *testing.T) {
 	db, mock := newSampleDB(t)
-	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
-	mock.ExpectQuery("WINDOW").WillReturnError(errors.New("window refused"))
-	logger, logs := capturedLogger()
-	scoped := logger.With("table", "public.users")
+	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(1, 2, 3).RowError(2, errors.New("connection lost")))
 
-	got, err := readSample(t.Context(), scoped, db, idMapper{}, "SPREAD", true, "WINDOW", 20)
+	got, err := read(t, db, idMapper{}, false)
 
-	require.NoError(t, err)
-	require.Len(t, got, 3)
-	require.Contains(t, logs.String(), "table=public.users")
-	require.Contains(t, logs.String(), "level=DEBUG")
+	require.Equal(t, []int64{1, 2}, got)
+	require.EqualError(
+		t,
+		wrapSampleError(err, "public.users", "postgres"),
+		"unable to convert row to map for table public.users with database type postgres: connection lost",
+	)
 }
 
-func Test_readSample_DoneContextIsNotAnsweredWithAShortSample(t *testing.T) {
+func Test_readSample_RowsOfTheSpreadSurviveAFailingWindow(t *testing.T) {
+	cases := map[string]struct {
+		window func(*sqlmock.ExpectedQuery)
+		want   []int64
+	}{
+		"window refused": {
+			func(q *sqlmock.ExpectedQuery) { q.WillReturnError(errors.New("window refused")) },
+			[]int64{1, 2, 3},
+		},
+		"window failing while read": {
+			func(q *sqlmock.ExpectedQuery) {
+				q.WillReturnRows(idRows(100, 101, 102).RowError(2, errors.New("connection lost")))
+			},
+			[]int64{1, 2, 3, 100, 101},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db, mock := newSampleDB(t)
+			mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
+			tc.window(mock.ExpectQuery("WINDOW"))
+			logger, logs := capturedLogger()
+			scoped := logger.With("table", "public.users")
+			sent := &sentIDs{}
+
+			err := readSample(t.Context(), scoped, db, idMapper{}, "SPREAD", true, "WINDOW", 20, sent.send)
+
+			require.NoError(t, err)
+			require.Equal(t, tc.want, sent.ids)
+			require.Contains(t, logs.String(), "window query failed")
+			require.Contains(t, logs.String(), "table=public.users")
+			require.Contains(t, logs.String(), "level=DEBUG")
+		})
+	}
+}
+
+// cancellingMapper cancels its context once it has converted a row.
+type cancellingMapper struct {
+	recordMapper
+	cancel context.CancelFunc
+}
+
+func (m cancellingMapper) MapRecord(record any) (map[string]any, error) {
+	row, err := m.recordMapper.MapRecord(record)
+	m.cancel()
+	return row, err
+}
+
+func Test_readSample_DoneContextEndsTheSampleBeforeTheWindow(t *testing.T) {
 	db, mock := newSampleDB(t)
 	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
-	cancelAfterSpread := &cancellingDB{recordingDB: db, cancel: cancel}
 	logger, _ := capturedLogger()
+	sent := &sentIDs{}
 
-	_, err := readSample(ctx, logger, cancelAfterSpread, idMapper{}, "SPREAD", true, "WINDOW", 20)
+	err := readSample(ctx, logger, db, cancellingMapper{idMapper{}, cancel}, "SPREAD", true, "WINDOW", 20, sent.send)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.NotEmpty(t, sent.ids)
+	require.Equal(t, []string{"SPREAD"}, db.statements)
+	require.EqualError(
+		t,
+		wrapSampleError(err, "public.users", "postgres"),
+		"error querying table public.users with database type postgres: context canceled",
+	)
+}
+
+func Test_readSample_DoneContextWhileTheWindowIsRead(t *testing.T) {
+	db, mock := newSampleDB(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1, 2, 3))
+	// The window query fails on the context before it reaches the database.
+	cancelAtWindow := &cancellingDB{recordingDB: db, cancel: cancel}
+	logger, _ := capturedLogger()
+	sent := &sentIDs{}
+
+	err := readSample(ctx, logger, cancelAtWindow, idMapper{}, "SPREAD", true, "WINDOW", 20, sent.send)
 
 	require.ErrorIs(t, err, context.Canceled)
 }
 
-// cancellingDB cancels its context once the spread query is read.
+// cancellingDB cancels its context when the window query is issued.
 type cancellingDB struct {
 	*recordingDB
 	cancel context.CancelFunc
@@ -437,19 +570,62 @@ func (c *cancellingDB) QueryContext(ctx context.Context, query string, args ...a
 	return c.recordingDB.QueryContext(ctx, query, args...)
 }
 
+// The error of the receiver of the rows ends the sample: nothing more is read, and the error is
+// reported as it is.
+func Test_readSample_ErrorOfTheReceiverEndsTheSample(t *testing.T) {
+	refused := errors.New("stream closed")
+	cases := map[string]struct {
+		spread, window []int64
+		statements     []string
+	}{
+		"while the spread is read":                {[]int64{1, 2, 3}, nil, []string{"SPREAD"}},
+		"while the window is read":                {nil, []int64{1, 2, 3}, []string{"WINDOW"}},
+		"while the window completes a short read": {[]int64{1}, []int64{1, 2, 3}, []string{"SPREAD", "WINDOW"}},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db, mock := newSampleDB(t)
+			if tc.spread != nil {
+				mock.ExpectQuery("SPREAD").WillReturnRows(idRows(tc.spread...))
+			}
+			if tc.window != nil {
+				mock.ExpectQuery("WINDOW").WillReturnRows(idRows(tc.window...))
+			}
+			logger, logs := capturedLogger()
+			calls := 0
+			send := func(map[string]any) error {
+				calls++
+				if calls == 2 {
+					return refused
+				}
+				return nil
+			}
+
+			err := readSample(t.Context(), logger, db, idMapper{}, "SPREAD", tc.spread != nil, "WINDOW", 20, send)
+
+			require.ErrorIs(t, err, refused)
+			require.Equal(t, 2, calls)
+			require.Equal(t, tc.statements, db.statements)
+			require.Same(t, refused, wrapSampleError(err, "public.users", "postgres"))
+			require.Empty(t, logs.String())
+		})
+	}
+}
+
 func Test_readSample_RowErrorsAreLoggedWithoutTheirText(t *testing.T) {
 	const canary = "jane.doe@example.com"
 	db, mock := newSampleDB(t)
 	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(1))
 	mock.ExpectQuery("WINDOW").WillReturnRows(idRows(sequence(100, 20)...))
 	logger, logs := capturedLogger()
+	sent := &sentIDs{}
 
 	// The spread read fails on the mapper, the window read goes through another one.
-	got, err := readSample(t.Context(), logger, db, &switchMapper{first: failingMapper{canary}, then: idMapper{}},
-		"SPREAD", true, "WINDOW", 20)
+	err := readSample(t.Context(), logger, db, &switchMapper{first: failingMapper{canary}, then: idMapper{}},
+		"SPREAD", true, "WINDOW", 20, sent.send)
 
 	require.NoError(t, err)
-	require.Len(t, got, 20)
+	require.Equal(t, sequence(100, 20), sent.ids)
 	require.Contains(t, logs.String(), "spread sample query failed")
 	require.NotContains(t, logs.String(), canary)
 }

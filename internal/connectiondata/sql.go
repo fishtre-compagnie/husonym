@@ -142,15 +142,10 @@ func (s *SQLConnectionDataService) SampleData(
 	}
 	logger := s.logger.With("table", schemaTable)
 	spread, hasSpread := spreadSampleQuery(ctx, logger, db, goquDriver, schema, table, numRows, randomInRange)
-	sampled, err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows)
-	if err != nil {
-		return wrapSampleError(err, schemaTable, goquDriver)
-	}
-
-	for _, r := range sampled {
+	send := func(row map[string]any) error {
 		var rowbytes bytes.Buffer
 		enc := gob.NewEncoder(&rowbytes)
-		if err := enc.Encode(r); err != nil {
+		if err := enc.Encode(row); err != nil {
 			return fmt.Errorf(
 				"unable to encode row for table %s with database type %s: %w",
 				schemaTable,
@@ -158,9 +153,10 @@ func (s *SQLConnectionDataService) SampleData(
 				err,
 			)
 		}
-		if err := stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()}); err != nil {
-			return err
-		}
+		return stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()})
+	}
+	if err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
+		return wrapSampleError(err, schemaTable, goquDriver)
 	}
 	return nil
 }
