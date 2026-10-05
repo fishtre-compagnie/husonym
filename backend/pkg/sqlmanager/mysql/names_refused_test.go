@@ -30,8 +30,8 @@ func constraintRow(t *testing.T, kind, column, referencedColumn string) *mysql_q
 }
 
 // MySQL cuts a statement at a NUL byte: the name of a column that holds one is refused where
-// the statement of a constraint is built. A key part that is an expression has no column name,
-// in a UNIQUE constraint alone: an empty name is accepted there, and nowhere else.
+// the statement of a constraint is built. The catalog gives no name for a key part that is an
+// expression, nor for a key column the user cannot see: an empty name is accepted.
 func Test_ConstraintColumns_NamesRefused(t *testing.T) {
 	cases := []struct {
 		name             string
@@ -42,15 +42,15 @@ func Test_ConstraintColumns_NamesRefused(t *testing.T) {
 	}{
 		{name: "primary key", kind: "PRIMARY KEY", column: "a", referencedColumn: ""},
 		{name: "primary key, NUL in a column", kind: "PRIMARY KEY", column: nulName, refused: true},
-		{name: "primary key, column without a name", kind: "PRIMARY KEY", column: "", refused: true},
+		{name: "primary key, column without a name", kind: "PRIMARY KEY", column: ""},
 		{name: "unique", kind: "UNIQUE", column: "a"},
 		{name: "unique, NUL in a column", kind: "UNIQUE", column: nulName, refused: true},
 		{name: "unique, key part that is an expression", kind: "UNIQUE", column: ""},
 		{name: "foreign key", kind: "FOREIGN KEY", column: "a", referencedColumn: "id"},
 		{name: "foreign key, NUL in a column", kind: "FOREIGN KEY", column: nulName, referencedColumn: "id", refused: true},
 		{name: "foreign key, NUL in a referenced column", kind: "FOREIGN KEY", column: "a", referencedColumn: nulName, refused: true},
-		{name: "foreign key, column without a name", kind: "FOREIGN KEY", column: "", referencedColumn: "id", refused: true},
-		{name: "foreign key, referenced column without a name", kind: "FOREIGN KEY", column: "a", referencedColumn: "", refused: true},
+		{name: "foreign key, column without a name", kind: "FOREIGN KEY", column: "", referencedColumn: "id"},
+		{name: "foreign key, referenced column without a name", kind: "FOREIGN KEY", column: "a", referencedColumn: ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -74,6 +74,100 @@ func Test_ConstraintColumns_ExpressionKeyPartIsAccepted(t *testing.T) {
 	statement, err := buildAlterStatementByConstraint(row)
 	require.NoError(t, err)
 	require.Contains(t, statement.Statement, "ALTER TABLE `db`.`t` ADD CONSTRAINT `c1` UNIQUE (`a`,``);")
+}
+
+// The catalog shows a key whose column the user cannot see and hides the name of that column,
+// which comes as a JSON null. The statement of such a key is built as it is for any column,
+// with an empty name, so that the server answers it alone and the table is still read.
+func Test_ConstraintColumns_AKeyColumnTheUserCannotSee(t *testing.T) {
+	ordinary := func(name string) oddName { return oddName{name: name, lit: "'" + name + "'"} }
+	cases := []struct {
+		name              string
+		kind              string
+		constraint        string
+		columns           string
+		referencedColumns string
+		alter             string
+	}{
+		{
+			name: "primary key", kind: "PRIMARY KEY", constraint: "PRIMARY",
+			columns: `[null]`, referencedColumns: `[null]`,
+			alter: "ALTER TABLE `db`.`t` ADD PRIMARY KEY (``);",
+		},
+		{
+			name: "primary key, one column of two", kind: "PRIMARY KEY", constraint: "PRIMARY",
+			columns: `["a", null]`, referencedColumns: `[null, null]`,
+			alter: "ALTER TABLE `db`.`t` ADD PRIMARY KEY (`a`,``);",
+		},
+		{
+			name: "foreign key, child column", kind: "FOREIGN KEY", constraint: "fk1",
+			columns: `[null]`, referencedColumns: `["id"]`,
+			alter: "ALTER TABLE `db`.`t` ADD CONSTRAINT `fk1` FOREIGN KEY (``) REFERENCES `db`.`p`(`id`) ON DELETE CASCADE ON UPDATE NO ACTION;",
+		},
+		{
+			name: "foreign key, referenced column", kind: "FOREIGN KEY", constraint: "fk1",
+			columns: `["a"]`, referencedColumns: `[null]`,
+			alter: "ALTER TABLE `db`.`t` ADD CONSTRAINT `fk1` FOREIGN KEY (`a`) REFERENCES `db`.`p`(``) ON DELETE CASCADE ON UPDATE NO ACTION;",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			row := &mysql_queries.GetTableConstraintsRow{
+				SchemaName:            "db",
+				TableName:             "t",
+				ConstraintName:        tc.constraint,
+				ConstraintType:        tc.kind,
+				ConstraintColumns:     json.RawMessage(tc.columns),
+				ReferencedSchemaName:  "db",
+				ReferencedTableName:   "p",
+				ReferencedColumnNames: json.RawMessage(tc.referencedColumns),
+				DeleteRule:            sql.NullString{String: "CASCADE", Valid: true},
+				UpdateRule:            sql.NullString{String: "NO ACTION", Valid: true},
+			}
+			statement, err := buildAlterStatementByConstraint(row)
+			require.NoError(t, err)
+			require.Equal(t,
+				wantConstraintProcedure(ordinary("db"), ordinary("t"), ordinary(tc.constraint), tc.alter),
+				withFixedProcedureName(t, statement.Statement))
+		})
+	}
+}
+
+// The other statements of a table are still built when one key column is hidden from the user.
+func Test_GetTableInitStatements_AKeyColumnTheUserCannotSee(t *testing.T) {
+	querier := mysql_queries.NewMockQuerier(t)
+	querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{{
+			SchemaName: "db", TableName: "t", ColumnName: "a", DataType: "varchar(20)",
+			ColumnDefault: []uint8(""), GenerationExp: []uint8(""), IsNullable: 1,
+		}}, nil)
+	querier.EXPECT().GetTableConstraints(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetTableConstraintsRow{
+			{
+				SchemaName: "db", TableName: "t", ConstraintName: "PRIMARY", ConstraintType: "PRIMARY KEY",
+				ConstraintColumns: json.RawMessage(`[null]`), ReferencedColumnNames: json.RawMessage(`[null]`),
+			},
+			{
+				SchemaName: "db", TableName: "t", ConstraintName: "fk1", ConstraintType: "FOREIGN KEY",
+				ConstraintColumns: json.RawMessage(`[null]`), ReferencedColumnNames: json.RawMessage(`[null]`),
+				ReferencedSchemaName: "db", ReferencedTableName: "p",
+				DeleteRule: sql.NullString{String: "CASCADE", Valid: true},
+				UpdateRule: sql.NullString{String: "NO ACTION", Valid: true},
+			},
+		}, nil)
+	querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetIndicesBySchemasAndTablesRow{}, nil)
+	manager := &MysqlManager{resolvedQuerier: querier}
+
+	statements, err := manager.GetTableInitStatements(context.Background(),
+		[]*sqlmanager_shared.SchemaTable{{Schema: "db", Table: "t"}})
+	require.NoError(t, err)
+	require.Len(t, statements, 1)
+	require.Len(t, statements[0].AlterTableStatements, 2)
+	require.Contains(t, statements[0].AlterTableStatements[0].Statement,
+		"ALTER TABLE `db`.`t` ADD PRIMARY KEY (``);")
+	require.Contains(t, statements[0].AlterTableStatements[1].Statement,
+		"ALTER TABLE `db`.`t` ADD CONSTRAINT `fk1` FOREIGN KEY (``) REFERENCES `db`.`p`(``) ON DELETE CASCADE ON UPDATE NO ACTION;")
 }
 
 func Test_IdempotentIndex_NamesRefused(t *testing.T) {

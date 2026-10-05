@@ -1103,13 +1103,13 @@ func buildAlterStatementByConstraint(
 			return nil, err
 		}
 	}
-	// The catalog gives no column name for a key part that is an expression, which a UNIQUE
-	// constraint may have: the statement of such a constraint is still handed over, for the
-	// server to answer it alone. A primary key and a foreign key are made of columns only.
+	// The catalog gives no column name for a key part that is an expression, nor for a key
+	// column the user cannot see: the statement of such a constraint is still handed over,
+	// for the server to answer it alone.
 	table := my.Qualified(c.SchemaName, c.TableName)
 	switch c.ConstraintType {
 	case "PRIMARY KEY":
-		if err := checkNames("column", constraintCols...); err != nil {
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
 			return nil, err
 		}
 		stmt := fmt.Sprintf(
@@ -1155,10 +1155,10 @@ func buildAlterStatementByConstraint(
 		if err := checkQualifiedTable(c.ReferencedSchemaName, c.ReferencedTableName); err != nil {
 			return nil, err
 		}
-		if err := checkNames("column", constraintCols...); err != nil {
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
 			return nil, err
 		}
-		if err := checkNames("referenced column", referencedCols...); err != nil {
+		if err := checkNamesIfPresent("referenced column", referencedCols...); err != nil {
 			return nil, err
 		}
 		stmt := fmt.Sprintf(

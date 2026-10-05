@@ -39,7 +39,7 @@ func checkNames(kind string, names ...string) error {
 
 // checkNamesIfPresent refuses a name that holds a NUL byte, where MySQL cuts a statement, and
 // accepts one that is empty: the catalog gives no column name for a key part that is an
-// expression.
+// expression, nor for a key column the user cannot see.
 func checkNamesIfPresent(kind string, names ...string) error {
 	for _, name := range names {
 		if name == "" {
