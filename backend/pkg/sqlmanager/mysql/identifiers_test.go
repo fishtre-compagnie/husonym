@@ -364,6 +364,77 @@ func Test_ColumnComment(t *testing.T) {
 	require.Equal(t, "`c` int NULL", build(""))
 }
 
+// A default the catalog gives as a plain string value is written as one string literal; a
+// default it gives as an expression is replayed as read.
+func Test_ColumnDefault(t *testing.T) {
+	stringDefault, expressionDefault := columnDefaultString, columnDefaultDefault
+	for value, literal := range map[string]string{
+		"plain value_1": `'plain value_1'`,
+		`o'clock`:       `'o''clock'`,
+		`back\slash`:    `_utf8mb4 0x6261636B5C736C617368`,
+		`quarter past'`: `'quarter past'''`,
+	} {
+		actual, err := EscapeMysqlDefaultColumn(value, &stringDefault)
+		require.NoError(t, err)
+		require.Equal(t, literal, actual)
+
+		empty := ""
+		statement, err := BuildAddColumnStatement(&sqlmanager_shared.TableColumn{
+			Schema: "db", Table: "t", Name: "c", DataType: "varchar(40)", IsNullable: true,
+			ColumnDefault: value, ColumnDefaultType: &stringDefault, GeneratedExpression: &empty,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "ALTER TABLE `db`.`t` ADD COLUMN `c` varchar(40) NULL DEFAULT "+literal+";", statement)
+
+		actual, err = EscapeMysqlDefaultColumn(value, &expressionDefault)
+		require.NoError(t, err)
+		require.Equal(t, "("+value+")", actual)
+
+		actual, err = EscapeMysqlDefaultColumn(value, nil)
+		require.NoError(t, err)
+		require.Equal(t, value, actual)
+	}
+}
+
+// The table of a job is created with the string default of a column written as one literal.
+func Test_GetTableInitStatements_WritesAStringDefaultAsOneLiteral(t *testing.T) {
+	querier := mysql_queries.NewMockQuerier(t)
+	column := func(name, columnDefault, extra string) *mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow {
+		return &mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
+			SchemaName: "db", TableName: "t", ColumnName: name, DataType: "varchar(40)", IsNullable: 1,
+			ColumnDefault: []uint8(columnDefault), GenerationExp: []uint8(""),
+			IdentityGeneration: sql.NullString{String: extra, Valid: true},
+		}
+	}
+	querier.EXPECT().GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetDatabaseTableSchemasBySchemasAndTablesRow{
+			column("plain", "plain value_1", ""),
+			column("apostrophe", `o'clock`, ""),
+			column("backslash", `back\slash`, ""),
+			column("expression", `concat(_utf8mb4'o',_utf8mb4'clock')`, "DEFAULT_GENERATED"),
+		}, nil)
+	querier.EXPECT().GetTableConstraints(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetTableConstraintsRow{}, nil)
+	querier.EXPECT().GetIndicesBySchemasAndTables(mock.Anything, mock.Anything, mock.Anything).
+		Return([]*mysql_queries.GetIndicesBySchemasAndTablesRow{}, nil)
+	manager := &MysqlManager{resolvedQuerier: querier}
+
+	statements, err := manager.GetTableInitStatements(
+		context.Background(),
+		[]*sqlmanager_shared.SchemaTable{{Schema: "db", Table: "t"}},
+	)
+	require.NoError(t, err)
+	require.Len(t, statements, 1)
+	require.Equal(t,
+		"CREATE TABLE IF NOT EXISTS `db`.`t` ("+
+			"`plain` varchar(40) NULL DEFAULT 'plain value_1', "+
+			"`apostrophe` varchar(40) NULL DEFAULT 'o''clock', "+
+			"`backslash` varchar(40) NULL DEFAULT _utf8mb4 0x6261636B5C736C617368, "+
+			"`expression` varchar(40) NULL DEFAULT (concat(_utf8mb4'o',_utf8mb4'clock')));",
+		statements[0].CreateTableStatement,
+	)
+}
+
 func Test_OddNames_Truncate(t *testing.T) {
 	eachOddOrder(t, func(t *testing.T, schema, table, _ oddName) {
 		actual, err := BuildMysqlTruncateStatement(schema.name, table.name)

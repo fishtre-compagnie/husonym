@@ -26,6 +26,29 @@ func Test_BuildDomainConstraintStatements(t *testing.T) {
 	require.Empty(t, BuildDomainConstraintStatements("app", "amount", nil, nil))
 }
 
+// The label of an enum is a value read from the catalog: it is written as one string literal.
+func Test_BuildUpdateEnumStatements_WritesALabelAsOneLiteral(t *testing.T) {
+	for label, literal := range map[string]string{
+		"plain label_1": `'plain label_1'`,
+		`o'clock`:       `'o''clock'`,
+		`back\slash`:    `'back\slash'`,
+		`quarter past'`: `'quarter past'''`,
+	} {
+		require.Equal(t,
+			[]string{`ALTER TYPE "app"."mood" ADD VALUE IF NOT EXISTS ` + literal + `;`},
+			BuildUpdateEnumStatements("app", "mood", []string{label}, nil),
+		)
+		require.Equal(t,
+			[]string{`ALTER TYPE "app"."mood" RENAME VALUE ` + literal + ` TO 'calm';`},
+			BuildUpdateEnumStatements("app", "mood", nil, map[string]string{label: "calm"}),
+		)
+		require.Equal(t,
+			[]string{`ALTER TYPE "app"."mood" RENAME VALUE 'calm' TO ` + literal + `;`},
+			BuildUpdateEnumStatements("app", "mood", nil, map[string]string{"calm": label}),
+		)
+	}
+}
+
 func Test_BuildUpdateDomainNotNullStatement(t *testing.T) {
 	require.Equal(t, `ALTER DOMAIN "app"."amount" SET NOT NULL;`, BuildUpdateDomainNotNullStatement("app", "amount", false))
 	require.Equal(t, `ALTER DOMAIN "app"."amount" DROP NOT NULL;`, BuildUpdateDomainNotNullStatement("app", "amount", true))

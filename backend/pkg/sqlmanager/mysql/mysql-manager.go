@@ -1760,6 +1760,9 @@ func EscapeMysqlColumn(col string) string {
 	return sqlident.MySQL.Quote(col)
 }
 
+// EscapeMysqlDefaultColumn writes the default of a column for a DEFAULT clause: a default read
+// from the catalog as a plain string value is written as one string literal, and a default read
+// as an expression is put between parentheses as it was read.
 func EscapeMysqlDefaultColumn(
 	defaultColumnValue string,
 	defaultColumnType *string,
@@ -1769,7 +1772,7 @@ func EscapeMysqlDefaultColumn(
 		return defaultColumnValue, nil
 	}
 	if *defaultColumnType == columnDefaultString {
-		return fmt.Sprintf("'%s'", defaultColumnValue), nil
+		return my.Literal(defaultColumnValue), nil
 	}
 	if *defaultColumnType == columnDefaultDefault {
 		return fmt.Sprintf("(%s)", defaultColumnValue), nil

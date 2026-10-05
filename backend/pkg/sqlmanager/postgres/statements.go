@@ -445,7 +445,7 @@ func BuildDropDatatypesStatement(schema, enumName string) string {
 	return fmt.Sprintf("DROP TYPE IF EXISTS %s;", pg.Qualified(schema, enumName))
 }
 
-// BuildUpdateEnumStatements writes the labels as it receives them: they are values.
+// BuildUpdateEnumStatements writes each label as one string literal: a label is a value.
 func BuildUpdateEnumStatements(
 	schema, enumName string,
 	newValues []string,
@@ -456,13 +456,13 @@ func BuildUpdateEnumStatements(
 	for _, value := range newValues {
 		statements = append(
 			statements,
-			fmt.Sprintf("ALTER TYPE %s ADD VALUE IF NOT EXISTS '%s';", enum, value),
+			fmt.Sprintf("ALTER TYPE %s ADD VALUE IF NOT EXISTS %s;", enum, pg.Literal(value)),
 		)
 	}
 	for value, newVal := range changedValues {
 		statements = append(
 			statements,
-			fmt.Sprintf("ALTER TYPE %s RENAME VALUE '%s' TO '%s';", enum, value, newVal),
+			fmt.Sprintf("ALTER TYPE %s RENAME VALUE %s TO %s;", enum, pg.Literal(value), pg.Literal(newVal)),
 		)
 	}
 	return statements
