@@ -19,7 +19,7 @@ const (
 	maxSampleValueRunes = 500
 )
 
-// GetColumnSampleValues retourne les premières valeurs d'une colonne.
+// GetColumnSampleValues retourne un échantillon des valeurs d'une colonne.
 //
 // This serves doubt resolution: when a detection is flagged "needs review", seeing
 // the real data is the most direct way to settle it. Unlike the PII scan, nothing is
@@ -56,7 +56,7 @@ func (s *Service) GetColumnSampleValues(
 	}), nil
 }
 
-// sampledTable is the first rows of a table, as the driver gave them, with the account the
+// sampledTable is a sample of the rows of a table, as the driver gave them, with the account the
 // connection belongs to.
 type sampledTable struct {
 	accountId string
@@ -76,9 +76,9 @@ func (s *Service) getConnection(ctx context.Context, connectionId string) (*mgmt
 	return resp.Msg.GetConnection(), nil
 }
 
-// sampleRows reads the first rows of a table. The raw values are kept, rather than their text,
-// because a transformer has to be handed a value of the column's own type — and whole rows are
-// kept because a javascript rule may read the row's other columns.
+// sampleRows reads a sample of the rows of a table. The raw values are kept, rather than their
+// text, because a transformer has to be handed a value of the column's own type — and whole rows
+// are kept because a javascript rule may read the row's other columns.
 func (s *Service) sampleRows(
 	ctx context.Context,
 	connection *mgmtv1alpha1.Connection,
