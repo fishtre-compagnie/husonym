@@ -6,6 +6,17 @@
 //
 // The package imports goqu and the standard library only, never another package of the
 // product, so that any of them can import it.
+//
+// With goqu, a schema, table or column name is never given as a string: goqu copies a
+// string between its quote characters as it is, and reads dots in it as separators. A name
+// is given as d.Table(...), d.Col(...) or d.TableCol(...), which write it as one
+// identifier. In place of the forms that take a name as a string:
+//
+//   - a goqu.Record in Insert().Rows(...): Insert(table).Cols(d.Col(a), d.Col(b)).Vals([]interface{}{x, y});
+//   - a goqu.Record or a map in Update().Set(...): Update(table).Set(d.Col(a).Set(x)), which
+//     takes one column; goqu takes no expression form for several columns;
+//   - a goqu.Ex key in Where(...): Where(d.Col(a).Eq(x));
+//   - Select("name") and From("name"): Select(d.Col(a)) and From(d.Table(schema, table)).
 package sqlident
 
 import (
@@ -35,7 +46,9 @@ const (
 	driverSQLServer = "sqlserver"
 )
 
-// ForDriver maps "pgx", "postgres", "mysql" and "sqlserver" to a Dialect.
+// ForDriver maps "pgx", "postgres", "mysql" and "sqlserver" to a Dialect. A caller returns
+// the error it gets for another driver name and never ignores it: a Dialect that was not
+// obtained here has no meaning, and writing with it panics.
 func ForDriver(driver string) (Dialect, error) {
 	switch driver {
 	case driverPgx, driverPostgres:
@@ -90,9 +103,9 @@ func (d Dialect) Qualified(schema, name string) string {
 //     sessions set standard_conforming_strings).
 //   - MySQL and MariaDB: '…' with ' doubled when the value holds no backslash, which reads
 //     the same under every sql_mode; otherwise the hex form _utf8mb4 0x… of its UTF-8 bytes.
-//   - SQL Server: N'…' with ' doubled, and a backslash directly before a line break closed
-//     and reopened as N'…\' + N'…', because T-SQL drops a backslash followed by a line break
-//     inside a literal.
+//   - SQL Server: N'…' with ' doubled, and a backslash directly before a line break (LF, CR
+//     or CRLF) closed and reopened as N'…\' + N'…', because T-SQL drops a backslash
+//     followed by a line break inside a literal.
 func (d Dialect) Literal(value string) string {
 	switch d {
 	case Postgres:
@@ -151,21 +164,38 @@ func (d Dialect) Table(schema, table string) exp.IdentifierExpression {
 
 // Col gives a column identifier; see Table.
 func (d Dialect) Col(name string) exp.IdentifierExpression {
-	return goqu.C(d.goquEscape(name))
+	return d.column("", "", name)
 }
 
 // TableCol gives a column identifier qualified by a table or alias; see Table.
 func (d Dialect) TableCol(table, col string) exp.IdentifierExpression {
-	return goqu.T(d.goquEscape(table)).Col(d.goquEscape(col))
+	return d.column("", d.goquEscape(table), col)
 }
 
-func (d Dialect) goquEscape(name string) string {
+// column builds the identifier. goqu writes a column named * as the star of a select list;
+// that one name is handed over as a literal holding the quoted name, so that it is written
+// as one identifier like any other.
+func (d Dialect) column(schema, table, col string) exp.IdentifierExpression {
+	if col == "*" {
+		q := d.goquQuote()
+		return exp.NewIdentifierExpression(schema, table, exp.NewLiteralExpression(q+"*"+q))
+	}
+	return exp.NewIdentifierExpression(schema, table, d.goquEscape(col))
+}
+
+// goquQuote is the quote character goqu's dialect writes around an identifier.
+func (d Dialect) goquQuote() string {
 	switch d {
 	case Postgres, SQLServer:
-		return strings.ReplaceAll(name, `"`, `""`)
+		return `"`
 	case MySQL:
-		return strings.ReplaceAll(name, "`", "``")
+		return "`"
 	default:
 		panic(fmt.Sprintf("sqlident: unknown dialect %d", int(d)))
 	}
+}
+
+func (d Dialect) goquEscape(name string) string {
+	q := d.goquQuote()
+	return strings.ReplaceAll(name, q, q+q)
 }

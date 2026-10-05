@@ -73,6 +73,7 @@ func Test_Literal(t *testing.T) {
 		{SQLServer, `ends\`, `N'ends\'`},
 		{SQLServer, "a\\\nb", "N'a\\' + N'\nb'"},
 		{SQLServer, "a\\\r\nb", "N'a\\' + N'\r\nb'"},
+		{SQLServer, "a\\\rb", "N'a\\' + N'\rb'"},
 		{SQLServer, "a\\\n\\\nb", "N'a\\' + N'\n\\' + N'\nb'"},
 		{SQLServer, "o'\\\nb", "N'o''\\' + N'\nb'"},
 	}
@@ -138,5 +139,88 @@ func Test_GoquIdentifiers(t *testing.T) {
 		got, _, err = dialect.From(c.d.Table("", "t")).Select(goqu.Star()).ToSQL()
 		require.NoError(t, err)
 		require.Equal(t, "SELECT * FROM "+q+"t"+q, got)
+	}
+}
+
+var goquDialects = []struct {
+	d     Dialect
+	name  string
+	q     string
+	weird string
+}{
+	{Postgres, "postgres", `"`, `we"ird`},
+	{MySQL, "mysql", "`", "we`ird"},
+	{SQLServer, "sqlserver", `"`, `we"ird`},
+}
+
+func Test_GoquDotsStayInsideOneIdentifier(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		got, _, err := goqu.Dialect(c.name).From(goqu.T("x")).Select(c.d.TableCol("a.b", "c.d")).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT "+q+"a.b"+q+"."+q+"c.d"+q+` FROM `+q+"x"+q, got)
+	}
+}
+
+func Test_GoquTableAloneDoublesTheQuote(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		doubled := c.weird[:3] + c.weird[2:]
+		got, _, err := goqu.Dialect(c.name).From(c.d.Table("", c.weird)).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT * FROM "+q+doubled+q, got)
+	}
+}
+
+func Test_GoquColumnNamedStar(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		star := q + "*" + q
+		dialect := goqu.Dialect(c.name)
+		col := c.d.Col("*")
+		tc := c.d.TableCol("t", "*")
+
+		got, _, err := dialect.From("t").Select(col, tc).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT "+star+", "+q+"t"+q+"."+star+" FROM "+q+"t"+q, got)
+
+		got, _, err = dialect.Insert("t").Cols(col).Vals([]interface{}{1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "INSERT INTO "+q+"t"+q+" ("+star+") VALUES (1)", got)
+
+		got, _, err = dialect.Update("t").Set(col.Set(2)).Where(col.Eq(1)).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "UPDATE "+q+"t"+q+" SET "+star+"=2 WHERE ("+star+" = 1)", got)
+
+		got, _, err = dialect.From("t").Where(col.Gt(1), tc.IsNull()).Order(col.Asc(), tc.Desc()).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT * FROM "+q+"t"+q+" WHERE (("+star+" > 1) AND ("+q+"t"+q+"."+star+" IS NULL)) ORDER BY "+star+" ASC, "+q+"t"+q+"."+star+" DESC", got)
+
+		got, _, err = dialect.From("t").Select(col.As("x")).Join(goqu.T("u"), goqu.On(col.Eq(tc))).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT "+star+" AS "+q+"x"+q+" FROM "+q+"t"+q+" INNER JOIN "+q+"u"+q+" ON ("+star+" = "+q+"t"+q+"."+star+")", got)
+	}
+}
+
+// The forms below are the ones the package comment gives for the places where goqu takes a
+// column name as a string.
+func Test_GoquRecommendedForms(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		dialect := goqu.Dialect(c.name)
+		a, b := c.d.Col(c.weird), c.d.Col("b")
+		w := q + c.weird[:3] + c.weird[2:] + q
+
+		got, _, err := dialect.Insert("t").Cols(a, b).Vals([]interface{}{1, 2}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "INSERT INTO "+q+"t"+q+" ("+w+", "+q+"b"+q+") VALUES (1, 2)", got)
+
+		got, _, err = dialect.Update("t").Set(a.Set(1)).Where(a.Eq(3)).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "UPDATE "+q+"t"+q+" SET "+w+"=1 WHERE ("+w+" = 3)", got)
+
+		got, _, err = dialect.From("t").Where(a.Eq(1)).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT * FROM "+q+"t"+q+" WHERE ("+w+" = 1)", got)
 	}
 }
