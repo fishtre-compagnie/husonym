@@ -37,10 +37,13 @@ func (s *IntegrationTestSuite) Test_CreateJob_ACallerThatGivesUpLeavesNoJob() {
 			<-args.Get(0).(context.Context).Done()
 		}).
 		Return("", context.Canceled).Once()
-	scheduleRemoved := make(chan context.Context, 1)
+	// What is kept is the state of the call at the moment the schedule is removed. The call
+	// itself is not: it is released as soon as the job is removed too, which may come before
+	// this test looks at it.
+	scheduleRemoved := make(chan error, 1)
 	s.Mocks.TemporalClientManager.
 		On("DeleteSchedule", mock.Anything, accountId, mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) { scheduleRemoved <- args.Get(0).(context.Context) }).
+		Run(func(args mock.Arguments) { scheduleRemoved <- args.Get(0).(context.Context).Err() }).
 		Return(nil).Once()
 
 	ctx, giveUp := context.WithCancel(s.ctx)
@@ -79,8 +82,8 @@ func (s *IntegrationTestSuite) Test_CreateJob_ACallerThatGivesUpLeavesNoJob() {
 	require.Error(t, <-failed)
 
 	select {
-	case cleanup := <-scheduleRemoved:
-		require.NoError(t, cleanup.Err(), "the schedule is removed in a call that has ended")
+	case cleanupErr := <-scheduleRemoved:
+		require.NoError(t, cleanupErr, "the schedule is removed in a call that has ended")
 	case <-time.After(30 * time.Second):
 		require.FailNow(t, "the schedule the orchestrator may have created was not removed")
 	}

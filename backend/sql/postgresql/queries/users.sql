@@ -12,6 +12,15 @@ WHERE provider_sub = sqlc.arg('providerSub')
 ORDER BY provider_iss DESC
 LIMIT 1;
 
+-- Holds a subject for the rest of the transaction: a second transaction asking for the
+-- same one waits here until the first is done. It is what stands for the row to hold when
+-- an identity is seen for the first time and has no row yet.
+--
+-- The subject alone is the key, without its issuer, because a row recorded before issuers
+-- were is found by its subject under any of them.
+-- name: LockIdentityProviderSubject :exec
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg('providerSub')::text, 0));
+
 -- name: GetUserAssociationByProviderSub :one
 SELECT * from husonym_api.user_identity_provider_associations
 WHERE provider_sub = $1;
@@ -132,6 +141,16 @@ SELECT a.* from husonym_api.accounts a
 INNER JOIN husonym_api.account_user_associations aua ON aua.account_id = a.id
 INNER JOIN husonym_api.users u ON u.id = aua.user_id
 WHERE u.id = sqlc.arg('userId') AND a.account_type = 1;
+
+-- Holds a user for the rest of the transaction, so that what is created once per user is
+-- decided by one transaction at a time: a second one waits here until the first is done.
+--
+-- NO KEY UPDATE, not UPDATE: a row that references the user (an account association, an
+-- API key) can still be written meanwhile, only another holder waits.
+-- name: LockUser :one
+SELECT id FROM husonym_api.users
+WHERE id = $1
+FOR NO KEY UPDATE;
 
 -- name: CreatePersonalAccount :one
 INSERT INTO husonym_api.accounts (
