@@ -7,16 +7,20 @@
 // The package imports goqu and the standard library only, never another package of the
 // product, so that any of them can import it.
 //
-// With goqu, a schema, table or column name is never given as a string: goqu copies a
-// string between its quote characters as it is, and reads dots in it as separators. A name
-// is given as d.Table(...), d.Col(...) or d.TableCol(...), which write it as one
-// identifier. In place of the forms that take a name as a string:
+// With goqu, a schema, table or column name is given as an expression: d.Table(...),
+// d.Col(...) or d.TableCol(...), which write it as one identifier. A plain string is
+// copied by goqu between its quote characters as it is, and a dot in it is read as a
+// separator. In place of the forms that take a name as a string:
 //
 //   - a goqu.Record in Insert().Rows(...): Insert(table).Cols(d.Col(a), d.Col(b)).Vals([]interface{}{x, y});
-//   - a goqu.Record or a map in Update().Set(...): Update(table).Set(d.Col(a).Set(x)), which
-//     takes one column; goqu takes no expression form for several columns;
 //   - a goqu.Ex key in Where(...): Where(d.Col(a).Eq(x));
-//   - Select("name") and From("name"): Select(d.Col(a)) and From(d.Table(schema, table)).
+//   - Select("name") and From("name"): Select(d.Col(a)) and From(d.Table(schema, table));
+//   - a goqu.Record in Update().Set(...), for one column: Update(table).Set(d.Col(a).Set(x)).
+//
+// Only where goqu offers no expression form, which is the key of a Record or of an Ex for
+// several columns (an UPDATE of several columns), the name is given as d.Key(name). A key
+// stays a string for goqu: a dot in it still separates identifiers, and the key * is
+// still read as the star.
 package sqlident
 
 import (
@@ -143,6 +147,14 @@ func sqlServerLiteral(value string) string {
 	}
 	b.WriteString("'")
 	return b.String()
+}
+
+// Key gives name as goqu must receive it where goqu takes a column name as a string (the
+// key of a Record or of an Ex): the quote character goqu writes is doubled. goqu splits such
+// a string on dots, so a name holding a dot is not written as one identifier there, and the
+// key * is read as the star. Where a name may hold either, use Col.
+func (d Dialect) Key(name string) string {
+	return d.goquEscape(name)
 }
 
 // Table, Col and TableCol give goqu identifiers that goqu writes as one identifier each.

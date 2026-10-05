@@ -224,3 +224,54 @@ func Test_GoquRecommendedForms(t *testing.T) {
 		require.Equal(t, "SELECT * FROM "+q+"t"+q+" WHERE ("+w+" = 1)", got)
 	}
 }
+
+func Test_GoquKeys(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		dialect := goqu.Dialect(c.name)
+		w := q + c.weird[:3] + c.weird[2:] + q
+
+		got, _, err := dialect.Update(c.d.Table("s", "t")).
+			Set(goqu.Record{c.d.Key(c.weird): 1, c.d.Key("b"): 2}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "UPDATE "+q+"s"+q+"."+q+"t"+q+" SET "+q+"b"+q+"=2,"+w+"=1", got)
+
+		got, _, err = dialect.Insert("t").Rows(goqu.Record{c.d.Key(c.weird): 1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "INSERT INTO "+q+"t"+q+" ("+w+") VALUES (1)", got)
+
+		got, _, err = dialect.From("t").Where(goqu.Ex{c.d.Key(c.weird): 1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT * FROM "+q+"t"+q+" WHERE ("+w+" = 1)", got)
+
+		// An ordinary name gives what the bare name gives.
+		got, _, err = dialect.Update("t").Set(goqu.Record{c.d.Key("a"): 1, c.d.Key("b"): 2}).Where(goqu.Ex{c.d.Key("a"): 1}).ToSQL()
+		require.NoError(t, err)
+		want, _, err := dialect.Update("t").Set(goqu.Record{"a": 1, "b": 2}).Where(goqu.Ex{"a": 1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	}
+}
+
+// Known limit of string keys: goqu splits a key on dots, so a name holding a dot is
+// written as several identifiers there. Names that may hold a dot use Col, whose
+// expression form keeps the dot inside one identifier.
+func Test_GoquKeysSplitOnDots(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		got, _, err := goqu.Dialect(c.name).Update("t").Set(goqu.Record{c.d.Key("a.b"): 1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "UPDATE "+q+"t"+q+" SET "+q+"a"+q+"."+q+"b"+q+"=1", got)
+	}
+}
+
+// Known limit of string keys: goqu reads the key * as the star, not as a column name.
+// A column that may be named * uses Col.
+func Test_GoquKeyStarIsNotQuoted(t *testing.T) {
+	for _, c := range goquDialects {
+		q := c.q
+		got, _, err := goqu.Dialect(c.name).From("t").Where(goqu.Ex{c.d.Key("*"): 1}).ToSQL()
+		require.NoError(t, err)
+		require.Equal(t, "SELECT * FROM "+q+"t"+q+" WHERE (* = 1)", got)
+	}
+}
