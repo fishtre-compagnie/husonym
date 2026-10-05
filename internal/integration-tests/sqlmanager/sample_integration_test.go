@@ -381,8 +381,10 @@ func Test_SampleData_KeyRangesMostlyEmpty(t *testing.T) {
 	})
 }
 
-// The rows of the slices are counted on the primary key alone: every slice is a range read of
-// that key, answered from it.
+// The rows of the slices are counted on the primary key: every slice is a range read of that
+// key, and the count reads one entry of it for each row it counts, 1000 at most, whatever the
+// size of the table. MySQL reports that the key alone answers; MariaDB does not report it for a
+// primary key, which holds the rows.
 func Test_SampleData_KeySlicesAreCountedOnTheKey(t *testing.T) {
 	forEachEngine(t, mysqlFamily, func(t *testing.T, f *sampleFixture) {
 		table := f.bigTable(t)
@@ -395,9 +397,20 @@ func Test_SampleData_KeySlicesAreCountedOnTheKey(t *testing.T) {
 			sqlmanager_shared.MysqlDriver, sqlmanager_shared.BuildTable(f.schema, table), "id", ranges)
 		require.NoError(t, err)
 
-		var count int
-		require.NoError(t, f.db.QueryRowContext(context.Background(), query).Scan(&count))
-		require.Equal(t, querybuilder.SampleSlices*querybuilder.SampleSliceRows, count)
+		// The entries read are counted by the session that reads them.
+		ctx := context.Background()
+		session, err := f.db.Conn(ctx)
+		require.NoError(t, err)
+		defer session.Close()
+		before := keyEntriesRead(t, session)
+		var count int64
+		require.NoError(t, session.QueryRowContext(ctx, query).Scan(&count))
+		read := keyEntriesRead(t, session) - before
+		const most = querybuilder.SampleSlices * querybuilder.SampleSliceRows
+		require.Equal(t, int64(most), count)
+		t.Logf("key entries read by the count: %d", read)
+		require.Positive(t, read, "the session did not report the entries read")
+		require.LessOrEqual(t, read, int64(most))
 
 		plan := f.explain(t, query)
 		slices := 0
@@ -408,10 +421,31 @@ func Test_SampleData_KeySlicesAreCountedOnTheKey(t *testing.T) {
 			slices++
 			require.Equal(t, "PRIMARY", step["key"], "%v", step)
 			require.Equal(t, "range", step["type"], "%v", step)
-			require.Contains(t, step["Extra"], "Using index", "%v", step)
+			if f.engine.name == "mysql" {
+				require.Contains(t, step["Extra"], "Using index", "%v", step)
+			}
 		}
 		require.Equal(t, querybuilder.SampleSlices, slices)
 	})
+}
+
+// keyEntriesRead gives the number of index entries a session has read so far: the reads that
+// position on a key and the reads of the entry that follows.
+func keyEntriesRead(t *testing.T, session *sql.Conn) int64 {
+	t.Helper()
+	rows, err := session.QueryContext(context.Background(),
+		"SHOW SESSION STATUS WHERE Variable_name IN ('Handler_read_key', 'Handler_read_next')")
+	require.NoError(t, err)
+	defer rows.Close()
+	var total int64
+	for rows.Next() {
+		var name string
+		var value int64
+		require.NoError(t, rows.Scan(&name, &value))
+		total += value
+	}
+	require.NoError(t, rows.Err())
+	return total
 }
 
 // explain gives the plan of a query, one map per step, and logs it.
