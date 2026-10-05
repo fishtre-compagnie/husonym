@@ -24,10 +24,14 @@ const maxCoverageDraws = 20
 // requireCoversTheTable draws samples of numRows rows until rows from both halves of the rank
 // range have been seen, and fails when maxCoverageDraws draws have not shown both.
 //
-// A sample is cut from a few pages (PostgreSQL, SQL Server) or from ten key ranges (MySQL), so a
-// single draw can fall in one half by chance: with about seven pages it does so about once in
-// sixty. Twenty independent draws all missing a half is below one in 10^30. A sample that reads
-// the first rows of the table only never shows the upper half, and fails on every run.
+// A sample is cut from the rows of about fifty pages, each page taken on its own (PostgreSQL, SQL
+// Server), or from ten key ranges that follow one another over the whole key span (MySQL). On
+// PostgreSQL and SQL Server one draw misses a half when none of its pages is there: with a share
+// s of P pages, 2 * (1 - s)^(P/2), about 2 * e^-25 or 3 in 10^11 on the tables of these tests. On
+// MySQL the ranges always lie in both halves, and 100 rows out of them all fall in one half less
+// than once in 10^25. The draw is repeated all the same, so the test does not depend on these
+// figures. A sample that reads the first rows of the table only never shows the upper half, and
+// fails on every run.
 func requireCoversTheTable(t *testing.T, f *sampleFixture, table string, numRows uint, lastRank int64) {
 	t.Helper()
 	var low, high bool
@@ -227,14 +231,32 @@ func Test_SampleData_UnsignedKeyAboveInt64(t *testing.T) {
 	})
 }
 
-// A name with a space and capitals is quoted the same way by the estimate, the sample and the
-// check that the table exists. The table is large enough for the spread query to apply.
+// oddNameDraws bounds the samples Test_SampleData_OddTableName draws.
+const oddNameDraws = 10
+
+// A name with a space and capitals is quoted the same way by the check that the table exists, by
+// the query that reads its size or its key, and by the query that draws across the table. Only
+// that last query returns a row beyond the first 1000 of the table: the window never does.
+//
+// The table holds 3000 rows. On PostgreSQL and SQL Server it is on fewer than SampleMinPages
+// pages, all of them are read, and 20 rows drawn among all are all within the first 1000 with
+// probability (1/3)^20, 3 in 10^10. On MySQL the six key ranges above rank 1200 each give 100
+// rows two times in three; three of them doing so (nine times in ten) put at least 300 rows above
+// rank 1000 against 400 below at most, and 20 rows all below is then under (4/7)^20: one draw
+// shows no row beyond the window less than once in ten. Ten draws all doing so is under 1e-10.
 func Test_SampleData_OddTableName(t *testing.T) {
 	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
 		table := f.filledTable(t, "Order Lines", 3000)
-		rows := f.mustSample(t, table, 20)
-		require.Len(t, rows, 20)
-		requireDistinct(t, rows, "rank")
+		beyondWindow := false
+		for draw := 0; draw < oddNameDraws && !beyondWindow; draw++ {
+			rows := f.mustSample(t, table, 20)
+			require.Len(t, rows, 20)
+			requireDistinct(t, rows, "rank")
+			for _, row := range rows {
+				beyondWindow = beyondWindow || intColumn(t, row, "rank") > querybuilder.SampleWindowSize
+			}
+		}
+		require.True(t, beyondWindow, "every sampled row is within the first 1000 rows")
 	})
 }
 
@@ -346,6 +368,39 @@ func (f *sampleFixture) settledSeqTupleReads(t *testing.T, before int64, table s
 	}
 	time.Sleep(1500 * time.Millisecond)
 	return f.seqTupleReads(t, table)
+}
+
+// The table was analyzed with rows of 1 kB, seven to a page, and then received 200 000 rows a
+// hundred times narrower: the size read from the catalog, 10 720 rows on 1533 pages, is about
+// twenty times under the truth, and the 9.3 percent of the pages meant for 1000 rows hold about
+// 18 000. The rows that reach the random order are bounded all the same.
+func Test_SampleData_BoundsTheRows(t *testing.T) {
+	forEachEngine(t, postgresOnly, func(t *testing.T, f *sampleFixture) {
+		table := f.dataset(t, "denser", func() {
+			name := f.qualified("denser")
+			// The table is never analyzed in the background, so its statistics stay as set here.
+			f.exec(t, fmt.Sprintf(
+				"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, %s INT NOT NULL, label VARCHAR(40) NOT NULL, "+
+					"pad TEXT NOT NULL DEFAULT '') WITH (autovacuum_enabled = false)", name, f.quote("rank")))
+			f.exec(t, fmt.Sprintf(
+				"INSERT INTO %s (id, %s, label, pad) SELECT -g, -g, 'wide', repeat('x', 1000) FROM generate_series(1, 2000) g",
+				name, f.quote("rank")))
+			f.analyze(t, "denser")
+			f.load(t, "denser", 1, bigRows, 1)
+		})
+
+		before := f.seqTupleReads(t, table)
+		rows := f.mustSample(t, table, 100)
+		require.Len(t, rows, 100)
+		requireDistinct(t, rows, "rank")
+		after := f.settledSeqTupleReads(t, before, table)
+		require.Greater(t, after, before, "the statistics view did not report the rows read")
+		t.Logf("rows read by one sample: %d", after-before)
+		// The scan stops at SampleRowsBound rows. Unbounded, it reads the rows of about 116 of
+		// the 1247 pages of narrow rows: 4200 rows or fewer would be 26 of them at most, less
+		// than once in 10^24 samples.
+		require.LessOrEqual(t, after-before, int64(querybuilder.SampleRowsBound)+200)
+	})
 }
 
 // SQL Server draws a share of its pages with TABLESAMPLE and thins their rows one by one. The
