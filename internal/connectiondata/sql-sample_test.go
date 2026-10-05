@@ -493,7 +493,7 @@ func read(
 
 func Test_readSample_SpreadEnough(t *testing.T) {
 	db, mock := newSampleDB(t)
-	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 25)...))
+	mock.ExpectQuery("SPREAD").WillReturnRows(idRows(sequence(1, 25)...)).RowsWillBeClosed()
 
 	got, err := read(t, db, idMapper{}, true)
 
@@ -742,10 +742,10 @@ func Test_readSample_ErrorOfTheReceiverEndsTheSample(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, mock := newSampleDB(t)
 			if tc.spread != nil {
-				mock.ExpectQuery("SPREAD").WillReturnRows(idRows(tc.spread...))
+				mock.ExpectQuery("SPREAD").WillReturnRows(idRows(tc.spread...)).RowsWillBeClosed()
 			}
 			if tc.window != nil {
-				mock.ExpectQuery("WINDOW").WillReturnRows(idRows(tc.window...))
+				mock.ExpectQuery("WINDOW").WillReturnRows(idRows(tc.window...)).RowsWillBeClosed()
 			}
 			logger, logs := capturedLogger()
 			calls := 0
