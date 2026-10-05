@@ -1,7 +1,9 @@
 package querybuilder
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -76,10 +78,10 @@ func BuildSelectLimitQuery(
 	return sql, nil
 }
 
-// sampleWindowSize borne le nombre de lignes sur lesquelles porte le tirage
+// SampleWindowSize borne le nombre de lignes sur lesquelles porte le tirage
 // aléatoire. Assez large pour que l'échantillon reste varié, assez petit pour que
 // le tri soit gratuit.
-const sampleWindowSize = 1000
+const SampleWindowSize = 1000
 
 // BuildSampledSelectLimitQuery construit une requête d'échantillonnage aléatoire.
 //
@@ -91,7 +93,7 @@ const sampleWindowSize = 1000
 // HTTP 500.
 //
 // Compromis assumé : l'échantillon n'est plus uniforme sur l'ensemble de la table,
-// il est tiré au hasard parmi les premières sampleWindowSize lignes. Pour
+// il est tiré au hasard parmi les premières SampleWindowSize lignes. Pour
 // reconnaître la NATURE d'une colonne — l'usage réel de cette fonction — la
 // représentativité statistique n'apporte rien ; un échantillon obtenable en
 // quelques millisecondes, si.
@@ -112,11 +114,108 @@ func BuildSampledSelectLimitQuery(
 	sqltable := goqu.I(table)
 
 	// Fenêtre lue sans tri : le SGBD s'arrête dès qu'il a ses lignes.
-	window := builder.From(sqltable).Limit(sampleWindowSize).As("husonym_sample")
+	window := builder.From(sqltable).Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
 		From(window).
 		Order(goqu.L(randStmt).Asc()).
+		Limit(limit).
+		ToSQL()
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+const (
+	// SampleSlices is the number of key slices a MySQL sample is drawn from.
+	SampleSlices = 10
+	// SampleSliceRows is the number of rows read from each key slice.
+	SampleSliceRows = 100
+)
+
+// BuildTableSampleQuery builds a query that draws rows from pages spread across the
+// whole table. The table is never scanned in full: the database reads a bounded
+// number of pages and the random order only applies to that sample.
+//
+// It supports PostgreSQL and SQL Server. ok is false when the driver has no table
+// sample, and, for PostgreSQL, when estimatedRows (a negative value stands for an
+// unknown count) is not larger than SampleWindowSize: the table then fits the
+// window and the window query serves it. SQL Server takes a number of rows and
+// ignores estimatedRows.
+func BuildTableSampleQuery(
+	driver, table string,
+	estimatedRows int64,
+	limit uint,
+) (sql string, ok bool, err error) {
+	builder := getGoquDialect(driver)
+	var source exp.LiteralExpression
+	var randStmt string
+	switch driver {
+	case sqlmanager_shared.PostgresDriver, sqlmanager_shared.GoquPostgresDriver:
+		if estimatedRows <= SampleWindowSize {
+			return "", false, nil
+		}
+		source = goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), postgresSamplePercent(estimatedRows))
+		randStmt = "RANDOM()"
+	case sqlmanager_shared.MssqlDriver:
+		source = goqu.L("? TABLESAMPLE (? ROWS)", goqu.I(table), SampleWindowSize)
+		randStmt = "NEWID()"
+	default:
+		return "", false, nil
+	}
+
+	sample := builder.From(source).As("husonym_sample")
+	sql, _, err = builder.
+		From(sample).
+		Order(goqu.L(randStmt).Asc()).
+		Limit(limit).
+		ToSQL()
+	if err != nil {
+		return "", false, err
+	}
+	return sql, true, nil
+}
+
+// postgresSamplePercent is the share of pages, in percent, that is expected to hold
+// about SampleWindowSize rows. It is rounded to four decimals, stays above zero and
+// does not exceed 100.
+func postgresSamplePercent(estimatedRows int64) float64 {
+	percent := 100 * float64(SampleWindowSize) / float64(estimatedRows)
+	percent = math.Round(percent*10000) / 10000
+	return math.Min(100, math.Max(0.0001, percent))
+}
+
+// BuildKeySlicesSampleQuery builds a MySQL query that reads SampleSliceRows rows in
+// key order from each start in starts, and draws limit rows at random from their
+// union. Each slice is a bounded range read on the key, so the cost does not grow
+// with the table.
+func BuildKeySlicesSampleQuery(
+	driver, table, keyColumn string,
+	starts []int64,
+	limit uint,
+) (string, error) {
+	if len(starts) == 0 {
+		return "", errors.New("at least one slice start is required")
+	}
+	builder := getGoquDialect(driver)
+	sqltable := goqu.I(table)
+	key := goqu.I(keyColumn)
+
+	slice := func(start int64) *goqu.SelectDataset {
+		return builder.From(sqltable).
+			Where(key.Gte(start)).
+			Order(key.Asc()).
+			Limit(SampleSliceRows)
+	}
+	union := slice(starts[0])
+	for _, start := range starts[1:] {
+		union = union.UnionAll(slice(start))
+	}
+
+	sql, _, err := builder.
+		From(union.As("husonym_sample")).
+		Order(goqu.L("RAND()").Asc()).
 		Limit(limit).
 		ToSQL()
 	if err != nil {

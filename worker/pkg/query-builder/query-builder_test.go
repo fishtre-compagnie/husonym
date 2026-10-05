@@ -2,6 +2,7 @@ package querybuilder
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -299,4 +300,73 @@ func Test_BuildInsertQuery(t *testing.T) {
 			require.Equal(t, tt.expectedArgs, args)
 		})
 	}
+}
+
+func Test_BuildTableSampleQuery(t *testing.T) {
+	t.Run("postgres draws a share of the pages sized for the window", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 200_000, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Equal(t,
+			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (0.5)) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			sql)
+	})
+	t.Run("postgres share is rounded to four decimals", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 3_000, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Contains(t, sql, "TABLESAMPLE SYSTEM (33.3333)")
+	})
+	t.Run("postgres share never drops to zero", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 100_000_000_000, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Contains(t, sql, "TABLESAMPLE SYSTEM (0.0001)")
+	})
+	t.Run("postgres share never exceeds 100", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", SampleWindowSize+1, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Contains(t, sql, "TABLESAMPLE SYSTEM (99.9001)")
+	})
+	t.Run("sqlserver asks for the window in rows", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.MssqlDriver, "dbo.accounts", 200_000, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Contains(t, sql, `TABLESAMPLE (1000 ROWS)`)
+		require.Contains(t, sql, `NEWID()`)
+		require.NotContains(t, sql, "TOP (1000)")
+	})
+	t.Run("sqlserver does not depend on the estimate", func(t *testing.T) {
+		for _, rows := range []int64{-1, 0, 1, 1000, 200_000} {
+			_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MssqlDriver, "dbo.accounts", rows, 10)
+			require.NoError(t, err)
+			require.True(t, ok)
+		}
+	})
+	t.Run("a table that fits the window is not sampled", func(t *testing.T) {
+		for _, rows := range []int64{-1, 0, 1, 1000} {
+			_, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", rows, 10)
+			require.NoError(t, err)
+			require.False(t, ok)
+		}
+	})
+	t.Run("mysql has no table sample", func(t *testing.T) {
+		_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", 200_000, 10)
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+}
+
+func Test_BuildKeySlicesSampleQuery(t *testing.T) {
+	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", []int64{5, 9000}, 10)
+	require.NoError(t, err)
+	require.Equal(t, 2, strings.Count(sql, "LIMIT 100"))
+	require.Contains(t, sql, "`id` >= 5")
+	require.Contains(t, sql, "`id` >= 9000")
+	require.Contains(t, sql, "UNION ALL")
+	require.True(t, strings.HasSuffix(sql, "ORDER BY RAND() ASC LIMIT 10"))
+
+	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", nil, 10)
+	require.Error(t, err)
 }
