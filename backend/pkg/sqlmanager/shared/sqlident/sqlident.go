@@ -17,10 +17,11 @@
 //   - Select("name") and From("name"): Select(d.Col(a)) and From(d.Table(schema, table));
 //   - a goqu.Record in Update().Set(...), for one column: Update(table).Set(d.Col(a).Set(x)).
 //
-// Only where goqu offers no expression form, which is the key of a Record or of an Ex for
-// several columns (an UPDATE of several columns), the name is given as d.Key(name). A key
-// stays a string for goqu: a dot in it still separates identifiers, and the key * is
-// still read as the star.
+// An UPDATE of several columns can be written with an expression form too: one update
+// expression whose literal takes the other columns as d.Col arguments, as
+// worker/pkg/query-builder does. Only where a caller has nothing but a string key, the name
+// is given as d.Key(name). A key stays a string for goqu: a dot in it still separates
+// identifiers, and the key * is still read as the star.
 package sqlident
 
 import (
