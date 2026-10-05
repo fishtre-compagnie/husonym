@@ -559,6 +559,33 @@ func Test_NamesRefused(t *testing.T) {
 	require.Error(t, err)
 }
 
+// A foreign key is refused when the referenced table, the referenced columns or the name of the
+// constraint is empty or holds a NUL byte.
+func Test_buildAlterStatementByForeignKeyConstraint_ChecksTheReferencedNames(t *testing.T) {
+	build := func(mutate func(c *pg_queries.GetForeignKeyConstraintsBySchemasRow)) error {
+		c := &pg_queries.GetForeignKeyConstraintsBySchemasRow{
+			ConstraintName: "fk", ReferencingSchema: "app", ReferencingTable: "orders",
+			ReferencingColumns: []string{"user_id"}, ReferencedSchema: "app", ReferencedTable: "users",
+			ReferencedColumns: []string{"id"},
+		}
+		mutate(c)
+		_, err := buildAlterStatementByForeignKeyConstraint(c)
+		return err
+	}
+	require.NoError(t, build(func(*pg_queries.GetForeignKeyConstraintsBySchemasRow) {}))
+
+	for _, name := range []string{"", "nul\x00byte"} {
+		t.Run(fmt.Sprintf("%q", name), func(t *testing.T) {
+			require.Error(t, build(func(c *pg_queries.GetForeignKeyConstraintsBySchemasRow) { c.ReferencedTable = name }),
+				"referenced table")
+			require.Error(t, build(func(c *pg_queries.GetForeignKeyConstraintsBySchemasRow) { c.ReferencedColumns = []string{"id", name} }),
+				"referenced columns")
+			require.Error(t, build(func(c *pg_queries.GetForeignKeyConstraintsBySchemasRow) { c.ConstraintName = name }),
+				"constraint name")
+		})
+	}
+}
+
 // The statements that create a table and its partitions carry the names read from the
 // catalog, each as one identifier.
 func Test_OddNames_TableInitStatements(t *testing.T) {

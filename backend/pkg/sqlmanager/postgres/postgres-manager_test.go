@@ -112,6 +112,13 @@ func Test_BuildPgInsertIdentityAlwaysSql_ColumnListEnd(t *testing.T) {
 			`INSERT INTO "we""ird) VALUES (b" ("o'clock", "two$$dollars") OVERRIDING SYSTEM VALUE VALUES($1, $2)`,
 		},
 		{
+			// Pins the scan, not something the insert builder writes: an apostrophe-quoted text
+			// that holds the clause end before the real one is read as inside the string.
+			"apostrophe-quoted text holding the text before the clause",
+			`INSERT INTO "t" ("id", 'x) VALUES (y') VALUES ($1, $2)`,
+			`INSERT INTO "t" ("id", 'x) VALUES (y') OVERRIDING SYSTEM VALUE VALUES($1, $2)`,
+		},
+		{
 			"value holding the text",
 			`INSERT INTO "t" ("id", "label") VALUES (1, 'it''s a) VALUES (b')`,
 			`INSERT INTO "t" ("id", "label") OVERRIDING SYSTEM VALUE VALUES(1, 'it''s a) VALUES (b')`,
