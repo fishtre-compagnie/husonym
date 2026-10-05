@@ -589,3 +589,86 @@ func Test_BuildQuery_MysqlWhereQualifierIsWrittenAsOneIdentifier(t *testing.T) {
 		}
 	}
 }
+
+// A name that is empty, or holds a NUL byte, is refused wherever the builder is about to
+// write it: the table and the columns of the root table, the columns a nullable reference
+// is read through, and the table the reference points to.
+func Test_BuildQuery_RefusesEmptyAndNulNames(t *testing.T) {
+	for _, driver := range []string{sqlmanager_shared.PostgresDriver, sqlmanager_shared.MysqlDriver, sqlmanager_shared.MssqlDriver} {
+		for name, tc := range map[string]struct{ bad, message string }{
+			"empty":    {"", "a name cannot be empty"},
+			"NUL byte": {"a\x00b", "a name cannot hold a NUL byte"},
+		} {
+			// build gives the configs of a visit that references a station through a nullable
+			// column; station, the referenced column and the station table are named by the
+			// test, and the station is read through a clause.
+			build := func(t *testing.T, station, stationColumn string) []*runconfigs.RunConfig {
+				t.Helper()
+				stationKey := "shop." + station
+				configs, err := runconfigs.BuildRunConfigs(
+					map[string][]*sqlmanager_shared.ForeignConstraint{
+						"shop.visit": {{
+							Columns: []string{"station_id"}, NotNullable: []bool{false},
+							ForeignKey: &sqlmanager_shared.ForeignKey{Table: stationKey, Columns: []string{stationColumn}},
+						}},
+					},
+					map[string]string{stationKey: "id = 1"},
+					map[string][]string{stationKey: {"id"}, "shop.visit": {"id"}},
+					map[string][]string{stationKey: {"id", stationColumn}, "shop.visit": {"id", "station_id"}},
+					map[string][][]string{}, map[string][][]string{},
+				)
+				require.NoError(t, err)
+				return configs
+			}
+			buildVisit := func(configs []*runconfigs.RunConfig) error {
+				for _, config := range configs {
+					if config.Id() == "shop.visit.insert" {
+						_, _, _, _, err := NewSelectQueryBuilder("public", driver, false, 100).
+							WithRunConfigs(configs).
+							BuildQuery(config)
+						return err
+					}
+				}
+				return nil
+			}
+
+			t.Run(driver+" the root table "+name, func(t *testing.T) {
+				key := "shop." + tc.bad
+				configs, err := runconfigs.BuildRunConfigs(
+					map[string][]*sqlmanager_shared.ForeignConstraint{},
+					map[string]string{},
+					map[string][]string{key: {"id"}},
+					map[string][]string{key: {"id"}},
+					map[string][][]string{}, map[string][][]string{},
+				)
+				require.NoError(t, err)
+				_, err = BuildSelectQueryMap(driver, configs, false, 100)
+				require.ErrorContains(t, err, "table name: "+tc.message)
+			})
+			t.Run(driver+" the schema of the root table "+name, func(t *testing.T) {
+				key := tc.bad + ".station"
+				configs, err := runconfigs.BuildRunConfigs(
+					map[string][]*sqlmanager_shared.ForeignConstraint{},
+					map[string]string{},
+					map[string][]string{key: {"id"}},
+					map[string][]string{key: {"id"}},
+					map[string][][]string{}, map[string][][]string{},
+				)
+				require.NoError(t, err)
+				_, err = BuildSelectQueryMap(driver, configs, false, 100)
+				if tc.bad == "" {
+					// A table without a schema is written alone.
+					require.NoError(t, err)
+					return
+				}
+				require.ErrorContains(t, err, "schema name: "+tc.message)
+			})
+			t.Run(driver+" the column a reference points to "+name, func(t *testing.T) {
+				require.ErrorContains(t, buildVisit(build(t, "station", tc.bad)), "column name: "+tc.message)
+			})
+			t.Run(driver+" the table a reference points to "+name, func(t *testing.T) {
+				require.ErrorContains(t, buildVisit(build(t, tc.bad, "id")), "table name: "+tc.message)
+			})
+		}
+	}
+}

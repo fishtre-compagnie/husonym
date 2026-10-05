@@ -30,6 +30,16 @@ func Test_QualifyWhereConditionAs(t *testing.T) {
 			sql:   "SELECT * FROM t WHERE id = 1",
 			want:  `SELECT * FROM t WHERE "a.b"."id" = 1`,
 		},
+		"a column holding a double quote": {
+			table: "users",
+			sql:   `SELECT * FROM t WHERE [a"b] = 1`,
+			want:  `SELECT * FROM t WHERE "users"."[a""b]" = 1`,
+		},
+		"a column holding a backslash": {
+			table: "users",
+			sql:   `SELECT * FROM t WHERE [a\b] = 1`,
+			want:  `SELECT * FROM t WHERE "users"."[a\b]" = 1`,
+		},
 		"the from clause is not what names the columns": {
 			table: `we"ird`,
 			sql:   `SELECT * FROM "other" AS o WHERE id = 1`,
@@ -48,9 +58,11 @@ func Test_QualifyWhereConditionAs(t *testing.T) {
 		})
 	}
 
-	t.Run("a table without a name is refused", func(t *testing.T) {
+	t.Run("a table name that is empty or holds a NUL byte is refused", func(t *testing.T) {
 		_, err := QualifyWhereConditionAs("SELECT * FROM t WHERE id = 1", "")
-		require.Error(t, err)
+		require.ErrorContains(t, err, "table name: a name cannot be empty")
+		_, err = QualifyWhereConditionAs("SELECT * FROM t WHERE id = 1", "a\x00b")
+		require.ErrorContains(t, err, "table name: a name cannot hold a NUL byte")
 	})
 	t.Run("a statement that does not parse is refused", func(t *testing.T) {
 		_, err := QualifyWhereConditionAs("SELECT * FROM WHERE id = 1", "users")
