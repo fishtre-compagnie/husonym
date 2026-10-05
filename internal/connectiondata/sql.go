@@ -540,6 +540,10 @@ func (s *SQLConnectionDataService) GetTableRowCount(
 	schema, table string,
 	whereClause *string,
 ) (int64, error) {
+	// A row count names a schema and a table of the catalog, as a sample does.
+	if err := s.areSchemaAndTableValid(ctx, schema, table); err != nil {
+		return 0, fmt.Errorf("invalid schema or table: %w", err)
+	}
 	db, err := s.sqlmanager.NewSqlConnection(
 		ctx,
 		connectionmanager.NewUniqueSession(),
