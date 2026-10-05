@@ -140,8 +140,9 @@ func (s *SQLConnectionDataService) SampleData(
 	if err != nil {
 		return err
 	}
-	spread, hasSpread := spreadSampleQuery(ctx, db, goquDriver, schema, table, numRows, randomInRange)
-	sampled, err := readSample(ctx, db, mapper, spread, hasSpread, query, numRows)
+	logger := s.logger.With("table", schemaTable)
+	spread, hasSpread := spreadSampleQuery(ctx, logger, db, goquDriver, schema, table, numRows, randomInRange)
+	sampled, err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows)
 	if err != nil {
 		return wrapSampleError(err, schemaTable, goquDriver)
 	}

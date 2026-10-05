@@ -17,11 +17,14 @@ import (
 )
 
 const (
-	postgresEstimateQuery = `SELECT reltuples FROM pg_class WHERE oid = to_regclass($1)`
+	// The planner's row count is as old as the last analyze, so it is scaled to the current
+	// size of the table the way the planner does: rows per page times current pages.
+	postgresEstimateQuery = `SELECT reltuples, relpages, pg_relation_size(oid) / current_setting('block_size')::bigint
+FROM pg_class WHERE oid = to_regclass($1)`
 
 	// A usable key is the only column of the primary index. Unlike COLUMN_KEY, the
 	// STATISTICS view does not report a unique index on a NOT NULL column as primary.
-	mysqlPrimaryKeyQuery = `SELECT s.COLUMN_NAME, c.DATA_TYPE, c.COLUMN_TYPE
+	mysqlPrimaryKeyQuery = `SELECT s.COLUMN_NAME, c.DATA_TYPE
 FROM information_schema.STATISTICS s
 JOIN information_schema.COLUMNS c
   ON c.TABLE_SCHEMA = s.TABLE_SCHEMA AND c.TABLE_NAME = s.TABLE_NAME AND c.COLUMN_NAME = s.COLUMN_NAME
@@ -44,24 +47,26 @@ type recordMapper interface {
 	MapRecord(record any) (map[string]any, error)
 }
 
-// sampleQueryError and sampleMapError tell SampleData which of its error messages applies.
+// sampleQueryError is a query the database refused; sampleRowError is a failure while
+// reading or converting a row. The second kind may quote a value of the row, so its text
+// is never logged.
 type sampleQueryError struct{ err error }
 
 func (e *sampleQueryError) Error() string { return e.err.Error() }
 func (e *sampleQueryError) Unwrap() error { return e.err }
 
-type sampleMapError struct{ err error }
+type sampleRowError struct{ err error }
 
-func (e *sampleMapError) Error() string { return e.err.Error() }
-func (e *sampleMapError) Unwrap() error { return e.err }
+func (e *sampleRowError) Error() string { return e.err.Error() }
+func (e *sampleRowError) Unwrap() error { return e.err }
 
 // wrapSampleError gives an error of readSample the message SampleData reports.
 func wrapSampleError(err error, schemaTable, driver string) error {
-	var mapErr *sampleMapError
-	if errors.As(err, &mapErr) {
+	var rowErr *sampleRowError
+	if errors.As(err, &rowErr) {
 		return fmt.Errorf(
 			"unable to convert row to map for table %s with database type %s: %w",
-			schemaTable, driver, mapErr.err,
+			schemaTable, driver, rowErr.err,
 		)
 	}
 	var queryErr *sampleQueryError
@@ -71,11 +76,24 @@ func wrapSampleError(err error, schemaTable, driver string) error {
 	return fmt.Errorf("error querying table %s with database type %s: %w", schemaTable, driver, err)
 }
 
+// logSampleFailure logs why a sample query failed. The text of an error met while
+// reading a row is left out: it may hold a value of the row.
+func logSampleFailure(ctx context.Context, logger *slog.Logger, msg string, err error) {
+	var rowErr *sampleRowError
+	if errors.As(err, &rowErr) {
+		logger.DebugContext(ctx, msg, "stage", "reading a row", "error_kind", fmt.Sprintf("%T", rowErr.err))
+		return
+	}
+	logger.DebugContext(ctx, msg, "stage", "query", "error", err)
+}
+
 // spreadSampleQuery returns a query that draws rows across the whole table, or false
 // when the database cannot do it cheaply. It never fails: the reason is logged at debug
-// level and the caller reads the window instead. pick draws a value in [lo, hi].
+// level and the caller reads the window instead. pick draws a value in [lo, hi], both
+// ends included.
 func spreadSampleQuery(
 	ctx context.Context,
+	logger *slog.Logger,
 	db sampleQuerier,
 	driver, schema, table string,
 	numRows uint,
@@ -84,15 +102,15 @@ func spreadSampleQuery(
 	qualified := sqlmanager_shared.BuildTable(schema, table)
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
-		estimate, ok := postgresEstimate(ctx, db, schema, table)
+		estimate, ok := postgresEstimate(ctx, logger, db, schema, table)
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, driver, qualified, estimate, numRows)
+		return tableSampleQuery(ctx, logger, driver, qualified, estimate, numRows)
 	case sqlmanager_shared.MssqlDriver:
-		return tableSampleQuery(ctx, driver, qualified, 0, numRows)
+		return tableSampleQuery(ctx, logger, driver, qualified, 0, numRows)
 	case sqlmanager_shared.MysqlDriver:
-		return mysqlKeySlicesQuery(ctx, db, schema, table, numRows, pick)
+		return mysqlKeySlicesQuery(ctx, logger, db, schema, table, numRows, pick)
 	default:
 		return "", false
 	}
@@ -100,38 +118,48 @@ func spreadSampleQuery(
 
 func tableSampleQuery(
 	ctx context.Context,
+	logger *slog.Logger,
 	driver, qualified string,
 	estimatedRows int64,
 	numRows uint,
 ) (string, bool) {
 	query, ok, err := querybuilder.BuildTableSampleQuery(driver, qualified, estimatedRows, numRows)
 	if err != nil {
-		slog.DebugContext(ctx, "no spread sample query", "table", qualified, "error", err)
+		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
 	}
 	return query, ok
 }
 
-// postgresEstimate reads the row count the planner holds. A negative count (never
-// analyzed), a missing relation and a failing query all mean there is no estimate.
-func postgresEstimate(ctx context.Context, db sampleQuerier, schema, table string) (int64, bool) {
+// postgresEstimate returns the number of rows the table holds now, from the planner's
+// density (rows per page) and the current number of pages. A table that was never
+// analyzed, a partitioned parent, a view, a missing relation and a failing query all
+// mean there is no estimate.
+func postgresEstimate(
+	ctx context.Context,
+	logger *slog.Logger,
+	db sampleQuerier,
+	schema, table string,
+) (int64, bool) {
 	name := sqlmanager_postgres.EscapePgColumn(schema) + "." + sqlmanager_postgres.EscapePgColumn(table)
 	var reltuples float64
-	err := db.QueryRowContext(ctx, postgresEstimateQuery, name).Scan(&reltuples)
+	var relpages, pages sql.NullInt64
+	err := db.QueryRowContext(ctx, postgresEstimateQuery, name).Scan(&reltuples, &relpages, &pages)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			slog.DebugContext(ctx, "row estimate unavailable", "table", name, "error", err)
+			logger.DebugContext(ctx, "row estimate unavailable", "error_kind", fmt.Sprintf("%T", err))
 		}
 		return 0, false
 	}
-	if reltuples <= 0 {
+	if reltuples <= 0 || !relpages.Valid || relpages.Int64 <= 0 || !pages.Valid || pages.Int64 <= 0 {
 		return 0, false
 	}
-	return int64(reltuples), true
+	return int64(reltuples / float64(relpages.Int64) * float64(pages.Int64)), true
 }
 
 func mysqlKeySlicesQuery(
 	ctx context.Context,
+	logger *slog.Logger,
 	db sampleQuerier,
 	schema, table string,
 	numRows uint,
@@ -140,7 +168,7 @@ func mysqlKeySlicesQuery(
 	qualified := sqlmanager_shared.BuildTable(schema, table)
 	key, err := mysqlIntegerKey(ctx, db, schema, table)
 	if err != nil {
-		slog.DebugContext(ctx, "no spread sample query", "table", qualified, "error", err)
+		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
 	}
 
@@ -151,8 +179,9 @@ func mysqlKeySlicesQuery(
 		sqlmanager_mysql.EscapeMysqlColumn(schema),
 		sqlmanager_mysql.EscapeMysqlColumn(table),
 	)
+	// The error of this scan may quote a key value, so only its kind is logged.
 	if err := db.QueryRowContext(ctx, bounds).Scan(&lo, &hi); err != nil {
-		slog.DebugContext(ctx, "no spread sample query", "table", qualified, "error", err)
+		logger.DebugContext(ctx, "no spread sample query: key bounds unreadable", "error_kind", fmt.Sprintf("%T", err))
 		return "", false
 	}
 	// An empty table has no bounds. A range no wider than the window is served by it. A
@@ -161,22 +190,39 @@ func mysqlKeySlicesQuery(
 		return "", false
 	}
 
-	starts := make([]int64, querybuilder.SampleSlices)
-	for i := range starts {
-		starts[i] = pick(lo.Int64, hi.Int64)
+	// One slice per consecutive part of the key span, each starting at a random key of
+	// its part and not leaving it, so the slices never overlap.
+	parts := splitKeySpan(lo.Int64, hi.Int64, querybuilder.SampleSlices)
+	slices := make([]querybuilder.KeyRange, len(parts))
+	for i, part := range parts {
+		slices[i] = querybuilder.KeyRange{From: pick(part.From, part.To), To: part.To}
 	}
 	query, err := querybuilder.BuildKeySlicesSampleQuery(
-		sqlmanager_shared.MysqlDriver, qualified, key, starts, numRows,
+		sqlmanager_shared.MysqlDriver, qualified, key, slices, numRows,
 	)
 	if err != nil {
-		slog.DebugContext(ctx, "no spread sample query", "table", qualified, "error", err)
+		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
 	}
 	return query, true
 }
 
+// splitKeySpan cuts [lo, hi] into count consecutive ranges of equal width, the last one
+// taking the remainder and ending at hi. It needs hi - lo to fit an int64 and to be at
+// least count.
+func splitKeySpan(lo, hi int64, count int) []querybuilder.KeyRange {
+	width := (hi - lo) / int64(count)
+	parts := make([]querybuilder.KeyRange, count)
+	for i := range parts {
+		from := lo + int64(i)*width
+		parts[i] = querybuilder.KeyRange{From: from, To: from + width - 1}
+	}
+	parts[count-1].To = hi
+	return parts
+}
+
 // mysqlIntegerKey returns the name of the primary key when it is a single column of an
-// integer type.
+// integer type, whose name goqu can quote.
 func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string) (string, error) {
 	rows, err := db.QueryContext(ctx, mysqlPrimaryKeyQuery, schema, table)
 	if err != nil {
@@ -184,11 +230,11 @@ func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string
 	}
 	defer rows.Close()
 
-	var column, dataType, columnType string
+	var column, dataType string
 	count := 0
 	for rows.Next() {
 		count++
-		if err := rows.Scan(&column, &dataType, &columnType); err != nil {
+		if err := rows.Scan(&column, &dataType); err != nil {
 			return "", err
 		}
 	}
@@ -201,14 +247,19 @@ func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string
 	if _, ok := mysqlIntegerTypes[strings.ToLower(dataType)]; !ok {
 		return "", fmt.Errorf("the primary key is of type %s, an integer is needed", dataType)
 	}
+	if strings.ContainsAny(column, "`.") {
+		return "", errors.New("the primary key column name cannot be quoted")
+	}
 	return column, nil
 }
 
 // readSample reads the spread query when there is one. When it fails or returns fewer
-// than numRows rows, the window is read as well and the larger result is returned.
-// Errors are a *sampleQueryError or a *sampleMapError.
+// than numRows rows, the window is read as well and the larger result is returned. If
+// the window fails after a short spread, the spread rows are returned, unless the
+// context is done. Errors are a *sampleQueryError or a *sampleRowError.
 func readSample(
 	ctx context.Context,
+	logger *slog.Logger,
 	db sampleQuerier,
 	mapper recordMapper,
 	spread string,
@@ -221,7 +272,7 @@ func readSample(
 		var err error
 		spreadRows, err = readRows(ctx, db, mapper, spread, numRows)
 		if err != nil {
-			slog.DebugContext(ctx, "spread sample query failed, reading the window", "error", err)
+			logSampleFailure(ctx, logger, "spread sample query failed, reading the window", err)
 			spreadRows = nil
 		}
 		if uint(len(spreadRows)) >= numRows {
@@ -231,10 +282,14 @@ func readSample(
 
 	windowRows, err := readRows(ctx, db, mapper, window, numRows)
 	if err != nil {
-		if len(spreadRows) > 0 {
-			return spreadRows, nil
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
 		}
-		return nil, err
+		if len(spreadRows) == 0 {
+			return nil, err
+		}
+		logSampleFailure(ctx, logger, "window query failed, keeping the short spread sample", err)
+		return spreadRows, nil
 	}
 	if len(spreadRows) > len(windowRows) {
 		return spreadRows, nil
@@ -262,18 +317,18 @@ func readRows(
 	for uint(len(out)) < numRows && rows.Next() {
 		record, err := mapper.MapRecord(rows)
 		if err != nil {
-			return nil, &sampleMapError{err: err}
+			return nil, &sampleRowError{err: err}
 		}
 		out = append(out, record)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, &sampleQueryError{err: err}
+		return nil, &sampleRowError{err: err}
 	}
 	return out, nil
 }
 
-// randomInRange draws the start of a slice in [lo, hi). It needs lo < hi and a span that
-// fits an int64, which the caller checked.
+// randomInRange draws a value in [lo, hi], both ends included. It needs hi - lo to be
+// less than the largest int64, which a slice of a key span always is.
 func randomInRange(lo, hi int64) int64 {
-	return lo + rand.Int64N(hi-lo) //nolint:gosec // a slice start, not a secret
+	return lo + rand.Int64N(hi-lo+1) //nolint:gosec // a slice start, not a secret
 }

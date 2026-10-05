@@ -132,7 +132,15 @@ const (
 	SampleSlices = 10
 	// SampleSliceRows is the number of rows read from each key slice.
 	SampleSliceRows = 100
+	// SampleRowsBound is the most rows a PostgreSQL table sample may read, whatever the
+	// share of pages it asks for.
+	SampleRowsBound = 4 * SampleWindowSize
 )
+
+// KeyRange is a range of key values, both ends included.
+type KeyRange struct {
+	From, To int64
+}
 
 // BuildTableSampleQuery builds a query that draws rows from pages spread across the
 // whole table. The table is never scanned in full: the database reads a bounded
@@ -165,7 +173,11 @@ func BuildTableSampleQuery(
 		return "", false, nil
 	}
 
-	sample := builder.From(source).As("husonym_sample")
+	inner := builder.From(source)
+	if randStmt == "RANDOM()" {
+		inner = inner.Limit(SampleRowsBound)
+	}
+	sample := inner.As("husonym_sample")
 	sql, _, err = builder.
 		From(sample).
 		Order(goqu.L(randStmt).Asc()).
@@ -186,31 +198,31 @@ func postgresSamplePercent(estimatedRows int64) float64 {
 	return math.Min(100, math.Max(0.0001, percent))
 }
 
-// BuildKeySlicesSampleQuery builds a MySQL query that reads SampleSliceRows rows in
-// key order from each start in starts, and draws limit rows at random from their
-// union. Each slice is a bounded range read on the key, so the cost does not grow
-// with the table.
+// BuildKeySlicesSampleQuery builds a MySQL query that reads up to SampleSliceRows rows
+// in key order from each range, and draws limit rows at random from their union. The
+// ranges must not overlap, so no row comes twice. Each slice is a bounded range read
+// on the key, so the cost does not grow with the table.
 func BuildKeySlicesSampleQuery(
 	driver, table, keyColumn string,
-	starts []int64,
+	ranges []KeyRange,
 	limit uint,
 ) (string, error) {
-	if len(starts) == 0 {
-		return "", errors.New("at least one slice start is required")
+	if len(ranges) == 0 {
+		return "", errors.New("at least one key range is required")
 	}
 	builder := getGoquDialect(driver)
 	sqltable := goqu.I(table)
 	key := goqu.I(keyColumn)
 
-	slice := func(start int64) *goqu.SelectDataset {
+	slice := func(r KeyRange) *goqu.SelectDataset {
 		return builder.From(sqltable).
-			Where(key.Gte(start)).
+			Where(key.Gte(r.From), key.Lte(r.To)).
 			Order(key.Asc()).
 			Limit(SampleSliceRows)
 	}
-	union := slice(starts[0])
-	for _, start := range starts[1:] {
-		union = union.UnionAll(slice(start))
+	union := slice(ranges[0])
+	for _, r := range ranges[1:] {
+		union = union.UnionAll(slice(r))
 	}
 
 	sql, _, err := builder.

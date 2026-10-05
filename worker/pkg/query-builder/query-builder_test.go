@@ -308,7 +308,7 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Equal(t,
-			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (0.5)) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (0.5) LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
 			sql)
 	})
 	t.Run("postgres share is rounded to four decimals", func(t *testing.T) {
@@ -328,6 +328,13 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Contains(t, sql, "TABLESAMPLE SYSTEM (99.9001)")
+	})
+	t.Run("postgres bounds the rows read whatever the share", func(t *testing.T) {
+		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", SampleWindowSize+1, 10)
+		require.NoError(t, err)
+		require.True(t, ok)
+		require.Contains(t, sql, "TABLESAMPLE SYSTEM (99.9001) LIMIT 4000")
+		require.Equal(t, 4*SampleWindowSize, SampleRowsBound)
 	})
 	t.Run("sqlserver asks for the window in rows", func(t *testing.T) {
 		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.MssqlDriver, "dbo.accounts", 200_000, 10)
@@ -359,11 +366,14 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 }
 
 func Test_BuildKeySlicesSampleQuery(t *testing.T) {
-	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", []int64{5, 9000}, 10)
+	ranges := []KeyRange{{From: 5, To: 8999}, {From: 9000, To: 20000}}
+	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", ranges, 10)
 	require.NoError(t, err)
 	require.Equal(t, 2, strings.Count(sql, "LIMIT 100"))
 	require.Contains(t, sql, "`id` >= 5")
+	require.Contains(t, sql, "`id` <= 8999")
 	require.Contains(t, sql, "`id` >= 9000")
+	require.Contains(t, sql, "`id` <= 20000")
 	require.Contains(t, sql, "UNION ALL")
 	require.True(t, strings.HasSuffix(sql, "ORDER BY RAND() ASC LIMIT 10"))
 
