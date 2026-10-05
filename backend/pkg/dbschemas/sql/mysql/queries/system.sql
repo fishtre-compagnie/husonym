@@ -4,7 +4,25 @@ SELECT
 	c.table_name,
 	c.column_name,
 	c.ordinal_position,
-    IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(c.COLUMN_DEFAULT, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS column_default, -- hack to fix this bug https://bugs.mysql.com/bug.php?
+    -- MySQL gives the default of a column as its value when it is a literal, and with escapes
+    -- when it is an expression, which EXTRA tells: a backslash before a backslash and before an
+    -- apostrophe, and \n, \r and \Z for a line feed, a carriage return and the byte 0x1A. The
+    -- escapes of an expression are undone here, the way those of a check are below; a literal is
+    -- read as the server stored it. MariaDB gives every default as an expression, without
+    -- escapes, and never marks one in EXTRA: its defaults are read as they are.
+    IFNULL(
+        CASE
+            WHEN c.EXTRA LIKE '%DEFAULT_GENERATED%' THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.COLUMN_DEFAULT,
+                _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
+                _utf8mb4 0x5C27, _utf8mb4 0x27),
+                _utf8mb4 0x5C6E, _utf8mb4 0x0A),
+                _utf8mb4 0x5C72, _utf8mb4 0x0D),
+                _utf8mb4 0x5C5A, _utf8mb4 0x1A),
+                _utf8mb4 0x5C73, _utf8mb4 0x5C)
+            ELSE c.COLUMN_DEFAULT
+        END,
+        ''
+    ) AS column_default,
 	c.is_nullable,
 	c.data_type,
     c.column_type, -- same as data_type but includes things like the length, or set/enum information
@@ -219,7 +237,21 @@ SELECT
    c.COLUMN_NAME AS column_name,
    c.COLUMN_TYPE AS data_type,
    c.COLUMN_TYPE AS column_type, -- same as data_type but includes things like the length, or set/enum information
-   IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(c.COLUMN_DEFAULT, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS column_default, -- hack to fix this bug https://bugs.mysql.com/bug.php?
+   -- The escapes MySQL writes in a default that is an expression are undone, and a literal default
+   -- is read as the server stored it: see GetDatabaseSchema.
+   IFNULL(
+       CASE
+           WHEN c.EXTRA LIKE '%DEFAULT_GENERATED%' THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.COLUMN_DEFAULT,
+               _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
+               _utf8mb4 0x5C27, _utf8mb4 0x27),
+               _utf8mb4 0x5C6E, _utf8mb4 0x0A),
+               _utf8mb4 0x5C72, _utf8mb4 0x0D),
+               _utf8mb4 0x5C5A, _utf8mb4 0x1A),
+               _utf8mb4 0x5C73, _utf8mb4 0x5C)
+           ELSE c.COLUMN_DEFAULT
+       END,
+       ''
+   ) AS column_default,
    CASE WHEN c.IS_NULLABLE = 'YES' THEN 1 ELSE 0 END AS is_nullable,
    CAST(IF(c.DATA_TYPE IN ('varchar', 'char'), c.CHARACTER_MAXIMUM_LENGTH, -1) AS SIGNED) AS character_maximum_length,
    CAST(IF(c.DATA_TYPE IN ('decimal', 'numeric'), c.NUMERIC_PRECISION,
