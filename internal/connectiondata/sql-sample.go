@@ -19,8 +19,19 @@ import (
 const (
 	// The planner's row count is as old as the last analyze, so it is scaled to the current
 	// size of the table the way the planner does: rows per page times current pages.
-	postgresEstimateQuery = `SELECT reltuples, relpages, pg_relation_size(oid) / current_setting('block_size')::bigint
+	postgresEstimateQuery = `SELECT reltuples, relpages, pg_relation_size(oid) / current_setting('block_size')::bigint, relkind = 'p'
 FROM pg_class WHERE oid = to_regclass($1)`
+
+	// A partitioned table holds its rows in its leaf partitions. The rows and the pages
+	// the planner knows are summed over the leaves that were analyzed, the current pages
+	// over all of them.
+	postgresPartitionsEstimateQuery = `SELECT
+  COALESCE(SUM(c.reltuples) FILTER (WHERE c.reltuples > 0 AND c.relpages > 0), 0)::float8,
+  COALESCE(SUM(c.relpages) FILTER (WHERE c.reltuples > 0 AND c.relpages > 0), 0)::bigint,
+  COALESCE(SUM(pg_relation_size(c.oid) / current_setting('block_size')::bigint), 0)::bigint
+FROM pg_partition_tree(to_regclass($1)) t
+JOIN pg_class c ON c.oid = t.relid
+WHERE t.isleaf`
 
 	// The rows and the in-row data pages of the heap or of the clustered index, over every
 	// partition. A login sees the tables it may read; any other table gives no size.
@@ -44,6 +55,10 @@ ORDER BY s.SEQ_IN_INDEX`
 var mysqlIntegerTypes = map[string]struct{}{
 	"tinyint": {}, "smallint": {}, "mediumint": {}, "int": {}, "bigint": {},
 }
+
+// identifierQuotes are the characters that open or close a quoted identifier in one of
+// the supported dialects.
+const identifierQuotes = "\"`[]"
 
 // sampleQuerier is the part of a database handle that sampling needs.
 type sampleQuerier interface {
@@ -108,8 +123,8 @@ func logSampleFailure(ctx context.Context, logger *slog.Logger, msg string, err 
 
 // spreadSampleQuery returns a query that draws rows across the whole table, or false
 // when the database cannot do it cheaply. It never fails: the reason is logged at debug
-// level and the caller reads the window instead. pick draws a value in [lo, hi], both
-// ends included.
+// level and the caller reads the window instead. A name holding a quote character is
+// read from the window. pick draws a value in [lo, hi], both ends included.
 func spreadSampleQuery(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -118,6 +133,10 @@ func spreadSampleQuery(
 	numRows uint,
 	pick func(lo, hi int64) int64,
 ) (string, bool) {
+	if strings.ContainsAny(schema, identifierQuotes) || strings.ContainsAny(table, identifierQuotes) {
+		logger.DebugContext(ctx, "no spread sample query: the schema or the table name holds a quote character")
+		return "", false
+	}
 	qualified := sqlmanager_shared.BuildTable(schema, table)
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
@@ -155,8 +174,10 @@ func tableSampleQuery(
 }
 
 // postgresSize returns the number of pages of the table and the number of rows it holds
-// now, from the planner's density (rows per page) and the current number of pages. A
-// table that was never analyzed, a partitioned parent, a view, a missing relation and a
+// now, from the planner's density (rows per page) and the current number of pages. The
+// figures of a partitioned table are those of its leaf partitions: the density of the
+// leaves that were analyzed, and the current pages of all of them. A table that was never
+// analyzed, a partitioned table with no analyzed leaf, a view, a missing relation and a
 // failing query all mean there is no size.
 func postgresSize(
 	ctx context.Context,
@@ -167,12 +188,20 @@ func postgresSize(
 	name := sqlmanager_postgres.EscapePgColumn(schema) + "." + sqlmanager_postgres.EscapePgColumn(table)
 	var reltuples float64
 	var relpages, pages sql.NullInt64
-	err := db.QueryRowContext(ctx, postgresEstimateQuery, name).Scan(&reltuples, &relpages, &pages)
+	var partitioned bool
+	err := db.QueryRowContext(ctx, postgresEstimateQuery, name).Scan(&reltuples, &relpages, &pages, &partitioned)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			logger.DebugContext(ctx, "table size unavailable", "error_kind", fmt.Sprintf("%T", err))
 		}
 		return querybuilder.TableSize{}, false
+	}
+	if partitioned {
+		err := db.QueryRowContext(ctx, postgresPartitionsEstimateQuery, name).Scan(&reltuples, &relpages, &pages)
+		if err != nil {
+			logger.DebugContext(ctx, "partitions size unavailable", "error_kind", fmt.Sprintf("%T", err))
+			return querybuilder.TableSize{}, false
+		}
 	}
 	if reltuples <= 0 || !relpages.Valid || relpages.Int64 <= 0 || !pages.Valid || pages.Int64 <= 0 {
 		return querybuilder.TableSize{}, false
@@ -243,6 +272,25 @@ func mysqlKeySlicesQuery(
 	for i, part := range parts {
 		slices[i] = querybuilder.KeyRange{From: pick(part.From, part.To), To: part.To}
 	}
+
+	// Parts of the span that hold no key give empty slices. The rows of the slices are
+	// counted on the key first: too few of them are fewer places of the table than the
+	// window reads.
+	countQuery, err := querybuilder.BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, qualified, key, slices)
+	if err != nil {
+		logger.DebugContext(ctx, "no spread sample query", "error", err)
+		return "", false
+	}
+	var count int64
+	if err := db.QueryRowContext(ctx, countQuery).Scan(&count); err != nil {
+		logger.DebugContext(ctx, "no spread sample query: key slices not counted", "error_kind", fmt.Sprintf("%T", err))
+		return "", false
+	}
+	if count < querybuilder.SampleSlicesMinRows {
+		logger.DebugContext(ctx, "no spread sample query: the key slices hold too few rows", "rows", count)
+		return "", false
+	}
+
 	query, err := querybuilder.BuildKeySlicesSampleQuery(
 		sqlmanager_shared.MysqlDriver, qualified, key, slices, numRows,
 	)

@@ -128,8 +128,11 @@ func BuildSampledSelectLimitQuery(
 const (
 	// SampleSlices is the number of key slices a MySQL sample is drawn from.
 	SampleSlices = 10
-	// SampleSliceRows is the number of rows read from each key slice.
+	// SampleSliceRows is the most rows read from each key slice.
 	SampleSliceRows = 100
+	// SampleSlicesMinRows is the least number of rows the key slices must hold together
+	// for a sample to be drawn from them.
+	SampleSlicesMinRows = SampleSlices * SampleSliceRows / 2
 	// SampleRowsBound is the most rows a PostgreSQL table sample may hand to the random
 	// order, whatever the share of pages it asks for.
 	SampleRowsBound = 4 * SampleWindowSize
@@ -208,9 +211,9 @@ func BuildTableSampleQuery(
 
 // tableSampleShare gives the share of pages to read, in percent, and the share of their
 // rows to keep. The pages are those expected to hold SampleWindowSize rows, or
-// SampleMinPages pages when that is more; the percentage is rounded to four decimals, stays above zero and does
-// not exceed 100. keep is 1 when those pages are not expected to hold more than the
-// window. size must hold rows and pages.
+// SampleMinPages pages when that is more; the percentage is rounded to four decimals,
+// stays above zero and does not exceed 100. keep is 1 when those pages are not expected
+// to hold more than the window. size must hold rows and pages.
 func tableSampleShare(size TableSize) (percent, keep float64) {
 	share := math.Max(
 		float64(SampleWindowSize)/float64(size.Rows),
@@ -235,24 +238,11 @@ func BuildKeySlicesSampleQuery(
 	ranges []KeyRange,
 	limit uint,
 ) (string, error) {
-	if len(ranges) == 0 {
-		return "", errors.New("at least one key range is required")
-	}
 	builder := getGoquDialect(driver)
-	sqltable := goqu.I(table)
-	key := goqu.I(keyColumn)
-
-	slice := func(r KeyRange) *goqu.SelectDataset {
-		return builder.From(sqltable).
-			Where(key.Gte(r.From), key.Lte(r.To)).
-			Order(key.Asc()).
-			Limit(SampleSliceRows)
+	union, err := keySlices(builder, table, keyColumn, ranges, false)
+	if err != nil {
+		return "", err
 	}
-	union := slice(ranges[0])
-	for _, r := range ranges[1:] {
-		union = union.UnionAll(slice(r))
-	}
-
 	sql, _, err := builder.
 		From(union.As("husonym_sample")).
 		Order(goqu.L("RAND()").Asc()).
@@ -262,6 +252,61 @@ func BuildKeySlicesSampleQuery(
 		return "", err
 	}
 	return sql, nil
+}
+
+// BuildKeySlicesCountQuery builds a MySQL query that counts the rows the slices of
+// BuildKeySlicesSampleQuery hold for the same ranges. Only the key column is read, so
+// the count is answered from the key: SampleSliceRows entries of it at most for each
+// range.
+func BuildKeySlicesCountQuery(
+	driver, table, keyColumn string,
+	ranges []KeyRange,
+) (string, error) {
+	builder := getGoquDialect(driver)
+	union, err := keySlices(builder, table, keyColumn, ranges, true)
+	if err != nil {
+		return "", err
+	}
+	sql, _, err := builder.
+		From(union.As("husonym_sample")).
+		Select(goqu.COUNT(goqu.Star())).
+		ToSQL()
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+// keySlices is the union of the slices of a table: for each range, its first
+// SampleSliceRows rows in key order. A slice holds the whole row, or the key column
+// alone when keyOnly is set.
+func keySlices(
+	builder goqu.DialectWrapper,
+	table, keyColumn string,
+	ranges []KeyRange,
+	keyOnly bool,
+) (*goqu.SelectDataset, error) {
+	if len(ranges) == 0 {
+		return nil, errors.New("at least one key range is required")
+	}
+	sqltable := goqu.I(table)
+	key := goqu.I(keyColumn)
+
+	slice := func(r KeyRange) *goqu.SelectDataset {
+		rows := builder.From(sqltable)
+		if keyOnly {
+			rows = rows.Select(key)
+		}
+		return rows.
+			Where(key.Gte(r.From), key.Lte(r.To)).
+			Order(key.Asc()).
+			Limit(SampleSliceRows)
+	}
+	union := slice(ranges[0])
+	for _, r := range ranges[1:] {
+		union = union.UnionAll(slice(r))
+	}
+	return union, nil
 }
 
 func BuildInsertQuery(

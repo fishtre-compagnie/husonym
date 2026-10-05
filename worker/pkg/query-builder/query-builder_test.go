@@ -416,3 +416,35 @@ func Test_BuildKeySlicesSampleQuery(t *testing.T) {
 	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", nil, 10)
 	require.Error(t, err)
 }
+
+func Test_BuildKeySlicesCountQuery(t *testing.T) {
+	ranges := []KeyRange{{From: 5, To: 8999}, {From: -9000, To: 20000}}
+
+	sql, err := BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, "db.Order Lines", "id", ranges)
+
+	require.NoError(t, err)
+	require.Equal(t,
+		"SELECT COUNT(*) FROM (SELECT * FROM (SELECT `id` FROM `db`.`Order Lines` WHERE ((`id` >= 5) AND (`id` <= 8999)) ORDER BY `id` ASC LIMIT 100) AS `t1` "+
+			"UNION ALL (SELECT * FROM (SELECT `id` FROM `db`.`Order Lines` WHERE ((`id` >= -9000) AND (`id` <= 20000)) ORDER BY `id` ASC LIMIT 100) AS `t1`)) AS `husonym_sample`",
+		sql)
+
+	_, err = BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", nil)
+	require.Error(t, err)
+}
+
+// The count and the sample read the same slices: the same ranges, the same order, the same
+// number of rows at most.
+func Test_KeySlices_CountAndSampleReadTheSameSlices(t *testing.T) {
+	ranges := []KeyRange{{From: 5, To: 8999}, {From: 9000, To: 20000}, {From: 20001, To: 9_000_000_000_000_000}}
+	slice := regexp.MustCompile("FROM `db`\\.`accounts` WHERE .*? LIMIT [0-9]+\\)")
+
+	count, err := BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", ranges)
+	require.NoError(t, err)
+	sample, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", "id", ranges, 10)
+	require.NoError(t, err)
+
+	require.Len(t, slice.FindAllString(count, -1), len(ranges))
+	require.Equal(t, slice.FindAllString(sample, -1), slice.FindAllString(count, -1))
+	require.Contains(t, count, "(`id` <= 9000000000000000)")
+	require.Equal(t, SampleSlices*SampleSliceRows/2, SampleSlicesMinRows)
+}

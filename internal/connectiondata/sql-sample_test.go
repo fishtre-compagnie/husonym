@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,7 +19,9 @@ import (
 const (
 	mysqlKeyLookup = "FROM information_schema.STATISTICS"
 	mysqlBounds    = "SELECT MIN\\(`id`\\), MAX\\(`id`\\) FROM `public`.`users`"
-	pgEstimate     = "FROM pg_class"
+	mysqlCount     = "SELECT COUNT\\(\\*\\) FROM \\(SELECT \\* FROM \\(SELECT `id` FROM `public`.`users`"
+	pgEstimate     = "FROM pg_class WHERE"
+	pgPartitions   = "FROM pg_partition_tree"
 	mssqlSize      = "FROM sys.schemas"
 )
 
@@ -66,8 +69,26 @@ func keyRows(columns ...[2]string) *sqlmock.Rows {
 	return rows
 }
 
+var estimateColumns = []string{"reltuples", "relpages", "pages", "partitioned"}
+
+// estimateRows is the catalog's answer for an ordinary table.
 func estimateRows(reltuples float64, relpages, pages int64) *sqlmock.Rows {
+	return sqlmock.NewRows(estimateColumns).AddRow(reltuples, relpages, pages, false)
+}
+
+// partitionedParentRows is the catalog's answer for a partitioned table: no page of its own.
+func partitionedParentRows() *sqlmock.Rows {
+	return sqlmock.NewRows(estimateColumns).AddRow(float64(-1), int64(0), int64(0), true)
+}
+
+// leavesRows is the catalog's answer for the leaf partitions: the rows and the pages of the
+// analyzed ones, and the current pages of all.
+func leavesRows(reltuples float64, relpages, pages int64) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{"reltuples", "relpages", "pages"}).AddRow(reltuples, relpages, pages)
+}
+
+func countRows(count int64) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"count"}).AddRow(count)
 }
 
 func spread(
@@ -90,6 +111,81 @@ func Test_spreadSampleQuery_PostgresUsesTheEstimate(t *testing.T) {
 	require.True(t, ok)
 	require.Contains(t, query, "TABLESAMPLE SYSTEM (2.6738) WHERE RANDOM() < 0.187 LIMIT 4000")
 	require.Len(t, db.statements, 1)
+	require.NotContains(t, db.statements[0], "pg_partition_tree")
+}
+
+func Test_spreadSampleQuery_PostgresSumsTheLeavesOfAPartitionedTable(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery(pgEstimate).WithArgs(`"public"."users"`).WillReturnRows(partitionedParentRows())
+	// Three leaves out of four were analyzed: 150 000 rows on 1 500 pages, 100 rows a page. The
+	// four hold 2 000 pages now, so 200 000 rows: fifty pages are 2.5 percent and hold 5 000.
+	mock.ExpectQuery(pgPartitions).WithArgs(`"public"."users"`).WillReturnRows(leavesRows(150000, 1500, 2000))
+
+	query, ok := spread(t, db, sqlmanager_shared.GoquPostgresDriver, firstOfRange)
+
+	require.True(t, ok)
+	require.Contains(t, query, `FROM "public"."users" TABLESAMPLE SYSTEM (2.5) WHERE RANDOM() < 0.2 LIMIT 4000`)
+	require.Len(t, db.statements, 2)
+	require.NotContains(t, db.statements[1], "users", "the name is a bind parameter")
+}
+
+func Test_spreadSampleQuery_PostgresPartitionedTableWithoutASize(t *testing.T) {
+	cases := map[string]func(*sqlmock.ExpectedQuery){
+		"no analyzed leaf": func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(leavesRows(0, 0, 2000)) },
+		"no page":          func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(leavesRows(150000, 1500, 0)) },
+		"no leaf":          func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(leavesRows(0, 0, 0)) },
+		"fits the window":  func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(leavesRows(500, 5, 10)) },
+		"catalog error": func(q *sqlmock.ExpectedQuery) {
+			q.WillReturnError(errors.New("function pg_partition_tree(regclass) does not exist"))
+		},
+	}
+	for name, respond := range cases {
+		t.Run(name, func(t *testing.T) {
+			db, mock := newSampleDB(t)
+			mock.ExpectQuery(pgEstimate).WillReturnRows(partitionedParentRows())
+			respond(mock.ExpectQuery(pgPartitions).WithArgs(`"public"."users"`))
+
+			query, ok := spread(t, db, sqlmanager_shared.GoquPostgresDriver, firstOfRange)
+
+			require.False(t, ok)
+			require.Empty(t, query)
+			require.Len(t, db.statements, 2)
+		})
+	}
+}
+
+// A name holding a quote character is read from the window: no statement is issued for it.
+func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
+	names := map[string][2]string{
+		"double quote in the table":  {"public", `us"ers`},
+		"backtick in the table":      {"public", "us`ers"},
+		"opening bracket in a table": {"public", "us[ers"},
+		"closing bracket in a table": {"public", "users]"},
+		"double quote in the schema": {`pu"blic`, "users"},
+		"backtick in the schema":     {"pu`blic", "users"},
+		"bracket in the schema":      {"pu]blic", "users"},
+	}
+	drivers := []string{
+		sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MysqlDriver, sqlmanager_shared.MssqlDriver,
+	}
+	for _, driver := range drivers {
+		for name, schemaTable := range names {
+			t.Run(driver+"/"+name, func(t *testing.T) {
+				db, _ := newSampleDB(t)
+				logger, logs := capturedLogger()
+
+				query, ok := spreadSampleQuery(
+					t.Context(), logger, db, driver, schemaTable[0], schemaTable[1], 20, firstOfRange)
+
+				require.False(t, ok)
+				require.Empty(t, query)
+				require.Empty(t, db.statements)
+				require.Contains(t, logs.String(), "level=DEBUG")
+				require.NotContains(t, logs.String(), schemaTable[0])
+				require.NotContains(t, logs.String(), schemaTable[1])
+			})
+		}
+	}
 }
 
 func Test_spreadSampleQuery_PostgresScalesTheEstimateToTheCurrentSize(t *testing.T) {
@@ -111,13 +207,13 @@ func Test_spreadSampleQuery_NoEstimate(t *testing.T) {
 		"no pages analyzed": func(q *sqlmock.ExpectedQuery) {
 			q.WillReturnRows(estimateRows(50000, 0, 1870))
 		},
-		"partitioned parent": func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(estimateRows(200000, -1, 0)) },
+		"no current page": func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(estimateRows(200000, 1870, 0)) },
 		"no current size": func(q *sqlmock.ExpectedQuery) {
-			q.WillReturnRows(sqlmock.NewRows([]string{"reltuples", "relpages", "pages"}).AddRow(200000, 1870, nil))
+			q.WillReturnRows(sqlmock.NewRows(estimateColumns).AddRow(200000, 1870, nil, false))
 		},
 		"fits the window": func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(estimateRows(500, 5, 5)) },
 		"missing relation": func(q *sqlmock.ExpectedQuery) {
-			q.WillReturnRows(sqlmock.NewRows([]string{"reltuples", "relpages", "pages"}))
+			q.WillReturnRows(sqlmock.NewRows(estimateColumns))
 		},
 		"catalog error": func(q *sqlmock.ExpectedQuery) { q.WillReturnError(errors.New("catalog unavailable")) },
 	}
@@ -182,12 +278,15 @@ func Test_spreadSampleQuery_UnknownDriver(t *testing.T) {
 	require.Empty(t, db.statements)
 }
 
+var idRange = regexp.MustCompile("\\(`id` >= -?[0-9]+\\) AND \\(`id` <= -?[0-9]+\\)")
+
 func Test_spreadSampleQuery_MysqlSlicesOnASingleIntegerKey(t *testing.T) {
 	db, mock := newSampleDB(t)
 	mock.ExpectQuery(mysqlKeyLookup).WithArgs("public", "users").
 		WillReturnRows(keyRows([2]string{"id", "bigint"}))
 	mock.ExpectQuery(mysqlBounds).
 		WillReturnRows(sqlmock.NewRows([]string{"min", "max"}).AddRow(int64(1), int64(1000000)))
+	mock.ExpectQuery(mysqlCount).WillReturnRows(countRows(1000))
 	var picked [][2]int64
 	pick := func(lo, hi int64) int64 {
 		picked = append(picked, [2]int64{lo, hi})
@@ -203,7 +302,49 @@ func Test_spreadSampleQuery_MysqlSlicesOnASingleIntegerKey(t *testing.T) {
 	require.Equal(t, [2]int64{899992, 1000000}, picked[len(picked)-1])
 	require.Contains(t, query, "(`id` >= 2) AND (`id` <= 99999)")
 	require.Contains(t, query, "(`id` >= 899993) AND (`id` <= 1000000)")
-	require.Len(t, db.statements, 2)
+	require.Len(t, db.statements, 3)
+
+	// The rows are counted over the ranges the sample then reads, on the key column alone.
+	count := db.statements[2]
+	require.Len(t, idRange.FindAllString(count, -1), querybuilder.SampleSlices)
+	require.Equal(t, idRange.FindAllString(query, -1), idRange.FindAllString(count, -1))
+	require.Equal(t, querybuilder.SampleSlices, strings.Count(count, "SELECT `id` FROM `public`.`users`"))
+	require.Equal(t, querybuilder.SampleSlices, strings.Count(count, "LIMIT 100"))
+}
+
+// The slices must hold half of the rows they can hold, 500, for the sample to be drawn from
+// them.
+func Test_spreadSampleQuery_MysqlCountsTheRowsOfTheSlices(t *testing.T) {
+	require.Equal(t, 500, querybuilder.SampleSlicesMinRows)
+	cases := map[string]struct {
+		respond func(*sqlmock.ExpectedQuery)
+		spread  bool
+	}{
+		"below the threshold": {func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(countRows(499)) }, false},
+		"one slice only":      {func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(countRows(101)) }, false},
+		"no row":              {func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(countRows(0)) }, false},
+		"at the threshold":    {func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(countRows(500)) }, true},
+		"above the threshold": {func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(countRows(1000)) }, true},
+		"count refused":       {func(q *sqlmock.ExpectedQuery) { q.WillReturnError(errors.New("refused")) }, false},
+		"count unreadable": {func(q *sqlmock.ExpectedQuery) {
+			q.WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(nil))
+		}, false},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			db, mock := newSampleDB(t)
+			mock.ExpectQuery(mysqlKeyLookup).WillReturnRows(keyRows([2]string{"id", "int"}))
+			mock.ExpectQuery(mysqlBounds).
+				WillReturnRows(sqlmock.NewRows([]string{"min", "max"}).AddRow(int64(1), int64(2000000)))
+			tc.respond(mock.ExpectQuery(mysqlCount))
+
+			query, ok := spread(t, db, sqlmanager_shared.MysqlDriver, firstOfRange)
+
+			require.Equal(t, tc.spread, ok)
+			require.Equal(t, tc.spread, query != "")
+			require.Len(t, db.statements, 3)
+		})
+	}
 }
 
 // Each case must stop before the bounds are read.
