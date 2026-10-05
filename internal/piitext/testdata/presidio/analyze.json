@@ -1,0 +1,456 @@
+[
+ {
+  "name": "french",
+  "request": {
+   "text": "Très cher Jörg Müller, écrivez à jörg.müller@example.com ou appelez le 212-555-0188.",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 33,
+    "end": 56,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 10,
+    "end": 21,
+    "score": 0.85
+   },
+   {
+    "entity_type": "URL",
+    "start": 45,
+    "end": 56,
+    "score": 0.5
+   },
+   {
+    "entity_type": "PHONE_NUMBER",
+    "start": 71,
+    "end": 83,
+    "score": 0.4
+   }
+  ]
+ },
+ {
+  "name": "emoji",
+  "request": {
+   "text": "👩‍💻 Ann 🎉 write to ann@example.com 🎉 or call 212-555-0188",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 19,
+    "end": 34,
+    "score": 1.0
+   },
+   {
+    "entity_type": "URL",
+    "start": 23,
+    "end": 34,
+    "score": 0.5
+   },
+   {
+    "entity_type": "PHONE_NUMBER",
+    "start": 45,
+    "end": 57,
+    "score": 0.4
+   }
+  ]
+ },
+ {
+  "name": "combining",
+  "request": {
+   "text": "José écrit à jose@example.com",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 16,
+    "end": 32,
+    "score": 1.0
+   },
+   {
+    "entity_type": "URL",
+    "start": 21,
+    "end": 32,
+    "score": 0.5
+   }
+  ]
+ },
+ {
+  "name": "cjk",
+  "request": {
+   "text": "山田太郎さんのメールは taro@example.com です",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 12,
+    "end": 28,
+    "score": 1.0
+   },
+   {
+    "entity_type": "URL",
+    "start": 17,
+    "end": 28,
+    "score": 0.5
+   }
+  ]
+ },
+ {
+  "name": "arabic",
+  "request": {
+   "text": "اتصل بمحمد على mohamed@example.com غدا",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 15,
+    "end": 34,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 0,
+    "end": 10,
+    "score": 0.85
+   },
+   {
+    "entity_type": "URL",
+    "start": 23,
+    "end": 34,
+    "score": 0.5
+   }
+  ]
+ },
+ {
+  "name": "hebrew",
+  "request": {
+   "text": "שלום David, כתוב אל david@example.com",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 20,
+    "end": 37,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 5,
+    "end": 10,
+    "score": 0.85
+   },
+   {
+    "entity_type": "URL",
+    "start": 26,
+    "end": 37,
+    "score": 0.5
+   }
+  ]
+ },
+ {
+  "name": "replacement_character",
+  "request": {
+   "text": "caf� bob@example.com",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 5,
+    "end": 20,
+    "score": 1.0
+   },
+   {
+    "entity_type": "URL",
+    "start": 9,
+    "end": 20,
+    "score": 0.5
+   }
+  ]
+ },
+ {
+  "name": "threshold_omitted",
+  "request": {
+   "text": "Très cher Jörg Müller, écrivez à jörg.müller@example.com ou appelez le 212-555-0188.",
+   "language": "en"
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 33,
+    "end": 56,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 10,
+    "end": 21,
+    "score": 0.85
+   },
+   {
+    "entity_type": "URL",
+    "start": 45,
+    "end": 56,
+    "score": 0.5
+   },
+   {
+    "entity_type": "PHONE_NUMBER",
+    "start": 71,
+    "end": 83,
+    "score": 0.4
+   }
+  ]
+ },
+ {
+  "name": "threshold_zero",
+  "request": {
+   "text": "Très cher Jörg Müller, écrivez à jörg.müller@example.com ou appelez le 212-555-0188.",
+   "language": "en",
+   "score_threshold": 0
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 33,
+    "end": 56,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 10,
+    "end": 21,
+    "score": 0.85
+   },
+   {
+    "entity_type": "URL",
+    "start": 45,
+    "end": 56,
+    "score": 0.5
+   },
+   {
+    "entity_type": "PHONE_NUMBER",
+    "start": 71,
+    "end": 83,
+    "score": 0.4
+   }
+  ]
+ },
+ {
+  "name": "threshold_0.85",
+  "request": {
+   "text": "Très cher Jörg Müller, écrivez à jörg.müller@example.com ou appelez le 212-555-0188.",
+   "language": "en",
+   "score_threshold": 0.85
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 33,
+    "end": 56,
+    "score": 1.0
+   },
+   {
+    "entity_type": "PERSON",
+    "start": 10,
+    "end": 21,
+    "score": 0.85
+   }
+  ]
+ },
+ {
+  "name": "threshold_0.85_as_float32",
+  "request": {
+   "text": "Très cher Jörg Müller, écrivez à jörg.müller@example.com ou appelez le 212-555-0188.",
+   "language": "en",
+   "score_threshold": 0.8500000238418579
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 33,
+    "end": 56,
+    "score": 1.0
+   }
+  ]
+ },
+ {
+  "name": "deny_declared_in_request_language",
+  "request": {
+   "text": "The falcon project ships to acme on Monday",
+   "language": "en",
+   "ad_hoc_recognizers": [
+    {
+     "name": "vip-list",
+     "supported_entity": "vip-list",
+     "supported_language": "en",
+     "deny_list": [
+      "falcon",
+      "acme"
+     ]
+    }
+   ]
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "vip-list",
+    "start": 4,
+    "end": 10,
+    "score": 1.0
+   },
+   {
+    "entity_type": "vip-list",
+    "start": 28,
+    "end": 32,
+    "score": 1.0
+   },
+   {
+    "entity_type": "DATE_TIME",
+    "start": 36,
+    "end": 42,
+    "score": 0.85
+   }
+  ]
+ },
+ {
+  "name": "deny_declared_in_another_language",
+  "request": {
+   "text": "The falcon project ships to acme on Monday",
+   "language": "en",
+   "ad_hoc_recognizers": [
+    {
+     "name": "vip-list",
+     "supported_entity": "vip-list",
+     "supported_language": "fr",
+     "deny_list": [
+      "falcon",
+      "acme"
+     ]
+    }
+   ]
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "DATE_TIME",
+    "start": 36,
+    "end": 42,
+    "score": 0.85
+   }
+  ]
+ },
+ {
+  "name": "deny_request_in_unsupported_language",
+  "request": {
+   "text": "The falcon project ships to acme on Monday",
+   "language": "fr",
+   "ad_hoc_recognizers": [
+    {
+     "name": "vip-list",
+     "supported_entity": "vip-list",
+     "supported_language": "fr",
+     "deny_list": [
+      "falcon",
+      "acme"
+     ]
+    }
+   ]
+  },
+  "status": 500,
+  "answer": {
+   "error": "No matching recognizers were found to serve the request."
+  }
+ },
+ {
+  "name": "deny_name_listed_in_entities",
+  "request": {
+   "text": "The falcon project ships to acme on Monday bob@example.com",
+   "language": "en",
+   "entities": [
+    "EMAIL_ADDRESS",
+    "vip-list"
+   ],
+   "ad_hoc_recognizers": [
+    {
+     "name": "vip-list",
+     "supported_entity": "vip-list",
+     "supported_language": "en",
+     "deny_list": [
+      "falcon",
+      "acme"
+     ]
+    }
+   ]
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "vip-list",
+    "start": 4,
+    "end": 10,
+    "score": 1.0
+   },
+   {
+    "entity_type": "vip-list",
+    "start": 28,
+    "end": 32,
+    "score": 1.0
+   },
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 43,
+    "end": 58,
+    "score": 1.0
+   }
+  ]
+ },
+ {
+  "name": "deny_name_not_listed_in_entities",
+  "request": {
+   "text": "The falcon project ships to acme on Monday bob@example.com",
+   "language": "en",
+   "entities": [
+    "EMAIL_ADDRESS"
+   ],
+   "ad_hoc_recognizers": [
+    {
+     "name": "vip-list",
+     "supported_entity": "vip-list",
+     "supported_language": "en",
+     "deny_list": [
+      "falcon",
+      "acme"
+     ]
+    }
+   ]
+  },
+  "status": 200,
+  "answer": [
+   {
+    "entity_type": "EMAIL_ADDRESS",
+    "start": 43,
+    "end": 58,
+    "score": 1.0
+   }
+  ]
+ }
+]

@@ -9,8 +9,8 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func (fakeUserService) IsUserInAccount(
 }
 
 // The user built for a request carrying an account key is held to that key's scope — even when
-// the RBAC, as without a license, would allow everything.
+// the RBAC would allow everything.
 func Test_Client_GetUser_AccountKeyIsScoped(t *testing.T) {
 	accountId := uuid.NewString()
 	accountUuid, err := husonymdb.ToUuid(accountId)
@@ -45,7 +45,7 @@ func Test_Client_GetUser_AccountKeyIsScoped(t *testing.T) {
 		},
 	})
 
-	client := NewClient(fakeUserService{userId: uuid.NewString()}, rbac.NewAllowAllClient(), nil)
+	client := NewClient(fakeUserService{userId: uuid.NewString()}, allowsEverything{}, nil)
 	user, err := client.GetUser(ctx)
 	require.NoError(t, err)
 

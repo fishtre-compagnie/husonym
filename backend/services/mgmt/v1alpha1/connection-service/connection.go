@@ -22,9 +22,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/sshtunnel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -453,21 +453,9 @@ func (s *Service) CreateConnection(
 		return nil, err
 	}
 
-	switch cfg := req.Msg.GetConnectionConfig().GetConfig().(type) {
+	switch req.Msg.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config, *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
 		if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsHusonymCloud); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsHusonymCloud); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	}
@@ -533,21 +521,9 @@ func (s *Service) UpdateConnection(
 	if err != nil {
 		return nil, err
 	}
-	switch cfg := req.Msg.GetConnectionConfig().GetConfig().(type) {
+	switch req.Msg.GetConnectionConfig().GetConfig().(type) {
 	case *mgmtv1alpha1.ConnectionConfig_AwsS3Config, *mgmtv1alpha1.ConnectionConfig_GcpCloudstorageConfig:
 		if err := user.EnforceLicense(ctx, husonymdb.UUIDString(connection.AccountID)); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_MssqlConfig:
-		if err := checkUrlEnvVar(cfg.MssqlConfig, s.cfg.IsHusonymCloud); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig:
-		if err := checkUrlEnvVar(cfg.MysqlConfig, s.cfg.IsHusonymCloud); err != nil {
-			return nil, err
-		}
-	case *mgmtv1alpha1.ConnectionConfig_PgConfig:
-		if err := checkUrlEnvVar(cfg.PgConfig, s.cfg.IsHusonymCloud); err != nil {
 			return nil, err
 		}
 	}
@@ -766,10 +742,6 @@ func checkSSHConnection(
 	}, nil
 }
 
-type urlEnvVarConfig interface {
-	GetUrlFromEnv() string
-}
-
 // checkCloudIdentity refuses a cloud connection that would act with the server's own identity,
 // where the deployment does not allow it.
 func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) error {
@@ -790,13 +762,6 @@ func (s *Service) checkCloudIdentity(config *mgmtv1alpha1.ConnectionConfig) erro
 	default:
 		return nil
 	}
-}
-
-func checkUrlEnvVar(cfg urlEnvVarConfig, isHusonymCloud bool) error {
-	if cfg.GetUrlFromEnv() != "" && isHusonymCloud {
-		return husonymerrors.NewBadRequest("url env var is not supported in husonym cloud")
-	}
-	return nil
 }
 
 // connectionTypeName maps a connection config onto the stable name a license allowlist

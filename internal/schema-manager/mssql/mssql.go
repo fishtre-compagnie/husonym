@@ -2,18 +2,20 @@ package ddbuilder_mssql
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
+	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_mssql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	tabledependency "github.com/fishtre-compagnie/husonym/backend/pkg/table-dependency"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	ee_sqlmanager_mssql "github.com/fishtre-compagnie/husonym/internal/ee/mssql-manager"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 
@@ -74,10 +76,9 @@ func (d *MssqlSchemaManager) InitializeSchema(
 			"invalid or non-existent Husonym License. SQL Server schema init requires valid Enterprise license",
 		)
 	}
-	tables := []*sqlmanager_shared.SchemaTable{}
-	for tableKey := range uniqueTables {
-		schema, table := sqlmanager_shared.SplitTableKey(tableKey)
-		tables = append(tables, &sqlmanager_shared.SchemaTable{Schema: schema, Table: table})
+	tables, err := d.requestedTables(ctx, uniqueTables)
+	if err != nil {
+		return nil, err
 	}
 
 	initblocks, err := d.sourcedb.Db().GetSchemaInitStatements(ctx, tables)
@@ -93,8 +94,15 @@ func (d *MssqlSchemaManager) InitializeSchema(
 				len(block.Statements),
 			),
 		)
-		if len(block.Statements) == 0 {
-			continue
+		// What the block leaves out is recorded with what fails in it.
+		for _, skipped := range block.Skipped {
+			d.logger.Warn(
+				fmt.Sprintf("[%s] skipped %s: %s", block.Label, skipped.Object, skipped.Reason),
+			)
+			initErrors = append(initErrors, &shared.InitSchemaError{
+				Statement: skipped.Object,
+				Error:     "skipped: " + skipped.Reason,
+			})
 		}
 		for _, stmt := range block.Statements {
 			err = d.destdb.Db().Exec(ctx, stmt)
@@ -102,9 +110,9 @@ func (d *MssqlSchemaManager) InitializeSchema(
 				d.logger.Error(
 					fmt.Sprintf("unable to exec mssql %s statements: %s", block.Label, err.Error()),
 				)
-				if block.Label != ee_sqlmanager_mssql.SchemasLabel &&
-					block.Label != ee_sqlmanager_mssql.ViewsFunctionsLabel &&
-					block.Label != ee_sqlmanager_mssql.TableIndexLabel {
+				// A view, a function or a procedure may need what the destination does not
+				// hold: it is the one kind of statement whose failure does not stop the run.
+				if block.Label != sqlmanager_mssql.ViewsFunctionsLabel {
 					return nil, fmt.Errorf(
 						"unable to exec mssql %s statements: %w",
 						block.Label,
@@ -119,6 +127,67 @@ func (d *MssqlSchemaManager) InitializeSchema(
 		}
 	}
 	return initErrors, nil
+}
+
+// requestedTables turns the keys of the tables of a job into tables of the source, in the order
+// of the keys.
+func (d *MssqlSchemaManager) requestedTables(
+	ctx context.Context,
+	uniqueTables map[string]struct{},
+) ([]*sqlmanager_shared.SchemaTable, error) {
+	byKey, err := d.tablesByKey(ctx, uniqueTables)
+	if err != nil {
+		return nil, err
+	}
+	tables := make([]*sqlmanager_shared.SchemaTable, 0, len(byKey))
+	for _, key := range slices.Sorted(maps.Keys(byKey)) {
+		tables = append(tables, byKey[key])
+	}
+	return tables, nil
+}
+
+// tablesByKey tells, for each key of the tables of a job, the schema and the table it names. A
+// key is schema.table and either part may hold a dot: the key is looked up among the tables the
+// source has. A key that none of them builds is split at its first dot, and the source tells
+// whether it has that table.
+func (d *MssqlSchemaManager) tablesByKey(
+	ctx context.Context,
+	uniqueTables map[string]struct{},
+) (map[string]*sqlmanager_shared.SchemaTable, error) {
+	sourceTables, err := d.sourcedb.Db().GetAllTables(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to list the tables of the source: %w", err)
+	}
+	byKey := map[string][]*sqlmanager_shared.SchemaTable{}
+	for _, table := range sourceTables {
+		key := sqlmanager_shared.BuildTable(table.SchemaName, table.TableName)
+		byKey[key] = append(byKey[key], &sqlmanager_shared.SchemaTable{
+			Schema: table.SchemaName,
+			Table:  table.TableName,
+		})
+	}
+
+	tables := make(map[string]*sqlmanager_shared.SchemaTable, len(uniqueTables))
+	for _, key := range slices.Sorted(maps.Keys(uniqueTables)) {
+		switch matches := byKey[key]; len(matches) {
+		case 0:
+			schema, table, found := strings.Cut(key, ".")
+			if !found {
+				schema, table = sqlmanager_shared.SplitTableKey(key)
+			}
+			tables[key] = &sqlmanager_shared.SchemaTable{Schema: schema, Table: table}
+		case 1:
+			tables[key] = matches[0]
+		default:
+			return nil, fmt.Errorf(
+				"table key %q names two tables of the source: %s and %s",
+				key,
+				ddl.QualifiedName(matches[0].Schema, matches[0].Table),
+				ddl.QualifiedName(matches[1].Schema, matches[1].Table),
+			)
+		}
+	}
+	return tables, nil
 }
 
 func (d *MssqlSchemaManager) TruncateData(
@@ -151,14 +220,19 @@ func (d *MssqlSchemaManager) TruncateData(
 		return err
 	}
 
+	// The order comes by key; each key names its table by the schema and the name the source
+	// gives, whatever dots they hold.
+	tables, err := d.tablesByKey(ctx, uniqueTables)
+	if err != nil {
+		return err
+	}
 	orderedTableDelete := []string{}
-	for i := len(orderedTablesResp.OrderedTables) - 1; i >= 0; i-- {
-		st := orderedTablesResp.OrderedTables[i]
-		stmt, err := sqlmanager_mssql.BuildMssqlDeleteStatement(st.Schema, st.Table)
-		if err != nil {
-			return err
-		}
-		orderedTableDelete = append(orderedTableDelete, stmt)
+	for i := len(orderedTablesResp.OrderedKeys) - 1; i >= 0; i-- {
+		st := tables[orderedTablesResp.OrderedKeys[i]]
+		orderedTableDelete = append(
+			orderedTableDelete,
+			sqlmanager_mssql.BuildMssqlDeleteStatement(st.Schema, st.Table),
+		)
 	}
 
 	d.logger.Info(
@@ -185,10 +259,9 @@ func (d *MssqlSchemaManager) TruncateData(
 		}
 		for _, c := range cols {
 			if c.IdentityGeneration != nil && *c.IdentityGeneration != "" {
-				schema, table := sqlmanager_shared.SplitTableKey(table)
 				identityResetStatement := sqlmanager_mssql.BuildMssqlIdentityColumnResetStatement(
-					schema,
-					table,
+					c.TableSchema,
+					c.TableName,
 					c.IdentitySeed,
 					c.IdentityIncrement,
 				)
@@ -209,14 +282,14 @@ func (d *MssqlSchemaManager) CalculateSchemaDiff(
 	ctx context.Context,
 	uniqueTables map[string]*sqlmanager_shared.SchemaTable,
 ) (*shared.SchemaDifferences, error) {
-	return nil, errors.ErrUnsupported
+	return nil, sqlmanager_mssql.ErrUnsupportedOperation("CalculateSchemaDiff")
 }
 
 func (d *MssqlSchemaManager) BuildSchemaDiffStatements(
 	ctx context.Context,
 	diff *shared.SchemaDifferences,
 ) ([]*sqlmanager_shared.InitSchemaStatements, error) {
-	return nil, errors.ErrUnsupported
+	return nil, sqlmanager_mssql.ErrUnsupportedOperation("BuildSchemaDiffStatements")
 }
 
 func (d *MssqlSchemaManager) ReconcileDestinationSchema(
@@ -224,14 +297,14 @@ func (d *MssqlSchemaManager) ReconcileDestinationSchema(
 	uniqueTables map[string]*sqlmanager_shared.SchemaTable,
 	schemaStatements []*sqlmanager_shared.InitSchemaStatements,
 ) ([]*shared.InitSchemaError, error) {
-	return nil, errors.ErrUnsupported
+	return nil, sqlmanager_mssql.ErrUnsupportedOperation("ReconcileDestinationSchema")
 }
 
 func (d *MssqlSchemaManager) TruncateTables(
 	ctx context.Context,
 	schemaDiff *shared.SchemaDifferences,
 ) error {
-	return errors.ErrUnsupported
+	return sqlmanager_mssql.ErrUnsupportedOperation("TruncateTables")
 }
 func (d *MssqlSchemaManager) CloseConnections() {
 	d.destdb.Db().Close()

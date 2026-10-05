@@ -294,12 +294,11 @@ function getJobMappingColumns() {
               contentNotAnalyzed={row.original.contentNotAnalyzed}
               isAnonymized={isAnonymizingTransformer(row.original.transformer)}
               hasSuggestion={
-                // Un transformer suggéré ne suffit pas : il doit aussi être
-                // COMPATIBLE avec le type de la colonne. Generate Card Number
-                // n'accepte qu'INT64, donc une carte stockée en texte — le cas
-                // normal, sinon les zéros de tête sautent — n'a rien de
-                // proposable. Dire « non anonymisée » invitait alors à agir sans
-                // qu'aucune action soit possible.
+                // A suggested transformer counts when the column can take it:
+                // it has to be among those offered for the type of the column
+                // and the type of the job. Every sensitive category has one for
+                // each type the product knows; a column of a type it does not
+                // know has none, and says so rather than "not anonymized".
                 row.original.suggestedTransformerSource !==
                   TransformerSource.UNSPECIFIED &&
                 (

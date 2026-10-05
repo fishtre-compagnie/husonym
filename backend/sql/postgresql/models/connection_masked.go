@@ -16,7 +16,7 @@ func (c *ConnectionConfig) MaskedSecret() (string, bool) {
 	switch {
 	case c.PgConfig != nil:
 		pg := c.PgConfig
-		if pg.Connection != nil && pg.Connection.Pass == sensitiveValue {
+		if pg.Connection != nil && pg.Connection.Pass == SensitiveValue {
 			return "password", true
 		}
 		if pg.Url != nil && isMaskedUrl(*pg.Url) {
@@ -25,7 +25,7 @@ func (c *ConnectionConfig) MaskedSecret() (string, bool) {
 		return maskedTransportSecret(pg.SSHTunnel, pg.ClientTls)
 	case c.MysqlConfig != nil:
 		my := c.MysqlConfig
-		if my.Connection != nil && my.Connection.Pass == sensitiveValue {
+		if my.Connection != nil && my.Connection.Pass == SensitiveValue {
 			return "password", true
 		}
 		if my.Url != nil && isMaskedMysqlDsn(*my.Url) {
@@ -51,7 +51,7 @@ func (c *ConnectionConfig) MaskedSecret() (string, bool) {
 			return "service account credentials", true
 		}
 	case c.OpenAiConfig != nil:
-		if c.OpenAiConfig.ApiKey == sensitiveValue {
+		if c.OpenAiConfig.ApiKey == SensitiveValue {
 			return "api key", true
 		}
 		if isMaskedUrl(c.OpenAiConfig.ApiUrl) {
@@ -77,11 +77,11 @@ func (a *AwsS3Credentials) maskedSecret() (string, bool) {
 func maskedTransportSecret(tunnel *SSHTunnel, tls *ClientTls) (string, bool) {
 	if tunnel != nil && tunnel.SSHAuthentication != nil {
 		auth := tunnel.SSHAuthentication
-		if auth.SSHPassphrase != nil && auth.SSHPassphrase.Value == sensitiveValue {
+		if auth.SSHPassphrase != nil && auth.SSHPassphrase.Value == SensitiveValue {
 			return "ssh passphrase", true
 		}
 		if auth.SSHPrivateKey != nil &&
-			(auth.SSHPrivateKey.Value == sensitiveValue || isMasked(auth.SSHPrivateKey.Passphrase)) {
+			(auth.SSHPrivateKey.Value == SensitiveValue || isMasked(auth.SSHPrivateKey.Passphrase)) {
 			return "ssh private key", true
 		}
 	}
@@ -92,7 +92,7 @@ func maskedTransportSecret(tunnel *SSHTunnel, tls *ClientTls) (string, bool) {
 }
 
 func isMasked(value *string) bool {
-	return value != nil && *value == sensitiveValue
+	return value != nil && *value == SensitiveValue
 }
 
 // isMaskedUrl says whether maskUrl masked part of the URL: the whole of it, the user's

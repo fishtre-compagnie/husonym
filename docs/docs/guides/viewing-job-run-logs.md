@@ -13,18 +13,7 @@ This section details the variety of ways that job run logs can be accessed depen
 
 ![Job Run Logs](/img/runlogs.png)
 
-## Husonym Cloud
-
-Job Run Logs can only be accessed through the UI.
-Navigate to [Husonym Cloud](https://app.husonym.com), then click on the Runs tab in the top nav.
-
-Select the run you wish to see logs for. Select the run.
-
-You'll see a section in the middle of the page for logs.
-
-## Open Source
-
-For the open source variant, you have a few options at your disposal.
+You have a few options at your disposal.
 
 ### Docker Compose
 
@@ -61,8 +50,6 @@ kubectl logs -n husonym deployment/husonym-worker -f`
 
 #### Husonym UI
 
-> **NB:** This requires a valid Husonym Enterprise license for OSS deployments. If you would like to try this out, please contact us.
-
 Husonym can be configured to surface pod logs via the UI by configuring `husonym-api` to surface these.
 
 If you've deployed Husonym via the helm chart, this should come pre-configured with kubernetes pod logs.
@@ -73,7 +60,7 @@ This are great for basic deployments, but will disappear on worker pod shutdown.
 
 ## Persistence with Loki
 
-Husonym has native support for surfacing logs that come from a [Grafana Loki](https://grafana.com/oss/loki/) instance (with a valid Husonym Enterprise license).
+Husonym has native support for surfacing logs that come from a [Grafana Loki](https://grafana.com/oss/loki/) instance.
 
 Please note that Husonym does not natively handle shipping logs to Loki, however it can natively handle querying a Loki instance to surface logs into Husonym UI.
 

@@ -31,6 +31,31 @@ func Test_DefaultConfig(t *testing.T) {
 		require.True(t, ok)
 	})
 
+	t.Run("the entry of the PII text transformer", func(t *testing.T) {
+		source := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
+		entry, ok := BySource(true)[source]
+		require.True(t, ok)
+		require.Equal(t, "Transform PII Text", entry.GetName())
+		require.Equal(t, "Transforms free-form text using PII analyzers", entry.GetDescription())
+		require.Equal(t, []mgmtv1alpha1.TransformerDataType{
+			mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_STRING,
+			mgmtv1alpha1.TransformerDataType_TRANSFORMER_DATA_TYPE_NULL,
+		}, entry.GetDataTypes())
+		require.Equal(t, []mgmtv1alpha1.SupportedJobType{
+			mgmtv1alpha1.SupportedJobType_SUPPORTED_JOB_TYPE_SYNC,
+		}, entry.GetSupportedJobTypes())
+
+		config := entry.GetConfig().GetTransformPiiTextConfig()
+		require.InDelta(t, 0.5, config.GetScoreThreshold(), 0)
+		require.NotNil(t, config.GetDefaultAnonymizer().GetReplace())
+		require.Nil(t, config.GetDefaultAnonymizer().GetReplace().Value)
+		require.Nil(t, config.Language)
+		require.Empty(t, config.GetEntityAnonymizers())
+		require.Empty(t, config.GetDenyRecognizers())
+		require.Empty(t, config.GetAllowedEntities())
+		require.Empty(t, config.GetAllowedPhrases())
+	})
+
 	t.Run("an unknown source", func(t *testing.T) {
 		_, ok := DefaultConfig(mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED, true)
 		require.False(t, ok)

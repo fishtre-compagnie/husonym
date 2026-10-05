@@ -30,16 +30,12 @@ serviceAccount:
   # -- Specify annotations here that will be attached to the service account. Useful for specifying role information or other tagging depending on environment.
   annotations: {}
 
-# -- Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running
+# -- Adds a special tag to the logging to determine what environment is running
 husonymEnv:
 
-husonymCloud:
-  # -- Whether or not this is HusonymCloud
-  enabled: false
-
-# Configure Husonym Enterprise
+# Configure the Husonym license
 ee:
-  # -- Husonym Enterprise-Edition License Key
+  # -- Husonym License Key
   license:
 
 # -- Will eventually allow sending traces.
@@ -168,5 +164,5 @@ tableSync:
   maxConcurrency: 3
 
 connections:
-  # -- Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud.
+  # -- Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker.
   allowServerIdentity: false

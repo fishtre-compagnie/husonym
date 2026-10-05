@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/redpanda-data/benthos/v4/public/bloblang"
 )
 
@@ -54,6 +55,18 @@ type AccountTransformPiiTextApi interface {
 type AccountAwareAnonymizationPiiTextApi struct {
 	anonApi   mgmtv1alpha1connect.AnonymizationServiceClient
 	accountId string
+	// hashKey is the key the hashes of the run are computed under, nil for a caller that has
+	// no consistency scope.
+	hashKey *piitext.HashKey
+}
+
+// WithHashKey returns the API of a run whose consistency scope gives key: the hashes
+// TransformPiiText writes are then the same for the same text in every table of that scope.
+// The key goes with every call, in a header the API reads from the worker alone. It is the key
+// of those hashes and of nothing else: neither the key of the account nor the key of the scope
+// leaves the worker.
+func (a *AccountAwareAnonymizationPiiTextApi) WithHashKey(key piitext.HashKey) *AccountAwareAnonymizationPiiTextApi {
+	return &AccountAwareAnonymizationPiiTextApi{anonApi: a.anonApi, accountId: a.accountId, hashKey: &key}
 }
 
 func NewAccountAwareAnonymizationPiiTextApi(
@@ -79,23 +92,24 @@ func (a *AccountAwareAnonymizationPiiTextApi) Transform(
 		return "", fmt.Errorf("unable to marshal value: %w", err)
 	}
 
-	resp, err := a.anonApi.AnonymizeSingle(
-		ctx,
-		connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
-			InputData: string(bits),
-			AccountId: a.accountId,
-			TransformerMappings: []*mgmtv1alpha1.TransformerMapping{
-				{
-					Expression: ".input",
-					Transformer: &mgmtv1alpha1.TransformerConfig{
-						Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
-							TransformPiiTextConfig: config,
-						},
+	req := connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
+		InputData: string(bits),
+		AccountId: a.accountId,
+		TransformerMappings: []*mgmtv1alpha1.TransformerMapping{
+			{
+				Expression: ".input",
+				Transformer: &mgmtv1alpha1.TransformerConfig{
+					Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{
+						TransformPiiTextConfig: config,
 					},
 				},
 			},
-		}))
-
+		},
+	})
+	if a.hashKey != nil {
+		req.Header().Set(piitext.HashKeyHeader, a.hashKey.Encode())
+	}
+	resp, err := a.anonApi.AnonymizeSingle(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("unable to anonymize text: %w", err)
 	}

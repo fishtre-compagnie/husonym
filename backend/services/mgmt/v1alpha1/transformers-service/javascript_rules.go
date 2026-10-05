@@ -13,10 +13,10 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	javascript_userland "github.com/fishtre-compagnie/husonym/internal/javascript/userland"
 	javascript_vm "github.com/fishtre-compagnie/husonym/internal/javascript/vm"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/athanor/runner"
 )
 

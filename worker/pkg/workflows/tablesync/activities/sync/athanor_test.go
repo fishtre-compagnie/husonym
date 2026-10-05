@@ -66,3 +66,20 @@ func TestConsistencyDeriver_Scopes(t *testing.T) {
 			seedOf(t, jobWithScope("job-a", "acc-b", acct), "run-1"))
 	})
 }
+
+// The hashes of TransformPiiText follow the consistency scope of the job, as every other
+// deterministic output does.
+func TestPiiTextHashKey_FollowsTheScope(t *testing.T) {
+	keyOf := func(job *mgmtv1alpha1.Job, runID string) [32]byte {
+		d, err := consistencyDeriver("clé-test", job, runID)
+		require.NoError(t, err)
+		return piiTextHashKey(d)
+	}
+	perRun := jobWithScope("job-a", "acc-a", mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_RUN)
+	perJob := jobWithScope("job-a", "acc-a", mgmtv1alpha1.ConsistencyScope_CONSISTENCY_SCOPE_JOB)
+
+	require.Equal(t, keyOf(perRun, "run-1"), keyOf(perRun, "run-1"), "two tables of a run share the key")
+	require.NotEqual(t, keyOf(perRun, "run-1"), keyOf(perRun, "run-2"), "two runs do not, under the run scope")
+	require.Equal(t, keyOf(perJob, "run-1"), keyOf(perJob, "run-2"), "two runs share the key under the job scope")
+	require.NotEqual(t, keyOf(perJob, "run-1"), seedOf(t, perJob, "run-1"), "the key is no seed of the scope")
+}

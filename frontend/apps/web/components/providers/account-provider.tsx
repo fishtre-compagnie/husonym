@@ -85,7 +85,7 @@ export default function AccountProvider(props: Props): ReactElement {
       setLastSelectedAccountSession(foundAccount.name);
       setLastSelectedAccountLocal(foundAccount.name);
       const accountParam = getSingleOrUndefined(account);
-      // only want to push here if we actually have an account param. Otherwise we might push on a page like /invite or /hooks/slack
+      // only want to push here if we actually have an account param. Otherwise we might push on a page like /invite
       if (!!accountParam && accountParam !== foundAccount.name) {
         router.push(`/${foundAccount.name}/jobs`);
       }

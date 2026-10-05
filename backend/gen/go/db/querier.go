@@ -137,6 +137,12 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
+	// the role, the account. These two statements replace it, in one transaction.
+	// Held until the transaction ends, so that two changes of the role of one member in one
+	// account, wherever they are asked, are made one after the other: the second sees what the
+	// first wrote.
+	LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error
 	RemoveAccountApiKey(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveAccountInvite(ctx context.Context, db DBTX, id pgtype.UUID) error
@@ -147,6 +153,9 @@ type Querier interface {
 	RemoveJobConnectionDestination(ctx context.Context, db DBTX, id pgtype.UUID) error
 	RemoveJobConnectionDestinations(ctx context.Context, db DBTX, jobids []pgtype.UUID) error
 	RemoveJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) error
+	// Leaves the member that role in the account and no other. A row that already says so is kept
+	// as it is.
+	ReplaceAccountRole(ctx context.Context, db DBTX, arg ReplaceAccountRoleParams) error
 	// Only pending changes of the job, in the caller's account: an id of another job or of another
 	// account, or a change already reviewed, is left alone. The account is what makes a job id the
 	// caller passes harmless — the id alone is enough to find the row.

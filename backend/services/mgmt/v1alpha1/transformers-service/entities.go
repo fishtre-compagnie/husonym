@@ -8,15 +8,14 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
-var (
-	enLanguage = "en"
-)
+// fallbackEntityLanguage is the language of a deployment that configures none.
+const fallbackEntityLanguage = "en"
 
 func (s *Service) GetTransformPiiEntities(
 	ctx context.Context,
@@ -49,26 +48,30 @@ func (s *Service) GetTransformPiiEntities(
 		return nil, err
 	}
 
-	resp, err := s.entityclient.GetSupportedentitiesWithResponse(
-		ctx,
-		&presidioapi.GetSupportedentitiesParams{
-			Language: &enLanguage,
-		},
-	)
+	entities, err := s.entityclient.SupportedEntities(ctx, s.entityLanguage())
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve available entities: %w", err)
-	}
-	if resp.JSON200 == nil {
-		return nil, fmt.Errorf(
-			"received non-200 response from entity api: %s %d %s",
-			resp.Status(),
-			resp.StatusCode(),
-			string(resp.Body),
+		answer := husonymerrors.FromPresidio(
+			ctx,
+			fmt.Errorf("unable to retrieve available entities: %w", err),
 		)
+		if husonymerrors.IsServiceFault(answer) {
+			// Why is logged, and not told: the error can quote where Presidio is reached.
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).
+				Error("unable to retrieve available entities", "error", err)
+		}
+		return nil, answer
 	}
 
-	entities := *resp.JSON200
 	return connect.NewResponse(&mgmtv1alpha1.GetTransformPiiEntitiesResponse{
 		Entities: entities,
 	}), nil
+}
+
+// entityLanguage is the language the entities are listed for: the one a transformer that sets
+// none analyzes in.
+func (s *Service) entityLanguage() string {
+	if s.cfg.PresidioDefaultLanguage != nil && *s.cfg.PresidioDefaultLanguage != "" {
+		return *s.cfg.PresidioDefaultLanguage
+	}
+	return fallbackEntityLanguage
 }

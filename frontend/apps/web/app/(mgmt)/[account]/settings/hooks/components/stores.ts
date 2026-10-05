@@ -12,7 +12,6 @@ function getInitialEditFormState(): EditAccountHookFormValues {
     name: '',
     config: {
       webhook: { url: '', secret: '', disableSslVerification: false },
-      slack: { channelId: '' },
     },
     description: '',
     enabled: true,
@@ -43,7 +42,6 @@ function getInitialNewFormState(): NewAccountHookFormValues {
     name: '',
     config: {
       webhook: { url: '', secret: '', disableSslVerification: false },
-      slack: { channelId: '' },
     },
     description: '',
     enabled: true,

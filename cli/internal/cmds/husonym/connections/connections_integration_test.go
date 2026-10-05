@@ -95,38 +95,6 @@ func Test_Connections(t *testing.T) {
 		require.Len(t, connections, len(conns))
 	})
 
-	t.Run("list_cloud", func(t *testing.T) {
-		testAuthUserId := "34f3e404-c995-452b-89e4-9c486b491dab"
-		userclient := husonymApi.HusonymCloudAuthenticatedLicensedClients.Users(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-		connclient := husonymApi.HusonymCloudAuthenticatedLicensedClients.Connections(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-		tchusonymapi.SetUser(ctx, t, userclient)
-		accountId := tchusonymapi.CreatePersonalAccount(ctx, t, userclient)
-		conn1 := tchusonymapi.CreatePostgresConnection(
-			ctx,
-			t,
-			connclient,
-			accountId,
-			"conn1",
-			postgresUrl,
-		)
-		conn2 := tchusonymapi.CreatePostgresConnection(
-			ctx,
-			t,
-			connclient,
-			accountId,
-			"conn2",
-			postgresUrl,
-		)
-		conns := []*mgmtv1alpha1.Connection{conn1, conn2}
-		connections, err := getConnections(ctx, connclient, accountId)
-		require.NoError(t, err)
-		require.Len(t, connections, len(conns))
-	})
-
 	err = husonymApi.TearDown(ctx)
 	if err != nil {
 		panic(err)

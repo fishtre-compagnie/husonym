@@ -10,9 +10,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-go/v86"
 )
 
 func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
@@ -36,30 +34,7 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
 		requireConnectError(t, err, connect.CodeUnimplemented)
 	})
 
-	t.Run("cloud-personal-fail", func(t *testing.T) {
-		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-		s.setUser(s.ctx, userclient)
-		accountId := s.createPersonalAccount(s.ctx, userclient)
-		resp, err := anonclient.AnonymizeMany(
-			s.ctx,
-			connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
-				AccountId:           accountId,
-				InputData:           []string{},
-				HaltOnFailure:       false,
-				DefaultTransformers: &mgmtv1alpha1.DefaultTransformersConfig{},
-				TransformerMappings: []*mgmtv1alpha1.TransformerMapping{},
-			}),
-		)
-		requireErrResp(t, resp, err)
-		requireConnectError(t, err, connect.CodePermissionDenied)
-	})
-
-	t.Run("cloud-team-ok", func(t *testing.T) {
+	t.Run("oss-authenticated-ok", func(t *testing.T) {
 		jsonStrs := []string{
 			`{
   "user": {
@@ -93,21 +68,15 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeMany() {
 }`,
 		}
 
-		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
+		userclient := s.OSSAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.OSSAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 
 		s.setUser(s.ctx, userclient)
-		accountId := s.createBilledTeamAccount(s.ctx, userclient, "team1", "foo")
-		s.Mocks.Billingclient.On("GetSubscriptions", mock.Anything, "foo").
-			Once().
-			Return([]*stripe.Subscription{
-				{Status: stripe.SubscriptionStatusIncompleteExpired},
-				{Status: stripe.SubscriptionStatusActive},
-			}, nil)
+		accountId := s.createTeamAccount(s.ctx, userclient, "team1")
 		resp, err := anonclient.AnonymizeMany(
 			s.ctx,
 			connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
@@ -378,15 +347,15 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeSingle_InvalidTran
 	t := s.T()
 
 	t.Run("no-nested-transformpiitext", func(t *testing.T) {
-		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
+		userclient := s.OSSAuthenticatedLicensedClients.Users(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
-		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
+		anonclient := s.OSSAuthenticatedLicensedClients.Anonymize(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 
 		s.setUser(s.ctx, userclient)
-		accountId := s.createBilledTeamAccount(s.ctx, userclient, "team34", "foo34")
+		accountId := s.createTeamAccount(s.ctx, userclient, "team34")
 
 		t.Run("default-boolean", func(t *testing.T) {
 			resp, err := anonclient.AnonymizeSingle(
@@ -531,90 +500,6 @@ func (s *IntegrationTestSuite) Test_AnonymizeService_AnonymizeSingle_ForbiddenTr
 				})
 				t.Run("N", func(t *testing.T) {
 					resp, err := s.OSSUnauthenticatedLicensedClients.Anonymize().AnonymizeSingle(
-						s.ctx,
-						connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
-							AccountId: accountId,
-							InputData: "foo",
-							DefaultTransformers: &mgmtv1alpha1.DefaultTransformersConfig{
-								N: &mgmtv1alpha1.TransformerConfig{
-									Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
-								},
-							},
-						}),
-					)
-					requireErrResp(t, resp, err)
-					requireConnectError(t, err, connect.CodePermissionDenied)
-				})
-			})
-		})
-	})
-
-	t.Run("cloud-personal", func(t *testing.T) {
-		userclient := s.HusonymCloudAuthenticatedLicensedClients.Users(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-		anonclient := s.HusonymCloudAuthenticatedLicensedClients.Anonymize(
-			integrationtests_test.WithUserId(testAuthUserId),
-		)
-
-		s.setUser(s.ctx, userclient)
-		accountId := s.createPersonalAccount(s.ctx, userclient)
-
-		t.Run("transformpiitext", func(t *testing.T) {
-			t.Run("mappings", func(t *testing.T) {
-				resp, err := anonclient.AnonymizeSingle(
-					s.ctx,
-					connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
-						AccountId: accountId,
-						InputData: "foo",
-						TransformerMappings: []*mgmtv1alpha1.TransformerMapping{
-							{
-								Transformer: &mgmtv1alpha1.TransformerConfig{
-									Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
-								},
-							},
-						},
-					}),
-				)
-				requireErrResp(t, resp, err)
-				requireConnectError(t, err, connect.CodePermissionDenied)
-			})
-
-			t.Run("defaults", func(t *testing.T) {
-				t.Run("Bool", func(t *testing.T) {
-					resp, err := anonclient.AnonymizeSingle(
-						s.ctx,
-						connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
-							AccountId: accountId,
-							InputData: "foo",
-							DefaultTransformers: &mgmtv1alpha1.DefaultTransformersConfig{
-								Boolean: &mgmtv1alpha1.TransformerConfig{
-									Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
-								},
-							},
-						}),
-					)
-					requireErrResp(t, resp, err)
-					requireConnectError(t, err, connect.CodePermissionDenied)
-				})
-				t.Run("S", func(t *testing.T) {
-					resp, err := anonclient.AnonymizeSingle(
-						s.ctx,
-						connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
-							AccountId: accountId,
-							InputData: "foo",
-							DefaultTransformers: &mgmtv1alpha1.DefaultTransformersConfig{
-								S: &mgmtv1alpha1.TransformerConfig{
-									Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
-								},
-							},
-						}),
-					)
-					requireErrResp(t, resp, err)
-					requireConnectError(t, err, connect.CodePermissionDenied)
-				})
-				t.Run("N", func(t *testing.T) {
-					resp, err := anonclient.AnonymizeSingle(
 						s.ctx,
 						connect.NewRequest(&mgmtv1alpha1.AnonymizeSingleRequest{
 							AccountId: accountId,

@@ -11,12 +11,10 @@ import (
 	db_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
 	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
@@ -27,6 +25,7 @@ import (
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/converter"
 	tmprl_mocks "go.temporal.io/sdk/mocks"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -38,15 +37,11 @@ type Mocks struct {
 	Authclient             *auth_client.MockInterface
 	Authmanagerclient      *authmgmt.MockInterface
 	Prometheusclient       *promapiv1mock.MockAPI
-	Billingclient          *billing.MockInterface
-	Presidio               Presidiomocks
-	Slackclient            *ee_slack.MockInterface
-}
-
-type Presidiomocks struct {
-	Analyzer   *presidioapi.MockAnalyzeInterface
-	Anonymizer *presidioapi.MockAnonymizeInterface
-	Entities   *presidioapi.MockEntityInterface
+	// Presidio answers what a test tells it to, and fails the test on any other call.
+	Presidio *presidiotest.Fake
+	// The license of the OSSAuthenticatedExpiringClients mode only. It starts valid; a
+	// test that changes it sets it back to valid in t.Cleanup.
+	ExpiringLicense *testutil.FakeEELicense
 }
 
 type HusonymApiTestClient struct {
@@ -62,13 +57,14 @@ type HusonymApiTestClient struct {
 	OSSUnauthenticatedLicensedClients *HusonymClients
 	// OSS, Authenticated, Licensed
 	OSSAuthenticatedLicensedClients *HusonymClients
+	// OSS, Authenticated, Licensed with a license of its own (Mocks.ExpiringLicense) that
+	// a test can make invalid
+	OSSAuthenticatedExpiringClients *HusonymClients
 	// OSS, Unauthenticated, Unlicensed
 	OSSUnauthenticatedUnlicensedClients *HusonymClients
 	// OSS, Unauthenticated, Licensed with small usage caps — for exercising limit
 	// enforcement
 	OSSUnauthenticatedLimitedClients *HusonymClients
-	// NeoCloud, Authenticated, Licensed
-	HusonymCloudAuthenticatedLicensedClients *HusonymClients
 
 	Mocks *Mocks
 }
@@ -118,13 +114,7 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		Authclient:             auth_client.NewMockInterface(t),
 		Authmanagerclient:      authmgmt.NewMockInterface(t),
 		Prometheusclient:       promapiv1mock.NewMockAPI(t),
-		Billingclient:          billing.NewMockInterface(t),
-		Presidio: Presidiomocks{
-			Analyzer:   presidioapi.NewMockAnalyzeInterface(t),
-			Anonymizer: presidioapi.NewMockAnonymizeInterface(t),
-			Entities:   presidioapi.NewMockEntityInterface(t),
-		},
-		Slackclient: ee_slack.NewMockInterface(t),
+		Presidio:               presidiotest.New(t),
 	}
 
 	err = s.InitializeTest(ctx, t)
@@ -154,7 +144,16 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceAuthenticatedLicensedPostfix, ossAuthLicensedMux),
 	)
 
-	ossUnauthUnlicensedMux, err := s.setupOssUnlicensedMux(pgcontainer, logger)
+	ossAuthExpiringMux, err := s.setupOssExpiringAuthMux(ctx, pgcontainer, logger)
+	if err != nil {
+		return fmt.Errorf("unable to setup oss authenticated expiring mux: %w", err)
+	}
+	rootmux.Handle(
+		openSourceAuthenticatedExpiringPostfix+"/",
+		http.StripPrefix(openSourceAuthenticatedExpiringPostfix, ossAuthExpiringMux),
+	)
+
+	ossUnauthUnlicensedMux, err := s.setupOssUnlicensedMux(ctx, pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup oss unauthenticated unlicensed mux: %w", err)
 	}
@@ -163,22 +162,13 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceUnauthenticatedUnlicensedPostfix, ossUnauthUnlicensedMux),
 	)
 
-	ossLimitedMux, err := s.setupOssLimitedMux(pgcontainer, logger)
+	ossLimitedMux, err := s.setupOssLimitedMux(ctx, pgcontainer, logger)
 	if err != nil {
 		return fmt.Errorf("unable to setup oss unauthenticated limited mux: %w", err)
 	}
 	rootmux.Handle(
 		openSourceUnauthenticatedLimitedPostfix+"/",
 		http.StripPrefix(openSourceUnauthenticatedLimitedPostfix, ossLimitedMux),
-	)
-
-	neoCloudAuthdMux, err := s.setupNeoCloudMux(ctx, pgcontainer, logger)
-	if err != nil {
-		return fmt.Errorf("unable to setup neo cloud authenticated mux: %w", err)
-	}
-	rootmux.Handle(
-		neoCloudAuthenticatedLicensedPostfix+"/",
-		http.StripPrefix(neoCloudAuthenticatedLicensedPostfix, neoCloudAuthdMux),
 	)
 
 	s.httpsrv = startHTTPServer(t, rootmux)
@@ -193,14 +183,14 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	s.OSSAuthenticatedLicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceAuthenticatedLicensedPostfix,
 	)
+	s.OSSAuthenticatedExpiringClients = newHusonymClients(
+		s.httpsrv.URL + openSourceAuthenticatedExpiringPostfix,
+	)
 	s.OSSUnauthenticatedUnlicensedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedUnlicensedPostfix,
 	)
 	s.OSSUnauthenticatedLimitedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedLimitedPostfix,
-	)
-	s.HusonymCloudAuthenticatedLicensedClients = newHusonymClients(
-		s.httpsrv.URL + neoCloudAuthenticatedLicensedPostfix,
 	)
 
 	return nil
@@ -231,6 +221,12 @@ func (s *HusonymApiTestClient) MockTemporalForCreateJob(returnId string) {
 func (s *HusonymApiTestClient) MockTemporalForDescribeWorkflowExecution(
 	accountId, jobId, jobRunId, workflowName string,
 ) {
+	// The run names its job as a run started by a schedule does: in a search attribute,
+	// encoded as Temporal encodes it, so that the API reads the id of the job from it.
+	scheduledBy, err := converter.GetDefaultDataConverter().ToPayload(jobId)
+	if err != nil {
+		panic(fmt.Errorf("unable to encode the id of the job: %w", err))
+	}
 	s.Mocks.TemporalClientManager.EXPECT().
 		DescribeWorklowExecution(mock.Anything, accountId, jobRunId, mock.Anything).
 		Return(&workflowservice.DescribeWorkflowExecutionResponse{
@@ -245,14 +241,7 @@ func (s *HusonymApiTestClient) MockTemporalForDescribeWorkflowExecution(
 					Name: workflowName,
 				},
 				SearchAttributes: &common.SearchAttributes{
-					IndexedFields: map[string]*common.Payload{
-						"TemporalScheduledById": {
-							Data: []byte(jobId),
-							Metadata: map[string][]byte{
-								"jobId": []byte(jobId),
-							}, // this doesnt seem to work as it's not the correct format for what temporal expects
-						},
-					},
+					IndexedFields: map[string]*common.Payload{"TemporalScheduledById": scheduledBy},
 				},
 			},
 		}, nil).

@@ -14,6 +14,7 @@ package runner
 
 import (
 	"fmt"
+	"regexp"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	pseudo_functions "github.com/fishtre-compagnie/husonym/internal/javascript/functions/pseudo"
@@ -74,9 +75,29 @@ func deterministicValueTransformer(
 		cfg.GetTransformE164PhoneNumberConfig() != nil ||
 		cfg.GetGenerateE164PhoneNumberConfig() != nil:
 		return native.NewPhoneFaker(d.Domain("person.phone")), true
+	case cfg.GetTransformCharacterScrambleConfig() != nil:
+		return characterScrambler(d, cfg.GetTransformCharacterScrambleConfig())
 	default:
 		return nil, false
 	}
+}
+
+// characterScrambler returns the consistent scramble of a config: one domain for every
+// column, so a value held by two columns comes out the same in both. False when the
+// config's expression does not compile: the catalogue's transformer then runs and reports it.
+func characterScrambler(
+	d *consistency.Deriver,
+	cfg *mgmtv1alpha1.TransformCharacterScramble,
+) (transform.ValueTransformer, bool) {
+	var only *regexp.Regexp
+	if expression := cfg.GetUserProvidedRegex(); expression != "" {
+		compiled, err := regexp.Compile(expression)
+		if err != nil {
+			return nil, false
+		}
+		only = compiled
+	}
+	return native.NewCharacterScrambler(d.Domain("text.scramble"), only), true
 }
 
 // pseudoConfigs holds, for each function pseudo.<kind> offered to scripts, the transformer

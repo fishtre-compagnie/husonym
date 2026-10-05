@@ -123,7 +123,6 @@ REDIS_TLS_ROOT_CERT_AUTHORITY: {{ .Values.redis.tls.rootCertAuthority }}
 {{- if and .Values.redis .Values.redis.tls .Values.redis.tls.rootCertAuthorityFile }}
 REDIS_TLS_ROOT_CERT_AUTHORITY_FILE: {{ .Values.redis.tls.rootCertAuthorityFile }}
 {{- end }}
-HUSONYM_CLOUD: {{ .Values.husonymCloud.enabled | default "false" | quote }}
 {{- if and .Values.ee .Values.ee.license }}
 EE_LICENSE: {{ .Values.ee.license | quote }}
 {{- end }}

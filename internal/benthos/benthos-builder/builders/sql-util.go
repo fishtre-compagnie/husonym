@@ -20,7 +20,6 @@ import (
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	rc "github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
-	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 	husonym_benthos "github.com/fishtre-compagnie/husonym/worker/pkg/benthos"
 	"golang.org/x/sync/errgroup"
 )
@@ -154,9 +153,10 @@ func formatMappingColumns(mappings []*mgmtv1alpha1.JobMapping) []string {
 // catalogue — the mapping the UI would propose for the column.
 //
 // The passthrough stays when nothing is suggested, and when the column carries a primary key, a
-// foreign key — real or virtual — or a unique constraint, or is referenced by one: a transformer there could break
-// the constraint and fail the run, while the strategy never stops one. Choosing a transformer
-// that keeps a constraint is another matter. Generated columns keep their GenerateDefault.
+// foreign key — real or virtual — or a unique constraint, or is referenced by one, or is named by
+// a CHECK constraint: a transformer there could break the constraint and fail the run, while the
+// strategy never stops one. Choosing a transformer that keeps a constraint is another matter.
+// Generated columns keep their GenerateDefault.
 //
 // An option the run could not honor is turned off rather than written to the job: see
 // withinReach.
@@ -169,8 +169,9 @@ func autoMapNewColumns(
 	constraints *sqlmanager_shared.TableConstraints,
 	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
 	hasConsistencyKey bool,
-) (out []*mgmtv1alpha1.JobMapping, anonymized, passedThrough []string) {
-	constrained := constrainedColumns(constraints, virtualForeignKeys)
+) (out []*mgmtv1alpha1.JobMapping, anonymized []string, passedThrough passedColumns) {
+	keyed := constrainedColumns(constraints, virtualForeignKeys)
+	checked := checkedColumns(constraints, columnInfo)
 	out = make([]*mgmtv1alpha1.JobMapping, 0, len(mappings))
 	for _, m := range mappings {
 		if m.GetTransformer().GetConfig().GetPassthroughConfig() == nil {
@@ -179,23 +180,32 @@ func autoMapNewColumns(
 		}
 		table := sqlmanager_shared.BuildTable(m.GetSchema(), m.GetTable())
 		name := fmt.Sprintf("%s.%s", table, m.GetColumn())
+		info := columnInfo[table][m.GetColumn()]
 
 		var dataType string
-		if info := columnInfo[table][m.GetColumn()]; info != nil {
+		if info != nil {
 			dataType = info.DataType
 		}
+		sensitiveCategory, _ := job_util.LooksSensitive(m.GetColumn(), dataType)
 		source, category, suggested := job_util.SuggestedTransformer(m.GetColumn(), dataType)
-		if _, ok := constrained[table][m.GetColumn()]; ok || !suggested {
-			out = append(out, m)
-			passedThrough = append(passedThrough, name)
-			continue
+		// The config of the base catalogue: a run has no license to check, and the
+		// suggestions are base transformers anyway.
+		var config *mgmtv1alpha1.TransformerConfig
+		if suggested {
+			config, suggested = job_util.SuggestedConfig(source, category, info)
 		}
-		// The base catalogue: a run has no license to check, and the suggestions are base
-		// transformers anyway.
-		config, ok := catalog.DefaultConfig(source, false)
-		if !ok {
+
+		reason := ""
+		if _, ok := keyed[table][m.GetColumn()]; ok {
+			reason = reasonKey
+		} else if _, ok := checked[table][m.GetColumn()]; ok {
+			reason = reasonCheck
+		} else if !suggested {
+			reason = reasonNoType
+		}
+		if reason != "" {
 			out = append(out, m)
-			passedThrough = append(passedThrough, name)
+			passedThrough.add(name, sensitiveCategory, reason)
 			continue
 		}
 		out = append(out, &mgmtv1alpha1.JobMapping{
@@ -207,7 +217,7 @@ func autoMapNewColumns(
 		anonymized = append(anonymized, fmt.Sprintf("%s (%s)", name, category))
 	}
 	slices.Sort(anonymized)
-	slices.Sort(passedThrough)
+	passedThrough.sort()
 	return out, anonymized, passedThrough
 }
 

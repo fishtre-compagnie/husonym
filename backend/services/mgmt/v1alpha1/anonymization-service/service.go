@@ -3,9 +3,9 @@ package v1alpha_anonymizationservice
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -15,17 +15,17 @@ type Service struct {
 	userdataclient     userdata.Interface
 	useraccountService mgmtv1alpha1connect.UserAccountServiceClient
 	transformerClient  mgmtv1alpha1connect.TransformersServiceClient
-	analyze            presidioapi.AnalyzeInterface
-	anonymize          presidioapi.AnonymizeInterface
-	db                 *husonymdb.HusonymDb
-	license            license.EEInterface
+	// piiText anonymizes free text; nil in a deployment with no Presidio analyzer.
+	piiText *piitext.Engine
+	db      *husonymdb.HusonymDb
+	license license.EEInterface
 }
 
 type Config struct {
-	IsAuthEnabled           bool
-	IsHusonymCloud          bool
-	IsPresidioEnabled       bool
-	PresidioDefaultLanguage *string
+	IsAuthEnabled bool
+	// WorkerOnly tells the worker from the other callers: a run hands the key of its hashes
+	// with its calls, and it is read from the worker alone.
+	WorkerOnly userdata.WorkerOnly
 }
 
 func New(
@@ -34,8 +34,7 @@ func New(
 	userdataclient userdata.Interface,
 	useraccountService mgmtv1alpha1connect.UserAccountServiceClient,
 	transformerClient mgmtv1alpha1connect.TransformersServiceClient,
-	analyzeclient presidioapi.AnalyzeInterface,
-	anonymizeclient presidioapi.AnonymizeInterface,
+	piiText *piitext.Engine,
 	db *husonymdb.HusonymDb,
 	licenseClient license.EEInterface,
 ) *Service {
@@ -45,8 +44,7 @@ func New(
 		userdataclient:     userdataclient,
 		useraccountService: useraccountService,
 		transformerClient:  transformerClient,
-		analyze:            analyzeclient,
-		anonymize:          anonymizeclient,
+		piiText:            piiText,
 		db:                 db,
 		license:            licenseClient,
 	}

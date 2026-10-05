@@ -1,6 +1,9 @@
 import { getConnectionIdFromSource } from '@/app/(mgmt)/[account]/jobs/[id]/source/components/util';
 import { BaseHookStore } from '@/util/zustand.stores.util';
-import { Job } from '@husonym/sdk';
+import {
+  Job,
+  JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput,
+} from '@husonym/sdk';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StorageValue } from 'zustand/middleware';
 import {
@@ -8,11 +11,13 @@ import {
   PiiDetectionSchemaFormValues,
   TableScanFilterFormValue,
 } from '../../job-form-validations';
+import { withModelInputDefault } from './model-input';
 
 function getInitialFormState(): PiiDetectionSchemaFormValues {
   return {
     dataSampling: {
       isEnabled: true,
+      modelInput: 'profiles',
     },
     tableScanFilter: {
       mode: 'include_all',
@@ -79,6 +84,14 @@ export const usePiiDetectionSchemaStore = create<PiiDetectionSchemaStore>()(
       partialize: (state): PersistedState => ({
         formData: state.formData,
       }),
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<PersistedState> | undefined;
+        return {
+          ...current,
+          ...stored,
+          formData: withModelInputDefault(stored?.formData ?? current.formData),
+        };
+      },
     }
   )
 );
@@ -149,6 +162,7 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
     return {
       dataSampling: {
         isEnabled: true,
+        modelInput: 'profiles',
       },
       tableScanFilter: {
         mode: 'include_all',
@@ -185,6 +199,11 @@ function getFormStateFromJob(job: Job): PiiDetectionSchemaFormValues {
   return {
     dataSampling: {
       isEnabled: jobTypeConfig.dataSampling?.isEnabled ?? true,
+      modelInput:
+        jobTypeConfig.dataSampling?.modelInput ===
+        JobTypeConfig_JobTypePiiDetect_DataSampling_ModelInput.VALUES
+          ? 'values'
+          : 'profiles',
     },
     tableScanFilter: tableScanFilter,
     userPrompt: jobTypeConfig.userPrompt ?? '',

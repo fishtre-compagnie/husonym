@@ -22,6 +22,42 @@ var (
 	validCards  = []string{"4970100123456788", "5555123400001234", "4000000123456784"}
 )
 
+// The checks are handed out in the order ClassifyValues applies them, each under the
+// category it gives, and each is the check ClassifyValues runs.
+func TestValueDetectors(t *testing.T) {
+	passing := map[string]string{
+		"password_hash": "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"email":         "jean.dupont@example.org",
+		"iban":          validIBANs[0],
+		"nir":           validNIRs[0],
+		"siret":         validSirets[0],
+		"credit_card":   validCards[0],
+		"ip_address":    "192.0.2.17",
+		"phone_number":  "06 12 34 56 78",
+		"gender":        "Mme",
+	}
+	want := []string{"password_hash", "email", "iban", "nir", "siret", "credit_card", "ip_address", "phone_number", "gender"}
+
+	detectors := ValueDetectors()
+	got := make([]string, 0, len(detectors))
+	for _, detector := range detectors {
+		got = append(got, detector.Category)
+		value, known := passing[detector.Category]
+		if !known {
+			t.Fatalf("a check of an unexpected category: %q", detector.Category)
+		}
+		if !detector.Match(value) {
+			t.Errorf("the %s check refuses %q", detector.Category, value)
+		}
+		if detector.Match("not a formatted value") {
+			t.Errorf("the %s check accepts a plain sentence", detector.Category)
+		}
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("checks = %v, want %v", got, want)
+	}
+}
+
 func TestIsNIR(t *testing.T) {
 	for _, v := range validNIRs {
 		if !IsNIR(v) {
@@ -233,5 +269,132 @@ func TestClassifyValues_SalaireNestPasUnCodePostal(t *testing.T) {
 	// Le contrôle unitaire reste disponible pour valider une valeur ponctuelle.
 	if !IsFrenchPostalCode("33000") {
 		t.Error("IsFrenchPostalCode ne doit pas avoir été supprimé")
+	}
+}
+
+// The encodings password hashing schemes store their output in. A bare hexadecimal
+// digest is not one: it may be the hash of anything.
+func TestIsPasswordHash(t *testing.T) {
+	for _, v := range []string{
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2y$10$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2a$04$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		"$argon2i$v=19$m=16,t=2,p=1$c29tZXNhbHQ$u1eU6mZFG4/OOoTdAtM5SQ",
+		"$scrypt$ln=16,r=8,p=1$aM15713r3Xsvxbi31lqr1Q$nFNh2CVHVjNldFVKDHDlm4CbdRSCdEBsjjJxD+iCs5E",
+		"$pbkdf2-sha256$29000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33N23OSgQYThBYRfk",
+		"pbkdf2_sha256$260000$sIbDS1bDWp1mxJKmJqgAxO$O3UUmRPhrW5aUNzMVjWxDwYNYNrCrGwWz2kVn0GQx4E=",
+		"$6$rounds=5000$usesomesillystri$D4IrlXatmP7rx3P3InaxBeoomnAihCKRVQP22JkLQ4hAGBrKwJzFzs1k2sTUYhW0sAFSJ.qNFTOvjN4sk7.EO1",
+		"$5$saltsalt$5B8vYYiY.CVt1RlTTf8KbXBH3hsxY/GNooZaBBGWEc5",
+		"$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"$P$BWQ4EyG4lqVM8p0bqg1vE7xTdy2pQ6.",
+		// Argon2 before its version field.
+		"$argon2i$m=65536,t=2,p=1$c29tZXNhbHQ$9sTbSlTio3Pqh0UPzOQyEg",
+		// As Django stores them: the name of the hasher, then the hash.
+		"argon2$argon2id$v=19$m=102400,t=2,p=8$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		"bcrypt$$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"bcrypt_sha256$$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		// As Werkzeug stores them.
+		"pbkdf2:sha256:260000$Zp3lTnNDdDlrBWXH$3d2e1f1c6a3b7a0d4f6f9b1e0c5d8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f",
+		"pbkdf2:sha1$Zp3lTnND$3d2e1f1c6a3b7a0d4f6f9b1e0c5d8a7b6c5d4e3f",
+		"scrypt:32768:8:1$Zp3lTnNDdDlrBWXH$3d2e1f1c6a3b7a0d4f6f9b1e0c5d8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f",
+		// As LDAP directories store them.
+		"{SSHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNA==",
+		"{SSHA512}0Fh2kXv3G9Lw1y6mT8uQ4pZr7sN5bV2cX9jK3dH6fA1gE4iO0lM7nB8qW5tY2uR3xC6vZ9aS1dF4gH7jK0lQ2w==",
+		"{ssha256}W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNDU2Nzg5MGFiY2RlZg==",
+		// A scheme named the LDAP way before a hash that names its own, or PBKDF2.
+		"{CRYPT}$6$rounds=5000$usesomesillystri$D4IrlXatmP7rx3P3InaxBeoomnAihCKRVQP22JkLQ4hAGBrKwJzFzs1k2sTUYhW0sAFSJ.qNFTOvjN4sk7.EO1",
+		"{crypt}$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"{BCRYPT}$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"{ARGON2}$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		"{PBKDF2-SHA256}29000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33N23OSgQYThBYRfk",
+		"{PBKDF2}10000$N2YMIWQsBWBMae09x1jrPQ$1t8iyB2A.WF/Z5JZv.lfCIhXXN33",
+		// Django's other hashers: scrypt, and the salted MD5 and SHA-1 of old accounts.
+		"scrypt$cGVwcGVyc2FsdA$16384$8$1$Qj3mZ0e9Lw1y6mT8uQ4pZr7sN5bV2cX9jK3dH6fA1gE4iO0lM7nB8qW5tY2uR3xC6vZ9aS1dF4gH7jK0lQ2w==",
+		"md5$kT4hXq9z$5f4dcc3b5aa765d61d8327deb882cf99",
+		"sha1$kT4hXq9z$da39a3ee5e6b4b0d3255bfef95601890afd80709",
+		// Apache's MD5, yescrypt and the scrypt of crypt(3).
+		"$apr1$saltsalt$qjXMvbEw8oaL.CzflDtaK/",
+		"$y$j9T$F5Jx5fExrKuPp53xLKQ..1$X3DX6M94c7o.9agCG9G317fhZg9SqC.5i5rd.RhAtQ7",
+		"$7$C6..../....SodiumChloride$kBGj9fHznVYFQMEn/qDCfrDevf9YDtcDdKvEqHJLV8D",
+		// Argon2 with a key identifier and associated data.
+		"$argon2id$v=19$m=65536,t=2,p=1,keyid=Hj5+dsK0,data=sRlHhRmKUGzdOmXn01XmXygd5Kc$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+		// MySQL's own: a star and forty hexadecimal digits.
+		"*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
+		// ASP.NET Identity, version 3: its header is the same in every hash.
+		"AQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3w==",
+	} {
+		if !IsPasswordHash(v) {
+			t.Errorf("IsPasswordHash(%q) = false, want true", v)
+		}
+	}
+	for _, v := range []string{
+		"", "password", "hunter2", "$2b$12$tooshort", "5f4dcc3b5aa765d61d8327deb882cf99",
+		"da39a3ee5e6b4b0d3255bfef95601890afd80709", "$notascheme$abc$def", "jean.dupont@example.org",
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW and more",
+		"{SSHA}", "{SSHA}short", "{MD5}W6ph5Mm5Pz8GgiULbPgzGw==", "bcrypt$", "argon2$", "scrypt:32768:8:1",
+		"pbkdf2:sha256:260000", "sha256:abc$def$0123", "{note} W6ph5Mm5Pz8GgiULbPgzG37mj9g3Mjk4MTIzNA==",
+		"{CRYPT}", "{CRYPT}plain", "{BCRYPT}hunter2", "{PBKDF2-SHA256}29000", "scrypt$salt", "scrypt$salt$16384$8$1$",
+		"md5$salt$not-hexadecimal", "sha1$salt$5f4dcc3b5aa765d61d8327deb882cf99", "md5$5f4dcc3b5aa765d61d8327deb882cf99",
+		"$apr1$saltsalt$short", "$y$j9T$salt", "$7$C6..../....$short", "*", "*2470C0C06DEE42FD1618BB99005ADCA2",
+		"2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19", "* 2470C0C06DEE42FD1618BB99005ADCA2EC9D1E1",
+		// Base64 without a header that names a scheme: ASP.NET Identity version 2, or anything.
+		"AJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3wAbCdEfGh==",
+		"BQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU3w==",
+		"AQAAAAEAACcQAAAAEJ8mC0xC0tS8Qw3bqkVvH2hN7pZ5uYt1oLrXeIaGdKcMfWsBjPy4n6T9Dzq0R2vU",
+	} {
+		if IsPasswordHash(v) {
+			t.Errorf("IsPasswordHash(%q) = true, want false", v)
+		}
+	}
+}
+
+// A column of password hashes is found by its values, whatever its name.
+func TestClassifyValues_PasswordHashes(t *testing.T) {
+	got, ok := ClassifyValues([]string{
+		"$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2b$12$Q9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+		"$2b$12$S9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+	}, "varchar")
+	if !ok {
+		t.Fatal("ClassifyValues finds nothing")
+	}
+	if got.Category != "password_hash" || !got.Sensitive ||
+		got.Confidence != mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED ||
+		got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE {
+		t.Errorf("ClassifyValues = %+v", got)
+	}
+	// What is checked is how the value is written: no key is computed.
+	if got.Method != mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT {
+		t.Errorf("method = %v, want FORMAT", got.Method)
+	}
+	if want := "format d'empreinte de mot de passe reconnu sur 3/3 valeurs"; got.Evidence != want {
+		t.Errorf("evidence = %q, want %q", got.Evidence, want)
+	}
+}
+
+// Fewer hashes than a column of hashes holds: the format is reported for review, and a
+// name that says what the column is keeps its own verdict.
+func TestClassifyValues_SomePasswordHashes(t *testing.T) {
+	hash := "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW"
+	got, ok := ClassifyValues([]string{hash, hash, "changeme", "letmein"}, "varchar")
+	if !ok {
+		t.Fatal("ClassifyValues finds nothing")
+	}
+	if got.Confidence != mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW ||
+		got.Method != mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT ||
+		got.Evidence != "format d'empreinte de mot de passe reconnu sur 2/4 valeurs seulement" {
+		t.Errorf("ClassifyValues = %+v", got)
+	}
+
+	column := &mgmtv1alpha1.DatabaseColumn{Column: "password", DataType: "text"}
+	Enrich([]*mgmtv1alpha1.DatabaseColumn{column})
+	verdict := Reconcile(column, &mgmtv1alpha1.ColumnPiiDetection{
+		Column: "password", IsSensitive: true, DataCategory: got.Category,
+		PiiConfidence: got.Confidence, PiiDetectionMethod: got.Method, PiiEvidence: got.Evidence,
+	})
+	if verdict.GetPiiConfidence() != mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED ||
+		verdict.GetPiiDetectionMethod() != mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_COLUMN_NAME {
+		t.Errorf("Reconcile = %+v", verdict)
 	}
 }

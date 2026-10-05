@@ -265,9 +265,28 @@ func Test_Workflow(t *testing.T) {
 			)
 		})
 
+		t.Run("pii_detect", func(t *testing.T) {
+			t.Parallel()
+			test_postgres_pii_detect(t, ctx, postgres, husonymApi, dbManagers, accountId, sourceConn)
+		})
+
 		t.Run("automap_review", func(t *testing.T) {
 			t.Parallel()
 			test_postgres_automap_review(
+				t,
+				ctx,
+				postgres,
+				husonymApi,
+				dbManagers,
+				accountId,
+				sourceConn,
+				destConn,
+			)
+		})
+
+		t.Run("automap_athanor", func(t *testing.T) {
+			t.Parallel()
+			test_postgres_automap_athanor(
 				t,
 				ctx,
 				postgres,

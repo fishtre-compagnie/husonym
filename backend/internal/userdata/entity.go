@@ -1,7 +1,6 @@
 package userdata
 
 import (
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -41,7 +40,7 @@ func NewDomainEntity(accountId, id string) DomainEntity {
 // But for checking wildcard or account-level access
 func NewWildcardDomainEntity(accountId string) DomainEntity {
 	return &DomainEntityImpl{
-		id:        rbac.Wildcard,
+		id:        "*",
 		accountId: accountId,
 		isWild:    true,
 	}

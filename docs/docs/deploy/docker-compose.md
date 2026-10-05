@@ -65,8 +65,6 @@ Once all of the containers come online, the app is now routable via [http://loca
 
 ## Deploy with Docker Compose and Authentication
 
-> **NB:** This requires a valid Husonym Enterprise license for OSS deployments. If you would like to try this out, please contact us.
-
 Husonym provides an auth friendly compose file that will stand up Husonym in auth-mode with Keycloak.
 
 ```console

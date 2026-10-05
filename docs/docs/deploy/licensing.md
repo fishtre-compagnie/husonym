@@ -16,21 +16,51 @@ environment:
   EE_LICENSE: <the value provided to you>
 ```
 
-Restart both services afterwards; the license is read at startup.
+Alternatively, put the license in a file and set `EE_LICENSE_FILE` to its path:
+
+```yaml
+environment:
+  EE_LICENSE_FILE: /etc/husonym/license
+```
+
+When both variables are set, the file wins over `EE_LICENSE`.
+
+`EE_LICENSE` is read once, when the service starts. The file named by `EE_LICENSE_FILE`
+is read again at most once a minute, so a renewed license is picked up **without a
+restart**: replace the content of the file and the new key takes effect within about a
+minute. A key that cannot be verified, or a file that is empty or unreadable, is ignored
+and reported in the logs. The key already in place stays in force.
+
+The service always starts, whatever the license: absent, unreadable or expired. In the
+first two cases it logs the reason and runs without a license.
+
+The license is checked on every request and follows the clock. An expiry never needs a
+restart. A renewal needs none only with `EE_LICENSE_FILE`.
 
 Verification happens entirely offline. Husonym never contacts us to check your license, so
 it works in an air-gapped environment, and we collect nothing about how you use it.
 
 :::note
 The license must be set on the worker as well as the API. With it missing from the worker,
-jobs are accepted but never execute.
+data-sync job runs still execute, but their job hooks and the account-hook notifications
+are skipped, and initializing the schema of a Microsoft SQL Server destination fails. A
+PII detection job run fails.
 :::
 
 ## What the license covers
 
-An active license is required to **create, configure and run jobs** — the core of the
-product — as well as role-based access control, Microsoft SQL Server connections, job and
-account hooks, and run logs.
+The rule is the same for every request: **creating, modifying and executing** require a
+valid license; **reading, stopping and deleting** never do. In practice, a valid license
+is needed to create, configure and run jobs — the core of the product — as well as to
+create or modify job and account hooks, to create or modify Amazon S3 and Google Cloud
+Storage connections, to initialize the schema of a Microsoft SQL Server destination, and
+to use the bulk anonymization call and the PII text transformer — whether it is mapped
+directly, stored in a user-defined transformer or called from a script. Your license may also
+restrict which connection types you can create (see [Usage limits](#usage-limits)).
+
+Husonym itself does not depend on the license to start. Authentication, run logs and
+metrics are available whether or not a license is installed, and the access rules (roles)
+apply with or without one.
 
 ## As your license approaches expiry
 
@@ -49,23 +79,30 @@ The grace period is normally 14 days, and your license may specify a different l
 ## What happens if a license expires
 
 Once the grace period ends, Husonym stops starting work. It does not lock you out and it
-never touches your data.
+never touches your data. The instance keeps starting and serving requests.
 
-**Stops:**
+**Refused:**
 
 - creating new jobs, and changing the configuration of existing ones
 - starting new job runs, manually or on a schedule
 - resuming a paused schedule
+- creating or modifying a hook, and turning a hook back on
+- creating or modifying an Amazon S3 or Google Cloud Storage connection
+
+These are refused with the message `account does not have an active license`. Also
+refused, each with its own message: initializing the schema of a Microsoft SQL Server
+destination, the bulk anonymization call, and the PII text transformer.
 
 **Keeps working:**
 
-- viewing every job, connection, mapping and run in your history
-- pausing a schedule
+- viewing every job, run, run log, connection, hook and mapping in your history
+- pausing a schedule, and turning a hook off
 - cancelling or terminating a run that is already going
-- deleting jobs and connections
+- deleting jobs, hooks and connections
 
-Runs already in progress when the license expires are allowed to finish rather than being
-interrupted mid-sync.
+Runs already in progress when the license expires are not interrupted. One exception: a
+run that maps the PII text transformer asks the API to rewrite each value, and the API
+refuses once the license has expired, so that run fails.
 
 Nothing is deleted, and no configuration is lost. Installing a renewed license restores
 everything immediately — no data migration, no re-setup.
@@ -86,7 +123,9 @@ Reaching a limit never affects anything already running.
 ## Renewing, or asking a question
 
 Write to [contact@husonym.com](mailto:contact@husonym.com). Renewing means replacing the
-`EE_LICENSE` value and restarting the API and the worker — nothing else changes.
+license value: with `EE_LICENSE_FILE`, replace the content of the file and the API and the
+worker pick it up on their own; with `EE_LICENSE`, change the value and restart the API
+and the worker. Nothing else changes.
 
 If you have lost your license value, ask us rather than assuming a new one is needed: we
 keep a record of what was issued and can re-send it.

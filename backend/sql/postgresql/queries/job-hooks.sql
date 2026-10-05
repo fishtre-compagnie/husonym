@@ -1,5 +1,7 @@
 -- name: GetJobHooksByJob :many
-SELECT * from husonym_api.job_hooks WHERE job_id = $1;
+SELECT * from husonym_api.job_hooks
+WHERE job_id = $1
+ORDER BY priority, created_at, id ASC;
 
 -- name: GetJobHookById :one
 SELECT * from husonym_api.job_hooks WHERE id = $1;

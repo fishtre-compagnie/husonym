@@ -41,7 +41,7 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 		if c.PgConfig.Connection != nil {
 			pass := c.PgConfig.Connection.Pass
 			if !canViewSensitive && pass != "" {
-				pass = sensitiveValue
+				pass = SensitiveValue
 			}
 			return &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_PgConfig{
@@ -109,7 +109,7 @@ func (c *ConnectionConfig) ToDto(canViewSensitive bool) (*mgmtv1alpha1.Connectio
 		if c.MysqlConfig.Connection != nil {
 			pass := c.MysqlConfig.Connection.Pass
 			if !canViewSensitive && pass != "" {
-				pass = sensitiveValue
+				pass = SensitiveValue
 			}
 			return &mgmtv1alpha1.ConnectionConfig{
 				Config: &mgmtv1alpha1.ConnectionConfig_MysqlConfig{
@@ -394,7 +394,7 @@ func (g *GcpCloudStorageConfig) ToDto(
 	// The credentials are a service account's private key, in full.
 	credentials := g.ServiceAccountCredentials
 	if !canViewSensitive && credentials != nil && *credentials != "" {
-		v := sensitiveValue
+		v := SensitiveValue
 		credentials = &v
 	}
 	return &mgmtv1alpha1.GcpCloudStorageConnectionConfig{
@@ -606,7 +606,8 @@ type SSHAuthentication struct {
 	SSHPrivateKey *SSHPrivateKey `json:"sshPrivateKey,omitempty"`
 }
 
-const sensitiveValue = "********"
+// SensitiveValue is the mask a caller reads in the place of a secret the caller may not see.
+const SensitiveValue = "********"
 
 // splitting this out because URI encodes **** as %2A and it looks ugly
 const uriSensitiveValue = "______"
@@ -692,7 +693,7 @@ func (s *SSHAuthentication) ToDto(canViewSensitive bool) *mgmtv1alpha1.SSHAuthen
 	if s.SSHPassphrase != nil {
 		value := s.SSHPassphrase.Value
 		if !canViewSensitive && value != "" {
-			value = sensitiveValue
+			value = SensitiveValue
 		}
 		return &mgmtv1alpha1.SSHAuthentication{
 			AuthConfig: &mgmtv1alpha1.SSHAuthentication_Passphrase{
@@ -702,12 +703,12 @@ func (s *SSHAuthentication) ToDto(canViewSensitive bool) *mgmtv1alpha1.SSHAuthen
 	} else if s.SSHPrivateKey != nil {
 		sshPrivateKeyValue := s.SSHPrivateKey.Value
 		if !canViewSensitive && sshPrivateKeyValue != "" {
-			sshPrivateKeyValue = sensitiveValue
+			sshPrivateKeyValue = SensitiveValue
 		}
 		// Only a secret there is masked: a mask in place of none would pass for one when sent back.
 		sshPrivateKeyPassphrase := s.SSHPrivateKey.Passphrase
 		if !canViewSensitive && sshPrivateKeyPassphrase != nil && *sshPrivateKeyPassphrase != "" {
-			v := sensitiveValue
+			v := SensitiveValue
 			sshPrivateKeyPassphrase = &v
 		}
 		return &mgmtv1alpha1.SSHAuthentication{
@@ -755,7 +756,7 @@ type ClientTls struct {
 func (c *ClientTls) ToDto(canViewSensitive bool) *mgmtv1alpha1.ClientTlsConfig {
 	clientKey := c.ClientKey
 	if !canViewSensitive && clientKey != nil && *clientKey != "" {
-		v := sensitiveValue
+		v := SensitiveValue
 		clientKey = &v
 	}
 	return &mgmtv1alpha1.ClientTlsConfig{
@@ -807,13 +808,13 @@ type AwsS3Credentials struct {
 func (a *AwsS3Credentials) ToDto(canViewSensitive bool) *mgmtv1alpha1.AwsS3Credentials {
 	secretAccessKey := a.SecretAccessKey
 	if !canViewSensitive && secretAccessKey != nil && *secretAccessKey != "" {
-		v := sensitiveValue
+		v := SensitiveValue
 		secretAccessKey = &v
 	}
 	// A session token is a credential of its own: with the key id, it signs requests.
 	sessionToken := a.SessionToken
 	if !canViewSensitive && sessionToken != nil && *sessionToken != "" {
-		v := sensitiveValue
+		v := SensitiveValue
 		sessionToken = &v
 	}
 	return &mgmtv1alpha1.AwsS3Credentials{
@@ -860,7 +861,7 @@ type OpenAiConnectionConfig struct {
 func (o *OpenAiConnectionConfig) ToDto(canViewSensitive bool) *mgmtv1alpha1.OpenAiConnectionConfig {
 	apiKey := o.ApiKey
 	if !canViewSensitive && apiKey != "" {
-		v := sensitiveValue
+		v := SensitiveValue
 		apiKey = v
 	}
 	// A key can ride in the URL too, as Azure's ?api-key= does.

@@ -140,30 +140,12 @@ func (s *SQLConnectionDataService) SampleData(
 	if err != nil {
 		return err
 	}
-	rows, err := db.QueryContext(ctx, query)
-	if err != nil && !husonymdb.IsNoRows(err) {
-		return fmt.Errorf(
-			"error querying table %s with database type %s: %w",
-			schemaTable,
-			goquDriver,
-			err,
-		)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		r, err := mapper.MapRecord(rows)
-		if err != nil {
-			return fmt.Errorf(
-				"unable to convert row to map for table %s with database type %s: %w",
-				schemaTable,
-				goquDriver,
-				err,
-			)
-		}
+	logger := s.logger.With("table", schemaTable)
+	spread, hasSpread := spreadSampleQuery(ctx, logger, db, goquDriver, schema, table, numRows, randomInRange)
+	send := func(row map[string]any) error {
 		var rowbytes bytes.Buffer
 		enc := gob.NewEncoder(&rowbytes)
-		if err := enc.Encode(r); err != nil {
+		if err := enc.Encode(row); err != nil {
 			return fmt.Errorf(
 				"unable to encode row for table %s with database type %s: %w",
 				schemaTable,
@@ -171,9 +153,10 @@ func (s *SQLConnectionDataService) SampleData(
 				err,
 			)
 		}
-		if err := stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()}); err != nil {
-			return err
-		}
+		return stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()})
+	}
+	if err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
+		return wrapSampleError(err, schemaTable, goquDriver)
 	}
 	return nil
 }
@@ -312,6 +295,14 @@ func (s *SQLConnectionDataService) GetInitStatements(
 	ctx context.Context,
 	options *mgmtv1alpha1.InitStatementOptions,
 ) (*mgmtv1alpha1.GetConnectionInitStatementsResponse, error) {
+	// Init statements are given for MySQL and PostgreSQL: any other connection is told so
+	// before its catalog is read.
+	switch s.connconfig.GetConfig().(type) {
+	case *mgmtv1alpha1.ConnectionConfig_MysqlConfig, *mgmtv1alpha1.ConnectionConfig_PgConfig:
+	default:
+		return nil, errors.New("unsupported connection config")
+	}
+
 	schemas, err := s.GetSchema(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -381,9 +372,6 @@ func (s *SQLConnectionDataService) GetInitStatements(
 				"postgres truncate unsupported. table foreig keys required to build truncate statement.",
 			)
 		}
-
-	default:
-		return nil, errors.New("unsupported connection config")
 	}
 
 	return &mgmtv1alpha1.GetConnectionInitStatementsResponse{

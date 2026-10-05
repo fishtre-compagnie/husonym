@@ -104,8 +104,8 @@ func TestIsBirthDateName(t *testing.T) {
 	}
 }
 
-// Une date de naissance en type natif peut recevoir un générateur de timestamp :
-// il n'y a pas de format textuel à préserver. En colonne texte, non.
+// A birth date in a native type gets a timestamp generator: there is no text format to
+// keep. In a text column it is scrambled, which keeps its length.
 func TestClassify_DateNaissanceSuggereSelonLeType(t *testing.T) {
 	natifs := []string{"date", "timestamp", "timestamp with time zone", "datetime", "datetime2"}
 	for _, dt := range natifs {
@@ -125,8 +125,8 @@ func TestClassify_DateNaissanceSuggereSelonLeType(t *testing.T) {
 			t.Errorf("Classify(..., %q) = non détecté", dt)
 			continue
 		}
-		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
-			t.Errorf("type %q : transformer = %v, attendu UNSPECIFIED (format à préserver)", dt, got.Suggested)
+		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE {
+			t.Errorf("type %q: transformer = %v, want TRANSFORM_CHARACTER_SCRAMBLE", dt, got.Suggested)
 		}
 	}
 }

@@ -34,13 +34,13 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.auth.cliClientId | string | `nil` | The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled) |
 | api.auth.clientMap | string | `nil` | A map of clientId->clientSecret of allowed clients |
 | api.auth.enabled | bool | `false` | Enable/Disable authentication |
-| api.auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
+| api.auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). |
 | api.autoscaling.behavior | string | `nil` | The behavior of the HPA autoscaler |
 | api.autoscaling.enabled | bool | `false` | Whether or not to install the HPA autoscaler |
 | api.autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |
 | api.autoscaling.minReplicas | int | `1` | The minimum amount of replicas to have running |
 | api.autoscaling.targetCPUUtilizationPercentage | int | `80` | The CPU % utilization to begin a scale up |
-| api.connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud. |
+| api.connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. |
 | api.containerPort | int | `8080` | The container port |
 | api.datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | api.db.disableSsl | bool | `false` | Whether or not to disable SSL when connecting to the database |
@@ -51,13 +51,11 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.db.port | int | `5432` | The database port |
 | api.db.username | string | `nil` | The username that will be used for authentication |
 | api.deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
-| api.ee.license | string | `nil` | Husonym Enterprise-Edition License Key |
+| api.ee.license | string | `nil` | Husonym License Key |
 | api.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment's user-container. |
 | api.fullnameOverride | string | `nil` | Fully overrides the chart name |
 | api.host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
-| api.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| api.husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
-| api.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| api.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | api.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | api.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/api"` | The default image repository |
 | api.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
@@ -91,7 +89,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | api.resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
 | api.resources.requests.memory | string | `"128Mi"` | Sets the Memory amount to be requested |
-| api.runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI (requires a valid license). |
+| api.runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI. |
 | api.runLogs.lokiConfig.baseUrl | string | `nil` | The base url to the loki instance |
 | api.runLogs.lokiConfig.keepLabels | string | `nil` | List format. |
 | api.runLogs.lokiConfig.labelsQuery | string | `nil` | LogQL labels query (without the {} as those are provided by the system) |
@@ -130,20 +128,19 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | app.deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
 | app.disableGcpCloudStorageConnections | bool | `false` | Feature flag that will disable GCP Cloud Storage Connections from being visible. Note: This only disables the new connections form and is a temporary flag until authentication in the multi-tenant environment is better understood. |
-| app.enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. Requires EE License |
+| app.enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. |
 | app.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | app.fullnameOverride | string | `nil` | Fully overrides the chart name |
 | app.host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
 | app.husonymApi.url | string | `"http://husonym-api"` | The URL to the Husonym API instance |
-| app.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| app.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| app.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | app.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | app.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
 | app.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | app.imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | app.ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | app.istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
-| app.jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: This will only work if it has also been enabled via the backend with a valid license |
+| app.jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: creating or modifying a hook requires a valid license; existing hooks stay visible and removable without one |
 | app.nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
 | app.nextAuthSecret | string | `"This is an example"` | next-auth secret that is used to encrypt the session cookie |
 | app.nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |
@@ -171,18 +168,17 @@ A Helm chart for Husonym that contains the api, app, and worker
 | worker.autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |
 | worker.autoscaling.minReplicas | int | `1` | The minimum amount of replicas to have running |
 | worker.autoscaling.targetCPUUtilizationPercentage | int | `80` | The CPU % utilization to begin a scale up |
-| worker.connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud. |
+| worker.connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. |
 | worker.containerPort | int | `8080` | The container port |
 | worker.datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | worker.deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
-| worker.ee.license | string | `nil` | Husonym Enterprise-Edition License Key |
+| worker.ee.license | string | `nil` | Husonym License Key |
 | worker.extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | worker.fullnameOverride | string | `nil` | Fully overrides the chart name |
 | worker.host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
 | worker.husonym.apiKey | string | `nil` | The worker key the worker authenticates with, of the form neo_wt_v1_<uuid v4>: one of the keys allowed on the API (api.auth.workerApiKeys). Required if running the backend in auth-mode |
 | worker.husonym.url | string | `"http://husonym-api"` | The url to the Husonym API instance |
-| worker.husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| worker.husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| worker.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | worker.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | worker.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/worker"` | The default image repository |
 | worker.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |

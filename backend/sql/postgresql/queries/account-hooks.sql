@@ -1,5 +1,7 @@
 -- name: GetAccountHooksByAccount :many
-SELECT * from husonym_api.account_hooks WHERE account_id = $1;
+SELECT * from husonym_api.account_hooks
+WHERE account_id = $1
+ORDER BY created_at, id ASC;
 
 -- name: GetAccountHookById :one
 SELECT * from husonym_api.account_hooks WHERE id = $1;
@@ -45,7 +47,7 @@ SELECT * from husonym_api.account_hooks
 WHERE account_id = $1
   AND enabled = true
   AND events && sqlc.arg(events)::int[]
-ORDER BY created_at ASC;
+ORDER BY created_at, id ASC;
 
 -- name: GetSlackAccessToken :one
 SELECT (oauth_v2_response->>'access_token')::TEXT as access_token

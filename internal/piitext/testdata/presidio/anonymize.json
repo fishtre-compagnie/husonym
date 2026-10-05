@@ -1,0 +1,1445 @@
+[
+ {
+  "name": "replace_without_value",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call <PERSON> now",
+   "items": [
+    {
+     "start": 5,
+     "end": 13,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "replace_with_empty_value",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "replace",
+     "new_value": ""
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call <PERSON> now",
+   "items": [
+    {
+     "start": 5,
+     "end": 13,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "replace_with_value",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "replace",
+     "new_value": "X"
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call X now",
+   "items": [
+    {
+     "start": 5,
+     "end": 6,
+     "entity_type": "PERSON",
+     "text": "X",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "replace_by_entity_over_default",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "redact"
+    },
+    "PERSON": {
+     "type": "replace",
+     "new_value": "X"
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call X now",
+   "items": [
+    {
+     "start": 5,
+     "end": 6,
+     "entity_type": "PERSON",
+     "text": "X",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "redact",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "redact"
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call  now",
+   "items": [
+    {
+     "start": 5,
+     "end": 5,
+     "entity_type": "PERSON",
+     "text": "",
+     "operator": "redact"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_from_start",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 4,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call **** Müller now",
+   "items": [
+    {
+     "start": 5,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "**** Müller",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_from_end",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 4,
+     "from_end": true
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call Jörg Mü**** now",
+   "items": [
+    {
+     "start": 5,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "Jörg Mü****",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_more_than_length",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 40,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call *********** now",
+   "items": [
+    {
+     "start": 5,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "***********",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_wide_character",
+  "request": {
+   "text": "山田太郎さんに電話",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 4,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "＊",
+     "chars_to_mask": 2,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "＊＊太郎さんに電話",
+   "items": [
+    {
+     "start": 0,
+     "end": 4,
+     "entity_type": "PERSON",
+     "text": "＊＊太郎",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_emoji",
+  "request": {
+   "text": "👩‍💻 Ann 🎉",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 7,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 1,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "*‍💻 Ann 🎉",
+   "items": [
+    {
+     "start": 0,
+     "end": 7,
+     "entity_type": "PERSON",
+     "text": "*‍💻 Ann",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_zero",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 0,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call Jörg Müller now",
+   "items": [
+    {
+     "start": 5,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "Jörg Müller",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_negative",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": -3,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call Jörg Müller now",
+   "items": [
+    {
+     "start": 5,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "Jörg Müller",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_empty_character",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "",
+     "chars_to_mask": 4,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call  Müller now",
+   "items": [
+    {
+     "start": 5,
+     "end": 12,
+     "entity_type": "PERSON",
+     "text": " Müller",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "mask_two_characters",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "mask",
+     "masking_char": "ab",
+     "chars_to_mask": 4,
+     "from_end": false
+    }
+   }
+  },
+  "status": 422,
+  "answer": {
+   "error": "Invalid input, masking_char must be a character"
+  }
+ },
+ {
+  "name": "hash_md5",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "hash",
+     "hash_type": "md5"
+    }
+   }
+  },
+  "status": 422,
+  "answer": {
+   "error": "Parameter hash_type value md5 is not in range of values ['sha256', 'sha512']"
+  }
+ },
+ {
+  "name": "hash_sha256_first",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "hash",
+     "hash_type": "sha256"
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call 9c3d4cf8ce2c4f12e6089ff29e74f33e33ef412c45d42a567fc76523344f5168 now",
+   "items": [
+    {
+     "start": 5,
+     "end": 69,
+     "entity_type": "PERSON",
+     "text": "9c3d4cf8ce2c4f12e6089ff29e74f33e33ef412c45d42a567fc76523344f5168",
+     "operator": "hash"
+    }
+   ]
+  }
+ },
+ {
+  "name": "hash_sha256_second",
+  "request": {
+   "text": "Call Jörg Müller now",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 16,
+     "score": 0.8
+    }
+   ],
+   "anonymizers": {
+    "DEFAULT": {
+     "type": "hash",
+     "hash_type": "sha256"
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "Call 6af7f805c668beb93896cdffd0982ee518aef1b4e100cc23c6ce8dd7aa2df867 now",
+   "items": [
+    {
+     "start": 5,
+     "end": 69,
+     "entity_type": "PERSON",
+     "text": "6af7f805c668beb93896cdffd0982ee518aef1b4e100cc23c6ce8dd7aa2df867",
+     "operator": "hash"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_overlap",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 8,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_overlap_chain",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 4,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 3,
+     "end": 8,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 7,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "containment_inner_scores_higher",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 10,
+     "score": 0.4
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 10,
+     "score": 1.0
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "containment_same_start",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 10,
+     "score": 0.4
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 0,
+     "end": 5,
+     "score": 1.0
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "equal_span_different_scores",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.4
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 0,
+     "end": 5,
+     "score": 0.9
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<LOCATION> Bond met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 10,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "equal_span_different_scores_reversed",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "LOCATION",
+     "start": 0,
+     "end": 5,
+     "score": 0.9
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.4
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<LOCATION> Bond met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 10,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "equal_span_equal_scores",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<LOCATION> Bond met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 10,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "equal_span_equal_scores_reversed",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "LOCATION",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> Bond met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "partial_overlap_left_scores_higher",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 8,
+     "score": 0.9
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 10,
+     "score": 0.4
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON><LOCATION> met Jörg Müller",
+   "items": [
+    {
+     "start": 8,
+     "end": 18,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "partial_overlap_right_scores_higher",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 8,
+     "score": 0.4
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 10,
+     "score": 0.9
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON><LOCATION> met Jörg Müller",
+   "items": [
+    {
+     "start": 8,
+     "end": 18,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "partial_overlap_chain",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 8,
+     "score": 0.5
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 12,
+     "score": 0.9
+    },
+    {
+     "entity_type": "ORGANIZATION",
+     "start": 11,
+     "end": 19,
+     "score": 0.7
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON><LOCATION><ORGANIZATION> Müller",
+   "items": [
+    {
+     "start": 18,
+     "end": 32,
+     "entity_type": "ORGANIZATION",
+     "text": "<ORGANIZATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 8,
+     "end": 18,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "partial_overlap_left_masked",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 8,
+     "score": 0.9
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 10,
+     "score": 0.4
+    }
+   ],
+   "anonymizers": {
+    "PERSON": {
+     "type": "mask",
+     "masking_char": "*",
+     "chars_to_mask": 3,
+     "from_end": false
+    }
+   }
+  },
+  "status": 200,
+  "answer": {
+   "text": "***es Bo<LOCATION> met Jörg Müller",
+   "items": [
+    {
+     "start": 8,
+     "end": 18,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "***es Bo",
+     "operator": "mask"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_one_space",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> met Jörg Müller",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_one_space_multibyte",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 15,
+     "end": 19,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 20,
+     "end": 26,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "James Bond met <PERSON>",
+   "items": [
+    {
+     "start": 15,
+     "end": 23,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_two_spaces",
+  "request": {
+   "text": "James  Bond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 7,
+     "end": 11,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON>",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_tab",
+  "request": {
+   "text": "James\tBond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON>\t<PERSON>",
+   "items": [
+    {
+     "start": 9,
+     "end": 17,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_newline",
+  "request": {
+   "text": "James\nBond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON>\n<PERSON>",
+   "items": [
+    {
+     "start": 9,
+     "end": 17,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_no_break_space",
+  "request": {
+   "text": "James Bond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> <PERSON>",
+   "items": [
+    {
+     "start": 9,
+     "end": 17,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_touching",
+  "request": {
+   "text": "JamesBond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 9,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON><PERSON>",
+   "items": [
+    {
+     "start": 8,
+     "end": 16,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "different_types_one_space",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 6,
+     "end": 10,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> <LOCATION> met Jörg Müller",
+   "items": [
+    {
+     "start": 9,
+     "end": 19,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "different_types_touching",
+  "request": {
+   "text": "JamesBond",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 5,
+     "score": 0.8
+    },
+    {
+     "entity_type": "LOCATION",
+     "start": 5,
+     "end": 9,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON><LOCATION>",
+   "items": [
+    {
+     "start": 8,
+     "end": 18,
+     "entity_type": "LOCATION",
+     "text": "<LOCATION>",
+     "operator": "replace"
+    },
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "same_type_three_with_spaces",
+  "request": {
+   "text": "Ian Lancaster Fleming wrote",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 0,
+     "end": 3,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 4,
+     "end": 13,
+     "score": 0.8
+    },
+    {
+     "entity_type": "PERSON",
+     "start": 14,
+     "end": 21,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "<PERSON> wrote",
+   "items": [
+    {
+     "start": 0,
+     "end": 8,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "zero_length_finding",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 5,
+     "end": 5,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 200,
+  "answer": {
+   "text": "James<PERSON> Bond met Jörg Müller",
+   "items": [
+    {
+     "start": 5,
+     "end": 13,
+     "entity_type": "PERSON",
+     "text": "<PERSON>",
+     "operator": "replace"
+    }
+   ]
+  }
+ },
+ {
+  "name": "no_finding",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": []
+  },
+  "status": 200,
+  "answer": {
+   "text": "James Bond met Jörg Müller",
+   "items": []
+  }
+ },
+ {
+  "name": "finding_past_the_text",
+  "request": {
+   "text": "James Bond met Jörg Müller",
+   "analyzer_results": [
+    {
+     "entity_type": "PERSON",
+     "start": 20,
+     "end": 40,
+     "score": 0.8
+    }
+   ]
+  },
+  "status": 422,
+  "answer": {
+   "error": "Invalid analyzer result, start: 20 and end: 40, while text length is only 26."
+  }
+ }
+]

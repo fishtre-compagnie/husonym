@@ -26,20 +26,19 @@ A Helm chart for the Husonym App
 | datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
 | disableGcpCloudStorageConnections | bool | `false` | Feature flag that will disable GCP Cloud Storage Connections from being visible. Note: This only disables the new connections form and is a temporary flag until authentication in the multi-tenant environment is better understood. |
-| enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. Requires EE License |
+| enableRunLogs | bool | `false` | Feature flag that enables the frontend to show the run logs on the Run [id] page. only enable this if the backend has been configured to surface run logs. |
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
 | husonymApi.url | string | `"http://husonym-api"` | The URL to the Husonym API instance |
-| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
-| jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: This will only work if it has also been enabled via the backend with a valid license |
+| jobHooks.enabled | bool | `false` | Enables Job Hooks on the frontend. Note: creating or modifying a hook requires a valid license; existing hooks stay visible and removable without one |
 | nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
 | nextAuthSecret | string | `"This is an example"` | next-auth secret that is used to encrypt the session cookie |
 | nextAuthUrl | string | `"http://localhost:3000"` | next-auth base url. Should be the public url for the application |

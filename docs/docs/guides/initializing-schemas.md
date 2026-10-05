@@ -14,7 +14,7 @@ Husonym has the ability to initialize your database schema prior to running a sy
 
 Postgres, MySQL, and MS SQL Server are supported.
 
-> MS SQL Server requires an Enterprise License for OSS users.
+> Initializing the schema of an MS SQL Server destination requires a valid license. See [Licensing](/deploy/licensing).
 
 ## Option 1: Use Husonym's Initialize Schema Feature
 

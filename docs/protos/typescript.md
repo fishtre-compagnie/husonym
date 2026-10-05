@@ -122,7 +122,7 @@ import {
   TransformerMappingSchema,
 } from '@husonym/sdk';
 
-// authenticates with Husonym Cloud
+// authenticates with the Husonym API
 const husonymClient = getHusonymClient({
   getAccessToken: () => {
     return 'neo_at_v1_xxxxxxxxxxxx'; // API key
@@ -314,7 +314,7 @@ import {
   JobSourceSchema,
 } from '@husonym/sdk';
 
-// authenticates with Husonym Cloud
+// authenticates with the Husonym API
 const husonymClient = getHusonymClient({
   getAccessToken: () => {
     return 'neo_at_v1_xxxxxxxxxxxx'; // API key

@@ -34,7 +34,7 @@ There are a few prerequisites that the SDK needs in order to be properly configu
 
 If you are using Husonym locally and in unauthenticated mode then there is no authentication required and you can move onto the [Getting Started](go#getting-started) section.
 
-If you are using Husonym locally in `auth mode` or using Husonym Cloud, you can authenticate with the Husonym server using an API URL and API Key. There are two ways to provide the authentication header.
+If you are using Husonym in `auth mode`, you can authenticate with the Husonym server using an API URL and API Key. There are two ways to provide the authentication header.
 
 1. Attaching to the HTTP client
 2. Providing an interceptor to the SDK Clients that patch in the header on every request.

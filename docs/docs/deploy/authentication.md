@@ -15,8 +15,6 @@ There will also be a section for how to properly set up these systems properly.
 
 ## User Authentication
 
-> **NB:** This requires a valid Husonym Enterprise license for OSS deployments. If you would like to try this out, please contact us.
-
 This authentication is the primary form of authentication in the system. It is used to identify authenticating users in the system and what privileges they have.
 Today, this is quite simple and merely verifies their access token is valid and that they are operating against a Husonym account that a user resides in.
 
@@ -174,8 +172,6 @@ A token that states it was issued to an application rather than to a person (`id
 refused before it can create a user. A provider that does not state it is unaffected.
 
 ## Starting Husonym in Auth Mode
-
-> **NB:** This requires a valid Husonym Enterprise license to be present in the API container. If you would like to try this out, please contact us.
 
 Starting Husonym in Auth Mode is done in a similar way as starting Husonym in non-auth mode: using a compose file. A compose file is also provided that stands up [Keycloak](https://keycloak.org), an open source auth solution.
 
