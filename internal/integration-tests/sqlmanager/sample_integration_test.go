@@ -3,7 +3,6 @@ package sqlmanager
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -53,6 +52,55 @@ func Test_SampleData_CoversTheTable(t *testing.T) {
 		table := f.bigTable(t)
 		requireCoversTheTable(t, f, table, 100, bigRows)
 	})
+}
+
+const (
+	// spreadDraws is the number of samples Test_SampleData_DrawsFromManyPlaces draws.
+	spreadDraws = 3
+	// spreadBuckets is the number of ranges of 1000 consecutive ranks one of them must touch.
+	spreadBuckets = 20
+)
+
+// A sample of 100 rows of the table of 200 000 narrow rows comes from many places of the table:
+// one of spreadDraws samples holds rows of at least spreadBuckets ranges of 1000 consecutive
+// ranks, out of 200.
+//
+// Why it does not fail by chance. A page holds 157 rows on PostgreSQL (1274 pages) and 235 on
+// SQL Server (852 pages), so SampleMinPages pages are 3.92 and 5.87 percent of them. Every page
+// is taken on its own with that probability, every row of a taken page is kept with the
+// probability that leaves about 1000 of them, and 100 are drawn. Simulated ten million times
+// with these figures, a draw touches 18 to 64 ranges on PostgreSQL and 19 to 64 on SQL Server,
+// and fewer than 20 in 4 draws out of ten million on PostgreSQL and 1 on SQL Server. On the
+// servers, 400 draws on PostgreSQL touched 29 to 55 ranges and 200 on SQL Server 30 to 53. The
+// three draws are independent: all three under 20 is under 1e-18, and stays under one in a
+// billion as long as the simulation is not wrong by more than a factor of a thousand for one
+// draw.
+//
+// A sample cut from the pages that hold 1000 rows alone (6 pages on PostgreSQL, 4 on SQL Server)
+// reaches 20 ranges in less than one draw in 200, in the same simulation.
+func Test_SampleData_DrawsFromManyPlaces(t *testing.T) {
+	forEachEngine(t, []string{familyPostgres, familyMssql}, func(t *testing.T, f *sampleFixture) {
+		table := f.bigTable(t)
+		best := 0
+		for draw := 0; draw < spreadDraws && best < spreadBuckets; draw++ {
+			rows := f.mustSample(t, table, 100)
+			require.Len(t, rows, 100)
+			requireDistinct(t, rows, "rank")
+			best = max(best, len(rankBuckets(t, rows)))
+		}
+		require.GreaterOrEqual(t, best, spreadBuckets,
+			"the widest of %d samples touches %d ranges of 1000 ranks", spreadDraws, best)
+	})
+}
+
+// rankBuckets gives the ranges of 1000 consecutive ranks the rows of a sample fall in.
+func rankBuckets(t *testing.T, rows []map[string]any) map[int64]bool {
+	t.Helper()
+	buckets := map[int64]bool{}
+	for _, row := range rows {
+		buckets[intColumn(t, row, "rank")/1000] = true
+	}
+	return buckets
 }
 
 func Test_SampleData_SmallTable(t *testing.T) {
@@ -206,22 +254,45 @@ func Test_SampleData_SlicesAreDisjoint(t *testing.T) {
 	})
 }
 
-// A table of 5000 rows asks for 20 percent of its pages, a whole number the query writes as an
-// integer. The query the builder produces runs, and the sample is complete.
+// builtQueryTries bounds the times a query of the builder is run until it returns a row.
+const builtQueryTries = 5
+
+// requireBuiltQueryDraws runs a query of the builder until it returns rows, and checks that they
+// are distinct rows and no more than limit.
+func requireBuiltQueryDraws(t *testing.T, f *sampleFixture, query string, limit int) {
+	t.Helper()
+	var ranks []int64
+	for try := 0; try < builtQueryTries && len(ranks) == 0; try++ {
+		ranks = f.queryRanks(t, query)
+	}
+	require.NotEmpty(t, ranks, "the query returned no row in %d runs", builtQueryTries)
+	require.LessOrEqual(t, len(ranks), limit)
+	seen := map[int64]bool{}
+	for _, rank := range ranks {
+		require.False(t, seen[rank], "a row came twice")
+		seen[rank] = true
+	}
+}
+
+// A share of pages that is a whole number is written as an integer. The table of 5000 rows is on
+// 32 pages: 20 percent of them, each taken on its own, are none at all with probability 0.8^32,
+// 8 in 10 000, and five runs in a row with probability 3 in 10^16. The query the builder
+// produces runs and returns distinct rows, no more than asked.
 func Test_SampleData_IntegerShare(t *testing.T) {
 	forEachEngine(t, postgresOnly, func(t *testing.T, f *sampleFixture) {
 		table := f.filledTable(t, "five_thousand", 5000)
 
 		query, ok, err := querybuilder.BuildTableSampleQuery(
-			sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.BuildTable(f.schema, table), 5000, 100)
+			sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.BuildTable(f.schema, table),
+			querybuilder.TableSize{Rows: 5000, Pages: 250}, 100)
 		require.NoError(t, err)
 		require.True(t, ok)
-		require.Contains(t, query, "SYSTEM (20)")
-		rows, err := f.db.QueryContext(context.Background(), query)
-		require.NoError(t, err)
-		require.NoError(t, rows.Close())
+		require.Contains(t, query, "SYSTEM (20) LIMIT")
+		requireBuiltQueryDraws(t, f, query, 100)
 
-		require.Len(t, f.mustSample(t, table, 100), 100)
+		rows := f.mustSample(t, table, 100)
+		require.Len(t, rows, 100)
+		requireDistinct(t, rows, "rank")
 	})
 }
 
@@ -246,13 +317,12 @@ func Test_SampleData_StaleStatistics(t *testing.T) {
 		before := f.seqTupleReads(t, table)
 		require.Len(t, f.mustSample(t, table, 100), 100)
 		after := f.settledSeqTupleReads(t, before, table)
-		if after == before {
-			t.Log("the statistics view did not report the reads: rows read not observable")
-		} else {
-			t.Logf("rows read by one sample: %d", after-before)
-			// The sample is cut at 4000 rows; a little more than that is one page.
-			require.LessOrEqual(t, after-before, int64(5000))
-		}
+		require.Greater(t, after, before, "the statistics view did not report the rows read")
+		t.Logf("rows read by one sample: %d", after-before)
+		// The sample reads SampleMinPages pages of 157 rows on average, 7850 rows, each of the
+		// 1274 pages being taken on its own: 110 pages or more, 17 270 rows, comes less than once
+		// in 10^13 samples. A scan of the table reads 200 000 rows.
+		require.LessOrEqual(t, after-before, int64(17_500))
 
 		requireCoversTheTable(t, f, table, 100, bigRows)
 	})
@@ -278,25 +348,25 @@ func (f *sampleFixture) settledSeqTupleReads(t *testing.T, before int64, table s
 	return f.seqTupleReads(t, table)
 }
 
-// SQL Server takes its sample from pages with TABLESAMPLE; the draw covers the table.
+// SQL Server draws a share of its pages with TABLESAMPLE and thins their rows one by one. The
+// query the builder produces for the size of the table runs and returns distinct rows, no more
+// than asked; it returns none only when no page is taken, e^-50 for a share of fifty pages.
 func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
 		table := f.bigTable(t)
+		var size querybuilder.TableSize
+		require.NoError(t, f.db.QueryRowContext(context.Background(),
+			"SELECT SUM(row_count), SUM(in_row_data_page_count) FROM sys.dm_db_partition_stats "+
+				"WHERE object_id = OBJECT_ID(@p1) AND index_id IN (0, 1)", f.qualified(table)).
+			Scan(&size.Rows, &size.Pages))
+		require.Equal(t, int64(bigRows), size.Rows)
+
 		query, ok, err := querybuilder.BuildTableSampleQuery(
-			sqlmanager_shared.MssqlDriver, sqlmanager_shared.BuildTable(f.schema, table), 0, 100)
+			sqlmanager_shared.MssqlDriver, sqlmanager_shared.BuildTable(f.schema, table), size, 100)
 		require.NoError(t, err)
 		require.True(t, ok)
-		require.True(t, strings.Contains(query, "TABLESAMPLE"))
-		rows, err := f.db.QueryContext(context.Background(), query)
-		require.NoError(t, err)
-		var n int
-		for rows.Next() {
-			n++
-		}
-		require.NoError(t, rows.Err())
-		require.NoError(t, rows.Close())
-		// A sample of pages can come back empty on its own; the service then reads the window.
-		require.LessOrEqual(t, n, 100)
+		require.Contains(t, query, "PERCENT) WHERE")
+		requireBuiltQueryDraws(t, f, query, 100)
 
 		requireCoversTheTable(t, f, table, 100, bigRows)
 	})

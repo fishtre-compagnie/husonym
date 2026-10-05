@@ -19,6 +19,7 @@ const (
 	mysqlKeyLookup = "FROM information_schema.STATISTICS"
 	mysqlBounds    = "SELECT MIN\\(`id`\\), MAX\\(`id`\\) FROM `public`.`users`"
 	pgEstimate     = "FROM pg_class"
+	mssqlSize      = "FROM sys.schemas"
 )
 
 // recordingDB hands every statement to a sqlmock database and keeps a copy, so a test can
@@ -87,20 +88,20 @@ func Test_spreadSampleQuery_PostgresUsesTheEstimate(t *testing.T) {
 	query, ok := spread(t, db, sqlmanager_shared.GoquPostgresDriver, firstOfRange)
 
 	require.True(t, ok)
-	require.Contains(t, query, "TABLESAMPLE SYSTEM (0.5)")
+	require.Contains(t, query, "TABLESAMPLE SYSTEM (2.6738) WHERE RANDOM() < 0.187 LIMIT 4000")
 	require.Len(t, db.statements, 1)
 }
 
 func Test_spreadSampleQuery_PostgresScalesTheEstimateToTheCurrentSize(t *testing.T) {
 	db, mock := newSampleDB(t)
-	// Analyzed at 2 000 rows over 20 pages, then loaded to 1 000 times the pages.
+	// Analyzed at 2 000 rows over 20 pages, then loaded to 1 000 times the pages: 2 000 000
+	// rows on 20 000 pages. Fifty pages are 0.25 percent and hold 5 000 rows.
 	mock.ExpectQuery(pgEstimate).WillReturnRows(estimateRows(2000, 20, 20000))
 
 	query, ok := spread(t, db, sqlmanager_shared.GoquPostgresDriver, firstOfRange)
 
 	require.True(t, ok)
-	require.Contains(t, query, "TABLESAMPLE SYSTEM (0.05)")
-	require.Contains(t, query, "LIMIT 4000")
+	require.Contains(t, query, "TABLESAMPLE SYSTEM (0.25) WHERE RANDOM() < 0.2 LIMIT 4000")
 }
 
 func Test_spreadSampleQuery_NoEstimate(t *testing.T) {
@@ -134,14 +135,43 @@ func Test_spreadSampleQuery_NoEstimate(t *testing.T) {
 	}
 }
 
-func Test_spreadSampleQuery_SqlServerReadsNoCatalog(t *testing.T) {
-	db, _ := newSampleDB(t)
+func sizeRows(rows, pages any) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"rows", "pages"}).AddRow(rows, pages)
+}
+
+func Test_spreadSampleQuery_SqlServerReadsTheSizeFromTheCatalog(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery(mssqlSize).WithArgs("public", "users").WillReturnRows(sizeRows(200000, 852))
 
 	query, ok := spread(t, db, sqlmanager_shared.MssqlDriver, firstOfRange)
 
 	require.True(t, ok)
-	require.Contains(t, query, "TABLESAMPLE (1000 ROWS)")
-	require.Empty(t, db.statements)
+	require.Contains(t, query, "TABLESAMPLE (5.8685 PERCENT) WHERE")
+	require.Contains(t, query, "< 85200)")
+	require.Len(t, db.statements, 1)
+	require.NotContains(t, db.statements[0], "users", "the names are bind parameters")
+}
+
+func Test_spreadSampleQuery_SqlServerWithoutASize(t *testing.T) {
+	cases := map[string]func(*sqlmock.ExpectedQuery){
+		"unknown or hidden table": func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(sizeRows(nil, nil)) },
+		"empty":                   func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(sizeRows(0, 0)) },
+		"no pages":                func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(sizeRows(200000, 0)) },
+		"fits the window":         func(q *sqlmock.ExpectedQuery) { q.WillReturnRows(sizeRows(1000, 5)) },
+		"catalog error":           func(q *sqlmock.ExpectedQuery) { q.WillReturnError(errors.New("permission denied")) },
+	}
+	for name, respond := range cases {
+		t.Run(name, func(t *testing.T) {
+			db, mock := newSampleDB(t)
+			respond(mock.ExpectQuery(mssqlSize).WithArgs("public", "users"))
+
+			query, ok := spread(t, db, sqlmanager_shared.MssqlDriver, firstOfRange)
+
+			require.False(t, ok)
+			require.Empty(t, query)
+			require.Len(t, db.statements, 1)
+		})
+	}
 }
 
 func Test_spreadSampleQuery_UnknownDriver(t *testing.T) {

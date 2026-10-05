@@ -22,6 +22,15 @@ const (
 	postgresEstimateQuery = `SELECT reltuples, relpages, pg_relation_size(oid) / current_setting('block_size')::bigint
 FROM pg_class WHERE oid = to_regclass($1)`
 
+	// The rows and the in-row data pages of the heap or of the clustered index, over every
+	// partition. A login sees the tables it may read; any other table gives no size.
+	sqlServerSizeQuery = `SELECT SUM(p.rows), SUM(a.data_pages)
+FROM sys.schemas s
+JOIN sys.tables t ON t.schema_id = s.schema_id
+JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1)
+JOIN sys.allocation_units a ON a.container_id = p.hobt_id AND a.type = 1
+WHERE s.name = @p1 AND t.name = @p2`
+
 	// A usable key is the only column of the primary index. Unlike COLUMN_KEY, the
 	// STATISTICS view does not report a unique index on a NOT NULL column as primary.
 	mysqlPrimaryKeyQuery = `SELECT s.COLUMN_NAME, c.DATA_TYPE
@@ -102,13 +111,17 @@ func spreadSampleQuery(
 	qualified := sqlmanager_shared.BuildTable(schema, table)
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
-		estimate, ok := postgresEstimate(ctx, logger, db, schema, table)
+		size, ok := postgresSize(ctx, logger, db, schema, table)
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, logger, driver, qualified, estimate, numRows)
+		return tableSampleQuery(ctx, logger, driver, qualified, size, numRows)
 	case sqlmanager_shared.MssqlDriver:
-		return tableSampleQuery(ctx, logger, driver, qualified, 0, numRows)
+		size, ok := sqlServerSize(ctx, logger, db, schema, table)
+		if !ok {
+			return "", false
+		}
+		return tableSampleQuery(ctx, logger, driver, qualified, size, numRows)
 	case sqlmanager_shared.MysqlDriver:
 		return mysqlKeySlicesQuery(ctx, logger, db, schema, table, numRows, pick)
 	default:
@@ -120,10 +133,10 @@ func tableSampleQuery(
 	ctx context.Context,
 	logger *slog.Logger,
 	driver, qualified string,
-	estimatedRows int64,
+	size querybuilder.TableSize,
 	numRows uint,
 ) (string, bool) {
-	query, ok, err := querybuilder.BuildTableSampleQuery(driver, qualified, estimatedRows, numRows)
+	query, ok, err := querybuilder.BuildTableSampleQuery(driver, qualified, size, numRows)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
@@ -131,30 +144,53 @@ func tableSampleQuery(
 	return query, ok
 }
 
-// postgresEstimate returns the number of rows the table holds now, from the planner's
-// density (rows per page) and the current number of pages. A table that was never
-// analyzed, a partitioned parent, a view, a missing relation and a failing query all
-// mean there is no estimate.
-func postgresEstimate(
+// postgresSize returns the number of pages of the table and the number of rows it holds
+// now, from the planner's density (rows per page) and the current number of pages. A
+// table that was never analyzed, a partitioned parent, a view, a missing relation and a
+// failing query all mean there is no size.
+func postgresSize(
 	ctx context.Context,
 	logger *slog.Logger,
 	db sampleQuerier,
 	schema, table string,
-) (int64, bool) {
+) (querybuilder.TableSize, bool) {
 	name := sqlmanager_postgres.EscapePgColumn(schema) + "." + sqlmanager_postgres.EscapePgColumn(table)
 	var reltuples float64
 	var relpages, pages sql.NullInt64
 	err := db.QueryRowContext(ctx, postgresEstimateQuery, name).Scan(&reltuples, &relpages, &pages)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			logger.DebugContext(ctx, "row estimate unavailable", "error_kind", fmt.Sprintf("%T", err))
+			logger.DebugContext(ctx, "table size unavailable", "error_kind", fmt.Sprintf("%T", err))
 		}
-		return 0, false
+		return querybuilder.TableSize{}, false
 	}
 	if reltuples <= 0 || !relpages.Valid || relpages.Int64 <= 0 || !pages.Valid || pages.Int64 <= 0 {
-		return 0, false
+		return querybuilder.TableSize{}, false
 	}
-	return int64(reltuples / float64(relpages.Int64) * float64(pages.Int64)), true
+	return querybuilder.TableSize{
+		Rows:  int64(reltuples / float64(relpages.Int64) * float64(pages.Int64)),
+		Pages: pages.Int64,
+	}, true
+}
+
+// sqlServerSize returns the rows and the data pages the catalog counts for the table. A
+// view, a missing table, a table the login may not read, an empty table and a failing
+// query all mean there is no size.
+func sqlServerSize(
+	ctx context.Context,
+	logger *slog.Logger,
+	db sampleQuerier,
+	schema, table string,
+) (querybuilder.TableSize, bool) {
+	var rows, pages sql.NullInt64
+	if err := db.QueryRowContext(ctx, sqlServerSizeQuery, schema, table).Scan(&rows, &pages); err != nil {
+		logger.DebugContext(ctx, "table size unavailable", "error_kind", fmt.Sprintf("%T", err))
+		return querybuilder.TableSize{}, false
+	}
+	if !rows.Valid || rows.Int64 <= 0 || !pages.Valid || pages.Int64 <= 0 {
+		return querybuilder.TableSize{}, false
+	}
+	return querybuilder.TableSize{Rows: rows.Int64, Pages: pages.Int64}, true
 }
 
 func mysqlKeySlicesQuery(

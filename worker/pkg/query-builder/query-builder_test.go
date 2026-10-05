@@ -2,6 +2,7 @@ package querybuilder
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -303,63 +304,88 @@ func Test_BuildInsertQuery(t *testing.T) {
 }
 
 func Test_BuildTableSampleQuery(t *testing.T) {
-	t.Run("postgres draws a share of the pages sized for the window", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 200_000, 10)
+	const pg, mssql = sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MssqlDriver
+	build := func(t *testing.T, driver string, size TableSize) string {
+		t.Helper()
+		sql, ok, err := BuildTableSampleQuery(driver, "public.accounts", size, 10)
 		require.NoError(t, err)
 		require.True(t, ok)
+		return sql
+	}
+
+	t.Run("postgres thins the rows of the pages it draws when they hold more than the window", func(t *testing.T) {
+		// 107 rows a page: SampleMinPages pages are 2.6738 percent and hold 5 348 rows.
+		require.Equal(t,
+			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE RANDOM() < 0.187 LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, pg, TableSize{Rows: 200_000, Pages: 1870}))
+	})
+	t.Run("postgres keeps every row of the pages that hold the window", func(t *testing.T) {
+		// 2 rows a page: the window is on 500 pages, 0.5 percent.
 		require.Equal(t,
 			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (0.5) LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
-			sql)
+			build(t, pg, TableSize{Rows: 200_000, Pages: 100_000}))
 	})
-	t.Run("postgres share is rounded to four decimals", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 3_000, 10)
-		require.NoError(t, err)
-		require.True(t, ok)
-		require.Contains(t, sql, "TABLESAMPLE SYSTEM (33.3333)")
-	})
-	t.Run("postgres share never drops to zero", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", 100_000_000_000, 10)
-		require.NoError(t, err)
-		require.True(t, ok)
-		require.Contains(t, sql, "TABLESAMPLE SYSTEM (0.0001)")
-	})
-	t.Run("postgres share never exceeds 100", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", SampleWindowSize+1, 10)
-		require.NoError(t, err)
-		require.True(t, ok)
-		require.Contains(t, sql, "TABLESAMPLE SYSTEM (99.9001)")
-	})
-	t.Run("postgres bounds the rows read whatever the share", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", SampleWindowSize+1, 10)
-		require.NoError(t, err)
-		require.True(t, ok)
-		require.Contains(t, sql, "TABLESAMPLE SYSTEM (99.9001) LIMIT 4000")
+	t.Run("postgres bounds the rows inside the sample, after the thinning", func(t *testing.T) {
 		require.Equal(t, 4*SampleWindowSize, SampleRowsBound)
-	})
-	t.Run("sqlserver asks for the window in rows", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery(sqlmanager_shared.MssqlDriver, "dbo.accounts", 200_000, 10)
-		require.NoError(t, err)
-		require.True(t, ok)
-		require.Contains(t, sql, `TABLESAMPLE (1000 ROWS)`)
-		require.Contains(t, sql, `NEWID()`)
-		require.NotContains(t, sql, "TOP (1000)")
-	})
-	t.Run("sqlserver does not depend on the estimate", func(t *testing.T) {
-		for _, rows := range []int64{-1, 0, 1, 1000, 200_000} {
-			_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MssqlDriver, "dbo.accounts", rows, 10)
-			require.NoError(t, err)
-			require.True(t, ok)
+		bounded := regexp.MustCompile(
+			`^SELECT \* FROM \(SELECT \* FROM "public"\."accounts" TABLESAMPLE SYSTEM \([0-9.]+\)( WHERE RANDOM\(\) < [0-9.]+)? LIMIT 4000\) AS "husonym_sample" ORDER BY RANDOM\(\) ASC LIMIT 10$`)
+		for _, size := range []TableSize{
+			{Rows: 200_000, Pages: 1870},
+			{Rows: 200_000, Pages: 100_000},
+			{Rows: 5_000, Pages: 27},
+			{Rows: SampleWindowSize + 1, Pages: 1},
+			{Rows: 100_000_000_000, Pages: 1_000_000_000},
+		} {
+			require.Regexp(t, bounded, build(t, pg, size))
 		}
 	})
-	t.Run("a table that fits the window is not sampled", func(t *testing.T) {
-		for _, rows := range []int64{-1, 0, 1, 1000} {
-			_, ok, err := BuildTableSampleQuery(sqlmanager_shared.GoquPostgresDriver, "public.accounts", rows, 10)
-			require.NoError(t, err)
-			require.False(t, ok)
+	t.Run("the share is rounded to four decimals", func(t *testing.T) {
+		require.Contains(t, build(t, pg, TableSize{Rows: 3_000, Pages: 3_000}), "TABLESAMPLE SYSTEM (33.3333) LIMIT")
+		require.Contains(t, build(t, mssql, TableSize{Rows: 3_000, Pages: 3_000}), "TABLESAMPLE (33.3333 PERCENT))")
+	})
+	t.Run("the share never drops to zero", func(t *testing.T) {
+		huge := TableSize{Rows: 100_000_000_000, Pages: 100_000_000_000}
+		require.Contains(t, build(t, pg, huge), "TABLESAMPLE SYSTEM (0.0001) LIMIT")
+		require.Contains(t, build(t, mssql, huge), "TABLESAMPLE (0.0001 PERCENT))")
+	})
+	t.Run("the share never exceeds 100", func(t *testing.T) {
+		// Fewer pages than SampleMinPages: all of them are read and one row in five is kept.
+		few := TableSize{Rows: 5_000, Pages: 27}
+		require.Contains(t, build(t, pg, few), "TABLESAMPLE SYSTEM (100) WHERE RANDOM() < 0.2 LIMIT 4000")
+		require.Contains(t, build(t, mssql, few), "TABLESAMPLE (100 PERCENT) WHERE")
+	})
+	t.Run("the share covers the window when its pages are more than SampleMinPages", func(t *testing.T) {
+		require.Contains(t, build(t, pg, TableSize{Rows: 200_000, Pages: 40_000}), "TABLESAMPLE SYSTEM (0.5) LIMIT")
+	})
+	t.Run("sqlserver thins the rows of the pages it draws when they hold more than the window", func(t *testing.T) {
+		// 235 rows a page: SampleMinPages pages are 5.8685 percent and hold 11 737 rows.
+		require.Equal(t,
+			`SELECT  TOP (10) * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE (5.8685 PERCENT) `+
+				`WHERE (CHECKSUM(NEWID(), %%physloc%%) & 2147483647) % 1000000 < 85200) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			build(t, mssql, TableSize{Rows: 200_000, Pages: 852}))
+	})
+	t.Run("sqlserver keeps every row of the pages that hold the window", func(t *testing.T) {
+		require.Equal(t,
+			`SELECT  TOP (10) * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE (0.5 PERCENT)) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			build(t, mssql, TableSize{Rows: 200_000, Pages: 100_000}))
+	})
+	t.Run("sqlserver does not cut the sample before the random order", func(t *testing.T) {
+		require.Equal(t, 1, strings.Count(build(t, mssql, TableSize{Rows: 200_000, Pages: 852}), "TOP ("))
+	})
+	t.Run("a table that fits the window, or whose size is unknown, is not sampled", func(t *testing.T) {
+		for _, driver := range []string{pg, mssql} {
+			for _, size := range []TableSize{
+				{Rows: -1, Pages: 10}, {Rows: 0, Pages: 0}, {Rows: 1, Pages: 1}, {Rows: SampleWindowSize, Pages: 10},
+				{Rows: 200_000, Pages: 0}, {Rows: 200_000, Pages: -1},
+			} {
+				_, ok, err := BuildTableSampleQuery(driver, "public.accounts", size, 10)
+				require.NoError(t, err)
+				require.False(t, ok, "%s %+v", driver, size)
+			}
 		}
 	})
 	t.Run("mysql has no table sample", func(t *testing.T) {
-		_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", 200_000, 10)
+		_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", TableSize{Rows: 200_000, Pages: 1870}, 10)
 		require.NoError(t, err)
 		require.False(t, ok)
 	})

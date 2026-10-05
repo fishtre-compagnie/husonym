@@ -396,3 +396,21 @@ func (f *sampleFixture) sessionCountQuery() string {
 		return "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()"
 	}
 }
+
+// queryRanks runs a query that returns the rows of a table built by createTable, and gives
+// their ranks.
+func (f *sampleFixture) queryRanks(t *testing.T, query string) []int64 {
+	t.Helper()
+	rows, err := f.db.QueryContext(context.Background(), query)
+	require.NoError(t, err)
+	defer rows.Close()
+	var ranks []int64
+	for rows.Next() {
+		var id, rank int64
+		var label string
+		require.NoError(t, rows.Scan(&id, &rank, &label))
+		ranks = append(ranks, rank)
+	}
+	require.NoError(t, rows.Err())
+	return ranks
+}

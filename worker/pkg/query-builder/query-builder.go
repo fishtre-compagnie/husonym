@@ -132,9 +132,16 @@ const (
 	SampleSlices = 10
 	// SampleSliceRows is the number of rows read from each key slice.
 	SampleSliceRows = 100
-	// SampleRowsBound is the most rows a PostgreSQL table sample may read, whatever the
-	// share of pages it asks for.
+	// SampleRowsBound is the most rows a PostgreSQL table sample may hand to the random
+	// order, whatever the share of pages it asks for.
 	SampleRowsBound = 4 * SampleWindowSize
+	// SampleMinPages is the least number of pages a table sample is drawn from. Pages of
+	// narrow rows hold the window in a handful of pages, which are a handful of places
+	// of the table.
+	SampleMinPages = 50
+
+	// sampleKeepScale is the precision of the share of rows a SQL Server sample keeps.
+	sampleKeepScale = 1_000_000
 )
 
 // KeyRange is a range of key values, both ends included.
@@ -142,44 +149,64 @@ type KeyRange struct {
 	From, To int64
 }
 
+// TableSize is the size of a table as its catalog tells it: the rows it holds and the
+// pages they are stored on.
+type TableSize struct {
+	Rows, Pages int64
+}
+
 // BuildTableSampleQuery builds a query that draws rows from pages spread across the
-// whole table. The table is never scanned in full: the database reads a bounded
-// number of pages and the random order only applies to that sample.
+// whole table. The table is never scanned in full: the database reads the pages
+// expected to hold SampleWindowSize rows, and at least SampleMinPages of them, and the
+// random order only applies to that sample.
+//
+// When those pages hold more rows than the window, each row is kept with the
+// probability that leaves about SampleWindowSize of them, so the rows that reach the
+// random order come from every page read. PostgreSQL then bounds them at
+// SampleRowsBound, for a size that is far from the truth.
 //
 // It supports PostgreSQL and SQL Server. ok is false when the driver has no table
-// sample, and, for PostgreSQL, when estimatedRows (a negative value stands for an
-// unknown count) is not larger than SampleWindowSize: the table then fits the
-// window and the window query serves it. SQL Server takes a number of rows and
-// ignores estimatedRows.
+// sample, when the size is unknown (no row or no page) and when the table has no more
+// rows than SampleWindowSize: the window query serves it.
 func BuildTableSampleQuery(
 	driver, table string,
-	estimatedRows int64,
+	size TableSize,
 	limit uint,
 ) (sql string, ok bool, err error) {
+	if size.Rows <= SampleWindowSize || size.Pages <= 0 {
+		return "", false, nil
+	}
+	percent, keep := tableSampleShare(size)
+
 	builder := getGoquDialect(driver)
-	var source exp.LiteralExpression
+	var inner *goqu.SelectDataset
 	var randStmt string
 	switch driver {
 	case sqlmanager_shared.PostgresDriver, sqlmanager_shared.GoquPostgresDriver:
-		if estimatedRows <= SampleWindowSize {
-			return "", false, nil
+		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), percent))
+		if keep < 1 {
+			inner = inner.Where(goqu.L("RANDOM() < ?", keep))
 		}
-		source = goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), postgresSamplePercent(estimatedRows))
+		inner = inner.Limit(SampleRowsBound)
 		randStmt = "RANDOM()"
 	case sqlmanager_shared.MssqlDriver:
-		source = goqu.L("? TABLESAMPLE (? ROWS)", goqu.I(table), SampleWindowSize)
+		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", goqu.I(table), percent))
+		if keep < 1 {
+			// A random value that names nothing of the row is computed once for the whole
+			// query. The row locator makes it one value per row, and reads no column.
+			inner = inner.Where(goqu.L(
+				"(CHECKSUM(NEWID(), %%physloc%%) & 2147483647) % ? < ?",
+				sampleKeepScale, int64(math.Round(keep*sampleKeepScale)),
+			))
+		}
+		// No bound here: a TOP on a table sample keeps the first pages read.
 		randStmt = "NEWID()"
 	default:
 		return "", false, nil
 	}
 
-	inner := builder.From(source)
-	if randStmt == "RANDOM()" {
-		inner = inner.Limit(SampleRowsBound)
-	}
-	sample := inner.As("husonym_sample")
 	sql, _, err = builder.
-		From(sample).
+		From(inner.As("husonym_sample")).
 		Order(goqu.L(randStmt).Asc()).
 		Limit(limit).
 		ToSQL()
@@ -189,13 +216,24 @@ func BuildTableSampleQuery(
 	return sql, true, nil
 }
 
-// postgresSamplePercent is the share of pages, in percent, that is expected to hold
-// about SampleWindowSize rows. It is rounded to four decimals, stays above zero and
-// does not exceed 100.
-func postgresSamplePercent(estimatedRows int64) float64 {
-	percent := 100 * float64(SampleWindowSize) / float64(estimatedRows)
-	percent = math.Round(percent*10000) / 10000
-	return math.Min(100, math.Max(0.0001, percent))
+// tableSampleShare gives the share of pages to read, in percent, and the share of their
+// rows to keep. The pages are those expected to hold SampleWindowSize rows, and at least
+// SampleMinPages; the percentage is rounded to four decimals, stays above zero and does
+// not exceed 100. keep is 1 when those pages are not expected to hold more than the
+// window. size must hold rows and pages.
+func tableSampleShare(size TableSize) (percent, keep float64) {
+	share := math.Max(
+		float64(SampleWindowSize)/float64(size.Rows),
+		float64(SampleMinPages)/float64(size.Pages),
+	)
+	share = math.Min(1, share)
+	percent = math.Max(0.0001, roundTo4(100*share))
+	keep = math.Min(1, roundTo4(float64(SampleWindowSize)/(share*float64(size.Rows))))
+	return percent, keep
+}
+
+func roundTo4(v float64) float64 {
+	return math.Round(v*10000) / 10000
 }
 
 // BuildKeySlicesSampleQuery builds a MySQL query that reads up to SampleSliceRows rows
