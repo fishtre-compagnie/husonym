@@ -46,8 +46,7 @@ func columnDefinition(column *Column) string {
 	if column.IsColumnSet {
 		b.WriteString(" COLUMN_SET FOR ALL_SPARSE_COLUMNS")
 	}
-	// An alias type takes no COLLATE clause: its columns follow the database.
-	if column.Collation != "" && !column.IsUserDefinedType {
+	if writesCollation(column) {
 		b.WriteString(" COLLATE " + column.Collation)
 	}
 	if column.IsSparse {
@@ -85,6 +84,35 @@ func columnDefinition(column *Column) string {
 		b.WriteString(" ROWGUIDCOL")
 	}
 	return b.String()
+}
+
+// takesCollation tells a column whose definition may carry a COLLATE clause. An alias type takes
+// none: its columns follow the database. A computed column is written by its expression.
+func takesCollation(column *Column) bool {
+	return column.Collation != "" && !column.IsUserDefinedType && !column.IsComputed
+}
+
+// writesCollation tells a column whose definition carries its COLLATE clause: one that takes
+// the clause, and whose collation name can be written.
+func writesCollation(column *Column) bool {
+	return takesCollation(column) && isCollationName(column.Collation)
+}
+
+// isCollationName tells a name made of ASCII letters, digits and underscores, the shape of
+// every collation name. SQL Server takes no quoted form after COLLATE, so no other name can be
+// written there.
+func isCollationName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		letter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+		if !letter && (c < '0' || c > '9') && c != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 // versioning turns system versioning on, on the history table the source names.
