@@ -119,11 +119,21 @@ func Test_OddNames_SchemaInit(t *testing.T) {
 // character the catalog of MySQL writes with an escape or that a statement must carry as it is.
 type oddCheck struct {
 	label, column, clause string
+	// name is the checked column, quoted; refused and accepted are values of it, written as
+	// SQL, that the constraint refuses and accepts. No row is inserted when they are empty.
+	name, refused, accepted string
+	// tableOptions follow the definition of the table.
+	tableOptions string
+	// holds are pieces of text the expression holds when the product lists it.
+	holds []string
 }
 
 // checkOver gives a constraint over an integer column of the given name.
 func (f *sampleFixture) checkOver(label, column string) oddCheck {
-	return oddCheck{label: label, column: f.quote(column) + " INT NOT NULL", clause: f.quote(column) + " > 0"}
+	return oddCheck{
+		label: label, column: f.quote(column) + " INT NOT NULL", clause: f.quote(column) + " > 0",
+		name: f.quote(column), refused: "0", accepted: "1", holds: []string{f.quote(column)},
+	}
 }
 
 // checkOfText gives a constraint over the text column c, its expression written for a session
@@ -132,30 +142,98 @@ func checkOfText(label, clause string) oddCheck {
 	return oddCheck{label: label, column: "c VARCHAR(40) NOT NULL", clause: clause}
 }
 
+// checkRefusingText gives a constraint over the text column c that refuses one text, written
+// as a literal for a session that reads a backslash in a text as an escape.
+func checkRefusingText(label, literal string) oddCheck {
+	check := checkOfText(label, "c <> "+literal)
+	check.name, check.refused, check.accepted = "c", literal, "'plain'"
+	// The characters outside ASCII are listed as they are; the others may come with an escape.
+	check.holds = strings.FieldsFunc(literal, func(r rune) bool { return r < 0x80 })
+	return check
+}
+
+// listedChecks gives the expressions of the check constraints of a database the way the product
+// lists the constraints of a schema.
+func (d *oddDatabase) listedChecks(t *testing.T, database string) []string {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := d.f.sqlmanager.NewSqlConnection(ctx, connectionmanager.NewUniqueSession(), d.connection,
+		testutil.GetTestLogger(t))
+	require.NoError(t, err)
+	defer conn.Db().Close()
+	constraints, err := conn.Db().GetTableConstraintsBySchema(ctx, []string{database})
+	require.NoError(t, err)
+	listed := []string{}
+	for _, expressions := range constraints.CheckConstraints {
+		listed = append(listed, expressions...)
+	}
+	return listed
+}
+
+// inLatin1 gives the same constraint in a table whose character set is latin1.
+func (c oddCheck) inLatin1() oddCheck {
+	c.label += ", table in latin1"
+	c.tableOptions = " DEFAULT CHARSET=latin1"
+	return c
+}
+
+// oddChecks gives the constraints of the test for an engine.
+func (f *sampleFixture) oddChecks() []oddCheck {
+	checks := []oddCheck{
+		f.checkOver("backslash", `back\slash`),
+		f.checkOver("two backslashes", `back\\slash`),
+		f.checkOver("backslash before a letter of an escape", `back\nslash`),
+		f.checkOver("line break", "new\nline"),
+		f.checkOver("carriage return", "carriage\rreturn"),
+		f.checkOver("apostrophe", "o'clock"),
+		f.checkOver("double quote", `we"ird`),
+		f.checkOver("backtick", "we`ird"),
+		f.checkOver("tab", "tab\tstop"),
+		f.checkOver("control characters", "bell\x07 and substitute\x1a"),
+		checkOfText("text with an apostrophe", `c <> 'o''clock'`),
+		checkOfText("text with a backslash", `c <> 'back\\slash'`),
+		checkOfText("text ending with a backslash", `c <> 'slash\\'`),
+		checkOfText("text with a line break", "c <> 'new\nline'"),
+		checkOfText("text with a double quote", `c <> 'we"ird'`),
+		checkOfText("pattern with an escaped wildcard", `c LIKE 'a\_b'`),
+		// Characters outside ASCII: of two bytes in UTF-8, with a byte that Windows-1252 gives
+		// to another character or to none, of three bytes, and next to an escape.
+		f.checkOver("accented letter", "é"),
+		f.checkOver("sharp s", "ß"),
+		f.checkOver("accented capital", "Á"),
+		f.checkOver("snowman", "é☃"),
+		f.checkOver("ideogram", "漢"),
+		f.checkOver("accented letter, apostrophe, snowman and backslash", `é'☃\`),
+		f.checkOver("accented letter", "é").inLatin1(),
+		f.checkOver("snowman", "é☃").inLatin1(),
+		checkRefusingText("text with an accented letter", `'é'`),
+		checkRefusingText("text with a sharp s", `'ß'`),
+		checkRefusingText("text with an accented capital", `'Á'`),
+		checkRefusingText("text with a snowman", `'é☃'`),
+		checkRefusingText("text with an ideogram", `'漢'`),
+		checkRefusingText("text with the letters the bytes of another make", `'Ã©'`),
+		checkRefusingText("text with an accented letter, an apostrophe, a snowman and a backslash", `'é''☃\\'`),
+		checkRefusingText("text with an accented letter", `'é'`).inLatin1(),
+		checkRefusingText("text with a sharp s", `'ß'`).inLatin1(),
+		// The second byte of these letters takes each value from 0x80 to 0xBF.
+		checkRefusingText("text with the capital letters of Latin-1", `'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞß'`),
+		checkRefusingText("text with the small letters of Latin-1", `'àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ'`),
+	}
+	if f.engine.name != "mariadb" {
+		// The catalog of MariaDB does not hold a character of four bytes.
+		checks = append(checks, checkRefusingText("text with a character of four bytes", `'😀'`))
+	}
+	return checks
+}
+
 // A CHECK constraint is created in the destination as the source has it, whatever characters
 // the names of its columns and the texts of its expression hold. MySQL and MariaDB give the
-// expression of a constraint in their catalog, where MySQL writes it with escapes.
+// expression of a constraint in their catalog, where MySQL writes it with escapes and gives a
+// character outside ASCII as one character for each of its bytes.
 func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 	forEachEngine(t, mysqlFamily, func(t *testing.T, f *sampleFixture) {
 		const database, table = "odd_checks", "checked"
-		for _, check := range []oddCheck{
-			f.checkOver("backslash", `back\slash`),
-			f.checkOver("two backslashes", `back\\slash`),
-			f.checkOver("backslash before a letter of an escape", `back\nslash`),
-			f.checkOver("line break", "new\nline"),
-			f.checkOver("carriage return", "carriage\rreturn"),
-			f.checkOver("apostrophe", "o'clock"),
-			f.checkOver("double quote", `we"ird`),
-			f.checkOver("backtick", "we`ird"),
-			f.checkOver("tab", "tab\tstop"),
-			f.checkOver("control characters", "bell\x07 and substitute\x1a"),
-			checkOfText("text with an apostrophe", `c <> 'o''clock'`),
-			checkOfText("text with a backslash", `c <> 'back\\slash'`),
-			checkOfText("text ending with a backslash", `c <> 'slash\\'`),
-			checkOfText("text with a line break", "c <> 'new\nline'"),
-			checkOfText("text with a double quote", `c <> 'we"ird'`),
-			checkOfText("pattern with an escaped wildcard", `c LIKE 'a\_b'`),
-		} {
+		for _, check := range f.oddChecks() {
 			t.Run(check.label, func(t *testing.T) {
 				source := f.oddSource(t)
 				destination := f.oddDestination(t)
@@ -167,8 +245,8 @@ func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 				}
 				source.exec(t, "CREATE DATABASE "+f.quote(database))
 				source.exec(t, fmt.Sprintf(
-					"CREATE TABLE %s (id INT NOT NULL PRIMARY KEY, %s, CONSTRAINT positive CHECK (%s))",
-					source.table(database, table), check.column, check.clause))
+					"CREATE TABLE %s (id INT NOT NULL PRIMARY KEY, %s, CONSTRAINT positive CHECK (%s))%s",
+					source.table(database, table), check.column, check.clause, check.tableOptions))
 
 				f.withSchemaManager(t, source, destination, f.oddDestinationOptions(true, false, false),
 					func(manager schemamanager.SchemaManagerService) {
@@ -182,6 +260,27 @@ func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 				require.NotEmpty(t, want)
 				require.Equal(t, want, destination.describe(t, []string{database}))
 				destination.requireCanaryIntact(t)
+
+				// The constraints of a schema are listed with the same characters.
+				if len(check.holds) > 0 {
+					listed := source.listedChecks(t, database)
+					require.Len(t, listed, 1)
+					for _, piece := range check.holds {
+						require.Contains(t, listed[0], piece)
+					}
+				}
+
+				// The constraint of the destination refuses and accepts what the source's does.
+				if check.name == "" {
+					return
+				}
+				for _, d := range []*oddDatabase{source, destination} {
+					insert := "INSERT INTO " + d.table(database, table) + " (id, " + check.name + ") VALUES "
+					_, err := d.db.ExecContext(context.Background(), insert+"(1, "+check.refused+")")
+					require.Error(t, err, "the constraint refuses %s", check.refused)
+					require.Contains(t, err.Error(), "positive")
+					d.exec(t, insert+"(2, "+check.accepted+")")
+				}
 			})
 		}
 	})

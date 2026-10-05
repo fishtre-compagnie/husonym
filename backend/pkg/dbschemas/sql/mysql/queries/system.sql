@@ -87,10 +87,45 @@ SELECT
     -- its neighbour as another escape; it becomes one backslash last. MariaDB writes the
     -- expression as it is. Each text is given by its bytes, which reads the same under every
     -- sql_mode.
+    -- MySQL also gives each byte of the expression as one character, from U+0000 to U+00FF, so
+    -- that a character outside ASCII comes as one character for each byte of its UTF-8 form.
+    -- The bytes are taken back first, and read as UTF-8. The character set latin1 gives a
+    -- character from U+00A0 to U+00FF its byte, and so it does five of the characters from
+    -- U+0080 to U+009F; it gives the bytes of the twenty-seven others to the characters of
+    -- Windows-1252, which take their place before the conversion. The pattern is
+    -- [^ U+0001 - U+00FF ]: an expression that holds a character standing for no byte is left
+    -- as it is, and so is one whose bytes are not UTF-8, which a text written in another
+    -- character set gives.
     IFNULL(
         CASE
             WHEN VERSION() LIKE '%MariaDB%' THEN cc.check_clause
-            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause,
+            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                IFNULL(
+                    CASE
+                        WHEN cc.check_clause NOT REGEXP _utf8mb4 0x5B5E012DC3BF5D COLLATE utf8mb4_bin
+                        THEN CONVERT(CAST(CONVERT(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            cc.check_clause,
+                            _utf8mb4 0xC280, _utf8mb4 0xE282AC), _utf8mb4 0xC282, _utf8mb4 0xE2809A),
+                            _utf8mb4 0xC283, _utf8mb4 0xC692), _utf8mb4 0xC284, _utf8mb4 0xE2809E),
+                            _utf8mb4 0xC285, _utf8mb4 0xE280A6), _utf8mb4 0xC286, _utf8mb4 0xE280A0),
+                            _utf8mb4 0xC287, _utf8mb4 0xE280A1), _utf8mb4 0xC288, _utf8mb4 0xCB86),
+                            _utf8mb4 0xC289, _utf8mb4 0xE280B0), _utf8mb4 0xC28A, _utf8mb4 0xC5A0),
+                            _utf8mb4 0xC28B, _utf8mb4 0xE280B9), _utf8mb4 0xC28C, _utf8mb4 0xC592),
+                            _utf8mb4 0xC28E, _utf8mb4 0xC5BD), _utf8mb4 0xC291, _utf8mb4 0xE28098),
+                            _utf8mb4 0xC292, _utf8mb4 0xE28099), _utf8mb4 0xC293, _utf8mb4 0xE2809C),
+                            _utf8mb4 0xC294, _utf8mb4 0xE2809D), _utf8mb4 0xC295, _utf8mb4 0xE280A2),
+                            _utf8mb4 0xC296, _utf8mb4 0xE28093), _utf8mb4 0xC297, _utf8mb4 0xE28094),
+                            _utf8mb4 0xC298, _utf8mb4 0xCB9C), _utf8mb4 0xC299, _utf8mb4 0xE284A2),
+                            _utf8mb4 0xC29A, _utf8mb4 0xC5A1), _utf8mb4 0xC29B, _utf8mb4 0xE280BA),
+                            _utf8mb4 0xC29C, _utf8mb4 0xC593), _utf8mb4 0xC29E, _utf8mb4 0xC5BE),
+                            _utf8mb4 0xC29F, _utf8mb4 0xC5B8)
+                            USING latin1) AS BINARY) USING utf8mb4)
+                    END,
+                    cc.check_clause
+                ),
                 _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
                 _utf8mb4 0x5C27, _utf8mb4 0x27),
                 _utf8mb4 0x5C6E, _utf8mb4 0x0A),
@@ -158,10 +193,45 @@ SELECT
     -- its neighbour as another escape; it becomes one backslash last. MariaDB writes the
     -- expression as it is. Each text is given by its bytes, which reads the same under every
     -- sql_mode.
+    -- MySQL also gives each byte of the expression as one character, from U+0000 to U+00FF, so
+    -- that a character outside ASCII comes as one character for each byte of its UTF-8 form.
+    -- The bytes are taken back first, and read as UTF-8. The character set latin1 gives a
+    -- character from U+00A0 to U+00FF its byte, and so it does five of the characters from
+    -- U+0080 to U+009F; it gives the bytes of the twenty-seven others to the characters of
+    -- Windows-1252, which take their place before the conversion. The pattern is
+    -- [^ U+0001 - U+00FF ]: an expression that holds a character standing for no byte is left
+    -- as it is, and so is one whose bytes are not UTF-8, which a text written in another
+    -- character set gives.
     IFNULL(
         CASE
             WHEN VERSION() LIKE '%MariaDB%' THEN cc.check_clause
-            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause,
+            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                IFNULL(
+                    CASE
+                        WHEN cc.check_clause NOT REGEXP _utf8mb4 0x5B5E012DC3BF5D COLLATE utf8mb4_bin
+                        THEN CONVERT(CAST(CONVERT(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            cc.check_clause,
+                            _utf8mb4 0xC280, _utf8mb4 0xE282AC), _utf8mb4 0xC282, _utf8mb4 0xE2809A),
+                            _utf8mb4 0xC283, _utf8mb4 0xC692), _utf8mb4 0xC284, _utf8mb4 0xE2809E),
+                            _utf8mb4 0xC285, _utf8mb4 0xE280A6), _utf8mb4 0xC286, _utf8mb4 0xE280A0),
+                            _utf8mb4 0xC287, _utf8mb4 0xE280A1), _utf8mb4 0xC288, _utf8mb4 0xCB86),
+                            _utf8mb4 0xC289, _utf8mb4 0xE280B0), _utf8mb4 0xC28A, _utf8mb4 0xC5A0),
+                            _utf8mb4 0xC28B, _utf8mb4 0xE280B9), _utf8mb4 0xC28C, _utf8mb4 0xC592),
+                            _utf8mb4 0xC28E, _utf8mb4 0xC5BD), _utf8mb4 0xC291, _utf8mb4 0xE28098),
+                            _utf8mb4 0xC292, _utf8mb4 0xE28099), _utf8mb4 0xC293, _utf8mb4 0xE2809C),
+                            _utf8mb4 0xC294, _utf8mb4 0xE2809D), _utf8mb4 0xC295, _utf8mb4 0xE280A2),
+                            _utf8mb4 0xC296, _utf8mb4 0xE28093), _utf8mb4 0xC297, _utf8mb4 0xE28094),
+                            _utf8mb4 0xC298, _utf8mb4 0xCB9C), _utf8mb4 0xC299, _utf8mb4 0xE284A2),
+                            _utf8mb4 0xC29A, _utf8mb4 0xC5A1), _utf8mb4 0xC29B, _utf8mb4 0xE280BA),
+                            _utf8mb4 0xC29C, _utf8mb4 0xC593), _utf8mb4 0xC29E, _utf8mb4 0xC5BE),
+                            _utf8mb4 0xC29F, _utf8mb4 0xC5B8)
+                            USING latin1) AS BINARY) USING utf8mb4)
+                    END,
+                    cc.check_clause
+                ),
                 _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
                 _utf8mb4 0x5C27, _utf8mb4 0x27),
                 _utf8mb4 0x5C6E, _utf8mb4 0x0A),
