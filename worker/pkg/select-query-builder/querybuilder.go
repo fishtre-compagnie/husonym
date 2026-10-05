@@ -634,7 +634,45 @@ func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 		}
 	}
 
-	return sqlparser.String(stmt), nil
+	dialect, err := sqlident.ForDriver(sqlmanager_shared.MysqlDriver)
+	if err != nil {
+		return "", err
+	}
+	buf := sqlparser.NewTrackedBuffer(mysqlQualifierFormatter(table, dialect))
+	buf.Myprintf("%v", stmt)
+	return buf.String(), nil
+}
+
+// mysqlQualifierFormatter writes a statement the way the parser does, except for the table
+// that names a column: that name is written as one identifier. The parser leaves a name
+// bare when it holds only letters, digits, underscores and at signs, and for a name that
+// starts with two at signs also dots and quotes. A name of ASCII letters, digits and
+// underscores is still written by the parser; any other is quoted by the dialect. The
+// columns and the rest of the clause are written by the parser.
+func mysqlQualifierFormatter(table string, dialect sqlident.Dialect) sqlparser.NodeFormatter {
+	return func(buf *sqlparser.TrackedBuffer, node sqlparser.SQLNode) {
+		if col, ok := node.(*sqlparser.ColName); ok &&
+			col.Qualifier.Qualifier.IsEmpty() && col.Qualifier.Name.String() == table && !isPlainName(table) {
+			buf.WriteString(dialect.Quote(table))
+			buf.WriteByte('.')
+			buf.Myprintf("%v", col.Name)
+			return
+		}
+		node.Format(buf)
+	}
+}
+
+// isPlainName tells a name made only of ASCII letters, digits and underscores.
+func isPlainName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, c := range name {
+		if c != '_' && (c < '0' || c > '9') && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 func toAnySlice[T any](input []T) []any {

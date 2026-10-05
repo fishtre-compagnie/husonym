@@ -555,3 +555,37 @@ func Test_BuildQuery_RefusesWhatItCannotWrite(t *testing.T) {
 		require.ErrorContains(t, err, `no SQL dialect for driver "sqlite3"`)
 	})
 }
+
+// On MySQL the table, or the alias, that names the columns of a where clause is written as
+// one identifier whatever it holds. A name of letters, digits and underscores is written
+// as it always was.
+func Test_BuildQuery_MysqlWhereQualifierIsWrittenAsOneIdentifier(t *testing.T) {
+	const columns = "SELECT {t}.`id`, {t}.`autocommit` FROM `shop`.{t} AS {t} WHERE (%s) ORDER BY {t}.`id` ASC LIMIT 100"
+	for name, tc := range map[string]struct{ table, clause, where string }{
+		"a name made of at signs":      {"@@session", "autocommit = 1", "`@@session`.autocommit = 1"},
+		"a name with a backtick":       {"@@a`b", "id = 1", "`@@a``b`.id = 1"},
+		"a name with one at sign":      {"a@b", "id = 1", "`a@b`.id = 1"},
+		"a name with a plain backtick": {"we`ird", "id = 1", "`we``ird`.id = 1"},
+		"an ordinary name":             {"customers", "id = 1", "customers.id = 1"},
+		"a function and a list":        {"customers", "lower(email) = 'a' and id in (1, 2)", "lower(customers.email) = 'a' and customers.id in (1, 2)"},
+		"a subquery":                   {"customers", "id in (select customer_id from orders where total > 10)", "customers.id in (select customer_id from orders where total > 10)"},
+		"a column already qualified":   {"customers", "customers.id = 1", "customers.id = 1"},
+	} {
+		for _, byForeignKeys := range []bool{true, false} {
+			t.Run(name+" by foreign keys "+strconv.FormatBool(byForeignKeys), func(t *testing.T) {
+				key := "shop." + tc.table
+				configs, err := runconfigs.BuildRunConfigs(
+					map[string][]*sqlmanager_shared.ForeignConstraint{},
+					map[string]string{key: tc.clause},
+					map[string][]string{key: {"id"}},
+					map[string][]string{key: {"id", "autocommit"}},
+					map[string][][]string{}, map[string][][]string{},
+				)
+				require.NoError(t, err)
+				quotedTable := "`" + strings.ReplaceAll(tc.table, "`", "``") + "`"
+				query, _ := buildInsertQuery(t, sqlmanager_shared.MysqlDriver, configs, key, byForeignKeys)
+				require.Equal(t, strings.ReplaceAll(strings.ReplaceAll(columns, "%s", tc.where), "{t}", quotedTable), query)
+			})
+		}
+	}
+}
