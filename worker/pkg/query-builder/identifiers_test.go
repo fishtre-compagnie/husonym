@@ -329,6 +329,19 @@ func Test_BuildUpdateQuery_NamesAreWrittenAsOneIdentifier(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, `UPDATE "public"."users" SET "name"='x'`, sql)
 	})
+	t.Run("a column set after the first is written as one identifier", func(t *testing.T) {
+		expected := map[string]struct{ column, want string }{
+			"postgres":  {`z"z`, `UPDATE "s"."t" SET "a"=1,"z""z"=2 WHERE ("id" = 3)`},
+			"mysql":     {"z`z", "UPDATE `s`.`t` SET `a`=1,`z``z`=2 WHERE (`id` = 3)"},
+			"sqlserver": {`z"z`, `UPDATE "s"."t" SET "a"=1,"z""z"=2 WHERE ("id" = 3)`},
+		}
+		for driver, e := range expected {
+			sql, err := BuildUpdateQuery(driver, "s", "t", []string{"a", e.column}, []string{"id"},
+				map[string]any{"a": 1, e.column: 2, "id": 3})
+			require.NoError(t, err)
+			require.Equal(t, e.want, sql, driver)
+		}
+	})
 	t.Run("no column to set is refused", func(t *testing.T) {
 		_, err := BuildUpdateQuery("postgres", "public", "users", nil, []string{"id"}, map[string]any{"id": 1})
 		require.Error(t, err)
@@ -389,6 +402,26 @@ func Test_InsertBuilder_OnConflictDoUpdate_NamesAreWrittenAsOneIdentifier(t *tes
 				"ON DUPLICATE KEY UPDATE `co``l`=VALUES(`co``l`),`id`=VALUES(`id`)",
 			sql)
 		require.Equal(t, []any{"a", "1", "b", "2"}, args)
+	})
+	t.Run("postgres, a column updated after the first is written as one identifier", func(t *testing.T) {
+		n := oddNames{schema: "s", table: "t"}
+		sql, _, err := upsertBuilder(t, "pgx", n, "id").BuildInsertQuery(
+			[]map[string]any{{"id": "1", "a": "2", `z"z`: "3"}})
+		require.NoError(t, err)
+		require.Equal(t,
+			`INSERT INTO "s"."t" ("a", "id", "z""z") VALUES ($1, $2, $3) `+
+				`ON CONFLICT ("id") DO UPDATE SET "a"=EXCLUDED."a","z""z"=EXCLUDED."z""z"`,
+			sql)
+	})
+	t.Run("mysql, a column updated after the first is written as one identifier", func(t *testing.T) {
+		n := oddNames{schema: "s", table: "t"}
+		sql, _, err := upsertBuilder(t, "mysql", n, "id").BuildInsertQuery(
+			[]map[string]any{{"id": "1", "a": "2", "z`z": "3"}})
+		require.NoError(t, err)
+		require.Equal(t,
+			"INSERT INTO `s`.`t` (`a`, `id`, `z``z`) VALUES (?, ?, ?) "+
+				"ON DUPLICATE KEY UPDATE `a`=VALUES(`a`),`id`=VALUES(`id`),`z``z`=VALUES(`z``z`)",
+			sql)
 	})
 	t.Run("mysql, a column named * or holding a dot", func(t *testing.T) {
 		n := oddNames{schema: "s", table: "t"}
