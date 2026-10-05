@@ -179,7 +179,7 @@ func BuildTableSampleQuery(
 	var inner *goqu.SelectDataset
 	var randStmt string
 	switch driver {
-	case sqlmanager_shared.PostgresDriver, sqlmanager_shared.GoquPostgresDriver:
+	case sqlmanager_shared.GoquPostgresDriver:
 		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), percent))
 		if keep < 1 {
 			inner = inner.Where(goqu.L("RANDOM() < ?", keep))

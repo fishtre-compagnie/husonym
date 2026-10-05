@@ -392,10 +392,12 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 			}
 		}
 	})
-	t.Run("mysql has no table sample", func(t *testing.T) {
-		_, ok, err := BuildTableSampleQuery(sqlmanager_shared.MysqlDriver, "db.accounts", TableSize{Rows: 200_000, Pages: 1870}, 10)
-		require.NoError(t, err)
-		require.False(t, ok)
+	t.Run("any other driver has no table sample", func(t *testing.T) {
+		for _, driver := range []string{sqlmanager_shared.MysqlDriver, sqlmanager_shared.PostgresDriver, "oracle"} {
+			_, ok, err := BuildTableSampleQuery(driver, "db.accounts", TableSize{Rows: 200_000, Pages: 1870}, 10)
+			require.NoError(t, err)
+			require.False(t, ok, driver)
+		}
 	})
 }
 
