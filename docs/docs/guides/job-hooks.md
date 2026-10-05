@@ -13,9 +13,7 @@ Job Hooks are a way to add further customization to your Husonym jobs.
 
 ## Husonym Version Availability
 
-Job Hooks are available for all accounts in Husonym Cloud.
-
-For OSS users, Job Hooks are only available with a valid Enterprise license.
+Creating or modifying a Job Hook, and turning one back on, require a valid license. Viewing, turning off and deleting never do. See [Licensing](/deploy/licensing).
 
 ## How to configure Job Hooks
 

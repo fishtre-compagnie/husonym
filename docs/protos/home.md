@@ -18,11 +18,11 @@ There are a few inputs that any SDK needs in order to be properly configured.
 
 1. API URL
 2. Account ID
-3. API Key (required for Husonym Cloud or self-hosted authenticated environments)
+3. API Key (required for authenticated environments)
 
 ### API Url
 
-If using Husonym Cloud, the backend api url is: `https://husonym-api.svcs.husonym.com`
+The backend api url is the address your instance of the Husonym API is served at.
 
 The standard localhost url is: `http://localhost:8080`
 

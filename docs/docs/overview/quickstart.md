@@ -50,7 +50,7 @@ The **Connection Details** section, under the **Connection String** sub-header, 
 
 ## Setting up Husonym
 
-Let's get started with Husonym. First, sign up for a [Husonym account](https://app.husonym.com).
+Let's get started with Husonym. First, open the web app of your Husonym instance (see [Deploy](/deploy/introduction) to stand one up).
 
 Sign in with an email/password or Google OAuth. Once you're logged in, you'll be directed to the **Jobs** page.
 

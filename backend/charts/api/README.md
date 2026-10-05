@@ -40,7 +40,7 @@ A Helm chart for the Husonym Backend API
 | db.port | int | `5432` | The database port |
 | db.username | string | `nil` | The username that will be used for authentication |
 | deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
-| ee.license | string | `nil` | Husonym Enterprise-Edition License Key |
+| ee.license | string | `nil` | Husonym License Key |
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment's user-container. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |

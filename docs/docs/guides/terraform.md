@@ -16,13 +16,7 @@ Before configuring the Husonym provider, you'll need to know a few pieces of con
 
 ### Endpoint Url
 
-#### _Husonym Cloud_
-
-If configuring via Husonym Cloud, no endpoint is required as the provider already defaults to the Husonym Cloud instance.
-
-#### _Self-Hosted_
-
-If self-hosting, the url to your self-hosted instance of Husonym API must be provided.
+The url to your instance of Husonym API must be provided.
 It can be provided either directly to the provider as a configuration parameter, or via the `HUSONYM_ENDPOINT` environment variable. This is detailed in the Terraform Registry docs as well.
 
 ### API Key

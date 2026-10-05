@@ -33,9 +33,9 @@ serviceAccount:
 # -- Adds a special tag to the logging to determine what environment is running
 husonymEnv:
 
-# Configure Husonym Enterprise
+# Configure the Husonym license
 ee:
-  # -- Husonym Enterprise-Edition License Key
+  # -- Husonym License Key
   license:
 
 # -- Will eventually allow sending traces.

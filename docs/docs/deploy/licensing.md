@@ -100,8 +100,9 @@ destination, the bulk anonymization call, and the PII text transformer.
 - cancelling or terminating a run that is already going
 - deleting jobs, hooks and connections
 
-Runs already in progress when the license expires are allowed to finish rather than being
-interrupted mid-sync.
+Runs already in progress when the license expires are not interrupted. One exception: a
+run that maps the PII text transformer asks the API to rewrite each value, and the API
+refuses once the license has expired, so that run fails.
 
 Nothing is deleted, and no configuration is lost. Installing a renewed license restores
 everything immediately — no data migration, no re-setup.
