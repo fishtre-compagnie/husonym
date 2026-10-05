@@ -3,21 +3,26 @@
 // plan comes out.
 package ddl
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
+)
 
 // QuoteIdentifier returns name between brackets, each ] doubled.
 func QuoteIdentifier(name string) string {
-	return "[" + strings.ReplaceAll(name, "]", "]]") + "]"
+	return sqlident.SQLServer.Quote(name)
 }
 
-// QuoteLiteral returns value as a Unicode literal N'…', each ' doubled.
+// QuoteLiteral returns value as a Unicode literal N'…', each ' doubled and a backslash
+// before a line break split so that T-SQL keeps it.
 func QuoteLiteral(value string) string {
-	return "N'" + strings.ReplaceAll(value, "'", "''") + "'"
+	return sqlident.SQLServer.Literal(value)
 }
 
 // QualifiedName returns [schema].[name].
 func QualifiedName(schema, name string) string {
-	return QuoteIdentifier(schema) + "." + QuoteIdentifier(name)
+	return sqlident.SQLServer.Qualified(schema, name)
 }
 
 // quoteIdentifiers returns the names, each quoted, separated by a comma and a space.

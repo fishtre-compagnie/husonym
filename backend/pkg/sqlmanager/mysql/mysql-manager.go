@@ -15,6 +15,7 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	mysqlgrants "github.com/fishtre-compagnie/husonym/internal/mysql-grants"
 	"golang.org/x/sync/errgroup"
@@ -1711,7 +1712,7 @@ func EscapeMysqlColumns(cols []string) []string {
 
 // EscapeMysqlColumn quotes an identifier: a backtick inside it is doubled, as MySQL reads it.
 func EscapeMysqlColumn(col string) string {
-	return "`" + strings.ReplaceAll(col, "`", "``") + "`"
+	return sqlident.MySQL.Quote(col)
 }
 
 func EscapeMysqlDefaultColumn(

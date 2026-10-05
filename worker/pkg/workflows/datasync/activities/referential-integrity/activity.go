@@ -21,8 +21,8 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	temporallogger "github.com/fishtre-compagnie/husonym/worker/internal/temporal-logger"
@@ -270,10 +270,10 @@ func repairStatement(driver string, table *TableForeignKeys, fk *tableplan.Forei
 func quoterFor(driver string) func(string) string {
 	switch driver {
 	case sqlmanager_shared.MysqlDriver:
-		return func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" }
+		return sqlident.MySQL.Quote
 	case sqlmanager_shared.MssqlDriver:
-		return ddl.QuoteIdentifier
+		return sqlident.SQLServer.Quote
 	default:
-		return func(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
+		return sqlident.Postgres.Quote
 	}
 }

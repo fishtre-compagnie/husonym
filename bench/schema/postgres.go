@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 )
 
 // PostgresRenderer writes PostgreSQL DDL.
@@ -21,7 +23,7 @@ type PostgresRenderer struct{}
 func (PostgresRenderer) Dialect() Dialect { return Postgres }
 
 func (PostgresRenderer) QuoteIdent(name string) string {
-	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
+	return sqlident.Postgres.Quote(name)
 }
 
 func (PostgresRenderer) Placeholder(n int) string { return "$" + strconv.Itoa(n) }
