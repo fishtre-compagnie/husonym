@@ -16,6 +16,32 @@ import (
 	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 )
 
+// pg writes the names and the string values of the statements of this package.
+const pg = sqlident.Postgres
+
+// checkTableName refuses a schema or a table name that no engine takes. A table may have no
+// schema: it is then written alone.
+func checkTableName(schema, table string) error {
+	if schema != "" {
+		if err := sqlident.Check(schema); err != nil {
+			return fmt.Errorf("schema name: %w", err)
+		}
+	}
+	if err := sqlident.Check(table); err != nil {
+		return fmt.Errorf("table name: %w", err)
+	}
+	return nil
+}
+
+func checkNames(kind string, names ...string) error {
+	for _, name := range names {
+		if err := sqlident.Check(name); err != nil {
+			return fmt.Errorf("%s name: %w", kind, err)
+		}
+	}
+	return nil
+}
+
 // Finds any schemas referenced in datatypes that don't exist in tables and returns the statements to create them
 func getSchemaCreationStatementsFromDataTypes(
 	tables []*sqlmanager_shared.SchemaTable,
@@ -30,34 +56,48 @@ func getSchemaCreationStatementsFromDataTypes(
 	// Check each datatype schema against the table schemas
 	for _, composite := range datatypes.Composites {
 		if _, exists := schemaSet[composite.Schema]; !exists {
-			schemaStmts = append(
-				schemaStmts,
-				fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q;", composite.Schema),
-			)
+			schemaStmts = append(schemaStmts, buildCreateSchemaStatement(composite.Schema))
 			schemaSet[composite.Schema] = struct{}{}
 		}
 	}
 
 	for _, enum := range datatypes.Enums {
 		if _, exists := schemaSet[enum.Schema]; !exists {
-			schemaStmts = append(
-				schemaStmts,
-				fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q;", enum.Schema),
-			)
+			schemaStmts = append(schemaStmts, buildCreateSchemaStatement(enum.Schema))
 			schemaSet[enum.Schema] = struct{}{}
 		}
 	}
 
 	for _, domain := range datatypes.Domains {
 		if _, exists := schemaSet[domain.Schema]; !exists {
-			schemaStmts = append(
-				schemaStmts,
-				fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q;", domain.Schema),
-			)
+			schemaStmts = append(schemaStmts, buildCreateSchemaStatement(domain.Schema))
 			schemaSet[domain.Schema] = struct{}{}
 		}
 	}
 	return schemaStmts
+}
+
+func buildCreateSchemaStatement(schema string) string {
+	return fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;", pg.Quote(schema))
+}
+
+// dollarQuoteTag gives the delimiter of a dollar-quoted body: $$ when the body does not hold
+// it, and otherwise a tagged delimiter that the body does not hold.
+func dollarQuoteTag(body string) string {
+	if !strings.Contains(body, "$$") {
+		return "$$"
+	}
+	tag := "$husonym$"
+	for i := 1; strings.Contains(body, tag); i++ {
+		tag = fmt.Sprintf("$husonym%d$", i)
+	}
+	return tag
+}
+
+// doBlock writes a DO statement around a body, closed by a delimiter the body does not hold.
+func doBlock(body string) string {
+	tag := dollarQuoteTag(body)
+	return "DO " + tag + body + tag + ";"
 }
 
 func wrapPgIdempotentIndex(
@@ -65,22 +105,19 @@ func wrapPgIdempotentIndex(
 	constraintname,
 	alterStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
 	IF NOT EXISTS (
 		SELECT 1
 		FROM pg_class c
 		JOIN pg_namespace n ON n.oid = c.relnamespace
 		WHERE c.relkind in ('i', 'I')
-		AND c.relname = '%s'
-		AND n.nspname = '%s'
+		AND c.relname = %s
+		AND n.nspname = %s
 	) THEN
 		%s
 	END IF;
-END $$;
-`, constraintname, schema, addSuffixIfNotExist(alterStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(constraintname), pg.Literal(schema), addSuffixIfNotExist(alterStatement, ";")))
 }
 
 func wrapPgIdempotentConstraint(
@@ -88,26 +125,24 @@ func wrapPgIdempotentConstraint(
 	constraintName,
 	alterStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
 	IF NOT EXISTS (
 		SELECT 1
 		FROM pg_constraint
-		WHERE conname = '%s'
-		AND connamespace = (SELECT oid FROM pg_namespace WHERE nspname = '%s')
+		WHERE conname = %s
+		AND connamespace = (SELECT oid FROM pg_namespace WHERE nspname = %s)
 		AND conrelid = (
 			SELECT oid
 			FROM pg_class
-			WHERE relname = '%s'
-			AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '%s')
+			WHERE relname = %s
+			AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = %s)
 		)
 	) THEN
 		%s
 	END IF;
-END $$;
-	`, constraintName, schema, table, schema, addSuffixIfNotExist(alterStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(constraintName), pg.Literal(schema), pg.Literal(table), pg.Literal(schema),
+		addSuffixIfNotExist(alterStatement, ";")))
 }
 
 func wrapPgIdempotentSequence(
@@ -115,22 +150,19 @@ func wrapPgIdempotentSequence(
 	sequenceName,
 	createStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE c.relkind = 'S'
-        AND c.relname = '%s'
-        AND n.nspname = '%s'
+        AND c.relname = %s
+        AND n.nspname = %s
     ) THEN
         %s
     END IF;
-END $$;
-`, sequenceName, schema, addSuffixIfNotExist(createStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(sequenceName), pg.Literal(schema), addSuffixIfNotExist(createStatement, ";")))
 }
 
 func wrapPgIdempotentTrigger(
@@ -139,23 +171,21 @@ func wrapPgIdempotentTrigger(
 	triggerName,
 	createStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_trigger t
         JOIN pg_class c ON c.oid = t.tgrelid
         JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE t.tgname = '%s'
-        AND c.relname = '%s'
-        AND n.nspname = '%s'
+        WHERE t.tgname = %s
+        AND c.relname = %s
+        AND n.nspname = %s
     ) THEN
         %s
     END IF;
-END $$;
-`, triggerName, tableName, schema, addSuffixIfNotExist(createStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(triggerName), pg.Literal(tableName), pg.Literal(schema),
+		addSuffixIfNotExist(createStatement, ";")))
 }
 
 func wrapPgIdempotentFunction(
@@ -164,22 +194,20 @@ func wrapPgIdempotentFunction(
 	functionSignature,
 	createStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE p.proname = '%s'
-        AND n.nspname = '%s'
-        AND pg_catalog.pg_get_function_identity_arguments(p.oid) = '%s'
+        WHERE p.proname = %s
+        AND n.nspname = %s
+        AND pg_catalog.pg_get_function_identity_arguments(p.oid) = %s
     ) THEN
         %s
     END IF;
-END $$;
-`, functionName, schema, functionSignature, addSuffixIfNotExist(createStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(functionName), pg.Literal(schema), pg.Literal(functionSignature),
+		addSuffixIfNotExist(createStatement, ";")))
 }
 
 func wrapPgIdempotentDataType(
@@ -187,36 +215,39 @@ func wrapPgIdempotentDataType(
 	dataTypeName,
 	createStatement string,
 ) string {
-	stmt := fmt.Sprintf(`
-DO $$
+	return doBlock(fmt.Sprintf(`
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_type t
         JOIN pg_namespace n ON n.oid = t.typnamespace
-        WHERE t.typname = '%s'
-        AND n.nspname = '%s'
+        WHERE t.typname = %s
+        AND n.nspname = %s
     ) THEN
         %s
     END IF;
-END $$;
-`, dataTypeName, schema, addSuffixIfNotExist(createStatement, ";"))
-	return strings.TrimSpace(stmt)
+END `, pg.Literal(dataTypeName), pg.Literal(schema), addSuffixIfNotExist(createStatement, ";")))
 }
 
+// wrapPgIdempotentExtension writes the version as an identifier, a form CREATE EXTENSION
+// takes for it.
 func wrapPgIdempotentExtension(
 	schema sql.NullString,
 	extensionName,
 	version string,
 ) string {
 	if schema.Valid && strings.EqualFold(schema.String, "public") {
-		return fmt.Sprintf(`CREATE EXTENSION IF NOT EXISTS %q VERSION %q;`, extensionName, version)
+		return fmt.Sprintf(
+			`CREATE EXTENSION IF NOT EXISTS %s VERSION %s;`,
+			pg.Quote(extensionName),
+			pg.Quote(version),
+		)
 	}
 	return fmt.Sprintf(
-		`CREATE EXTENSION IF NOT EXISTS %q VERSION %q SCHEMA %q;`,
-		extensionName,
-		version,
-		schema.String,
+		`CREATE EXTENSION IF NOT EXISTS %s VERSION %s SCHEMA %s;`,
+		pg.Quote(extensionName),
+		pg.Quote(version),
+		pg.Quote(schema.String),
 	)
 }
 
@@ -234,14 +265,27 @@ func buildAlterStatementByForeignKeyConstraint(
 	if constraint == nil {
 		return "", errors.New("unable to build alter statement as constraint is nil")
 	}
+	if err := checkTableName(constraint.ReferencingSchema, constraint.ReferencingTable); err != nil {
+		return "", err
+	}
+	if err := checkTableName(constraint.ReferencedSchema, constraint.ReferencedTable); err != nil {
+		return "", err
+	}
+	if err := checkNames("constraint", constraint.ConstraintName); err != nil {
+		return "", err
+	}
+	if err := checkNames("column", constraint.ReferencingColumns...); err != nil {
+		return "", err
+	}
+	if err := checkNames("column", constraint.ReferencedColumns...); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf(
-		"ALTER TABLE %q.%q ADD CONSTRAINT %q FOREIGN KEY (%s) REFERENCES %q.%q (%s);",
-		constraint.ReferencingSchema,
-		constraint.ReferencingTable,
-		constraint.ConstraintName,
+		"ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);",
+		pg.Qualified(constraint.ReferencingSchema, constraint.ReferencingTable),
+		pg.Quote(constraint.ConstraintName),
 		strings.Join(EscapePgColumns(constraint.ReferencingColumns), ", "),
-		constraint.ReferencedSchema,
-		constraint.ReferencedTable,
+		pg.Qualified(constraint.ReferencedSchema, constraint.ReferencedTable),
 		strings.Join(EscapePgColumns(constraint.ReferencedColumns), ", "),
 	), nil
 }
@@ -252,11 +296,16 @@ func buildAlterStatementByConstraint(
 	if constraint == nil {
 		return "", errors.New("unable to build alter statement as constraint is nil")
 	}
+	if err := checkTableName(constraint.SchemaName, constraint.TableName); err != nil {
+		return "", err
+	}
+	if err := checkNames("constraint", constraint.ConstraintName); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf(
-		"ALTER TABLE %q.%q ADD CONSTRAINT %q %s;",
-		constraint.SchemaName,
-		constraint.TableName,
-		constraint.ConstraintName,
+		"ALTER TABLE %s ADD CONSTRAINT %s %s;",
+		pg.Qualified(constraint.SchemaName, constraint.TableName),
+		pg.Quote(constraint.ConstraintName),
 		constraint.ConstraintDefinition,
 	), nil
 }
@@ -270,16 +319,15 @@ func BuildAddColumnStatement(column *sqlmanager_shared.TableColumn) string {
 		GeneratedType:      *column.GeneratedType,
 		SequenceDefinition: column.SequenceDefinition,
 	})
-	return fmt.Sprintf("ALTER TABLE %q.%q ADD COLUMN %s;", column.Schema, column.Table, col)
+	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", pg.Qualified(column.Schema, column.Table), col)
 }
 
 func BuildRenameColumnStatement(column *schemamanager_shared.ColumnDiff) string {
 	return fmt.Sprintf(
-		"ALTER TABLE %q.%q RENAME COLUMN %q TO %q;",
-		column.Column.Schema,
-		column.Column.Table,
-		column.RenameColumn.OldName,
-		column.Column.Name,
+		"ALTER TABLE %s RENAME COLUMN %s TO %s;",
+		pg.Qualified(column.Column.Schema, column.Column.Table),
+		pg.Quote(column.RenameColumn.OldName),
+		pg.Quote(column.Column.Name),
 	)
 }
 
@@ -287,17 +335,17 @@ func BuildAlterColumnStatement(column *schemamanager_shared.ColumnDiff) []string
 	statements := []string{}
 	pieces := []string{}
 
-	base := fmt.Sprintf("ALTER COLUMN %q", column.Column.Name)
+	base := "ALTER COLUMN " + pg.Quote(column.Column.Name)
 	for _, action := range column.Actions {
 		switch action {
 		case schemamanager_shared.SetDatatype:
 			pieces = append(
 				pieces,
 				fmt.Sprintf(
-					"%s TYPE %s USING %q::%s",
+					"%s TYPE %s USING %s::%s",
 					base,
 					column.Column.DataType,
-					column.Column.Name,
+					pg.Quote(column.Column.Name),
 					column.Column.DataType,
 				),
 			)
@@ -337,9 +385,8 @@ func BuildAlterColumnStatement(column *schemamanager_shared.ColumnDiff) []string
 
 	if len(pieces) > 0 {
 		alterStatement := fmt.Sprintf(
-			"ALTER TABLE %q.%q %s;",
-			column.Column.Schema,
-			column.Column.Table,
+			"ALTER TABLE %s %s;",
+			pg.Qualified(column.Column.Schema, column.Column.Table),
 			strings.Join(pieces, ", "),
 		)
 		statements = append(statements, alterStatement)
@@ -350,25 +397,32 @@ func BuildAlterColumnStatement(column *schemamanager_shared.ColumnDiff) []string
 
 func BuildDropColumnStatement(schema, table, column string) string {
 	// cascade is used to drop the column and all the constraints, views, and indexes that depend on it
-	return fmt.Sprintf("ALTER TABLE %q.%q DROP COLUMN IF EXISTS %q CASCADE;", schema, table, column)
+	return fmt.Sprintf(
+		"ALTER TABLE %s DROP COLUMN IF EXISTS %s CASCADE;",
+		pg.Qualified(schema, table),
+		pg.Quote(column),
+	)
 }
 
 func BuildDropConstraintStatement(schema, table, constraintName string) string {
 	// cascade is used to drop the constraint and any dependent objects (other constraints, indexes, triggers, etc)
 	return fmt.Sprintf(
-		"ALTER TABLE %q.%q DROP CONSTRAINT IF EXISTS %q CASCADE;",
-		schema,
-		table,
-		constraintName,
+		"ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s CASCADE;",
+		pg.Qualified(schema, table),
+		pg.Quote(constraintName),
 	)
 }
 
 func BuildDropTriggerStatement(schema, table, triggerName string) string {
-	return fmt.Sprintf("DROP TRIGGER IF EXISTS %q ON %q.%q;", triggerName, schema, table)
+	return fmt.Sprintf(
+		"DROP TRIGGER IF EXISTS %s ON %s;",
+		pg.Quote(triggerName),
+		pg.Qualified(schema, table),
+	)
 }
 
 func BuildDropFunctionStatement(schema, functionName string) string {
-	return fmt.Sprintf("DROP FUNCTION IF EXISTS %q.%q;", schema, functionName)
+	return fmt.Sprintf("DROP FUNCTION IF EXISTS %s;", pg.Qualified(schema, functionName))
 }
 
 func BuildUpdateFunctionStatement(schema, functionName, createStatement string) string {
@@ -385,31 +439,27 @@ func BuildUpdateFunctionStatement(schema, functionName, createStatement string) 
 }
 
 func BuildDropDatatypesStatement(schema, enumName string) string {
-	return fmt.Sprintf("DROP TYPE IF EXISTS %q.%q;", schema, enumName)
+	return fmt.Sprintf("DROP TYPE IF EXISTS %s;", pg.Qualified(schema, enumName))
 }
 
+// BuildUpdateEnumStatements writes the labels as it receives them: they are values.
 func BuildUpdateEnumStatements(
 	schema, enumName string,
 	newValues []string,
 	changedValues map[string]string,
 ) []string {
+	enum := pg.Qualified(schema, enumName)
 	statements := []string{}
 	for _, value := range newValues {
 		statements = append(
 			statements,
-			fmt.Sprintf("ALTER TYPE %q.%q ADD VALUE IF NOT EXISTS '%s';", schema, enumName, value),
+			fmt.Sprintf("ALTER TYPE %s ADD VALUE IF NOT EXISTS '%s';", enum, value),
 		)
 	}
 	for value, newVal := range changedValues {
 		statements = append(
 			statements,
-			fmt.Sprintf(
-				"ALTER TYPE %q.%q RENAME VALUE '%s' TO '%s';",
-				schema,
-				enumName,
-				value,
-				newVal,
-			),
+			fmt.Sprintf("ALTER TYPE %s RENAME VALUE '%s' TO '%s';", enum, value, newVal),
 		)
 	}
 	return statements
@@ -420,15 +470,15 @@ func BuildUpdateCompositeStatements(
 	changedAttributesDatatype, changedAttributesName, newAttributes map[string]string,
 	removedAttributes []string,
 ) []string {
+	composite := pg.Qualified(schema, compositeName)
 	statements := []string{}
 	for attribute, newDatatype := range changedAttributesDatatype {
 		statements = append(
 			statements,
 			fmt.Sprintf(
-				"ALTER TYPE %q.%q ALTER ATTRIBUTE %q SET DATA TYPE '%s';",
-				schema,
-				compositeName,
-				attribute,
+				"ALTER TYPE %s ALTER ATTRIBUTE %s SET DATA TYPE '%s';",
+				composite,
+				pg.Quote(attribute),
 				newDatatype,
 			),
 		)
@@ -437,11 +487,10 @@ func BuildUpdateCompositeStatements(
 		statements = append(
 			statements,
 			fmt.Sprintf(
-				"ALTER TYPE %q.%q RENAME ATTRIBUTE %q TO  %q;",
-				schema,
-				compositeName,
-				oldName,
-				newName,
+				"ALTER TYPE %s RENAME ATTRIBUTE %s TO  %s;",
+				composite,
+				pg.Quote(oldName),
+				pg.Quote(newName),
 			),
 		)
 	}
@@ -449,10 +498,9 @@ func BuildUpdateCompositeStatements(
 		statements = append(
 			statements,
 			fmt.Sprintf(
-				"ALTER TYPE %q.%q ADD ATTRIBUTE %q %s;",
-				schema,
-				compositeName,
-				attribute,
+				"ALTER TYPE %s ADD ATTRIBUTE %s %s;",
+				composite,
+				pg.Quote(attribute),
 				datatype,
 			),
 		)
@@ -461,10 +509,9 @@ func BuildUpdateCompositeStatements(
 		statements = append(
 			statements,
 			fmt.Sprintf(
-				"ALTER TYPE %q.%q DROP ATTRIBUTE IF EXISTS %q;",
-				schema,
-				compositeName,
-				attribute,
+				"ALTER TYPE %s DROP ATTRIBUTE IF EXISTS %s;",
+				composite,
+				pg.Quote(attribute),
 			),
 		)
 	}
@@ -472,7 +519,7 @@ func BuildUpdateCompositeStatements(
 }
 
 func BuildDropDomainStatement(schema, domainName string) string {
-	return fmt.Sprintf("DROP DOMAIN IF EXISTS %q.%q;", schema, domainName)
+	return fmt.Sprintf("DROP DOMAIN IF EXISTS %s;", pg.Qualified(schema, domainName))
 }
 
 func BuildDomainConstraintStatements(
@@ -480,28 +527,23 @@ func BuildDomainConstraintStatements(
 	newConstraints map[string]string,
 	removedConstraints []string,
 ) []string {
+	domain := pg.Qualified(schema, domainName)
 	statements := []string{}
 	// The removed constraints first: one whose definition changed is removed, and added anew
 	// under the same name.
 	for _, constraint := range slices.Sorted(slices.Values(removedConstraints)) {
 		statements = append(
 			statements,
-			fmt.Sprintf(
-				"ALTER DOMAIN %q.%q DROP CONSTRAINT IF EXISTS %q;",
-				schema,
-				domainName,
-				constraint,
-			),
+			fmt.Sprintf("ALTER DOMAIN %s DROP CONSTRAINT IF EXISTS %s;", domain, pg.Quote(constraint)),
 		)
 	}
 	for _, constraint := range slices.Sorted(maps.Keys(newConstraints)) {
 		statements = append(
 			statements,
 			fmt.Sprintf(
-				"ALTER DOMAIN %q.%q ADD CONSTRAINT %q %s;",
-				schema,
-				domainName,
-				constraint,
+				"ALTER DOMAIN %s ADD CONSTRAINT %s %s;",
+				domain,
+				pg.Quote(constraint),
 				newConstraints[constraint],
 			),
 		)
@@ -510,11 +552,15 @@ func BuildDomainConstraintStatements(
 }
 
 func BuildUpdateDomainDefaultStatement(schema, domainName, defaultString string) string {
-	return fmt.Sprintf("ALTER DOMAIN %q.%q SET DEFAULT %s;", schema, domainName, defaultString)
+	return fmt.Sprintf(
+		"ALTER DOMAIN %s SET DEFAULT %s;",
+		pg.Qualified(schema, domainName),
+		defaultString,
+	)
 }
 
 func BuildDropDomainDefaultStatement(schema, domainName string) string {
-	return fmt.Sprintf("ALTER DOMAIN %q.%q DROP DEFAULT;", schema, domainName)
+	return fmt.Sprintf("ALTER DOMAIN %s DROP DEFAULT;", pg.Qualified(schema, domainName))
 }
 
 func BuildUpdateDomainNotNullStatement(schema, domainName string, isNullable bool) string {
@@ -522,7 +568,7 @@ func BuildUpdateDomainNotNullStatement(schema, domainName string, isNullable boo
 	if isNullable {
 		action = "DROP"
 	}
-	return fmt.Sprintf("ALTER DOMAIN %q.%q %s NOT NULL;", schema, domainName, action)
+	return fmt.Sprintf("ALTER DOMAIN %s %s NOT NULL;", pg.Qualified(schema, domainName), action)
 }
 
 type buildTableColRequest struct {
@@ -566,12 +612,10 @@ func (s *SequenceConfiguration) toCycelText() string {
 
 func BuildSequencOwnerStatement(seq *pg_queries.GetSequencesOwnedByTablesRow) string {
 	return fmt.Sprintf(
-		"ALTER SEQUENCE %q.%q OWNED BY %q.%q.%q;",
-		seq.SequenceSchema,
-		seq.SequenceName,
-		seq.TableSchema,
-		seq.TableName,
-		seq.ColumnName,
+		"ALTER SEQUENCE %s OWNED BY %s.%s;",
+		pg.Qualified(seq.SequenceSchema, seq.SequenceName),
+		pg.Qualified(seq.TableSchema, seq.TableName),
+		pg.Quote(seq.ColumnName),
 	)
 }
 
@@ -606,16 +650,11 @@ func buildSequenceDefinition(identityType string, seqConfig *SequenceConfigurati
 }
 
 func BuildUpdateCommentStatement(schema, table, column string, comment *string) string {
+	target := pg.Qualified(schema, table) + "." + pg.Quote(column)
 	if comment == nil || *comment == "" {
-		return fmt.Sprintf("COMMENT ON COLUMN %q.%q.%q IS NULL;", schema, table, column)
+		return fmt.Sprintf("COMMENT ON COLUMN %s IS NULL;", target)
 	}
-	return fmt.Sprintf(
-		"COMMENT ON COLUMN %q.%q.%q IS '%s';",
-		schema,
-		table,
-		column,
-		strings.ReplaceAll(*comment, "'", "''"),
-	)
+	return fmt.Sprintf("COMMENT ON COLUMN %s IS %s;", target, pg.Literal(*comment))
 }
 
 func buildNullableText(isNullable bool) string {
@@ -635,7 +674,10 @@ func BuildPgTruncateStatement(
 	builder := getGoquDialect()
 	gTables := []any{}
 	for _, t := range tables {
-		gTables = append(gTables, goqu.S(t.Schema).Table(t.Table))
+		if err := checkTableName(t.Schema, t.Table); err != nil {
+			return "", err
+		}
+		gTables = append(gTables, pg.Table(t.Schema, t.Table))
 	}
 	stmt, _, err := builder.From(gTables...).Truncate().Identity("RESTART").ToSQL()
 	if err != nil {
@@ -648,13 +690,33 @@ func BuildPgTruncateCascadeStatement(
 	schema string,
 	table string,
 ) (string, error) {
+	if err := checkTableName(schema, table); err != nil {
+		return "", err
+	}
 	builder := getGoquDialect()
-	sqltable := goqu.S(schema).Table(table)
+	sqltable := pg.Table(schema, table)
 	stmt, _, err := builder.From(sqltable).Truncate().Cascade().Identity("RESTART").ToSQL()
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s;", stmt), nil
+}
+
+// buildTableRowCountSql counts the rows of a table. The where clause is SQL written by the
+// user, and is carried as it is.
+func buildTableRowCountSql(schema, table string, whereClause *string) (string, error) {
+	if err := checkTableName(schema, table); err != nil {
+		return "", err
+	}
+	query := getGoquDialect().From(pg.Table(schema, table)).Select(goqu.COUNT("*"))
+	if whereClause != nil && *whereClause != "" {
+		query = query.Where(goqu.L(*whereClause))
+	}
+	compiledSql, _, err := query.ToSQL()
+	if err != nil {
+		return "", err
+	}
+	return compiledSql, nil
 }
 
 func EscapePgColumns(cols []string) []string {
@@ -668,20 +730,22 @@ func EscapePgColumns(cols []string) []string {
 // EscapePgColumn quotes an identifier: a double quote inside it is doubled, as PostgreSQL
 // reads it. Go's %q would escape it with a backslash, and a backslash with another one.
 func EscapePgColumn(col string) string {
-	return sqlident.Postgres.Quote(col)
+	return pg.Quote(col)
 }
 
+// BuildPgIdentityColumnResetCurrentSql sets the sequence of a column to the highest value
+// the column holds. pg_get_serial_sequence takes the table as the text of a qualified name,
+// read as an identifier is, and the column as its plain name.
 func BuildPgIdentityColumnResetCurrentSql(
 	schema, table, column string,
 ) string {
+	qualified := pg.Qualified(schema, table)
 	return fmt.Sprintf(
-		"SELECT setval(pg_get_serial_sequence('%q.%q', '%s'), COALESCE((SELECT MAX(%q) FROM %q.%q), 1));",
-		schema,
-		table,
-		column,
-		column,
-		schema,
-		table,
+		"SELECT setval(pg_get_serial_sequence(%s, %s), COALESCE((SELECT MAX(%s) FROM %s), 1));",
+		pg.Literal(qualified),
+		pg.Literal(column),
+		pg.Quote(column),
+		qualified,
 	)
 }
 
@@ -693,7 +757,7 @@ func BuildPgInsertIdentityAlwaysSql(
 }
 
 func BuildPgResetSequenceSql(schema, sequenceName string) string {
-	return fmt.Sprintf("ALTER SEQUENCE %q.%q RESTART;", schema, sequenceName)
+	return fmt.Sprintf("ALTER SEQUENCE %s RESTART;", pg.Qualified(schema, sequenceName))
 }
 
 func GetPostgresColumnOverrideAndResetProperties(
