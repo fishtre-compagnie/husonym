@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -85,17 +86,37 @@ func (s *Service) PreviewColumnTransformer(
 		return connect.NewResponse(s.previewJavascript(ctx, sampled, req.Msg.GetColumn(), raws, config)), nil
 	}
 
+	resp, err := s.previewAnonymized(ctx, connection.GetAccountId(), raws, config, userDefinedTransformers, logger)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// previewAnonymized runs the sampled values through the anonymizer AnonymizeMany uses.
+//
+// TransformPiiText is enabled only under a valid license, read here on every preview. Without
+// one it is not enabled, exactly as when Presidio is not configured; every other transformer
+// runs the same either way. A preview belongs to no run: the hashes it shows are computed under
+// the key the process keeps for the account, and are not those a run writes.
+func (s *Service) previewAnonymized(
+	ctx context.Context,
+	accountId string,
+	raws []any,
+	config *mgmtv1alpha1.TransformerConfig,
+	userDefinedTransformers transformer_executor.UserDefinedTransformerResolver,
+	logger *slog.Logger,
+) (*mgmtv1alpha1.PreviewColumnTransformerResponse, error) {
 	anonymizer, err := jsonanonymizer.NewAnonymizer(
 		ctx,
 		jsonanonymizer.WithTransformerMappings([]*mgmtv1alpha1.TransformerMapping{{
 			Expression:  ".value",
 			Transformer: config,
 		}}),
-		jsonanonymizer.WithConditionalAnonymizeConfig(
-			s.transformers.IsPresidioEnabled,
-			s.transformers.Analyze,
-			s.transformers.Anonymize,
-			s.cfg.PresidioDefaultLanguage,
+		jsonanonymizer.WithPiiText(
+			s.transformers.PiiText,
+			s.transformers.PiiText != nil && s.transformers.License.IsValid(),
+			s.transformers.PiiText.AccountHashKey(accountId),
 		),
 		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),
 		jsonanonymizer.WithLogger(logger),
@@ -108,9 +129,9 @@ func (s *Service) PreviewColumnTransformer(
 		)
 	}
 
-	return connect.NewResponse(previewValues(raws, func(raw any) (any, error) {
+	return previewValues(raws, func(raw any) (any, error) {
 		return transformValue(anonymizer, raw)
-	})), nil
+	}), nil
 }
 
 // transformValue runs one value through the anonymizer, wrapped the way the anonymizer takes it.

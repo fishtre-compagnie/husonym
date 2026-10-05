@@ -215,7 +215,9 @@ func (q *Queries) GetJobHookById(ctx context.Context, db DBTX, id pgtype.UUID) (
 }
 
 const getJobHooksByJob = `-- name: GetJobHooksByJob :many
-SELECT id, name, description, job_id, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, priority, hook_timing, connection_id from husonym_api.job_hooks WHERE job_id = $1
+SELECT id, name, description, job_id, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, priority, hook_timing, connection_id from husonym_api.job_hooks
+WHERE job_id = $1
+ORDER BY priority, created_at, id ASC
 `
 
 func (q *Queries) GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error) {

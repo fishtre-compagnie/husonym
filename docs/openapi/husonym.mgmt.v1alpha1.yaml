@@ -14193,9 +14193,25 @@ components:
           type: boolean
           title: is_enabled
           description: Whether to enable data sampling
+        modelInput:
+          allOf:
+            - $ref: >-
+                #/components/schemas/mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput
+          title: model_input
+          description: >-
+            What the language model receives about the sampled rows. Read only
+            when data sampling
+             is enabled: without it no row is read and the model receives names and types.
       title: DataSampling
       additionalProperties: false
       description: The configuration for data sampling
+    mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.DataSampling.ModelInput:
+      type: string
+      title: ModelInput
+      enum:
+        - MODEL_INPUT_UNSPECIFIED
+        - MODEL_INPUT_PROFILES
+        - MODEL_INPUT_VALUES
     mgmt.v1alpha1.JobTypeConfig.JobTypePiiDetect.IncludeAll:
       type: object
       title: IncludeAll

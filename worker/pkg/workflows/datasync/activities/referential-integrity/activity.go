@@ -21,6 +21,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -271,7 +272,7 @@ func quoterFor(driver string) func(string) string {
 	case sqlmanager_shared.MysqlDriver:
 		return func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" }
 	case sqlmanager_shared.MssqlDriver:
-		return func(s string) string { return "[" + strings.ReplaceAll(s, "]", "]]") + "]" }
+		return ddl.QuoteIdentifier
 	default:
 		return func(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
 	}

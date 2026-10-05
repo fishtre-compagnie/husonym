@@ -21,13 +21,12 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/loki"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
-	piidetect_job_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job/activities"
-	piidetect_table_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table"
-	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	tablesync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.temporal.io/api/enums/v1"
@@ -280,7 +279,10 @@ func (s *Service) getEventsByWorkflowId(
 			isRunComplete = true
 
 		case enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_FAILED:
-			isRunComplete = true
+			attributes := event.GetStartChildWorkflowExecutionFailedEventAttributes()
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 		case enums.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED:
 			activityOrder = append(activityOrder, event.GetEventId())
 			attributes := event.GetStartChildWorkflowExecutionInitiatedEventAttributes()
@@ -315,8 +317,8 @@ func (s *Service) getEventsByWorkflowId(
 						},
 					}
 					jobRunEvent.Metadata = metadata
-				case "TablePiiDetect":
-					var piiDetectTableRequest piidetect_table_workflow.TablePiiDetectRequest
+				case piidetect.TableWorkflowName:
+					var piiDetectTableRequest piidetect.TablePiiDetectRequest
 					err := converter.GetDefaultDataConverter().
 						FromPayload(attributes.Input.Payloads[0], &piiDetectTableRequest)
 					if err != nil {
@@ -354,14 +356,18 @@ func (s *Service) getEventsByWorkflowId(
 			errorDto := dtomaps.ToJobRunEventTaskErrorDto(attributes.Failure, attributes.RetryState)
 			activity.Tasks = append(activity.Tasks, dtomaps.ToJobRunEventTaskDto(event, errorDto))
 
-			isRunComplete = true
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 
 		case enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_TIMED_OUT:
 			attributes := event.GetChildWorkflowExecutionTimedOutEventAttributes()
 			activity := activityMap[attributes.InitiatedEventId]
 			activity.CloseTime = event.EventTime
 			activity.Tasks = append(activity.Tasks, dtomaps.ToJobRunEventTaskDto(event, nil))
-			isRunComplete = true
+			if childFailureEndsRun(attributes.GetWorkflowType().GetName()) {
+				isRunComplete = true
+			}
 
 		case enums.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_CANCELED:
 			attributes := event.GetChildWorkflowExecutionCanceledEventAttributes()
@@ -1249,7 +1255,7 @@ func (s *Service) GetPiiDetectionReport(
 		return nil, err
 	}
 
-	tableRunContexts, err := s.getTableRunContextsFromJobReport(ctx, jobRun, accountUuid)
+	tableRunContexts, err := s.getTableRunContextsFromJobReport(ctx, jobRun, accountUuid, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get table run contexts from job report: %w", err)
 	}
@@ -1263,7 +1269,7 @@ func (s *Service) GetPiiDetectionReport(
 			s.db.Db,
 			db_queries.GetRunContextsByExternalIdSuffixParams{
 				WorkflowId:       jobRun.GetId(),
-				ExternalIdSuffix: piidetect_table_activities.PiiTableReportSuffix,
+				ExternalIdSuffix: piidetect_report.TableReportSuffix,
 				AccountId:        accountUuid,
 			},
 		)
@@ -1302,10 +1308,11 @@ func (s *Service) getTableRunContextsFromJobReport(
 	ctx context.Context,
 	jobRun *mgmtv1alpha1.JobRun,
 	accountUuid pgtype.UUID,
+	logger *slog.Logger,
 ) ([]*db_queries.HusonymApiRuncontext, error) {
 	runContext, err := s.db.Q.GetRunContextByKey(ctx, s.db.Db, db_queries.GetRunContextByKeyParams{
 		WorkflowId: jobRun.GetId(),
-		ExternalId: piidetect_job_activities.BuildJobReportExternalId(jobRun.GetJobId()),
+		ExternalId: piidetect_report.JobReportExternalId(jobRun.GetJobId()),
 		AccountId:  accountUuid,
 	})
 	if err != nil && !husonymdb.IsNoRows(err) {
@@ -1313,7 +1320,7 @@ func (s *Service) getTableRunContextsFromJobReport(
 	} else if err != nil && husonymdb.IsNoRows(err) {
 		return nil, nil
 	}
-	var jobReport piidetect_job_activities.JobPiiDetectReport
+	var jobReport piidetect_report.JobReport
 	err = json.Unmarshal(runContext.Value, &jobReport)
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal run context for job pii detect report: %w", err)
@@ -1326,16 +1333,19 @@ func (s *Service) getTableRunContextsFromJobReport(
 	for _, tableReport := range jobReport.SuccessfulTableReports {
 		tableRunContextKeys = append(tableRunContextKeys, tableReport.ReportKey)
 	}
-	tableRunContexts, err := s.getDbRunContextsFromKeys(ctx, tableRunContextKeys)
+	tableRunContexts, err := s.getDbRunContextsFromKeys(ctx, tableRunContextKeys, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get table run contexts from job report: %w", err)
 	}
 	return tableRunContexts, nil
 }
 
+// getDbRunContextsFromKeys reads the run contexts the keys name. A key that names none is
+// passed over, with a warning: the others are returned.
 func (s *Service) getDbRunContextsFromKeys(
 	ctx context.Context,
 	keys []*mgmtv1alpha1.RunContextKey,
+	logger *slog.Logger,
 ) ([]*db_queries.HusonymApiRuncontext, error) {
 	errgrp, errctx := errgroup.WithContext(ctx)
 	errgrp.SetLimit(10)
@@ -1361,6 +1371,13 @@ func (s *Service) getDbRunContextsFromKeys(
 					AccountId:  accountUuid,
 				},
 			)
+			if err != nil && husonymdb.IsNoRows(err) {
+				logger.Warn(
+					"a table report named by the report of the run was not found, it is left out",
+					"reportRunId", key.GetJobRunId(), "externalId", key.GetExternalId(),
+				)
+				return nil
+			}
 			if err != nil {
 				return fmt.Errorf("unable to get run context: %w", err)
 			}
@@ -1378,11 +1395,11 @@ func (s *Service) getDbRunContextsFromKeys(
 
 func getReportsFromTableContexts(
 	tableContexts []*db_queries.HusonymApiRuncontext,
-) ([]*piidetect_table_activities.TableReport, error) {
-	reports := make([]*piidetect_table_activities.TableReport, len(tableContexts))
+) ([]*piidetect_report.TableReport, error) {
+	reports := make([]*piidetect_report.TableReport, len(tableContexts))
 	for i := range tableContexts {
 		runContext := tableContexts[i]
-		var report *piidetect_table_activities.TableReport
+		var report *piidetect_report.TableReport
 		err := json.Unmarshal(runContext.Value, &report)
 		if err != nil {
 			return nil, fmt.Errorf("unable to unmarshal run context: %w", err)
@@ -1393,7 +1410,7 @@ func getReportsFromTableContexts(
 }
 
 func getTableReportDtos(
-	reports []*piidetect_table_activities.TableReport,
+	reports []*piidetect_report.TableReport,
 ) []*mgmtv1alpha1.PiiDetectionReport_TableReport {
 	reportDtos := make([]*mgmtv1alpha1.PiiDetectionReport_TableReport, len(reports))
 	for i, report := range reports {
@@ -1412,7 +1429,7 @@ func getTableReportDtos(
 			}
 			if columnReport.Report.Regex != nil {
 				columnReportDto.RegexReport = &mgmtv1alpha1.PiiDetectionReport_TableReport_ColumnReport_Regex{
-					Category: columnReport.Report.Regex.Category.String(),
+					Category: string(columnReport.Report.Regex.Category),
 				}
 			}
 			if columnReport.Report.LLM != nil {
@@ -1425,4 +1442,11 @@ func getTableReportDtos(
 		}
 	}
 	return reportDtos
+}
+
+// childFailureEndsRun tells whether the failure of a child workflow of this type ends the
+// run of its parent. The run of a PII detection job goes on with the other tables when
+// the run of a table fails.
+func childFailureEndsRun(childWorkflowType string) bool {
+	return childWorkflowType != piidetect.TableWorkflowName
 }

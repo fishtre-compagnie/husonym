@@ -217,18 +217,16 @@ func (s *Service) DetectPiiInConnectionData(
 			}
 			if sensitive || df.Ambiguous {
 				detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
-					Schema:       req.Msg.GetSchema(),
-					Table:        req.Msg.GetTable(),
-					Column:       col,
-					EntityType:   "DATE",
-					Score:        1,
-					IsSensitive:  sensitive,
-					MatchCount:   sampleCount(values),
-					SampledCount: sampleCount(values),
-					DataCategory: dateCategory(sensitive),
-					// Le transformer reste au choix de l'utilisateur : aucun
-					// générateur ne sait restituer la date dans le format source.
-					SuggestedTransformerSource: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+					Schema:                     req.Msg.GetSchema(),
+					Table:                      req.Msg.GetTable(),
+					Column:                     col,
+					EntityType:                 "DATE",
+					Score:                      1,
+					IsSensitive:                sensitive,
+					MatchCount:                 sampleCount(values),
+					SampledCount:               sampleCount(values),
+					DataCategory:               dateCategory(sensitive),
+					SuggestedTransformerSource: dateSuggestion(sensitive, columnTypes[col]),
 					PiiConfidence:              confidence,
 					PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT,
 					PiiEvidence:                df.Evidence,
@@ -418,6 +416,22 @@ type columnEntity struct {
 	matchCount int
 }
 
+// analyzeTimeout is how long the analyzer is waited for, for one sampled value. A value is
+// short, and analyzed in milliseconds: past this, the analyzer is not answering, and the scan
+// that asks it would wait without end.
+const analyzeTimeout = 15 * time.Second
+
+// analyzeValue asks the analyzer about one sampled value, for no longer than analyzeTimeout.
+func analyzeValue(
+	ctx context.Context,
+	analyzer presidio.Analyzer,
+	request *presidio.AnalyzeRequest,
+) ([]presidio.Finding, error) {
+	ctx, cancel := context.WithTimeout(ctx, analyzeTimeout)
+	defer cancel()
+	return analyzer.Analyze(ctx, request)
+}
+
 // analyzeColumn examines each value on its own (NER recognizes an isolated
 // name/place better than one buried in a list) and returns the dominant entity
 // among the mappable ones.
@@ -444,10 +458,13 @@ func analyzeColumn(
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
-		request := presidio.AnalyzeRequest{Text: text, Language: language, ScoreThreshold: threshold}
-		results, err := analyzer.Analyze(ctx, request)
+		request := &presidio.AnalyzeRequest{Text: text, Language: language}
+		if threshold > 0 {
+			request.ScoreThreshold = &threshold
+		}
+		results, err := analyzeValue(ctx, analyzer, request)
 		if err != nil && !errors.Is(err, presidio.ErrNoAnswer) {
-			results, err = analyzer.Analyze(ctx, request)
+			results, err = analyzeValue(ctx, analyzer, request)
 		}
 		if errors.Is(err, presidio.ErrNoAnswer) {
 			return columnEntity{}, nil, err
@@ -622,6 +639,15 @@ func isAnalyzableText(values []string) bool {
 }
 
 // dateCategory retourne la catégorie affichée pour une colonne de dates.
+// dateSuggestion is the transformer suggested for a column of dates: none for a date
+// that is not personal data, the one of a birth date for a birth date.
+func dateSuggestion(sensitive bool, dataType string) mgmtv1alpha1.TransformerSource {
+	if !sensitive {
+		return mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED
+	}
+	return piidetect.SuggestionForBirthDate(dataType)
+}
+
 func dateCategory(sensitive bool) string {
 	if sensitive {
 		return "birth_date"

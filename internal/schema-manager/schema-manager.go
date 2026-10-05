@@ -9,7 +9,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	schema_mssql "github.com/fishtre-compagnie/husonym/internal/schema-manager/mssql"
 	schema_mysql "github.com/fishtre-compagnie/husonym/internal/schema-manager/mysql"
 	schema_notsupported "github.com/fishtre-compagnie/husonym/internal/schema-manager/not-supported"

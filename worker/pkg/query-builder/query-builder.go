@@ -1,7 +1,9 @@
 package querybuilder
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -76,25 +78,23 @@ func BuildSelectLimitQuery(
 	return sql, nil
 }
 
-// sampleWindowSize borne le nombre de lignes sur lesquelles porte le tirage
-// aléatoire. Assez large pour que l'échantillon reste varié, assez petit pour que
-// le tri soit gratuit.
-const sampleWindowSize = 1000
+// SampleWindowSize is the number of rows a random draw is made over. It is wide enough
+// for the sample to stay varied and small enough for the random order to cost next to
+// nothing.
+const SampleWindowSize = 1000
 
-// BuildSampledSelectLimitQuery construit une requête d'échantillonnage aléatoire.
+// BuildSampledSelectLimitQuery builds a query that returns a random sample of a table.
+// The draw is made over a bounded window, the first SampleWindowSize rows of the table,
+// not over the whole table. It is the query that answers when a draw spread across the
+// table is not possible.
 //
-// The draw happens over a bounded WINDOW, not the whole table. An
-// `ORDER BY RAND() LIMIT 20` applied straight to the table forces the database to
-// read every row and sort all of them to return 20: the cost grows with the table,
-// unrelated to the requested sample size. Measured on a production MySQL table, the
-// query went past 30 s, the client dropped the link and the PII scan failed with an
-// HTTP 500.
+// The cost is bounded by the window. An `ORDER BY RAND() LIMIT n` applied straight to
+// the table makes the database read every row and sort all of them to return n, so its
+// cost grows with the table whatever the size of the sample. Here the window is read
+// without a sort, the database stops as soon as it has its rows, and only those
+// SampleWindowSize rows go through the random order.
 //
-// Compromis assumé : l'échantillon n'est plus uniforme sur l'ensemble de la table,
-// il est tiré au hasard parmi les premières sampleWindowSize lignes. Pour
-// reconnaître la NATURE d'une colonne — l'usage réel de cette fonction — la
-// représentativité statistique n'apporte rien ; un échantillon obtenable en
-// quelques millisecondes, si.
+// The sample is therefore not uniform over the table.
 func BuildSampledSelectLimitQuery(
 	driver, table string, limit uint,
 ) (string, error) {
@@ -111,8 +111,8 @@ func BuildSampledSelectLimitQuery(
 	builder := getGoquDialect(driver)
 	sqltable := goqu.I(table)
 
-	// Fenêtre lue sans tri : le SGBD s'arrête dès qu'il a ses lignes.
-	window := builder.From(sqltable).Limit(sampleWindowSize).As("husonym_sample")
+	// The window is read without a sort: the database stops as soon as it has its rows.
+	window := builder.From(sqltable).Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
 		From(window).
@@ -123,6 +123,190 @@ func BuildSampledSelectLimitQuery(
 		return "", err
 	}
 	return sql, nil
+}
+
+const (
+	// SampleSlices is the number of key slices a MySQL sample is drawn from.
+	SampleSlices = 10
+	// SampleSliceRows is the most rows read from each key slice.
+	SampleSliceRows = 100
+	// SampleSlicesMinRows is the least number of rows the key slices must hold together
+	// for a sample to be drawn from them.
+	SampleSlicesMinRows = SampleSlices * SampleSliceRows / 2
+	// SampleRowsBound is the most rows a PostgreSQL table sample may hand to the random
+	// order, whatever the share of pages it asks for.
+	SampleRowsBound = 4 * SampleWindowSize
+	// SampleMinPages is the least number of pages a table sample asks for. Pages of
+	// narrow rows hold the window in a handful of pages, which are a handful of places
+	// of the table.
+	SampleMinPages = 50
+)
+
+// KeyRange is a range of key values, both ends included.
+type KeyRange struct {
+	From, To int64
+}
+
+// TableSize is the size of a table as its catalog tells it: the rows it holds and the
+// pages they are stored on.
+type TableSize struct {
+	Rows, Pages int64
+}
+
+// BuildTableSampleQuery builds a query that draws rows from pages spread across the
+// whole table. The database reads the pages expected to hold SampleWindowSize rows, or
+// SampleMinPages pages when that is more, each page being taken on its own; a table of
+// fewer pages is read whole. The random order only applies to that sample.
+//
+// PostgreSQL bounds the rows it hands to the random order at SampleRowsBound, for a size
+// that is far from the truth. So that the bound does not keep the first pages only when
+// the pages read hold more rows than the window, each row is first kept with the
+// probability that leaves about SampleWindowSize of them: the rows that reach the
+// random order come from every page read. SQL Server orders every row of the pages it
+// reads.
+//
+// It supports PostgreSQL and SQL Server. ok is false when the driver has no table
+// sample, when the size is unknown (no row or no page) and when the table has no more
+// rows than SampleWindowSize: the window query serves it.
+func BuildTableSampleQuery(
+	driver, table string,
+	size TableSize,
+	limit uint,
+) (sql string, ok bool, err error) {
+	if size.Rows <= SampleWindowSize || size.Pages <= 0 {
+		return "", false, nil
+	}
+	percent, keep := tableSampleShare(size)
+
+	builder := getGoquDialect(driver)
+	var inner *goqu.SelectDataset
+	var randStmt string
+	switch driver {
+	case sqlmanager_shared.GoquPostgresDriver:
+		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), percent))
+		if keep < 1 {
+			inner = inner.Where(goqu.L("RANDOM() < ?", keep))
+		}
+		inner = inner.Limit(SampleRowsBound)
+		randStmt = "RANDOM()"
+	case sqlmanager_shared.MssqlDriver:
+		// No bound here: a TOP on a table sample keeps the first pages read. No thinning
+		// either: a random filter that names no column is computed once for the query.
+		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", goqu.I(table), percent))
+		randStmt = "NEWID()"
+	default:
+		return "", false, nil
+	}
+
+	sql, _, err = builder.
+		From(inner.As("husonym_sample")).
+		Order(goqu.L(randStmt).Asc()).
+		Limit(limit).
+		ToSQL()
+	if err != nil {
+		return "", false, err
+	}
+	return sql, true, nil
+}
+
+// tableSampleShare gives the share of pages to read, in percent, and the share of their
+// rows to keep. The pages are those expected to hold SampleWindowSize rows, or
+// SampleMinPages pages when that is more; the percentage is rounded to four decimals,
+// stays above zero and does not exceed 100. keep is 1 when those pages are not expected
+// to hold more than the window. size must hold rows and pages.
+func tableSampleShare(size TableSize) (percent, keep float64) {
+	share := math.Max(
+		float64(SampleWindowSize)/float64(size.Rows),
+		float64(SampleMinPages)/float64(size.Pages),
+	)
+	share = math.Min(1, share)
+	percent = math.Max(0.0001, roundTo4(100*share))
+	keep = math.Min(1, roundTo4(float64(SampleWindowSize)/(share*float64(size.Rows))))
+	return percent, keep
+}
+
+func roundTo4(v float64) float64 {
+	return math.Round(v*10000) / 10000
+}
+
+// BuildKeySlicesSampleQuery builds a MySQL query that reads up to SampleSliceRows rows
+// in key order from each range, and draws limit rows at random from their union. The
+// ranges must not overlap, so no row comes twice. Each slice is a bounded range read
+// on the key, so the cost does not grow with the table.
+func BuildKeySlicesSampleQuery(
+	driver, table, keyColumn string,
+	ranges []KeyRange,
+	limit uint,
+) (string, error) {
+	builder := getGoquDialect(driver)
+	union, err := keySlices(builder, table, keyColumn, ranges, false)
+	if err != nil {
+		return "", err
+	}
+	sql, _, err := builder.
+		From(union.As("husonym_sample")).
+		Order(goqu.L("RAND()").Asc()).
+		Limit(limit).
+		ToSQL()
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+// BuildKeySlicesCountQuery builds a MySQL query that counts the rows the slices of
+// BuildKeySlicesSampleQuery hold for the same ranges. Only the key column is read, so
+// the count is answered from the key: SampleSliceRows entries of it at most for each
+// range.
+func BuildKeySlicesCountQuery(
+	driver, table, keyColumn string,
+	ranges []KeyRange,
+) (string, error) {
+	builder := getGoquDialect(driver)
+	union, err := keySlices(builder, table, keyColumn, ranges, true)
+	if err != nil {
+		return "", err
+	}
+	sql, _, err := builder.
+		From(union.As("husonym_sample")).
+		Select(goqu.COUNT(goqu.Star())).
+		ToSQL()
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+// keySlices is the union of the slices of a table: for each range, its first
+// SampleSliceRows rows in key order. A slice holds the whole row, or the key column
+// alone when keyOnly is set.
+func keySlices(
+	builder goqu.DialectWrapper,
+	table, keyColumn string,
+	ranges []KeyRange,
+	keyOnly bool,
+) (*goqu.SelectDataset, error) {
+	if len(ranges) == 0 {
+		return nil, errors.New("at least one key range is required")
+	}
+	sqltable := goqu.I(table)
+	key := goqu.I(keyColumn)
+
+	slice := func(r KeyRange) *goqu.SelectDataset {
+		rows := builder.From(sqltable)
+		if keyOnly {
+			rows = rows.Select(key)
+		}
+		return rows.
+			Where(key.Gte(r.From), key.Lte(r.To)).
+			Order(key.Asc()).
+			Limit(SampleSliceRows)
+	}
+	union := slice(ranges[0])
+	for _, r := range ranges[1:] {
+		union = union.UnionAll(slice(r))
+	}
+	return union, nil
 }
 
 func BuildInsertQuery(

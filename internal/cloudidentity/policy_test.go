@@ -46,14 +46,13 @@ func Test_Policy_CheckAws(t *testing.T) {
 	}
 }
 
-// HusonymCloud never allows the server's identity, whatever the setting says.
+// The server's identity is allowed only when the setting says so.
 func Test_FromEnvironment(t *testing.T) {
 	t.Cleanup(func() { viper.Set(Variable, nil) })
 	viper.Set(Variable, true)
-	require.True(t, FromEnvironment(false).AllowServerIdentity)
-	require.False(t, FromEnvironment(true).AllowServerIdentity)
+	require.True(t, FromEnvironment().AllowServerIdentity)
 	viper.Set(Variable, nil)
-	require.False(t, FromEnvironment(false).AllowServerIdentity)
+	require.False(t, FromEnvironment().AllowServerIdentity)
 }
 
 // A GCS connection brings the key of a service account, or would act with the application

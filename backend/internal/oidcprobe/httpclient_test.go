@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 	"github.com/stretchr/testify/require"
 )
 

@@ -9,9 +9,9 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -137,6 +137,10 @@ func (s *Service) ApplyMappingChanges(
 		return nil, err
 	}
 	if err := user.EnforceJob(ctx, userdata.NewDbDomainEntity(accountUuid, jobUuid), rbac.JobAction_Edit); err != nil {
+		return nil, err
+	}
+	// Setting transformers changes the job: it needs a valid license, as every other change.
+	if err := user.EnforceLicense(ctx, req.Msg.GetAccountId()); err != nil {
 		return nil, err
 	}
 	if err := s.verifyUserDefinedTransformersInAccount(ctx, req.Msg.GetMappings(), req.Msg.GetAccountId()); err != nil {

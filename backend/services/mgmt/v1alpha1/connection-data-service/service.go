@@ -4,7 +4,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
 )
 
 type Service struct {
@@ -27,13 +28,16 @@ type Config struct {
 
 // Transformers is what the column preview needs to run a transformer exactly the way a job and
 // AnonymizeMany do: the transformer service, to resolve user-defined transformers by id, and the
-// Presidio clients, for the transformers that call Presidio. Presidio may be absent, in which case
-// IsPresidioEnabled is false and those transformers report the failure in the preview itself.
+// engine that anonymizes free text, for TransformPiiText. The engine is nil in a deployment with
+// no Presidio analyzer, in which case that transformer reports the failure in the preview itself.
+//
+// TransformPiiText also needs a valid license, as it does in AnonymizeMany. License is read on
+// every preview, so a license that lapses or comes back is followed without a restart; the other
+// transformers never look at it.
 type Transformers struct {
-	Client            mgmtv1alpha1connect.TransformersServiceClient
-	IsPresidioEnabled bool
-	Analyze           presidioapi.AnalyzeInterface
-	Anonymize         presidioapi.AnonymizeInterface
+	Client  mgmtv1alpha1connect.TransformersServiceClient
+	PiiText *piitext.Engine
+	License license.EEInterface
 }
 
 func New(

@@ -122,8 +122,9 @@ type TableTrigger struct {
 	TriggerName   string
 	Definition    string
 	// EnabledState is, on PostgreSQL, when the trigger fires: O in origin and local
-	// sessions (the default), R in replica sessions only, A always, D never. Empty on the
-	// other databases, whose triggers are either there or not.
+	// sessions (the default), R in replica sessions only, A always, D never. On SQL Server it
+	// is D for a disabled trigger and empty for an enabled one. Empty on MySQL, whose triggers
+	// are either there or not.
 	EnabledState string
 	// Mysql is, on MySQL, the parts of the trigger and what it was created with. Definition
 	// does not carry the latter: a trigger created again without them runs with the rights
@@ -311,6 +312,10 @@ type TableConstraints struct {
 	PrimaryKeyConstraints map[string][]string
 	UniqueConstraints     map[string][][]string
 	UniqueIndexes         map[string][][]string
+	// CheckConstraints holds, by table, the expression of each CHECK constraint as the
+	// catalogue writes it. PostgreSQL and MySQL give it; SQL Server's catalogue query
+	// reads no CHECK constraint, and the map stays empty there.
+	CheckConstraints map[string][]string
 }
 
 type DataType struct {
@@ -368,9 +373,14 @@ func (s *SchemaTableDataTypeResponse) GetStatements() []string {
 	return output
 }
 
+// SkippedObject is an object or attribute of the source that a block leaves out, and why.
+type SkippedObject struct{ Object, Reason string }
+
 type InitSchemaStatements struct {
 	Label      string
 	Statements []string
+	// Skipped tells what the block leaves out. SQL Server only.
+	Skipped []*SkippedObject
 }
 
 type SelectQuery struct {

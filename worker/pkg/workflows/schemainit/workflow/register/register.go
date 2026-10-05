@@ -3,7 +3,7 @@ package schemainit_workflow_register
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	initschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/init-schema"
 	reconcileschema_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/activities/reconcile-schema"
 	schemainit_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow"

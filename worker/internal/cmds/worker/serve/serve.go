@@ -31,23 +31,22 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/connection-manager/providers/sqlprovider"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	retry_interceptor "github.com/fishtre-compagnie/husonym/internal/connectrpc/interceptors/retry"
-	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks/webhook"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	"github.com/go-logr/logr"
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
-	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
-	piidetect_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/register"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
+	piidetect_model "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -85,17 +84,21 @@ func serve(ctx context.Context) error {
 		logger,
 	) // set default logger for methods that can't easily access the configured logger
 
-	eelicense, err := license.NewFromEnv()
-	if err != nil {
-		return fmt.Errorf("unable to initialize ee license from env: %w", err)
-	}
+	// Building the provider never fails: a license that cannot be read is logged and
+	// leaves the instance without one.
+	eelicense := license.NewProvider(license.SourceFromEnv(), logger)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
-	ncloudlicense, err := cloudlicense.NewFromEnv()
+	// The settings of PII detection are read before anything is dialed: a setting that
+	// cannot work is then the error an operator sees.
+	piidetectConfig, err := piiDetectConfig()
 	if err != nil {
-		return fmt.Errorf("unable to initialize husonym cloud license from env: %w", err)
+		return err
 	}
-	logger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
+	piidetectClassifier, err := piidetect_model.NewClassifier(&piidetectConfig.Model)
+	if err != nil {
+		return fmt.Errorf("unable to set up the model of PII detection: %w", err)
+	}
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-worker", logger)
 	if err != nil {
@@ -327,13 +330,6 @@ func serve(ctx context.Context) error {
 	w := worker.New(temporalClient, taskQueue, worker.Options{})
 	_ = w
 
-	// See the matching comment in the backend: NewValidLicense() was short-circuiting the
-	// cascade and granting every gated feature unconditionally. Tests only.
-	cascadelicense := license.NewCascadeLicense(
-		ncloudlicense,
-		eelicense,
-	)
-
 	husonymurl := shared.GetHusonymUrl()
 	httpclient := shared.GetHusonymHttpClient()
 	connectInterceptorOption := connect.WithInterceptors(connectInterceptors...)
@@ -409,7 +405,7 @@ func serve(ctx context.Context) error {
 			"Athanor engine fail, and a phone number mapped under Benthos keeps neither its " +
 			"format nor its consistency")
 	}
-	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
+	cloudIdentity := cloudidentity.FromEnvironment()
 	engineConfig := sync_activity.EngineConfig{
 		Policy: shared.NewAthanorPolicy(
 			viper.GetBool("ENABLE_ATHANOR_ENGINE"),
@@ -441,47 +437,61 @@ func serve(ctx context.Context) error {
 		jobclient,
 		connclient,
 		sqlmanager,
-		cascadelicense,
+		eelicense,
 	)
 
 	datasync_workflow_register.Register(
 		w,
 		userclient, jobclient, connclient, transformerclient,
-		sqlmanager, sqlconnmanager, engineConfig.Policy, cascadelicense, redisclient,
+		sqlmanager, sqlconnmanager, engineConfig.Policy, eelicense, redisclient,
 		otelconfig.IsEnabled,
 		pageLimit,
 		consistencyKeys,
 		cloudIdentity,
 	)
 
-	if cascadelicense.IsValid() {
-		logger.Debug("ee license is valid, registering account hook activities")
-		accounthook_workflow_register.Register(w, accounthookclient)
+	// Registered whatever the license: the worker follows its configuration, and the
+	// workflows ask the license when they run. A license that becomes valid without a
+	// restart then finds its workflows and activities there.
+	accounthooks.Register(w, accounthookclient, webhook.NewSender())
 
-		openaiclient := openai.NewClient(option.WithAPIKey(viper.GetString("OPENAI_API_KEY")))
+	husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
+	conndatabuilder := connectiondata.NewConnectionDataBuilder(
+		sqlConnector,
+		sqlmanager,
+		pg_queries.New(),
+		mysql_queries.New(),
+		awsmanager.New(cloudIdentity),
+		husonym_gcp.NewManager(cloudIdentity),
+		mongoconnect.NewConnector(),
+		husonymtyperegistry,
+	)
 
-		husonymtyperegistry := husonymtypes.NewTypeRegistry(logger)
-		conndatabuilder := connectiondata.NewConnectionDataBuilder(
-			sqlConnector,
-			sqlmanager,
-			pg_queries.New(),
-			mysql_queries.New(),
-			awsmanager.New(cloudIdentity),
-			husonym_gcp.NewManager(cloudIdentity),
-			mongoconnect.NewConnector(),
-			husonymtyperegistry,
-		)
-
-		piidetect_workflow_register.Register(
-			w,
-			connclient,
-			jobclient,
-			&openaiclient,
-			conndatabuilder,
-			cascadelicense,
-			temporalClient.ScheduleClient(),
-		)
+	// An operator reads here where the column names and what is sampled of a table go.
+	switch {
+	case piidetectConfig.Model.Enabled():
+		logger.Info(fmt.Sprintf(
+			"PII detection asks the model %s at %s", piidetectConfig.Model.Model, piidetectConfig.Model.Host(),
+		))
+	case viper.GetString("OPENAI_BASE_URL") != "":
+		logger.Info("PII detection runs without a model: OPENAI_BASE_URL is set, and neither a key nor " +
+			"PII_DETECT_LLM_MODEL names a model to ask there")
+	default:
+		logger.Info("PII detection runs without a model")
 	}
+	piidetect.Register(
+		w,
+		eelicense,
+		piidetect.NewActivities(
+			jobclient,
+			connclient,
+			conndatabuilder,
+			temporalClient.ScheduleClient(),
+			piidetectClassifier,
+			&piidetectConfig,
+		),
+		&piidetectConfig,
+	)
 
 	if err := w.Start(); err != nil {
 		return fmt.Errorf("unable to start temporal worker: %w", err)
@@ -509,6 +519,28 @@ func serve(ctx context.Context) error {
 	}
 	logger.Info("worker stopped successfully, fully shutting down")
 	return nil
+}
+
+// piiDetectConfig reads the settings of the PII detection jobs. Settings that cannot work
+// stop the worker here, with a message that names them.
+func piiDetectConfig() (piidetect.Config, error) {
+	modelConfig, err := piidetect_model.NewConfig(&piidetect_model.Settings{
+		URL:                viper.GetString("PII_DETECT_LLM_URL"),
+		APIKey:             viper.GetString("PII_DETECT_LLM_API_KEY"),
+		Model:              viper.GetString("PII_DETECT_LLM_MODEL"),
+		MinConfidence:      viper.GetString("PII_DETECT_LLM_MIN_CONFIDENCE"),
+		OpenAIBaseURL:      viper.GetString("OPENAI_BASE_URL"),
+		OpenAIAPIKey:       viper.GetString("OPENAI_API_KEY"),
+		OpenAIOrganization: viper.GetString("OPENAI_ORG_ID"),
+		OpenAIProject:      viper.GetString("OPENAI_PROJECT_ID"),
+	})
+	if err != nil {
+		return piidetect.Config{}, fmt.Errorf("the settings of PII detection cannot be used: %w", err)
+	}
+	return piidetect.Config{
+		TablesAtOnce: viper.GetInt("TABLE_PII_DETECT_MAX_CONCURRENCY"),
+		Model:        modelConfig,
+	}, nil
 }
 
 func getHttpServer(logger *log.Logger) *http.Server {

@@ -64,6 +64,14 @@ func (d *Deriver) CipherKey(semanticType string) [32]byte {
 	return sha256hmac(d.scopeKey, "cipher:"+semanticType)
 }
 
+// HashKey returns the key of a keyed hash for a semantic type, in the same scope as its domain.
+// Like the cipher key it is derived under its own label: nothing else is computed under it, so
+// a hash never equals a seed or a permutation of the same scope. It is the one key of a scope
+// that may leave the process that derived it, since it gives nothing but those hashes.
+func (d *Deriver) HashKey(semanticType string) [32]byte {
+	return sha256hmac(d.scopeKey, "hash:"+semanticType)
+}
+
 // Domain porte la clé d'un type sémantique et sa politique de canonicalisation.
 type Domain struct {
 	key   []byte

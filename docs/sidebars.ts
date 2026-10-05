@@ -139,7 +139,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'overview/cloud-security-overview',
-      label: 'Cloud Security Overview',
+      label: 'Security Overview',
     },
     {
       type: 'html',
@@ -160,6 +160,11 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'deploy/licensing',
       label: 'Licensing',
+    },
+    {
+      type: 'doc',
+      id: 'deploy/upgrading',
+      label: 'Upgrading',
     },
     {
       type: 'doc',
@@ -209,6 +214,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guides/pii-detection-job',
+      label: 'PII Detection Jobs',
+    },
+    {
+      type: 'doc',
       id: 'guides/custom-code-transformers',
       label: 'Custom Code Transformers',
     },
@@ -251,11 +261,6 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'guides/postgres-bastion-host',
       label: 'Connect Postgres via Bastion Host',
-    },
-    {
-      type: 'doc',
-      id: 'guides/husonym-ip-ranges',
-      label: 'Husonym IP Ranges',
     },
     {
       type: 'doc',

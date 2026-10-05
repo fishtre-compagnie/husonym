@@ -10,11 +10,11 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/preflight"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	accountstatus_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/account-status"
 	genbenthosconfigs_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/gen-benthos-configs"
 	preflight_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/preflight"
 	syncactivityopts_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/sync-activity-opts"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -78,8 +78,8 @@ func Test_Workflow_PreflightStopsTheRun(t *testing.T) {
 				"pre-flight check stopped the run: public.ligne.total is computed by the destination", "PreflightBlocking", nil)
 		}).Once()
 
-	env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-		Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Twice()
+	env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+		Return(&accounthooks.ProcessAccountHookResponse{}, nil).Twice()
 
 	datasyncWorkflow := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
 	env.ExecuteWorkflow(datasyncWorkflow.Workflow, &WorkflowRequest{JobId: uuid.NewString()})

@@ -414,3 +414,17 @@ func Test_TransformCharacterSubstitutionTransformer_NilValue(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res, "The response was not nil")
 }
+
+func Test_TransformCharacterScramble_Transform_KeepsNull(t *testing.T) {
+	opts, err := NewTransformCharacterScrambleOpts(nil, nil)
+	require.NoError(t, err)
+
+	res, err := NewTransformCharacterScramble().Transform(nil, opts)
+	require.NoError(t, err)
+	require.Nil(t, res)
+
+	var absent *string
+	res, err = NewTransformCharacterScramble().Transform(absent, opts)
+	require.NoError(t, err)
+	require.Nil(t, res)
+}

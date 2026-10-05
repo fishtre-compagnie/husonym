@@ -9,9 +9,9 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
 type UserServiceClient interface {
@@ -27,7 +27,7 @@ type UserServiceClient interface {
 
 type Client struct {
 	userServiceClient UserServiceClient
-	enforcer          rbac.EntityEnforcer
+	enforcer          rbac.Checker
 	license           license.EEInterface
 }
 
@@ -41,7 +41,7 @@ type GetUserResponse struct {
 
 func NewClient(
 	userServiceClient UserServiceClient,
-	enforcer rbac.EntityEnforcer,
+	enforcer rbac.Checker,
 	eeLicense license.EEInterface,
 ) *Client {
 	return &Client{
@@ -74,7 +74,7 @@ func (c *Client) GetUser(ctx context.Context) (*User, error) {
 	}
 	user.EntityEnforcer = &UserEntityEnforcer{
 		enforcer: c.enforcer,
-		user:     rbac.NewUserIdEntity(resp.Msg.GetUserId()),
+		user:     rbac.NewUser(resp.Msg.GetUserId()),
 		enforceAccountAccess: func(ctx context.Context, accountId string) error {
 			return enforceAccountAccess(ctx, user, accountId)
 		},

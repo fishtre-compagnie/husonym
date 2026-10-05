@@ -6857,6 +6857,69 @@ func (_c *MockQuerier_IsUserInAccountApiKey_Call) RunAndReturn(run func(ctx cont
 	return _c
 }
 
+// LockAccountRole provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockAccountRole(ctx context.Context, db DBTX, arg LockAccountRoleParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockAccountRole")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, LockAccountRoleParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_LockAccountRole_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockAccountRole'
+type MockQuerier_LockAccountRole_Call struct {
+	*mock.Call
+}
+
+// LockAccountRole is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg LockAccountRoleParams
+func (_e *MockQuerier_Expecter) LockAccountRole(ctx any, db any, arg any) *MockQuerier_LockAccountRole_Call {
+	return &MockQuerier_LockAccountRole_Call{Call: _e.mock.On("LockAccountRole", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_LockAccountRole_Call) Run(run func(ctx context.Context, db DBTX, arg LockAccountRoleParams)) *MockQuerier_LockAccountRole_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 LockAccountRoleParams
+		if args[2] != nil {
+			arg2 = args[2].(LockAccountRoleParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockAccountRole_Call) Return(err error) *MockQuerier_LockAccountRole_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_LockAccountRole_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg LockAccountRoleParams) error) *MockQuerier_LockAccountRole_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LockIdentityProviderSubject provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error {
 	ret := _mock.Called(ctx, db, providersub)
@@ -7618,6 +7681,69 @@ func (_c *MockQuerier_RemoveJobHookById_Call) Return(err error) *MockQuerier_Rem
 }
 
 func (_c *MockQuerier_RemoveJobHookById_Call) RunAndReturn(run func(ctx context.Context, db DBTX, id pgtype.UUID) error) *MockQuerier_RemoveJobHookById_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceAccountRole provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ReplaceAccountRole(ctx context.Context, db DBTX, arg ReplaceAccountRoleParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceAccountRole")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, ReplaceAccountRoleParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_ReplaceAccountRole_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceAccountRole'
+type MockQuerier_ReplaceAccountRole_Call struct {
+	*mock.Call
+}
+
+// ReplaceAccountRole is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg ReplaceAccountRoleParams
+func (_e *MockQuerier_Expecter) ReplaceAccountRole(ctx any, db any, arg any) *MockQuerier_ReplaceAccountRole_Call {
+	return &MockQuerier_ReplaceAccountRole_Call{Call: _e.mock.On("ReplaceAccountRole", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_ReplaceAccountRole_Call) Run(run func(ctx context.Context, db DBTX, arg ReplaceAccountRoleParams)) *MockQuerier_ReplaceAccountRole_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 ReplaceAccountRoleParams
+		if args[2] != nil {
+			arg2 = args[2].(ReplaceAccountRoleParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ReplaceAccountRole_Call) Return(err error) *MockQuerier_ReplaceAccountRole_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_ReplaceAccountRole_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg ReplaceAccountRoleParams) error) *MockQuerier_ReplaceAccountRole_Call {
 	_c.Call.Return(run)
 	return _c
 }

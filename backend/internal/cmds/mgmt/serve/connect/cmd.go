@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,12 +24,11 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
-	http_client "github.com/fishtre-compagnie/husonym/internal/http/client"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	"github.com/go-logr/logr"
 	"github.com/grafana/pyroscope-go"
-	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -50,14 +48,11 @@ import (
 	authlogging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth_logging"
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
-	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
-	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
+	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
 	mssql_queries "github.com/fishtre-compagnie/husonym/backend/pkg/mssql-querier"
-	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	v1alpha1_accounthookservice "github.com/fishtre-compagnie/husonym/backend/services/mgmt/v1alpha1/account-hooks-service"
@@ -76,18 +71,14 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/auth0"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt/keycloak"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	cloudlicense "github.com/fishtre-compagnie/husonym/internal/ee/cloud-license"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
-	ee_slack "github.com/fishtre-compagnie/husonym/internal/ee/slack"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 
 	"github.com/spf13/cobra"
@@ -96,8 +87,6 @@ import (
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	promconfig "github.com/prometheus/common/config"
-
-	"github.com/stripe/stripe-go/v86"
 )
 
 func NewCmd() *cobra.Command {
@@ -132,18 +121,11 @@ func serve(ctx context.Context) error {
 		slogger,
 	) // set default logger for methods that can't easily access the configured logger
 
-	eelicense, err := license.NewFromEnv()
-	if err != nil {
-		return fmt.Errorf("unable to initialize ee license from env: %w", err)
-	}
-	slogger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
+	// Building the provider never fails: a license that cannot be read is logged and
+	// leaves the instance without one.
+	eelicense := license.NewProvider(license.SourceFromEnv(), slogger)
 
-	ncloudlicense, err := cloudlicense.NewFromEnv()
-	if err != nil {
-		return err
-	}
-	slogger.Debug(fmt.Sprintf("husonym cloud enabled: %t", ncloudlicense.IsValid()))
-	cloudIdentity := cloudidentity.FromEnvironment(ncloudlicense.IsValid())
+	cloudIdentity := cloudidentity.FromEnvironment()
 
 	pyroscopeConfig, isPyroscopeEnabled, err := pyroscope_env.NewFromEnv("husonym-api", slogger)
 	if err != nil {
@@ -156,15 +138,6 @@ func serve(ctx context.Context) error {
 		}
 		defer profiler.Stop() //nolint:errcheck
 	}
-
-	// A cloud license or a signed EE license, and nothing else. NewValidLicense() used to
-	// close this list; because the cascade stops at the first valid entry and that one is
-	// unconditionally valid, every gated feature was granted to everyone regardless of
-	// licensing. Do not reintroduce it here — it belongs in tests only.
-	cascadelicense := license.NewCascadeLicense(
-		ncloudlicense,
-		eelicense,
-	)
 
 	mux := http.NewServeMux()
 
@@ -179,17 +152,11 @@ func serve(ctx context.Context) error {
 		mgmtv1alpha1connect.AnonymizationServiceName,
 	}
 
-	if shouldEnableMetricsService() && !cascadelicense.IsValid() {
-		return errors.New("metrics service is enabled but no license is present")
-	}
-
 	if shouldEnableMetricsService() {
 		services = append(services, mgmtv1alpha1connect.MetricsServiceName)
 	}
 
-	if cascadelicense.IsValid() {
-		services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
-	}
+	services = append(services, mgmtv1alpha1connect.AccountHookServiceName)
 
 	// The settings of an account carry secrets, so they are only held where the deployment
 	// can encrypt one. Without a password the handler answers Unimplemented, and health and
@@ -256,29 +223,9 @@ func serve(ctx context.Context) error {
 		}
 	}
 
-	var rbacclient rbac.Interface
-	if cascadelicense.IsValid() {
-		slogger.Debug("rbac is enabled")
-		stddb := stdlib.OpenDBFromPool(pool)
-
-		rbacenforcer, err := enforcer.NewActiveEnforcer(ctx, stddb, "husonym_api.casbin_rule")
-		if err != nil {
-			return err
-		}
-		err = rbacenforcer.LoadPolicy()
-		if err != nil {
-			return fmt.Errorf("unable to load rbac policies: %w", err)
-		}
-		rbacdb := rbac.NewRbacDb(querier, db.Db)
-		enforcedClient := rbac.New(rbacenforcer)
-		err = enforcedClient.InitPolicies(ctx, rbacdb, slogger)
-		if err != nil {
-			return fmt.Errorf("unable to initialize rbac policies: %w", err)
-		}
-		rbacclient = enforcedClient
-	} else {
-		slogger.Debug("rbac is disabled")
-		rbacclient = rbac.NewAllowAllClient()
+	rbacclient, err := newRbacClient(ctx, pool, querier, db, slogger)
+	if err != nil {
+		return err
 	}
 
 	stdInterceptors := []connect.Interceptor{}
@@ -399,21 +346,17 @@ func serve(ctx context.Context) error {
 	authSvcInterceptors = append(authSvcInterceptors, stdAuthInterceptors...)
 
 	isAuthEnabled := viper.GetBool("AUTH_ENABLED")
-	workerApiKeys, err := getAllowedWorkerApiKeys(ncloudlicense.IsValid())
+	workerApiKeys, err := getAllowedWorkerApiKeys()
 	if err != nil {
 		return err
 	}
 	workerOnly := userdata.WorkerOnly{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
+		IsAuthEnabled: isAuthEnabled,
 	}
 	if isAuthEnabled {
 		slogger.Debug("auth is enabled")
-		if err := requireWorkerApiKeys(workerApiKeys, ncloudlicense.IsValid()); err != nil {
+		if err := requireWorkerApiKeys(workerApiKeys); err != nil {
 			return err
-		}
-		if !cascadelicense.IsValid() {
-			return errors.New("auth is enabled but no license is present")
 		}
 		// The issuers to accept: the deployment's own, always, plus whatever the accounts
 		// have declared. Resolved per request behind a short cache -- see the package.
@@ -540,26 +483,11 @@ func serve(ctx context.Context) error {
 		return err
 	}
 
-	stripeclient := getStripeApiClient()
-	var billingClient billing.Interface
-	if stripeclient != nil {
-		slogger.Debug("stripe client is enabled")
-		priceLookups, err := getStripePriceLookupMap()
-		if err != nil {
-			return err
-		}
-		billingClient = billing.New(stripeclient, &billing.Config{
-			AppBaseUrl:   getAppBaseUrl(),
-			PriceLookups: priceLookups,
-		})
-	}
-
 	useraccountService := v1alpha1_useraccountservice.New(&v1alpha1_useraccountservice.Config{
 		IsAuthEnabled:            isAuthEnabled,
-		IsHusonymCloud:           ncloudlicense.IsValid(),
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
-	}, db, temporalConfigProvider, authclient, authadminclient, billingClient, rbacclient, cascadelicense)
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -569,13 +497,12 @@ func serve(ctx context.Context) error {
 			connect.WithRecover(recoverHandler),
 		),
 	)
-	userdataclient := userdata.NewClient(useraccountService, rbacclient, cascadelicense)
+	userdataclient := userdata.NewClient(useraccountService, rbacclient, eelicense)
 
 	var accountSettingHandler mgmtv1alpha1connect.AccountSettingServiceHandler = mgmtv1alpha1connect.UnimplementedAccountSettingServiceHandler{}
 	if settingsEncryptor != nil {
 		accountSettingHandler = v1alpha1_accountsettingservice.New(
 			&v1alpha1_accountsettingservice.Config{
-				IsHusonymCloud:              ncloudlicense.IsValid(),
 				WorkerOnly:                  workerOnly,
 				AcceptedSignatureAlgorithms: getAcceptedSignatureAlgorithms(),
 				IssuerPolicy:                getIssuerPolicy(),
@@ -601,61 +528,21 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	if cascadelicense.IsValid() {
-		slogger.Debug("enabling account hooks service")
+	slogger.Debug("enabling account hooks service")
 
-		accountHookOptions := []accounthooks.Option{
-			accounthooks.WithAppBaseUrl(getAppBaseUrl()),
-			accounthooks.WithWorkerOnly(workerOnly),
-		}
-		var slackClient ee_slack.Interface
-		if viper.GetBool("SLACK_ACCOUNT_HOOKS_ENABLED") {
-			encryptor, err := getSymEncryptor()
-			if err != nil {
-				return err
-			}
-			if encryptor == nil {
-				return sym_encrypt.ErrEmptyPassword
-			}
-			slackClient = ee_slack.NewClient(
-				encryptor,
-				ee_slack.WithAuthClientCreds(
-					viper.GetString("SLACK_AUTH_CLIENT_ID"),
-					viper.GetString("SLACK_AUTH_CLIENT_SECRET"),
-				),
-				ee_slack.WithScope(viper.GetString("SLACK_SCOPE")),
-				ee_slack.WithRedirectUrl(viper.GetString("SLACK_REDIRECT_URL")),
-			)
-			accountHookOptions = append(
-				accountHookOptions,
-				accounthooks.WithSlackClient(slackClient),
-			)
-		}
+	accountHookService := v1alpha1_accounthookservice.New(
+		hooks.NewAccountService(db, userdataclient, workerOnly),
+	)
 
-		accountHookService := v1alpha1_accounthookservice.New(
-			accounthooks.New(db, userdataclient, accountHookOptions...),
-		)
-
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				accountHookService,
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
-			),
-		)
-	} else {
-		api.Handle(
-			mgmtv1alpha1connect.NewAccountHookServiceHandler(
-				mgmtv1alpha1connect.UnimplementedAccountHookServiceHandler{},
-				connect.WithInterceptors(stdInterceptors...),
-				connect.WithInterceptors(stdAuthInterceptors...),
-				connect.WithInterceptors(handlerBookendInterceptor),
-				connect.WithRecover(recoverHandler),
-			),
-		)
-	}
+	api.Handle(
+		mgmtv1alpha1connect.NewAccountHookServiceHandler(
+			accountHookService,
+			connect.WithInterceptors(stdInterceptors...),
+			connect.WithInterceptors(stdAuthInterceptors...),
+			connect.WithInterceptors(handlerBookendInterceptor),
+			connect.WithRecover(recoverHandler),
+		),
+	)
 
 	apiKeyService := v1alpha1_apikeyservice.New(&v1alpha1_apikeyservice.Config{
 		IsAuthEnabled: isAuthEnabled,
@@ -697,7 +584,7 @@ func serve(ctx context.Context) error {
 	)
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsHusonymCloud: ncloudlicense.IsValid(), CloudIdentity: cloudIdentity},
+		&v1alpha1_connectionservice.Config{CloudIdentity: cloudIdentity},
 		db,
 		userdataclient,
 		mongoconnector,
@@ -715,30 +602,17 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	jobhookOpts := []jobhooks.Option{}
-	if cascadelicense.IsValid() {
-		jobhookOpts = append(jobhookOpts, jobhooks.WithEnabled())
-	}
-
-	jobhookService := jobhooks.New(
-		db,
-		userdataclient,
-		jobhookOpts...,
-	)
+	jobhookService := hooks.NewJobService(db, userdataclient)
 
 	runLogConfig, err := getRunLogConfig()
 	if err != nil {
 		return err
 	}
-	if runLogConfig != nil && runLogConfig.IsEnabled && !cascadelicense.IsValid() {
-		return errors.New("run logs are enabled but no license is present")
-	}
 
 	jobServiceConfig := &v1alpha1_jobservice.Config{
-		IsAuthEnabled:  isAuthEnabled,
-		IsHusonymCloud: ncloudlicense.IsValid(),
-		WorkerOnly:     workerOnly,
-		RunLogConfig:   runLogConfig,
+		IsAuthEnabled: isAuthEnabled,
+		WorkerOnly:    workerOnly,
+		RunLogConfig:  runLogConfig,
 	}
 	jobService := v1alpha1_jobservice.New(
 		jobServiceConfig,
@@ -760,36 +634,18 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	var presAnalyzeClient presidioapi.AnalyzeInterface
-	var presAnonClient presidioapi.AnonymizeInterface
-	var presEntityClient presidioapi.EntityInterface
-	if cascadelicense.IsValid() {
-		analyzeClient, ok, err := getPresidioAnalyzeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio analyze client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio analyze client is enabled")
-			presAnalyzeClient = analyzeClient
-			presEntityClient = analyzeClient
-		}
-		anonClient, ok, err := getPresidioAnonymizeClient()
-		if err != nil {
-			return fmt.Errorf("unable to initialize presidio anonymize client: %w", err)
-		}
-		if ok {
-			slogger.Debug("presidio anonymize client is enabled")
-			presAnonClient = anonClient
-		}
+	presidioClients, err := getPresidioClients()
+	if err != nil {
+		return fmt.Errorf("unable to initialize the presidio clients: %w", err)
+	}
+	slogger.Info(presidioClients.summary())
+	if notice, ok := unusedPresidioSettings(); ok {
+		slogger.Info(notice)
 	}
 
-	isPresidioEnabled := cascadelicense.IsValid() &&
-		presAnalyzeClient != nil &&
-		presAnonClient != nil
-
-	transformerService := v1alpha1_transformerservice.New(&v1alpha1_transformerservice.Config{
-		IsPresidioEnabled: isPresidioEnabled,
-	}, db, presEntityClient, userdataclient, cascadelicense)
+	transformerService := v1alpha1_transformerservice.New(
+		presidioClients.transformerServiceConfig(), db, presidioClients.entities, userdataclient, eelicense,
+	)
 	api.Handle(
 		mgmtv1alpha1connect.NewTransformersServiceHandler(
 			transformerService,
@@ -801,11 +657,9 @@ func serve(ctx context.Context) error {
 	)
 
 	anonymizationService := v1alpha1_anonymizationservice.New(&v1alpha1_anonymizationservice.Config{
-		IsPresidioEnabled:       isPresidioEnabled,
-		PresidioDefaultLanguage: getPresidioDefaultLanguage(),
-		IsAuthEnabled:           isAuthEnabled,
-		IsHusonymCloud:          ncloudlicense.IsValid(),
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presAnalyzeClient, presAnonClient, db, cascadelicense)
+		IsAuthEnabled: isAuthEnabled,
+		WorkerOnly:    workerOnly,
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,
@@ -816,29 +670,20 @@ func serve(ctx context.Context) error {
 		),
 	)
 
-	// The PII content scan (ConnectionDataService) uses an IN-HOUSE Presidio client
-	// (backend/pkg/presidio), independent from the EE-licensed code: the feature
-	// stays free to run in production. It only needs PRESIDIO_ANALYZER_URL to be set.
-	var connectionPiiAnalyzer presidio.Analyzer
-	if endpoint := getPresidioAnalyzeEndpoint(); endpoint != "" {
-		connectionPiiAnalyzer = presidio.NewClient(
-			endpoint,
-			presidio.WithHeaders(getPresidioHttpHeaders()),
-		)
-	}
+	// The PII content scan (ConnectionDataService) is not an Enterprise feature: it only
+	// needs PRESIDIO_ANALYZER_URL to be set.
 	connectionDataService := v1alpha1_connectiondataservice.New(
 		&v1alpha1_connectiondataservice.Config{
-			IsPresidioEnabled:       connectionPiiAnalyzer != nil,
+			IsPresidioEnabled:       presidioClients.analyzer != nil,
 			PresidioDefaultLanguage: getPresidioDefaultLanguage(),
 		},
 		connectionService,
 		connectiondatabuilder,
-		connectionPiiAnalyzer,
+		presidioClients.analyzer,
 		v1alpha1_connectiondataservice.Transformers{
-			Client:            transformerService,
-			IsPresidioEnabled: isPresidioEnabled,
-			Analyze:           presAnalyzeClient,
-			Anonymize:         presAnonClient,
+			Client:  transformerService,
+			PiiText: presidioClients.piiText,
+			License: eelicense,
 		},
 	)
 	api.Handle(
@@ -892,14 +737,6 @@ func serve(ctx context.Context) error {
 	return nil
 }
 
-func getPresidioDefaultLanguage() *string {
-	lang := viper.GetString("PRESIDIO_DEFAULT_LANGUAGE")
-	if lang == "" {
-		return nil
-	}
-	return &lang
-}
-
 func getPromClientFromEnvironment() (promapi.Client, error) {
 	roundTripper := promapi.DefaultRoundTripper
 	promApiKey := getPromApiKey()
@@ -914,6 +751,40 @@ func getPromClientFromEnvironment() (promapi.Client, error) {
 		Address:      getPromApiUrl(),
 		RoundTripper: roundTripper,
 	})
+}
+
+// The access rules apply on every instance, licensed or not: what they allow is a matter
+// of roles, not of the license.
+func newRbacClient(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	querier db_queries.Querier,
+	db *husonymdb.HusonymDb,
+	logger *slog.Logger,
+) (rbac.Interface, error) {
+	client, err := rbac.New(ctx, pool, logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load the role assignments: %w", err)
+	}
+	grantAdminWhereNoRole(ctx, client, rbac.NewAccounts(querier, db.Db), logger)
+	return client, nil
+}
+
+// adminGranter gives an admin to the accounts where nobody holds a role.
+type adminGranter interface {
+	GrantAdminWhereNoRole(ctx context.Context, accounts rbac.Accounts) (int, error)
+}
+
+// grantAdminWhereNoRole gives its admins to an account whose members have no role. The API
+// starts whether or not it succeeds: should it fail, those accounts stay as they are until the
+// next start, and every other one is served.
+func grantAdminWhereNoRole(ctx context.Context, granter adminGranter, accounts rbac.Accounts, logger *slog.Logger) {
+	granted, err := granter.GrantAdminWhereNoRole(ctx, accounts)
+	if err != nil {
+		logger.ErrorContext(ctx, "unable to give an admin to the accounts where nobody has a role", "error", err)
+	} else if granted > 0 {
+		logger.InfoContext(ctx, "made admin the members of the accounts where nobody had a role", "members", granted)
+	}
 }
 
 func getDbConfig() (*husonymdb.ConnectConfig, error) {
@@ -1213,19 +1084,11 @@ func getAuthApiProvider() string {
 	return viper.GetString("AUTH_API_PROVIDER")
 }
 
-// workerApiKeysVariable names where the keys a worker authenticates with are set.
-func workerApiKeysVariable(isHusonymCloud bool) string {
-	if isHusonymCloud {
-		return "HUSONYM_CLOUD_ALLOWED_WORKER_API_KEYS"
-	}
-	return "HUSONYM_ALLOWED_WORKER_API_KEYS"
-}
-
 // getAllowedWorkerApiKeys are the keys a worker authenticates with. A worker key opens only
 // what the worker calls, passes no RBAC, and is the only caller allowed to call what only the
 // worker calls. With authentication on, one is required.
-func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
-	variable := workerApiKeysVariable(isHusonymCloud)
+func getAllowedWorkerApiKeys() ([]string, error) {
+	const variable = "HUSONYM_ALLOWED_WORKER_API_KEYS"
 	keys, err := parseWorkerApiKeys(viper.GetString(variable))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", variable, err)
@@ -1236,11 +1099,10 @@ func getAllowedWorkerApiKeys(isHusonymCloud bool) ([]string, error) {
 // requireWorkerApiKeys refuses an authenticated deployment whose worker has no key of its own.
 // An account key cannot be told from another one: were the worker to use one, any account key
 // allowed to edit jobs could write what a run executes.
-func requireWorkerApiKeys(keys []string, isHusonymCloud bool) error {
+func requireWorkerApiKeys(keys []string) error {
 	if len(keys) == 0 {
 		return fmt.Errorf(
-			"auth is enabled but no worker key is set (%s): give the worker a worker key of its own",
-			workerApiKeysVariable(isHusonymCloud),
+			"auth is enabled but no worker key is set (HUSONYM_ALLOWED_WORKER_API_KEYS): give the worker a worker key of its own",
 		)
 	}
 	return nil
@@ -1421,48 +1283,6 @@ func getDefaultMaxAllowedRecords() *int64 {
 	return &val
 }
 
-func getStripeApiClient() *stripe.Client {
-	apiKey := getStripeApiKey()
-	if apiKey != nil {
-		return stripe.NewClient(*apiKey)
-	}
-	return nil
-}
-
-func getStripeApiKey() *string {
-	value := viper.GetString("STRIPE_API_KEY")
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
-func getStripePriceLookupMap() (billing.PriceQuantity, error) {
-	value := viper.GetStringMapString("STRIPE_PRICE_LOOKUPS")
-
-	output := billing.PriceQuantity{}
-	for k, v := range value {
-		if v == "" {
-			output[k] = 0
-			continue
-		}
-		quantity, err := strconv.Atoi(v)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to parse value as int for billing quantity %q: %w",
-				v,
-				err,
-			)
-		}
-		output[k] = quantity
-	}
-	return output, nil
-}
-
-func getAppBaseUrl() string {
-	return viper.GetString("APP_BASEURL")
-}
-
 // getSymEncryptor builds the encryptor of the deployment's secrets, or nothing when no
 // password is set — which says the deployment has no way to keep one.
 func getSymEncryptor() (sym_encrypt.Interface, error) {
@@ -1471,63 +1291,4 @@ func getSymEncryptor() (sym_encrypt.Interface, error) {
 		return nil, nil
 	}
 	return sym_encrypt.NewEncryptor(password)
-}
-
-func getPresidioAnalyzeClient() (*presidioapi.ClientWithResponses, bool, error) {
-	endpoint := getPresidioAnalyzeEndpoint()
-	if endpoint == "" {
-		return nil, false, nil
-	}
-	return getPresidioClient(endpoint)
-}
-
-func getPresidioAnonymizeClient() (*presidioapi.ClientWithResponses, bool, error) {
-	endpoint := getPresidioAnonymizeEndpoint()
-	if endpoint == "" {
-		return nil, false, nil
-	}
-	return getPresidioClient(endpoint)
-}
-
-// presidioTimeout is how long Presidio is waited for, for one text to analyze or anonymize: a
-// text may be a long one, on a Presidio that is busy. Past it Presidio is not answering, and
-// the call that asks it — a row a run transforms — would wait without end.
-const presidioTimeout = time.Minute
-
-func getPresidioClient(endpoint string) (*presidioapi.ClientWithResponses, bool, error) {
-	httpclient := http_client.WithHeaders(&http.Client{Timeout: presidioTimeout}, getPresidioHttpHeaders())
-
-	client, err := presidioapi.NewClientWithResponses(
-		endpoint,
-		presidioapi.WithHTTPClient(httpclient),
-	)
-	if err != nil {
-		return nil, false, err
-	}
-
-	return client, true, nil
-}
-
-func getPresidioAnalyzeEndpoint() string {
-	return viper.GetString("PRESIDIO_ANALYZER_URL")
-}
-func getPresidioAnonymizeEndpoint() string {
-	return viper.GetString("PRESIDIO_ANONYMIZER_URL")
-}
-
-func getPresidioHttpHeaders() map[string]string {
-	output := map[string]string{}
-	authtoken := getPresidioAuthTokenHeaderValue()
-	if authtoken != nil && *authtoken != "" {
-		output["Authorization"] = *authtoken
-	}
-	return output
-}
-
-func getPresidioAuthTokenHeaderValue() *string {
-	val := viper.GetString("PRESIDIO_HEADER_AUTH_TOKEN")
-	if val == "" {
-		return nil
-	}
-	return &val
 }

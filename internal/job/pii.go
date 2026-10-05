@@ -3,6 +3,7 @@ package job
 import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
+	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/transformers/catalog"
 )
 
@@ -45,4 +46,39 @@ func SuggestedTransformer(columnName, dataType string) (mgmtv1alpha1.Transformer
 		return none, "", false
 	}
 	return classification.Suggested, classification.Category, true
+}
+
+// The range a number of a category is generated in, where the catalogue's own range is
+// that of no datum.
+var categoryRanges = map[string]struct{ min, max int64 }{
+	"age":    {18, 90},
+	"salary": {20000, 90000},
+}
+
+// SuggestedConfig returns the config a suggested transformer is written to a job with: a
+// copy of the catalogue's, which holds the base transformers a run needs no license for,
+// with the range of the category when the transformer generates a number and the category
+// has one, cut at what the column holds (see fitColumn) when the column is given. False
+// when the source is not in the catalogue.
+func SuggestedConfig(
+	source mgmtv1alpha1.TransformerSource,
+	category string,
+	column *sqlmanager_shared.DatabaseSchemaRow,
+) (*mgmtv1alpha1.TransformerConfig, bool) {
+	config, ok := catalog.DefaultConfig(source, false)
+	if !ok {
+		return nil, false
+	}
+	if bounds, ranged := categoryRanges[category]; ranged {
+		if generated := config.GetGenerateInt64Config(); generated != nil {
+			lowest, highest := bounds.min, bounds.max
+			generated.Min, generated.Max = &lowest, &highest
+		}
+		if generated := config.GetGenerateFloat64Config(); generated != nil {
+			lowest, highest := float64(bounds.min), float64(bounds.max)
+			generated.Min, generated.Max = &lowest, &highest
+		}
+	}
+	fitColumn(config, column)
+	return config, true
 }

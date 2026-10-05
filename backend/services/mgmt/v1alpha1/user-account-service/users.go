@@ -2,9 +2,7 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -20,12 +18,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/version"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stripe/stripe-go/v86"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -199,11 +195,6 @@ func (s *Service) ConvertPersonalToTeamAccount(
 			"unable to convert personal account to team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsHusonymCloud && s.billingclient == nil {
-		return nil, husonymerrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
-		)
-	}
 
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
 
@@ -281,18 +272,10 @@ func (s *Service) ConvertPersonalToTeamAccount(
 	}
 
 	newPersonalAccountId := husonymdb.UUIDString(resp.PersonalAccount.ID)
-	if err := s.rbacClient.SetupNewAccount(ctx, newPersonalAccountId, logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup newly converted personal account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(newPersonalAccountId),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(newPersonalAccountId),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -302,39 +285,9 @@ func (s *Service) ConvertPersonalToTeamAccount(
 		)
 	}
 
-	var checkoutSessionUrl *string
-	if s.cfg.IsHusonymCloud && !resp.TeamAccount.StripeCustomerID.Valid && s.billingclient != nil {
-		account, err := s.db.UpsertStripeCustomerId(
-			ctx,
-			resp.TeamAccount.ID,
-			s.getCreateStripeAccountFunction(user.Msg.GetUserId(), logger),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to upsert stripe customer id after account creation: %w",
-				err,
-			)
-		}
-		session, err := s.generateCheckoutSession(
-			ctx,
-			account.StripeCustomerID.String,
-			account.AccountSlug,
-			user.Msg.GetUserId(),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate checkout session: %w", err)
-		}
-		logger.Debug("stripe checkout session created", "id", session.ID)
-		checkoutSessionUrl = &session.URL
-		resp.TeamAccount = account // update the team account that now includes a stripe customer id
-	}
-
 	return connect.NewResponse(&mgmtv1alpha1.ConvertPersonalToTeamAccountResponse{
 		AccountId:            husonymdb.UUIDString(resp.TeamAccount.ID),
 		NewPersonalAccountId: husonymdb.UUIDString(resp.PersonalAccount.ID),
-		CheckoutSessionUrl:   checkoutSessionUrl,
 	}), nil
 }
 
@@ -357,26 +310,10 @@ func (s *Service) SetPersonalAccount(
 		return nil, err
 	}
 
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	logger = logger.With(
-		"accountId",
-		husonymdb.UUIDString(account.ID),
-		"userId",
-		user.Msg.GetUserId(),
-	)
-
-	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup new account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -446,11 +383,6 @@ func (s *Service) CreateTeamAccount(
 			"unable to create team account as authentication is not enabled",
 		)
 	}
-	if s.cfg.IsHusonymCloud && s.billingclient == nil {
-		return nil, husonymerrors.NewForbidden(
-			"creating team accounts via the API is currently forbidden in Husonym Cloud environments. Please contact us to create a team account.",
-		)
-	}
 
 	user, err := s.GetUser(ctx, connect.NewRequest(&mgmtv1alpha1.GetUserRequest{}))
 	if err != nil {
@@ -466,48 +398,10 @@ func (s *Service) CreateTeamAccount(
 		return nil, err
 	}
 
-	logger = logger.With("accountId", husonymdb.UUIDString(account.ID))
-
-	var checkoutSessionUrl *string
-	if s.cfg.IsHusonymCloud && !account.StripeCustomerID.Valid && s.billingclient != nil {
-		account, err = s.db.UpsertStripeCustomerId(
-			ctx,
-			account.ID,
-			s.getCreateStripeAccountFunction(user.Msg.GetUserId(), logger),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"unable to upsert stripe customer id after account creation: %w",
-				err,
-			)
-		}
-		session, err := s.generateCheckoutSession(
-			ctx,
-			account.StripeCustomerID.String,
-			account.AccountSlug,
-			user.Msg.GetUserId(),
-			logger,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("unable to generate checkout session: %w", err)
-		}
-		logger.Debug("stripe checkout session created", "id", session.ID)
-		checkoutSessionUrl = &session.URL
-	}
-
-	if err := s.rbacClient.SetupNewAccount(ctx, husonymdb.UUIDString(account.ID), logger); err != nil {
-		// note: if this fails the account is kind of in a broken state...
-		return nil, fmt.Errorf(
-			"unable to setup new account, please reach out to support for further assistance: %w",
-			err,
-		)
-	}
-
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(account.ID)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(account.ID)),
 		mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_ADMIN,
 	); err != nil {
 		// note: if this fails the account is kind of in a broken state...
@@ -518,70 +412,8 @@ func (s *Service) CreateTeamAccount(
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.CreateTeamAccountResponse{
-		AccountId:          husonymdb.UUIDString(account.ID),
-		CheckoutSessionUrl: checkoutSessionUrl,
+		AccountId: husonymdb.UUIDString(account.ID),
 	}), nil
-}
-
-func (s *Service) getCreateStripeAccountFunction(
-	userId string,
-	logger *slog.Logger,
-) func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
-	return func(ctx context.Context, account db_queries.HusonymApiAccount) (string, error) {
-		email := s.getEmailFromToken(ctx, logger)
-		if email == nil {
-			return "", errors.New(
-				"unable to retrieve user email from auth token when creating stripe account",
-			)
-		}
-		customer, err := s.billingclient.NewCustomer(ctx, &billing.CustomerRequest{
-			Email:     *email,
-			Name:      account.AccountSlug,
-			AccountId: husonymdb.UUIDString(account.ID),
-			UserId:    userId,
-		})
-		if err != nil {
-			return "", fmt.Errorf("unable to create new stripe customer: %w", err)
-		}
-		return customer.ID, nil
-	}
-}
-
-func (s *Service) generateCheckoutSession(
-	ctx context.Context,
-	customerId, accountSlug, userId string,
-	logger *slog.Logger,
-) (*stripe.CheckoutSession, error) {
-	if s.billingclient == nil {
-		return nil, errors.New("unable to generate checkout session as stripe client is nil")
-	}
-
-	session, err := s.billingclient.NewCheckoutSession(
-		ctx,
-		customerId,
-		accountSlug,
-		userId,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create new stripe checkout session: %w", err)
-	}
-	return session, nil
-}
-
-func (s *Service) getEmailFromToken(ctx context.Context, logger *slog.Logger) *string {
-	tokenctxResp, err := tokenctx.GetTokenCtx(ctx)
-	if err != nil {
-		logger.Error(
-			fmt.Errorf("unable to retrieve token from ctx when getting email: %w", err).Error(),
-		)
-		return nil
-	}
-	if tokenctxResp.JwtContextData != nil && tokenctxResp.JwtContextData.Claims != nil {
-		return tokenctxResp.JwtContextData.Claims.Email
-	}
-	logger.Error(errors.New("unable to retrieve email from token ctx").Error())
-	return nil
 }
 
 func (s *Service) GetTeamAccountMembers(
@@ -613,17 +445,12 @@ func (s *Service) GetTeamAccountMembers(
 		return nil, err
 	}
 
-	rbacUsers := make([]rbac.EntityString, 0, len(userIdentities))
+	rbacUsers := make([]rbac.User, 0, len(userIdentities))
 	for i := range userIdentities {
-		rbacUsers = append(rbacUsers, rbac.NewPgUserIdEntity(userIdentities[i].UserID))
+		rbacUsers = append(rbacUsers, rbac.NewPgUser(userIdentities[i].UserID))
 	}
 
-	userRoles := s.rbacClient.GetUserRoles(
-		ctx,
-		rbacUsers,
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
-		logger,
-	)
+	userRoles := s.rbacClient.Roles(rbacUsers, rbac.NewAccount(husonymdb.UUIDString(accountUuid)))
 	logger.Debug(fmt.Sprintf("found %d users with roles", len(userRoles)))
 
 	dtoUsers := make([]*mgmtv1alpha1.AccountUser, len(userIdentities))
@@ -635,19 +462,8 @@ func (s *Service) GetTeamAccountMembers(
 			dtoUsers[i] = &mgmtv1alpha1.AccountUser{
 				Id: husonymdb.UUIDString(user.UserID),
 			}
-			role, ok := userRoles[rbac.NewPgUserIdEntity(user.UserID).String()]
-			if ok {
-				logger.Debug(
-					fmt.Sprintf(
-						"found role for user: %s - %s",
-						husonymdb.UUIDString(user.UserID),
-						role.String(),
-					),
-				)
-				dtoUsers[i].Role = role.ToDto()
-			} else {
-				dtoUsers[i].Role = mgmtv1alpha1.AccountRole_ACCOUNT_ROLE_UNSPECIFIED
-			}
+			// A member without a role has the unspecified one.
+			dtoUsers[i].Role = userRoles[rbac.NewPgUser(user.UserID)]
 			// What the provider said at sign-in, stored on the association. This is the
 			// nominal path, and it is the same for every OIDC provider.
 			identity := &authmgmt.User{
@@ -730,10 +546,10 @@ func (s *Service) RemoveTeamAccountMember(
 		return nil, fmt.Errorf("unable to remove account user from db: %w", err)
 	}
 
-	if err := s.rbacClient.RemoveAccountUser(
+	if err := s.rbacClient.RemoveMember(
 		ctx,
-		rbac.NewPgUserIdEntity(memberUserId),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(accountUuid)),
+		rbac.NewPgUser(memberUserId),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 	); err != nil {
 		return nil, fmt.Errorf("unable to remove account user from rbac engine: %w", err)
 	}
@@ -928,10 +744,10 @@ func (s *Service) AcceptTeamAccountInvite(
 		return nil, err
 	}
 
-	if err := s.rbacClient.SetAccountRole(
+	if err := s.setRole(
 		ctx,
-		rbac.NewUserIdEntity(user.Msg.GetUserId()),
-		rbac.NewAccountIdEntity(husonymdb.UUIDString(validateResp.AccountId)),
+		rbac.NewUser(user.Msg.GetUserId()),
+		rbac.NewAccount(husonymdb.UUIDString(validateResp.AccountId)),
 		validateResp.Role,
 	); err != nil {
 		return nil, fmt.Errorf(
@@ -989,10 +805,10 @@ func (s *Service) SetUserRole(
 		return nil, husonymerrors.NewBadRequest("provided user id is not in account")
 	}
 
-	err = s.rbacClient.SetAccountRole(
+	err = s.setRole(
 		ctx,
-		rbac.NewPgUserIdEntity(requestingUserUuid),
-		rbac.NewAccountIdEntity(req.Msg.GetAccountId()),
+		rbac.NewPgUser(requestingUserUuid),
+		rbac.NewAccount(husonymdb.UUIDString(accountUuid)),
 		req.Msg.GetRole(),
 	)
 	if err != nil {
@@ -1032,7 +848,7 @@ func (s *Service) GetSystemInformation(
 		License: &mgmtv1alpha1.SystemLicense{
 			IsValid:        s.licenseclient.IsValid(),
 			ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
-			IsHusonymCloud: s.cfg.IsHusonymCloud,
+			IsHusonymCloud: false,
 		},
 	}), nil
 }

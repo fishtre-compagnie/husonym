@@ -1,0 +1,27 @@
+package v1alpha1_useraccountservice
+
+import (
+	"context"
+	"errors"
+
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
+)
+
+// setRole gives a member a role in an account. A role that is stored and that this instance
+// could not read back is a role given: the member holds it here once the roles are read again,
+// within seconds, so the request goes on, and a warning tells it. Until then this instance
+// answers the member from the role held before.
+func (s *Service) setRole(ctx context.Context, user rbac.User, account rbac.Account, role mgmtv1alpha1.AccountRole) error {
+	err := s.rbacClient.SetRole(ctx, user, account, role)
+	if errors.Is(err, rbac.ErrRoleNotReadBack) {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).WarnContext(
+			ctx,
+			"the role of a member is stored, and is held on this instance once the roles are read again",
+			"userId", user.String(), "accountId", account.String(), "role", role.String(), "error", err,
+		)
+		return nil
+	}
+	return err
+}

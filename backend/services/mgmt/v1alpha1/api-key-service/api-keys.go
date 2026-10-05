@@ -12,9 +12,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pkg_utils "github.com/fishtre-compagnie/husonym/backend/pkg/utils"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
 func (s *Service) GetAccountApiKeys(

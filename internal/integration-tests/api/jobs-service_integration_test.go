@@ -11,7 +11,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	integrationtests_test "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
-	piidetect_table_activities "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities"
+	piidetect_report "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -232,85 +232,25 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 	t := s.T()
 	ctx := s.ctx
 
-	t.Run("OSS-unlicensed-unimplemented", func(t *testing.T) {
-		client := s.OSSUnauthenticatedUnlicensedClients.Jobs()
-		t.Run("GetJobHooks", func(t *testing.T) {
-			resp, err := client.GetJobHooks(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.GetJobHooksRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("GetJobHook", func(t *testing.T) {
-			resp, err := client.GetJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.GetJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("CreateJobHook", func(t *testing.T) {
-			resp, err := client.CreateJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.CreateJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("DeleteJobHook", func(t *testing.T) {
-			resp, err := client.DeleteJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.DeleteJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("IsJobHookNameAvailable", func(t *testing.T) {
-			resp, err := client.IsJobHookNameAvailable(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.IsJobHookNameAvailableRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("UpdateJobHook", func(t *testing.T) {
-			resp, err := client.UpdateJobHook(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.UpdateJobHookRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-		t.Run("SetJobHookEnabled", func(t *testing.T) {
-			resp, err := client.SetJobHookEnabled(
-				ctx,
-				connect.NewRequest(&mgmtv1alpha1.SetJobHookEnabledRequest{}),
-			)
-			requireErrResp(t, resp, err)
-			requireConnectError(t, err, connect.CodeUnimplemented)
-		})
-	})
-
-	t.Run("Cloud", func(t *testing.T) {
-		client := s.HusonymCloudAuthenticatedLicensedClients.Jobs(
+	t.Run("OSS-authenticated-licensed", func(t *testing.T) {
+		client := s.OSSAuthenticatedLicensedClients.Jobs(
 			integrationtests_test.WithUserId(testAuthUserId),
 		)
 		s.setUser(
 			ctx,
-			s.HusonymCloudAuthenticatedLicensedClients.Users(
+			s.OSSAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 		accountId := s.createPersonalAccount(
 			ctx,
-			s.HusonymCloudAuthenticatedLicensedClients.Users(
+			s.OSSAuthenticatedLicensedClients.Users(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 		)
 
 		srcconn := s.createPostgresConnection(
-			s.HusonymCloudAuthenticatedLicensedClients.Connections(
+			s.OSSAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -318,7 +258,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 			"test",
 		)
 		destconn := s.createPostgresConnection(
-			s.HusonymCloudAuthenticatedLicensedClients.Connections(
+			s.OSSAuthenticatedLicensedClients.Connections(
 				integrationtests_test.WithUserId(testAuthUserId),
 			),
 			accountId,
@@ -328,7 +268,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 
 		s.MockTemporalForCreateJob("test-id")
 		jobResp, err := client.CreateJob(ctx, connect.NewRequest(&mgmtv1alpha1.CreateJobRequest{
-			JobName:   "cloud-testjob-1",
+			JobName:   "oss-testjob-1",
 			AccountId: accountId,
 			Mappings:  []*mgmtv1alpha1.JobMapping{},
 			Source: &mgmtv1alpha1.JobSource{
@@ -525,7 +465,7 @@ func (s *IntegrationTestSuite) Test_JobService_JobHooks() {
 					}),
 				)
 				requireErrResp(t, resp, err)
-				requireConnectError(t, err, connect.CodeUnknown)
+				requireConnectError(t, err, connect.CodeInvalidArgument)
 			})
 		})
 
@@ -977,15 +917,15 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 	s.T().Run("found", func(t *testing.T) {
 		jobRunId := fmt.Sprintf("%s-%s", jobId, time.Now().Format(time.RFC3339))
 
-		report := piidetect_table_activities.TableReport{
+		report := piidetect_report.TableReport{
 			TableSchema: "public",
 			TableName:   "users",
-			ColumnReports: []piidetect_table_activities.ColumnReport{
+			ColumnReports: []piidetect_report.ColumnReport{
 				{
 					ColumnName: "age",
-					Report: piidetect_table_activities.CombinedPiiDetectReport{
-						Regex: &piidetect_table_activities.RegexPiiDetectReport{
-							Category: piidetect_table_activities.PiiCategoryPersonal,
+					Report: piidetect_report.Combined{
+						Regex: &piidetect_report.RuleFinding{
+							Category: piidetect_report.Personal,
 						},
 					},
 				},
@@ -1000,7 +940,7 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 				Id: &mgmtv1alpha1.RunContextKey{
 					AccountId: accountId,
 					JobRunId:  jobRunId,
-					ExternalId: piidetect_table_activities.BuildTableReportExternalId(
+					ExternalId: piidetect_report.TableReportExternalId(
 						"public",
 						"users",
 					),
@@ -1033,9 +973,135 @@ func (s *IntegrationTestSuite) Test_GetPiiDetectionReport() {
 		require.Equal(t, "age", columnReport.Column)
 		require.Equal(
 			t,
-			piidetect_table_activities.PiiCategoryPersonal.String(),
+			string(piidetect_report.Personal),
 			columnReport.RegexReport.Category,
 		)
+	})
+
+	// store writes a value under a key of a run, as a worker does.
+	store := func(t *testing.T, jobRunId, externalId, value string) {
+		t.Helper()
+		setResp, err := jobclient.SetRunContext(
+			s.ctx,
+			connect.NewRequest(&mgmtv1alpha1.SetRunContextRequest{
+				Id:    &mgmtv1alpha1.RunContextKey{AccountId: accountId, JobRunId: jobRunId, ExternalId: externalId},
+				Value: []byte(value),
+			}),
+		)
+		requireNoErrResp(t, setResp, err)
+	}
+	read := func(t *testing.T, jobRunId string) []*mgmtv1alpha1.PiiDetectionReport_TableReport {
+		t.Helper()
+		s.MockTemporalForDescribeWorkflowExecution(accountId, jobId, jobRunId, "JobPiiDetect")
+		getResp, err := jobclient.GetPiiDetectionReport(
+			s.ctx,
+			connect.NewRequest(&mgmtv1alpha1.GetPiiDetectionReportRequest{JobRunId: jobRunId, AccountId: accountId}),
+		)
+		requireNoErrResp(t, getResp, err)
+		return getResp.Msg.GetReport().GetTables()
+	}
+	tableKey := func(jobRunId, table string) string {
+		return fmt.Sprintf(
+			`{"jobRunId":%q,"externalId":"public.%s--table-pii-report","accountId":%q}`, jobRunId, table, accountId,
+		)
+	}
+
+	// A table report and an index that hold only the members every report has, as stored
+	// rows may: they are read as they always were. The table report is stored under an
+	// earlier run, as the report of a table that an incremental run did not scan again:
+	// only the index of the run leads to it.
+	s.T().Run("a report stored without the optional members", func(t *testing.T) {
+		jobRunId := fmt.Sprintf("%s-%s-plain", jobId, time.Now().Format(time.RFC3339))
+		earlierRunId := jobRunId + "-earlier"
+		store(t, earlierRunId, "public.users--table-pii-report", `{
+			"table_schema": "public", "table_name": "users",
+			"column_reports": [
+				{"column_name": "email", "report": {"regex": {"category": "contact"}, "llm": {"category": "contact", "confidence": 0.95}}},
+				{"column_name": "ref", "report": {"regex": null, "llm": {"category": "national_id", "confidence": 0.7}}}
+			],
+			"scanned_columns": ["id", "email", "ref"]
+		}`)
+
+		// The run has no index yet, and no table report of its own.
+		require.Empty(t, read(t, jobRunId))
+
+		store(t, jobRunId, jobId+"--job-pii-report", `{"successfulTableReports":[{
+			"tableSchema": "public", "tableName": "users",
+			"reportKey": `+tableKey(earlierRunId, "users")+`,
+			"scanFingerprint": "0a1b2c"
+		}]}`)
+		tables := read(t, jobRunId)
+		require.Len(t, tables, 1)
+		require.Equal(t, "public", tables[0].GetSchema())
+		require.Equal(t, "users", tables[0].GetTable())
+		require.Len(t, tables[0].GetColumns(), 2)
+		email, ref := tables[0].GetColumns()[0], tables[0].GetColumns()[1]
+		require.Equal(t, "email", email.GetColumn())
+		require.Equal(t, "contact", email.GetRegexReport().GetCategory())
+		require.Equal(t, "contact", email.GetLlmReport().GetCategory())
+		require.InDelta(t, 0.95, email.GetLlmReport().GetConfidence(), 1e-6)
+		require.Equal(t, "ref", ref.GetColumn())
+		require.Nil(t, ref.GetRegexReport())
+		require.Equal(t, "national_id", ref.GetLlmReport().GetCategory())
+	})
+
+	// The members a worker may add to a report and to an index do not change what is read.
+	s.T().Run("a report stored with every member", func(t *testing.T) {
+		jobRunId := fmt.Sprintf("%s-%s-full", jobId, time.Now().Format(time.RFC3339))
+		earlierRunId := jobRunId + "-earlier"
+		table, err := json.Marshal(&piidetect_report.TableReport{
+			TableSchema: "public",
+			TableName:   "users",
+			ColumnReports: []piidetect_report.ColumnReport{{
+				ColumnName: "iban",
+				Report: piidetect_report.Combined{
+					Regex: &piidetect_report.RuleFinding{Category: piidetect_report.Financial, Evidence: "values:iban 0.97"},
+				},
+			}},
+			ScannedColumns: []string{"id", "iban"},
+			Scan: &piidetect_report.Scan{
+				SampledRows: 200, Input: piidetect_report.InputProfiles, Model: "local-model",
+				ModelStatus: piidetect_report.ModelPartial, Unanswered: []string{"id"},
+				BelowThreshold: []piidetect_report.Dismissed{
+					{ColumnName: "id", Category: piidetect_report.Personal, Confidence: 0.2},
+				},
+			},
+		})
+		require.NoError(t, err)
+		store(t, earlierRunId, piidetect_report.TableReportExternalId("public", "users"), string(table))
+		store(t, jobRunId, piidetect_report.JobReportExternalId(jobId), `{
+			"successfulTableReports": [{
+				"tableSchema": "public", "tableName": "users",
+				"reportKey": `+tableKey(earlierRunId, "users")+`,
+				"scanFingerprint": "0a1b2c", "incomplete": true
+			}],
+			"failedTables": [{"tableSchema": "public", "tableName": "orders", "reason": "the columns cannot be read"}]
+		}`)
+
+		tables := read(t, jobRunId)
+		require.Len(t, tables, 1)
+		require.Equal(t, "users", tables[0].GetTable())
+		require.Len(t, tables[0].GetColumns(), 1)
+		require.Equal(t, "iban", tables[0].GetColumns()[0].GetColumn())
+		require.Equal(t, "financial", tables[0].GetColumns()[0].GetRegexReport().GetCategory())
+		require.Nil(t, tables[0].GetColumns()[0].GetLlmReport())
+	})
+
+	// An index may name a table report that is not there: the others are returned.
+	s.T().Run("an index that names a table report that is missing", func(t *testing.T) {
+		jobRunId := fmt.Sprintf("%s-%s-missing", jobId, time.Now().Format(time.RFC3339))
+		earlierRunId := jobRunId + "-earlier"
+		store(t, earlierRunId, "public.users--table-pii-report",
+			`{"table_schema":"public","table_name":"users","column_reports":[]}`)
+		store(t, jobRunId, jobId+"--job-pii-report", `{"successfulTableReports":[
+			{"tableSchema": "public", "tableName": "users", "reportKey": `+tableKey(earlierRunId, "users")+`, "scanFingerprint": "a"},
+			{"tableSchema": "public", "tableName": "gone", "reportKey": `+tableKey(earlierRunId, "gone")+`, "scanFingerprint": "b"}
+		]}`)
+
+		tables := read(t, jobRunId)
+		require.Len(t, tables, 1)
+		require.Equal(t, "users", tables[0].GetTable())
+		require.Empty(t, tables[0].GetColumns())
 	})
 
 	s.T().Run("empty", func(t *testing.T) {

@@ -279,6 +279,18 @@ func Test_PostgresManager(t *testing.T) {
 		require.ElementsMatch(t, [][]string{{"email"}}, uniques)
 	})
 
+	t.Run("GetCheckConstraintsMap", func(t *testing.T) {
+		t.Parallel()
+		actual, err := manager.GetTableConstraintsBySchema(ctx, []string{schema, "bookings"})
+		require.NoError(t, err)
+
+		checks, ok := actual.CheckConstraints[buildTable("bookings", "aircrafts_data")]
+		require.True(t, ok, "aircrafts_data had no entries")
+		require.Equal(t, []string{"CHECK ((range > 0))"}, checks)
+		_, ok = actual.CheckConstraints[buildTable(schema, "unique_emails")]
+		require.False(t, ok, "a table without a CHECK constraint has no entry")
+	})
+
 	t.Run("GetUniqueConstraintsMap_Composite", func(t *testing.T) {
 		t.Parallel()
 		actual, err := manager.GetTableConstraintsBySchema(ctx, []string{schema})

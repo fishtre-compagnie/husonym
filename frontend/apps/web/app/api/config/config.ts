@@ -28,8 +28,6 @@ export function getSystemAppConfig(): SystemAppConfig {
     isJobHooksEnabled: process.env.JOBHOOKS_ENABLED === 'true',
     isAccountHooksEnabled:
       isHusonymCloud || process.env.ACCOUNT_HOOKS_ENABLED === 'true',
-    isSlackAccountHookEnabled:
-      process.env.SLACK_ACCOUNT_HOOKS_ENABLED === 'true',
     isRbacEnabled: isHusonymCloud || process.env.RBAC_ENABLED === 'true',
     isPiiDetectionJobEnabled: process.env.PII_DETECTION_JOB_ENABLED === 'true',
   };

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
@@ -19,13 +20,13 @@ type scriptedAnalyzer struct {
 	asked    []string
 }
 
-func (a *scriptedAnalyzer) Analyze(_ context.Context, req presidio.AnalyzeRequest) ([]presidio.AnalyzeResult, error) {
+func (a *scriptedAnalyzer) Analyze(_ context.Context, req *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
 	a.asked = append(a.asked, req.Text)
 	if a.failures[req.Text] > 0 {
 		a.failures[req.Text]--
 		return nil, a.failure
 	}
-	return []presidio.AnalyzeResult{{EntityType: "PERSON", Score: 0.9}}, nil
+	return []presidio.Finding{{EntityType: "PERSON", Score: 0.9}}, nil
 }
 
 type quiet struct{}
@@ -128,10 +129,10 @@ func Test_contentAnalysis_AnEntityOfTooFewValuesIsNotTold(t *testing.T) {
 // findsIn finds a person in the texts it holds, and nothing in the others.
 type findsIn []string
 
-func (f findsIn) Analyze(_ context.Context, req presidio.AnalyzeRequest) ([]presidio.AnalyzeResult, error) {
+func (f findsIn) Analyze(_ context.Context, req *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
 	for _, text := range f {
 		if text == req.Text {
-			return []presidio.AnalyzeResult{{EntityType: "PERSON", Score: 0.9}}, nil
+			return []presidio.Finding{{EntityType: "PERSON", Score: 0.9}}, nil
 		}
 	}
 	return nil, nil
@@ -139,8 +140,53 @@ func (f findsIn) Analyze(_ context.Context, req presidio.AnalyzeRequest) ([]pres
 
 type nothingFound struct{}
 
-func (nothingFound) Analyze(context.Context, presidio.AnalyzeRequest) ([]presidio.AnalyzeResult, error) {
+func (nothingFound) Analyze(context.Context, *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
 	return nil, nil
+}
+
+// limited tells how long each call it receives may last, and what it was asked.
+type limited struct {
+	limits   []time.Duration
+	requests []presidio.AnalyzeRequest
+}
+
+func (l *limited) Analyze(ctx context.Context, req *presidio.AnalyzeRequest) ([]presidio.Finding, error) {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return nil, errors.New("the call has no limit")
+	}
+	l.limits = append(l.limits, time.Until(deadline))
+	l.requests = append(l.requests, *req)
+	return nil, nil
+}
+
+// A sampled value is short: the analyzer is waited for less long than for a text of any length.
+func Test_analyzeColumn_WaitsLessThanTheClientDoes(t *testing.T) {
+	analyzer := &limited{}
+
+	_, refused, err := analyzeColumn(context.Background(), analyzer, names, 0.5, "fr")
+
+	require.NoError(t, err)
+	require.NoError(t, refused)
+	require.Len(t, analyzer.limits, len(names))
+	for _, limit := range analyzer.limits {
+		require.LessOrEqual(t, limit, analyzeTimeout)
+		require.Greater(t, limit, analyzeTimeout-5*time.Second)
+	}
+	require.Less(t, analyzeTimeout, presidio.Timeout)
+
+	threshold := 0.5
+	require.Equal(t, presidio.AnalyzeRequest{Text: names[0], Language: "fr", ScoreThreshold: &threshold}, analyzer.requests[0])
+}
+
+// A threshold that is not set is left to the analyzer.
+func Test_analyzeColumn_SendsNoThresholdWhenNoneIsSet(t *testing.T) {
+	analyzer := &limited{}
+
+	_, _, err := analyzeColumn(context.Background(), analyzer, names[:1], 0, "en")
+
+	require.NoError(t, err)
+	require.Nil(t, analyzer.requests[0].ScoreThreshold)
 }
 
 func Test_minMatches(t *testing.T) {

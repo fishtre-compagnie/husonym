@@ -10,7 +10,7 @@ interface Props {
   description?: string;
 }
 
-// Mirrors the backend lifecycle in internal/ee/license. Derived here rather than sent
+// Mirrors the backend lifecycle in internal/license. Derived here rather than sent
 // over the wire: the backend already exposes isValid and expiresAt, and isValid stays
 // true throughout the grace period, so the two together pin down the state.
 type LicenseState = 'none' | 'valid' | 'expiring' | 'grace' | 'frozen';

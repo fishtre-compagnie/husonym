@@ -29,10 +29,6 @@ func Test_WorkerOnly_Allow(t *testing.T) {
 			guard:   WorkerOnly{IsAuthEnabled: true},
 			allowed: map[string]bool{"worker key": true, "account key": false, "session": false},
 		},
-		"cloud": {
-			guard:   WorkerOnly{IsAuthEnabled: true, IsHusonymCloud: true},
-			allowed: map[string]bool{"worker key": true, "account key": false, "session": false},
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			for who, user := range callers {

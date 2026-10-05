@@ -2,41 +2,25 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stripe/stripe-go/v86"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var (
-	// 14 days duration
-	trialDuration      = 14 * 24 * time.Hour
-	stripeExclusionSet = map[string]bool{
-		"8428f91a-f377-406e-b81b-55c92f853a9b": true,
-	}
-)
-
+// There is no billing in a self-hosted deployment: the license decides whether jobs may run.
 func (s *Service) GetAccountStatus(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountStatusRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountStatusResponse], error) {
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-
 	userdataclient := s.UserDataClient()
 	user, err := userdataclient.GetUser(ctx)
 	if err != nil {
@@ -51,122 +35,18 @@ func (s *Service) GetAccountStatus(
 		return nil, err
 	}
 
-	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-	if err != nil {
+	if _, err := husonymdb.ToUuid(req.Msg.GetAccountId()); err != nil {
 		return nil, err
 	}
 
-	logger = logger.With("accountId", req.Msg.GetAccountId())
-	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{}), nil
-	}
-
-	account, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve account: %w", err)
-	}
-
-	trialStatus := getTrialStatus(account.CreatedAt)
-
-	if account.AccountType == int16(husonymdb.AccountType_Personal) {
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: trialStatus,
-		}), nil
-	}
-	if !account.StripeCustomerID.Valid {
-		logger.Warn("stripe is enabled but team account does not have stripe customer id")
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: trialStatus,
-		}), nil
-	}
-
-	if stripeExclusionSet[req.Msg.GetAccountId()] {
-		logger.Debug("account is in stripe exclusion set, returning active status")
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: mgmtv1alpha1.BillingStatus_BILLING_STATUS_ACTIVE,
-		}), nil
-	}
-
-	logger.Debug("attempting to find active stripe subscription")
-	subscriptions, err := s.billingclient.GetSubscriptions(ctx, account.StripeCustomerID.String)
-	if err != nil {
-		return nil, fmt.Errorf("encountered error when retrieving stripe subscriptions: %w", err)
-	}
-	logger.Debug(fmt.Sprintf("found %d stripe subscriptions for account", len(subscriptions)))
-	_, hasActiveSub := findActiveStripeSubscription(subscriptions)
-	if hasActiveSub {
-		logger.Debug("account has active billing subscription")
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: mgmtv1alpha1.BillingStatus_BILLING_STATUS_ACTIVE,
-		}), nil
-	}
-	if len(subscriptions) == 0 {
-		logger.Debug("account has no subscriptions, returning trial status")
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: trialStatus,
-		}), nil
-	}
-	if trialStatus == mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_ACTIVE {
-		logger.Debug("account has no active subscriptions but trial is still active")
-		return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-			SubscriptionStatus: trialStatus,
-		}), nil
-	}
-	logger.Debug("account has no active subscriptions and trial is expired")
-	return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{
-		SubscriptionStatus: mgmtv1alpha1.BillingStatus_BILLING_STATUS_EXPIRED,
-	}), nil
-}
-
-func getTrialStatus(ts pgtype.Timestamp) mgmtv1alpha1.BillingStatus {
-	if !ts.Valid || ts.Time.IsZero() {
-		return mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_EXPIRED
-	}
-
-	trialEndTime := ts.Time.Add(trialDuration)
-	trialActive := time.Now().UTC().Before(trialEndTime)
-
-	if trialActive {
-		return mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_ACTIVE
-	}
-	return mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_EXPIRED
-}
-
-func findActiveStripeSubscription(subs []*stripe.Subscription) (*stripe.Subscription, bool) {
-	for _, sub := range subs {
-		if isSubscriptionActive(sub.Status) {
-			return sub, true
-		}
-	}
-	return nil, false
-}
-
-func isSubscriptionActive(status stripe.SubscriptionStatus) bool {
-	switch status {
-	case stripe.SubscriptionStatusActive,
-		stripe.SubscriptionStatusTrialing:
-		return true
-	case stripe.SubscriptionStatusPastDue,
-		stripe.SubscriptionStatusIncomplete:
-		// You might want to add a grace period for past_due or incomplete statuses
-		// This could be based on the number of days past due or other criteria
-		return true
-	case stripe.SubscriptionStatusCanceled,
-		stripe.SubscriptionStatusIncompleteExpired,
-		stripe.SubscriptionStatusUnpaid,
-		stripe.SubscriptionStatusPaused:
-		return false
-	default:
-		// If an unknown status is encountered, default to inactive for safety
-		return false
-	}
+	return connect.NewResponse(&mgmtv1alpha1.GetAccountStatusResponse{}), nil
 }
 
 func (s *Service) IsAccountStatusValid(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.IsAccountStatusValidRequest],
 ) (*connect.Response[mgmtv1alpha1.IsAccountStatusValidResponse], error) {
-	accountStatusResp, err := s.GetAccountStatus(
+	_, err := s.GetAccountStatus(
 		ctx,
 		connect.NewRequest(&mgmtv1alpha1.GetAccountStatusRequest{
 			AccountId: req.Msg.GetAccountId(),
@@ -176,196 +56,54 @@ func (s *Service) IsAccountStatusValid(
 		return nil, err
 	}
 
-	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		// Self-hosted: there is no billing to consult, so the license decides.
-		//
-		// This is the choke point for scheduled work, and the reason the check belongs
-		// here rather than only in CreateJobRun. Temporal triggers scheduled workflows
-		// directly, never passing through the API, but the datasync workflow calls
-		// CheckAccountStatus before doing anything and aborts when this returns false.
-		// Gating here therefore freezes manual and scheduled runs alike.
-		//
-		// IsValid() spans the grace period, so this only bites once grace is over.
-		if s.licenseclient != nil && !s.licenseclient.IsValid() {
-			reason := "License has expired. Renew it to resume running jobs; existing configuration and run history remain available."
-			return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
-				IsValid:       false,
-				AccountStatus: mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE,
-				Reason:        &reason,
-			}), nil
-		}
-		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
+	// Self-hosted: there is no billing to consult, so the license decides.
+	//
+	// This is the choke point for scheduled work, and the reason the check belongs
+	// here rather than only in CreateJobRun. Temporal triggers scheduled workflows
+	// directly, never passing through the API, but the datasync workflow calls
+	// CheckAccountStatus before doing anything and aborts when this returns false.
+	// Gating here therefore freezes manual and scheduled runs alike.
+	//
+	// IsValid() spans the grace period, so this only bites once grace is over.
+	if s.licenseclient != nil && !s.licenseclient.IsValid() {
+		reason := "License has expired. Renew it to resume running jobs; existing configuration and run history remain available."
+		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
+			IsValid:       false,
+			AccountStatus: mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE,
+			Reason:        &reason,
+		}), nil
 	}
-
-	accountStatus := mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_REASON_UNSPECIFIED
-	var description string
-	isValid := false
-
-	var trialExpiryDate *timestamppb.Timestamp
-
-	switch accountStatusResp.Msg.GetSubscriptionStatus() {
-	case mgmtv1alpha1.BillingStatus_BILLING_STATUS_EXPIRED:
-		accountStatus = mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_IN_EXPIRED_STATE
-		description = "Account is currently in expired state, visit the billing page to activate your subscription."
-	case mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_EXPIRED:
-		accountStatus = mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_TRIAL_EXPIRED
-		description = "The trial period has ended, visit the billing page to activate your subscription."
-	case mgmtv1alpha1.BillingStatus_BILLING_STATUS_TRIAL_ACTIVE:
-		accountStatus = mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_ACCOUNT_TRIAL_ACTIVE
-		isValid = true
-
-		accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-		if err != nil {
-			return nil, err
-		}
-
-		acc, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-		if err != nil {
-			return nil, err
-		}
-
-		expiryTime := acc.CreatedAt.Time.Add(trialDuration)
-		trialExpiryDate = timestamppb.New(expiryTime)
-	case mgmtv1alpha1.BillingStatus_BILLING_STATUS_ACTIVE:
-		accountStatus = mgmtv1alpha1.AccountStatus_ACCOUNT_STATUS_REASON_UNSPECIFIED
-		isValid = true
-	}
-	return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
-		IsValid:        isValid,
-		AccountStatus:  accountStatus,
-		Reason:         &description,
-		TrialExpiresAt: trialExpiryDate,
-	}), nil
+	return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
 }
 
 func (s *Service) GetAccountBillingCheckoutSession(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountBillingCheckoutSessionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingCheckoutSessionResponse], error) {
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		return nil, husonymerrors.NewNotImplemented(
-			fmt.Sprintf(
-				"%s is not implemented",
-				strings.TrimPrefix(
-					mgmtv1alpha1connect.UserAccountServiceGetAccountBillingCheckoutSessionProcedure,
-					"/",
-				),
+	return nil, husonymerrors.NewNotImplemented(
+		fmt.Sprintf(
+			"%s is not implemented",
+			strings.TrimPrefix(
+				mgmtv1alpha1connect.UserAccountServiceGetAccountBillingCheckoutSessionProcedure,
+				"/",
 			),
-		)
-	}
-	logger = logger.With("accountId", req.Msg.GetAccountId())
-	userdataclient := s.UserDataClient()
-	user, err := userdataclient.GetUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-	if err != nil {
-		return nil, err
-	}
-
-	err = user.EnforceAccount(
-		ctx,
-		userdata.NewIdentifier(req.Msg.GetAccountId()),
-		rbac.AccountAction_Edit,
+		),
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	// retrieve the account, creates a customer id if one doesn't already exist
-	account, err := s.db.UpsertStripeCustomerId(
-		ctx,
-		accountUuid,
-		s.getCreateStripeAccountFunction(user.Id(), logger),
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"was unable to get account and/or upsert stripe customer id: %w",
-			err,
-		)
-	}
-	if !account.StripeCustomerID.Valid {
-		return nil, errors.New(
-			"stripe customer id does not exist on account after creation attempt",
-		)
-	}
-
-	session, err := s.generateCheckoutSession(
-		ctx,
-		account.StripeCustomerID.String,
-		account.AccountSlug,
-		user.Id(),
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate billing checkout session: %w", err)
-	}
-
-	return connect.NewResponse(&mgmtv1alpha1.GetAccountBillingCheckoutSessionResponse{
-		CheckoutSessionUrl: session.URL,
-	}), nil
 }
 
 func (s *Service) GetAccountBillingPortalSession(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.GetAccountBillingPortalSessionRequest],
 ) (*connect.Response[mgmtv1alpha1.GetAccountBillingPortalSessionResponse], error) {
-	if !s.cfg.IsHusonymCloud || s.billingclient == nil {
-		return nil, husonymerrors.NewNotImplemented(
-			fmt.Sprintf(
-				"%s is not implemented",
-				strings.TrimPrefix(
-					mgmtv1alpha1connect.UserAccountServiceGetAccountBillingPortalSessionProcedure,
-					"/",
-				),
+	return nil, husonymerrors.NewNotImplemented(
+		fmt.Sprintf(
+			"%s is not implemented",
+			strings.TrimPrefix(
+				mgmtv1alpha1connect.UserAccountServiceGetAccountBillingPortalSessionProcedure,
+				"/",
 			),
-		)
-	}
-	userdataclient := s.UserDataClient()
-	user, err := userdataclient.GetUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = user.EnforceAccount(
-		ctx,
-		userdata.NewIdentifier(req.Msg.GetAccountId()),
-		rbac.AccountAction_Edit,
+		),
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-	if err != nil {
-		return nil, err
-	}
-
-	account, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-	if err != nil {
-		return nil, err
-	}
-	if !account.StripeCustomerID.Valid {
-		return nil, husonymerrors.NewForbidden(
-			"requested account does not have a valid stripe customer id",
-		)
-	}
-
-	session, err := s.billingclient.NewBillingPortalSession(
-		ctx,
-		account.StripeCustomerID.String,
-		account.AccountSlug,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate billing portal session: %w", err)
-	}
-	return connect.NewResponse(&mgmtv1alpha1.GetAccountBillingPortalSessionResponse{
-		PortalSessionUrl: session.URL,
-	}), nil
 }
 
 func (s *Service) GetBillingAccounts(
@@ -373,14 +111,8 @@ func (s *Service) GetBillingAccounts(
 	req *connect.Request[mgmtv1alpha1.GetBillingAccountsRequest],
 ) (*connect.Response[mgmtv1alpha1.GetBillingAccountsResponse], error) {
 	userdataclient := s.UserDataClient()
-	user, err := userdataclient.GetUser(ctx)
-	if err != nil {
+	if _, err := userdataclient.GetUser(ctx); err != nil {
 		return nil, err
-	}
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthorized(
-			"must provide valid authentication credentials for this endpoint",
-		)
 	}
 
 	accountIdsToFilter := []pgtype.UUID{}
@@ -409,75 +141,5 @@ func (s *Service) SetBillingMeterEvent(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.SetBillingMeterEventRequest],
 ) (*connect.Response[mgmtv1alpha1.SetBillingMeterEventResponse], error) {
-	if s.billingclient == nil {
-		return nil, husonymerrors.NewUnauthorized("billing is not currently enabled")
-	}
-	userdataclient := s.UserDataClient()
-	user, err := userdataclient.GetUser(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if s.cfg.IsHusonymCloud && !user.IsWorkerApiKey() {
-		return nil, husonymerrors.NewUnauthorized(
-			"must provide valid authentication credentials for this endpoint",
-		)
-	}
-
-	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx).
-		With(
-			"accountId", req.Msg.GetAccountId(),
-			"eventId", req.Msg.GetEventId(),
-			"eventName", req.Msg.GetEventName(),
-		)
-
-	accountUuid, err := husonymdb.ToUuid(req.Msg.GetAccountId())
-	if err != nil {
-		return nil, err
-	}
-
-	account, err := s.db.Q.GetAccount(ctx, s.db.Db, accountUuid)
-	if err != nil && !husonymdb.IsNoRows(err) {
-		return nil, err
-	} else if err != nil && husonymdb.IsNoRows(err) {
-		return nil, husonymerrors.NewNotFound("account does not exist")
-	}
-	if !account.StripeCustomerID.Valid {
-		return nil, husonymerrors.NewBadRequest("account is not an active billed customer")
-	}
-
-	var ts *int64
-	if req.Msg.GetTimestamp() > 0 {
-		conv, err := safeUint64ToInt64(req.Msg.GetTimestamp())
-		if err != nil {
-			return nil, err
-		}
-		ts = &conv
-	}
-	_, err = s.billingclient.NewMeterEvent(ctx, &billing.MeterEventRequest{
-		EventName:  req.Msg.GetEventName(),
-		Identifier: req.Msg.GetEventId(),
-		Timestamp:  ts,
-		CustomerId: account.StripeCustomerID.String,
-		Value:      req.Msg.GetValue(),
-	})
-	if err != nil {
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			if stripeErr.Type == stripe.ErrorTypeInvalidRequest &&
-				strings.Contains(stripeErr.Msg, "An event already exists with identifier") {
-				logger.Warn("unable to create new meter event, identifier already exists")
-				return connect.NewResponse(&mgmtv1alpha1.SetBillingMeterEventResponse{}), nil
-			}
-			// todo: handle rate limits from stripe
-		}
-		return nil, err
-	}
-
-	return connect.NewResponse(&mgmtv1alpha1.SetBillingMeterEventResponse{}), nil
-}
-
-func safeUint64ToInt64(value uint64) (int64, error) {
-	if value > math.MaxInt64 {
-		return 0, fmt.Errorf("uint64 value %d overflows int64", value)
-	}
-	return int64(value), nil
+	return nil, husonymerrors.NewUnauthorized("billing is not currently enabled")
 }

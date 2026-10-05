@@ -49,7 +49,13 @@ func Reconcile(
 	return verdict
 }
 
+// leavesFormatInDoubt tells whether the content is a date whose format could not be
+// settled. Other detections by format say what a value is, not how to write it back.
 func leavesFormatInDoubt(content *mgmtv1alpha1.ColumnPiiDetection) bool {
 	return content.GetPiiConfidence() == mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW &&
-		content.GetPiiDetectionMethod() == mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT
+		content.GetPiiDetectionMethod() == mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT &&
+		dateCategories[content.GetDataCategory()]
 }
+
+// The categories a date found in the values is reported under.
+var dateCategories = wordSet("date", "birth_date")

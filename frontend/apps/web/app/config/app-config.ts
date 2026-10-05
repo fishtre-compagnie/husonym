@@ -8,7 +8,6 @@ export interface SystemAppConfig {
   isMetricsServiceEnabled: boolean;
   isJobHooksEnabled: boolean;
   isAccountHooksEnabled: boolean;
-  isSlackAccountHookEnabled: boolean;
 
   upgradeLink: string;
   isGcpCloudStorageConnectionsEnabled: boolean;

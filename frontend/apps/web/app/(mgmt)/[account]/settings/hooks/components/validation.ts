@@ -3,7 +3,6 @@ import { create } from '@bufbuild/protobuf';
 import {
   AccountHook,
   AccountHookConfig,
-  AccountHookConfig_SlackHookSchema,
   AccountHookConfig_WebHookSchema,
   AccountHookConfigSchema,
   AccountHookEvent,
@@ -33,23 +32,9 @@ export type AccountHookWebhookFormValues = yup.InferType<
   typeof AccountHookWebhookFormValues
 >;
 
-const AccountHookSlackFormValues = yup.object().shape({
-  channelId: yup.string().when('$hookType', {
-    is: 'slack',
-    then: (schema) => schema.required('Channel ID is required'),
-    otherwise: (schema) => schema.notRequired(),
-  }),
-});
-export type AccountHookSlackFormValues = yup.InferType<
-  typeof AccountHookSlackFormValues
->;
-
 const HookTypeFormValue = yup
   .string()
-  .oneOf(
-    ['webhook', 'slack'],
-    'Only webhook and slack hooks are currently supported'
-  )
+  .oneOf(['webhook'], 'Only webhook hooks are currently supported')
   .required('Hook type is required');
 export type HookTypeFormValue = yup.InferType<typeof HookTypeFormValue>;
 
@@ -79,12 +64,6 @@ const AccountHookConfigFormValues = yup.object().shape({
     is: 'webhook',
     then: (schema) =>
       schema.required('Webhook config is required when hook type is webhook'),
-    otherwise: (schema) => schema.notRequired(),
-  }),
-  slack: AccountHookSlackFormValues.when('$hookType', {
-    is: 'slack',
-    then: (schema) =>
-      schema.required('Slack config is required when hook type is slack'),
     otherwise: (schema) => schema.notRequired(),
   }),
 });
@@ -126,11 +105,10 @@ export function toEditFormData(input: AccountHook): EditAccountHookFormValues {
   return {
     name: input.name,
     description: input.description,
-    hookType: toHookType(input.config ?? create(AccountHookConfigSchema)),
+    hookType: 'webhook',
     enabled: input.enabled,
     config: {
       webhook: toWebhookConfig(input.config ?? create(AccountHookConfigSchema)),
-      slack: toSlackConfig(input.config ?? create(AccountHookConfigSchema)),
     },
     events: input.events.map((event) => event.toString()),
   };
@@ -154,14 +132,21 @@ export type NewAccountHookFormValues = yup.InferType<
   typeof NewAccountHookFormValues
 >;
 
+// What the API returns in the place of a webhook secret to someone who may not edit the
+// account. It is not a secret: the API refuses it when it is sent back.
+const MASKED_SECRET = '********';
+
 function toWebhookConfig(
   input: AccountHookConfig
 ): AccountHookWebhookFormValues {
   switch (input.config.case) {
     case 'webhook': {
+      const { secret } = input.config.value;
       return {
         url: input.config.value.url,
-        secret: input.config.value.secret,
+        // A masked secret leaves the field empty, so that the form asks for the secret
+        // rather than sending the mask.
+        secret: secret === MASKED_SECRET ? '' : secret,
         disableSslVerification: input.config.value.disableSslVerification,
       };
     }
@@ -171,35 +156,6 @@ function toWebhookConfig(
         secret: '',
         disableSslVerification: false,
       };
-    }
-  }
-}
-
-function toSlackConfig(input: AccountHookConfig): AccountHookSlackFormValues {
-  switch (input.config.case) {
-    case 'slack': {
-      return {
-        channelId: input.config.value.channelId,
-      };
-    }
-    default: {
-      return {
-        channelId: '',
-      };
-    }
-  }
-}
-
-function toHookType(input: AccountHookConfig): HookTypeFormValue {
-  switch (input.config.case) {
-    case 'webhook': {
-      return 'webhook';
-    }
-    case 'slack': {
-      return 'slack';
-    }
-    default: {
-      return 'webhook';
     }
   }
 }
@@ -244,16 +200,6 @@ function toAccountHookConfig(
             secret: values.config.webhook.secret,
             disableSslVerification:
               values.config.webhook.disableSslVerification,
-          }),
-        },
-      });
-    }
-    case 'slack': {
-      return create(AccountHookConfigSchema, {
-        config: {
-          case: 'slack',
-          value: create(AccountHookConfig_SlackHookSchema, {
-            channelId: values.config.slack.channelId,
           }),
         },
       });

@@ -12,10 +12,10 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
 func (s *Service) GetUserDefinedTransformers(
