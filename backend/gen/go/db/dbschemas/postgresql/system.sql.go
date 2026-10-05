@@ -543,7 +543,7 @@ enum_defs AS (
         rct.type_name,
         rct.type,
         'CREATE TYPE ' || quote_ident(rct.schema_name) || '.' || quote_ident(rct.type_name) || ' AS ENUM (' ||
-        string_agg(quote_literal(e.enumlabel), ', ') || ');' AS definition
+        string_agg(quote_literal(e.enumlabel), ', ' ORDER BY e.enumsortorder) || ');' AS definition
     FROM
         relevant_custom_types rct
     JOIN
