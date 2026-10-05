@@ -418,9 +418,6 @@ func Test_OddNames_RowCount(t *testing.T) {
 			// A view over the table, whose own name holds the same characters, is counted like
 			// the table.
 			t.Run("view", func(t *testing.T) {
-				if f.engine.family != familyMysql {
-					t.Skip("the row count of a view is refused until the catalog check is removed")
-				}
 				for _, u := range units {
 					view := source.table(u.schema, oddViewName(u))
 					source.exec(t, fmt.Sprintf("CREATE VIEW %s AS SELECT * FROM %s", view, source.table(u.schema, u.parent)))
