@@ -94,8 +94,7 @@ const SampleWindowSize = 1000
 // without a sort, the database stops as soon as it has its rows, and only those
 // SampleWindowSize rows go through the random order.
 //
-// The sample is therefore not uniform over the table. That is enough to recognize the
-// nature of a column, which is what the sample is used for.
+// The sample is therefore not uniform over the table.
 func BuildSampledSelectLimitQuery(
 	driver, table string, limit uint,
 ) (string, error) {
@@ -112,7 +111,7 @@ func BuildSampledSelectLimitQuery(
 	builder := getGoquDialect(driver)
 	sqltable := goqu.I(table)
 
-	// Fenêtre lue sans tri : le SGBD s'arrête dès qu'il a ses lignes.
+	// The window is read without a sort: the database stops as soon as it has its rows.
 	window := builder.From(sqltable).Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
@@ -134,7 +133,7 @@ const (
 	// SampleRowsBound is the most rows a PostgreSQL table sample may hand to the random
 	// order, whatever the share of pages it asks for.
 	SampleRowsBound = 4 * SampleWindowSize
-	// SampleMinPages is the least number of pages a table sample is drawn from. Pages of
+	// SampleMinPages is the least number of pages a table sample asks for. Pages of
 	// narrow rows hold the window in a handful of pages, which are a handful of places
 	// of the table.
 	SampleMinPages = 50
@@ -152,9 +151,9 @@ type TableSize struct {
 }
 
 // BuildTableSampleQuery builds a query that draws rows from pages spread across the
-// whole table. The table is never scanned in full: the database reads the pages
-// expected to hold SampleWindowSize rows, and at least SampleMinPages of them, and the
-// random order only applies to that sample.
+// whole table. The database reads the pages expected to hold SampleWindowSize rows, or
+// SampleMinPages pages when that is more, each page being taken on its own; a table of
+// fewer pages is read whole. The random order only applies to that sample.
 //
 // PostgreSQL bounds the rows it hands to the random order at SampleRowsBound, for a size
 // that is far from the truth. So that the bound does not keep the first pages only when
@@ -208,8 +207,8 @@ func BuildTableSampleQuery(
 }
 
 // tableSampleShare gives the share of pages to read, in percent, and the share of their
-// rows to keep. The pages are those expected to hold SampleWindowSize rows, and at least
-// SampleMinPages; the percentage is rounded to four decimals, stays above zero and does
+// rows to keep. The pages are those expected to hold SampleWindowSize rows, or
+// SampleMinPages pages when that is more; the percentage is rounded to four decimals, stays above zero and does
 // not exceed 100. keep is 1 when those pages are not expected to hold more than the
 // window. size must hold rows and pages.
 func tableSampleShare(size TableSize) (percent, keep float64) {
