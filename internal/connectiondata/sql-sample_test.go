@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -169,38 +170,106 @@ func Test_spreadSampleQuery_PostgresPartitionedTableWithoutASize(t *testing.T) {
 	}
 }
 
-// A name holding a quote character is read from the window: no statement is issued for it.
+// A name holding a quote character is drawn across the table like any other: it is written
+// as one identifier in every statement that names it.
 func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
-	names := map[string][2]string{
-		"double quote in the table":  {"public", `us"ers`},
-		"backtick in the table":      {"public", "us`ers"},
-		"opening bracket in a table": {"public", "us[ers"},
-		"closing bracket in a table": {"public", "users]"},
-		"double quote in the schema": {`pu"blic`, "users"},
-		"backtick in the schema":     {"pu`blic", "users"},
-		"bracket in the schema":      {"pu]blic", "users"},
-	}
-	drivers := []string{
-		sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MysqlDriver, sqlmanager_shared.MssqlDriver,
-	}
-	for _, driver := range drivers {
-		for name, schemaTable := range names {
-			t.Run(driver+"/"+name, func(t *testing.T) {
-				db, _ := newSampleDB(t)
-				logger, logs := capturedLogger()
+	// 2 rows a page: the window is on 500 pages, 0.5 percent, and every row is kept.
+	t.Run("postgres", func(t *testing.T) {
+		db, mock := newSampleDB(t)
+		mock.ExpectQuery(pgEstimate).WithArgs(`"pu""blic"."us""ers"`).
+			WillReturnRows(estimateRows(200000, 100000, 100000))
+		logger, _ := capturedLogger()
 
-				query, ok := spreadSampleQuery(
-					t.Context(), logger, db, driver, schemaTable[0], schemaTable[1], 20, firstOfRange)
+		query, ok := spreadSampleQuery(
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange)
 
-				require.False(t, ok)
-				require.Empty(t, query)
-				require.Empty(t, db.statements)
-				require.Contains(t, logs.String(), "level=DEBUG")
-				require.NotContains(t, logs.String(), schemaTable[0])
-				require.NotContains(t, logs.String(), schemaTable[1])
-			})
+		require.True(t, ok)
+		require.Equal(t,
+			`SELECT * FROM (SELECT * FROM "pu""blic"."us""ers" TABLESAMPLE SYSTEM (0.5) LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 20`,
+			query)
+		require.Len(t, db.statements, 1)
+	})
+	t.Run("postgres, a partitioned table", func(t *testing.T) {
+		db, mock := newSampleDB(t)
+		mock.ExpectQuery(pgEstimate).WithArgs(`"pu""blic"."us""ers"`).WillReturnRows(partitionedParentRows())
+		mock.ExpectQuery(pgPartitions).WithArgs(`"pu""blic"."us""ers"`).
+			WillReturnRows(leavesRows(200000, 100000, 100000))
+		logger, _ := capturedLogger()
+
+		query, ok := spreadSampleQuery(
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange)
+
+		require.True(t, ok)
+		require.Contains(t, query, `FROM "pu""blic"."us""ers" TABLESAMPLE SYSTEM (0.5) LIMIT 4000`)
+	})
+	t.Run("sqlserver", func(t *testing.T) {
+		db, mock := newSampleDB(t)
+		mock.ExpectQuery(mssqlSize).WithArgs(`pu"b]lic`, `us"e]rs`).WillReturnRows(sizeRows(200000, 100000))
+		logger, _ := capturedLogger()
+
+		query, ok := spreadSampleQuery(
+			t.Context(), logger, db, sqlmanager_shared.MssqlDriver, `pu"b]lic`, `us"e]rs`, 20, firstOfRange)
+
+		require.True(t, ok)
+		require.Equal(t,
+			`SELECT  TOP (20) * FROM (SELECT * FROM "pu""b]lic"."us""e]rs" TABLESAMPLE (0.5 PERCENT)) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			query)
+		require.Len(t, db.statements, 1)
+	})
+	t.Run("mysql", func(t *testing.T) {
+		const (
+			table  = "`pu``blic`.`us``ers`"
+			bounds = "SELECT MIN(`i``d`), MAX(`i``d`) FROM " + table
+		)
+		// The ten parts of the key span 1 to 1 000 000, each read from its first key.
+		slices := make([]string, querybuilder.SampleSlices)
+		keySlices := make([]string, querybuilder.SampleSlices)
+		for i := range slices {
+			from := 1 + int64(i)*99999
+			to := from + 99998
+			if i == len(slices)-1 {
+				to = 1000000
+			}
+			slice := fmt.Sprintf(
+				"FROM %s WHERE ((`i``d` >= %d) AND (`i``d` <= %d)) ORDER BY `i``d` ASC LIMIT 100) AS `t1`", table, from, to)
+			slices[i] = "SELECT * FROM (SELECT * " + slice
+			keySlices[i] = "SELECT * FROM (SELECT `i``d` " + slice
 		}
-	}
+		union := func(slices []string) string {
+			return slices[0] + " UNION ALL (" + strings.Join(slices[1:], ") UNION ALL (") + ")"
+		}
+		count := "SELECT COUNT(*) FROM (" + union(keySlices) + ") AS `husonym_sample`"
+
+		db, mock := newSampleDB(t)
+		mock.ExpectQuery(mysqlKeyLookup).WithArgs("pu`blic", "us`ers").
+			WillReturnRows(keyRows([2]string{"i`d", "bigint"}))
+		mock.ExpectQuery(regexp.QuoteMeta(bounds)).
+			WillReturnRows(sqlmock.NewRows([]string{"min", "max"}).AddRow(int64(1), int64(1000000)))
+		mock.ExpectQuery(regexp.QuoteMeta(count)).WillReturnRows(countRows(1000))
+		logger, _ := capturedLogger()
+
+		query, ok := spreadSampleQuery(
+			t.Context(), logger, db, sqlmanager_shared.MysqlDriver, "pu`blic", "us`ers", 20, firstOfRange)
+
+		require.True(t, ok)
+		require.Equal(t,
+			"SELECT * FROM ("+union(slices)+") AS `husonym_sample` ORDER BY RAND() ASC LIMIT 20", query)
+		require.Len(t, db.statements, 3)
+		require.Equal(t, bounds, db.statements[1])
+		require.Equal(t, count, db.statements[2])
+	})
+	t.Run("the quote character of another engine is an ordinary character", func(t *testing.T) {
+		db, mock := newSampleDB(t)
+		mock.ExpectQuery(pgEstimate).WithArgs("\"pu`blic\".\"us[e]rs\"").
+			WillReturnRows(estimateRows(200000, 100000, 100000))
+		logger, _ := capturedLogger()
+
+		query, ok := spreadSampleQuery(
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, "pu`blic", "us[e]rs", 20, firstOfRange)
+
+		require.True(t, ok)
+		require.Contains(t, query, "FROM \"pu`blic\".\"us[e]rs\" TABLESAMPLE SYSTEM (0.5) LIMIT 4000")
+	})
 }
 
 func Test_spreadSampleQuery_PostgresScalesTheEstimateToTheCurrentSize(t *testing.T) {
@@ -369,7 +438,6 @@ func Test_spreadSampleQuery_MysqlWithoutAUsableKey(t *testing.T) {
 		"varchar key":   keyRows([2]string{"code", "varchar"}),
 		"decimal key":   keyRows([2]string{"id", "decimal"}),
 		"no key":        keyRows(),
-		"backtick name": keyRows([2]string{"i`d", "int"}),
 		"dotted name":   keyRows([2]string{"a.id", "int"}),
 	}
 	for name, key := range cases {

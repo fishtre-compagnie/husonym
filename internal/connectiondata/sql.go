@@ -136,7 +136,7 @@ func (s *SQLConnectionDataService) SampleData(
 
 	schemaTable := sqlmanager_shared.BuildTable(schema, table)
 
-	query, err := querybuilder.BuildSampledSelectLimitQuery(goquDriver, schemaTable, numRows)
+	query, err := querybuilder.BuildSampledSelectLimitQuery(goquDriver, schema, table, numRows)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (s *SQLConnectionDataService) StreamData(
 
 	schemaTable := sqlmanager_shared.BuildTable(schema, table)
 	// used to get column names
-	query, err := querybuilder.BuildSelectLimitQuery(goquDriver, schemaTable, 0)
+	query, err := querybuilder.BuildSelectLimitQuery(goquDriver, schema, table, 0)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func (s *SQLConnectionDataService) StreamData(
 		)
 	}
 
-	selectQuery, err := querybuilder.BuildSelectQuery(goquDriver, schemaTable, columnNames, nil)
+	selectQuery, err := querybuilder.BuildSelectQuery(goquDriver, schema, table, columnNames, nil)
 	if err != nil {
 		return err
 	}

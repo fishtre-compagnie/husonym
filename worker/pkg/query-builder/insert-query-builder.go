@@ -220,16 +220,23 @@ func (d *PostgresDriver) buildInsertOnConflictDoUpdateQuery(
 	conflictColumns []string,
 	updateColumns []string,
 ) (sql string, args []any, err error) {
-	builder := getGoquDialect(sqlmanager_shared.GoquPostgresDriver)
-	sqltable := goqu.S(d.schema).Table(d.table)
-	insert := builder.Insert(sqltable).Prepared(true).Rows(records)
-
-	updateRecord := goqu.Record{}
-	for _, col := range updateColumns {
-		updateRecord[col] = goqu.L(fmt.Sprintf("EXCLUDED.%q", col))
+	insert, dialect, err := insertInto(d.driver, d.schema, d.table, records)
+	if err != nil {
+		return "", nil, err
 	}
-	targetColumns := strings.Join(conflictColumns, ", ")
-	insert = insert.OnConflict(goqu.DoUpdate(targetColumns, updateRecord))
+	if err := checkColumns(conflictColumns); err != nil {
+		return "", nil, err
+	}
+
+	// goqu writes the conflict target as it receives it.
+	target := make([]string, len(conflictColumns))
+	for i, col := range conflictColumns {
+		target[i] = dialect.Quote(col)
+	}
+	excluded := func(column string) any { return goqu.L("EXCLUDED." + dialect.Quote(column)) }
+	insert = insert.OnConflict(
+		goqu.DoUpdate(strings.Join(target, ", "), setColumns(dialect, updateColumns, excluded)),
+	)
 
 	query, args, err := insert.ToSQL()
 	if err != nil {
@@ -295,21 +302,18 @@ func (d *MysqlDriver) buildMysqlInsertOnConflictDoUpdateQuery(
 	records []goqu.Record,
 	updateColumns []string,
 ) (sql string, args []any, err error) {
-	builder := getGoquDialect(sqlmanager_shared.MysqlDriver)
-	sqltable := goqu.S(d.schema).Table(d.table)
-	insert := builder.Insert(sqltable).Prepared(true).Rows(records)
+	insert, dialect, err := insertInto(d.driver, d.schema, d.table, records)
+	if err != nil {
+		return "", nil, err
+	}
 
-	updateRecord := goqu.Record{}
-	for _, col := range updateColumns {
-		// VALUES(col) instead of the MySQL 8.0.19+ row alias syntax (INSERT ... AS new)
-		// because MariaDB only supports the former
-		updateRecord[col] = exp.NewSQLFunctionExpression(
-			"VALUES",
-			exp.NewIdentifierExpression("", "", col),
-		)
+	// VALUES(col) instead of the MySQL 8.0.19+ row alias syntax (INSERT ... AS new)
+	// because MariaDB only supports the former
+	inserted := func(column string) any {
+		return exp.NewSQLFunctionExpression("VALUES", dialect.Col(column))
 	}
 	targetColumn := "" // mysql does not support target column
-	insert = insert.OnConflict(goqu.DoUpdate(targetColumn, updateRecord))
+	insert = insert.OnConflict(goqu.DoUpdate(targetColumn, setColumns(dialect, updateColumns, inserted)))
 
 	query, args, err := insert.ToSQL()
 	if err != nil {
@@ -330,7 +334,11 @@ func (d *MssqlDriver) BuildInsertQuery(
 	rows []map[string]any,
 ) (query string, queryargs []any, err error) {
 	if len(rows) == 0 || areAllRowsEmpty(rows) {
-		return getSqlServerDefaultValuesInsertSql(d.schema, d.table, len(rows)), []any{}, nil
+		insertQuery, err := getSqlServerDefaultValuesInsertSql(d.driver, d.schema, d.table, len(rows))
+		if err != nil {
+			return "", nil, err
+		}
+		return insertQuery, []any{}, nil
 	}
 
 	goquRows := toGoquRecords(rows)
@@ -382,10 +390,14 @@ func toGoquRecords(rows []map[string]any) []goqu.Record {
 	return records
 }
 
-func getSqlServerDefaultValuesInsertSql(schema, table string, rowCount int) string {
-	var sqlStr string
-	for i := 0; i < rowCount; i++ {
-		sqlStr += fmt.Sprintf("INSERT INTO %q.%q DEFAULT VALUES;", schema, table)
+// getSqlServerDefaultValuesInsertSql gives one statement for each row without a column.
+// The statement is written by hand, so its names are quoted the way SQL Server reads
+// them under every session setting.
+func getSqlServerDefaultValuesInsertSql(driver, schema, table string, rowCount int) (string, error) {
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
 	}
-	return sqlStr
+	statement := "INSERT INTO " + d.Qualified(schema, table) + " DEFAULT VALUES;"
+	return strings.Repeat(statement, rowCount), nil
 }

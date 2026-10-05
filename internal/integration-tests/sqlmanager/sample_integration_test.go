@@ -438,7 +438,7 @@ func Test_SampleData_KeySlicesAreCountedOnTheKey(t *testing.T) {
 			ranges[i] = querybuilder.KeyRange{From: from + 7, To: from + bigRows/querybuilder.SampleSlices - 1}
 		}
 		query, err := querybuilder.BuildKeySlicesCountQuery(
-			sqlmanager_shared.MysqlDriver, sqlmanager_shared.BuildTable(f.schema, table), "id", ranges)
+			sqlmanager_shared.MysqlDriver, f.schema, table, "id", ranges)
 		require.NoError(t, err)
 
 		// The entries read are counted by the session that reads them.
@@ -562,9 +562,19 @@ func Test_SampleData_UnsignedKeyAboveInt64(t *testing.T) {
 // oddNameDraws bounds the samples Test_SampleData_OddTableName draws.
 const oddNameDraws = 10
 
-// A name with a space and capitals is quoted the same way by the check that the table exists, by
-// the query that reads its size or its key, and by the query that draws across the table. Only
-// that last query returns a row beyond the first 1000 of the table: the window never does.
+// oddTableNames gives each family a table name with a space, capitals and the quote characters
+// the statements of that engine are written with. SQL Server is given both of its own: the
+// statements written by hand quote a name between brackets, the others between double quotes.
+var oddTableNames = map[string]string{
+	familyPostgres: `Order "Lines`,
+	familyMysql:    "Order `Lines",
+	familyMssql:    `Order "Li]nes`,
+}
+
+// A name with a space, capitals and a quote character is written as one identifier by the check
+// that the table exists, by the query that reads its size or its key, and by the query that draws
+// across the table. Only that last query returns a row beyond the first 1000 of the table: the
+// window never does.
 //
 // The table holds 3000 rows. On PostgreSQL and SQL Server it is on fewer than SampleMinPages
 // pages, all of them are read, and 20 rows drawn among all are all within the first 1000 with
@@ -574,7 +584,7 @@ const oddNameDraws = 10
 // shows no row beyond the window less than once in ten. Ten draws all doing so is under 1e-10.
 func Test_SampleData_OddTableName(t *testing.T) {
 	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
-		table := f.filledTable(t, "Order Lines", 3000)
+		table := f.filledTable(t, oddTableNames[f.engine.family], 3000)
 		beyondWindow := false
 		for draw := 0; draw < oddNameDraws && !beyondWindow; draw++ {
 			rows := f.mustSample(t, table, 20)
@@ -627,7 +637,7 @@ func Test_SampleData_IntegerShare(t *testing.T) {
 		table := f.filledTable(t, "five_thousand", 5000)
 
 		query, ok, err := querybuilder.BuildTableSampleQuery(
-			sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.BuildTable(f.schema, table),
+			sqlmanager_shared.GoquPostgresDriver, f.schema, table,
 			querybuilder.TableSize{Rows: 5000, Pages: 250}, 100)
 		require.NoError(t, err)
 		require.True(t, ok)
@@ -739,7 +749,7 @@ func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 		require.Equal(t, int64(bigRows), size.Rows)
 
 		query, ok, err := querybuilder.BuildTableSampleQuery(
-			sqlmanager_shared.MssqlDriver, sqlmanager_shared.BuildTable(f.schema, table), size, 100)
+			sqlmanager_shared.MssqlDriver, f.schema, table, size, 100)
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Contains(t, query, "PERCENT))")
