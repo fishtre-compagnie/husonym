@@ -113,6 +113,12 @@ of letters and of digits, the most frequent layouts (`a+.a+@a+.a+` for an email 
 and the share of the values that pass each format check. The rows do not leave the step
 that read them.
 
+The rows are drawn from pages spread over the table on PostgreSQL and SQL Server, and, on
+MySQL and MariaDB, from ten slices of the table when its primary key is a single integer
+column. Otherwise, and whenever that draw is not possible or returns fewer rows than
+asked, they are drawn from the first 1000 rows of the table. Two scans of the same table
+can therefore read different rows.
+
 A layout is what a value looks like once its characters are replaced by their class. Each
 run of characters of one class is written once: `A+` for uppercase letters, `a+` for other
 letters, `9+` for digits, `?+` for the characters a layout does not show, one space for

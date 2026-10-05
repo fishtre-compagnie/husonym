@@ -263,6 +263,12 @@ reste donc orange.
 
 Le scan lit **20 lignes par table**. Il n'écrase jamais un transformer déjà choisi.
 
+Ces lignes sont tirées de pages réparties sur toute la table avec PostgreSQL et SQL
+Server, et avec MySQL et MariaDB de dix tranches de la table quand la clé primaire est
+une colonne entière unique. Sinon, ou quand ce tirage échoue ou rend moins de lignes que
+demandé, elles sont tirées parmi les 1000 premières lignes de la table. Deux scans de la
+même table peuvent donc lire des lignes différentes.
+
 ## Configuration
 
 Le scan de contenu nécessite Presidio. Sans lui, les moteurs 1 à 3 continuent de

@@ -78,25 +78,24 @@ func BuildSelectLimitQuery(
 	return sql, nil
 }
 
-// SampleWindowSize borne le nombre de lignes sur lesquelles porte le tirage
-// aléatoire. Assez large pour que l'échantillon reste varié, assez petit pour que
-// le tri soit gratuit.
+// SampleWindowSize is the number of rows a random draw is made over. It is wide enough
+// for the sample to stay varied and small enough for the random order to cost next to
+// nothing.
 const SampleWindowSize = 1000
 
-// BuildSampledSelectLimitQuery construit une requête d'échantillonnage aléatoire.
+// BuildSampledSelectLimitQuery builds a query that returns a random sample of a table.
+// The draw is made over a bounded window, the first SampleWindowSize rows of the table,
+// not over the whole table. It is the query that answers when a draw spread across the
+// table is not possible.
 //
-// The draw happens over a bounded WINDOW, not the whole table. An
-// `ORDER BY RAND() LIMIT 20` applied straight to the table forces the database to
-// read every row and sort all of them to return 20: the cost grows with the table,
-// unrelated to the requested sample size. Measured on a production MySQL table, the
-// query went past 30 s, the client dropped the link and the PII scan failed with an
-// HTTP 500.
+// The cost is bounded by the window. An `ORDER BY RAND() LIMIT n` applied straight to
+// the table makes the database read every row and sort all of them to return n, so its
+// cost grows with the table whatever the size of the sample. Here the window is read
+// without a sort, the database stops as soon as it has its rows, and only those
+// SampleWindowSize rows go through the random order.
 //
-// Compromis assumé : l'échantillon n'est plus uniforme sur l'ensemble de la table,
-// il est tiré au hasard parmi les premières SampleWindowSize lignes. Pour
-// reconnaître la NATURE d'une colonne — l'usage réel de cette fonction — la
-// représentativité statistique n'apporte rien ; un échantillon obtenable en
-// quelques millisecondes, si.
+// The sample is therefore not uniform over the table. That is enough to recognize the
+// nature of a column, which is what the sample is used for.
 func BuildSampledSelectLimitQuery(
 	driver, table string, limit uint,
 ) (string, error) {
