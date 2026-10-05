@@ -31,7 +31,8 @@ func Test_BuildUpdateEnumStatements_WritesALabelAsOneLiteral(t *testing.T) {
 	for label, literal := range map[string]string{
 		"plain label_1": `'plain label_1'`,
 		`o'clock`:       `'o''clock'`,
-		`back\slash`:    `'back\slash'`,
+		`back\slash`:    `E'back\\slash'`,
+		`trail\`:        `E'trail\\'`,
 		`quarter past'`: `'quarter past'''`,
 	} {
 		require.Equal(t,

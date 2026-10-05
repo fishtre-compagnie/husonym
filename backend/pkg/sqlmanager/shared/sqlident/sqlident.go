@@ -104,8 +104,10 @@ func (d Dialect) Qualified(schema, name string) string {
 
 // Literal writes value as a string literal of the dialect.
 //
-//   - PostgreSQL: '…' with ' doubled (a backslash is an ordinary character, as the product
-//     sessions set standard_conforming_strings).
+//   - PostgreSQL: '…' with ' doubled when the value holds no backslash; otherwise the escape
+//     form E'…' with \ doubled and ' doubled. The product sessions inherit
+//     standard_conforming_strings from the server, and a backslash inside '…' is an escape
+//     character when it is off: each of the two forms reads the same under both settings.
 //   - MySQL and MariaDB: '…' with ' doubled when the value holds no backslash, which reads
 //     the same under every sql_mode; otherwise the hex form _utf8mb4 0x… of its UTF-8 bytes.
 //   - SQL Server: N'…' with ' doubled, and a backslash directly before a line break (LF, CR
@@ -114,6 +116,9 @@ func (d Dialect) Qualified(schema, name string) string {
 func (d Dialect) Literal(value string) string {
 	switch d {
 	case Postgres:
+		if strings.Contains(value, `\`) {
+			return "E" + quoteApostrophes(strings.ReplaceAll(value, `\`, `\\`))
+		}
 		return quoteApostrophes(value)
 	case MySQL:
 		if strings.Contains(value, `\`) {

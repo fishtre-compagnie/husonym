@@ -55,8 +55,16 @@ func Test_Literal(t *testing.T) {
 	}{
 		{Postgres, `plain`, `'plain'`},
 		{Postgres, `o'clock`, `'o''clock'`},
-		{Postgres, `back\slash`, `'back\slash'`},
 		{Postgres, ``, `''`},
+		{Postgres, "line\nbreak", "'line\nbreak'"},
+		{Postgres, `é☃`, `'é☃'`},
+		// A backslash switches to the escape form, which reads the same under both settings
+		// of standard_conforming_strings.
+		{Postgres, `back\slash`, `E'back\\slash'`},
+		{Postgres, `trail\`, `E'trail\\'`},
+		{Postgres, `\'`, `E'\\'''`},
+		{Postgres, `a\nb`, `E'a\\nb'`},
+		{Postgres, "o'clock\\\nline", "E'o''clock\\\\\nline'"},
 		{MySQL, `plain`, `'plain'`},
 		{MySQL, `o'clock`, `'o''clock'`},
 		{MySQL, ``, `''`},

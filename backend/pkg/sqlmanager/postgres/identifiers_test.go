@@ -373,7 +373,7 @@ func Test_OddNames_Comment(t *testing.T) {
 		)
 		comment := `the "best" o'clock, two$$dollars and back\slash`
 		require.Equal(t,
-			"COMMENT ON COLUMN "+target+` IS 'the "best" o''clock, two$$dollars and back\slash';`,
+			"COMMENT ON COLUMN "+target+` IS E'the "best" o''clock, two$$dollars and back\\slash';`,
 			BuildUpdateCommentStatement(schema.name, table.name, column.name, &comment),
 		)
 	})
@@ -487,7 +487,7 @@ func Test_OddNames_IdentityColumnResetCurrent(t *testing.T) {
 		BuildPgIdentityColumnResetCurrentSql(`two$$dollars`, `we"ird`, `o'clock`),
 	)
 	require.Equal(t,
-		`SELECT setval(pg_get_serial_sequence('"back\slash"."sp ace"', 'semi;colon'), COALESCE((SELECT MAX("semi;colon") FROM "back\slash"."sp ace"), 1));`,
+		`SELECT setval(pg_get_serial_sequence(E'"back\\slash"."sp ace"', 'semi;colon'), COALESCE((SELECT MAX("semi;colon") FROM "back\slash"."sp ace"), 1));`,
 		BuildPgIdentityColumnResetCurrentSql(`back\slash`, `sp ace`, `semi;colon`),
 	)
 }
