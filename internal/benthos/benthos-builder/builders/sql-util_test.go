@@ -516,3 +516,70 @@ func Test_constrainedColumns(t *testing.T) {
 	_, ok = virtual["public.users"]["email"]
 	require.True(t, ok)
 }
+
+func virtualForeignKeyFixture() (
+	map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	*mgmtv1alpha1.VirtualForeignConstraint,
+) {
+	source := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+		"public.orders": {"user_id": {IsNullable: false}, "note": {IsNullable: true}},
+		"public.users":  {"id": {}, "email": {}},
+	}
+	fk := &mgmtv1alpha1.VirtualForeignConstraint{
+		Schema: "public", Table: "orders", Columns: []string{"user_id"},
+		ForeignKey: &mgmtv1alpha1.VirtualForeignKey{Schema: "public", Table: "users", Columns: []string{"id"}},
+	}
+	return source, fk
+}
+
+func Test_mergeVirtualForeignKeys_AddsAKeyWhoseColumnsTheSourceHolds(t *testing.T) {
+	source, fk := virtualForeignKeyFixture()
+	existing := &sqlmanager_shared.ForeignConstraint{
+		Columns:    []string{"note"},
+		ForeignKey: &sqlmanager_shared.ForeignKey{Table: "public.users", Columns: []string{"email"}},
+	}
+
+	merged, err := mergeVirtualForeignKeys(
+		map[string][]*sqlmanager_shared.ForeignConstraint{"public.orders": {existing}},
+		[]*mgmtv1alpha1.VirtualForeignConstraint{fk},
+		source,
+	)
+
+	require.NoError(t, err)
+	require.Len(t, merged["public.orders"], 2)
+	require.Same(t, existing, merged["public.orders"][0])
+	added := merged["public.orders"][1]
+	require.Equal(t, []string{"user_id"}, added.Columns)
+	require.Equal(t, []bool{true}, added.NotNullable)
+	require.Equal(t, "public.users", added.ForeignKey.Table)
+	require.Equal(t, []string{"id"}, added.ForeignKey.Columns)
+}
+
+func Test_mergeVirtualForeignKeys_ChildColumnAbsentFromTheSource(t *testing.T) {
+	source, fk := virtualForeignKeyFixture()
+	fk.Columns = []string{"buyer"}
+
+	_, err := mergeVirtualForeignKeys(nil, []*mgmtv1alpha1.VirtualForeignConstraint{fk}, source)
+
+	require.EqualError(t, err, "virtual foreign key source column not found: public.orders.buyer")
+}
+
+func Test_mergeVirtualForeignKeys_ReferencedColumnAbsentFromTheSource(t *testing.T) {
+	source, fk := virtualForeignKeyFixture()
+	fk.ForeignKey.Columns = []string{"id", "tenant"}
+
+	_, err := mergeVirtualForeignKeys(nil, []*mgmtv1alpha1.VirtualForeignConstraint{fk}, source)
+
+	require.EqualError(t, err,
+		"virtual foreign key of public.orders references column tenant of public.users, which the source does not hold")
+}
+
+func Test_mergeVirtualForeignKeys_ReferencedTableAbsentFromTheSource(t *testing.T) {
+	source, fk := virtualForeignKeyFixture()
+	fk.ForeignKey.Table = "accounts"
+
+	_, err := mergeVirtualForeignKeys(nil, []*mgmtv1alpha1.VirtualForeignConstraint{fk}, source)
+
+	require.EqualError(t, err,
+		"virtual foreign key of public.orders references table public.accounts, which the source does not hold")
+}
