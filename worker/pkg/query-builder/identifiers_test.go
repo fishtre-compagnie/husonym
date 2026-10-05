@@ -443,12 +443,22 @@ func Test_InsertBuilder_SqlServerRowsWithoutAColumn(t *testing.T) {
 	}
 	t.Run("one statement for each row", func(t *testing.T) {
 		require.Equal(t,
-			"INSERT INTO [dbo].[users] DEFAULT VALUES;INSERT INTO [dbo].[users] DEFAULT VALUES;",
+			`INSERT INTO "dbo"."users" DEFAULT VALUES;INSERT INTO "dbo"."users" DEFAULT VALUES;`,
 			build(t, "dbo", "users", []map[string]any{{}, {}}))
+	})
+	t.Run("an ordinary name gives the text it always gave", func(t *testing.T) {
+		require.Equal(t,
+			`INSERT INTO "dbo"."users" DEFAULT VALUES;`,
+			build(t, "dbo", "users", []map[string]any{{}}))
+	})
+	t.Run("an empty schema names the table alone", func(t *testing.T) {
+		require.Equal(t,
+			`INSERT INTO "users" DEFAULT VALUES;`,
+			build(t, "", "users", []map[string]any{{}}))
 	})
 	t.Run("the names are written as one identifier each", func(t *testing.T) {
 		require.Equal(t,
-			`INSERT INTO [sch]]ema].[we"i]]rd\] DEFAULT VALUES;`,
+			`INSERT INTO "sch]ema"."we""i]rd\" DEFAULT VALUES;`,
 			build(t, "sch]ema", `we"i]rd\`, []map[string]any{{}}))
 	})
 	t.Run("no row gives no statement", func(t *testing.T) {

@@ -391,13 +391,16 @@ func toGoquRecords(rows []map[string]any) []goqu.Record {
 }
 
 // getSqlServerDefaultValuesInsertSql gives one statement for each row without a column.
-// The statement is written by hand, so its names are quoted the way SQL Server reads
-// them under every session setting.
+// The head of the statement is written by goqu like the other statements of this builder.
 func getSqlServerDefaultValuesInsertSql(driver, schema, table string, rowCount int) (string, error) {
 	d, err := tableDialect(driver, schema, table)
 	if err != nil {
 		return "", err
 	}
-	statement := "INSERT INTO " + d.Qualified(schema, table) + " DEFAULT VALUES;"
+	head, _, err := getGoquDialect(driver).Insert(d.Table(schema, table)).ToSQL()
+	if err != nil {
+		return "", err
+	}
+	statement := head + " DEFAULT VALUES;"
 	return strings.Repeat(statement, rowCount), nil
 }
