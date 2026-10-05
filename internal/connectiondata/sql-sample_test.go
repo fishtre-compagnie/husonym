@@ -82,10 +82,12 @@ func partitionedParentRows() *sqlmock.Rows {
 }
 
 // leavesRows is the catalog's answer for the leaf partitions: the rows and the pages of the
-// analyzed ones, and the current pages of all.
+// analyzed ones, the current pages of all, and whether one of them is a foreign table.
 func leavesRows(reltuples float64, relpages, pages int64) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"reltuples", "relpages", "pages"}).AddRow(reltuples, relpages, pages)
+	return sqlmock.NewRows(leavesColumns).AddRow(reltuples, relpages, pages, false)
 }
+
+var leavesColumns = []string{"reltuples", "relpages", "pages", "has_foreign_leaf"}
 
 func countRows(count int64) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{"count"}).AddRow(count)
@@ -127,6 +129,19 @@ func Test_spreadSampleQuery_PostgresSumsTheLeavesOfAPartitionedTable(t *testing.
 	require.Contains(t, query, `FROM "public"."users" TABLESAMPLE SYSTEM (2.5) WHERE RANDOM() < 0.2 LIMIT 4000`)
 	require.Len(t, db.statements, 2)
 	require.NotContains(t, db.statements[1], "users", "the name is a bind parameter")
+}
+
+func Test_spreadSampleQuery_PostgresPartitionedTableWithAForeignLeaf(t *testing.T) {
+	db, mock := newSampleDB(t)
+	mock.ExpectQuery(pgEstimate).WithArgs(`"public"."users"`).WillReturnRows(partitionedParentRows())
+	mock.ExpectQuery(pgPartitions).WithArgs(`"public"."users"`).
+		WillReturnRows(sqlmock.NewRows(leavesColumns).AddRow(150000, 1500, 2000, true))
+
+	query, ok := spread(t, db, sqlmanager_shared.GoquPostgresDriver, firstOfRange)
+
+	require.False(t, ok)
+	require.Empty(t, query)
+	require.Len(t, db.statements, 2, "no sample statement is issued")
 }
 
 func Test_spreadSampleQuery_PostgresPartitionedTableWithoutASize(t *testing.T) {

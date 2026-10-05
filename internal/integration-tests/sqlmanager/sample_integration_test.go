@@ -302,6 +302,50 @@ func Test_SampleData_PartitionedTable(t *testing.T) {
 	})
 }
 
+// A foreign table among the leaves of a partitioned table is scanned whole by a sampled scan of
+// the parent, so such a table is read from the window: the first 1000 rows of the first
+// partition. The foreign leaf points at a table of the same server and holds the last quarter of
+// the ranks.
+func Test_SampleData_PartitionedTableWithAForeignLeaf(t *testing.T) {
+	forEachEngine(t, postgresOnly, func(t *testing.T, f *sampleFixture) {
+		const table, remote = "parted_foreign", "parted_foreign_remote"
+		f.dataset(t, table, func() {
+			f.exec(t, "CREATE EXTENSION IF NOT EXISTS postgres_fdw")
+			f.exec(t, `DO $$ BEGIN EXECUTE format(
+				'CREATE SERVER sample_loopback FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host %L, port %L, dbname %L)',
+				'localhost', current_setting('port'), current_database()); END $$`)
+			f.exec(t, `DO $$ BEGIN EXECUTE format(
+				'CREATE USER MAPPING FOR CURRENT_USER SERVER sample_loopback OPTIONS (user %L, password_required %L)',
+				current_user, 'false'); END $$`)
+			f.createTable(t, remote)
+			f.load(t, remote, 150001, bigRows, 1)
+
+			parent := f.qualified(table)
+			f.exec(t, fmt.Sprintf(
+				"CREATE TABLE %s (id BIGINT NOT NULL, %s INT NOT NULL, label VARCHAR(40) NOT NULL) PARTITION BY RANGE (%s)",
+				parent, f.quote("rank"), f.quote("rank")))
+			for p := range 3 {
+				f.exec(t, fmt.Sprintf(
+					"CREATE TABLE %s PARTITION OF %s FOR VALUES FROM (%d) TO (%d) WITH (autovacuum_enabled = false)",
+					f.qualified(partitionName(table, p)), parent, p*50000+1, (p+1)*50000+1))
+			}
+			f.exec(t, fmt.Sprintf(
+				"CREATE FOREIGN TABLE %s PARTITION OF %s FOR VALUES FROM (150001) TO (200001) "+
+					"SERVER sample_loopback OPTIONS (schema_name %s, table_name %s)",
+				f.qualified(partitionName(table, 3)), parent, "'"+f.schema+"'", "'"+remote+"'"))
+			f.load(t, table, 1, 150000, 1)
+			for p := range 4 {
+				f.analyze(t, partitionName(table, p))
+			}
+		})
+
+		rows := f.mustSample(t, table, 20)
+		require.Len(t, rows, 20)
+		requireDistinct(t, rows, "rank")
+		requireWithinWindow(t, rows, "rank")
+	})
+}
+
 // Only the keys 1..100 and 10^9..10^9+100 exist, so most key ranges are empty and the slices
 // hold the rows of one range at most, the upper keys: too few, and the window is read. It draws
 // among the 200 rows of the table: 20 of them all come from the same hundred 7 times in 10^7,

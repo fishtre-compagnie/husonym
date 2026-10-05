@@ -24,11 +24,12 @@ FROM pg_class WHERE oid = to_regclass($1)`
 
 	// A partitioned table holds its rows in its leaf partitions. The rows and the pages
 	// the planner knows are summed over the leaves that were analyzed, the current pages
-	// over all of them.
+	// over all of them. The last column tells whether a leaf is a foreign table.
 	postgresPartitionsEstimateQuery = `SELECT
   COALESCE(SUM(c.reltuples) FILTER (WHERE c.reltuples > 0 AND c.relpages > 0), 0)::float8,
   COALESCE(SUM(c.relpages) FILTER (WHERE c.reltuples > 0 AND c.relpages > 0), 0)::bigint,
-  COALESCE(SUM(pg_relation_size(c.oid) / current_setting('block_size')::bigint), 0)::bigint
+  COALESCE(SUM(pg_relation_size(c.oid) / current_setting('block_size')::bigint), 0)::bigint,
+  COALESCE(BOOL_OR(c.relkind = 'f'), false)
 FROM pg_partition_tree(to_regclass($1)) t
 JOIN pg_class c ON c.oid = t.relid
 WHERE t.isleaf`
@@ -177,8 +178,9 @@ func tableSampleQuery(
 // now, from the planner's density (rows per page) and the current number of pages. The
 // figures of a partitioned table are those of its leaf partitions: the density of the
 // leaves that were analyzed, and the current pages of all of them. A table that was never
-// analyzed, a partitioned table with no analyzed leaf, a view, a missing relation and a
-// failing query all mean there is no size.
+// analyzed, a partitioned table with no analyzed leaf, a partitioned table with a foreign
+// table among its leaves, a view, a missing relation and a failing query all mean there is
+// no size.
 func postgresSize(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -197,9 +199,17 @@ func postgresSize(
 		return querybuilder.TableSize{}, false
 	}
 	if partitioned {
-		err := db.QueryRowContext(ctx, postgresPartitionsEstimateQuery, name).Scan(&reltuples, &relpages, &pages)
+		var foreignLeaf bool
+		err := db.QueryRowContext(ctx, postgresPartitionsEstimateQuery, name).
+			Scan(&reltuples, &relpages, &pages, &foreignLeaf)
 		if err != nil {
 			logger.DebugContext(ctx, "partitions size unavailable", "error_kind", fmt.Sprintf("%T", err))
+			return querybuilder.TableSize{}, false
+		}
+		// A foreign table is read whole by a sampled scan of its parent, so the sample
+		// would come mostly from it.
+		if foreignLeaf {
+			logger.DebugContext(ctx, "table size unavailable: a partition is a foreign table")
 			return querybuilder.TableSize{}, false
 		}
 	}
