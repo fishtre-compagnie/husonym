@@ -115,14 +115,48 @@ func Test_OddNames_SchemaInit(t *testing.T) {
 	})
 }
 
-// A CHECK constraint over a column whose name holds a backslash or a line break is created in the
-// destination as the source has it. MySQL and MariaDB give the expression of a constraint in
-// their catalog, where MySQL writes it with escapes.
+// oddCheck is a CHECK constraint whose expression names a column, or holds a text, with a
+// character the catalog of MySQL writes with an escape or that a statement must carry as it is.
+type oddCheck struct {
+	label, column, clause string
+}
+
+// checkOver gives a constraint over an integer column of the given name.
+func (f *sampleFixture) checkOver(label, column string) oddCheck {
+	return oddCheck{label: label, column: f.quote(column) + " INT NOT NULL", clause: f.quote(column) + " > 0"}
+}
+
+// checkOfText gives a constraint over the text column c, its expression written for a session
+// that reads a backslash in a text as an escape, the default of both servers.
+func checkOfText(label, clause string) oddCheck {
+	return oddCheck{label: label, column: "c VARCHAR(40) NOT NULL", clause: clause}
+}
+
+// A CHECK constraint is created in the destination as the source has it, whatever characters
+// the names of its columns and the texts of its expression hold. MySQL and MariaDB give the
+// expression of a constraint in their catalog, where MySQL writes it with escapes.
 func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 	forEachEngine(t, mysqlFamily, func(t *testing.T, f *sampleFixture) {
 		const database, table = "odd_checks", "checked"
-		for label, column := range map[string]string{"backslash": `back\slash`, "line break": "new\nline"} {
-			t.Run(label, func(t *testing.T) {
+		for _, check := range []oddCheck{
+			f.checkOver("backslash", `back\slash`),
+			f.checkOver("two backslashes", `back\\slash`),
+			f.checkOver("backslash before a letter of an escape", `back\nslash`),
+			f.checkOver("line break", "new\nline"),
+			f.checkOver("carriage return", "carriage\rreturn"),
+			f.checkOver("apostrophe", "o'clock"),
+			f.checkOver("double quote", `we"ird`),
+			f.checkOver("backtick", "we`ird"),
+			f.checkOver("tab", "tab\tstop"),
+			f.checkOver("control characters", "bell\x07 and substitute\x1a"),
+			checkOfText("text with an apostrophe", `c <> 'o''clock'`),
+			checkOfText("text with a backslash", `c <> 'back\\slash'`),
+			checkOfText("text ending with a backslash", `c <> 'slash\\'`),
+			checkOfText("text with a line break", "c <> 'new\nline'"),
+			checkOfText("text with a double quote", `c <> 'we"ird'`),
+			checkOfText("pattern with an escaped wildcard", `c LIKE 'a\_b'`),
+		} {
+			t.Run(check.label, func(t *testing.T) {
 				source := f.oddSource(t)
 				destination := f.oddDestination(t)
 				for _, d := range []*oddDatabase{source, destination} {
@@ -133,8 +167,8 @@ func Test_OddNames_SchemaInit_CheckOverAColumn(t *testing.T) {
 				}
 				source.exec(t, "CREATE DATABASE "+f.quote(database))
 				source.exec(t, fmt.Sprintf(
-					"CREATE TABLE %s (id INT NOT NULL PRIMARY KEY, %s INT NOT NULL, CONSTRAINT positive CHECK (%s > 0))",
-					source.table(database, table), f.quote(column), f.quote(column)))
+					"CREATE TABLE %s (id INT NOT NULL PRIMARY KEY, %s, CONSTRAINT positive CHECK (%s))",
+					source.table(database, table), check.column, check.clause))
 
 				f.withSchemaManager(t, source, destination, f.oddDestinationOptions(true, false, false),
 					func(manager schemamanager.SchemaManagerService) {

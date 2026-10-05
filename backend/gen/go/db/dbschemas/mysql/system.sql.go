@@ -538,7 +538,26 @@ SELECT
     JSON_ARRAYAGG(JSON_OBJECT('column', kcu.column_name, 'sub_part', s.sub_part)) AS constraint_column_prefixes,
     rc.update_rule as update_rule,
     rc.delete_rule as delete_rule,
-    IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS check_clause -- hack to fix this bug https://bugs.mysql.com/
+    -- MySQL writes the expression of a check into its catalog with escapes: a backslash before
+    -- a backslash and before an apostrophe, and \n, \r and \Z for a line feed, a carriage
+    -- return and the byte 0x1A. They are undone here. The pair of backslashes is set aside
+    -- first, as \s, a pair the server never writes, so that neither of its halves is read with
+    -- its neighbour as another escape; it becomes one backslash last. MariaDB writes the
+    -- expression as it is. Each text is given by its bytes, which reads the same under every
+    -- sql_mode.
+    IFNULL(
+        CASE
+            WHEN VERSION() LIKE '%MariaDB%' THEN cc.check_clause
+            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause,
+                _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
+                _utf8mb4 0x5C27, _utf8mb4 0x27),
+                _utf8mb4 0x5C6E, _utf8mb4 0x0A),
+                _utf8mb4 0x5C72, _utf8mb4 0x0D),
+                _utf8mb4 0x5C5A, _utf8mb4 0x1A),
+                _utf8mb4 0x5C73, _utf8mb4 0x5C)
+        END,
+        ''
+    ) AS check_clause
 FROM
     information_schema.table_constraints AS tc
 LEFT JOIN information_schema.key_column_usage AS kcu
@@ -661,7 +680,26 @@ SELECT
     JSON_ARRAYAGG(JSON_OBJECT('column', kcu.column_name, 'sub_part', s.sub_part)) AS constraint_column_prefixes,
     rc.update_rule as update_rule,
     rc.delete_rule as delete_rule,
-    IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS check_clause -- hack to fix this bug https://bugs.mysql.com/
+    -- MySQL writes the expression of a check into its catalog with escapes: a backslash before
+    -- a backslash and before an apostrophe, and \n, \r and \Z for a line feed, a carriage
+    -- return and the byte 0x1A. They are undone here. The pair of backslashes is set aside
+    -- first, as \s, a pair the server never writes, so that neither of its halves is read with
+    -- its neighbour as another escape; it becomes one backslash last. MariaDB writes the
+    -- expression as it is. Each text is given by its bytes, which reads the same under every
+    -- sql_mode.
+    IFNULL(
+        CASE
+            WHEN VERSION() LIKE '%MariaDB%' THEN cc.check_clause
+            ELSE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(cc.check_clause,
+                _utf8mb4 0x5C5C, _utf8mb4 0x5C73),
+                _utf8mb4 0x5C27, _utf8mb4 0x27),
+                _utf8mb4 0x5C6E, _utf8mb4 0x0A),
+                _utf8mb4 0x5C72, _utf8mb4 0x0D),
+                _utf8mb4 0x5C5A, _utf8mb4 0x1A),
+                _utf8mb4 0x5C73, _utf8mb4 0x5C)
+        END,
+        ''
+    ) AS check_clause
 FROM
     information_schema.table_constraints AS tc
 LEFT JOIN information_schema.key_column_usage AS kcu
