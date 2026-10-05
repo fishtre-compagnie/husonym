@@ -113,11 +113,19 @@ of letters and of digits, the most frequent layouts (`a+.a+@a+.a+` for an email 
 and the share of the values that pass each format check. The rows do not leave the step
 that read them.
 
-The rows are drawn from pages spread over the table on PostgreSQL and SQL Server, and, on
-MySQL and MariaDB, from ten slices of the table when its primary key is a single integer
-column. Otherwise, and whenever that draw is not possible or returns fewer rows than
-asked, they are drawn from the first 1000 rows of the table. Two scans of the same table
-can therefore read different rows.
+On PostgreSQL and SQL Server, the rows of a table of more than 1000 rows are drawn from
+pages taken at random over the whole table: about fifty pages, or the pages that hold
+about 1000 rows when that is more; a table of fewer than fifty pages is read whole. On
+MySQL and MariaDB, when the primary key is a single column of an integer type, they are
+drawn from ten ranges of the key that follow one another from its lowest to its highest
+value, up to 100 consecutive rows in each. In every other case (on PostgreSQL and SQL
+Server, a table of 1000 rows or fewer; a PostgreSQL table that was never analyzed, or a
+partitioned one none of whose partitions was; a MySQL or MariaDB table with another kind
+of primary key, whose key values span less than 1000, or whose ten ranges hold fewer than
+500 rows together) the rows are drawn from the first 1000 rows of the table, and whenever
+the draw over the whole table fails or returns fewer rows than asked, the missing rows are
+taken from those first 1000 rows, where a row already read can be read again. Two scans of
+the same table can read different rows.
 
 A layout is what a value looks like once its characters are replaced by their class. Each
 run of characters of one class is written once: `A+` for uppercase letters, `a+` for other
