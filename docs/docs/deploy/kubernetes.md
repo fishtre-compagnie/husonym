@@ -23,7 +23,8 @@ All of our helm charts are deployed as OCI helm charts and require Helm3 to use.
 Our images are published directly to the Github Container registry at: `ghcr.io/fishtre-compagnie/husonym/helm`.
 
 When a release of Husonym is made, all of these resources are tagged and released at the same version.
-If using the Husonym AIO chart at version `v1.0.0`, it will use `v1.0.0` of the api, app, and worker.
+If using the Husonym AIO chart at version `1.0.0`, it will use the `1.0.0` images of the api, app, and worker.
+The chart version is the release version without the leading `v`.
 
 ### API
 
@@ -32,7 +33,7 @@ The chart itself can be found [here](https://github.com/fishtre-compagnie/husony
 
 The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/backend/dev/helm/api/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/api:latest`
+The chart can be pulled via: `helm pull oci://ghcr.io/fishtre-compagnie/husonym/helm/api --version <version>`
 
 ### App
 
@@ -41,7 +42,7 @@ The chart itself can be found [here](https://github.com/fishtre-compagnie/husony
 
 The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/frontend/apps/web/dev/helm/app/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/app:latest`
+The chart can be pulled via: `helm pull oci://ghcr.io/fishtre-compagnie/husonym/helm/app --version <version>`
 
 ### Worker
 
@@ -50,7 +51,7 @@ The chart itself can be found [here](https://github.com/fishtre-compagnie/husony
 
 The local dev edition can be found in the [helmfile](https://github.com/fishtre-compagnie/husonym/blob/main/worker/dev/helm/helmfile.yaml) that is used by our dev Tilt instance.
 
-The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/worker:latest`
+The chart can be pulled via: `helm pull oci://ghcr.io/fishtre-compagnie/husonym/helm/worker --version <version>`
 
 ### Husonym Umbrella Chart
 
@@ -60,7 +61,7 @@ The chart itself can be found [here](https://github.com/fishtre-compagnie/husony
 This chart has no templates of its own and merely acts as a single helm entrypoint to deploy all of the Husonym services.
 It only contains a `Chart.yaml` that defines the three Husonym dependencies.
 
-The full image can be docker pulled via: `docker pull ghcr.io/fishtre-compagnie/husonym/helm/husonym:latest`
+The chart can be pulled via: `helm pull oci://ghcr.io/fishtre-compagnie/husonym/helm/husonym --version <version>`
 
 When running this within the repo, it points to the local copies of the helm chart. The OCI image will point to the OCI images of the published API, APP, and Worker charts.
 
@@ -144,8 +145,16 @@ Install the chart:
 When specifying the version, be sure to omit the `v` from the github release. So if the current version if `v0.4.38`, specify `0.4.38` as the helm version.
 
 ```
-helm install oci://ghcr.io/fishtre-compagnie/husonym/helm/husonym --version <version> -f values.yaml
+helm install husonym oci://ghcr.io/fishtre-compagnie/husonym/helm/husonym --version <version> -f values.yaml
 ```
+
+To install or upgrade to a given version, use `helm upgrade --install` with the new `--version`:
+
+```
+helm upgrade --install husonym oci://ghcr.io/fishtre-compagnie/husonym/helm/husonym --version <version> -f values.yaml
+```
+
+The chart pulls the images of the same release. Migrations of the Husonym database run when the API starts and are not reversed when you go back to an older version, so back up the database before upgrading.
 
 ## External Dependencies for Production Deployments
 

@@ -34,7 +34,7 @@ A Helm chart for the Husonym App
 | husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
-| image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
+| image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |

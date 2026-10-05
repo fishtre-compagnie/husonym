@@ -2,7 +2,7 @@
 image:
   # -- The default image repository
   repository: ghcr.io/fishtre-compagnie/husonym/app
-  # -- Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
+  # -- Overrides the image tag whose default is the chart appVersion
   tag:
   # -- Overrides the default K8s pull policy
   pullPolicy:

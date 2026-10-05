@@ -58,7 +58,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | api.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | api.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | api.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/api"` | The default image repository |
-| api.image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
+| api.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | api.imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | api.ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | api.istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
@@ -136,7 +136,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | app.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | app.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | app.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/app"` | The default image repository |
-| app.image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
+| app.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | app.imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | app.ingress.enabled | bool | `false` | Enable this if using K8s ingress to expose the backend to the internet |
 | app.istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
@@ -181,7 +181,7 @@ A Helm chart for Husonym that contains the api, app, and worker
 | worker.husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | worker.image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | worker.image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/worker"` | The default image repository |
-| worker.image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
+| worker.image.tag | string | `nil` | Overrides the image tag whose default is the chart appVersion |
 | worker.imagePullSecrets | list | `[]` | Define a list of image pull secrets that will be used by the deployment |
 | worker.istio.enabled | bool | `false` | Whether or not to apply the default istio annotations/labels to the deployment |
 | worker.nameOverride | string | `nil` | Override the name specified on the Chart, which defaults to .Chart.Name |
