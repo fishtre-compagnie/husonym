@@ -37,6 +37,21 @@ func checkNames(kind string, names ...string) error {
 	return nil
 }
 
+// checkNamesIfPresent refuses a name that holds a NUL byte, where MySQL cuts a statement, and
+// accepts one that is empty: the catalog gives no column name for a key part that is an
+// expression.
+func checkNamesIfPresent(kind string, names ...string) error {
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		if err := checkNames(kind, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // checkQualifiedTable refuses the names of a table that a statement writes with its schema.
 func checkQualifiedTable(schema, table string) error {
 	if err := checkNames("schema", schema); err != nil {

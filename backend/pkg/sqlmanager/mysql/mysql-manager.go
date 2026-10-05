@@ -1103,12 +1103,15 @@ func buildAlterStatementByConstraint(
 			return nil, err
 		}
 	}
-	// The columns are not checked: the catalog gives no column name for a key part that is
-	// an expression, and the statement of such a constraint is still handed over, for the
-	// server to answer it alone.
+	// The catalog gives no column name for a key part that is an expression, which a UNIQUE
+	// constraint may have: the statement of such a constraint is still handed over, for the
+	// server to answer it alone. A primary key and a foreign key are made of columns only.
 	table := my.Qualified(c.SchemaName, c.TableName)
 	switch c.ConstraintType {
 	case "PRIMARY KEY":
+		if err := checkNames("column", constraintCols...); err != nil {
+			return nil, err
+		}
 		stmt := fmt.Sprintf(
 			"ALTER TABLE %s ADD PRIMARY KEY (%s);",
 			table,
@@ -1125,6 +1128,9 @@ func buildAlterStatementByConstraint(
 		}, nil
 	case "UNIQUE":
 		if err := checkNames("constraint", c.ConstraintName); err != nil {
+			return nil, err
+		}
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
 			return nil, err
 		}
 		stmt := fmt.Sprintf(
@@ -1147,6 +1153,12 @@ func buildAlterStatementByConstraint(
 			return nil, err
 		}
 		if err := checkQualifiedTable(c.ReferencedSchemaName, c.ReferencedTableName); err != nil {
+			return nil, err
+		}
+		if err := checkNames("column", constraintCols...); err != nil {
+			return nil, err
+		}
+		if err := checkNames("referenced column", referencedCols...); err != nil {
 			return nil, err
 		}
 		stmt := fmt.Sprintf(
@@ -1291,21 +1303,25 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 		for _, row := range rows {
 			row.SchemaName, row.TableName = names.table(row.SchemaName, row.TableName)
 			row.TriggerSchema = names.schema(row.TriggerSchema)
+			definition, err := buildIdempotentTriggerStatement(
+				row.SchemaName,
+				row.TableName,
+				row.TriggerName,
+				row.TriggerSchema,
+				row.Timing,
+				row.EventType,
+				row.Orientation,
+				row.Statement,
+			)
+			if err != nil {
+				return nil, err
+			}
 			trigger := &sqlmanager_shared.TableTrigger{
 				Schema:        row.SchemaName,
 				Table:         row.TableName,
 				TriggerSchema: &row.TriggerSchema,
 				TriggerName:   row.TriggerName,
-				Definition: wrapIdempotentTrigger(
-					row.SchemaName,
-					row.TableName,
-					row.TriggerName,
-					row.TriggerSchema,
-					row.Timing,
-					row.EventType,
-					row.Orientation,
-					row.Statement,
-				),
+				Definition:    definition,
 				Mysql: &sqlmanager_shared.MysqlTrigger{
 					Timing:              row.Timing,
 					Event:               row.EventType,
@@ -1430,17 +1446,21 @@ func (m *MysqlManager) getFunctionsBySchemas(
 		if err != nil {
 			return nil, err
 		}
+		definition, err := buildIdempotentFunctionStatement(
+			row.SchemaName,
+			row.FunctionName,
+			functionSignatureStr,
+			row.ReturnDataType,
+			row.Definition,
+			row.IsDeterministic == 1,
+		)
+		if err != nil {
+			return nil, err
+		}
 		function := &sqlmanager_shared.DataType{
-			Schema: row.SchemaName,
-			Name:   row.FunctionName,
-			Definition: wrapIdempotentFunction(
-				row.SchemaName,
-				row.FunctionName,
-				functionSignatureStr,
-				row.ReturnDataType,
-				row.Definition,
-				row.IsDeterministic == 1,
-			),
+			Schema:     row.SchemaName,
+			Name:       row.FunctionName,
+			Definition: definition,
 		}
 		function.Fingerprint = sqlmanager_shared.BuildFingerprint(
 			function.Schema,
@@ -1624,7 +1644,9 @@ DROP PROCEDURE %[1]s;
 	return strings.TrimSpace(stmt)
 }
 
-// buildIdempotentIndexStatement refuses the names no engine takes, then writes the index.
+// buildIdempotentIndexStatement refuses the names no engine takes, then writes the index. A
+// key part is the name of a column or, between parentheses, an expression, which is not a name
+// and cannot hold a NUL byte either.
 func buildIdempotentIndexStatement(schema, table string, idxInfo *indexInfo) (string, error) {
 	if err := checkQualifiedTable(schema, table); err != nil {
 		return "", err
@@ -1632,7 +1654,55 @@ func buildIdempotentIndexStatement(schema, table string, idxInfo *indexInfo) (st
 	if err := checkNames("index", idxInfo.indexName); err != nil {
 		return "", err
 	}
+	if err := checkNames("index key part", idxInfo.columns...); err != nil {
+		return "", err
+	}
 	return wrapIdempotentIndex(schema, table, idxInfo), nil
+}
+
+// buildIdempotentFunctionStatement refuses the names no engine takes, then writes the function.
+func buildIdempotentFunctionStatement(
+	schema,
+	funcName,
+	functionSignature,
+	returnDataType,
+	definition string,
+	isDeterministic bool,
+) (string, error) {
+	if err := checkNames("schema", schema); err != nil {
+		return "", err
+	}
+	if err := checkNames("function", funcName); err != nil {
+		return "", err
+	}
+	return wrapIdempotentFunction(
+		schema, funcName, functionSignature, returnDataType, definition, isDeterministic,
+	), nil
+}
+
+// buildIdempotentTriggerStatement refuses the names no engine takes, then writes the trigger.
+func buildIdempotentTriggerStatement(
+	schema,
+	tableName,
+	triggerName,
+	triggerSchema,
+	timing,
+	eventType,
+	orientation,
+	actionStmt string,
+) (string, error) {
+	if err := checkQualifiedTable(schema, tableName); err != nil {
+		return "", err
+	}
+	if err := checkNames("trigger schema", triggerSchema); err != nil {
+		return "", err
+	}
+	if err := checkNames("trigger", triggerName); err != nil {
+		return "", err
+	}
+	return wrapIdempotentTrigger(
+		schema, tableName, triggerName, triggerSchema, timing, eventType, orientation, actionStmt,
+	), nil
 }
 
 func wrapIdempotentFunction(
