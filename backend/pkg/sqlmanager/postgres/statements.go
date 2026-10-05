@@ -81,15 +81,18 @@ func buildCreateSchemaStatement(schema string) string {
 	return fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;", pg.Quote(schema))
 }
 
-// dollarQuoteTag gives the delimiter of a dollar-quoted body: $$ when the body does not hold
-// it, and otherwise a tagged delimiter that the body does not hold.
+// dollarQuoteTag gives the delimiter of a dollar-quoted body: the first of $$, $husonym$,
+// $husonym1$, ... that occurs once in the body followed by it, at its end. The delimiter that
+// closes the body is thus the only one the server sees, even when the body ends in the start
+// of the delimiter.
 func dollarQuoteTag(body string) string {
-	if !strings.Contains(body, "$$") {
-		return "$$"
-	}
-	tag := "$husonym$"
-	for i := 1; strings.Contains(body, tag); i++ {
-		tag = fmt.Sprintf("$husonym%d$", i)
+	tag := "$$"
+	for i := 0; strings.Index(body+tag, tag) != len(body); i++ {
+		if i == 0 {
+			tag = "$husonym$"
+		} else {
+			tag = fmt.Sprintf("$husonym%d$", i)
+		}
 	}
 	return tag
 }

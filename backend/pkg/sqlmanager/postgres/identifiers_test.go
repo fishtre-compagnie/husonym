@@ -70,6 +70,28 @@ func Test_dollarQuoteTag(t *testing.T) {
 	require.Equal(t, "$husonym2$", dollarQuoteTag("\nBEGIN\n\tPERFORM '$$', '$husonym$', '$husonym1$';\nEND "))
 }
 
+// The delimiter occurs once in the body followed by it, at its end: a body that ends in the
+// start of the delimiter does not make the server see another one.
+func Test_dollarQuoteTag_OccursOnceAtTheEnd(t *testing.T) {
+	for _, c := range []struct{ name, body, tag string }{
+		{"ends in a dollar", "BEGIN PERFORM 1; END;--$", "$husonym$"},
+		{"ends in the start of the first tag", "BEGIN PERFORM '$$'; END;--$husonym", "$husonym1$"},
+		{"ends in the start of the first tag, no two dollars", "BEGIN PERFORM 1; END;--$husonym", "$$"},
+		{"holds two dollars and ends in a dollar", "BEGIN PERFORM '$$'; END;--$", "$husonym$"},
+		{"holds the first tag", "BEGIN PERFORM '$$', '$husonym$'; END;", "$husonym1$"},
+		{"holds the first tag and ends in a dollar", "BEGIN PERFORM '$$', '$husonym$'; END;--$", "$husonym1$"},
+		{"holds the first tag and ends in its start", "BEGIN PERFORM '$$', '$husonym$'; END;--$husonym1", "$husonym2$"},
+		{"ordinary body", "\nBEGIN\n\tPERFORM 1;\nEND ", "$$"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tag := dollarQuoteTag(c.body)
+			require.Equal(t, c.tag, tag)
+			require.Equal(t, len(c.body), strings.Index(c.body+tag, tag))
+			require.Equal(t, "DO "+tag+c.body+tag+";", doBlock(c.body))
+		})
+	}
+}
+
 func Test_OddNames_SchemaCreation(t *testing.T) {
 	for _, n := range oddNames {
 		require.Equal(t, "CREATE SCHEMA IF NOT EXISTS "+n.ident+";", buildCreateSchemaStatement(n.name))
