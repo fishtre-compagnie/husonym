@@ -2,6 +2,8 @@ package sqlmanager_mssql
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -175,7 +177,8 @@ func Test_MssqlManager(t *testing.T) {
 		colInfoMap, err := manager.GetSchemaColumnMap(context.Background())
 		require.NoError(t, err)
 
-		testDefaultTable := colInfoMap["testdb.sqlmanagermssql2.defaults_table"]
+		testDefaultTable := colInfoMap["sqlmanagermssql2.defaults_table"]
+		require.NotEmpty(t, testDefaultTable)
 
 		var expectedProperties = map[string]testColumnProperties{
 			"description":       {needsOverride: false, needsReset: false},
@@ -291,6 +294,28 @@ func Test_MssqlManager(t *testing.T) {
 			_, err = target.DB.ExecContext(ctx, stmt)
 			require.NoErrorf(t, err, "failed to create fk constraints in target db: %s", stmt)
 		}
+
+		// The plan tells the one object it leaves out: a trigger whose text is encrypted.
+		for _, st := range statements {
+			if st.Label == "table triggers" {
+				require.Equal(t, []*sqlmanager_shared.SkippedObject{{
+					Object: "[mssqlinit].[tr_TestTable_Update]",
+					Reason: "encrypted: its definition cannot be read",
+				}}, st.Skipped)
+			}
+		}
+
+		// The target holds every table with the columns, constraints, indexes and triggers of
+		// the source, each under its name, but for that trigger.
+		expected := tableObjects(ctx, t, source.DB, schema, tables)
+		require.Contains(t, expected, "OrderItems | foreign key | FK__OrderItem__Order", "the source has what is compared")
+		encrypted := "\nTestTable | sql trigger | tr_TestTable_Update"
+		require.Contains(t, expected, encrypted)
+		require.Equal(
+			t,
+			strings.Replace(expected, encrypted, "", 1),
+			tableObjects(ctx, t, target.DB, schema, tables),
+		)
 	})
 
 	t.Run("GetAllSchemas", func(t *testing.T) {
@@ -456,6 +481,48 @@ func Test_MssqlManager(t *testing.T) {
 // 	})
 // 	require.NoError(s.T(), err)
 // }
+
+// tableObjects tells what the given tables of a schema hold: their columns with their types,
+// their constraints, their indexes and their triggers, as one text of sorted lines.
+func tableObjects(ctx context.Context, t testing.TB, db *sql.DB, schema string, tables []string) string {
+	t.Helper()
+	names, err := json.Marshal(tables)
+	require.NoError(t, err)
+	rows, err := db.QueryContext(ctx, `
+WITH selected AS (
+    SELECT t.object_id, t.name
+    FROM sys.tables t
+    JOIN sys.schemas s ON s.schema_id = t.schema_id
+    WHERE s.name = @schema AND t.name IN (SELECT value COLLATE CATALOG_DEFAULT FROM OPENJSON(@tables))
+)
+SELECT st.name, 'column', c.name + ' ' + ty.name + ' ' + CAST(c.max_length AS varchar(10))
+    + CASE WHEN c.is_nullable = 1 THEN ' null' ELSE ' not null' END
+    + CASE WHEN c.is_identity = 1 THEN ' identity' ELSE '' END
+    + CASE WHEN c.is_computed = 1 THEN ' computed' ELSE '' END
+FROM selected st
+JOIN sys.columns c ON c.object_id = st.object_id
+JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+UNION ALL
+SELECT st.name, LOWER(REPLACE(o.type_desc, '_CONSTRAINT', '')) COLLATE DATABASE_DEFAULT, o.name
+FROM selected st
+JOIN sys.objects o ON o.parent_object_id = st.object_id
+UNION ALL
+SELECT st.name, 'index', i.name + ' ' + LOWER(i.type_desc) COLLATE DATABASE_DEFAULT
+    + CASE WHEN i.is_unique = 1 THEN ' unique' ELSE '' END
+FROM selected st
+JOIN sys.indexes i ON i.object_id = st.object_id AND i.type > 0
+ORDER BY 1, 2, 3`, sql.Named("schema", schema), sql.Named("tables", string(names)))
+	require.NoError(t, err)
+	defer rows.Close()
+	lines := []string{}
+	for rows.Next() {
+		var table, kind, object string
+		require.NoError(t, rows.Scan(&table, &kind, &object))
+		lines = append(lines, table+" | "+strings.ReplaceAll(kind, "_", " ")+" | "+object)
+	}
+	require.NoError(t, rows.Err())
+	return strings.Join(lines, "\n")
+}
 
 func containsSubset[T any](t testing.TB, array, subset []T) {
 	for idx, elem := range subset {

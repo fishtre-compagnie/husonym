@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
 const enumPrefix = "PERMISSION_"
@@ -79,17 +79,10 @@ func Names(permissions []mgmtv1alpha1.Permission) []string {
 	return names
 }
 
-// Account, Connection and Job name the permission an RBAC action on that entity requires.
-func Account(action rbac.AccountAction) mgmtv1alpha1.Permission {
-	return mustParse("account:" + action.String())
-}
-
-func Connection(action rbac.ConnectionAction) mgmtv1alpha1.Permission {
-	return mustParse("connection:" + action.String())
-}
-
-func Job(action rbac.JobAction) mgmtv1alpha1.Permission {
-	return mustParse("job:" + action.String())
+// Of names the permission an RBAC action requires: the kind of entity it is done on, and the
+// action.
+func Of(action rbac.Action) mgmtv1alpha1.Permission {
+	return mustParse(action.Kind() + ":" + action.String())
 }
 
 // mustParse fails loudly on an RBAC action no permission names: a new action with no permission

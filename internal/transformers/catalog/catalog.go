@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	ee_transformers "github.com/fishtre-compagnie/husonym/internal/ee/transformers"
 	"github.com/fishtre-compagnie/husonym/internal/gotypeutil"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -906,7 +905,7 @@ var (
 		},
 	}
 
-	// base transformers + ee transformers
+	// base transformers + licensed transformers
 	allSystemTransformers = []*mgmtv1alpha1.SystemTransformer{}
 
 	baseSystemTransformerSourceMap = map[mgmtv1alpha1.TransformerSource]*mgmtv1alpha1.SystemTransformer{}
@@ -920,7 +919,7 @@ var (
 
 func init() {
 	allSystemTransformers = append(allSystemTransformers, baseSystemTransformers...)
-	allSystemTransformers = append(allSystemTransformers, ee_transformers.Transformers...)
+	allSystemTransformers = append(allSystemTransformers, licensedSystemTransformers...)
 
 	slices.SortFunc(baseSystemTransformers, func(t1, t2 *mgmtv1alpha1.SystemTransformer) int {
 		return cmp.Compare(t1.Name, t2.Name)

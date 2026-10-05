@@ -134,3 +134,37 @@ func TestDeterministicDictionaryFaker(t *testing.T) {
 		t.Fatal("cohérence inter-worker attendue")
 	}
 }
+
+// The key of a keyed hash belongs to its scope and to its semantic type, and to nothing else:
+// it is no other key the deriver gives, and above all not the key of the scope it comes from.
+func TestHashKey(t *testing.T) {
+	d := New(projectKey, "run:1")
+
+	if d.HashKey("pii_text") != New(projectKey, "run:1").HashKey("pii_text") {
+		t.Fatal("the same scope and the same semantic type must give the same hash key")
+	}
+	if d.HashKey("pii_text") == New(projectKey, "run:2").HashKey("pii_text") {
+		t.Fatal("another scope must give another hash key")
+	}
+	if d.HashKey("pii_text") == New([]byte("another-project-key"), "run:1").HashKey("pii_text") {
+		t.Fatal("another project key must give another hash key")
+	}
+	if d.HashKey("pii_text") == d.HashKey("person.phone") {
+		t.Fatal("another semantic type must give another hash key")
+	}
+
+	hashKey := d.HashKey("pii_text")
+	if hashKey == d.CipherKey("pii_text") {
+		t.Fatal("the hash key must not be the cipher key of the same semantic type")
+	}
+	if string(hashKey[:]) == string(d.Domain("pii_text").key) {
+		t.Fatal("the hash key must not be the domain key of the same semantic type")
+	}
+	if string(hashKey[:]) == string(d.scopeKey) || string(hashKey[:]) == string(projectKey) {
+		t.Fatal("the hash key must not be the key it derives from")
+	}
+	// A value that spells the label of the hash key, in any domain, does not yield it.
+	if hashKey == [32]byte(d.Domain("pii_text").WithCanonicalizer(Exact).Seed("hash:pii_text")) {
+		t.Fatal("a seed must not equal the hash key")
+	}
+}

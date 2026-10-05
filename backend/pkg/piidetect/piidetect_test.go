@@ -127,7 +127,8 @@ func TestClassify(t *testing.T) {
 			true,
 			"credit_card",
 			true,
-			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
+			// The generator of card numbers writes integers: a text column is scrambled.
+			mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE,
 		},
 		{"ip", "ip_address", "varchar", true, "ip_address", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS},
 		{"gender", "gender", "varchar", true, "gender", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER},
@@ -200,11 +201,11 @@ func TestClassify_NomCompletNestPasUnNomDeFamille(t *testing.T) {
 	}
 }
 
-// La date de naissance est une donnée personnelle. Le transformer suggéré dépend
-// du type : cf. TestClassify_DateNaissanceSuggereSelonLeType. Ici on vérifie la
-// catégorie et la sensibilité, sur une colonne TEXTE (aucune suggestion possible,
-// le format de la source devrait être préservé).
-func TestClassify_DateNaissanceSensibleSansTransformer(t *testing.T) {
+// A birth date is personal data. The suggested transformer depends on the type: see
+// TestClassify_DateNaissanceSuggereSelonLeType. Here the category, the sensitivity and
+// the suggestion for a text column: the scramble, since no generator writes a date back
+// in the format of the source.
+func TestClassify_DateNaissanceEnTexte(t *testing.T) {
 	for _, col := range []string{"date_naissance", "birthdate", "dob"} {
 		got, ok := Classify(col, "varchar(100)")
 		if !ok {
@@ -217,8 +218,8 @@ func TestClassify_DateNaissanceSensibleSansTransformer(t *testing.T) {
 		if !got.Sensitive {
 			t.Errorf("Classify(%q) : Sensitive = false, attendu true", col)
 		}
-		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED {
-			t.Errorf("Classify(%q) : transformer = %v, attendu UNSPECIFIED", col, got.Suggested)
+		if got.Suggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_CHARACTER_SCRAMBLE {
+			t.Errorf("Classify(%q): transformer = %v, want TRANSFORM_CHARACTER_SCRAMBLE", col, got.Suggested)
 		}
 	}
 	// Une date non personnelle ne doit pas être marquée.

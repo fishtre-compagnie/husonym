@@ -2,7 +2,7 @@ package v1alpha1_jobservice
 
 import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
-	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
@@ -11,6 +11,9 @@ import (
 )
 
 type Service struct {
+	// The job hook procedures of the service are the hook logic's own.
+	*hooks.JobService
+
 	cfg               *Config
 	db                *husonymdb.HusonymDb
 	connectionService mgmtv1alpha1connect.ConnectionServiceClient
@@ -19,7 +22,6 @@ type Service struct {
 
 	temporalmgr clientmanager.Interface
 
-	hookService           jobhooks.Interface
 	connectiondatabuilder connectiondata.ConnectionDataBuilder
 }
 
@@ -44,8 +46,7 @@ type LokiRunLogConfig struct {
 }
 
 type Config struct {
-	IsAuthEnabled  bool
-	IsHusonymCloud bool
+	IsAuthEnabled bool
 	// WorkerOnly guards what only the worker calls: the context of a run, the mappings it
 	// reconciles.
 	WorkerOnly userdata.WorkerOnly
@@ -66,17 +67,17 @@ func New(
 	temporalWfManager clientmanager.Interface,
 	connectionService mgmtv1alpha1connect.ConnectionServiceClient,
 	sqlmanager sql_manager.SqlManagerClient,
-	jobhookService jobhooks.Interface,
+	jobHooks *hooks.JobService,
 	userdataclient userdata.Interface,
 	connectiondatabuilder connectiondata.ConnectionDataBuilder,
 ) *Service {
 	return &Service{
+		JobService:            jobHooks,
 		cfg:                   cfg,
 		db:                    db,
 		temporalmgr:           temporalWfManager,
 		connectionService:     connectionService,
 		sqlmanager:            sqlmanager,
-		hookService:           jobhookService,
 		userdataclient:        userdataclient,
 		connectiondatabuilder: connectiondatabuilder,
 	}

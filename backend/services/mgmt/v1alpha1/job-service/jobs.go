@@ -17,12 +17,12 @@ import (
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
-	piidetect_job_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/job"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	temporalclient "go.temporal.io/sdk/client"
@@ -607,11 +607,10 @@ func (s *Service) CreateJob(
 			ID:        husonymdb.UUIDString(cj.ID),
 		}
 	} else if req.Msg.GetJobType().GetPiiDetect() != nil {
-		piiWf := &piidetect_job_workflow.Workflow{}
 		action = &temporalclient.ScheduleWorkflowAction{
-			Workflow:  piiWf.JobPiiDetect,
+			Workflow:  piidetect.JobWorkflowName,
 			TaskQueue: taskQueue,
-			Args:      []any{&piidetect_job_workflow.PiiDetectRequest{JobId: jobUuid}},
+			Args:      []any{&piidetect.JobPiiDetectRequest{JobId: jobUuid}},
 			ID:        husonymdb.UUIDString(cj.ID),
 		}
 	}

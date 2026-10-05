@@ -52,18 +52,47 @@ type validator struct {
 	category  string
 	label     string // libellé lisible utilisé dans Evidence
 	suggested mgmtv1alpha1.TransformerSource
-	// numericSuggested : variante quand la colonne est de type numérique.
-	numericSuggested mgmtv1alpha1.TransformerSource
+	// integerSuggested is the transformer of the datum for an integer column, when one
+	// exists.
+	integerSuggested mgmtv1alpha1.TransformerSource
 	// weak : forme trop peu contrainte pour conclure seule (ex: code postal =
 	// n'importe quel entier à 5 chiffres). Plafonné à NEEDS_REVIEW.
 	weak bool
-	fn   func(string) bool
+	// format: the check reads how the value is written and computes no key. The
+	// detection is then reported as one by format.
+	format bool
+	fn     func(string) bool
+}
+
+// method names what the check rests on.
+func (v *validator) method() mgmtv1alpha1.PiiDetectionMethod {
+	if v.format {
+		return mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_FORMAT
+	}
+	return mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM
+}
+
+// confirmed words the evidence of a check that most values pass.
+func (v *validator) confirmed(matched, total int) string {
+	if v.format {
+		return fmt.Sprintf("%s reconnu sur %d/%d valeurs", v.label, matched, total)
+	}
+	return fmt.Sprintf("%s vérifié sur %d/%d valeurs", v.label, matched, total)
 }
 
 // ORDER MATTERS: from the most constrained check to the least. The first validator
 // that reaches the confirmation threshold wins, which keeps a generic check (Luhn)
 // from claiming a value that a specific one (NIR mod 97) legitimately owns.
 var validators = []validator{
+	{
+		// The most constrained of all: a scheme, its parameters, a salt and a digest of
+		// fixed alphabets. No transformer keeps a hash valid: it is scrambled.
+		category:  "password_hash",
+		label:     "format d'empreinte de mot de passe",
+		suggested: scrambleText,
+		format:    true,
+		fn:        IsPasswordHash,
+	},
 	{
 		category:  "email",
 		label:     "adresse e-mail",
@@ -73,7 +102,7 @@ var validators = []validator{
 	{
 		category:  "iban",
 		label:     "IBAN (clé mod 97)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		suggested: scrambleText,
 		fn:        IsIBAN,
 	},
 	{
@@ -88,14 +117,15 @@ var validators = []validator{
 	{
 		category:  "siret",
 		label:     "SIRET/SIREN (Luhn)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
+		suggested: scrambleText,
 		fn:        IsSiretOrSiren,
 	},
 	{
-		category:  "credit_card",
-		label:     "carte bancaire (Luhn)",
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
-		fn:        IsCreditCard,
+		category:         "credit_card",
+		label:            "carte bancaire (Luhn)",
+		suggested:        scrambleText,
+		integerSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
+		fn:               IsCreditCard,
 	},
 	{
 		category:  "ip_address",
@@ -107,7 +137,7 @@ var validators = []validator{
 		category:         "phone_number",
 		label:            "téléphone français",
 		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
-		numericSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
+		integerSuggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
 		fn:               IsFrenchPhone,
 	},
 	{
@@ -127,6 +157,23 @@ var validators = []validator{
 	// dégrade la confiance dans tous les autres. Les codes postaux restent très
 	// bien détectés par le NOM de colonne (cf. rules dans piidetect.go), et
 	// IsFrenchPostalCode reste exporté pour valider une valeur ponctuelle.
+}
+
+// ValueDetector is one of the checks ClassifyValues applies to a value.
+type ValueDetector struct {
+	Category string
+	Match    func(string) bool
+}
+
+// ValueDetectors returns the checks of ClassifyValues in the order it applies them, from
+// the most constrained to the least. A caller that counts their hits over a sample of its
+// own then counts with the very checks ClassifyValues decides on.
+func ValueDetectors() []ValueDetector {
+	detectors := make([]ValueDetector, 0, len(validators))
+	for i := range validators {
+		detectors = append(detectors, ValueDetector{Category: validators[i].category, Match: validators[i].fn})
+	}
+	return detectors
 }
 
 // ClassifyValues examines the sampled values of a column and returns the most
@@ -159,11 +206,7 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 		}
 		ratio := float64(matched) / float64(len(clean))
 
-		suggested := val.suggested
-		if val.numericSuggested != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
-			isNumericType(dataType) {
-			suggested = val.numericSuggested
-		}
+		suggested := suggestionFor(dataType, val.suggested, val.integerSuggested, unspecified)
 
 		switch {
 		case ratio >= confirmRatio && !val.weak:
@@ -172,9 +215,8 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 				Sensitive:  true,
 				Suggested:  suggested,
 				Confidence: mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_CONFIRMED,
-				Method:     mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM,
-				Evidence: fmt.Sprintf("%s vérifié sur %d/%d valeurs",
-					val.label, matched, len(clean)),
+				Method:     val.method(),
+				Evidence:   val.confirmed(matched, len(clean)),
 			}, true
 		case ratio >= reviewRatio:
 			// On mémorise le meilleur candidat douteux, mais on continue à
@@ -191,7 +233,7 @@ func ClassifyValues(values []string, dataType string) (ContentClassification, bo
 					Sensitive:  true,
 					Suggested:  suggested,
 					Confidence: mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
-					Method:     mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CHECKSUM,
+					Method:     val.method(),
 					Evidence:   reason,
 				}
 				hasFallback = true
@@ -393,4 +435,63 @@ func IsCivility(v string) bool {
 	}
 	_, ok := civilities[s]
 	return ok
+}
+
+const (
+	bcryptHash = `\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}`
+	// Argon2 with or without its version, a key identifier and associated data.
+	argon2Hash = `argon2(?:id|i|d)\$(?:v=\d+\$)?m=\d+,t=\d+,p=\d+(?:,keyid=[A-Za-z0-9+/]*)?(?:,data=[A-Za-z0-9+/]*)?` +
+		`\$[A-Za-z0-9+/]+\$[A-Za-z0-9+/]+`
+)
+
+// The hashes that name their scheme after a dollar sign, as crypt(3) and its relatives
+// write them: bcrypt, Argon2, scrypt, PBKDF2, SHA-512, SHA-256, MD5 and Apache's, PHPass,
+// yescrypt.
+var modularHashes = `(?:` + strings.Join([]string{
+	bcryptHash,
+	`\$` + argon2Hash,
+	`\$scrypt\$[a-z0-9=,]+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\$7\$[./A-Za-z0-9]{11,}\$[./A-Za-z0-9]{43}`,
+	`\$pbkdf2(?:-sha(?:1|256|512))?\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+`,
+	`\$6\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}`,
+	`\$5\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43}`,
+	`\$(?:1|apr1)\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}`,
+	`\$[PH]\$[./A-Za-z0-9]{31}`,
+	`\$y\$[./A-Za-z0-9]+\$[./A-Za-z0-9]{1,86}\$[./A-Za-z0-9]{43}`,
+}, "|") + `)`
+
+// The encodings password hashing schemes store their output in. Each names its scheme
+// and carries a salt and a digest, MySQL's and ASP.NET Identity's aside, which are told
+// by a mark of their own:
+//
+//   - the hashes that name their scheme after a dollar sign (modularHashes), alone or
+//     after the scheme an LDAP directory writes in braces;
+//   - what Django stores: the name of the hasher, then the hash (bcrypt, Argon2, PBKDF2,
+//     scrypt, salted MD5 and SHA-1);
+//   - what Werkzeug stores: PBKDF2 and scrypt, their parameters between colons;
+//   - the salted SHA and PBKDF2 schemes of LDAP directories;
+//   - MySQL's: a star and forty hexadecimal digits;
+//   - ASP.NET Identity version 3: 61 bytes in base64 that open with the version and the
+//     four null bytes of its header. Version 2 is base64 with nothing to tell it by, and
+//     is not recognized.
+var passwordHashRe = regexp.MustCompile(`^(?:` + strings.Join([]string{
+	`(?i:\{(?:crypt|bcrypt|argon2)\})?` + modularHashes,
+	`bcrypt(?:_sha256)?\$` + bcryptHash,
+	`(?:argon2\$)?` + argon2Hash,
+	`pbkdf2_sha(?:1|256|512)\$\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`scrypt\$[A-Za-z0-9+/=.]+\$\d+\$\d+\$\d+\$[A-Za-z0-9+/]{20,}={0,2}`,
+	`md5\$[A-Za-z0-9]*\$[0-9a-f]{32}`,
+	`sha1\$[A-Za-z0-9]*\$[0-9a-f]{40}`,
+	`pbkdf2:sha(?:1|224|256|384|512)(?::\d+)?\$[A-Za-z0-9]+\$[0-9a-f]{40,128}`,
+	`scrypt:\d+:\d+:\d+\$[A-Za-z0-9]+\$[0-9a-f]{64,128}`,
+	`(?i:\{ssha(?:256|384|512)?\})[A-Za-z0-9+/]{32,}={0,2}`,
+	`(?i:\{pbkdf2(?:-sha(?:1|256|512))?\})\d+\$[A-Za-z0-9+/.]+\$[A-Za-z0-9+/.]+=*`,
+	`\*[0-9A-Fa-f]{40}`,
+	`AQAAAA[A-Za-z0-9+/]{76}==`,
+}, "|") + `)$`)
+
+// IsPasswordHash recognizes the stored form of a hashed password. A bare hexadecimal
+// digest is not one: it may be the hash of anything.
+func IsPasswordHash(v string) bool {
+	return len(v) <= 512 && passwordHashRe.MatchString(v)
 }

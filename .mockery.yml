@@ -77,9 +77,6 @@ packages:
     interfaces:
       BenthosStreamClient: {}
       BenthosStreamManagerClient: {}
-  github.com/fishtre-compagnie/husonym/internal/billing:
-    interfaces:
-      Interface: {}
   github.com/fishtre-compagnie/husonym/internal/connection-manager:
     interfaces:
       ConnectionProvider: {}
@@ -88,17 +85,6 @@ packages:
       ConnectionDataBuilder: {}
       ConnectionDataService: {}
       SampleDataStream: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/presidio:
-    interfaces:
-      AnalyzeInterface: {}
-      AnonymizeInterface: {}
-      EntityInterface: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/slack:
-    interfaces:
-      Interface: {}
-  github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions:
-    interfaces:
-      HusonymOperatorApi: {}
   github.com/fishtre-compagnie/husonym/internal/encrypt/sym:
     interfaces:
       Interface: {}
@@ -123,9 +109,6 @@ packages:
   github.com/fishtre-compagnie/husonym/worker/pkg/rng:
     interfaces:
       Rand: {}
-  github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/piidetect/workflows/table/activities:
-    interfaces:
-      OpenAiCompletionsClient: {}
   github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/shared:
     interfaces:
       BlockAllocator: {}

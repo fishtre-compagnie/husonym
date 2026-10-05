@@ -8,8 +8,6 @@ import (
 	"time"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	ee_transformer_fns "github.com/fishtre-compagnie/husonym/internal/ee/transformers/functions"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1655,39 +1653,13 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 			},
 		}
 
-		mockanalyze := presidioapi.NewMockAnalyzeInterface(t)
-		mockanon := presidioapi.NewMockAnonymizeInterface(t)
-		mockhusonym := ee_transformer_fns.NewMockHusonymOperatorApi(t)
-		mockanalyze.On("PostAnalyzeWithResponse", mock.Anything, mock.Anything).
-			Return(&presidioapi.PostAnalyzeResponse{
-				JSON200: &[]presidioapi.RecognizerResultWithAnaysisExplanation{
-					{},
-				},
-			}, nil)
-
-		mockText := "bar"
-		mockanon.On("PostAnonymizeWithResponse", mock.Anything, mock.Anything).
-			Return(&presidioapi.PostAnonymizeResponse{
-				JSON200: &presidioapi.AnonymizeResponse{
-					Text:  &mockText,
-					Items: &[]presidioapi.OperatorResult{},
-				},
-			}, nil)
-		defaultLan := "en"
-
-		execOpts := []TransformerExecutorOption{
-			WithTransformPiiTextConfig(mockanalyze, mockanon, mockhusonym, &defaultLan),
-		}
-		executor, err := InitializeTransformerByConfigType(context.Background(), config, execOpts...)
+		executor, err := InitializeTransformerByConfigType(context.Background(), config, WithPiiText(findingJohnDoe(t), nil))
 		require.NoError(t, err)
 		require.NotNil(t, executor)
 
-		originalText := "Hello, John Doe!"
-		result, err := executor.Mutate(originalText, executor.Opts)
+		result, err := executor.Mutate("Hello, John Doe!", executor.Opts)
 		require.NoError(t, err)
-		require.IsType(t, "", result)
-		require.NotEqual(t, originalText, result)
-		require.Equal(t, mockText, result)
+		require.Equal(t, "Hello, <PERSON>!", result)
 	})
 
 	t.Run("TransformPiiTextConfig_Api", func(t *testing.T) {
@@ -1718,6 +1690,10 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 
 		_, err := InitializeTransformerByConfigType(context.Background(), config)
 		require.ErrorIs(t, err, errors.ErrUnsupported)
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+
+		_, err = InitializeTransformerByConfigType(context.Background(), config, WithPiiText(nil, nil))
+		require.ErrorIs(t, err, errors.ErrUnsupported)
 	})
 
 	t.Run("TransformPiiTextConfig_Nil", func(t *testing.T) {
@@ -1725,39 +1701,13 @@ func Test_InitializeTransformerByConfigType(t *testing.T) {
 			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{},
 		}
 
-		mockanalyze := presidioapi.NewMockAnalyzeInterface(t)
-		mockanon := presidioapi.NewMockAnonymizeInterface(t)
-		mockhusonym := ee_transformer_fns.NewMockHusonymOperatorApi(t)
-
-		mockanalyze.On("PostAnalyzeWithResponse", mock.Anything, mock.Anything).
-			Return(&presidioapi.PostAnalyzeResponse{
-				JSON200: &[]presidioapi.RecognizerResultWithAnaysisExplanation{
-					{},
-				},
-			}, nil)
-
-		mockText := "bar"
-		mockanon.On("PostAnonymizeWithResponse", mock.Anything, mock.Anything).
-			Return(&presidioapi.PostAnonymizeResponse{
-				JSON200: &presidioapi.AnonymizeResponse{
-					Text:  &mockText,
-					Items: &[]presidioapi.OperatorResult{},
-				},
-			}, nil)
-		defaultLan := "en"
-		execOpts := []TransformerExecutorOption{
-			WithTransformPiiTextConfig(mockanalyze, mockanon, mockhusonym, &defaultLan),
-		}
-		executor, err := InitializeTransformerByConfigType(context.Background(), config, execOpts...)
+		executor, err := InitializeTransformerByConfigType(context.Background(), config, WithPiiText(findingJohnDoe(t), nil))
 		require.NoError(t, err)
 		require.NotNil(t, executor)
 
-		originalText := "Hello, John Doe!"
-		result, err := executor.Mutate(originalText, executor.Opts)
+		result, err := executor.Mutate("Hello, John Doe!", executor.Opts)
 		require.NoError(t, err)
-		require.IsType(t, "", result)
-		require.NotEqual(t, originalText, result)
-		require.Equal(t, mockText, result)
+		require.Equal(t, "Hello, <PERSON>!", result)
 	})
 
 	t.Run("GenerateBusinessNameConfig_Empty", func(t *testing.T) {

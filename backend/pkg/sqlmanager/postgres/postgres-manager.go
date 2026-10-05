@@ -22,7 +22,11 @@ type PostgresManager struct {
 }
 
 func NewManager(querier pg_queries.Querier, db pg_queries.DBTX, closer func()) *PostgresManager {
-	return &PostgresManager{querier: &catalogRetryQuerier{inner: querier, retryOpts: catalogRetryOptions}, db: db, close: closer}
+	return &PostgresManager{
+		querier: &catalogRetryQuerier{inner: querier, retryOpts: sqlmanager_shared.CatalogRetryOptions},
+		db:      db,
+		close:   closer,
+	}
 }
 
 func (p *PostgresManager) GetDatabaseSchema(
@@ -496,6 +500,7 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 	}
 	primaryKeyMap := map[string][]string{}
 	uniqueConstraintsMap := map[string][][]string{}
+	checkConstraintsMap := map[string][]string{}
 	for _, row := range nonFkConstraints {
 		tableName := sqlmanager_shared.BuildTable(row.SchemaName, row.TableName)
 		switch row.ConstraintType {
@@ -509,6 +514,8 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 		case "u":
 			columns := sqlmanager_shared.DedupeSlice(row.ConstraintColumns)
 			uniqueConstraintsMap[tableName] = append(uniqueConstraintsMap[tableName], columns)
+		case "c":
+			checkConstraintsMap[tableName] = append(checkConstraintsMap[tableName], row.ConstraintDefinition)
 		}
 	}
 
@@ -557,6 +564,7 @@ func (p *PostgresManager) GetTableConstraintsBySchema(
 		PrimaryKeyConstraints: primaryKeyMap,
 		UniqueConstraints:     uniqueConstraintsMap,
 		UniqueIndexes:         uniqueIndexesMap,
+		CheckConstraints:      checkConstraintsMap,
 	}, nil
 }
 

@@ -183,48 +183,48 @@ func (_c *MockQuerier_GetAllTables_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
-// GetCustomSequencesBySchemas provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetCustomSequencesBySchemas(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetCustomSequencesBySchemasRow, error) {
-	ret := _mock.Called(ctx, db, schemas)
+// GetCheckConstraints provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetCheckConstraints(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetCheckConstraintsRow, error) {
+	ret := _mock.Called(ctx, db, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetCustomSequencesBySchemas")
+		panic("no return value specified for GetCheckConstraints")
 	}
 
-	var r0 []*GetCustomSequencesBySchemasRow
+	var r0 []*GetCheckConstraintsRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetCustomSequencesBySchemasRow, error)); ok {
-		return returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetCheckConstraintsRow, error)); ok {
+		return returnFunc(ctx, db, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetCustomSequencesBySchemasRow); ok {
-		r0 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetCheckConstraintsRow); ok {
+		r0 = returnFunc(ctx, db, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetCustomSequencesBySchemasRow)
+			r0 = ret.Get(0).([]*GetCheckConstraintsRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetCustomSequencesBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCustomSequencesBySchemas'
-type MockQuerier_GetCustomSequencesBySchemas_Call struct {
+// MockQuerier_GetCheckConstraints_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCheckConstraints'
+type MockQuerier_GetCheckConstraints_Call struct {
 	*mock.Call
 }
 
-// GetCustomSequencesBySchemas is a helper method to define mock.On call
+// GetCheckConstraints is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schemas []string
-func (_e *MockQuerier_Expecter) GetCustomSequencesBySchemas(ctx any, db any, schemas any) *MockQuerier_GetCustomSequencesBySchemas_Call {
-	return &MockQuerier_GetCustomSequencesBySchemas_Call{Call: _e.mock.On("GetCustomSequencesBySchemas", ctx, db, schemas)}
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetCheckConstraints(ctx any, db any, ids any) *MockQuerier_GetCheckConstraints_Call {
+	return &MockQuerier_GetCheckConstraints_Call{Call: _e.mock.On("GetCheckConstraints", ctx, db, ids)}
 }
 
-func (_c *MockQuerier_GetCustomSequencesBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetCustomSequencesBySchemas_Call {
+func (_c *MockQuerier_GetCheckConstraints_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetCheckConstraints_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -234,9 +234,9 @@ func (_c *MockQuerier_GetCustomSequencesBySchemas_Call) Run(run func(ctx context
 		if args[1] != nil {
 			arg1 = args[1].(mysql_queries.DBTX)
 		}
-		var arg2 []string
+		var arg2 []int64
 		if args[2] != nil {
-			arg2 = args[2].([]string)
+			arg2 = args[2].([]int64)
 		}
 		run(
 			arg0,
@@ -247,58 +247,58 @@ func (_c *MockQuerier_GetCustomSequencesBySchemas_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockQuerier_GetCustomSequencesBySchemas_Call) Return(getCustomSequencesBySchemasRows []*GetCustomSequencesBySchemasRow, err error) *MockQuerier_GetCustomSequencesBySchemas_Call {
-	_c.Call.Return(getCustomSequencesBySchemasRows, err)
+func (_c *MockQuerier_GetCheckConstraints_Call) Return(getCheckConstraintsRows []*GetCheckConstraintsRow, err error) *MockQuerier_GetCheckConstraints_Call {
+	_c.Call.Return(getCheckConstraintsRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetCustomSequencesBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetCustomSequencesBySchemasRow, error)) *MockQuerier_GetCustomSequencesBySchemas_Call {
+func (_c *MockQuerier_GetCheckConstraints_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetCheckConstraintsRow, error)) *MockQuerier_GetCheckConstraints_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetCustomTriggersBySchemasAndTables provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetCustomTriggersBySchemasAndTables(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetCustomTriggersBySchemasAndTablesRow, error) {
-	ret := _mock.Called(ctx, db, schematables)
+// GetColumns provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetColumns(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetColumnsRow, error) {
+	ret := _mock.Called(ctx, db, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetCustomTriggersBySchemasAndTables")
+		panic("no return value specified for GetColumns")
 	}
 
-	var r0 []*GetCustomTriggersBySchemasAndTablesRow
+	var r0 []*GetColumnsRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetCustomTriggersBySchemasAndTablesRow, error)); ok {
-		return returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetColumnsRow, error)); ok {
+		return returnFunc(ctx, db, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetCustomTriggersBySchemasAndTablesRow); ok {
-		r0 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetColumnsRow); ok {
+		r0 = returnFunc(ctx, db, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetCustomTriggersBySchemasAndTablesRow)
+			r0 = ret.Get(0).([]*GetColumnsRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetCustomTriggersBySchemasAndTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCustomTriggersBySchemasAndTables'
-type MockQuerier_GetCustomTriggersBySchemasAndTables_Call struct {
+// MockQuerier_GetColumns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetColumns'
+type MockQuerier_GetColumns_Call struct {
 	*mock.Call
 }
 
-// GetCustomTriggersBySchemasAndTables is a helper method to define mock.On call
+// GetColumns is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schematables []string
-func (_e *MockQuerier_Expecter) GetCustomTriggersBySchemasAndTables(ctx any, db any, schematables any) *MockQuerier_GetCustomTriggersBySchemasAndTables_Call {
-	return &MockQuerier_GetCustomTriggersBySchemasAndTables_Call{Call: _e.mock.On("GetCustomTriggersBySchemasAndTables", ctx, db, schematables)}
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetColumns(ctx any, db any, ids any) *MockQuerier_GetColumns_Call {
+	return &MockQuerier_GetColumns_Call{Call: _e.mock.On("GetColumns", ctx, db, ids)}
 }
 
-func (_c *MockQuerier_GetCustomTriggersBySchemasAndTables_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string)) *MockQuerier_GetCustomTriggersBySchemasAndTables_Call {
+func (_c *MockQuerier_GetColumns_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetColumns_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -308,9 +308,9 @@ func (_c *MockQuerier_GetCustomTriggersBySchemasAndTables_Call) Run(run func(ctx
 		if args[1] != nil {
 			arg1 = args[1].(mysql_queries.DBTX)
 		}
-		var arg2 []string
+		var arg2 []int64
 		if args[2] != nil {
-			arg2 = args[2].([]string)
+			arg2 = args[2].([]int64)
 		}
 		run(
 			arg0,
@@ -321,108 +321,34 @@ func (_c *MockQuerier_GetCustomTriggersBySchemasAndTables_Call) Run(run func(ctx
 	return _c
 }
 
-func (_c *MockQuerier_GetCustomTriggersBySchemasAndTables_Call) Return(getCustomTriggersBySchemasAndTablesRows []*GetCustomTriggersBySchemasAndTablesRow, err error) *MockQuerier_GetCustomTriggersBySchemasAndTables_Call {
-	_c.Call.Return(getCustomTriggersBySchemasAndTablesRows, err)
+func (_c *MockQuerier_GetColumns_Call) Return(getColumnsRows []*GetColumnsRow, err error) *MockQuerier_GetColumns_Call {
+	_c.Call.Return(getColumnsRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetCustomTriggersBySchemasAndTables_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetCustomTriggersBySchemasAndTablesRow, error)) *MockQuerier_GetCustomTriggersBySchemasAndTables_Call {
+func (_c *MockQuerier_GetColumns_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetColumnsRow, error)) *MockQuerier_GetColumns_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetDataTypesBySchemas provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetDataTypesBySchemas(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetDataTypesBySchemasRow, error) {
-	ret := _mock.Called(ctx, db, schematables)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetDataTypesBySchemas")
-	}
-
-	var r0 []*GetDataTypesBySchemasRow
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetDataTypesBySchemasRow, error)); ok {
-		return returnFunc(ctx, db, schematables)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetDataTypesBySchemasRow); ok {
-		r0 = returnFunc(ctx, db, schematables)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetDataTypesBySchemasRow)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schematables)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockQuerier_GetDataTypesBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDataTypesBySchemas'
-type MockQuerier_GetDataTypesBySchemas_Call struct {
-	*mock.Call
-}
-
-// GetDataTypesBySchemas is a helper method to define mock.On call
-//   - ctx context.Context
-//   - db mysql_queries.DBTX
-//   - schematables []string
-func (_e *MockQuerier_Expecter) GetDataTypesBySchemas(ctx any, db any, schematables any) *MockQuerier_GetDataTypesBySchemas_Call {
-	return &MockQuerier_GetDataTypesBySchemas_Call{Call: _e.mock.On("GetDataTypesBySchemas", ctx, db, schematables)}
-}
-
-func (_c *MockQuerier_GetDataTypesBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string)) *MockQuerier_GetDataTypesBySchemas_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 mysql_queries.DBTX
-		if args[1] != nil {
-			arg1 = args[1].(mysql_queries.DBTX)
-		}
-		var arg2 []string
-		if args[2] != nil {
-			arg2 = args[2].([]string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetDataTypesBySchemas_Call) Return(getDataTypesBySchemasRows []*GetDataTypesBySchemasRow, err error) *MockQuerier_GetDataTypesBySchemas_Call {
-	_c.Call.Return(getDataTypesBySchemasRows, err)
-	return _c
-}
-
-func (_c *MockQuerier_GetDataTypesBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetDataTypesBySchemasRow, error)) *MockQuerier_GetDataTypesBySchemas_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetDatabaseSchema provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetDatabaseSchema(ctx context.Context, db mysql_queries.DBTX) ([]*GetDatabaseSchemaRow, error) {
+// GetColumnsOfUserTables provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetColumnsOfUserTables(ctx context.Context, db mysql_queries.DBTX) ([]*GetColumnsRow, error) {
 	ret := _mock.Called(ctx, db)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetDatabaseSchema")
+		panic("no return value specified for GetColumnsOfUserTables")
 	}
 
-	var r0 []*GetDatabaseSchemaRow
+	var r0 []*GetColumnsRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) ([]*GetDatabaseSchemaRow, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) ([]*GetColumnsRow, error)); ok {
 		return returnFunc(ctx, db)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) []*GetDatabaseSchemaRow); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) []*GetColumnsRow); ok {
 		r0 = returnFunc(ctx, db)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetDatabaseSchemaRow)
+			r0 = ret.Get(0).([]*GetColumnsRow)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX) error); ok {
@@ -433,19 +359,19 @@ func (_mock *MockQuerier) GetDatabaseSchema(ctx context.Context, db mysql_querie
 	return r0, r1
 }
 
-// MockQuerier_GetDatabaseSchema_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDatabaseSchema'
-type MockQuerier_GetDatabaseSchema_Call struct {
+// MockQuerier_GetColumnsOfUserTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetColumnsOfUserTables'
+type MockQuerier_GetColumnsOfUserTables_Call struct {
 	*mock.Call
 }
 
-// GetDatabaseSchema is a helper method to define mock.On call
+// GetColumnsOfUserTables is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-func (_e *MockQuerier_Expecter) GetDatabaseSchema(ctx any, db any) *MockQuerier_GetDatabaseSchema_Call {
-	return &MockQuerier_GetDatabaseSchema_Call{Call: _e.mock.On("GetDatabaseSchema", ctx, db)}
+func (_e *MockQuerier_Expecter) GetColumnsOfUserTables(ctx any, db any) *MockQuerier_GetColumnsOfUserTables_Call {
+	return &MockQuerier_GetColumnsOfUserTables_Call{Call: _e.mock.On("GetColumnsOfUserTables", ctx, db)}
 }
 
-func (_c *MockQuerier_GetDatabaseSchema_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetDatabaseSchema_Call {
+func (_c *MockQuerier_GetColumnsOfUserTables_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetColumnsOfUserTables_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -463,58 +389,268 @@ func (_c *MockQuerier_GetDatabaseSchema_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockQuerier_GetDatabaseSchema_Call) Return(getDatabaseSchemaRows []*GetDatabaseSchemaRow, err error) *MockQuerier_GetDatabaseSchema_Call {
-	_c.Call.Return(getDatabaseSchemaRows, err)
+func (_c *MockQuerier_GetColumnsOfUserTables_Call) Return(getColumnsRows []*GetColumnsRow, err error) *MockQuerier_GetColumnsOfUserTables_Call {
+	_c.Call.Return(getColumnsRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetDatabaseSchema_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) ([]*GetDatabaseSchemaRow, error)) *MockQuerier_GetDatabaseSchema_Call {
+func (_c *MockQuerier_GetColumnsOfUserTables_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) ([]*GetColumnsRow, error)) *MockQuerier_GetColumnsOfUserTables_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetDatabaseTableSchemasBySchemasAndTables provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetDatabaseTableSchemasBySchemasAndTables(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetDatabaseSchemaRow, error) {
-	ret := _mock.Called(ctx, db, schematables)
+// GetDatabaseInfo provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetDatabaseInfo(ctx context.Context, db mysql_queries.DBTX) (*GetDatabaseInfoRow, error) {
+	ret := _mock.Called(ctx, db)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetDatabaseTableSchemasBySchemasAndTables")
+		panic("no return value specified for GetDatabaseInfo")
 	}
 
-	var r0 []*GetDatabaseSchemaRow
+	var r0 *GetDatabaseInfoRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetDatabaseSchemaRow, error)); ok {
-		return returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) (*GetDatabaseInfoRow, error)); ok {
+		return returnFunc(ctx, db)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetDatabaseSchemaRow); ok {
-		r0 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) *GetDatabaseInfoRow); ok {
+		r0 = returnFunc(ctx, db)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetDatabaseSchemaRow)
+			r0 = ret.Get(0).(*GetDatabaseInfoRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDatabaseTableSchemasBySchemasAndTables'
-type MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call struct {
+// MockQuerier_GetDatabaseInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDatabaseInfo'
+type MockQuerier_GetDatabaseInfo_Call struct {
 	*mock.Call
 }
 
-// GetDatabaseTableSchemasBySchemasAndTables is a helper method to define mock.On call
+// GetDatabaseInfo is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schematables []string
-func (_e *MockQuerier_Expecter) GetDatabaseTableSchemasBySchemasAndTables(ctx any, db any, schematables any) *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call {
-	return &MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call{Call: _e.mock.On("GetDatabaseTableSchemasBySchemasAndTables", ctx, db, schematables)}
+func (_e *MockQuerier_Expecter) GetDatabaseInfo(ctx any, db any) *MockQuerier_GetDatabaseInfo_Call {
+	return &MockQuerier_GetDatabaseInfo_Call{Call: _e.mock.On("GetDatabaseInfo", ctx, db)}
 }
 
-func (_c *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string)) *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call {
+func (_c *MockQuerier_GetDatabaseInfo_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetDatabaseInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetDatabaseInfo_Call) Return(getDatabaseInfoRow *GetDatabaseInfoRow, err error) *MockQuerier_GetDatabaseInfo_Call {
+	_c.Call.Return(getDatabaseInfoRow, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetDatabaseInfo_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) (*GetDatabaseInfoRow, error)) *MockQuerier_GetDatabaseInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDependencies provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetDependencies(ctx context.Context, db mysql_queries.DBTX) ([]*GetDependenciesRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDependencies")
+	}
+
+	var r0 []*GetDependenciesRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) ([]*GetDependenciesRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) []*GetDependenciesRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetDependenciesRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetDependencies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDependencies'
+type MockQuerier_GetDependencies_Call struct {
+	*mock.Call
+}
+
+// GetDependencies is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+func (_e *MockQuerier_Expecter) GetDependencies(ctx any, db any) *MockQuerier_GetDependencies_Call {
+	return &MockQuerier_GetDependencies_Call{Call: _e.mock.On("GetDependencies", ctx, db)}
+}
+
+func (_c *MockQuerier_GetDependencies_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetDependencies_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetDependencies_Call) Return(getDependenciesRows []*GetDependenciesRow, err error) *MockQuerier_GetDependencies_Call {
+	_c.Call.Return(getDependenciesRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetDependencies_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) ([]*GetDependenciesRow, error)) *MockQuerier_GetDependencies_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetForeignKeys provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetForeignKeys(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetForeignKeysRow, error) {
+	ret := _mock.Called(ctx, db, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetForeignKeys")
+	}
+
+	var r0 []*GetForeignKeysRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetForeignKeysRow, error)); ok {
+		return returnFunc(ctx, db, ids)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetForeignKeysRow); ok {
+		r0 = returnFunc(ctx, db, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetForeignKeysRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetForeignKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetForeignKeys'
+type MockQuerier_GetForeignKeys_Call struct {
+	*mock.Call
+}
+
+// GetForeignKeys is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetForeignKeys(ctx any, db any, ids any) *MockQuerier_GetForeignKeys_Call {
+	return &MockQuerier_GetForeignKeys_Call{Call: _e.mock.On("GetForeignKeys", ctx, db, ids)}
+}
+
+func (_c *MockQuerier_GetForeignKeys_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetForeignKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		var arg2 []int64
+		if args[2] != nil {
+			arg2 = args[2].([]int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetForeignKeys_Call) Return(getForeignKeysRows []*GetForeignKeysRow, err error) *MockQuerier_GetForeignKeys_Call {
+	_c.Call.Return(getForeignKeysRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetForeignKeys_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetForeignKeysRow, error)) *MockQuerier_GetForeignKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetForeignKeysBySchemas provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetForeignKeysBySchemas(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetForeignKeysRow, error) {
+	ret := _mock.Called(ctx, db, schemas)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetForeignKeysBySchemas")
+	}
+
+	var r0 []*GetForeignKeysRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetForeignKeysRow, error)); ok {
+		return returnFunc(ctx, db, schemas)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetForeignKeysRow); ok {
+		r0 = returnFunc(ctx, db, schemas)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetForeignKeysRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
+		r1 = returnFunc(ctx, db, schemas)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetForeignKeysBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetForeignKeysBySchemas'
+type MockQuerier_GetForeignKeysBySchemas_Call struct {
+	*mock.Call
+}
+
+// GetForeignKeysBySchemas is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - schemas []string
+func (_e *MockQuerier_Expecter) GetForeignKeysBySchemas(ctx any, db any, schemas any) *MockQuerier_GetForeignKeysBySchemas_Call {
+	return &MockQuerier_GetForeignKeysBySchemas_Call{Call: _e.mock.On("GetForeignKeysBySchemas", ctx, db, schemas)}
+}
+
+func (_c *MockQuerier_GetForeignKeysBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetForeignKeysBySchemas_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -537,58 +673,132 @@ func (_c *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call) Run(run fu
 	return _c
 }
 
-func (_c *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call) Return(getDatabaseSchemaRows []*GetDatabaseSchemaRow, err error) *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call {
-	_c.Call.Return(getDatabaseSchemaRows, err)
+func (_c *MockQuerier_GetForeignKeysBySchemas_Call) Return(getForeignKeysRows []*GetForeignKeysRow, err error) *MockQuerier_GetForeignKeysBySchemas_Call {
+	_c.Call.Return(getForeignKeysRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetDatabaseSchemaRow, error)) *MockQuerier_GetDatabaseTableSchemasBySchemasAndTables_Call {
+func (_c *MockQuerier_GetForeignKeysBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetForeignKeysRow, error)) *MockQuerier_GetForeignKeysBySchemas_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetIndicesBySchemasAndTables provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetIndicesBySchemasAndTables(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetIndicesBySchemasAndTablesRow, error) {
-	ret := _mock.Called(ctx, db, schematables)
+// GetIndexes provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetIndexes(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetIndexesRow, error) {
+	ret := _mock.Called(ctx, db, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetIndicesBySchemasAndTables")
+		panic("no return value specified for GetIndexes")
 	}
 
-	var r0 []*GetIndicesBySchemasAndTablesRow
+	var r0 []*GetIndexesRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetIndicesBySchemasAndTablesRow, error)); ok {
-		return returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetIndexesRow, error)); ok {
+		return returnFunc(ctx, db, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetIndicesBySchemasAndTablesRow); ok {
-		r0 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetIndexesRow); ok {
+		r0 = returnFunc(ctx, db, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetIndicesBySchemasAndTablesRow)
+			r0 = ret.Get(0).([]*GetIndexesRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schematables)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetIndicesBySchemasAndTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIndicesBySchemasAndTables'
-type MockQuerier_GetIndicesBySchemasAndTables_Call struct {
+// MockQuerier_GetIndexes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIndexes'
+type MockQuerier_GetIndexes_Call struct {
 	*mock.Call
 }
 
-// GetIndicesBySchemasAndTables is a helper method to define mock.On call
+// GetIndexes is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schematables []string
-func (_e *MockQuerier_Expecter) GetIndicesBySchemasAndTables(ctx any, db any, schematables any) *MockQuerier_GetIndicesBySchemasAndTables_Call {
-	return &MockQuerier_GetIndicesBySchemasAndTables_Call{Call: _e.mock.On("GetIndicesBySchemasAndTables", ctx, db, schematables)}
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetIndexes(ctx any, db any, ids any) *MockQuerier_GetIndexes_Call {
+	return &MockQuerier_GetIndexes_Call{Call: _e.mock.On("GetIndexes", ctx, db, ids)}
 }
 
-func (_c *MockQuerier_GetIndicesBySchemasAndTables_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string)) *MockQuerier_GetIndicesBySchemasAndTables_Call {
+func (_c *MockQuerier_GetIndexes_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetIndexes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		var arg2 []int64
+		if args[2] != nil {
+			arg2 = args[2].([]int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetIndexes_Call) Return(getIndexesRows []*GetIndexesRow, err error) *MockQuerier_GetIndexes_Call {
+	_c.Call.Return(getIndexesRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetIndexes_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetIndexesRow, error)) *MockQuerier_GetIndexes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetIndexesBySchemas provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetIndexesBySchemas(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetIndexesRow, error) {
+	ret := _mock.Called(ctx, db, schemas)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetIndexesBySchemas")
+	}
+
+	var r0 []*GetIndexesRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetIndexesRow, error)); ok {
+		return returnFunc(ctx, db, schemas)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetIndexesRow); ok {
+		r0 = returnFunc(ctx, db, schemas)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetIndexesRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
+		r1 = returnFunc(ctx, db, schemas)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetIndexesBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIndexesBySchemas'
+type MockQuerier_GetIndexesBySchemas_Call struct {
+	*mock.Call
+}
+
+// GetIndexesBySchemas is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - schemas []string
+func (_e *MockQuerier_Expecter) GetIndexesBySchemas(ctx any, db any, schemas any) *MockQuerier_GetIndexesBySchemas_Call {
+	return &MockQuerier_GetIndexesBySchemas_Call{Call: _e.mock.On("GetIndexesBySchemas", ctx, db, schemas)}
+}
+
+func (_c *MockQuerier_GetIndexesBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetIndexesBySchemas_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -611,12 +821,228 @@ func (_c *MockQuerier_GetIndicesBySchemasAndTables_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockQuerier_GetIndicesBySchemasAndTables_Call) Return(getIndicesBySchemasAndTablesRows []*GetIndicesBySchemasAndTablesRow, err error) *MockQuerier_GetIndicesBySchemasAndTables_Call {
-	_c.Call.Return(getIndicesBySchemasAndTablesRows, err)
+func (_c *MockQuerier_GetIndexesBySchemas_Call) Return(getIndexesRows []*GetIndexesRow, err error) *MockQuerier_GetIndexesBySchemas_Call {
+	_c.Call.Return(getIndexesRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetIndicesBySchemasAndTables_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schematables []string) ([]*GetIndicesBySchemasAndTablesRow, error)) *MockQuerier_GetIndicesBySchemasAndTables_Call {
+func (_c *MockQuerier_GetIndexesBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetIndexesRow, error)) *MockQuerier_GetIndexesBySchemas_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetModuleDefinitions provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetModuleDefinitions(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetModuleDefinitionsRow, error) {
+	ret := _mock.Called(ctx, db, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetModuleDefinitions")
+	}
+
+	var r0 []*GetModuleDefinitionsRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetModuleDefinitionsRow, error)); ok {
+		return returnFunc(ctx, db, ids)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetModuleDefinitionsRow); ok {
+		r0 = returnFunc(ctx, db, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetModuleDefinitionsRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetModuleDefinitions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModuleDefinitions'
+type MockQuerier_GetModuleDefinitions_Call struct {
+	*mock.Call
+}
+
+// GetModuleDefinitions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetModuleDefinitions(ctx any, db any, ids any) *MockQuerier_GetModuleDefinitions_Call {
+	return &MockQuerier_GetModuleDefinitions_Call{Call: _e.mock.On("GetModuleDefinitions", ctx, db, ids)}
+}
+
+func (_c *MockQuerier_GetModuleDefinitions_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetModuleDefinitions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		var arg2 []int64
+		if args[2] != nil {
+			arg2 = args[2].([]int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetModuleDefinitions_Call) Return(getModuleDefinitionsRows []*GetModuleDefinitionsRow, err error) *MockQuerier_GetModuleDefinitions_Call {
+	_c.Call.Return(getModuleDefinitionsRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetModuleDefinitions_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetModuleDefinitionsRow, error)) *MockQuerier_GetModuleDefinitions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetModuleHeaders provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetModuleHeaders(ctx context.Context, db mysql_queries.DBTX) ([]*GetModuleHeadersRow, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetModuleHeaders")
+	}
+
+	var r0 []*GetModuleHeadersRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) ([]*GetModuleHeadersRow, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) []*GetModuleHeadersRow); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetModuleHeadersRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetModuleHeaders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModuleHeaders'
+type MockQuerier_GetModuleHeaders_Call struct {
+	*mock.Call
+}
+
+// GetModuleHeaders is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+func (_e *MockQuerier_Expecter) GetModuleHeaders(ctx any, db any) *MockQuerier_GetModuleHeaders_Call {
+	return &MockQuerier_GetModuleHeaders_Call{Call: _e.mock.On("GetModuleHeaders", ctx, db)}
+}
+
+func (_c *MockQuerier_GetModuleHeaders_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetModuleHeaders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetModuleHeaders_Call) Return(getModuleHeadersRows []*GetModuleHeadersRow, err error) *MockQuerier_GetModuleHeaders_Call {
+	_c.Call.Return(getModuleHeadersRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetModuleHeaders_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) ([]*GetModuleHeadersRow, error)) *MockQuerier_GetModuleHeaders_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetObjectVersions provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetObjectVersions(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetObjectVersionsRow, error) {
+	ret := _mock.Called(ctx, db, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetObjectVersions")
+	}
+
+	var r0 []*GetObjectVersionsRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetObjectVersionsRow, error)); ok {
+		return returnFunc(ctx, db, ids)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetObjectVersionsRow); ok {
+		r0 = returnFunc(ctx, db, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*GetObjectVersionsRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetObjectVersions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectVersions'
+type MockQuerier_GetObjectVersions_Call struct {
+	*mock.Call
+}
+
+// GetObjectVersions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetObjectVersions(ctx any, db any, ids any) *MockQuerier_GetObjectVersions_Call {
+	return &MockQuerier_GetObjectVersions_Call{Call: _e.mock.On("GetObjectVersions", ctx, db, ids)}
+}
+
+func (_c *MockQuerier_GetObjectVersions_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetObjectVersions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		var arg2 []int64
+		if args[2] != nil {
+			arg2 = args[2].([]int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetObjectVersions_Call) Return(getObjectVersionsRows []*GetObjectVersionsRow, err error) *MockQuerier_GetObjectVersions_Call {
+	_c.Call.Return(getObjectVersionsRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetObjectVersions_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetObjectVersionsRow, error)) *MockQuerier_GetObjectVersions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -689,48 +1115,48 @@ func (_c *MockQuerier_GetRolePermissions_Call) RunAndReturn(run func(ctx context
 	return _c
 }
 
-// GetTableConstraintsBySchemas provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetTableConstraintsBySchemas(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetTableConstraintsBySchemasRow, error) {
-	ret := _mock.Called(ctx, db, schemas)
+// GetSequences provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetSequences(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetSequencesRow, error) {
+	ret := _mock.Called(ctx, db, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetTableConstraintsBySchemas")
+		panic("no return value specified for GetSequences")
 	}
 
-	var r0 []*GetTableConstraintsBySchemasRow
+	var r0 []*GetSequencesRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetTableConstraintsBySchemasRow, error)); ok {
-		return returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) ([]*GetSequencesRow, error)); ok {
+		return returnFunc(ctx, db, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetTableConstraintsBySchemasRow); ok {
-		r0 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64) []*GetSequencesRow); ok {
+		r0 = returnFunc(ctx, db, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetTableConstraintsBySchemasRow)
+			r0 = ret.Get(0).([]*GetSequencesRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64) error); ok {
+		r1 = returnFunc(ctx, db, ids)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetTableConstraintsBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTableConstraintsBySchemas'
-type MockQuerier_GetTableConstraintsBySchemas_Call struct {
+// MockQuerier_GetSequences_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequences'
+type MockQuerier_GetSequences_Call struct {
 	*mock.Call
 }
 
-// GetTableConstraintsBySchemas is a helper method to define mock.On call
+// GetSequences is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schemas []string
-func (_e *MockQuerier_Expecter) GetTableConstraintsBySchemas(ctx any, db any, schemas any) *MockQuerier_GetTableConstraintsBySchemas_Call {
-	return &MockQuerier_GetTableConstraintsBySchemas_Call{Call: _e.mock.On("GetTableConstraintsBySchemas", ctx, db, schemas)}
+//   - ids []int64
+func (_e *MockQuerier_Expecter) GetSequences(ctx any, db any, ids any) *MockQuerier_GetSequences_Call {
+	return &MockQuerier_GetSequences_Call{Call: _e.mock.On("GetSequences", ctx, db, ids)}
 }
 
-func (_c *MockQuerier_GetTableConstraintsBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetTableConstraintsBySchemas_Call {
+func (_c *MockQuerier_GetSequences_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64)) *MockQuerier_GetSequences_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -740,9 +1166,9 @@ func (_c *MockQuerier_GetTableConstraintsBySchemas_Call) Run(run func(ctx contex
 		if args[1] != nil {
 			arg1 = args[1].(mysql_queries.DBTX)
 		}
-		var arg2 []string
+		var arg2 []int64
 		if args[2] != nil {
-			arg2 = args[2].([]string)
+			arg2 = args[2].([]int64)
 		}
 		run(
 			arg0,
@@ -753,58 +1179,59 @@ func (_c *MockQuerier_GetTableConstraintsBySchemas_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockQuerier_GetTableConstraintsBySchemas_Call) Return(getTableConstraintsBySchemasRows []*GetTableConstraintsBySchemasRow, err error) *MockQuerier_GetTableConstraintsBySchemas_Call {
-	_c.Call.Return(getTableConstraintsBySchemasRows, err)
+func (_c *MockQuerier_GetSequences_Call) Return(getSequencesRows []*GetSequencesRow, err error) *MockQuerier_GetSequences_Call {
+	_c.Call.Return(getSequencesRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetTableConstraintsBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetTableConstraintsBySchemasRow, error)) *MockQuerier_GetTableConstraintsBySchemas_Call {
+func (_c *MockQuerier_GetSequences_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64) ([]*GetSequencesRow, error)) *MockQuerier_GetSequences_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetUniqueIndexesBySchema provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetUniqueIndexesBySchema(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetUniqueIndexesBySchemaRow, error) {
-	ret := _mock.Called(ctx, db, schemas)
+// GetTableNotices provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetTableNotices(ctx context.Context, db mysql_queries.DBTX, ids []int64, majorVersion int) ([]*GetTableNoticesRow, error) {
+	ret := _mock.Called(ctx, db, ids, majorVersion)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetUniqueIndexesBySchema")
+		panic("no return value specified for GetTableNotices")
 	}
 
-	var r0 []*GetUniqueIndexesBySchemaRow
+	var r0 []*GetTableNoticesRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetUniqueIndexesBySchemaRow, error)); ok {
-		return returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64, int) ([]*GetTableNoticesRow, error)); ok {
+		return returnFunc(ctx, db, ids, majorVersion)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetUniqueIndexesBySchemaRow); ok {
-		r0 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []int64, int) []*GetTableNoticesRow); ok {
+		r0 = returnFunc(ctx, db, ids, majorVersion)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetUniqueIndexesBySchemaRow)
+			r0 = ret.Get(0).([]*GetTableNoticesRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []int64, int) error); ok {
+		r1 = returnFunc(ctx, db, ids, majorVersion)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetUniqueIndexesBySchema_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUniqueIndexesBySchema'
-type MockQuerier_GetUniqueIndexesBySchema_Call struct {
+// MockQuerier_GetTableNotices_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTableNotices'
+type MockQuerier_GetTableNotices_Call struct {
 	*mock.Call
 }
 
-// GetUniqueIndexesBySchema is a helper method to define mock.On call
+// GetTableNotices is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schemas []string
-func (_e *MockQuerier_Expecter) GetUniqueIndexesBySchema(ctx any, db any, schemas any) *MockQuerier_GetUniqueIndexesBySchema_Call {
-	return &MockQuerier_GetUniqueIndexesBySchema_Call{Call: _e.mock.On("GetUniqueIndexesBySchema", ctx, db, schemas)}
+//   - ids []int64
+//   - majorVersion int
+func (_e *MockQuerier_Expecter) GetTableNotices(ctx any, db any, ids any, majorVersion any) *MockQuerier_GetTableNotices_Call {
+	return &MockQuerier_GetTableNotices_Call{Call: _e.mock.On("GetTableNotices", ctx, db, ids, majorVersion)}
 }
 
-func (_c *MockQuerier_GetUniqueIndexesBySchema_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetUniqueIndexesBySchema_Call {
+func (_c *MockQuerier_GetTableNotices_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64, majorVersion int)) *MockQuerier_GetTableNotices_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -814,71 +1241,75 @@ func (_c *MockQuerier_GetUniqueIndexesBySchema_Call) Run(run func(ctx context.Co
 		if args[1] != nil {
 			arg1 = args[1].(mysql_queries.DBTX)
 		}
-		var arg2 []string
+		var arg2 []int64
 		if args[2] != nil {
-			arg2 = args[2].([]string)
+			arg2 = args[2].([]int64)
+		}
+		var arg3 int
+		if args[3] != nil {
+			arg3 = args[3].(int)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
 }
 
-func (_c *MockQuerier_GetUniqueIndexesBySchema_Call) Return(getUniqueIndexesBySchemaRows []*GetUniqueIndexesBySchemaRow, err error) *MockQuerier_GetUniqueIndexesBySchema_Call {
-	_c.Call.Return(getUniqueIndexesBySchemaRows, err)
+func (_c *MockQuerier_GetTableNotices_Call) Return(getTableNoticesRows []*GetTableNoticesRow, err error) *MockQuerier_GetTableNotices_Call {
+	_c.Call.Return(getTableNoticesRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetUniqueIndexesBySchema_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetUniqueIndexesBySchemaRow, error)) *MockQuerier_GetUniqueIndexesBySchema_Call {
+func (_c *MockQuerier_GetTableNotices_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, ids []int64, majorVersion int) ([]*GetTableNoticesRow, error)) *MockQuerier_GetTableNotices_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetViewsAndFunctionsBySchemas provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetViewsAndFunctionsBySchemas(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetViewsAndFunctionsBySchemasRow, error) {
-	ret := _mock.Called(ctx, db, schemas)
+// GetTableTriggers provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetTableTriggers(ctx context.Context, db mysql_queries.DBTX) ([]*GetTableTriggersRow, error) {
+	ret := _mock.Called(ctx, db)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetViewsAndFunctionsBySchemas")
+		panic("no return value specified for GetTableTriggers")
 	}
 
-	var r0 []*GetViewsAndFunctionsBySchemasRow
+	var r0 []*GetTableTriggersRow
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) ([]*GetViewsAndFunctionsBySchemasRow, error)); ok {
-		return returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) ([]*GetTableTriggersRow, error)); ok {
+		return returnFunc(ctx, db)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []string) []*GetViewsAndFunctionsBySchemasRow); ok {
-		r0 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX) []*GetTableTriggersRow); ok {
+		r0 = returnFunc(ctx, db)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*GetViewsAndFunctionsBySchemasRow)
+			r0 = ret.Get(0).([]*GetTableTriggersRow)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []string) error); ok {
-		r1 = returnFunc(ctx, db, schemas)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockQuerier_GetViewsAndFunctionsBySchemas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetViewsAndFunctionsBySchemas'
-type MockQuerier_GetViewsAndFunctionsBySchemas_Call struct {
+// MockQuerier_GetTableTriggers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTableTriggers'
+type MockQuerier_GetTableTriggers_Call struct {
 	*mock.Call
 }
 
-// GetViewsAndFunctionsBySchemas is a helper method to define mock.On call
+// GetTableTriggers is a helper method to define mock.On call
 //   - ctx context.Context
 //   - db mysql_queries.DBTX
-//   - schemas []string
-func (_e *MockQuerier_Expecter) GetViewsAndFunctionsBySchemas(ctx any, db any, schemas any) *MockQuerier_GetViewsAndFunctionsBySchemas_Call {
-	return &MockQuerier_GetViewsAndFunctionsBySchemas_Call{Call: _e.mock.On("GetViewsAndFunctionsBySchemas", ctx, db, schemas)}
+func (_e *MockQuerier_Expecter) GetTableTriggers(ctx any, db any) *MockQuerier_GetTableTriggers_Call {
+	return &MockQuerier_GetTableTriggers_Call{Call: _e.mock.On("GetTableTriggers", ctx, db)}
 }
 
-func (_c *MockQuerier_GetViewsAndFunctionsBySchemas_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string)) *MockQuerier_GetViewsAndFunctionsBySchemas_Call {
+func (_c *MockQuerier_GetTableTriggers_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX)) *MockQuerier_GetTableTriggers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -888,9 +1319,78 @@ func (_c *MockQuerier_GetViewsAndFunctionsBySchemas_Call) Run(run func(ctx conte
 		if args[1] != nil {
 			arg1 = args[1].(mysql_queries.DBTX)
 		}
-		var arg2 []string
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetTableTriggers_Call) Return(getTableTriggersRows []*GetTableTriggersRow, err error) *MockQuerier_GetTableTriggers_Call {
+	_c.Call.Return(getTableTriggersRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetTableTriggers_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX) ([]*GetTableTriggersRow, error)) *MockQuerier_GetTableTriggers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResolveTables provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ResolveTables(ctx context.Context, db mysql_queries.DBTX, tables []SchemaTable) ([]*ResolveTablesRow, error) {
+	ret := _mock.Called(ctx, db, tables)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveTables")
+	}
+
+	var r0 []*ResolveTablesRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []SchemaTable) ([]*ResolveTablesRow, error)); ok {
+		return returnFunc(ctx, db, tables)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, mysql_queries.DBTX, []SchemaTable) []*ResolveTablesRow); ok {
+		r0 = returnFunc(ctx, db, tables)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*ResolveTablesRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, mysql_queries.DBTX, []SchemaTable) error); ok {
+		r1 = returnFunc(ctx, db, tables)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ResolveTables_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveTables'
+type MockQuerier_ResolveTables_Call struct {
+	*mock.Call
+}
+
+// ResolveTables is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db mysql_queries.DBTX
+//   - tables []SchemaTable
+func (_e *MockQuerier_Expecter) ResolveTables(ctx any, db any, tables any) *MockQuerier_ResolveTables_Call {
+	return &MockQuerier_ResolveTables_Call{Call: _e.mock.On("ResolveTables", ctx, db, tables)}
+}
+
+func (_c *MockQuerier_ResolveTables_Call) Run(run func(ctx context.Context, db mysql_queries.DBTX, tables []SchemaTable)) *MockQuerier_ResolveTables_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 mysql_queries.DBTX
+		if args[1] != nil {
+			arg1 = args[1].(mysql_queries.DBTX)
+		}
+		var arg2 []SchemaTable
 		if args[2] != nil {
-			arg2 = args[2].([]string)
+			arg2 = args[2].([]SchemaTable)
 		}
 		run(
 			arg0,
@@ -901,12 +1401,12 @@ func (_c *MockQuerier_GetViewsAndFunctionsBySchemas_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockQuerier_GetViewsAndFunctionsBySchemas_Call) Return(getViewsAndFunctionsBySchemasRows []*GetViewsAndFunctionsBySchemasRow, err error) *MockQuerier_GetViewsAndFunctionsBySchemas_Call {
-	_c.Call.Return(getViewsAndFunctionsBySchemasRows, err)
+func (_c *MockQuerier_ResolveTables_Call) Return(resolveTablesRows []*ResolveTablesRow, err error) *MockQuerier_ResolveTables_Call {
+	_c.Call.Return(resolveTablesRows, err)
 	return _c
 }
 
-func (_c *MockQuerier_GetViewsAndFunctionsBySchemas_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, schemas []string) ([]*GetViewsAndFunctionsBySchemasRow, error)) *MockQuerier_GetViewsAndFunctionsBySchemas_Call {
+func (_c *MockQuerier_ResolveTables_Call) RunAndReturn(run func(ctx context.Context, db mysql_queries.DBTX, tables []SchemaTable) ([]*ResolveTablesRow, error)) *MockQuerier_ResolveTables_Call {
 	_c.Call.Return(run)
 	return _c
 }

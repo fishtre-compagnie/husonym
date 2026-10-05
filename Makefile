@@ -120,7 +120,7 @@ compose/up: ## Pulls the latest images and stands up the production environment
 compose/down: ## Composes down the production environment
 	docker compose -f $(PROD_COMPOSE_FILE) down
 
-compose/auth/up: ## Pulls the latest images and stands up the production environment with auth - Requires a valid Husonym Enterprise license!
+compose/auth/up: ## Pulls the latest images and stands up the production environment with auth
 	docker compose -f $(PROD_COMPOSE_FILE) -f $(PROD_AUTH_COMPOSE_FILE) pull
 	BUILDX_NO_DEFAULT_ATTESTATIONS=1 docker compose -f $(PROD_COMPOSE_FILE) -f $(PROD_AUTH_COMPOSE_FILE) up -d
 
@@ -133,7 +133,7 @@ compose/dev/up: ## Composes up the development environment.
 compose/dev/down: ## Composes down the development environment
 	docker compose -f $(DEV_COMPOSE_FILE) down
 
-compose/dev/auth/up: ## Composes up the development environment with auth. - Requires a valid Husonym Enterprise license!
+compose/dev/auth/up: ## Composes up the development environment with auth.
 	BUILDX_NO_DEFAULT_ATTESTATIONS=1 docker compose -f $(DEV_COMPOSE_FILE) -f $(DEV_AUTH_COMPOSE_FILE) up -d
 
 compose/dev/auth/down: ## Composes down the development environment with auth

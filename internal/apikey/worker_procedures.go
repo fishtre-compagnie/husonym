@@ -26,5 +26,4 @@ var WorkerProcedures = []string{
 	mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
 	mgmtv1alpha1connect.AccountHookServiceGetActiveAccountHooksByEventProcedure,
 	mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure,
-	mgmtv1alpha1connect.AccountHookServiceSendSlackMessageProcedure,
 }

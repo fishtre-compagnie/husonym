@@ -23,13 +23,13 @@ A Helm chart for the Husonym Backend API
 | auth.cliClientId | string | `nil` | The client id that the CLI will use to communicate with the backend for authentication (if auth is enabled) |
 | auth.clientMap | string | `nil` | A map of clientId->clientSecret of allowed clients |
 | auth.enabled | bool | `false` | Enable/Disable authentication |
-| auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). Not used on HusonymCloud, which has husonymCloud.workerApiKeys. |
+| auth.workerApiKeys | list | `[]` | Keys the worker authenticates with, each of the form neo_wt_v1_<uuid v4>, the same one set as husonym.apiKey on the worker. Separated by commas. Required when auth is enabled: only the worker makes the calls that are its alone (the context of a run, the consistency key of an account). |
 | autoscaling.behavior | string | `nil` | The behavior of the HPA autoscaler |
 | autoscaling.enabled | bool | `false` | Whether or not to install the HPA autoscaler |
 | autoscaling.maxReplicas | int | `4` | The maximum number of replicas to scale to |
 | autoscaling.minReplicas | int | `1` | The minimum amount of replicas to have running |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | The CPU % utilization to begin a scale up |
-| connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. Never applies on HusonymCloud. |
+| connections.allowServerIdentity | bool | `false` | Lets a cloud connection act with the server's own cloud identity: an AWS connection without keys, with a profile or with the EC2 role, a GCS connection without a service account. Only for a deployment serving a single party: with several accounts, one would reach what the server reaches. Set the same on the API and the worker. |
 | containerPort | int | `8080` | The container port |
 | datadog.enabled | bool | `false` | Whether or not to apply the default Datadog annotations/labels to the deployment |
 | db.disableSsl | bool | `false` | Whether or not to disable SSL when connecting to the database |
@@ -40,13 +40,11 @@ A Helm chart for the Husonym Backend API
 | db.port | int | `5432` | The database port |
 | db.username | string | `nil` | The username that will be used for authentication |
 | deploymentAnnotations | object | `{}` | Provide a map of deployment annotations that will be attached to the deployment's annotations |
-| ee.license | string | `nil` | Husonym Enterprise-Edition License Key |
+| ee.license | string | `nil` | Husonym License Key |
 | extraEnvVars | list | `[]` | Provide extra environment variables that will be applied to the deployment's user-container. |
 | fullnameOverride | string | `nil` | Fully overrides the chart name |
 | host | string | `"0.0.0.0"` | Sets the host that the backend will listen on. 0.0.0.0 is common for Kubernetes workloads. |
-| husonymCloud.enabled | bool | `false` | Whether or not this is HusonymCloud |
-| husonymCloud.workerApiKeys | list | `[]` | Worker API keys that have been allowlisted to for use |
-| husonymEnv | string | `nil` | Mostly used by HusonymCloud. Adds a special tag to the logging to determine what environment is running |
+| husonymEnv | string | `nil` | Adds a special tag to the logging to determine what environment is running |
 | image.pullPolicy | string | `nil` | Overrides the default K8s pull policy |
 | image.repository | string | `"ghcr.io/fishtre-compagnie/husonym/api"` | The default image repository |
 | image.tag | string | `nil` | Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }} |
@@ -80,7 +78,7 @@ A Helm chart for the Husonym Backend API
 | resources.limits.memory | string | `"512Mi"` | Sets the max Memory amount |
 | resources.requests.cpu | string | `"100m"` | Sets the CPU amount to be requested |
 | resources.requests.memory | string | `"128Mi"` | Sets the Memory amount to be requested |
-| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI (requires a valid license). |
+| runLogs.enabled | bool | `false` | Enable this if planning to surface logs within Husonym API and UI. |
 | runLogs.lokiConfig.baseUrl | string | `nil` | The base url to the loki instance |
 | runLogs.lokiConfig.keepLabels | string | `nil` | List format. |
 | runLogs.lokiConfig.labelsQuery | string | `nil` | LogQL labels query (without the {} as those are provided by the system) |

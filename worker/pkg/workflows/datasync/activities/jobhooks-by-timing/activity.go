@@ -45,6 +45,11 @@ func New(
 type RunJobHooksByTimingRequest struct {
 	JobId  string
 	Timing mgmtv1alpha1.GetActiveJobHooksByTimingRequest_Timing
+	// Licensed is the license answer the run started with: the hooks of every timing of a
+	// run follow it, so that a license lapsing mid-run does not run the pre-sync hooks and
+	// skip the post-sync ones. Nil when the activity was scheduled by a run that did not
+	// pass it yet; the license is then read when the activity runs.
+	Licensed *bool
 }
 
 type RunJobHooksByTimingResponse struct {
@@ -83,7 +88,7 @@ func (a *Activity) RunJobHooksByTiming(
 			}
 		}
 	}()
-	if !a.license.IsValid() {
+	if !a.isLicensed(req) {
 		logger.Debug("skipping job hooks due to EE license not being active")
 		return &RunJobHooksByTimingResponse{ExecCount: 0}, nil
 	}
@@ -139,6 +144,15 @@ func (a *Activity) RunJobHooksByTiming(
 	}
 
 	return &RunJobHooksByTimingResponse{ExecCount: execCount}, nil
+}
+
+// isLicensed tells whether the hooks run: by the answer of the run when the request carries
+// it, and by the license as it is now for a request scheduled before runs passed it.
+func (a *Activity) isLicensed(req *RunJobHooksByTimingRequest) bool {
+	if req.Licensed != nil {
+		return *req.Licensed
+	}
+	return a.license.IsValid()
 }
 
 // Given a connection id, returns an initialized sql database connection

@@ -92,17 +92,29 @@ func RefineLocationCategory(values []string) (string, mgmtv1alpha1.TransformerSo
 
 // RefineByValues applique l'affinage adapté à la catégorie, s'il en existe un.
 // Les autres catégories sont retournées inchangées.
+//
+// The transformer follows the refined category only when the suggestion it is given is
+// the text transformer of the entity: a column of another type keeps the transformer
+// its type takes, or none.
 func RefineByValues(
 	category string,
 	suggested mgmtv1alpha1.TransformerSource,
 	values []string,
 ) (string, mgmtv1alpha1.TransformerSource) {
+	var refined string
+	var transformer, ofEntity mgmtv1alpha1.TransformerSource
 	switch category {
 	case "person_full_name", "person_first_name", "person_last_name":
-		return RefinePersonCategory(values)
+		refined, transformer = RefinePersonCategory(values)
+		ofEntity = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME
 	case "city":
-		return RefineLocationCategory(values)
+		refined, transformer = RefineLocationCategory(values)
+		ofEntity = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY
 	default:
 		return category, suggested
 	}
+	if suggested != ofEntity {
+		return refined, suggested
+	}
+	return refined, transformer
 }

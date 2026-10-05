@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/fishtre-compagnie/husonym/backend/internal/safehttp"
+	"github.com/fishtre-compagnie/husonym/internal/safehttp"
 )
 
 // Level is how much a finding weighs.

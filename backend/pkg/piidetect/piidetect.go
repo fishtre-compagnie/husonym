@@ -30,315 +30,82 @@ type Classification struct {
 	Suggested mgmtv1alpha1.TransformerSource
 }
 
-// rule décrit une règle de détection par mots-clés sur le nom de la colonne.
-type rule struct {
-	category  string
-	sensitive bool
-	suggested mgmtv1alpha1.TransformerSource
-	// keywords matched as substrings against the normalized name.
-	keywords []string
-	// tokenOnly : mots-clés recherchés UNIQUEMENT comme token entier (évite les
-	// faux positifs des mots courts, ex. "nom" dans "prenom", "tel" dans "hotel").
-	tokenOnly []string
-	// excludeTokens : si l'un de ces tokens est présent, la règle est écartée.
-	// Sert à départager des règles qui se recouvrent sans casser leur ordre :
-	// "nom_complet" contient le token "nom" (nom de famille) alors qu'il désigne
-	// un nom complet.
-	excludeTokens []string
-	// suggestIfNumeric : si non nul, transformer alternatif quand le type SQL est
-	// numérique (ex. téléphone stocké en entier).
-	suggestIfNumeric mgmtv1alpha1.TransformerSource
-	// suggestIfTemporal : transformer alternatif quand le type SQL est temporel
-	// (date, timestamp...). Une date en type natif n'a pas de format d'affichage
-	// à préserver : le driver écrit une vraie date. C'est ce qui permet de
-	// suggérer un générateur là où une date stockée en texte l'interdit.
-	suggestIfTemporal mgmtv1alpha1.TransformerSource
-}
-
-// objectTokens : tokens qui disent que la colonne nomme une CHOSE, pas une personne.
-// "name" et "nom" ne disent pas à eux seuls ce qui est nommé, et l'immense majorité
-// des colonnes qui les portent nomment un objet : file_name, product_name,
-// nom_fichier. Sans ces exclusions, introspecter un schéma catalogue marque les noms
-// de produits comme donnée personnelle et propose de les remplacer par des noms de
-// personnes. Partagés par les règles person_last_name et person_full_name.
-var objectTokens = []string{
-	"file", "product", "table", "column", "field", "schema", "index",
-	"host", "domain", "server", "cluster", "node", "database", "db",
-	"company", "brand", "store", "shop", "site",
-	"service", "app", "application", "module", "package", "class", "method",
-	"project", "task", "job", "step", "rule", "policy", "role", "group",
-	"type", "category", "tag", "label", "template", "theme", "style",
-	"event", "queue", "topic", "bucket", "folder", "directory", "path",
-	"param", "variable", "attribute", "property", "status", "state",
-	"image", "icon", "color", "currency", "unit", "measure",
-	// Équivalents français des plus courants.
-	"fichier", "produit", "societe", "marque", "magasin",
-	"projet", "tache", "regle", "groupe", "categorie", "etiquette",
-	"modele", "evenement", "dossier", "chemin", "etat", "devise", "unite",
-}
-
-// L'ordre est significatif : première règle qui matche = gagnante. Les règles les
-// plus spécifiques (username, prénom) précèdent les plus génériques (nom, name).
-var rules = []rule{
-	{
-		category:  "email",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL,
-		keywords:  []string{"email", "mail", "courriel"},
-	},
-	{
-		// Transform, not Generate: its default keeps the prefix, separators and length of
-		// the source number (06…, +33 6…) and gives distinct numbers distinct outputs.
-		category:         "phone_number",
-		sensitive:        true,
-		suggested:        mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PHONE_NUMBER,
-		suggestIfNumeric: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER,
-		keywords:         []string{"phone", "telephone", "mobile", "cellphone"},
-		tokenOnly:        []string{"tel", "gsm", "fax"},
-	},
-	{
-		category:  "username",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_USERNAME,
-		keywords:  []string{"username", "login"},
-		tokenOnly: []string{"user", "pseudo"},
-		// created_by_user, updated_by_user : colonnes d'audit qui référencent un
-		// utilisateur, pas son login.
-		excludeTokens: []string{"by"},
-	},
-	{
-		category:  "person_first_name",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FIRST_NAME,
-		keywords:  []string{"firstname", "givenname", "forename", "prenom"},
-		tokenOnly: []string{"fname"},
-	},
-	{
-		category:      "person_last_name",
-		sensitive:     true,
-		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_LAST_NAME,
-		keywords:      []string{"lastname", "surname", "familyname", "patronyme"},
-		tokenOnly:     []string{"lname", "nom"},
-		excludeTokens: append([]string{"complet", "full", "entier"}, objectTokens...),
-	},
-	{
-		category:      "person_full_name",
-		sensitive:     true,
-		suggested:     mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_NAME,
-		keywords:      []string{"fullname", "nomcomplet"},
-		tokenOnly:     []string{"name"},
-		excludeTokens: objectTokens,
-	},
-	{
-		// Avant street_address : "ip_address" contient la sous-chaîne "address".
-		category:  "ip_address",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS,
-		keywords:  []string{"ipaddress", "ipaddr"},
-		tokenOnly: []string{"ip"},
-	},
-	{
-		category:  "street_address",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_FULL_ADDRESS,
-		keywords:  []string{"address", "adresse", "street"},
-		tokenOnly: []string{"rue"},
-	},
-	{
-		// Champs géo rapportés à une personne = donnée personnelle (RGPD).
-		category:  "city",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY,
-		keywords:  []string{"city", "ville"},
-	},
-	{
-		category:  "state",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_STATE,
-		keywords:  []string{"province"},
-		tokenOnly: []string{"state", "region"},
-	},
-	{
-		category:  "postal_code",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE,
-		keywords:  []string{"zipcode", "zip", "postal", "postcode"},
-		tokenOnly: []string{"cp"},
-	},
-	{
-		category:  "country",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_COUNTRY,
-		keywords:  []string{"country", "pays"},
-	},
-	{
-		category:  "ssn",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_SSN,
-		keywords:  []string{"ssn", "socialsecurity", "securitesociale"},
-		tokenOnly: []string{"nir"},
-	},
-	{
-		category:  "credit_card",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER,
-		keywords:  []string{"cardnumber", "creditcard", "ccnumber", "cardno"},
-	},
-	{
-		category:  "gender",
-		sensitive: true,
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_GENDER,
-		keywords:  []string{"gender", "sexe", "genre"},
-	},
-	{
-		// Date de naissance : la suggestion dépend du TYPE de la colonne, cf.
-		// suggestIfTemporal. Voir DetectDateFormat pour l'inférence du format des
-		// dates stockées en texte.
-		category:  "birth_date",
-		sensitive: true,
-		// Aucune suggestion par défaut : sur une colonne TEXTE, un générateur de
-		// timestamp écrirait "2026-07-30T14:22:31Z" là où la source contient
-		// "25/12/1980", cassant le format attendu par l'applicatif cible.
-		suggested: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED,
-		// En type temporel natif en revanche, il n'y a pas de format à préserver.
-		suggestIfTemporal: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_UTCTIMESTAMP,
-		keywords: []string{
-			"birthdate", "birthday", "dateofbirth", "datenaissance",
-			"datedenaissance", "naissance",
-		},
-		tokenOnly: []string{"dob", "ddn"},
-	},
-}
-
-// referenceSuffixes : dernier token d'une colonne qui référence une autre ligne
-// (user_id, email_uuid, client_fk). Le nom de l'entité référencée n'en fait pas
-// une donnée personnelle, et lui suggérer un générateur casserait la clé étrangère.
-var referenceSuffixes = map[string]bool{"id": true, "uuid": true, "guid": true, "fk": true, "ref": true, "key": true}
-
 var (
-	nonAlnum      = regexp.MustCompile(`[^a-z0-9]+`)
-	numericTypeRe = regexp.MustCompile(`int|serial|numeric|decimal|number|float|double|real`)
-	// timestamptz, datetime2, smalldatetime... sont couverts par les racines.
-	temporalTypeRe = regexp.MustCompile(`date|timestamp|datetime`)
+	nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
 // normalize met le nom en minuscules et retire les séparateurs (garde a-z0-9).
 func normalize(name string) string {
-	return nonAlnum.ReplaceAllString(strings.ToLower(name), "")
+	return nonAlnum.ReplaceAllString(fold(name), "")
 }
 
-// tokenize découpe le nom en tokens sur les séparateurs et les frontières de casse
-// (camelCase). Ex: "customerEmail_2" -> ["customer","email","2"].
+// tokenize cuts a name into lowercase tokens at separators, at case boundaries
+// (camelCase) and between letters and digits: "customerEmail2" gives customer, email, 2.
 func tokenize(name string) []string {
 	var out []string
 	var cur strings.Builder
-	var prevLower bool
-	for _, r := range name {
-		switch {
-		case r >= 'A' && r <= 'Z':
-			if prevLower && cur.Len() > 0 {
-				out = append(out, cur.String())
-				cur.Reset()
-			}
-			cur.WriteRune(r - 'A' + 'a')
-			prevLower = false
-		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
-			cur.WriteRune(r)
-			prevLower = r >= 'a' && r <= 'z'
-		default:
-			if cur.Len() > 0 {
-				out = append(out, cur.String())
-				cur.Reset()
-			}
-			prevLower = false
+	var prevLower, prevDigit bool
+	flush := func() {
+		if cur.Len() > 0 {
+			out = append(out, cur.String())
+			cur.Reset()
 		}
 	}
-	if cur.Len() > 0 {
-		out = append(out, cur.String())
+	for _, r := range unmark(name) {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			if prevLower || prevDigit {
+				flush()
+			}
+			cur.WriteRune(r - 'A' + 'a')
+			prevLower, prevDigit = false, false
+		case r >= 'a' && r <= 'z':
+			if prevDigit {
+				flush()
+			}
+			cur.WriteRune(r)
+			prevLower, prevDigit = true, false
+		case r >= '0' && r <= '9':
+			if !prevDigit {
+				flush()
+			}
+			cur.WriteRune(r)
+			prevLower, prevDigit = false, true
+		default:
+			flush()
+			prevLower, prevDigit = false, false
+		}
 	}
+	flush()
 	return out
 }
 
 func isNumericType(dataType string) bool {
-	return numericTypeRe.MatchString(strings.ToLower(dataType))
-}
-
-// isTemporalType reconnaît les types date/heure natifs, par opposition à une date
-// stockée dans une colonne texte.
-func isTemporalType(dataType string) bool {
-	return temporalTypeRe.MatchString(strings.ToLower(dataType))
-}
-
-// Classify retourne la classification d'une colonne à partir de son nom et de son
-// type SQL. ok vaut false si aucune règle ne matche.
-func Classify(columnName, dataType string) (Classification, bool) {
-	norm := normalize(columnName)
-	if norm == "" {
-		return Classification{}, false
-	}
-	tokens := tokenize(columnName)
-	if len(tokens) > 1 && referenceSuffixes[tokens[len(tokens)-1]] {
-		return Classification{}, false
-	}
-	tokenSet := make(map[string]struct{}, len(tokens))
-	for _, t := range tokens {
-		tokenSet[t] = struct{}{}
-	}
-
-	for _, ru := range rules {
-		excluded := false
-		for _, ex := range ru.excludeTokens {
-			if _, ok := tokenSet[ex]; ok {
-				excluded = true
-				break
-			}
-		}
-		if excluded {
-			continue
-		}
-
-		matched := false
-		for _, kw := range ru.keywords {
-			if strings.Contains(norm, kw) {
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			for _, kw := range ru.tokenOnly {
-				if _, ok := tokenSet[kw]; ok {
-					matched = true
-					break
-				}
-			}
-		}
-		if !matched {
-			continue
-		}
-
-		suggested := ru.suggested
-		if ru.suggestIfNumeric != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
-			isNumericType(dataType) {
-			suggested = ru.suggestIfNumeric
-		}
-		if ru.suggestIfTemporal != mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED &&
-			isTemporalType(dataType) {
-			suggested = ru.suggestIfTemporal
-		}
-		return Classification{
-			Category:  ru.category,
-			Sensitive: ru.sensitive,
-			Suggested: suggested,
-		}, true
-	}
-	return Classification{}, false
+	kind := kindOf(dataType)
+	return kind == kindInteger || kind == kindDecimal
 }
 
 // SuggestionForEntity maps a Presidio entity (content analysis) to a
-// Classification (category, sensitivity, suggested transformer). ok is false when
-// the entity has no suitable transformer. dataType selects the numeric flavor of
-// the phone transformer.
+// Classification (category, sensitivity, suggested transformer). ok is false for an
+// entity that is not reported. The suggested transformer is the one of the entity for a
+// text column and, when it has one, for an integer column; a column of another type
+// gets a transformer that writes a value of its type (see suggestionFor).
 func SuggestionForEntity(entity, dataType string) (Classification, bool) {
+	text, ok := entityFinding(entity, "")
+	if !ok {
+		return Classification{}, false
+	}
+	integer, _ := entityFinding(entity, "integer")
+	if integer.Suggested == text.Suggested {
+		integer.Suggested = unspecified
+	}
+	text.Suggested = suggestionFor(dataType, text.Suggested, integer.Suggested, unspecified)
+	return text, true
+}
+
+// entityFinding is the finding of an entity with the transformer of the entity itself:
+// its text flavor, or its integer flavor for a numeric type.
+func entityFinding(entity, dataType string) (Classification, bool) {
 	switch strings.ToUpper(entity) {
 	case "EMAIL_ADDRESS":
 		return Classification{"email", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_EMAIL}, true
@@ -353,7 +120,12 @@ func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 	case "LOCATION", "LOCATION_CITY", "GPE":
 		return Classification{"city", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CITY}, true
 	case "CREDIT_CARD":
-		return Classification{"credit_card", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER}, true
+		// The generator of card numbers writes integers.
+		src := scrambleText
+		if isNumericType(dataType) {
+			src = mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_CARD_NUMBER
+		}
+		return Classification{"credit_card", true, src}, true
 	case "IP_ADDRESS":
 		return Classification{"ip_address", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_IP_ADDRESS}, true
 	case "US_SSN", "FR_NIR":
@@ -367,11 +139,11 @@ func SuggestionForEntity(entity, dataType string) (Classification, bool) {
 	case "FR_POSTAL_CODE":
 		return Classification{"postal_code", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_ZIPCODE}, true
 	case "IBAN_CODE":
-		// Pas de générateur d'IBAN : on signale la sensibilité sans suggérer de
-		// transformer, plutôt que d'en imposer un qui produirait un IBAN invalide.
-		return Classification{"iban", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+		// No generator writes an IBAN: it is scrambled, which keeps its length and not
+		// its checksum.
+		return Classification{"iban", true, scrambleText}, true
 	case "FR_SIRET":
-		return Classification{"siret", true, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED}, true
+		return Classification{"siret", true, scrambleText}, true
 	// DATE_TIME est volontairement ABSENT : Presidio l'émet sur presque tout texte
 	// contenant une date, y compris du texte libre truffé de PII. Comme l'entité
 	// dominante est celle qui couvre le plus de valeurs, DATE_TIME supplanterait

@@ -21,10 +21,9 @@ type Policy struct {
 	AllowServerIdentity bool
 }
 
-// FromEnvironment is the policy a server reads from its deployment. HusonymCloud never allows
-// the server's identity.
-func FromEnvironment(isHusonymCloud bool) Policy {
-	return Policy{AllowServerIdentity: !isHusonymCloud && viper.GetBool(Variable)}
+// FromEnvironment is the policy a server reads from its deployment.
+func FromEnvironment() Policy {
+	return Policy{AllowServerIdentity: viper.GetBool(Variable)}
 }
 
 // awsCredentials are the credentials of an AWS connection, S3 or DynamoDB.

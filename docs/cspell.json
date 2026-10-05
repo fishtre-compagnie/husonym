@@ -95,7 +95,11 @@
     "Luhn",
     "lastname",
     "jackc",
-    "idtyp"
+    "idtyp",
+    "bytea",
+    "varbinary",
+    "rowversion",
+    "hierarchyid"
   ],
   "flagWords": ["hte"],
   "files": ["blog/**/*.md*", "docs/**/*.md*"],

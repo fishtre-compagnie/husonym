@@ -132,7 +132,9 @@ func (q *Queries) GetAccountHookById(ctx context.Context, db DBTX, id pgtype.UUI
 }
 
 const getAccountHooksByAccount = `-- name: GetAccountHooksByAccount :many
-SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from husonym_api.account_hooks WHERE account_id = $1
+SELECT id, name, description, account_id, events, config, created_by_user_id, created_at, updated_by_user_id, updated_at, enabled, hook_type from husonym_api.account_hooks
+WHERE account_id = $1
+ORDER BY created_at, id ASC
 `
 
 func (q *Queries) GetAccountHooksByAccount(ctx context.Context, db DBTX, accountID pgtype.UUID) ([]HusonymApiAccountHook, error) {
@@ -173,7 +175,7 @@ SELECT id, name, description, account_id, events, config, created_by_user_id, cr
 WHERE account_id = $1
   AND enabled = true
   AND events && $2::int[]
-ORDER BY created_at ASC
+ORDER BY created_at, id ASC
 `
 
 type GetActiveAccountHooksByEventParams struct {

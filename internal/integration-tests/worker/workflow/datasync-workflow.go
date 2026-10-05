@@ -19,11 +19,12 @@ import (
 	husonym_benthos_mongodb "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/mongodb"
 	husonym_benthos_sql "github.com/fishtre-compagnie/husonym/worker/pkg/benthos/sql"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks/webhook"
 	posttablesync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/post-table-sync"
 	datasync_shared "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	datasync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow/register"
-	accounthook_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow/register"
 	schemainit_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/schemainit/workflow/register"
 	sync_activity "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/activities/sync"
 	tablesync_workflow_register "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/tablesync/workflow/register"
@@ -177,7 +178,7 @@ func NewTestDataSyncWorkflowEnv(
 	)
 
 	if workflowEnv.fakeEELicense.IsValid() {
-		accounthook_workflow_register.Register(env, accounthookclient)
+		accounthooks.Register(env, accounthookclient, webhook.NewSender())
 	}
 
 	env.SetTestTimeout(600 * time.Second)

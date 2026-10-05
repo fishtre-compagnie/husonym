@@ -3,9 +3,34 @@ package connectiondata
 import (
 	"testing"
 
+	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+// Init statements are given for MySQL and PostgreSQL connections. A SQL Server connection is
+// told so before anything is read: the manager it is given has no expectation, so a single call
+// to it fails the test.
+func Test_GetInitStatements_SqlServerIsRefusedBeforeTheCatalogIsRead(t *testing.T) {
+	connection := &mgmtv1alpha1.Connection{
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{
+			Config: &mgmtv1alpha1.ConnectionConfig_MssqlConfig{MssqlConfig: &mgmtv1alpha1.MssqlConnectionConfig{}},
+		},
+	}
+	service := NewSQLConnectionDataService(
+		testutil.GetTestLogger(t),
+		sqlconnect.NewMockSqlConnector(t),
+		sqlmanager.NewMockSqlManagerClient(t),
+		connection,
+	)
+
+	_, err := service.GetInitStatements(t.Context(), &mgmtv1alpha1.InitStatementOptions{InitSchema: true})
+
+	require.EqualError(t, err, "unsupported connection config")
+}
 
 // The same conversion feeds the whole-database reader and the single-table one. They used to
 // have one each and they disagreed, twice: the length went missing first, then the generated and

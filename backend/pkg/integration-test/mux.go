@@ -16,8 +16,7 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
-	accounthooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/accounts"
-	jobhooks "github.com/fishtre-compagnie/husonym/backend/internal/ee/hooks/jobs"
+	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -33,19 +32,16 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	awsmanager "github.com/fishtre-compagnie/husonym/internal/aws"
-	"github.com/fishtre-compagnie/husonym/internal/billing"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	presidioapi "github.com/fishtre-compagnie/husonym/internal/ee/presidio"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac"
-	"github.com/fishtre-compagnie/husonym/internal/ee/rbac/enforcer"
 	sym_encrypt "github.com/fishtre-compagnie/husonym/internal/encrypt/sym"
 	husonym_gcp "github.com/fishtre-compagnie/husonym/internal/gcp"
 	husonymtypes "github.com/fishtre-compagnie/husonym/internal/husonym-types"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/piitext"
+	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	tcpostgres "github.com/fishtre-compagnie/husonym/internal/testutil/testcontainers/postgres"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 var (
@@ -87,13 +83,13 @@ const (
 	openSourceUnauthenticatedLicensedPostfix = "/oss-unauthenticated-licensed"
 	// OSS, Authenticated, Licensed
 	openSourceAuthenticatedLicensedPostfix = "/oss-authenticated-licensed"
+	// OSS, Authenticated, Licensed with a license of its own that a test can make invalid
+	openSourceAuthenticatedExpiringPostfix = "/oss-authenticated-expiring"
 	// OSS, Unauthenticated, Unlicensed
 	openSourceUnauthenticatedUnlicensedPostfix = "/oss-unauthenticated-unlicensed"
 	// OSS, Unauthenticated, Licensed with usage caps deliberately small enough for a test
 	// to reach them
 	openSourceUnauthenticatedLimitedPostfix = "/oss-unauthenticated-limited"
-	// NeoCloud, Licensed, Authenticated
-	neoCloudAuthenticatedLicensedPostfix = "/husonymcloud-authenticated"
 )
 
 func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
@@ -101,21 +97,17 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := false
-	isHusonymCloud := false
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(testutil.WithIsValid()),
 	)
 }
 
@@ -124,63 +116,58 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := true
-	isHusonymCloud := false
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(testutil.WithIsValid()),
 	)
 }
 
-func (s *HusonymApiTestClient) setupOssUnlicensedMux(
-	pgcontainer *tcpostgres.PostgresTestContainer,
-	logger *slog.Logger,
-) (*http.ServeMux, error) {
-	isLicensed := false
-	isAuthEnabled := false
-	isHusonymCloud := false
-	permissiveRbacClient := rbac.NewAllowAllClient()
-	return s.setupMux(
-		pgcontainer,
-		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
-		permissiveRbacClient,
-		logger,
-		nil,
-	)
-}
-
-func (s *HusonymApiTestClient) setupNeoCloudMux(
+// Licensed and authenticated like setupOssLicensedAuthMux, but with a license of its own
+// so a test can make it invalid without touching the other modes. It starts valid.
+func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := true
-	isHusonymCloud := true
-	enforcedRbacClient, err := s.getEnforcedRbacClient(ctx, pgcontainer)
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
+	s.Mocks.ExpiringLicense = testutil.NewFakeEELicense(testutil.WithIsValid())
+	return s.setupMux(
+		pgcontainer,
+		isAuthEnabled,
+		enforcedRbacClient,
+		logger,
+		s.Mocks.ExpiringLicense,
+	)
+}
+
+func (s *HusonymApiTestClient) setupOssUnlicensedMux(
+	ctx context.Context,
+	pgcontainer *tcpostgres.PostgresTestContainer,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	isAuthEnabled := false
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
 	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
 		enforcedRbacClient,
 		logger,
-		nil,
+		testutil.NewFakeEELicense(),
 	)
 }
 
@@ -188,75 +175,59 @@ func (s *HusonymApiTestClient) setupNeoCloudMux(
 // two connections (the minimum a job needs, so the job cap stays reachable), and postgres
 // only.
 func (s *HusonymApiTestClient) setupOssLimitedMux(
+	ctx context.Context,
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
-	isLicensed := true
 	isAuthEnabled := false
-	isHusonymCloud := false
 	maxJobs := 1
 	maxConnections := 2
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
 	return s.setupMux(
 		pgcontainer,
 		isAuthEnabled,
-		isLicensed,
-		isHusonymCloud,
-		rbac.NewAllowAllClient(),
+		enforcedRbacClient,
 		logger,
-		&license.Limits{
-			MaxJobs:                &maxJobs,
-			MaxConnections:         &maxConnections,
-			AllowedConnectionTypes: []string{"postgres"},
-		},
+		testutil.NewFakeEELicense(
+			testutil.WithIsValid(),
+			testutil.WithLimits(&license.Limits{
+				MaxJobs:                &maxJobs,
+				MaxConnections:         &maxConnections,
+				AllowedConnectionTypes: []string{"postgres"},
+			}),
+		),
 	)
 }
 
 func (s *HusonymApiTestClient) setupMux(
 	pgcontainer *tcpostgres.PostgresTestContainer,
 	isAuthEnabled bool,
-	isLicensed bool,
-	isHusonymCloud bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
-	// Usage caps to put on the fake license. Nil means uncapped, which is what every
-	// variant other than the limited one wants.
-	licenseLimits *license.Limits,
+	// The license every service of this mux reads. Each mode has its own, so that a test
+	// can change one without touching the others.
+	eelicense *testutil.FakeEELicense,
 ) (*http.ServeMux, error) {
-	isPresidioEnabled := isLicensed || isHusonymCloud
+	// Presidio is wired the same way in every mode: the license is read per request.
+	isPresidioEnabled := true
 
 	maxAllowed := int64(10000)
-	var eelicense *testutil.FakeEELicense
-	if isLicensed {
-		opts := []testutil.Option{testutil.WithIsValid()}
-		if licenseLimits != nil {
-			opts = append(opts, testutil.WithLimits(licenseLimits))
-		}
-		eelicense = testutil.NewFakeEELicense(opts...)
-	} else {
-		eelicense = testutil.NewFakeEELicense()
-	}
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
-
-	var billingclient billing.Interface
-	if isHusonymCloud {
-		billingclient = s.Mocks.Billingclient
-	} else {
-		billingclient = nil
-	}
 
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
 			IsAuthEnabled:            isAuthEnabled,
 			DeploymentIssuer:         TestIssuer,
-			IsHusonymCloud:           isHusonymCloud,
 			DefaultMaxAllowedRecords: &maxAllowed,
 		},
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.TemporalConfigProvider,
 		s.Mocks.Authclient,
 		s.Mocks.Authmanagerclient,
-		billingclient,
 		rbacClient, // rbac client
 		eelicense,
 	)
@@ -267,7 +238,7 @@ func (s *HusonymApiTestClient) setupMux(
 			IsPresidioEnabled: isPresidioEnabled,
 		},
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
-		s.Mocks.Presidio.Entities,
+		s.Mocks.Presidio,
 		userclient,
 		eelicense,
 	)
@@ -275,7 +246,7 @@ func (s *HusonymApiTestClient) setupMux(
 	sqlmanagerclient := NewTestSqlManagerClient()
 
 	connectionService := v1alpha1_connectionservice.New(
-		&v1alpha1_connectionservice.Config{IsHusonymCloud: isHusonymCloud},
+		&v1alpha1_connectionservice.Config{},
 		husonymDb,
 		userclient,
 		mongoconnect.NewConnector(),
@@ -284,19 +255,7 @@ func (s *HusonymApiTestClient) setupMux(
 		&sqlconnect.SqlOpenConnector{},
 	)
 
-	var jobhookService *jobhooks.Service
-	if isLicensed {
-		jobhookService = jobhooks.New(
-			husonymDb,
-			userclient,
-			jobhooks.WithEnabled(),
-		)
-	} else {
-		jobhookService = jobhooks.New(
-			husonymDb,
-			userclient,
-		)
-	}
+	jobhookService := hooks.NewJobService(husonymDb, userclient)
 
 	awsManager := awsmanager.New(cloudidentity.Policy{})
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
@@ -320,9 +279,8 @@ func (s *HusonymApiTestClient) setupMux(
 
 	jobService := v1alpha1_jobservice.New(
 		&v1alpha1_jobservice.Config{
-			IsAuthEnabled:  isAuthEnabled,
-			IsHusonymCloud: isHusonymCloud,
-			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+			IsAuthEnabled: isAuthEnabled,
+			WorkerOnly:    userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		husonymDb,
 		s.Mocks.TemporalClientManager,
@@ -333,21 +291,23 @@ func (s *HusonymApiTestClient) setupMux(
 		connectiondatabuilder,
 	)
 
-	var presAnalyzeClient presidioapi.AnalyzeInterface
-	var presAnonClient presidioapi.AnonymizeInterface
+	// Free text is analyzed by the Presidio of the test, which answers what the test tells it
+	// to and fails it on any other call.
+	piiText, err := piitext.NewEngine(s.Mocks.Presidio, "")
+	if err != nil {
+		return nil, err
+	}
 
 	anonymizationService := v1alpha_anonymizationservice.New(
 		&v1alpha_anonymizationservice.Config{
-			IsPresidioEnabled: isPresidioEnabled,
-			IsAuthEnabled:     isAuthEnabled,
-			IsHusonymCloud:    isHusonymCloud,
+			IsAuthEnabled: isAuthEnabled,
+			WorkerOnly:    userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		nil, // meter
 		userclient,
 		userService,
 		transformerService,
-		presAnalyzeClient,
-		presAnonClient,
+		piiText,
 		husonymDb,
 		eelicense,
 	)
@@ -359,15 +319,14 @@ func (s *HusonymApiTestClient) setupMux(
 		// Pas d'analyseur Presidio dans les tests d'intégration : IsPresidioEnabled
 		// reste faux, le scan de contenu répond donc FailedPrecondition.
 		nil,
-		v1alpha1_connectiondataservice.Transformers{Client: transformerService},
+		v1alpha1_connectiondataservice.Transformers{
+			Client:  transformerService,
+			License: eelicense,
+		},
 	)
 
 	accountHookService := v1alpha1_accounthookservice.New(
-		accounthooks.New(
-			husonymDb,
-			userclient,
-			accounthooks.WithSlackClient(s.Mocks.Slackclient),
-		),
+		hooks.NewAccountService(husonymDb, userclient, userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled}),
 	)
 
 	// The settings of an account, with a password of their own: the tests exercise the
@@ -378,8 +337,7 @@ func (s *HusonymApiTestClient) setupMux(
 	}
 	accountSettingService := v1alpha1_accountsettingservice.New(
 		&v1alpha1_accountsettingservice.Config{
-			IsHusonymCloud: isHusonymCloud,
-			WorkerOnly:     userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled, IsHusonymCloud: isHusonymCloud},
+			WorkerOnly: userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		husonymDb,
 		userclient,
@@ -423,36 +381,10 @@ func (s *HusonymApiTestClient) setupMux(
 		connect.WithInterceptors(interceptors...),
 	))
 
-	if isLicensed {
-		mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
-			accountHookService,
-			connect.WithInterceptors(interceptors...),
-		))
-	} else {
-		mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
-			mgmtv1alpha1connect.UnimplementedAccountHookServiceHandler{},
-			connect.WithInterceptors(interceptors...),
-		))
-	}
+	mux.Handle(mgmtv1alpha1connect.NewAccountHookServiceHandler(
+		accountHookService,
+		connect.WithInterceptors(interceptors...),
+	))
 
 	return mux, nil
-}
-
-func (s *HusonymApiTestClient) getEnforcedRbacClient(
-	ctx context.Context,
-	pgcontainer *tcpostgres.PostgresTestContainer,
-) (rbac.Interface, error) {
-	rbacenforcer, err := enforcer.NewActiveEnforcer(
-		ctx,
-		stdlib.OpenDBFromPool(pgcontainer.DB),
-		"husonym_api.casbin_rule",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create rbac enforcer: %w", err)
-	}
-	err = rbacenforcer.LoadPolicy()
-	if err != nil {
-		return nil, fmt.Errorf("unable to load rbac policies: %w", err)
-	}
-	return rbac.New(rbacenforcer), nil
 }

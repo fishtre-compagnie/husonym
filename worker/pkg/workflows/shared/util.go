@@ -7,26 +7,31 @@ import (
 	"strings"
 	"time"
 
-	accounthook_events "github.com/fishtre-compagnie/husonym/internal/ee/events"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/internal/runevents"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
+const lifecycleHookStartToleratedChangeId = "lifecycle-hook-start-tolerated"
+
 // Utility function that handles spawning job run lifecycle hooks: created, success, failed
 // Should only be used by root workflows that are responsible for handling the lifecycle of a job run
+//
+// licensed is the answer the run got from LicenseIsValid at its start: the hooks of its end
+// follow it, whatever became of the license meanwhile.
 func HandleWorkflowEventLifecycle[T any](
 	ctx workflow.Context,
-	eelicense license.EEInterface,
+	licensed bool,
 	jobId,
 	runId string, // typically the temporal workflow execution id
 	logger log.Logger,
 	getAccountId func() (string, error),
 	fn func(ctx workflow.Context, logger log.Logger) (*T, error),
 ) (*T, error) {
-	if !eelicense.IsValid() {
+	if !licensed {
 		logger.Debug("ee license is not valid, skipping event lifecycle")
 		return fn(ctx, logger)
 	}
@@ -36,78 +41,104 @@ func HandleWorkflowEventLifecycle[T any](
 		return nil, err
 	}
 
-	createdFuture := workflow.ExecuteChildWorkflow(
-		workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-			ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
-			WorkflowID: getAccountHookChildWorkflowId(
-				runId,
-				"job-run-created",
-				workflow.Now(ctx),
-			),
-			StaticSummary: "Account Hook: Job Run Created",
-		}),
-		accounthook_workflow.ProcessAccountHook,
-		&accounthook_workflow.ProcessAccountHookRequest{
-			Event: accounthook_events.NewEvent_JobRunCreated(accountId, jobId, runId),
-		},
-	)
-	if err := ensureChildSpawned(ctx, createdFuture, logger); err != nil {
+	run := runevents.Run{AccountID: accountId, JobID: jobId, RunID: runId}
+
+	if err := announce(ctx, run, jobRunCreatedHook, logger); err != nil {
 		return nil, err
 	}
 
 	resp, err := fn(ctx, logger)
 	if err != nil {
-		failedFuture := workflow.ExecuteChildWorkflow(
-			workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-				ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
-				WorkflowID: getAccountHookChildWorkflowId(
-					runId,
-					"job-run-failed",
-					workflow.Now(ctx),
-				),
-				StaticSummary: "Account Hook: Job Run Failed",
-			}),
-			accounthook_workflow.ProcessAccountHook,
-			&accounthook_workflow.ProcessAccountHookRequest{
-				Event: accounthook_events.NewEvent_JobRunFailed(accountId, jobId, runId),
-			},
-		)
-		if spawnErr := ensureChildSpawned(ctx, failedFuture, logger); spawnErr != nil {
+		if spawnErr := announce(ctx, run, jobRunFailedHook, logger); spawnErr != nil {
 			return nil, errors.Join(err, spawnErr)
 		}
 		return nil, err
 	}
 
-	completedFuture := workflow.ExecuteChildWorkflow(
-		workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-			ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
-			WorkflowID: getAccountHookChildWorkflowId(
-				runId,
-				"job-run-succeeded",
-				workflow.Now(ctx),
-			),
-			StaticSummary: "Account Hook: Job Run Succeeded",
-		}),
-		accounthook_workflow.ProcessAccountHook,
-		&accounthook_workflow.ProcessAccountHookRequest{
-			Event: accounthook_events.NewEvent_JobRunSucceeded(accountId, jobId, runId),
-		},
-	)
-	if err := ensureChildSpawned(ctx, completedFuture, logger); err != nil {
+	if err := announce(ctx, run, jobRunSucceededHook, logger); err != nil {
 		return nil, err
 	}
 
 	return resp, nil
 }
 
-func ensureChildSpawned(
+// announce starts the account hooks of the event. A run does not depend on its hooks:
+// when they cannot be started, the run goes on and the failure is logged.
+//
+// Runs started before the failure was tolerated replay as they ran: they get the error,
+// which ends them. The version is only read once a start has failed, so that a run whose
+// hooks start records nothing of it.
+func announce(
 	ctx workflow.Context,
-	future workflow.ChildWorkflowFuture,
+	run runevents.Run,
+	hook lifecycleHook,
 	logger log.Logger,
 ) error {
+	err := spawnLifecycleHook(ctx, run, hook, logger)
+	if err == nil {
+		return nil
+	}
+	// A canceled run starts nothing more: it ends canceled, and no event of its end is
+	// sent.
+	if temporal.IsCanceledError(err) {
+		return err
+	}
+	if workflow.GetVersion(ctx, lifecycleHookStartToleratedChangeId, workflow.DefaultVersion, 1) == workflow.DefaultVersion {
+		return err
+	}
+	logger.Error("account hooks of the event were not started", "event", hook.name, "error", err)
+	return nil
+}
+
+// lifecycleHook is one of the moments of a job run that account hooks are told about.
+type lifecycleHook struct {
+	name    string // part of the child workflow id
+	summary string
+	event   func(run runevents.Run, at time.Time) *runevents.Event
+}
+
+var (
+	jobRunCreatedHook = lifecycleHook{
+		name:    "job-run-created",
+		summary: "Account Hook: Job Run Created",
+		event:   runevents.Run.Created,
+	}
+	jobRunFailedHook = lifecycleHook{
+		name:    "job-run-failed",
+		summary: "Account Hook: Job Run Failed",
+		event:   runevents.Run.Failed,
+	}
+	jobRunSucceededHook = lifecycleHook{
+		name:    "job-run-succeeded",
+		summary: "Account Hook: Job Run Succeeded",
+		event:   runevents.Run.Succeeded,
+	}
+)
+
+// spawnLifecycleHook starts the child workflow that processes the account hooks of the
+// event, and waits until it has started. The child outlives its parent. The event is
+// stamped with the workflow's time, the same on every replay.
+func spawnLifecycleHook(
+	ctx workflow.Context,
+	run runevents.Run,
+	hook lifecycleHook,
+	logger log.Logger,
+) error {
+	now := workflow.Now(ctx)
+	future := workflow.ExecuteChildWorkflow(
+		workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+			ParentClosePolicy: enums.PARENT_CLOSE_POLICY_ABANDON,
+			WorkflowID:        getAccountHookChildWorkflowId(run.RunID, hook.name, now),
+			StaticSummary:     hook.summary,
+		}),
+		accounthooks.ProcessAccountHook,
+		&accounthooks.ProcessAccountHookRequest{
+			Event: hook.event(run, now),
+		},
+	)
 	var childWE workflow.Execution
-	if waitErr := future.GetChildWorkflowExecution().Get(ctx, &childWE); waitErr != nil {
-		return waitErr
+	if err := future.GetChildWorkflowExecution().Get(ctx, &childWE); err != nil {
+		return err
 	}
 	logger.Debug(fmt.Sprintf("child wf event spawned: %s", childWE.ID))
 	return nil

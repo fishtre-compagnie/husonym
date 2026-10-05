@@ -1,0 +1,391 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-10-04T06:07:50.404574716Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1048867",
+      "userMetadata": {
+        "summary": {
+          "metadata": {
+            "encoding": "anNvbi9wbGFpbg=="
+          },
+          "data": "IkFjY291bnQgSG9vazogSm9iIFJ1biBGYWlsZWQi"
+        }
+      },
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "ProcessAccountHook"
+        },
+        "parentWorkflowNamespace": "default",
+        "parentWorkflowNamespaceId": "01a10586-8fba-777a-a45e-e8723257f292",
+        "parentWorkflowExecution": {
+          "workflowId": "replay-job-run-one-hook-fails",
+          "runId": "01a10586-9c7d-7662-88a7-693e86ccf9f6"
+        },
+        "parentInitiatedEventId": "5",
+        "taskQueue": {
+          "name": "replay-recorder-one-hook-fails",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJFdmVudCI6eyJuYW1lIjoyLCJhY2NvdW50SWQiOiIwYjZjMWY0ZS02ZDBhLTRhNTUtOWMxYi03ZjRmNmYwZjJhMTEiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTA0VDA2OjA3OjUwLjM5NjYxMDA3NFoiLCJqb2JSdW5GYWlsZWQiOnsiam9iSWQiOiI1YTBmM2Q1Yy0yYTU5LTRhNGYtOGYwZS0wZjFmMGI4YjdjMjEiLCJqb2JSdW5JZCI6InJlcGxheS1qb2ItcnVuLW9uZS1ob29rLWZhaWxzIn19fQ=="
+            }
+          ]
+        },
+        "workflowExecutionTimeout": "0s",
+        "workflowRunTimeout": "0s",
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a10586-9c84-78c2-9807-8541488d673f",
+        "firstExecutionRunId": "01a10586-9c84-78c2-9807-8541488d673f",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "header": {},
+        "workflowId": "replay-job-run-one-hook-fails-hook-job-run-failed-1791094070396610074",
+        "rootWorkflowExecution": {
+          "workflowId": "replay-job-run-one-hook-fails",
+          "runId": "01a10586-9c7d-7662-88a7-693e86ccf9f6"
+        }
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-10-04T06:07:50.406703702Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048877",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "replay-recorder-one-hook-fails",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-10-04T06:07:50.407880991Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048883",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "replay-recorder",
+        "requestId": "f80e85fa-5399-496d-991e-18e6968ab1db",
+        "historySizeBytes": "830",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        }
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-10-04T06:07:50.409830515Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048895",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "replay-recorder",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        },
+        "sdkMetadata": {
+          "langUsedFlags": [
+            3
+          ],
+          "sdkName": "temporal-go",
+          "sdkVersion": "1.49.0"
+        },
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-10-04T06:07:50.409855550Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1048896",
+      "userMetadata": {
+        "summary": {
+          "metadata": {
+            "encoding": "anNvbi9wbGFpbg=="
+          },
+          "data": "IlJldHJpZXZlcyB0aGUgY29uZmlndXJlZCBhY2NvdW50IGhvb2tzIGZvciB0aGUgZ2l2ZW4gZXZlbnQi"
+        }
+      },
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "5",
+        "activityType": {
+          "name": "GetAccountHooksByEvent"
+        },
+        "taskQueue": {
+          "name": "replay-recorder-one-hook-fails",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJBY2NvdW50SWQiOiIwYjZjMWY0ZS02ZDBhLTRhNTUtOWMxYi03ZjRmNmYwZjJhMTEiLCJFdmVudE5hbWUiOjJ9"
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "60s",
+        "heartbeatTimeout": "60s",
+        "workflowTaskCompletedEventId": "4",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 3
+        },
+        "useWorkflowBuildId": true
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-10-04T06:07:50.409869963Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1048900",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "5",
+        "identity": "replay-recorder",
+        "requestId": "260b3f9a-349a-4418-bd65-901e6fe2dcea",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        }
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-10-04T06:07:50.411064208Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1048901",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJIb29rSWRzIjpbImMyZjNhMWRlLTViN2EtNGYwZS05YTUyLTZkMWUyYjNjNGQwMiJdfQ=="
+            }
+          ]
+        },
+        "scheduledEventId": "5",
+        "startedEventId": "6",
+        "identity": "replay-recorder"
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-10-04T06:07:50.411073063Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048902",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "replay-recorder:f5505002-5738-49e2-afa7-440839368597",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "replay-recorder-one-hook-fails"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-10-04T06:07:50.434014093Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048906",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "8",
+        "identity": "replay-recorder",
+        "requestId": "04f447de-86bc-41dc-b55e-7c00589cab74",
+        "historySizeBytes": "1757",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        }
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-10-04T06:07:50.436553058Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048911",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "8",
+        "startedEventId": "9",
+        "identity": "replay-recorder",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-10-04T06:07:50.436596136Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1048912",
+      "userMetadata": {
+        "summary": {
+          "metadata": {
+            "encoding": "anNvbi9wbGFpbg=="
+          },
+          "data": "IlJ1bnMgdGhlIGNvbmZpZ3VyZWQgYWNjb3VudCBob29rIg=="
+        }
+      },
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "11",
+        "activityType": {
+          "name": "ExecuteAccountHook"
+        },
+        "taskQueue": {
+          "name": "replay-recorder-one-hook-fails",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJIb29rSWQiOiJjMmYzYTFkZS01YjdhLTRmMGUtOWE1Mi02ZDFlMmIzYzRkMDIiLCJFdmVudCI6eyJuYW1lIjoyLCJhY2NvdW50SWQiOiIwYjZjMWY0ZS02ZDBhLTRhNTUtOWMxYi03ZjRmNmYwZjJhMTEiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTA0VDA2OjA3OjUwLjM5NjYxMDA3NFoiLCJqb2JSdW5GYWlsZWQiOnsiam9iSWQiOiI1YTBmM2Q1Yy0yYTU5LTRhNGYtOGYwZS0wZjFmMGI4YjdjMjEiLCJqb2JSdW5JZCI6InJlcGxheS1qb2ItcnVuLW9uZS1ob29rLWZhaWxzIn19fQ=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "300s",
+        "heartbeatTimeout": "60s",
+        "workflowTaskCompletedEventId": "10",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 3
+        },
+        "useWorkflowBuildId": true
+      }
+    },
+    {
+      "eventId": "12",
+      "eventTime": "2026-10-04T06:07:53.445882224Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1048925",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "11",
+        "identity": "replay-recorder",
+        "requestId": "854145ce-f561-45d1-8e36-944a1f655712",
+        "attempt": 3,
+        "lastFailure": {
+          "message": "unable to execute webhook: unable to execute webhook request: webhook request failed with status 500: internal error",
+          "source": "GoSDK",
+          "applicationFailureInfo": {}
+        },
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        }
+      }
+    },
+    {
+      "eventId": "13",
+      "eventTime": "2026-10-04T06:07:53.447834351Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_FAILED",
+      "taskId": "1048926",
+      "activityTaskFailedEventAttributes": {
+        "failure": {
+          "message": "unable to execute webhook: unable to execute webhook request: webhook request failed with status 500: internal error",
+          "source": "GoSDK",
+          "applicationFailureInfo": {}
+        },
+        "scheduledEventId": "11",
+        "startedEventId": "12",
+        "identity": "replay-recorder",
+        "retryState": "RETRY_STATE_MAXIMUM_ATTEMPTS_REACHED"
+      }
+    },
+    {
+      "eventId": "14",
+      "eventTime": "2026-10-04T06:07:53.447844559Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048927",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "replay-recorder:f5505002-5738-49e2-afa7-440839368597",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "replay-recorder-one-hook-fails"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "15",
+      "eventTime": "2026-10-04T06:07:53.448821496Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048931",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "14",
+        "identity": "replay-recorder",
+        "requestId": "18384960-ca5a-43f0-8090-1479d3caf6a8",
+        "historySizeBytes": "3021",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        }
+      }
+    },
+    {
+      "eventId": "16",
+      "eventTime": "2026-10-04T06:07:53.450724484Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048935",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "14",
+        "startedEventId": "15",
+        "identity": "replay-recorder",
+        "workerVersion": {
+          "buildId": "78540655372c5848509bb60b1ab80121"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "17",
+      "eventTime": "2026-10-04T06:07:53.450750800Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_FAILED",
+      "taskId": "1048936",
+      "workflowExecutionFailedEventAttributes": {
+        "failure": {
+          "message": "error executing hooks: error executing hook: activity error (type: ExecuteAccountHook, scheduledEventID: 11, startedEventID: 12, identity: replay-recorder): unable to execute webhook: unable to execute webhook request: webhook request failed with status 500: internal error",
+          "source": "GoSDK",
+          "cause": {
+            "message": "error executing hook: activity error (type: ExecuteAccountHook, scheduledEventID: 11, startedEventID: 12, identity: replay-recorder): unable to execute webhook: unable to execute webhook request: webhook request failed with status 500: internal error",
+            "source": "GoSDK",
+            "applicationFailureInfo": {
+              "type": "joinError"
+            }
+          },
+          "applicationFailureInfo": {
+            "type": "wrapError"
+          }
+        },
+        "retryState": "RETRY_STATE_RETRY_POLICY_NOT_SET",
+        "workflowTaskCompletedEventId": "16"
+      }
+    }
+  ]
+}

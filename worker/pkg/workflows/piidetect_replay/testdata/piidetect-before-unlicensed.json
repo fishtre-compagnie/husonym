@@ -1,0 +1,105 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-10-03T07:51:59.296979301Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1049454",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "JobPiiDetect"
+        },
+        "taskQueue": {
+          "name": "replay-recorder-unlicensed",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJKb2JJZCI6ImpvYi1yZXBsYXkifQ=="
+            }
+          ]
+        },
+        "workflowExecutionTimeout": "0s",
+        "workflowRunTimeout": "0s",
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a100bf-9a40-7eef-a962-ca456586b324",
+        "identity": "replay-recorder",
+        "firstExecutionRunId": "01a100bf-9a40-7eef-a962-ca456586b324",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "header": {},
+        "workflowId": "piidetect-before-unlicensed"
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-10-03T07:51:59.297038670Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049455",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "replay-recorder-unlicensed",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-10-03T07:51:59.299048492Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049460",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "replay-recorder",
+        "requestId": "8693d7fe-4a12-466c-8b76-e2378de4246a",
+        "historySizeBytes": "333",
+        "workerVersion": {
+          "buildId": "f91af6b4f9aa95769d204162cea10a76"
+        }
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-10-03T07:51:59.301848963Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049464",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "replay-recorder",
+        "workerVersion": {
+          "buildId": "f91af6b4f9aa95769d204162cea10a76"
+        },
+        "sdkMetadata": {
+          "langUsedFlags": [
+            3
+          ],
+          "sdkName": "temporal-go",
+          "sdkVersion": "1.49.0"
+        },
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-10-03T07:51:59.301911859Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_FAILED",
+      "taskId": "1049465",
+      "workflowExecutionFailedEventAttributes": {
+        "failure": {
+          "message": "ee license is not valid, unable to run pii detect",
+          "source": "GoSDK",
+          "applicationFailureInfo": {}
+        },
+        "retryState": "RETRY_STATE_RETRY_POLICY_NOT_SET",
+        "workflowTaskCompletedEventId": "4"
+      }
+    }
+  ]
+}

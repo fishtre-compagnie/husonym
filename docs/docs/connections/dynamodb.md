@@ -119,10 +119,6 @@ This policy will grant readwrite access to the `StageDb` table.
 }
 ```
 
-## Husonym Cloud Region
-
-Husonym Cloud currently runs in `us-west-2` region. If you've using the cloud platform and are running your tables in a different region, be sure to fill out the region field for the Husonym Connection to ensure that Husonym looks in the right place for your DynamoDB tables.
-
 ## Sync Job Mapping Configuration
 
 When configuring a sync with DynamoDB, there are a few items to consider when choosing what should be added to mapped columns.

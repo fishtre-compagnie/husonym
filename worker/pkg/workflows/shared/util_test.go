@@ -1,11 +1,13 @@
 package workflow_shared
 
 import (
+	"encoding/json"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
-	"github.com/fishtre-compagnie/husonym/internal/testutil"
-	accounthook_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/ee/account_hooks/workflow"
+	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -45,17 +47,98 @@ func Test_SanitizeWorkflowID(t *testing.T) {
 	}
 }
 
+// The events of a run carry the workflow's own time, not the clock of the worker: the
+// created event the time of the start, the event of the end the time the body ended at.
+func Test_HandleWorkflowEventLifecycle_Events(t *testing.T) {
+	startedAt := time.Date(2026, time.October, 3, 7, 51, 52, 716809604, time.UTC)
+	const bodyDuration = time.Minute
+
+	tests := []struct {
+		name    string
+		bodyErr error
+		end     string
+	}{
+		{
+			name: "created then succeeded",
+			end:  `{"name":3,"accountId":"acc-789","timestamp":"2026-10-03T07:52:52.716809604Z","jobRunSucceeded":{"jobId":"job-123","jobRunId":"run-456"}}`,
+		},
+		{
+			name:    "created then failed",
+			bodyErr: errors.New("function failed"),
+			end:     `{"name":2,"accountId":"acc-789","timestamp":"2026-10-03T07:52:52.716809604Z","jobRunFailed":{"jobId":"job-123","jobRunId":"run-456"}}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ts testsuite.WorkflowTestSuite
+			env := ts.NewTestWorkflowEnvironment()
+			env.SetStartTime(startedAt)
+
+			var mu sync.Mutex
+			var events []string
+			env.RegisterWorkflow(accounthooks.ProcessAccountHook)
+			env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+				Return(func(
+					_ workflow.Context,
+					req *accounthooks.ProcessAccountHookRequest,
+				) (*accounthooks.ProcessAccountHookResponse, error) {
+					encoded, err := json.Marshal(req.Event)
+					if err != nil {
+						return nil, err
+					}
+					mu.Lock()
+					defer mu.Unlock()
+					events = append(events, string(encoded))
+					return &accounthooks.ProcessAccountHookResponse{}, nil
+				}).Times(2)
+
+			env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
+				return HandleWorkflowEventLifecycle(
+					ctx,
+					true,
+					"job-123",
+					"run-456",
+					workflow.GetLogger(ctx),
+					func() (string, error) { return "acc-789", nil },
+					func(ctx workflow.Context, _ log.Logger) (*string, error) {
+						if err := workflow.Sleep(ctx, bodyDuration); err != nil {
+							return nil, err
+						}
+						result := "success"
+						return &result, tt.bodyErr
+					},
+				)
+			})
+
+			require.True(t, env.IsWorkflowCompleted())
+			if tt.bodyErr == nil {
+				require.NoError(t, env.GetWorkflowError())
+			} else {
+				require.ErrorContains(t, env.GetWorkflowError(), tt.bodyErr.Error())
+			}
+			env.AssertExpectations(t)
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, []string{
+				`{"name":1,"accountId":"acc-789","timestamp":"2026-10-03T07:51:52.716809604Z","jobRunCreated":{"jobId":"job-123","jobRunId":"run-456"}}`,
+				tt.end,
+			}, events)
+		})
+	}
+}
+
 func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 	t.Run("executes function successfully with valid license", func(t *testing.T) {
 		var ts testsuite.WorkflowTestSuite
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow calls
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Times(2)
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Times(2)
 
 		// Setup test data
 		jobId := "job-123"
@@ -78,7 +161,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -98,11 +181,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow - should never be called
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Never()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Never()
 
 		// Setup test data
 		jobId := "job-123"
@@ -125,7 +208,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(), // invalid license
+				false, // invalid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -145,11 +228,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow - should never be called since getAccountId fails
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Never()
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Never()
 
 		// Setup test data
 		jobId := "job-123"
@@ -171,7 +254,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),
@@ -191,11 +274,11 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env := ts.NewTestWorkflowEnvironment()
 
 		// Register account hook workflow
-		env.RegisterWorkflow(accounthook_workflow.ProcessAccountHook)
+		env.RegisterWorkflow(accounthooks.ProcessAccountHook)
 
 		// Mock the account hook workflow calls - expect created and failed events
-		env.OnWorkflow(accounthook_workflow.ProcessAccountHook, mock.Anything, mock.Anything).
-			Return(&accounthook_workflow.ProcessAccountHookResponse{}, nil).Times(2)
+		env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
+			Return(&accounthooks.ProcessAccountHookResponse{}, nil).Times(2)
 
 		// Setup test data
 		jobId := "job-123"
@@ -217,7 +300,7 @@ func Test_HandleWorkflowEventLifecycle(t *testing.T) {
 		env.ExecuteWorkflow(func(ctx workflow.Context) (*string, error) {
 			return HandleWorkflowEventLifecycle(
 				ctx,
-				testutil.NewFakeEELicense(testutil.WithIsValid()),
+				true, // valid license
 				jobId,
 				runId,
 				workflow.GetLogger(ctx),

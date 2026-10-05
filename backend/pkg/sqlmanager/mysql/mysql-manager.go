@@ -375,6 +375,7 @@ func (m *MysqlManager) GetTableConstraintsBySchema(
 	foreignKeyMap := map[string][]*sqlmanager_shared.ForeignConstraint{}
 	primaryKeyMap := map[string][]string{}
 	uniqueConstraintsMap := map[string][][]string{}
+	checkConstraintsMap := map[string][]string{}
 
 	for _, row := range rows {
 		tableName := sqlmanager_shared.BuildTable(row.SchemaName, row.TableName)
@@ -435,6 +436,12 @@ func (m *MysqlManager) GetTableConstraintsBySchema(
 		case "UNIQUE":
 			columns := sqlmanager_shared.DedupeSlice(constraintCols)
 			uniqueConstraintsMap[tableName] = append(uniqueConstraintsMap[tableName], columns)
+		case "CHECK":
+			clause, err := convertUInt8ToString(row.CheckClause)
+			if err != nil {
+				return nil, err
+			}
+			checkConstraintsMap[tableName] = append(checkConstraintsMap[tableName], clause)
 		}
 	}
 
@@ -443,7 +450,8 @@ func (m *MysqlManager) GetTableConstraintsBySchema(
 		PrimaryKeyConstraints: primaryKeyMap,
 		UniqueConstraints:     uniqueConstraintsMap,
 		// there is no real distinction between unique indexes and unique constraints in mysql
-		UniqueIndexes: map[string][][]string{},
+		UniqueIndexes:    map[string][][]string{},
+		CheckConstraints: checkConstraintsMap,
 	}, nil
 }
 

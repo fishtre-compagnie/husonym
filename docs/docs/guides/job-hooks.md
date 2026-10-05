@@ -13,9 +13,7 @@ Job Hooks are a way to add further customization to your Husonym jobs.
 
 ## Husonym Version Availability
 
-Job Hooks are available for all accounts in Husonym Cloud.
-
-For OSS users, Job Hooks are only available with a valid Enterprise license.
+Creating or modifying a Job Hook, and turning one back on, require a valid license. Viewing, turning off and deleting never do. See [Licensing](/deploy/licensing).
 
 ## How to configure Job Hooks
 
@@ -47,7 +45,21 @@ Furthermore, the timing of when the hook runs may also be configured. Today, the
 - `Pre Sync`: Runs before the first table sync, truncation, and schema initialization.
 - `Post Sync`: Runs after the last table syncs (effectively right before the job is marked as complete).
 
-Any SQL connection configured in the job (source or destination) will be available to the hook.
+Any SQL connection configured in the job (source or destination) will be available to the hook. A hook is not saved with a connection the job does not use.
+
+The name of a hook is unique within its job.
+
+### Who can manage a job hook
+
+Each action on a hook needs these permissions on jobs:
+
+| Action  | Permissions needed     |
+| ------- | ---------------------- |
+| Create  | create and execute     |
+| Update  | view, edit and execute |
+| Enable  | view, edit and execute |
+| Disable | view and edit          |
+| Delete  | delete                 |
 
 SQL queries are run in an `Exec` manner, meaning that their results are not returned and are ignored. Today, Husonym only checks for errors. This is planned to change in the future where Husonym can handle the returned results to allow users to perform further actions like result verification.
 

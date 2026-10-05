@@ -3,10 +3,8 @@ import FormHeader from '@/components/forms/FormHeader';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
 import { AccountHookEvent } from '@husonym/sdk';
 import { ReactElement } from 'react';
-import AccountHookSlackForm from './AccountHookSlackForm';
 import AccountHookWebhookForm from './AccountHookWebhookForm';
 import {
   AccountHookConfigFormValues,
@@ -119,10 +117,6 @@ interface HookTypeProps {
 
 export function HookType(props: HookTypeProps): ReactElement {
   const { error, value, onChange } = props;
-  const { data: configData } = useGetSystemAppConfig();
-  // if there are slack hooks on the backend, we should show the option so the UI isn't totally broken
-  const isSlackEnabled =
-    value === 'slack' || (configData?.isSlackAccountHookEnabled ?? false);
   return (
     <div className="flex flex-col gap-4">
       <FormHeader
@@ -141,9 +135,6 @@ export function HookType(props: HookTypeProps): ReactElement {
         value={value}
       >
         <ToggleGroupItem value="webhook">Webhook</ToggleGroupItem>
-        {isSlackEnabled && (
-          <ToggleGroupItem value="slack">Slack</ToggleGroupItem>
-        )}
       </ToggleGroup>
       <FormErrorMessage message={error} />
     </div>
@@ -166,16 +157,7 @@ export function AccountHookConfig(props: AccountHookConfigProps): ReactElement {
         <AccountHookWebhookForm
           values={value.webhook}
           setValues={(newWebhookData) => {
-            onChange({ webhook: newWebhookData, slack: value.slack });
-          }}
-          errors={errors}
-        />
-      )}
-      {hookType === 'slack' && (
-        <AccountHookSlackForm
-          values={value.slack}
-          setValues={(newSlackData) => {
-            onChange({ webhook: value.webhook, slack: newSlackData });
+            onChange({ webhook: newWebhookData });
           }}
           errors={errors}
         />

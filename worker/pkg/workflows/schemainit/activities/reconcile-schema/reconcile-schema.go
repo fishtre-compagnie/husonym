@@ -12,7 +12,7 @@ import (
 	sql_manager "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
-	"github.com/fishtre-compagnie/husonym/internal/ee/license"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	schemamanager "github.com/fishtre-compagnie/husonym/internal/schema-manager"
 	schemamanager_shared "github.com/fishtre-compagnie/husonym/internal/schema-manager/shared"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/activities/shared"
