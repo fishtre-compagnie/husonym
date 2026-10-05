@@ -72,7 +72,9 @@ const (
 // Why it does not fail by chance. A page holds 157 rows on PostgreSQL (1274 pages) and 235 on
 // SQL Server (852 pages), so SampleMinPages pages are 3.92 and 5.87 percent of them. Every page
 // is taken on its own with that probability, every row of a taken page is kept with the
-// probability that leaves about 1000 of them, and 100 are drawn. Simulated ten million times
+// probability that leaves about 1000 of them, and 100 are drawn. SQL Server keeps every row and
+// draws 100 among them all, which is the same draw: 100 rows taken evenly among rows kept evenly
+// are 100 rows taken evenly among all. Simulated ten million times
 // with these figures, a draw touches 18 to 64 ranges on PostgreSQL and 19 to 64 on SQL Server,
 // and fewer than 20 in 4 draws out of ten million on PostgreSQL and 1 on SQL Server. On the
 // servers, 400 draws on PostgreSQL touched 29 to 55 ranges and 200 on SQL Server 30 to 53. The
@@ -84,17 +86,23 @@ const (
 // reaches 20 ranges in less than one draw in 200, in the same simulation.
 func Test_SampleData_DrawsFromManyPlaces(t *testing.T) {
 	forEachEngine(t, []string{familyPostgres, familyMssql}, func(t *testing.T, f *sampleFixture) {
-		table := f.bigTable(t)
-		best := 0
-		for draw := 0; draw < spreadDraws && best < spreadBuckets; draw++ {
-			rows := f.mustSample(t, table, 100)
-			require.Len(t, rows, 100)
-			requireDistinct(t, rows, "rank")
-			best = max(best, len(rankBuckets(t, rows)))
-		}
-		require.GreaterOrEqual(t, best, spreadBuckets,
-			"the widest of %d samples touches %d ranges of 1000 ranks", spreadDraws, best)
+		requireDrawsFromManyPlaces(t, f, f.bigTable(t))
 	})
+}
+
+// requireDrawsFromManyPlaces draws up to spreadDraws samples of 100 rows and fails when none
+// touches spreadBuckets ranges of 1000 consecutive ranks.
+func requireDrawsFromManyPlaces(t *testing.T, f *sampleFixture, table string) {
+	t.Helper()
+	best := 0
+	for draw := 0; draw < spreadDraws && best < spreadBuckets; draw++ {
+		rows := f.mustSample(t, table, 100)
+		require.Len(t, rows, 100)
+		requireDistinct(t, rows, "rank")
+		best = max(best, len(rankBuckets(t, rows)))
+	}
+	require.GreaterOrEqual(t, best, spreadBuckets,
+		"the widest of %d samples touches %d ranges of 1000 ranks", spreadDraws, best)
 }
 
 // rankBuckets gives the ranges of 1000 consecutive ranks the rows of a sample fall in.
@@ -252,9 +260,7 @@ func Test_SampleData_OddTableName(t *testing.T) {
 			rows := f.mustSample(t, table, 20)
 			require.Len(t, rows, 20)
 			requireDistinct(t, rows, "rank")
-			for _, row := range rows {
-				beyondWindow = beyondWindow || intColumn(t, row, "rank") > querybuilder.SampleWindowSize
-			}
+			beyondWindow = hasRowBeyondWindow(t, rows)
 		}
 		require.True(t, beyondWindow, "every sampled row is within the first 1000 rows")
 	})
@@ -268,11 +274,7 @@ func Test_SampleData_SlicesAreDisjoint(t *testing.T) {
 		rows := f.mustSample(t, f.bigTable(t), 100)
 		require.Len(t, rows, 100)
 		requireDistinct(t, rows, "rank")
-		var beyondWindow bool
-		for _, row := range rows {
-			beyondWindow = beyondWindow || intColumn(t, row, "rank") > querybuilder.SampleWindowSize
-		}
-		require.True(t, beyondWindow, "every sampled row is within the first 1000 rows")
+		require.True(t, hasRowBeyondWindow(t, rows), "every sampled row is within the first 1000 rows")
 	})
 }
 
@@ -403,9 +405,9 @@ func Test_SampleData_BoundsTheRows(t *testing.T) {
 	})
 }
 
-// SQL Server draws a share of its pages with TABLESAMPLE and thins their rows one by one. The
-// query the builder produces for the size of the table runs and returns distinct rows, no more
-// than asked; it returns none only when no page is taken, e^-50 for a share of fifty pages.
+// SQL Server draws a share of its pages with TABLESAMPLE and orders all their rows. The query
+// the builder produces for the size of the table runs and returns distinct rows, no more than
+// asked; it returns none only when no page is taken, e^-50 for a share of fifty pages.
 func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
 		table := f.bigTable(t)
@@ -420,10 +422,82 @@ func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 			sqlmanager_shared.MssqlDriver, sqlmanager_shared.BuildTable(f.schema, table), size, 100)
 		require.NoError(t, err)
 		require.True(t, ok)
-		require.Contains(t, query, "PERCENT) WHERE")
+		require.Contains(t, query, "PERCENT))")
 		requireBuiltQueryDraws(t, f, query, 100)
 
 		requireCoversTheTable(t, f, table, 100, bigRows)
+	})
+}
+
+// A table without a clustered index is sampled across its pages like any other. Its rows are
+// copied from the table with a key by one thread and in key order, so its pages follow the ranks
+// as those of that table do, and there are as many of them: the same figures hold.
+func Test_SampleData_SqlServerHeap(t *testing.T) {
+	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
+		big := f.bigTable(t)
+		table := f.dataset(t, "heap", func() {
+			f.exec(t, fmt.Sprintf(
+				"CREATE TABLE %s (id BIGINT NOT NULL, %s INT NOT NULL, label VARCHAR(40) NOT NULL)",
+				f.qualified("heap"), f.quote("rank")))
+			f.exec(t, fmt.Sprintf(
+				"INSERT INTO %s (id, %s, label) SELECT id, %s, label FROM %s ORDER BY id OPTION (MAXDOP 1)",
+				f.qualified("heap"), f.quote("rank"), f.quote("rank"), f.qualified(big)))
+		})
+		requireCoversTheTable(t, f, table, 100, bigRows)
+		requireDrawsFromManyPlaces(t, f, table)
+	})
+}
+
+// The rows of a partitioned table and their pages are counted over its partitions: 4000 rows on
+// 18 pages, all read. 20 rows drawn among them are all within the first 1000 with probability
+// (1/4)^20, 9 in 10^13; the window alone never returns a row beyond them.
+func Test_SampleData_SqlServerPartitionedTable(t *testing.T) {
+	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
+		table := f.dataset(t, "parted", func() {
+			f.exec(t, "CREATE PARTITION FUNCTION sample_halves (BIGINT) AS RANGE RIGHT FOR VALUES (2001)")
+			f.exec(t, "CREATE PARTITION SCHEME sample_halves_scheme AS PARTITION sample_halves ALL TO ([PRIMARY])")
+			f.exec(t, fmt.Sprintf(
+				"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, %s INT NOT NULL, label VARCHAR(40) NOT NULL) "+
+					"ON sample_halves_scheme (id)", f.qualified("parted"), f.quote("rank")))
+			f.load(t, "parted", 1, 4000, 1)
+		})
+		rows := f.mustSample(t, table, 20)
+		require.Len(t, rows, 20)
+		requireDistinct(t, rows, "rank")
+		require.True(t, hasRowBeyondWindow(t, rows), "every sampled row is within the first 1000 rows")
+	})
+}
+
+// hasRowBeyondWindow tells whether a sample holds a row the window query cannot return: one
+// whose rank is above SampleWindowSize.
+func hasRowBeyondWindow(t *testing.T, rows []map[string]any) bool {
+	t.Helper()
+	for _, row := range rows {
+		if intColumn(t, row, "rank") > querybuilder.SampleWindowSize {
+			return true
+		}
+	}
+	return false
+}
+
+// A login that may only read the table is given its size by the catalog, and its sample comes
+// from across the table: 20 rows drawn among 200 000 are all within the first 1000 with
+// probability (1/200)^20.
+func Test_SampleData_SqlServerLoginWithSelectOnly(t *testing.T) {
+	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
+		table := f.bigTable(t)
+		const login, password = "sample_reader", "sample-READER-1"
+		f.dataset(t, "login "+login, func() {
+			f.exec(t, fmt.Sprintf("CREATE LOGIN %s WITH PASSWORD = '%s', CHECK_POLICY = OFF", login, password))
+			f.exec(t, fmt.Sprintf("CREATE USER %s FOR LOGIN %s", login, login))
+			f.exec(t, fmt.Sprintf("GRANT SELECT ON %s TO %s", f.qualified(table), login))
+		})
+
+		rows, err := f.sampleRowsAs(t, f.mssqlConnectionAs(t, login, password), table, 20)
+		require.NoError(t, err)
+		require.Len(t, rows, 20)
+		requireDistinct(t, rows, "rank")
+		require.True(t, hasRowBeyondWindow(t, rows), "every sampled row is within the first 1000 rows")
 	})
 }
 

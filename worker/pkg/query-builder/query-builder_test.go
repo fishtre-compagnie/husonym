@@ -352,22 +352,30 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 		// Fewer pages than SampleMinPages: all of them are read and one row in five is kept.
 		few := TableSize{Rows: 5_000, Pages: 27}
 		require.Contains(t, build(t, pg, few), "TABLESAMPLE SYSTEM (100) WHERE RANDOM() < 0.2 LIMIT 4000")
-		require.Contains(t, build(t, mssql, few), "TABLESAMPLE (100 PERCENT) WHERE")
+		require.Contains(t, build(t, mssql, few), "TABLESAMPLE (100 PERCENT))")
 	})
 	t.Run("the share covers the window when its pages are more than SampleMinPages", func(t *testing.T) {
 		require.Contains(t, build(t, pg, TableSize{Rows: 200_000, Pages: 40_000}), "TABLESAMPLE SYSTEM (0.5) LIMIT")
 	})
-	t.Run("sqlserver thins the rows of the pages it draws when they hold more than the window", func(t *testing.T) {
+	t.Run("sqlserver orders every row of the pages it draws", func(t *testing.T) {
 		// 235 rows a page: SampleMinPages pages are 5.8685 percent and hold 11 737 rows.
 		require.Equal(t,
-			`SELECT  TOP (10) * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE (5.8685 PERCENT) `+
-				`WHERE (CHECKSUM(NEWID(), %%physloc%%) & 2147483647) % 1000000 < 85200) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			`SELECT  TOP (10) * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE (5.8685 PERCENT)) AS "husonym_sample" ORDER BY NEWID() ASC`,
 			build(t, mssql, TableSize{Rows: 200_000, Pages: 852}))
-	})
-	t.Run("sqlserver keeps every row of the pages that hold the window", func(t *testing.T) {
+		// 2 rows a page: the window is on 500 pages, 0.5 percent.
 		require.Equal(t,
 			`SELECT  TOP (10) * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE (0.5 PERCENT)) AS "husonym_sample" ORDER BY NEWID() ASC`,
 			build(t, mssql, TableSize{Rows: 200_000, Pages: 100_000}))
+	})
+	t.Run("sqlserver filters no row", func(t *testing.T) {
+		for _, size := range []TableSize{
+			{Rows: 200_000, Pages: 852}, {Rows: 200_000, Pages: 100_000}, {Rows: 5_000, Pages: 27},
+		} {
+			sql := build(t, mssql, size)
+			require.NotContains(t, sql, "WHERE")
+			require.NotContains(t, sql, "CHECKSUM")
+			require.NotContains(t, sql, "physloc")
+		}
 	})
 	t.Run("sqlserver does not cut the sample before the random order", func(t *testing.T) {
 		require.Equal(t, 1, strings.Count(build(t, mssql, TableSize{Rows: 200_000, Pages: 852}), "TOP ("))

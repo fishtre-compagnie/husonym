@@ -139,9 +139,6 @@ const (
 	// narrow rows hold the window in a handful of pages, which are a handful of places
 	// of the table.
 	SampleMinPages = 50
-
-	// sampleKeepScale is the precision of the share of rows a SQL Server sample keeps.
-	sampleKeepScale = 1_000_000
 )
 
 // KeyRange is a range of key values, both ends included.
@@ -160,10 +157,12 @@ type TableSize struct {
 // expected to hold SampleWindowSize rows, and at least SampleMinPages of them, and the
 // random order only applies to that sample.
 //
-// When those pages hold more rows than the window, each row is kept with the
-// probability that leaves about SampleWindowSize of them, so the rows that reach the
-// random order come from every page read. PostgreSQL then bounds them at
-// SampleRowsBound, for a size that is far from the truth.
+// PostgreSQL bounds the rows it hands to the random order at SampleRowsBound, for a size
+// that is far from the truth. So that the bound does not keep the first pages only when
+// the pages read hold more rows than the window, each row is first kept with the
+// probability that leaves about SampleWindowSize of them: the rows that reach the
+// random order come from every page read. SQL Server orders every row of the pages it
+// reads.
 //
 // It supports PostgreSQL and SQL Server. ok is false when the driver has no table
 // sample, when the size is unknown (no row or no page) and when the table has no more
@@ -190,16 +189,9 @@ func BuildTableSampleQuery(
 		inner = inner.Limit(SampleRowsBound)
 		randStmt = "RANDOM()"
 	case sqlmanager_shared.MssqlDriver:
+		// No bound here: a TOP on a table sample keeps the first pages read. No thinning
+		// either: a random filter that names no column is computed once for the query.
 		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", goqu.I(table), percent))
-		if keep < 1 {
-			// A random value that names nothing of the row is computed once for the whole
-			// query. The row locator makes it one value per row, and reads no column.
-			inner = inner.Where(goqu.L(
-				"(CHECKSUM(NEWID(), %%physloc%%) & 2147483647) % ? < ?",
-				sampleKeepScale, int64(math.Round(keep*sampleKeepScale)),
-			))
-		}
-		// No bound here: a TOP on a table sample keeps the first pages read.
 		randStmt = "NEWID()"
 	default:
 		return "", false, nil

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/gob"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -307,11 +308,23 @@ const bigRows = 200_000
 // sampleRows draws a sample of numRows rows from a table through the service.
 func (f *sampleFixture) sampleRows(t *testing.T, table string, numRows uint) ([]map[string]any, error) {
 	t.Helper()
+	return f.sampleRowsAs(t, f.connection, table, numRows)
+}
+
+// sampleRowsAs draws a sample through a connection of its own, which may log in as another user
+// of the server.
+func (f *sampleFixture) sampleRowsAs(
+	t *testing.T,
+	connection *mgmtv1alpha1.Connection,
+	table string,
+	numRows uint,
+) ([]map[string]any, error) {
+	t.Helper()
 	service := connectiondata.NewSQLConnectionDataService(
 		testutil.GetTestLogger(t),
 		&sqlconnect.SqlOpenConnector{},
 		f.sqlmanager,
-		f.connection,
+		connection,
 	)
 	stream := &collectingStream{}
 	err := service.SampleData(context.Background(), stream, f.schema, table, numRows)
@@ -413,4 +426,20 @@ func (f *sampleFixture) queryRanks(t *testing.T, query string) []int64 {
 	}
 	require.NoError(t, rows.Err())
 	return ranks
+}
+
+// mssqlConnectionAs gives the connection of the fixture with another login.
+func (f *sampleFixture) mssqlConnectionAs(t *testing.T, login, password string) *mgmtv1alpha1.Connection {
+	t.Helper()
+	u, err := url.Parse(f.connection.GetConnectionConfig().GetMssqlConfig().GetUrl())
+	require.NoError(t, err)
+	u.User = url.UserPassword(login, password)
+	return &mgmtv1alpha1.Connection{
+		Id: uuid.NewString(),
+		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{Config: &mgmtv1alpha1.ConnectionConfig_MssqlConfig{
+			MssqlConfig: &mgmtv1alpha1.MssqlConnectionConfig{
+				ConnectionConfig: &mgmtv1alpha1.MssqlConnectionConfig_Url{Url: u.String()},
+			},
+		}},
+	}
 }

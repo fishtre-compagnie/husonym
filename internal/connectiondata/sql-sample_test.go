@@ -146,8 +146,7 @@ func Test_spreadSampleQuery_SqlServerReadsTheSizeFromTheCatalog(t *testing.T) {
 	query, ok := spread(t, db, sqlmanager_shared.MssqlDriver, firstOfRange)
 
 	require.True(t, ok)
-	require.Contains(t, query, "TABLESAMPLE (5.8685 PERCENT) WHERE")
-	require.Contains(t, query, "< 85200)")
+	require.Contains(t, query, "TABLESAMPLE (5.8685 PERCENT))")
 	require.Len(t, db.statements, 1)
 	require.NotContains(t, db.statements[0], "users", "the names are bind parameters")
 }
