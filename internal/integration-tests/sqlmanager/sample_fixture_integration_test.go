@@ -428,6 +428,15 @@ func (f *sampleFixture) queryRanks(t *testing.T, query string) []int64 {
 	return ranks
 }
 
+// pgConnectionAs gives the connection of the fixture with another login.
+func (f *sampleFixture) pgConnectionAs(t *testing.T, login, password string) *mgmtv1alpha1.Connection {
+	t.Helper()
+	u, err := url.Parse(f.connection.GetConnectionConfig().GetPgConfig().GetUrl())
+	require.NoError(t, err)
+	u.User = url.UserPassword(login, password)
+	return pgConnection(u.String())
+}
+
 // mssqlConnectionAs gives the connection of the fixture with another login.
 func (f *sampleFixture) mssqlConnectionAs(t *testing.T, login, password string) *mgmtv1alpha1.Connection {
 	t.Helper()
