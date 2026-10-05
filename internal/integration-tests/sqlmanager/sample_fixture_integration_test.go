@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	tchusonymapi "github.com/fishtre-compagnie/husonym/backend/pkg/integration-test"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlconnect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
@@ -47,6 +48,10 @@ type sampleFixture struct {
 	connection *mgmtv1alpha1.Connection
 	schema     string
 	teardown   func(ctx context.Context) error
+
+	// sqlmanager is shared by every sample of the server and closes a connection when its
+	// session is released, the way the API server builds it.
+	sqlmanager sqlmanager.SqlManagerClient
 
 	// datasets names the tables built so far. The tests run one after the other.
 	datasets map[string]bool
@@ -117,6 +122,7 @@ func fixtureFor(t *testing.T, engine sampleEngine) *sampleFixture {
 	require.NoError(t, err)
 	f.engine = engine
 	f.datasets = map[string]bool{}
+	f.sqlmanager = tchusonymapi.NewTestSqlManagerClient()
 	fixtures[engine.name] = f
 	return f
 }
@@ -304,7 +310,7 @@ func (f *sampleFixture) sampleRows(t *testing.T, table string, numRows uint) ([]
 	service := connectiondata.NewSQLConnectionDataService(
 		testutil.GetTestLogger(t),
 		&sqlconnect.SqlOpenConnector{},
-		sqlmanager.NewSqlManager(),
+		f.sqlmanager,
 		f.connection,
 	)
 	stream := &collectingStream{}
@@ -376,5 +382,17 @@ func requireDistinct(t *testing.T, rows []map[string]any, column string) {
 		v := intColumn(t, row, column)
 		require.False(t, seen[v], "a row came twice in the sample")
 		seen[v] = true
+	}
+}
+
+// sessionCountQuery counts the sessions open on the server.
+func (f *sampleFixture) sessionCountQuery() string {
+	switch f.engine.family {
+	case familyMysql:
+		return "SELECT COUNT(*) FROM information_schema.PROCESSLIST"
+	case familyMssql:
+		return "SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1"
+	default:
+		return "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()"
 	}
 }

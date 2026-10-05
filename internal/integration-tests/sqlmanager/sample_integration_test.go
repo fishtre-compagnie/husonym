@@ -301,3 +301,32 @@ func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 		requireCoversTheTable(t, f, table, 100, bigRows)
 	})
 }
+
+// sampleCallsForSessions is the number of samples drawn while the sessions of the server are
+// counted.
+const sampleCallsForSessions = 30
+
+// A sample leaves no session open on the server: after many samples the server holds as many
+// sessions as before. The sessions are counted on a connection of the fixture that stays open, and
+// the count is read again for a few seconds, since a server may report a closed session late.
+func Test_SampleData_ClosesItsConnections(t *testing.T) {
+	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
+		tables := []string{f.filledTable(t, "small", 50), f.filledTable(t, "Order Lines", 3000)}
+		ctx := context.Background()
+		counter, err := f.db.Conn(ctx)
+		require.NoError(t, err)
+		defer counter.Close()
+
+		sessions := func() int {
+			var n int
+			require.NoError(t, counter.QueryRowContext(ctx, f.sessionCountQuery()).Scan(&n))
+			return n
+		}
+		before := sessions()
+		for i := range sampleCallsForSessions {
+			require.Len(t, f.mustSample(t, tables[i%len(tables)], 20), 20)
+		}
+		require.Eventually(t, func() bool { return sessions() <= before }, 5*time.Second, 100*time.Millisecond,
+			"%d sessions before the samples, %d after", before, sessions())
+	})
+}
