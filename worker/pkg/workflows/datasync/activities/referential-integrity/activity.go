@@ -21,7 +21,6 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
-	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
@@ -180,6 +179,10 @@ func checkForeignKeys(
 	policy policy,
 	logger log.Logger,
 ) (int64, error) {
+	dialect, err := sqlident.ForDriver(driver)
+	if err != nil {
+		return 0, err
+	}
 	var repaired int64
 	// A deleted row can orphan its children, and a chain of tables is at most as long as
 	// the job has tables: one more pass than that must find nothing.
@@ -188,7 +191,7 @@ func checkForeignKeys(
 		var found int64
 		for _, table := range tables {
 			for _, fk := range table.ForeignKeys {
-				condition := orphanCondition(driver, table, fk)
+				condition := orphanCondition(dialect, table, fk)
 				count, err := db.GetTableRowCount(ctx, table.Schema, table.Table, &condition)
 				if err != nil {
 					return repaired, fmt.Errorf("unable to count orphans of %s.%s (%s): %w",
@@ -203,7 +206,7 @@ func checkForeignKeys(
 				if !policy.canRepair() {
 					continue
 				}
-				if err := db.Exec(ctx, repairStatement(driver, table, fk)); err != nil {
+				if err := db.Exec(ctx, repairStatement(dialect, table, fk)); err != nil {
 					return repaired, fmt.Errorf("unable to repair orphans of %s.%s (%s): %w",
 						table.Schema, table.Table, strings.Join(fk.Columns, ", "), err)
 				}
@@ -224,13 +227,15 @@ func checkForeignKeys(
 
 // orphanCondition is the WHERE clause selecting the rows of a table whose foreign key is
 // fully set (MATCH SIMPLE), is not the "no parent" value, and references no parent row.
-func orphanCondition(driver string, table *TableForeignKeys, fk *tableplan.ForeignKey) string {
-	quote := quoterFor(driver)
+// The "no parent" value is the text of a default read from the source catalog: it is
+// written as one string literal of the dialect.
+func orphanCondition(dialect sqlident.Dialect, table *TableForeignKeys, fk *tableplan.ForeignKey) string {
+	quote := dialect.Quote
 	child := quote(table.Schema) + "." + quote(table.Table)
 	parent := quote(fk.ParentSchema) + "." + quote(fk.ParentTable)
 	// MySQL refuses to modify a table it also reads in a subquery, unless the subquery
 	// goes through a derived table. Only a self-reference needs it.
-	if driver == sqlmanager_shared.MysqlDriver && fk.ParentSchema == table.Schema && fk.ParentTable == table.Table {
+	if dialect == sqlident.MySQL && fk.ParentSchema == table.Schema && fk.ParentTable == table.Table {
 		parent = "(SELECT * FROM " + parent + ")"
 	}
 
@@ -241,8 +246,7 @@ func orphanCondition(driver string, table *TableForeignKeys, fk *tableplan.Forei
 		joins = append(joins, "p."+quote(fk.ParentColumns[i])+" = "+child+"."+quote(column))
 	}
 	if fk.NoParentValue != nil && len(fk.Columns) == 1 {
-		literal := "'" + strings.ReplaceAll(*fk.NoParentValue, "'", "''") + "'"
-		conditions = append(conditions, child+"."+quote(fk.Columns[0])+" <> "+literal)
+		conditions = append(conditions, child+"."+quote(fk.Columns[0])+" <> "+dialect.Literal(*fk.NoParentValue))
 	}
 	conditions = append(conditions,
 		"NOT EXISTS (SELECT 1 FROM "+parent+" p WHERE "+strings.Join(joins, " AND ")+")")
@@ -251,10 +255,10 @@ func orphanCondition(driver string, table *TableForeignKeys, fk *tableplan.Forei
 
 // repairStatement deletes the orphans of a mandatory key, and clears the nullable columns
 // of any other key.
-func repairStatement(driver string, table *TableForeignKeys, fk *tableplan.ForeignKey) string {
-	quote := quoterFor(driver)
+func repairStatement(dialect sqlident.Dialect, table *TableForeignKeys, fk *tableplan.ForeignKey) string {
+	quote := dialect.Quote
 	child := quote(table.Schema) + "." + quote(table.Table)
-	condition := orphanCondition(driver, table, fk)
+	condition := orphanCondition(dialect, table, fk)
 	if fk.IsMandatory() {
 		return "DELETE FROM " + child + " WHERE " + condition
 	}
@@ -265,15 +269,4 @@ func repairStatement(driver string, table *TableForeignKeys, fk *tableplan.Forei
 		}
 	}
 	return "UPDATE " + child + " SET " + strings.Join(assignments, ", ") + " WHERE " + condition
-}
-
-func quoterFor(driver string) func(string) string {
-	switch driver {
-	case sqlmanager_shared.MysqlDriver:
-		return sqlident.MySQL.Quote
-	case sqlmanager_shared.MssqlDriver:
-		return sqlident.SQLServer.Quote
-	default:
-		return sqlident.Postgres.Quote
-	}
 }
