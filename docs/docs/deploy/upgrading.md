@@ -81,6 +81,38 @@ and MySQL, a column held by a CHECK constraint is copied as is, and the run log 
 After the first run that follows the upgrade, review the mappings the run has written into
 the job. See [New Column Addition Strategies](/guides/new-column-addition-strategies).
 
+### Virtual foreign keys
+
+Before upgrading, review the virtual foreign keys of your jobs. A job whose virtual
+foreign key references a table or a column that the source does not hold fails at the
+start of the run, with an error that names the table of the key, the table it references
+and, for a column, the column. The pre-flight check of the job fails the same way.
+
+The names are compared exactly as the catalog of the source writes them: on a server that
+compares names without regard to case, spell them as the catalog does. See
+[Virtual Foreign Keys](/table-constraints/virtual-foreign-keys).
+
+### Names and text copied from the source
+
+Tables, columns and other objects whose names hold a quote character, an apostrophe, a
+backslash, a space or upper-case letters, and column defaults and enum labels that hold
+an apostrophe or a backslash, are copied as they are by schema initialization and by a
+sync.
+
+Two limits remain:
+
+- On MySQL and MariaDB, a column comment that holds a backslash is not copied.
+- On SQL Server, a column whose collation name is not made of letters, digits and
+  underscores takes the default collation of the destination database, and the run
+  reports it.
+
+### Sampled rows
+
+The rows read to recognize personal data (the PII content scan, the column preview and
+the PII detection job) are drawn from the whole table where the database allows it, so
+two scans of the same table can read different rows. See
+[Data sampling](/guides/pii-detection-job#data-sampling).
+
 ### PII detection jobs
 
 See [Upgrading](/guides/pii-detection-job#upgrading) in the guide of the PII detection job.
