@@ -140,27 +140,13 @@ func (s *SQLConnectionDataService) SampleData(
 	if err != nil {
 		return err
 	}
-	rows, err := db.QueryContext(ctx, query)
-	if err != nil && !husonymdb.IsNoRows(err) {
-		return fmt.Errorf(
-			"error querying table %s with database type %s: %w",
-			schemaTable,
-			goquDriver,
-			err,
-		)
+	spread, hasSpread := spreadSampleQuery(ctx, db, goquDriver, schema, table, numRows, randomInRange)
+	sampled, err := readSample(ctx, db, mapper, spread, hasSpread, query, numRows)
+	if err != nil {
+		return wrapSampleError(err, schemaTable, goquDriver)
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		r, err := mapper.MapRecord(rows)
-		if err != nil {
-			return fmt.Errorf(
-				"unable to convert row to map for table %s with database type %s: %w",
-				schemaTable,
-				goquDriver,
-				err,
-			)
-		}
+	for _, r := range sampled {
 		var rowbytes bytes.Buffer
 		enc := gob.NewEncoder(&rowbytes)
 		if err := enc.Encode(r); err != nil {
