@@ -749,11 +749,32 @@ func BuildPgIdentityColumnResetCurrentSql(
 	)
 }
 
+// BuildPgInsertIdentityAlwaysSql places OVERRIDING SYSTEM VALUE where the column list of an
+// INSERT statement ends: at the first ") VALUES (" that stands outside a quoted identifier
+// and outside a string literal. A quote character doubled inside either closes it and opens
+// it again at once, so the text between is still read as inside.
+//
+// A statement without a column list (rows without a column: DEFAULT VALUES) gives no value
+// to override, and is returned as it is.
 func BuildPgInsertIdentityAlwaysSql(
 	insertQuery string,
 ) string {
-	sqlSplit := strings.Split(insertQuery, ") VALUES (")
-	return sqlSplit[0] + ") OVERRIDING SYSTEM VALUE VALUES(" + sqlSplit[1]
+	const columnListEnd = ") VALUES ("
+	var quote byte
+	for i := 0; i < len(insertQuery); i++ {
+		c := insertQuery[i]
+		switch {
+		case quote != 0:
+			if c == quote {
+				quote = 0
+			}
+		case c == '"' || c == '\'':
+			quote = c
+		case strings.HasPrefix(insertQuery[i:], columnListEnd):
+			return insertQuery[:i] + ") OVERRIDING SYSTEM VALUE VALUES(" + insertQuery[i+len(columnListEnd):]
+		}
+	}
+	return insertQuery
 }
 
 func BuildPgResetSequenceSql(schema, sequenceName string) string {

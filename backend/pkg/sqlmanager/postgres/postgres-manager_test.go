@@ -92,6 +92,48 @@ func Test_BuildPgInsertIdentityAlwaysSql(t *testing.T) {
 	})
 }
 
+// The override of an identity column is placed where the column list ends, whatever text the
+// names and the values of the statement hold.
+func Test_BuildPgInsertIdentityAlwaysSql_ColumnListEnd(t *testing.T) {
+	cases := []struct{ name, input, expected string }{
+		{
+			"table name holding the text",
+			`INSERT INTO "app"."a) VALUES (b" ("id") VALUES ($1)`,
+			`INSERT INTO "app"."a) VALUES (b" ("id") OVERRIDING SYSTEM VALUE VALUES($1)`,
+		},
+		{
+			"column name holding the text, named again after the values",
+			`INSERT INTO "t" ("id", "x) VALUES (y") VALUES ($1, $2), ($3, $4) ON CONFLICT ("id") DO UPDATE SET "x) VALUES (y"=EXCLUDED."x) VALUES (y"`,
+			`INSERT INTO "t" ("id", "x) VALUES (y") OVERRIDING SYSTEM VALUE VALUES($1, $2), ($3, $4) ON CONFLICT ("id") DO UPDATE SET "x) VALUES (y"=EXCLUDED."x) VALUES (y"`,
+		},
+		{
+			"name holding a quote character and the text",
+			`INSERT INTO "we""ird) VALUES (b" ("o'clock", "two$$dollars") VALUES ($1, $2)`,
+			`INSERT INTO "we""ird) VALUES (b" ("o'clock", "two$$dollars") OVERRIDING SYSTEM VALUE VALUES($1, $2)`,
+		},
+		{
+			"value holding the text",
+			`INSERT INTO "t" ("id", "label") VALUES (1, 'it''s a) VALUES (b')`,
+			`INSERT INTO "t" ("id", "label") OVERRIDING SYSTEM VALUE VALUES(1, 'it''s a) VALUES (b')`,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			require.Equal(t, c.expected, BuildPgInsertIdentityAlwaysSql(c.input))
+		})
+	}
+}
+
+// Rows without a column give no value to override: the statement is returned as it is.
+func Test_BuildPgInsertIdentityAlwaysSql_WithoutColumnList(t *testing.T) {
+	for _, statement := range []string{
+		`INSERT INTO "app"."users" DEFAULT VALUES ON CONFLICT DO NOTHING`,
+		`INSERT INTO "a) VALUES (b" DEFAULT VALUES`,
+	} {
+		require.Equal(t, statement, BuildPgInsertIdentityAlwaysSql(statement))
+	}
+}
+
 // A generated column takes no value, stored or virtual (PostgreSQL 18); nor does an identity
 // generated always. An identity by default does.
 func Test_isColumnUpdateAllowed(t *testing.T) {
