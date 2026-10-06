@@ -64,7 +64,7 @@ func (f *providerFixture) issue(t *testing.T, expiresIn time.Duration, maxJobs i
 // concurrent use, which is fine: the Provider logs under its own lock.
 func (f *providerFixture) newProvider(src Source) *Provider {
 	logger := slog.New(slog.NewTextHandler(f.logs, nil))
-	return newProvider(src, f.pub, f.clock.Now, logger)
+	return newProvider(src, Keyring{LegacyKid: f.pub}, f.clock.Now, logger)
 }
 
 // replaceFile swaps the content atomically and returns the error, so it is safe to call
@@ -284,9 +284,9 @@ func Test_Provider_ConcurrentReads(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "license")
 	keyA := f.issue(t, 90*day, 1)
 	keyB := f.issue(t, 90*day, 2)
-	parsedA, err := parseWith(keyA, f.pub)
+	parsedA, err := parseWith(keyA, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
-	parsedB, err := parseWith(keyB, f.pub)
+	parsedB, err := parseWith(keyB, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
 	writeLicenseFile(t, path, keyA)
 	p := f.newProvider(Source{File: path})

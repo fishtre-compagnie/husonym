@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -139,17 +140,22 @@ func runIssue(args []string) error {
 	if !ok {
 		return fmt.Errorf("signing key does not expose an ed25519 public key")
 	}
-	embedded, err := license.EmbeddedPublicKey()
+	ring, err := license.EmbeddedKeyring()
 	if err != nil {
-		return fmt.Errorf("unable to read the embedded public key: %w", err)
+		return fmt.Errorf("unable to read the embedded public keys: %w", err)
 	}
-	if !embedded.Equal(pub) {
+	if _, ok := ring.KidOf(pub); !ok {
+		embedded := make([]string, 0, len(ring))
+		for _, key := range ring {
+			embedded = append(embedded, license.PublicKeyFingerprint(key))
+		}
+		sort.Strings(embedded)
 		return fmt.Errorf(
-			"signing key does not match the key embedded in this build\n"+
+			"signing key does not match any key embedded in this build\n"+
 				"  signing key : %s\n"+
 				"  embedded    : %s\n"+
 				"licenses minted with it would be rejected by the product",
-			license.PublicKeyFingerprint(pub), license.PublicKeyFingerprint(embedded))
+			license.PublicKeyFingerprint(pub), strings.Join(embedded, ", "))
 	}
 
 	var limits *license.Limits

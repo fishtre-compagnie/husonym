@@ -31,7 +31,7 @@ func Test_Issue(t *testing.T) {
 		require.NotEmpty(t, issued.Encoded)
 		require.NotEmpty(t, issued.Id)
 
-		got, err := parseWith(issued.Encoded, pub)
+		got, err := parseWith(issued.Encoded, Keyring{LegacyKid: pub})
 		require.NoError(t, err)
 		require.Equal(t, "Acme Co.", got.IssuedTo)
 		require.Equal(t, "cust-001", got.CustomerId)
@@ -98,7 +98,7 @@ func Test_Issue(t *testing.T) {
 		}, otherPriv)
 		require.NoError(t, err)
 
-		got, err := parseWith(issued.Encoded, pub)
+		got, err := parseWith(issued.Encoded, Keyring{LegacyKid: pub})
 		require.Error(t, err)
 		require.Nil(t, got)
 	})

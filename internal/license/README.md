@@ -19,8 +19,9 @@ The license is a `license.Provider` that answers from the clock on every call: i
 checked per request, not when the process starts, so an expiry takes effect without a
 restart. What the API and the worker wire at startup follows configuration only.
 
-The verifying public key is **embedded in the binary** (`husonym_ee_pub.pem`, via
-`go:embed`). Verification is entirely offline: no phone-home, no network call, so an
+The verifying public keys are **embedded in the binary** (one `keys/<kid>.pem` per key, via
+`go:embed`). The envelope may carry a `kid` naming the key to verify with; without one, the
+key `k1` is used. Verification is entirely offline: no phone-home, no network call, so an
 air-gapped deployment works and we collect nothing about customer usage. The consequence
 is that there is **no revocation** — a license is valid until it expires.
 
@@ -222,9 +223,9 @@ reason the authoritative copy sits in a secret manager.
 `.gitignore` carries a backstop for `*_ca.key`, `registry.json` and `ee_license`, in case a
 copy ever lands in the working tree.
 
-Rotating it means replacing `husonym_ee_pub.pem`, rebuilding, **and reissuing every live
-license** — existing ones stop verifying immediately. There is no dual-key support today;
-adding it would be the way to make rotation non-disruptive.
+Replacing `keys/k1.pem` means rebuilding **and reissuing every live license** — existing ones
+stop verifying immediately. Adding a key under another kid keeps the existing licenses
+valid.
 
 Tests mint their own throwaway keypairs, so rotation never breaks the suite.
 

@@ -1,7 +1,6 @@
 package license
 
 import (
-	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -52,7 +51,7 @@ type fileObservation struct {
 // Provider holds the last verified license key and answers from the clock on every
 // call. It is safe for concurrent use.
 type Provider struct {
-	pub    ed25519.PublicKey
+	ring   Keyring
 	now    func() time.Time
 	logger *slog.Logger
 	file   string
@@ -66,25 +65,25 @@ type Provider struct {
 
 var _ EEInterface = (*Provider)(nil)
 
-// NewProvider builds a Provider that verifies keys against the embedded public key.
+// NewProvider builds a Provider that verifies keys against the embedded public keys.
 func NewProvider(src Source, logger *slog.Logger) *Provider {
-	pub, err := EmbeddedPublicKey()
+	ring, err := EmbeddedKeyring()
 	if err != nil {
-		// The embedded key is part of the binary; a failure here is a build defect.
+		// The embedded keys are part of the binary; a failure here is a build defect.
 		// Verification then fails for every key, which leaves the state at none.
-		pub = nil
+		ring = nil
 		if logger != nil {
-			logger.Error("unable to load the embedded license public key", "error", err)
+			logger.Error("unable to load the embedded license public keys", "error", err)
 		}
 	}
-	return newProvider(src, pub, time.Now, logger)
+	return newProvider(src, ring, time.Now, logger)
 }
 
-func newProvider(src Source, pub ed25519.PublicKey, now func() time.Time, logger *slog.Logger) *Provider {
+func newProvider(src Source, ring Keyring, now func() time.Time, logger *slog.Logger) *Provider {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	p := &Provider{pub: pub, now: now, logger: logger, file: src.File}
+	p := &Provider{ring: ring, now: now, logger: logger, file: src.File}
 
 	switch {
 	case src.File != "":
@@ -96,7 +95,7 @@ func newProvider(src Source, pub ed25519.PublicKey, now func() time.Time, logger
 		p.readFile()
 		p.mu.Unlock()
 	case src.Value != "":
-		key, err := parseWith(strings.TrimSpace(src.Value), pub)
+		key, err := parseWith(strings.TrimSpace(src.Value), ring)
 		if err != nil {
 			p.problem = err
 			logger.Error("the license key is not usable", "error", err)
@@ -132,7 +131,7 @@ func (p *Provider) readFile() {
 	case seen.content == "":
 		err = errors.New("the license file is empty")
 	default:
-		key, err = parseWith(seen.content, p.pub)
+		key, err = parseWith(seen.content, p.ring)
 	}
 	if err != nil {
 		p.problem = err

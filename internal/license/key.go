@@ -2,18 +2,11 @@ package license
 
 import (
 	"crypto/ed25519"
-	"crypto/x509"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
-	"fmt"
 	"time"
 )
-
-//go:embed husonym_ee_pub.pem
-var publicKeyPEM []byte
 
 // Key is the content of a license key, as signed by the issuer.
 type Key struct {
@@ -44,24 +37,28 @@ type Limits struct {
 	AllowedConnectionTypes []string `json:"allowed_connection_types,omitempty"`
 }
 
-// envelope is what the key value decodes to: the content and its signature.
+// envelope is what the key value decodes to: the content and its signature. The kid names
+// the public key to verify with; it sits outside the signed content, so altering it can
+// only make verification fail. Keys issued before kids existed carry none.
 type envelope struct {
 	License   string `json:"license"`
 	Signature string `json:"signature"`
+	Kid       string `json:"kid,omitempty"`
 }
 
-// Parse reads a key value and verifies its signature against the embedded public key.
+// Parse reads a key value and verifies its signature against the embedded public keys.
 func Parse(value string) (*Key, error) {
-	pub, err := EmbeddedPublicKey()
+	ring, err := EmbeddedKeyring()
 	if err != nil {
 		return nil, err
 	}
-	return parseWith(value, pub)
+	return parseWith(value, ring)
 }
 
-// parseWith reads a key value and verifies its signature against pub. Errors name the
-// stage that failed and never echo the key material.
-func parseWith(value string, pub ed25519.PublicKey) (*Key, error) {
+// parseWith reads a key value and verifies its signature against the key of ring that its
+// kid names, or LegacyKid without one. Errors name the stage that failed and never echo
+// the key material.
+func parseWith(value string, ring Keyring) (*Key, error) {
 	raw, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
 		return nil, errors.New("license key is not valid base64 (decoding)")
@@ -80,6 +77,14 @@ func parseWith(value string, pub ed25519.PublicKey) (*Key, error) {
 		return nil, errors.New("license key envelope has a signature field that is not valid base64 (envelope)")
 	}
 
+	kid := env.Kid
+	if kid == "" {
+		kid = LegacyKid
+	}
+	pub, known := ring[kid]
+	if !known {
+		return nil, errors.New("license key was signed with a key this version does not know (kid)")
+	}
 	if len(pub) != ed25519.PublicKeySize || !ed25519.Verify(pub, content, signature) {
 		return nil, errors.New("license key signature does not match its content (signature)")
 	}
@@ -89,21 +94,4 @@ func parseWith(value string, pub ed25519.PublicKey) (*Key, error) {
 		return nil, errors.New("license key content is not valid JSON (content)")
 	}
 	return &key, nil
-}
-
-// EmbeddedPublicKey returns the public key this binary verifies license keys against.
-func EmbeddedPublicKey() (ed25519.PublicKey, error) {
-	block, _ := pem.Decode(publicKeyPEM)
-	if block == nil {
-		return nil, errors.New("no PEM block found in the embedded public key")
-	}
-	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse the embedded public key: %w", err)
-	}
-	pub, ok := parsed.(ed25519.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("the embedded public key is not ed25519: %T", parsed)
-	}
-	return pub, nil
 }
