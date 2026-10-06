@@ -61,7 +61,7 @@ func newJobRunUnder(t *testing.T, license *testutil.FakeEELicense, tablesAtOnce 
 	var ts testsuite.WorkflowTestSuite
 	run := &jobRun{env: ts.NewTestWorkflowEnvironment()}
 	run.env.SetTestTimeout(30 * time.Second)
-	run.activities = NewActivities(nil, nil, nil, nil, nil, &Config{})
+	run.activities = NewActivities(nil, nil, nil, nil, nil, nil, &Config{})
 	run.env.RegisterWorkflow(NewJobWorkflow(license, tablesAtOnce).JobPiiDetect)
 	run.env.RegisterWorkflow(TablePiiDetect)
 	run.env.RegisterWorkflow(accounthooks.ProcessAccountHook)

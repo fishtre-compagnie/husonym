@@ -180,7 +180,7 @@ func newScanner(t *testing.T, datasets []Dataset, classifier *model.Classifier) 
 	var ts testsuite.WorkflowTestSuite
 	ts.SetLogger(silent{})
 	env := ts.NewTestActivityEnvironment()
-	activities := piidetect.NewActivities(nil, db, db.builder(t), nil, classifier, &piidetect.Config{})
+	activities := piidetect.NewActivities(nil, db, nil, db.builder(t), nil, classifier, &piidetect.Config{})
 	piidetect.Register(piitest.ActivityRegistry{Env: env}, nil, activities, runusage.New(nil), &piidetect.Config{})
 	return &scanner{t: t, env: env}
 }

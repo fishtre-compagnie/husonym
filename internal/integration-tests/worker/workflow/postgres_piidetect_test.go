@@ -150,9 +150,10 @@ func test_postgres_pii_detect(
 	testSuite.SetLogger(log.NewStructuredLogger(testutil.GetConcurrentTestLogger(t)))
 	env := testSuite.NewTestWorkflowEnvironment()
 	config := &piidetect.Config{}
+	conndataclient := husonymApi.OSSUnauthenticatedLicensedClients.ConnectionData()
 	piidetect.Register(
 		env, license,
-		piidetect.NewActivities(jobclient, connclient, data, nil, classifier, config),
+		piidetect.NewActivities(jobclient, connclient, conndataclient, data, nil, classifier, config),
 		runusage.New(husonymApi.OSSUnauthenticatedLicensedClients.Usage()),
 		config,
 	)

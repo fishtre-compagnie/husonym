@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/model"
 	"go.temporal.io/sdk/temporal"
@@ -16,6 +17,7 @@ const (
 	errorTypeUnsupportedSource = "UnsupportedSource"
 	errorTypeModelRejected     = "ModelRejected"
 	errorTypeModelUnanswered   = "ModelUnanswered"
+	errorTypeAnalyzerRefused   = "AnalyzerRefused"
 	errorTypeIncompleteScan    = "ScanIncomplete"
 )
 
@@ -65,4 +67,20 @@ func modelError(err error) error {
 		)
 	}
 	return fmt.Errorf("the model could not be asked: %w", err)
+}
+
+// contentError is the error of the content activity for a call that failed. A call the
+// API refuses to the worker is not retried: a new attempt would be refused as well. Its
+// message does not repeat what the API said, which the cause holds. Any other error is
+// returned as it is, for the retry policy of the activity to attempt the call again.
+func contentError(err error) error {
+	switch connect.CodeOf(err) {
+	case connect.CodePermissionDenied, connect.CodeUnauthenticated:
+		return temporal.NewNonRetryableApplicationError(
+			"the API refused to analyze the content of the columns",
+			errorTypeAnalyzerRefused,
+			err,
+		)
+	}
+	return err
 }

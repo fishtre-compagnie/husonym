@@ -18,9 +18,10 @@
 //   - the registered names, which are the names of the functions: JobPiiDetect,
 //     TablePiiDetect, GetPiiDetectJobDetails, GetLastSuccessfulWorkflowId,
 //     GetTablesToPiiScan, SaveJobPiiDetectReport, GetColumnData, DetectPiiRegex,
-//     DetectPiiLLM, SaveTablePiiDetectReport. The API starts JobPiiDetect by its name
-//     and decodes the input of TablePiiDetect from the history of a run. A run also
-//     asks for RecordRunStarted and RecordRunEnded, of the package runusage;
+//     DetectPiiLLM, DetectPiiContent, SaveTablePiiDetectReport. The API starts
+//     JobPiiDetect by its name and decodes the input of TablePiiDetect from the history
+//     of a run. A run also asks for RecordRunStarted and RecordRunEnded, of the package
+//     runusage;
 //   - the serialized form of the requests and responses, whose keys are the names of
 //     their Go fields. A member is only ever added, and left out when it is empty: a
 //     run replays to the result it recorded, which holds none of the later members;

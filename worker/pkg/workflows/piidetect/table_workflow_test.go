@@ -63,7 +63,7 @@ func newTableEnv(t *testing.T) (*testsuite.TestWorkflowEnvironment, *Activities)
 	var ts testsuite.WorkflowTestSuite
 	env := ts.NewTestWorkflowEnvironment()
 	env.SetTestTimeout(30 * time.Second)
-	activities := NewActivities(nil, nil, nil, nil, nil, &Config{})
+	activities := NewActivities(nil, nil, nil, nil, nil, nil, &Config{})
 	env.RegisterActivity(activities.GetColumnData)
 	env.RegisterActivity(activities.DetectPiiRegex)
 	env.RegisterActivity(activities.DetectPiiLLM)

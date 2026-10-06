@@ -47,13 +47,13 @@ func functionName(function any) string {
 func Test_Register_KeepsTheRegisteredNames(t *testing.T) {
 	names := &registered{}
 	Register(
-		names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, &Config{}), runusage.New(nil), &Config{},
+		names, testutil.NewFakeEELicense(), NewActivities(nil, nil, nil, nil, nil, nil, &Config{}), runusage.New(nil), &Config{},
 	)
 
 	require.Equal(t, []string{"JobPiiDetect", "TablePiiDetect"}, names.workflows)
 	require.Equal(t, []string{
 		"GetPiiDetectJobDetails", "GetLastSuccessfulWorkflowId", "GetTablesToPiiScan", "SaveJobPiiDetectReport",
-		"GetColumnData", "DetectPiiRegex", "DetectPiiLLM", "SaveTablePiiDetectReport",
+		"GetColumnData", "DetectPiiRegex", "DetectPiiLLM", "DetectPiiContent", "SaveTablePiiDetectReport",
 		"RecordRunStarted", "RecordRunEnded",
 	}, names.activities)
 	require.Equal(t, "JobPiiDetect", JobWorkflowName)
@@ -260,6 +260,24 @@ func Test_SerializedForms(t *testing.T) {
 			},
 			`{"PiiColumns":{},"Input":"profiles","Status":"partial","Model":"local-model","Unanswered":["note"],` +
 				`"BelowThreshold":[{"column_name":"city","category":"location","confidence":0.25}]}`,
+		},
+		{
+			"the content analysis' input",
+			&DetectPiiContentRequest{ConnectionId: "connection-1", TableSchema: "public", TableName: "users", Columns: []string{"note"}},
+			`{"ConnectionId":"connection-1","TableSchema":"public","TableName":"users","Columns":["note"]}`,
+		},
+		{
+			"the content analysis' output",
+			&DetectPiiContentResponse{
+				PiiColumns: map[string]report.AnalyzerFinding{"note": {Category: "free_text_pii", Entity: "PERSON", Matches: 7, Sampled: 50}},
+				Status:     "answered",
+			},
+			`{"PiiColumns":{"note":{"category":"free_text_pii","entity":"PERSON","matches":7,"sampled":50}},"Status":"answered"}`,
+		},
+		{
+			"the content analysis' output, with columns that were not analyzed",
+			&DetectPiiContentResponse{PiiColumns: map[string]report.AnalyzerFinding{}, NotAnalyzed: []string{"note"}, Status: "partial"},
+			`{"PiiColumns":{},"NotAnalyzed":["note"],"Status":"partial"}`,
 		},
 		{
 			"the report save's input",

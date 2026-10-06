@@ -105,7 +105,7 @@ func Test_GetPiiDetectJobDetails_SourceKinds(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			jobs := &fakeJobs{job: piiJob(tt.source, &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{})}
-			run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{TablesAtOnce: 5}))
+			run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{TablesAtOnce: 5}))
 
 			details, _, err := execute[GetPiiDetectJobDetailsResponse](
 				t, run, "GetPiiDetectJobDetails", &GetPiiDetectJobDetailsRequest{JobId: "job-1"},
@@ -129,7 +129,7 @@ func Test_GetPiiDetectJobDetails_SourceKinds(t *testing.T) {
 func Test_GetPiiDetectJobDetails_TablesAtOnce(t *testing.T) {
 	for configured, want := range map[int]int{0: 3, -1: 3, 1: 1, 8: 8} {
 		jobs := &fakeJobs{job: piiJob(postgresSource(), &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{})}
-		run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{TablesAtOnce: configured}))
+		run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{TablesAtOnce: configured}))
 		details, _, err := execute[GetPiiDetectJobDetailsResponse](
 			t, run, "GetPiiDetectJobDetails", &GetPiiDetectJobDetailsRequest{JobId: "job-1"},
 		)
@@ -164,7 +164,7 @@ func Test_GetPiiDetectJobDetails_ModelInput(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			config := &mgmtv1alpha1.JobTypeConfig_JobTypePiiDetect{DataSampling: tt.sampling, UserPrompt: &prompt}
 			jobs := &fakeJobs{job: piiJob(postgresSource(), config)}
-			run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
+			run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{}))
 
 			details, payload, err := execute[GetPiiDetectJobDetailsResponse](
 				t, run, "GetPiiDetectJobDetails", &GetPiiDetectJobDetailsRequest{JobId: "job-1"},
@@ -183,7 +183,7 @@ func Test_GetPiiDetectJobDetails_ModelInput(t *testing.T) {
 func Test_GetPiiDetectJobDetails_RefusesAJobOfAnotherType(t *testing.T) {
 	job := piiJob(postgresSource(), nil)
 	job.JobType = &mgmtv1alpha1.JobTypeConfig{JobType: &mgmtv1alpha1.JobTypeConfig_Sync{}}
-	run := newActivityRun(t, NewActivities(&fakeJobs{job: job}, nil, nil, nil, nil, &Config{}))
+	run := newActivityRun(t, NewActivities(&fakeJobs{job: job}, nil, nil, nil, nil, nil, &Config{}))
 
 	_, _, err := execute[GetPiiDetectJobDetailsResponse](t, run, "GetPiiDetectJobDetails", &GetPiiDetectJobDetailsRequest{JobId: "job-1"})
 	appErr := requireNotRetried(t, err, "NotPiiDetectJob")
@@ -193,7 +193,7 @@ func Test_GetPiiDetectJobDetails_RefusesAJobOfAnotherType(t *testing.T) {
 // A job that cannot be read may be read at the next attempt.
 func Test_GetPiiDetectJobDetails_AJobThatCannotBeReadIsRetried(t *testing.T) {
 	jobs := &fakeJobs{getJobErr: connect.NewError(connect.CodeUnavailable, errors.New("the API is away"))}
-	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
+	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{}))
 
 	_, _, err := execute[GetPiiDetectJobDetailsResponse](t, run, "GetPiiDetectJobDetails", &GetPiiDetectJobDetailsRequest{JobId: "job-1"})
 	var appErr *temporal.ApplicationError
@@ -286,7 +286,7 @@ func Test_GetLastSuccessfulWorkflowId(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			jobs := &fakeJobs{contexts: tt.contexts, getErr: tt.getErr}
 			schedules := schedule(t, tt.describeErr, tt.actions...)
-			run := newActivityRun(t, NewActivities(jobs, nil, nil, schedules, nil, &Config{}))
+			run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, schedules, nil, &Config{}))
 
 			response, _, err := execute[GetLastSuccessfulWorkflowIdResponse](
 				t, run, "GetLastSuccessfulWorkflowId", &GetLastSuccessfulWorkflowIdRequest{AccountId: "account-1", JobId: "job-1"},
@@ -324,7 +324,7 @@ func listing(t *testing.T, jobs *fakeJobs, classifier *model.Classifier) *activi
 	t.Helper()
 	builder, data := source(t)
 	data.EXPECT().GetSchema(mock.Anything, mock.Anything).Return(catalogue(), nil).Maybe()
-	return newActivityRun(t, NewActivities(jobs, connections, builder, nil, classifier, &Config{}))
+	return newActivityRun(t, NewActivities(jobs, connections, nil, builder, nil, classifier, &Config{}))
 }
 
 func listed(response *GetTablesToPiiScanResponse) []string {
@@ -457,7 +457,7 @@ func Test_GetTablesToPiiScan_FingerprintFollowsTheColumns(t *testing.T) {
 	fingerprint := func(columns ...*mgmtv1alpha1.DatabaseColumn) string {
 		builder, data := source(t)
 		data.EXPECT().GetSchema(mock.Anything, mock.Anything).Return(columns, nil)
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, nil, &Config{}))
 		response, _, err := execute[GetTablesToPiiScanResponse](t, run, "GetTablesToPiiScan", &GetTablesToPiiScanRequest{
 			AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-1",
 		})
@@ -617,7 +617,7 @@ func Test_GetTablesToPiiScan_Incremental(t *testing.T) {
 func Test_GetTablesToPiiScan_RefusesASourceWithoutTables(t *testing.T) {
 	t.Run("by the kind of its connection", func(t *testing.T) {
 		builder := connectiondata.NewMockConnectionDataBuilder(t) // never asked
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, nil, &Config{}))
 		_, _, err := execute[GetTablesToPiiScanResponse](t, run, "GetTablesToPiiScan", &GetTablesToPiiScanRequest{
 			AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-mongo",
 		})
@@ -628,7 +628,7 @@ func Test_GetTablesToPiiScan_RefusesASourceWithoutTables(t *testing.T) {
 	t.Run("by what its reader answers", func(t *testing.T) {
 		builder, data := source(t)
 		data.EXPECT().GetSchema(mock.Anything, mock.Anything).Return(nil, errors.ErrUnsupported)
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, nil, &Config{}))
 		_, _, err := execute[GetTablesToPiiScanResponse](t, run, "GetTablesToPiiScan", &GetTablesToPiiScanRequest{
 			AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-1",
 		})
@@ -638,7 +638,7 @@ func Test_GetTablesToPiiScan_RefusesASourceWithoutTables(t *testing.T) {
 	t.Run("a catalogue that cannot be read may be read at the next attempt", func(t *testing.T) {
 		builder, data := source(t)
 		data.EXPECT().GetSchema(mock.Anything, mock.Anything).Return(nil, errors.New("connection refused"))
-		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, builder, nil, nil, &Config{}))
+		run := newActivityRun(t, NewActivities(&fakeJobs{}, connections, nil, builder, nil, nil, &Config{}))
 		_, _, err := execute[GetTablesToPiiScanResponse](t, run, "GetTablesToPiiScan", &GetTablesToPiiScanRequest{
 			AccountId: "account-1", JobId: "job-1", SourceConnectionId: "connection-1",
 		})
@@ -650,7 +650,7 @@ func Test_GetTablesToPiiScan_RefusesASourceWithoutTables(t *testing.T) {
 
 func Test_SaveJobPiiDetectReport(t *testing.T) {
 	jobs := &fakeJobs{}
-	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
+	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{}))
 
 	response, _, err := execute[SaveJobPiiDetectReportResponse](t, run, "SaveJobPiiDetectReport", &SaveJobPiiDetectReportRequest{
 		AccountId: "account-1", JobId: "job-1",
@@ -686,7 +686,7 @@ func Test_SaveJobPiiDetectReport(t *testing.T) {
 
 func Test_SaveJobPiiDetectReport_FailsWhenTheIndexCannotBeStored(t *testing.T) {
 	jobs := &fakeJobs{setErr: connect.NewError(connect.CodeUnavailable, errors.New("connection refused"))}
-	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, &Config{}))
+	run := newActivityRun(t, NewActivities(jobs, nil, nil, nil, nil, nil, &Config{}))
 	_, _, err := execute[SaveJobPiiDetectReportResponse](t, run, "SaveJobPiiDetectReport", &SaveJobPiiDetectReportRequest{
 		AccountId: "account-1", JobId: "job-1", Report: &report.JobReport{},
 	})
