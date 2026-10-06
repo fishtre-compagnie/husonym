@@ -26,6 +26,12 @@ type Key struct {
 	// Nil means the key does not say; zero means no grace at all.
 	GraceDays *int    `json:"grace_days,omitempty"`
 	Limits    *Limits `json:"limits,omitempty"`
+	// Plan is a label for humans; nothing is decided from it.
+	Plan string `json:"plan,omitempty"`
+	// Nil means the key does not list features and allows all of them; an empty list allows none.
+	Features []string `json:"features,omitempty"`
+	// Telemetry is read through TelemetryMode, which gives unknown values a meaning.
+	Telemetry string `json:"telemetry,omitempty"`
 }
 
 // Limits caps what a license allows. A nil field is uncapped, which is distinct
@@ -33,6 +39,7 @@ type Key struct {
 type Limits struct {
 	MaxJobs                *int     `json:"max_jobs,omitempty"`
 	MaxConnections         *int     `json:"max_connections,omitempty"`
+	MaxSources             *int     `json:"max_sources,omitempty"`
 	AllowedConnectionTypes []string `json:"allowed_connection_types,omitempty"`
 }
 

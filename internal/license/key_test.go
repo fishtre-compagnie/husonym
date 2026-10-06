@@ -63,6 +63,40 @@ func Test_parseWith_AcceptsAKeyIssuedBeforeThisPackage(t *testing.T) {
 	require.NotEmpty(t, key.Id)
 }
 
+func Test_parseWith_AKeyIssuedBeforeNamesNoFeatureAndUnlocksAll(t *testing.T) {
+	key, err := parseWith(readTestdata(t, "issued-before.key"), readPublicKey(t, "issued-before.pub.pem"))
+	require.NoError(t, err)
+	require.Nil(t, key.Features)
+	require.Nil(t, key.Limits.MaxSources)
+	for _, f := range AllFeatures() {
+		require.True(t, key.HasFeature(f), f)
+	}
+}
+
+func Test_parseWith_ReadsBackTheFeaturesAndSourceCapItCarries(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	content, err := json.Marshal(Key{
+		Version:   "v1",
+		Id:        "a",
+		Plan:      "team",
+		Features:  []string{"job_hooks"},
+		Telemetry: "none",
+		Limits:    &Limits{MaxSources: ptr(3)},
+	})
+	require.NoError(t, err)
+
+	key, err := parseWith(encode(t, content, priv), pub)
+	require.NoError(t, err)
+	require.Equal(t, []string{"job_hooks"}, key.Features)
+	require.Equal(t, "team", key.Plan)
+	require.Equal(t, TelemetryNone, key.TelemetryMode())
+	require.Equal(t, 3, *key.Limits.MaxSources)
+	require.True(t, key.HasFeature(FeatureJobHooks))
+	require.False(t, key.HasFeature(FeatureSso))
+}
+
 func Test_parseWith_DistinguishesAbsentFromZero(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
