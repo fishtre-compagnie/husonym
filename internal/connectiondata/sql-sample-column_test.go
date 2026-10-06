@@ -90,6 +90,15 @@ func Test_HoldsText(t *testing.T) {
 	for _, dataType := range []string{"text", "ntext", "NTEXT"} {
 		require.False(t, holdsText(sqlmanager_shared.MssqlDriver, dataType), dataType)
 	}
+	// A length is no reason to refuse a type, an array suffix is: an array takes no comparison
+	// with the empty string.
+	require.True(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "character varying(20)"))
+	require.True(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "character(3) "))
+	for _, dataType := range []string{
+		"character varying(20)[]", "character(3)[]", "character varying[]", "text[]", "character varying(20)[][]",
+	} {
+		require.False(t, holdsText(sqlmanager_shared.GoquPostgresDriver, dataType), dataType)
+	}
 	// A type name of one engine is no text type of another.
 	require.False(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "varchar"))
 	require.False(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "nvarchar"))

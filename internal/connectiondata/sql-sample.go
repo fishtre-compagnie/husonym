@@ -74,10 +74,17 @@ var textTypes = map[string]map[string]struct{}{
 
 // holdsText tells whether a column of the catalogue type dataType holds text that the
 // empty string can be compared with, on the database of the goqu driver. The type is
-// matched without its length (varchar(255)) and in any case. On MySQL the comparison also
-// leaves out the values made of spaces only under a PAD SPACE collation.
+// matched without its length (varchar(255)) and in any case. Anything that follows the
+// length, such as the suffix of an array, makes the type another one. On MySQL the comparison
+// also leaves out the values made of spaces only under a PAD SPACE collation.
 func holdsText(driver, dataType string) bool {
-	name, _, _ := strings.Cut(dataType, "(")
+	name, afterOpen, hasLength := strings.Cut(dataType, "(")
+	if hasLength {
+		_, afterLength, closed := strings.Cut(afterOpen, ")")
+		if !closed || strings.TrimSpace(afterLength) != "" {
+			return false
+		}
+	}
 	_, ok := textTypes[driver][strings.ToLower(strings.TrimSpace(name))]
 	return ok
 }
@@ -427,6 +434,87 @@ func readSample(
 		return err
 	}
 	logSampleFailure(ctx, logger, "window query failed, keeping the short spread sample", err)
+	return nil
+}
+
+// readColumnSample hands the values of a column sample to send, numRows at most. The values
+// of a column are read before any is sent, and they all come from one query, so a value is
+// never sent twice for being drawn by two queries.
+//
+// The spread query is read first when there is one. When it ends with fewer than numRows
+// values, because it returned too few or failed, the window is read as well, and the query
+// that gave more values is the one that is sent, the spread when both gave as many. A done
+// context ends the sample with the error of the context, before the window is read. If the
+// window fails after values of the spread were read, the spread is sent without an error.
+//
+// Errors are those of readSample.
+func readColumnSample(
+	ctx context.Context,
+	logger *slog.Logger,
+	db sampleQuerier,
+	mapper recordMapper,
+	spread string,
+	hasSpread bool,
+	window string,
+	numRows uint,
+	send func(row map[string]any) error,
+) error {
+	var drawn []map[string]any
+	if hasSpread {
+		var err error
+		drawn, err = collectRows(ctx, db, mapper, spread, numRows)
+		if uint(len(drawn)) >= numRows {
+			return sendRows(drawn, send)
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err != nil {
+			logSampleFailure(ctx, logger, "spread sample query failed, reading the window", err)
+		}
+	}
+
+	windowed, err := collectRows(ctx, db, mapper, window, numRows)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if len(drawn) == 0 {
+			return err
+		}
+		logSampleFailure(ctx, logger, "window query failed, keeping the short spread sample", err)
+		return sendRows(drawn, send)
+	}
+	if len(windowed) > len(drawn) {
+		drawn = windowed
+	}
+	return sendRows(drawn, send)
+}
+
+// collectRows reads the rows of a query into memory, limit at most. It returns the rows read,
+// also when it fails.
+func collectRows(
+	ctx context.Context,
+	db sampleQuerier,
+	mapper recordMapper,
+	query string,
+	limit uint,
+) ([]map[string]any, error) {
+	var collected []map[string]any
+	_, err := streamRows(ctx, db, mapper, query, limit, func(row map[string]any) error {
+		collected = append(collected, row)
+		return nil
+	})
+	return collected, err
+}
+
+// sendRows hands rows to send in order, and ends at the first it refuses.
+func sendRows(rows []map[string]any, send func(row map[string]any) error) error {
+	for _, row := range rows {
+		if err := send(row); err != nil {
+			return &sampleSendError{err: err}
+		}
+	}
 	return nil
 }
 

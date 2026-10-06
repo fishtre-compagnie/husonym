@@ -322,6 +322,46 @@ func Test_freeTextDetection(t *testing.T) {
 	require.Equal(t, uint32(3), got.GetMatchCount())
 }
 
+// A free-text column that holds a single filled value names a person, once: it is not told as
+// personal data and it is not left unanalyzed.
+func Test_DetectPiiInConnectionData_FreeTextWithOneFilledValue(t *testing.T) {
+	dataconn := connectiondata.NewMockConnectionDataService(t)
+	dataconn.EXPECT().
+		SampleColumn(mock.Anything, mock.Anything, "public", "tickets", "comment", uint(20)).
+		RunAndReturn(func(_ context.Context, stream connectiondata.SampleDataStream, _, _, _ string, _ uint) error {
+			sendRows(t, stream, map[string]any{"comment": "Rappeler Marie avant midi svp"})
+			return nil
+		})
+	dataconn.EXPECT().
+		GetTableSchema(mock.Anything, "public", "tickets").
+		Return([]*mgmtv1alpha1.DatabaseColumn{
+			{Schema: "public", Table: "tickets", Column: "comment", DataType: "text"},
+		}, nil)
+	builder := connectiondata.NewMockConnectionDataBuilder(t)
+	builder.EXPECT().NewDataConnection(mock.Anything, mock.Anything).Return(dataconn, nil)
+	connections := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
+	connections.EXPECT().GetConnection(mock.Anything, mock.Anything).Return(
+		connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{Connection: &mgmtv1alpha1.Connection{Id: "c1"}}), nil,
+	)
+	service := &Service{
+		cfg:                   &Config{IsPresidioEnabled: true},
+		connectionService:     connections,
+		connectiondatabuilder: builder,
+		analyze:               entitiesIn(t, textMarkers),
+	}
+
+	resp, err := service.DetectPiiInConnectionData(t.Context(), connect.NewRequest(
+		&mgmtv1alpha1.DetectPiiInConnectionDataRequest{
+			ConnectionId: "c1", Schema: "public", Table: "tickets", Columns: []string{"comment"},
+		},
+	))
+
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.GetDetections())
+	require.Len(t, resp.Msg.GetVerdicts(), 1)
+	require.False(t, resp.Msg.GetVerdicts()[0].GetContentNotAnalyzed())
+}
+
 // The scan of a table names the columns it was asked about, and tells free text of them.
 func Test_DetectPiiInConnectionData_FreeText(t *testing.T) {
 	dataconn := connectiondata.NewMockConnectionDataService(t)

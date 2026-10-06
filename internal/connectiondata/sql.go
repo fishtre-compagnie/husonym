@@ -139,7 +139,9 @@ func (s *SQLConnectionDataService) SampleColumn(
 		}
 	}
 	if found == nil {
-		return connect.NewError(connect.CodeNotFound, errors.New("the table has no such column"))
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf(
+			"the table %s has no column %q", sqlmanager_shared.BuildTable(schema, table), column,
+		))
 	}
 	goquDriver, err := querybuilder.GetGoquDriverFromConnection(s.connection)
 	if err != nil {
@@ -202,7 +204,11 @@ func (s *SQLConnectionDataService) sample(
 		}
 		return stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()})
 	}
-	if err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
+	read := readSample
+	if filter != nil {
+		read = readColumnSample
+	}
+	if err := read(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
 		return wrapSampleError(err, schemaTable, goquDriver)
 	}
 	return nil

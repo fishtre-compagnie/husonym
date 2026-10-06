@@ -98,9 +98,76 @@ func Test_SampleColumn_ReturnsAllTheFilledValuesWhenFewerThanAsked(t *testing.T)
 		rows, err := f.sampleColumn(t, table, "nick", 500)
 
 		require.NoError(t, err)
-		require.GreaterOrEqual(t, len(rows), sparseRows/filledEvery)
+		require.Len(t, rows, sparseRows/filledEvery)
 		for _, row := range rows {
 			require.NotEmpty(t, sampledText(t, row["nick"]))
+		}
+	})
+}
+
+// fewValuesTable builds, once, a table of sparseRows rows whose column nick holds a value 'row-N' in
+// the rows whose rank is a multiple of every, and NULL in the others.
+func (f *sampleFixture) fewValuesTable(t *testing.T, name string, every int) string {
+	t.Helper()
+	return f.dataset(t, name, func() {
+		f.exec(t, fmt.Sprintf(
+			"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, %s INT NOT NULL, label VARCHAR(40) NOT NULL, nick VARCHAR(40) NULL)",
+			f.qualified(name), f.quote("rank")))
+		f.load(t, name, 1, sparseRows, 1)
+		f.exec(t, fmt.Sprintf("UPDATE %s SET nick = label WHERE %s %% %d = 0", f.qualified(name), f.quote("rank"), every))
+		f.analyze(t, name)
+	})
+}
+
+// A column with one filled value gives that value once.
+func Test_SampleColumn_OneFilledValueIsSampledOnce(t *testing.T) {
+	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
+		table := f.fewValuesTable(t, "one_value", sparseRows)
+
+		rows, err := f.sampleColumn(t, table, "nick", 50)
+
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		require.Equal(t, "row-5000", sampledText(t, rows[0]["nick"]))
+	})
+}
+
+// A column with fewer filled values than asked for gives each of them once.
+func Test_SampleColumn_FewerValuesThanAskedAreAllDistinct(t *testing.T) {
+	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
+		table := f.fewValuesTable(t, "twenty_values", sparseRows/20)
+
+		rows, err := f.sampleColumn(t, table, "nick", 50)
+
+		require.NoError(t, err)
+		require.Len(t, rows, 20)
+		seen := map[string]struct{}{}
+		for _, row := range rows {
+			seen[sampledText(t, row["nick"])] = struct{}{}
+		}
+		require.Len(t, seen, 20)
+	})
+}
+
+// A PostgreSQL column of an array of bounded text is sampled on NULL only: the empty string
+// is not comparable with an array.
+func Test_SampleColumn_PostgresBoundedTextArray(t *testing.T) {
+	forEachEngine(t, []string{familyPostgres}, func(t *testing.T, f *sampleFixture) {
+		table := f.dataset(t, "bounded_arrays", func() {
+			f.exec(t, fmt.Sprintf(
+				"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, tags VARCHAR(20)[] NULL, codes CHAR(3)[] NULL)",
+				f.qualified("bounded_arrays")))
+			f.exec(t, fmt.Sprintf(
+				"INSERT INTO %s SELECT g, ARRAY['a', 'b'], ARRAY['xyz'] FROM generate_series(1, 30) g",
+				f.qualified("bounded_arrays")))
+			f.analyze(t, "bounded_arrays")
+		})
+
+		for _, column := range []string{"tags", "codes"} {
+			rows, err := f.sampleColumn(t, table, column, 10)
+
+			require.NoError(t, err, column)
+			require.Len(t, rows, 10, column)
 		}
 	})
 }
@@ -115,6 +182,8 @@ func Test_SampleColumn_ColumnAbsent(t *testing.T) {
 
 		require.Error(t, err)
 		require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+		require.Contains(t, err.Error(), `"missing"`)
+		require.Contains(t, err.Error(), f.schema+"."+table)
 		require.Empty(t, rows)
 	})
 }
