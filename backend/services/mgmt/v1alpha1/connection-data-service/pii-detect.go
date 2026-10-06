@@ -202,43 +202,11 @@ func (s *Service) DetectPiiInConnectionData(
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		told, ok := content.detect(ctx, col, values)
-		if !ok {
-			continue
+		if detection := content.detection(
+			ctx, req.Msg.GetSchema(), req.Msg.GetTable(), col, columnTypes[col], values,
+		); detection != nil {
+			detections = append(detections, detection)
 		}
-		if told.freeText {
-			detections = append(detections,
-				freeTextDetection(req.Msg.GetSchema(), req.Msg.GetTable(), col, values, told))
-			continue
-		}
-		entity, avgScore, matchCount := told.entity, told.avgScore, told.matchCount
-		suggestion, ok := piidetect.SuggestionForEntity(entity, columnTypes[col])
-		if !ok {
-			continue
-		}
-		// Presidio ne distingue ni prénom/nom/nom complet (tout est PERSON), ni
-		// ville/adresse (tout est LOCATION). On tranche sur la forme des valeurs,
-		// sinon une colonne d'adresses se voyait suggérer Generate City.
-		suggestion.Category, suggestion.Suggested = piidetect.RefineByValues(
-			suggestion.Category, suggestion.Suggested, values,
-		)
-		detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
-			Schema:                     req.Msg.GetSchema(),
-			Table:                      req.Msg.GetTable(),
-			Column:                     col,
-			EntityType:                 entity,
-			Score:                      float32(avgScore),
-			SuggestedTransformerSource: suggestion.Suggested,
-			IsSensitive:                suggestion.Sensitive,
-			MatchCount:                 clampUint32(matchCount),
-			SampledCount:               sampleCount(values),
-			DataCategory:               suggestion.Category,
-			PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
-			PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
-			//nolint:misspell // message produit, rédigé en français
-			PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
-				entity, matchCount, len(values), avgScore),
-		})
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
@@ -319,14 +287,98 @@ type contentAnalysis struct {
 	notAnalyzed map[string]struct{}
 }
 
-// detect tells what the analyzer finds in the values of a column, by the rule of free text for a
-// free-text column and by the rule of the third for any other (see column and freeText).
-func (a *contentAnalysis) detect(ctx context.Context, name string, values []string) (columnVerdict, bool) {
-	if piidetect.IsFreeText(values) {
-		return a.freeText(ctx, name, values)
+// detection is the content detection of one column, nil when its content holds nothing the scan
+// tells of, or could not be analyzed.
+func (a *contentAnalysis) detection(
+	ctx context.Context,
+	schema, table, column, dataType string,
+	values []string,
+) *mgmtv1alpha1.ColumnPiiDetection {
+	told, ok := a.detect(ctx, column, values)
+	if !ok {
+		return nil
 	}
-	entity, avgScore, matchCount, ok := a.column(ctx, name, values)
-	return columnVerdict{entity: entity, avgScore: avgScore, matchCount: matchCount}, ok
+	if told.freeText {
+		return freeTextDetection(schema, table, column, values, told)
+	}
+	suggestion, ok := piidetect.SuggestionForEntity(told.entity, dataType)
+	if !ok {
+		return nil
+	}
+	// Presidio ne distingue ni prénom/nom/nom complet (tout est PERSON), ni
+	// ville/adresse (tout est LOCATION). On tranche sur la forme des valeurs,
+	// sinon une colonne d'adresses se voyait suggérer Generate City.
+	suggestion.Category, suggestion.Suggested = piidetect.RefineByValues(
+		suggestion.Category, suggestion.Suggested, values,
+	)
+	return &mgmtv1alpha1.ColumnPiiDetection{
+		Schema:                     schema,
+		Table:                      table,
+		Column:                     column,
+		EntityType:                 told.entity,
+		Score:                      float32(told.avgScore),
+		SuggestedTransformerSource: suggestion.Suggested,
+		IsSensitive:                suggestion.Sensitive,
+		MatchCount:                 clampUint32(told.matchCount),
+		SampledCount:               sampleCount(values),
+		DataCategory:               suggestion.Category,
+		PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
+		PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+		//nolint:misspell // message produit, rédigé en français
+		PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
+			told.entity, told.matchCount, len(values), told.avgScore),
+	}
+}
+
+// detect tells what the analyzer finds in the values of a column, which it analyzes once: the
+// dominant entity, its mean score and how many values carry it. ok is false when nothing is told
+// of the column, and when it could not be analyzed, which is kept.
+//
+// The rule of the third is tried on every column: an entity must cover a fraction of the values
+// sufficient. A column it tells nothing of, and which is free text, is judged on
+// piidetect.FreeTextMinMatches values holding a sensitive entity, whatever the entities are and
+// the size of the sample. The entity of that verdict is the sensitive one found in the most
+// values.
+//
+// A column some values of which the analyzer refused is told by the values it took, when they
+// are enough to find an entity: what was found stands. When they are not, the column is not
+// told empty of personal data: the values refused may be the ones that hold some.
+func (a *contentAnalysis) detect(ctx context.Context, name string, values []string) (columnVerdict, bool) {
+	found, refused, ok := a.examine(ctx, name, values)
+	if !ok {
+		return columnVerdict{}, false
+	}
+	// Une entité doit couvrir une fraction suffisante des valeurs.
+	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
+		return columnVerdict{entity: found.entity, avgScore: found.avgScore, matchCount: found.matchCount}, true
+	}
+	if piidetect.IsFreeText(values) && found.sensitive.values >= piidetect.FreeTextMinMatches {
+		return columnVerdict{
+			entity:     found.sensitive.entity,
+			avgScore:   found.sensitive.avgScore,
+			matchCount: found.sensitive.values,
+			names:      found.sensitive.names,
+			freeText:   true,
+		}, true
+	}
+	if refused != nil {
+		a.logger.Warn(fmt.Sprintf("presidio refused values of column %q: %v", name, refused))
+		a.notAnalyzed[name] = struct{}{}
+	}
+	return columnVerdict{}, false
+}
+
+// column is detect for a column the rule of the third alone judges: the entity, its mean score
+// and how many values carry it.
+//
+//nolint:unused // the rule of the third, as the tests of this package pin it; detect carries it
+func (a *contentAnalysis) column(
+	ctx context.Context,
+	name string,
+	values []string,
+) (entity string, avgScore float64, matchCount int, ok bool) {
+	told, ok := a.detect(ctx, name, values)
+	return told.entity, told.avgScore, told.matchCount, ok
 }
 
 // examine analyzes the values of a column, once. ok is false when the column could not be
@@ -350,60 +402,6 @@ func (a *contentAnalysis) examine(
 		return columnEntity{}, nil, false
 	}
 	return found, refused, true
-}
-
-// keepRefused keeps a column the analyzer refused values of, and told nothing, as not analyzed.
-func (a *contentAnalysis) keepRefused(name string, refused error) {
-	if refused != nil {
-		a.logger.Warn(fmt.Sprintf("presidio refused values of column %q: %v", name, refused))
-		a.notAnalyzed[name] = struct{}{}
-	}
-}
-
-// column tells what the analyzer finds in the values of a column: the dominant entity, its
-// mean score and how many values carry it. ok is false when no entity covers enough of the
-// values, and when the column could not be analyzed, which is kept.
-//
-// A column some values of which the analyzer refused is told by the values it took, when they
-// are enough to find an entity: what was found stands. When they are not, the column is not
-// told empty of personal data: the values refused may be the ones that hold some.
-func (a *contentAnalysis) column(
-	ctx context.Context,
-	name string,
-	values []string,
-) (entity string, avgScore float64, matchCount int, ok bool) {
-	found, refused, ok := a.examine(ctx, name, values)
-	if !ok {
-		return "", 0, 0, false
-	}
-	// Une entité doit couvrir une fraction suffisante des valeurs.
-	if found.entity != "" && found.matchCount >= minMatches(len(values)) {
-		return found.entity, found.avgScore, found.matchCount, true
-	}
-	a.keepRefused(name, refused)
-	return "", 0, 0, false
-}
-
-// freeText is column for a free-text column, which names and places hide in a few values of: it
-// is told from piidetect.FreeTextMinMatches values holding a sensitive entity, whatever the
-// entities are and the size of the sample. The entity of the verdict is the sensitive one found
-// in the most values.
-func (a *contentAnalysis) freeText(ctx context.Context, name string, values []string) (columnVerdict, bool) {
-	found, refused, ok := a.examine(ctx, name, values)
-	if !ok {
-		return columnVerdict{}, false
-	}
-	if found.sensitive.values >= piidetect.FreeTextMinMatches {
-		return columnVerdict{
-			entity:     found.sensitive.entity,
-			avgScore:   found.sensitive.avgScore,
-			matchCount: found.sensitive.values,
-			names:      found.sensitive.names,
-			freeText:   true,
-		}, true
-	}
-	a.keepRefused(name, refused)
-	return columnVerdict{}, false
 }
 
 // columnVerdict is what the analyzer tells of a column: an entity, its mean score and how many
@@ -502,11 +500,7 @@ func analyzeColumn(
 	threshold float64,
 	language string,
 ) (found columnEntity, refused, err error) {
-	type agg struct {
-		count    int
-		scoreSum float64
-	}
-	byEntity := map[string]*agg{}
+	byEntity := map[string]*entityTally{}
 	refusedValues := 0
 	sensitiveValueCount := 0
 	for _, v := range values {
@@ -544,7 +538,7 @@ func analyzeColumn(
 		for e, sc := range bestPerEntity {
 			a := byEntity[e]
 			if a == nil {
-				a = &agg{}
+				a = &entityTally{}
 				byEntity[e] = a
 			}
 			a.count++
@@ -557,44 +551,55 @@ func analyzeColumn(
 	}
 
 	sensitive := sensitiveValues{values: sensitiveValueCount}
-	for e, a := range byEntity {
-		if !isSensitiveEntity(e) {
-			continue
-		}
-		sensitive.names = append(sensitive.names, e)
-		if sensitive.entity == "" ||
-			a.count > byEntity[sensitive.entity].count ||
-			(a.count == byEntity[sensitive.entity].count && e < sensitive.entity) {
-			sensitive.entity = e
+	for e := range byEntity {
+		if isSensitiveEntity(e) {
+			sensitive.names = append(sensitive.names, e)
 		}
 	}
 	slices.Sort(sensitive.names)
-	if sensitive.entity != "" {
-		best := byEntity[sensitive.entity]
-		sensitive.avgScore = best.scoreSum / float64(best.count)
+	if sensitive.entity = dominantEntity(byEntity, isSensitiveEntity); sensitive.entity != "" {
+		sensitive.avgScore = byEntity[sensitive.entity].mean()
 	}
 
 	// Entité dominante = présente dans le plus de VALEURS, PARMI les entités
 	// mappables vers un transformer. On ignore le bruit non exploitable
-	// (URL, DATE_TIME...). Départage par nom d'entité pour un résultat déterministe.
-	best := ""
-	for e, a := range byEntity {
-		if _, ok := piidetect.SuggestionForEntity(e, ""); !ok {
-			continue
-		}
-		if best == "" ||
-			a.count > byEntity[best].count ||
-			(a.count == byEntity[best].count && e < best) {
-			best = e
-		}
-	}
+	// (URL, DATE_TIME...).
+	best := dominantEntity(byEntity, func(e string) bool {
+		_, ok := piidetect.SuggestionForEntity(e, "")
+		return ok
+	})
 	if best == "" {
 		return columnEntity{sensitive: sensitive}, refused, nil
 	}
-	a := byEntity[best]
 	return columnEntity{
-		entity: best, avgScore: a.scoreSum / float64(a.count), matchCount: a.count, sensitive: sensitive,
+		entity: best, avgScore: byEntity[best].mean(), matchCount: byEntity[best].count, sensitive: sensitive,
 	}, refused, nil
+}
+
+// entityTally is how many values an entity was found in, and the sum of its best scores in them.
+type entityTally struct {
+	count    int
+	scoreSum float64
+}
+
+func (t *entityTally) mean() float64 { return t.scoreSum / float64(t.count) }
+
+// dominantEntity is the entity, among those that satisfy keep, found in the most values; of
+// entities found in as many, the first by name, for a deterministic result. It is empty when
+// none satisfies keep.
+func dominantEntity(byEntity map[string]*entityTally, keep func(entity string) bool) string {
+	best := ""
+	for e, tally := range byEntity {
+		if !keep(e) {
+			continue
+		}
+		if best == "" ||
+			tally.count > byEntity[best].count ||
+			(tally.count == byEntity[best].count && e < best) {
+			best = e
+		}
+	}
+	return best
 }
 
 // isSensitiveEntity tells whether an entity is one the scan knows, and marks as personal data.
