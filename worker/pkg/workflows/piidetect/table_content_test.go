@@ -271,6 +271,29 @@ func Test_TablePiiDetect_ToldThatTheAnalyzerIsAbsent(t *testing.T) {
 	require.Equal(t, report.AnalyzerNone, response.Analyzer)
 }
 
+// The status of the analyzer step is a property of the table: one that has no free-text
+// column has no such step, whatever its run was told of the analyzer.
+func Test_TablePiiDetect_ToldThatTheAnalyzerIsAbsentWithoutAFreeTextColumn(t *testing.T) {
+	columns := freeTextColumns()
+	columns.ColumnData = columns.ColumnData[:2] // "id" and "email"
+	scan := newContentScan(t, columns)
+	scan.analyzerAnswers(func() (*DetectPiiContentResponse, error) {
+		return &DetectPiiContentResponse{Status: report.AnalyzerAnswered}, nil
+	})
+	request := tableRequest()
+	request.AnalyzerAbsent = true
+
+	response := scan.run(t, request)
+
+	require.Zero(t, scan.asked.Load())
+	require.Equal(t, []string{"GetColumnData", "DetectPiiRegex", "DetectPiiLLM", "SaveTablePiiDetectReport"}, scan.order)
+	require.Empty(t, scan.versions.all())
+	require.Empty(t, scan.saved.Scan.AnalyzerStatus)
+	require.Equal(t, []string{report.SourceRules, report.SourceModel}, scan.saved.Scan.Sources)
+	require.Empty(t, response.Analyzer)
+	require.NotContains(t, resultJSON(t, scan.env), "Analyzer")
+}
+
 // An analyzer that cannot be asked does not cost the table what the rules and the model
 // found: the report is saved and says so.
 func Test_TablePiiDetect_AFailedAnalyzerIsTolerated(t *testing.T) {

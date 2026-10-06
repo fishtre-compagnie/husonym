@@ -41,6 +41,8 @@
 //     is scheduled only for a table that has free-text columns the rules found nothing
 //     in, under the change id "pii-detect-content-analysis", and not in a run of a table
 //     that was told that the API has no analyzer;
+//   - the choice of those columns, which decides whether DetectPiiContent is scheduled:
+//     the text columns whose profile gives freeTextMinWords words or more per value;
 //   - the keys and the JSON of the stored reports.
 //
 // Adding, removing or reordering an activity, a child, a timer or a side effect needs

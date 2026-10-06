@@ -127,7 +127,8 @@ func TablePiiDetect(ctx workflow.Context, req *TablePiiDetectRequest) (*TablePii
 	// The content of the free-text columns the rules found nothing in is analyzed, unless
 	// a table of the run already learned that the API has no analyzer. The version is
 	// only read for a table that has such columns and is to be asked about, so that any
-	// other run records nothing of it.
+	// other run records nothing of it. A table without such columns has no step for the
+	// analyzer, and no status of it, whatever its run was told.
 	var byAnalyzer *DetectPiiContentResponse
 	analyzerStatus := ""
 	if doubtful := doubtfulColumns(columns.ColumnData, byRules); len(doubtful) > 0 {

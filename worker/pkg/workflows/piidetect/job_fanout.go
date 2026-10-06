@@ -58,7 +58,7 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 	queue.Close()
 
 	config := scan.details.PiiDetectConfig
-	outcome := &scanOutcome{unanswered: map[*report.TableEntry]string{}}
+	outcome := &scanOutcome{}
 	started := map[string]bool{} // the ids of the children of this run
 	// analyzerAbsent is set once a table learned that the API has no analyzer: the
 	// tables started afterwards are told, and do not ask.
@@ -111,17 +111,16 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 					analyzerAbsent = true
 				}
 				unanswered := unansweredBy(scanned)
-				entry := &report.TableEntry{
-					TableSchema:     table.Schema,
-					TableName:       table.Table,
-					ReportKey:       scanned.ResultKey,
-					ScanFingerprint: table.Fingerprint,
-					Incomplete:      unanswered != "",
-				}
-				outcome.scanned = append(outcome.scanned, entry)
-				if entry.Incomplete {
-					outcome.unanswered[entry] = unanswered
-				}
+				outcome.scanned = append(outcome.scanned, scannedTable{
+					entry: &report.TableEntry{
+						TableSchema:     table.Schema,
+						TableName:       table.Table,
+						ReportKey:       scanned.ResultKey,
+						ScanFingerprint: table.Fingerprint,
+						Incomplete:      unanswered != "",
+					},
+					unanswered: unanswered,
+				})
 			}
 		})
 	}
@@ -129,19 +128,25 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 	return outcome
 }
 
-// unansweredBy says which detections did not answer for a table that was scanned: the
-// model when it could not be asked, the analyzer when it could not be asked or did not
-// analyze every column. It is empty for a table that was fully scanned.
+// unansweredBy says what is missing from the scan of a table: the model when it could not
+// be asked, the analyzer when it could not be asked or did not analyze every column. It
+// is empty for a table that was fully scanned.
 func unansweredBy(scanned *TablePiiDetectResponse) string {
 	model := scanned.Model == report.ModelFailed
-	analyzer := scanned.Analyzer == report.AnalyzerFailed || scanned.Analyzer == report.AnalyzerPartial
-	switch {
-	case model && analyzer:
-		return "the model and the analyzer did not answer"
-	case model:
-		return "the model did not answer"
-	case analyzer:
+	switch scanned.Analyzer {
+	case report.AnalyzerFailed:
+		if model {
+			return "the model and the analyzer did not answer"
+		}
 		return "the analyzer did not answer"
+	case report.AnalyzerPartial:
+		if model {
+			return "the model did not answer and the analyzer could not analyze every column"
+		}
+		return "the analyzer could not analyze every column"
+	}
+	if model {
+		return "the model did not answer"
 	}
 	return ""
 }

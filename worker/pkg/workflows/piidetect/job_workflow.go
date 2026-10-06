@@ -207,11 +207,16 @@ func tablesAtOnceOr(tablesAtOnce, otherwise int) int {
 
 // scanOutcome is what became of the tables of a run.
 type scanOutcome struct {
-	scanned []*report.TableEntry
+	scanned []scannedTable
 	failed  []*report.FailedTable
-	// unanswered says, for each scanned table that is incomplete, which detections did
-	// not answer. It is kept for the message of the run, and is not stored.
-	unanswered map[*report.TableEntry]string
+}
+
+// scannedTable is a table the run scanned: its entry in the index, and what is missing
+// from its scan, empty when nothing is. The latter is kept for the message of the run,
+// and is not stored.
+type scannedTable struct {
+	entry      *report.TableEntry
+	unanswered string
 }
 
 // report builds the index of the run: the tables it scanned, then the entries of the
@@ -220,9 +225,9 @@ type scanOutcome struct {
 func (o *scanOutcome) report(previous []*report.TableEntry) *report.JobReport {
 	entries := make([]*report.TableEntry, 0, len(o.scanned)+len(previous))
 	scanned := make(map[[2]string]bool, len(o.scanned))
-	for _, entry := range o.scanned {
-		scanned[[2]string{entry.TableSchema, entry.TableName}] = true
-		entries = append(entries, entry)
+	for _, table := range o.scanned {
+		scanned[[2]string{table.entry.TableSchema, table.entry.TableName}] = true
+		entries = append(entries, table.entry)
 	}
 	for _, entry := range previous {
 		if entry != nil && !scanned[[2]string{entry.TableSchema, entry.TableName}] {
@@ -239,17 +244,16 @@ func (o *scanOutcome) report(previous []*report.TableEntry) *report.JobReport {
 	return &report.JobReport{SuccessfulTableReports: entries, FailedTables: failed}
 }
 
-// notFullyScanned names the tables of this run that failed or were scanned without an
-// answer of the model or of the analyzer, each with what happened to it, in the order of
-// their names.
+// notFullyScanned names the tables of this run that failed or from whose scan something
+// is missing, each with what happened to it, in the order of their names.
 func (o *scanOutcome) notFullyScanned() []string {
 	var names []string
 	for _, table := range o.failed {
 		names = append(names, table.TableSchema+"."+table.TableName+" (failed)")
 	}
-	for _, entry := range o.scanned {
-		if entry.Incomplete {
-			names = append(names, entry.TableSchema+"."+entry.TableName+" ("+o.unanswered[entry]+")")
+	for _, table := range o.scanned {
+		if table.unanswered != "" {
+			names = append(names, table.entry.TableSchema+"."+table.entry.TableName+" ("+table.unanswered+")")
 		}
 	}
 	slices.Sort(names)

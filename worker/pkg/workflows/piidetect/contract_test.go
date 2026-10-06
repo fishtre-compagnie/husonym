@@ -68,6 +68,12 @@ func Test_ChangeIds(t *testing.T) {
 	require.Equal(t, "pii-detect-table-child-id-unique", tableChildIdUniqueChangeId)
 }
 
+// The number of words from which a column is free text decides whether the run of a
+// table schedules the content activity: the recorded runs were chosen with this value.
+func Test_FreeTextMinWords(t *testing.T) {
+	require.InDelta(t, 3.0, freeTextMinWords, 0)
+}
+
 var (
 	contractKey     = &mgmtv1alpha1.RunContextKey{JobRunId: "run-1", ExternalId: "public.users--table-pii-report", AccountId: "account-1"}
 	contractKeyJSON = `{"jobRunId":"run-1","externalId":"public.users--table-pii-report","accountId":"account-1"}`

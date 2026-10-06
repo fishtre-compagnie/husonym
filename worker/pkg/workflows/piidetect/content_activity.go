@@ -8,7 +8,6 @@ import (
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
-	contentscan "github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/profile"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect/report"
 	"go.temporal.io/sdk/activity"
@@ -22,10 +21,15 @@ const (
 	// and analyzes them one after the other, and a call must end well within the time
 	// the activity has.
 	contentColumnsPerCall = 20
+	// freeTextMinWords is the mean number of words per value from which a text column
+	// is free text here. The choice of the columns decides whether the run of a table
+	// reads the version of the content analysis and schedules its activity, and so which
+	// commands the run records: another value needs a change id, as in versions.go.
+	freeTextMinWords = 3.0
 )
 
 // doubtfulColumns names, in name order, the text columns whose profile gives
-// contentscan.FreeTextMinWords words or more and that the rules found nothing in: free
+// freeTextMinWords words or more and that the rules found nothing in: free
 // text, in which personal data shows neither in a name nor in a format. A column without
 // profile, as a job that samples nothing reads it, is not one.
 func doubtfulColumns(columns []*ColumnData, byRules *DetectPiiRegexResponse) []string {
@@ -36,7 +40,7 @@ func doubtfulColumns(columns []*ColumnData, byRules *DetectPiiRegexResponse) []s
 	var doubtful []string
 	for _, column := range columns {
 		if column == nil || column.Profile == nil ||
-			column.Profile.Kind != profile.KindText || column.Profile.Words < contentscan.FreeTextMinWords {
+			column.Profile.Kind != profile.KindText || column.Profile.Words < freeTextMinWords {
 			continue
 		}
 		if _, ok := found[column.Column]; ok {

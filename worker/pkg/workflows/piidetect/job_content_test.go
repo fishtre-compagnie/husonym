@@ -80,6 +80,75 @@ func Test_JobPiiDetect_TablesWhoseAnalyzerAnswersAreToldNothing(t *testing.T) {
 	requireReport(t, &report.JobReport{SuccessfulTableReports: []*report.TableEntry{entry("t1"), entry("t2")}}, *saved)
 }
 
+// An analyzer that could not be asked, or that did not analyze every column, is not an
+// absent one: the tables started afterwards are not told that there is none, and ask.
+func Test_JobPiiDetect_AnAnalyzerThatDidNotAnswerIsNotAnAbsentOne(t *testing.T) {
+	for _, status := range []string{report.AnalyzerFailed, report.AnalyzerPartial} {
+		t.Run(status, func(t *testing.T) {
+			run := newJobRun(t, 1)
+			run.withDetails(plainDetails())
+			run.withTables("t1", "t2", "t3")
+			run.scanTablesTo(func(req *TablePiiDetectRequest) (steps, error) {
+				if req.TableName == "t1" {
+					return steps{analyzer: status}, nil
+				}
+				return steps{analyzer: report.AnalyzerAnswered}, nil
+			})
+			run.savesReport()
+
+			run.execute()
+
+			require.True(t, run.env.IsWorkflowCompleted())
+			require.Equal(t, map[string]bool{"t1": false, "t2": false, "t3": false}, run.toldAbsent())
+		})
+	}
+}
+
+// What the message of the run says of a table that was scanned, by what became of its
+// model step and of its analyzer step.
+func Test_UnansweredBy(t *testing.T) {
+	for _, tt := range []struct {
+		model, analyzer string
+		want            string
+	}{
+		{report.ModelAnswered, report.AnalyzerAnswered, ""},
+		{report.ModelPartial, "", ""},
+		{report.ModelNone, report.AnalyzerNone, ""},
+		{"", "", ""},
+		{report.ModelFailed, "", "the model did not answer"},
+		{report.ModelFailed, report.AnalyzerAnswered, "the model did not answer"},
+		{report.ModelFailed, report.AnalyzerNone, "the model did not answer"},
+		{report.ModelAnswered, report.AnalyzerFailed, "the analyzer did not answer"},
+		{"", report.AnalyzerFailed, "the analyzer did not answer"},
+		{report.ModelAnswered, report.AnalyzerPartial, "the analyzer could not analyze every column"},
+		{report.ModelNone, report.AnalyzerPartial, "the analyzer could not analyze every column"},
+		{report.ModelFailed, report.AnalyzerFailed, "the model and the analyzer did not answer"},
+		{report.ModelFailed, report.AnalyzerPartial, "the model did not answer and the analyzer could not analyze every column"},
+	} {
+		t.Run("model "+tt.model+", analyzer "+tt.analyzer, func(t *testing.T) {
+			require.Equal(t, tt.want, unansweredBy(&TablePiiDetectResponse{Model: tt.model, Analyzer: tt.analyzer}))
+		})
+	}
+}
+
+// Only the tables that failed or from whose scan something is missing are named, each
+// with what happened to it.
+func Test_NotFullyScanned(t *testing.T) {
+	outcome := &scanOutcome{
+		scanned: []scannedTable{
+			{entry: entry("whole")},
+			{entry: entry("partly"), unanswered: "the analyzer could not analyze every column"},
+			{entry: &report.TableEntry{TableSchema: "public", TableName: "marked", Incomplete: true}},
+		},
+		failed: []*report.FailedTable{{TableSchema: "public", TableName: "broken", Reason: "the columns cannot be read"}},
+	}
+
+	require.Equal(t,
+		[]string{"public.broken (failed)", "public.partly (the analyzer could not analyze every column)"},
+		outcome.notFullyScanned(),
+	)
+}
+
 // A table whose analyzer could not be asked, or did not analyze every column, is marked
 // in the index. The run saves the index, then ends failed on a message that names the
 // table and what did not answer.
@@ -110,7 +179,7 @@ func Test_JobPiiDetect_ATableTheAnalyzerDidNotAnswerForFailsTheRunOnceTheIndexIs
 	require.ErrorAs(t, run.env.GetWorkflowError(), &appErr)
 	require.Equal(t, "ScanIncomplete", appErr.Type())
 	require.Equal(t,
-		"4 of 5 tables were not fully scanned: public.partly_analyzed (the analyzer did not answer), "+
+		"4 of 5 tables were not fully scanned: public.partly_analyzed (the analyzer could not analyze every column), "+
 			"public.silent_analyzer (the analyzer did not answer), "+
 			"public.silent_both (the model and the analyzer did not answer), "+
 			"public.silent_model (the model did not answer)",
