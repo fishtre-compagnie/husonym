@@ -108,12 +108,19 @@ a plain string holding an apostrophe or a backslash. On PostgreSQL, the labels o
 type are created in the order of the source; a type created by an earlier version in
 another order is not reordered.
 
+A MySQL source whose sessions run under the `NO_BACKSLASH_ESCAPES` SQL mode is read. On a
+PostgreSQL source that has `standard_conforming_strings` off, the default of a mandatory
+foreign key column that holds a backslash is recognized as the value that stands for "no
+parent", as it is with the setting on.
+
 Known limits:
 
 - A schema or table name that holds a dot is not supported.
 - On PostgreSQL, a column default or a check constraint whose text holds a backslash is
   copied as it is only between a source and a destination that have the same
-  `standard_conforming_strings` setting.
+  `standard_conforming_strings` setting. From a source that has it on to a destination that
+  has it off, the destination refuses the statement or reads the text differently; from a
+  source that has it off to a destination that has it on, each backslash is copied twice.
 - On MySQL and MariaDB, a column comment that holds a backslash is not copied.
 - On MySQL, a function whose parameter names need quoting is not created.
 - On SQL Server, a column whose collation name is not made of letters, digits and
