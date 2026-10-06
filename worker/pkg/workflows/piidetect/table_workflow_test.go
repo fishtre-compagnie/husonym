@@ -67,6 +67,7 @@ func newTableEnv(t *testing.T) (*testsuite.TestWorkflowEnvironment, *Activities)
 	env.RegisterActivity(activities.GetColumnData)
 	env.RegisterActivity(activities.DetectPiiRegex)
 	env.RegisterActivity(activities.DetectPiiLLM)
+	env.RegisterActivity(activities.DetectPiiContent)
 	env.RegisterActivity(activities.SaveTablePiiDetectReport)
 	return env, activities
 }

@@ -28,8 +28,6 @@ const (
 // contentscan.FreeTextMinWords words or more and that the rules found nothing in: free
 // text, in which personal data shows neither in a name nor in a format. A column without
 // profile, as a job that samples nothing reads it, is not one.
-//
-//nolint:unused // used by the table workflow once it runs DetectPiiContent
 func doubtfulColumns(columns []*ColumnData, byRules *DetectPiiRegexResponse) []string {
 	var found map[string]report.Category
 	if byRules != nil {

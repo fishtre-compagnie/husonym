@@ -58,8 +58,11 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 	queue.Close()
 
 	config := scan.details.PiiDetectConfig
-	outcome := &scanOutcome{}
+	outcome := &scanOutcome{unanswered: map[*report.TableEntry]string{}}
 	started := map[string]bool{} // the ids of the children of this run
+	// analyzerAbsent is set once a table learned that the API has no analyzer: the
+	// tables started afterwards are told, and do not ask.
+	analyzerAbsent := false
 	consumers := workflow.NewWaitGroup(ctx)
 	for range scan.tablesAtOnce {
 		consumers.Add(1)
@@ -92,6 +95,7 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 						PreviousResultsKey: previousKeys[[2]string{table.Schema, table.Table}],
 						ParentExecutionId:  &runId,
 						ModelInput:         scan.details.ModelInput,
+						AnalyzerAbsent:     analyzerAbsent,
 					},
 				).Get(ctx, &scanned)
 				if err != nil {
@@ -103,18 +107,43 @@ func scanTables(ctx workflow.Context, scan *tableScan, logger log.Logger) *scanO
 					})
 					continue
 				}
-				outcome.scanned = append(outcome.scanned, &report.TableEntry{
+				if scanned.Analyzer == report.AnalyzerNone {
+					analyzerAbsent = true
+				}
+				unanswered := unansweredBy(scanned)
+				entry := &report.TableEntry{
 					TableSchema:     table.Schema,
 					TableName:       table.Table,
 					ReportKey:       scanned.ResultKey,
 					ScanFingerprint: table.Fingerprint,
-					Incomplete:      scanned.Model == report.ModelFailed,
-				})
+					Incomplete:      unanswered != "",
+				}
+				outcome.scanned = append(outcome.scanned, entry)
+				if entry.Incomplete {
+					outcome.unanswered[entry] = unanswered
+				}
 			}
 		})
 	}
 	consumers.Wait(ctx)
 	return outcome
+}
+
+// unansweredBy says which detections did not answer for a table that was scanned: the
+// model when it could not be asked, the analyzer when it could not be asked or did not
+// analyze every column. It is empty for a table that was fully scanned.
+func unansweredBy(scanned *TablePiiDetectResponse) string {
+	model := scanned.Model == report.ModelFailed
+	analyzer := scanned.Analyzer == report.AnalyzerFailed || scanned.Analyzer == report.AnalyzerPartial
+	switch {
+	case model && analyzer:
+		return "the model and the analyzer did not answer"
+	case model:
+		return "the model did not answer"
+	case analyzer:
+		return "the analyzer did not answer"
+	}
+	return ""
 }
 
 // uniqueChildId gives an id that no child of the run has yet: the id followed by "-2",

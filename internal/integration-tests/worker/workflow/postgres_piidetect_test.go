@@ -204,10 +204,13 @@ func test_postgres_pii_detect(
 	var tableReport piidetect_report.TableReport
 	require.NoError(t, json.Unmarshal(stored.Msg.GetValue(), &tableReport))
 	require.Equal(t, []string{"id", "courriel", "c17", "note", "photo", "created_at"}, tableReport.ScannedColumns)
+	// "note" is free text the rules found nothing in: the API is asked to analyze its
+	// content, and has no analyzer here.
 	require.Equal(t, &piidetect_report.Scan{
 		SampledRows: 4, Input: piidetect_report.InputValues, Model: "local-model",
-		ModelStatus: piidetect_report.ModelAnswered,
-		Sources:     []string{piidetect_report.SourceRules, piidetect_report.SourceModel},
+		ModelStatus:    piidetect_report.ModelAnswered,
+		Sources:        []string{piidetect_report.SourceRules, piidetect_report.SourceModel},
+		AnalyzerStatus: piidetect_report.AnalyzerNone,
 	}, tableReport.Scan)
 	for _, column := range tableReport.ColumnReports {
 		if column.ColumnName == "c17" {

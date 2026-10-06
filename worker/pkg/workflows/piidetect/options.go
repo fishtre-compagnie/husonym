@@ -97,8 +97,6 @@ func modelOptions(sendsValues bool) workflow.ActivityOptions {
 // the API reads 50 values and has them analyzed one by one. It reports that it is alive
 // every 30 seconds, while a call is answered and between two calls; that report is also
 // how a cancellation reaches it. Another attempt asks every column again.
-//
-//nolint:unused // used by the table workflow once it runs DetectPiiContent
 func contentOptions() workflow.ActivityOptions {
 	return workflow.ActivityOptions{
 		StartToCloseTimeout: 30 * time.Minute,

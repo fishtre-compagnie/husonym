@@ -17,4 +17,11 @@ const (
 	// Runs started before that replay as they ran: the second run is started under the
 	// id of the first, which the server refuses.
 	tableChildIdUniqueChangeId = "pii-detect-table-child-id-unique"
+
+	// The content of the free-text columns the rules found nothing in is analyzed, by an
+	// activity between the model and the save. The version is read only for a table that
+	// has such columns, in a run that was not told that the API has no analyzer. Runs
+	// that passed that point before the analysis replay as they ran: the report is saved
+	// right after the model.
+	contentAnalysisChangeId = "pii-detect-content-analysis"
 )

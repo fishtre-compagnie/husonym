@@ -67,8 +67,7 @@ type ContentAPI interface {
 	) (*connect.Response[mgmtv1alpha1.DetectPiiInConnectionDataResponse], error)
 }
 
-// Activities are the nine activities of the package: eight that the two workflows run,
-// and DetectPiiContent.
+// Activities are the nine activities of the package, which the two workflows run.
 type Activities struct {
 	jobs        JobAPI
 	connections ConnectionAPI

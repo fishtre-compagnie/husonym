@@ -60,8 +60,9 @@ func Test_Register_KeepsTheRegisteredNames(t *testing.T) {
 	require.Equal(t, "TablePiiDetect", TableWorkflowName)
 }
 
-// The three change ids are in the histories of the runs that took their branch.
+// The four change ids are in the histories of the runs that took their branch.
 func Test_ChangeIds(t *testing.T) {
+	require.Equal(t, "pii-detect-content-analysis", contentAnalysisChangeId)
 	require.Equal(t, "pii-detect-model-failure-tolerated", modelFailureToleratedChangeId)
 	require.Equal(t, "pii-detect-incomplete-run-fails", incompleteRunFailsChangeId)
 	require.Equal(t, "pii-detect-table-child-id-unique", tableChildIdUniqueChangeId)
@@ -126,6 +127,23 @@ func Test_SerializedForms(t *testing.T) {
 				Model:      "failed",
 			},
 			`{"PiiColumns":{"iban":{"regex":{"category":"financial","evidence":"values:iban 1"},"llm":null}},"ResultKey":null,"Model":"failed"}`,
+		},
+		{
+			"the table workflow's input, bare, told that the analyzer is absent",
+			&TablePiiDetectRequest{AnalyzerAbsent: true},
+			`{"AccountId":"","JobId":"","ConnectionId":"","TableSchema":"","TableName":"","ShouldSampleData":false,` +
+				`"UserPrompt":"","PreviousResultsKey":null,"ParentExecutionId":null,"AnalyzerAbsent":true}`,
+		},
+		{
+			"the table workflow's output, with the status of the analyzer and a finding of it",
+			&TablePiiDetectResponse{
+				PiiColumns: map[string]report.Combined{
+					"note": {Analyzer: &report.AnalyzerFinding{Category: "free_text_pii", Entity: "PERSON", Matches: 7, Sampled: 50}},
+				},
+				Analyzer: "answered",
+			},
+			`{"PiiColumns":{"note":{"regex":null,"llm":null,"analyzer":{"category":"free_text_pii","entity":"PERSON","matches":7,"sampled":50}}},` +
+				`"ResultKey":null,"Analyzer":"answered"}`,
 		},
 		{"the job details' input", &GetPiiDetectJobDetailsRequest{JobId: "job-1"}, `{"JobId":"job-1"}`},
 		{
@@ -360,6 +378,9 @@ func Test_RecordedPayloads_DecodeAndEncodeBack(t *testing.T) {
 		"GetColumnData":  func() (any, any) { return &GetColumnDataRequest{}, &GetColumnDataResponse{} },
 		"DetectPiiRegex": func() (any, any) { return &DetectPiiRegexRequest{}, &DetectPiiRegexResponse{} },
 		"DetectPiiLLM":   func() (any, any) { return &DetectPiiLLMRequest{}, &DetectPiiLLMResponse{} },
+		"DetectPiiContent": func() (any, any) {
+			return &DetectPiiContentRequest{}, &DetectPiiContentResponse{}
+		},
 		"SaveTablePiiDetectReport": func() (any, any) {
 			return &SaveTablePiiDetectReportRequest{}, &SaveTablePiiDetectReportResponse{}
 		},

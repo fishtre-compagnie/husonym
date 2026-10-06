@@ -209,6 +209,9 @@ func tablesAtOnceOr(tablesAtOnce, otherwise int) int {
 type scanOutcome struct {
 	scanned []*report.TableEntry
 	failed  []*report.FailedTable
+	// unanswered says, for each scanned table that is incomplete, which detections did
+	// not answer. It is kept for the message of the run, and is not stored.
+	unanswered map[*report.TableEntry]string
 }
 
 // report builds the index of the run: the tables it scanned, then the entries of the
@@ -236,8 +239,9 @@ func (o *scanOutcome) report(previous []*report.TableEntry) *report.JobReport {
 	return &report.JobReport{SuccessfulTableReports: entries, FailedTables: failed}
 }
 
-// notFullyScanned names the tables of this run that failed or were scanned without the
-// model, each with what happened to it, in the order of their names.
+// notFullyScanned names the tables of this run that failed or were scanned without an
+// answer of the model or of the analyzer, each with what happened to it, in the order of
+// their names.
 func (o *scanOutcome) notFullyScanned() []string {
 	var names []string
 	for _, table := range o.failed {
@@ -245,7 +249,7 @@ func (o *scanOutcome) notFullyScanned() []string {
 	}
 	for _, entry := range o.scanned {
 		if entry.Incomplete {
-			names = append(names, entry.TableSchema+"."+entry.TableName+" (the model did not answer)")
+			names = append(names, entry.TableSchema+"."+entry.TableName+" ("+o.unanswered[entry]+")")
 		}
 	}
 	slices.Sort(names)
