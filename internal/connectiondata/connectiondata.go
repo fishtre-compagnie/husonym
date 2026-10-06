@@ -50,6 +50,14 @@ type ConnectionDataService interface {
 		schema, table string,
 		numRows uint,
 	) error
+	// SampleColumn sends the filled values of one column, numRows at most, each as a row
+	// whose only key is the column name. It is for SQL connections only.
+	SampleColumn(
+		ctx context.Context,
+		stream SampleDataStream,
+		schema, table, column string,
+		numRows uint,
+	) error
 	GetAllTables(ctx context.Context) ([]TableIdentifier, error)
 	GetAllSchemas(ctx context.Context) ([]string, error)
 }

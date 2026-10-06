@@ -84,7 +84,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(10)
 		expected := `SELECT * FROM (SELECT * FROM "public"."accounts" LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -95,7 +95,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(100)
 		expected := `SELECT * FROM (SELECT * FROM "schema"."table_name" LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 100`
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -106,7 +106,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(10)
 		expected := "SELECT * FROM (SELECT * FROM `public`.`accounts` LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10"
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -117,7 +117,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(100)
 		expected := "SELECT * FROM (SELECT * FROM `schema`.`table_name` LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 100"
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -127,7 +127,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(10)
 		expected := `SELECT  TOP (10) * FROM (SELECT  TOP (1000) * FROM "public"."accounts") AS "husonym_sample" ORDER BY NEWID() ASC`
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -138,7 +138,7 @@ func Test_BuildSampledSelectLimitQuery(t *testing.T) {
 		limit := uint(100)
 		expected := `SELECT  TOP (100) * FROM (SELECT  TOP (1000) * FROM "schema"."table_name") AS "husonym_sample" ORDER BY NEWID() ASC`
 
-		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit)
+		sql, err := BuildSampledSelectLimitQuery(driver, schema, table, limit, nil)
 		require.NoError(t, err)
 		require.Equal(t, expected, sql)
 	})
@@ -313,7 +313,7 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 	const pg, mssql = sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MssqlDriver
 	build := func(t *testing.T, driver string, size TableSize) string {
 		t.Helper()
-		sql, ok, err := BuildTableSampleQuery(driver, "public", "accounts", size, 10)
+		sql, ok, err := BuildTableSampleQuery(driver, "public", "accounts", size, 10, nil)
 		require.NoError(t, err)
 		require.True(t, ok)
 		return sql
@@ -392,7 +392,7 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 				{Rows: -1, Pages: 10}, {Rows: 0, Pages: 0}, {Rows: 1, Pages: 1}, {Rows: SampleWindowSize, Pages: 10},
 				{Rows: 200_000, Pages: 0}, {Rows: 200_000, Pages: -1},
 			} {
-				_, ok, err := BuildTableSampleQuery(driver, "public", "accounts", size, 10)
+				_, ok, err := BuildTableSampleQuery(driver, "public", "accounts", size, 10, nil)
 				require.NoError(t, err)
 				require.False(t, ok, "%s %+v", driver, size)
 			}
@@ -400,7 +400,7 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 	})
 	t.Run("any other driver has no table sample", func(t *testing.T) {
 		for _, driver := range []string{sqlmanager_shared.MysqlDriver, sqlmanager_shared.PostgresDriver, "oracle"} {
-			_, ok, err := BuildTableSampleQuery(driver, "db", "accounts", TableSize{Rows: 200_000, Pages: 1870}, 10)
+			_, ok, err := BuildTableSampleQuery(driver, "db", "accounts", TableSize{Rows: 200_000, Pages: 1870}, 10, nil)
 			require.NoError(t, err)
 			require.False(t, ok, driver)
 		}
@@ -409,7 +409,7 @@ func Test_BuildTableSampleQuery(t *testing.T) {
 
 func Test_BuildKeySlicesSampleQuery(t *testing.T) {
 	ranges := []KeyRange{{From: 5, To: 8999}, {From: 9000, To: 20000}}
-	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10)
+	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, strings.Count(sql, "LIMIT 100"))
 	require.Contains(t, sql, "`id` >= 5")
@@ -419,7 +419,7 @@ func Test_BuildKeySlicesSampleQuery(t *testing.T) {
 	require.Contains(t, sql, "UNION ALL")
 	require.True(t, strings.HasSuffix(sql, "ORDER BY RAND() ASC LIMIT 10"))
 
-	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", nil, 10)
+	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", nil, 10, nil)
 	require.Error(t, err)
 }
 
@@ -446,11 +446,114 @@ func Test_KeySlices_CountAndSampleReadTheSameSlices(t *testing.T) {
 
 	count, err := BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges)
 	require.NoError(t, err)
-	sample, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10)
+	sample, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10, nil)
 	require.NoError(t, err)
 
 	require.Len(t, slice.FindAllString(count, -1), len(ranges))
 	require.Equal(t, slice.FindAllString(sample, -1), slice.FindAllString(count, -1))
 	require.Contains(t, count, "(`id` <= 9000000000000000)")
 	require.Equal(t, SampleSlices*SampleSliceRows/2, SampleSlicesMinRows)
+}
+
+func Test_BuildSampledSelectLimitQuery_WithColumnFilter(t *testing.T) {
+	build := func(t *testing.T, driver string, filter *ColumnFilter) string {
+		t.Helper()
+		sql, err := BuildSampledSelectLimitQuery(driver, "public", "accounts", 10, filter)
+		require.NoError(t, err)
+		return sql
+	}
+	filled := &ColumnFilter{Column: "email"}
+	text := &ColumnFilter{Column: "email", NonEmpty: true}
+
+	t.Run("postgres keeps the filled values of the first rows of the table", func(t *testing.T) {
+		require.Equal(t, 20000, SampleColumnScanRows)
+		require.Equal(t,
+			`SELECT * FROM (SELECT "email" FROM (SELECT "email" FROM "public"."accounts" LIMIT 20000) AS "husonym_scan" WHERE ("email" IS NOT NULL) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, sqlmanager_shared.GoquPostgresDriver, filled))
+		require.Equal(t,
+			`SELECT * FROM (SELECT "email" FROM (SELECT "email" FROM "public"."accounts" LIMIT 20000) AS "husonym_scan" WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, sqlmanager_shared.GoquPostgresDriver, text))
+	})
+	t.Run("mysql keeps the filled values of the first rows of the table", func(t *testing.T) {
+		require.Equal(t,
+			"SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `public`.`accounts` LIMIT 20000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
+			build(t, sqlmanager_shared.MysqlDriver, text))
+	})
+	t.Run("sqlserver keeps the filled values of the first rows of the table", func(t *testing.T) {
+		require.Equal(t,
+			`SELECT  TOP (10) * FROM (SELECT  TOP (1000) "email" FROM (SELECT  TOP (20000) "email" FROM "public"."accounts") AS "husonym_scan" WHERE (("email" IS NOT NULL) AND ("email" <> ''))) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			build(t, sqlmanager_shared.MssqlDriver, text))
+	})
+	t.Run("the column name is written as one identifier", func(t *testing.T) {
+		sql := build(t, sqlmanager_shared.GoquPostgresDriver, &ColumnFilter{Column: `a"b.c`})
+		require.Contains(t, sql, `SELECT "a""b.c" FROM`)
+		require.Contains(t, sql, `WHERE ("a""b.c" IS NOT NULL)`)
+	})
+	t.Run("a column name no engine takes is refused", func(t *testing.T) {
+		_, err := BuildSampledSelectLimitQuery(sqlmanager_shared.MysqlDriver, "db", "t", 1, &ColumnFilter{Column: ""})
+		require.Error(t, err)
+	})
+}
+
+func Test_BuildTableSampleQuery_WithColumnFilter(t *testing.T) {
+	const pg, mssql = sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MssqlDriver
+	filter := &ColumnFilter{Column: "email", NonEmpty: true}
+	build := func(t *testing.T, driver string, size TableSize, filter *ColumnFilter) string {
+		t.Helper()
+		sql, ok, err := BuildTableSampleQuery(driver, "public", "accounts", size, 10, filter)
+		require.NoError(t, err)
+		require.True(t, ok)
+		return sql
+	}
+
+	t.Run("postgres shuffles the filled rows of the pages it draws before the cap, and does not thin them", func(t *testing.T) {
+		// Thinning the rows before the filter would leave a sparse column without values. The
+		// pages come in physical order: a cap applied before the shuffle would keep the first
+		// pages only.
+		require.Equal(t,
+			`SELECT * FROM (SELECT "email" FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE (("email" IS NOT NULL) AND ("email" <> '')) ORDER BY RANDOM() ASC LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, pg, TableSize{Rows: 200_000, Pages: 1870}, filter))
+	})
+	t.Run("sqlserver filters the rows of the pages it draws", func(t *testing.T) {
+		require.Equal(t,
+			`SELECT  TOP (10) * FROM (SELECT "email" FROM "public"."accounts" TABLESAMPLE (5.8685 PERCENT) WHERE (("email" IS NOT NULL) AND ("email" <> ''))) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			build(t, mssql, TableSize{Rows: 200_000, Pages: 852}, filter))
+	})
+	t.Run("the share of pages is that of a whole-row sample", func(t *testing.T) {
+		require.Contains(t, build(t, pg, TableSize{Rows: 200_000, Pages: 100_000}, filter), "TABLESAMPLE SYSTEM (0.5) WHERE")
+	})
+	t.Run("the unfiltered postgres query is unchanged", func(t *testing.T) {
+		require.Equal(t,
+			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE RANDOM() < 0.187 LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, pg, TableSize{Rows: 200_000, Pages: 1870}, nil))
+	})
+	t.Run("a column name no engine takes is refused", func(t *testing.T) {
+		_, _, err := BuildTableSampleQuery(pg, "s", "t", TableSize{Rows: 200_000, Pages: 1870}, 1, &ColumnFilter{Column: "a\x00"})
+		require.Error(t, err)
+	})
+}
+
+func Test_BuildKeySlicesSampleQuery_WithColumnFilter(t *testing.T) {
+	ranges := []KeyRange{{From: 5, To: 8999}, {From: 9000, To: 20000}}
+	sql, err := BuildKeySlicesSampleQuery(
+		sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10,
+		&ColumnFilter{Column: "email", NonEmpty: true},
+	)
+	require.NoError(t, err)
+	require.Equal(t,
+		"SELECT * FROM (SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 5) AND (`id` <= 8999)) ORDER BY `id` ASC LIMIT 2000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 100) AS `t1` "+
+			"UNION ALL (SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 9000) AND (`id` <= 20000)) ORDER BY `id` ASC LIMIT 2000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 100) AS `t1`)) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
+		sql)
+	require.Equal(t, 2000, SampleColumnSliceScanRows)
+
+	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10, &ColumnFilter{Column: ""})
+	require.Error(t, err)
+}
+
+func Test_ColumnFilter_UnfilteredQueriesAreUnchanged(t *testing.T) {
+	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", []KeyRange{{From: 1, To: 2}}, 10, nil)
+	require.NoError(t, err)
+	require.Equal(t,
+		"SELECT * FROM (SELECT * FROM `db`.`accounts` WHERE ((`id` >= 1) AND (`id` <= 2)) ORDER BY `id` ASC LIMIT 100) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
+		sql)
 }

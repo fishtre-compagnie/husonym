@@ -110,7 +110,56 @@ func (s *SQLConnectionDataService) SampleData(
 	if err != nil {
 		return fmt.Errorf("invalid schema or table: %w", err)
 	}
+	return s.sample(ctx, stream, schema, table, numRows, nil)
+}
 
+// SampleColumn sends the filled values of one column of a table, numRows at most, each as
+// a row with the name of the column for its only key. A value is filled when it is not
+// NULL, and for a column of text when it is not the empty string either. The column must
+// be one of the table: a name the catalogue does not know gives connect.CodeNotFound
+// before any row is read.
+func (s *SQLConnectionDataService) SampleColumn(
+	ctx context.Context,
+	stream SampleDataStream,
+	schema, table, column string,
+	numRows uint,
+) error {
+	columns, err := s.GetTableSchema(ctx, schema, table)
+	if err != nil {
+		return fmt.Errorf("invalid schema or table: %w", err)
+	}
+	if err := checkSchemaAndTable(schema, table, columns); err != nil {
+		return fmt.Errorf("invalid schema or table: %w", err)
+	}
+	var found *mgmtv1alpha1.DatabaseColumn
+	for _, c := range columns {
+		if c.Column == column {
+			found = c
+			break
+		}
+	}
+	if found == nil {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf(
+			"the table %s has no column %q", sqlmanager_shared.BuildTable(schema, table), column,
+		))
+	}
+	goquDriver, err := querybuilder.GetGoquDriverFromConnection(s.connection)
+	if err != nil {
+		return err
+	}
+	filter := &querybuilder.ColumnFilter{Column: column, NonEmpty: holdsText(goquDriver, found.DataType)}
+	return s.sample(ctx, stream, schema, table, numRows, filter)
+}
+
+// sample sends the rows of a sample of a table whose schema and name were checked: whole
+// rows, or the filled values of one column when there is a filter.
+func (s *SQLConnectionDataService) sample(
+	ctx context.Context,
+	stream SampleDataStream,
+	schema, table string,
+	numRows uint,
+	filter *querybuilder.ColumnFilter,
+) error {
 	conn, err := s.sqlconnector.NewDbFromConnectionConfig(
 		s.connconfig,
 		s.logger,
@@ -136,12 +185,12 @@ func (s *SQLConnectionDataService) SampleData(
 
 	schemaTable := sqlmanager_shared.BuildTable(schema, table)
 
-	query, err := querybuilder.BuildSampledSelectLimitQuery(goquDriver, schema, table, numRows)
+	query, err := querybuilder.BuildSampledSelectLimitQuery(goquDriver, schema, table, numRows, filter)
 	if err != nil {
 		return err
 	}
 	logger := s.logger.With("table", schemaTable)
-	spread, hasSpread := spreadSampleQuery(ctx, logger, db, goquDriver, schema, table, numRows, randomInRange)
+	spread, hasSpread := spreadSampleQuery(ctx, logger, db, goquDriver, schema, table, numRows, randomInRange, filter)
 	send := func(row map[string]any) error {
 		var rowbytes bytes.Buffer
 		enc := gob.NewEncoder(&rowbytes)
@@ -155,7 +204,11 @@ func (s *SQLConnectionDataService) SampleData(
 		}
 		return stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: rowbytes.Bytes()})
 	}
-	if err := readSample(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
+	read := readSample
+	if filter != nil {
+		read = readColumnSample
+	}
+	if err := read(ctx, logger, db, mapper, spread, hasSpread, query, numRows, send); err != nil {
 		return wrapSampleError(err, schemaTable, goquDriver)
 	}
 	return nil
@@ -561,8 +614,13 @@ func (s *SQLConnectionDataService) areSchemaAndTableValid(
 	if err != nil {
 		return err
 	}
+	return checkSchemaAndTable(schema, table, schemas)
+}
 
-	if !isValidSchema(schema, schemas) || !isValidTable(table, schemas) {
+// checkSchemaAndTable refuses a schema or a table that the catalogue columns of the table
+// do not show.
+func checkSchemaAndTable(schema, table string, columns []*mgmtv1alpha1.DatabaseColumn) error {
+	if !isValidSchema(schema, columns) || !isValidTable(table, columns) {
 		return husonymerrors.NewBadRequest("must provide valid schema and table")
 	}
 	return nil

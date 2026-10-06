@@ -522,6 +522,87 @@ func (_c *MockConnectionDataService_GetTableSchema_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// SampleColumn provides a mock function for the type MockConnectionDataService
+func (_mock *MockConnectionDataService) SampleColumn(ctx context.Context, stream SampleDataStream, schema string, table string, column string, numRows uint) error {
+	ret := _mock.Called(ctx, stream, schema, table, column, numRows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SampleColumn")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, SampleDataStream, string, string, string, uint) error); ok {
+		r0 = returnFunc(ctx, stream, schema, table, column, numRows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockConnectionDataService_SampleColumn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SampleColumn'
+type MockConnectionDataService_SampleColumn_Call struct {
+	*mock.Call
+}
+
+// SampleColumn is a helper method to define mock.On call
+//   - ctx context.Context
+//   - stream SampleDataStream
+//   - schema string
+//   - table string
+//   - column string
+//   - numRows uint
+func (_e *MockConnectionDataService_Expecter) SampleColumn(ctx any, stream any, schema any, table any, column any, numRows any) *MockConnectionDataService_SampleColumn_Call {
+	return &MockConnectionDataService_SampleColumn_Call{Call: _e.mock.On("SampleColumn", ctx, stream, schema, table, column, numRows)}
+}
+
+func (_c *MockConnectionDataService_SampleColumn_Call) Run(run func(ctx context.Context, stream SampleDataStream, schema string, table string, column string, numRows uint)) *MockConnectionDataService_SampleColumn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 SampleDataStream
+		if args[1] != nil {
+			arg1 = args[1].(SampleDataStream)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		var arg5 uint
+		if args[5] != nil {
+			arg5 = args[5].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *MockConnectionDataService_SampleColumn_Call) Return(err error) *MockConnectionDataService_SampleColumn_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockConnectionDataService_SampleColumn_Call) RunAndReturn(run func(ctx context.Context, stream SampleDataStream, schema string, table string, column string, numRows uint) error) *MockConnectionDataService_SampleColumn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SampleData provides a mock function for the type MockConnectionDataService
 func (_mock *MockConnectionDataService) SampleData(ctx context.Context, stream SampleDataStream, schema string, table string, numRows uint) error {
 	ret := _mock.Called(ctx, stream, schema, table, numRows)

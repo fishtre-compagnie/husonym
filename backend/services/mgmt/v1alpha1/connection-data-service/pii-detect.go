@@ -1,16 +1,13 @@
 package v1alpha1_connectiondataservice
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"maps"
 	"math"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -84,28 +81,11 @@ func (s *Service) DetectPiiInConnectionData(
 		sampleSize = defaultSampleSize
 	}
 
-	// A deadline of its own for sampling: past it, the error is explicit and
-	// actionable. Without it the client gives up first, and the server only reports
-	// a "context canceled" that the UI surfaces as an opaque HTTP 500.
-	sampleCtx, cancelSample := context.WithTimeout(ctx, sampleTimeout)
-	defer cancelSample()
-
-	collector := &rowCollector{}
-	if err := dataconn.SampleData(
-		sampleCtx,
-		collector,
-		req.Msg.GetSchema(),
-		req.Msg.GetTable(),
-		uint(sampleSize),
-	); err != nil {
-		if errors.Is(sampleCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
-			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf(
-				"l'échantillonnage de %s.%s a dépassé %s : table volumineuse ou base surchargée. "+
-					"Décochez cette table ou relancez le scan hors période de charge",
-				req.Msg.GetSchema(), req.Msg.GetTable(), sampleTimeout,
-			))
-		}
-		return nil, fmt.Errorf("unable to sample data for pii scan: %w", err)
+	colValues, err := s.sampledValues(
+		ctx, dataconn, req.Msg.GetSchema(), req.Msg.GetTable(), req.Msg.GetColumns(), uint(sampleSize),
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	// Type SQL de chaque colonne : il décide de la variante du transformer suggéré
@@ -124,40 +104,10 @@ func (s *Service) DetectPiiInConnectionData(
 	}
 
 	// Filtre optionnel sur un sous-ensemble de colonnes.
-	var wanted map[string]struct{}
-	if cols := req.Msg.GetColumns(); len(cols) > 0 {
-		wanted = make(map[string]struct{}, len(cols))
-		for _, c := range cols {
-			wanted[c] = struct{}{}
-		}
-	}
+	wanted := wantedColumns(req.Msg.GetColumns())
 
-	// Regroupe les valeurs par colonne (ordre stable des colonnes).
-	colValues := map[string][]string{}
-	var colOrder []string
-	for _, rowbytes := range collector.rows {
-		row := map[string]any{}
-		if err := gob.NewDecoder(bytes.NewReader(rowbytes)).Decode(&row); err != nil {
-			logger.Warn(fmt.Sprintf("skipping undecodable sampled row: %v", err))
-			continue
-		}
-		for col, v := range row {
-			if wanted != nil {
-				if _, ok := wanted[col]; !ok {
-					continue
-				}
-			}
-			text := valueToText(v)
-			if text == "" {
-				continue
-			}
-			if _, seen := colValues[col]; !seen {
-				colOrder = append(colOrder, col)
-			}
-			colValues[col] = append(colValues[col], text)
-		}
-	}
-	sort.Strings(colOrder)
+	// Ordre stable des colonnes.
+	colOrder := slices.Sorted(maps.Keys(colValues))
 
 	threshold := float64(req.Msg.GetScoreThreshold())
 	if threshold <= 0 {
@@ -252,37 +202,11 @@ func (s *Service) DetectPiiInConnectionData(
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		entity, avgScore, matchCount, ok := content.column(ctx, col, values)
-		if !ok {
-			continue
+		if detection := content.detection(
+			ctx, req.Msg.GetSchema(), req.Msg.GetTable(), col, columnTypes[col], values,
+		); detection != nil {
+			detections = append(detections, detection)
 		}
-		suggestion, ok := piidetect.SuggestionForEntity(entity, columnTypes[col])
-		if !ok {
-			continue
-		}
-		// Presidio ne distingue ni prénom/nom/nom complet (tout est PERSON), ni
-		// ville/adresse (tout est LOCATION). On tranche sur la forme des valeurs,
-		// sinon une colonne d'adresses se voyait suggérer Generate City.
-		suggestion.Category, suggestion.Suggested = piidetect.RefineByValues(
-			suggestion.Category, suggestion.Suggested, values,
-		)
-		detections = append(detections, &mgmtv1alpha1.ColumnPiiDetection{
-			Schema:                     req.Msg.GetSchema(),
-			Table:                      req.Msg.GetTable(),
-			Column:                     col,
-			EntityType:                 entity,
-			Score:                      float32(avgScore),
-			SuggestedTransformerSource: suggestion.Suggested,
-			IsSensitive:                suggestion.Sensitive,
-			MatchCount:                 clampUint32(matchCount),
-			SampledCount:               sampleCount(values),
-			DataCategory:               suggestion.Category,
-			PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
-			PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
-			//nolint:misspell // message produit, rédigé en français
-			PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
-				entity, matchCount, len(values), avgScore),
-		})
 	}
 
 	return connect.NewResponse(&mgmtv1alpha1.DetectPiiInConnectionDataResponse{
@@ -361,6 +285,46 @@ type contentAnalysis struct {
 	silent bool
 	// notAnalyzed holds the columns whose content could not be analyzed.
 	notAnalyzed map[string]struct{}
+}
+
+// detection is the content detection of one column, nil when its content holds nothing the scan
+// tells of, or could not be analyzed.
+func (a *contentAnalysis) detection(
+	ctx context.Context,
+	schema, table, column, dataType string,
+	values []string,
+) *mgmtv1alpha1.ColumnPiiDetection {
+	entity, avgScore, matchCount, ok := a.column(ctx, column, values)
+	if !ok {
+		return nil
+	}
+	suggestion, ok := piidetect.SuggestionForEntity(entity, dataType)
+	if !ok {
+		return nil
+	}
+	// Presidio ne distingue ni prénom/nom/nom complet (tout est PERSON), ni
+	// ville/adresse (tout est LOCATION). On tranche sur la forme des valeurs,
+	// sinon une colonne d'adresses se voyait suggérer Generate City.
+	suggestion.Category, suggestion.Suggested = piidetect.RefineByValues(
+		suggestion.Category, suggestion.Suggested, values,
+	)
+	return &mgmtv1alpha1.ColumnPiiDetection{
+		Schema:                     schema,
+		Table:                      table,
+		Column:                     column,
+		EntityType:                 entity,
+		Score:                      float32(avgScore),
+		SuggestedTransformerSource: suggestion.Suggested,
+		IsSensitive:                suggestion.Sensitive,
+		MatchCount:                 clampUint32(matchCount),
+		SampledCount:               sampleCount(values),
+		DataCategory:               suggestion.Category,
+		PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
+		PiiDetectionMethod:         mgmtv1alpha1.PiiDetectionMethod_PII_DETECTION_METHOD_CONTENT,
+		//nolint:misspell // message produit, rédigé en français
+		PiiEvidence: fmt.Sprintf("%s reconnu par analyse de contenu sur %d/%d valeurs (score moyen %.2f)",
+			entity, matchCount, len(values), avgScore),
+	}
 }
 
 // column tells what the analyzer finds in the values of a column: the dominant entity, its
@@ -447,11 +411,7 @@ func analyzeColumn(
 	threshold float64,
 	language string,
 ) (found columnEntity, refused, err error) {
-	type agg struct {
-		count    int
-		scoreSum float64
-	}
-	byEntity := map[string]*agg{}
+	byEntity := map[string]*entityTally{}
 	refusedValues := 0
 	for _, v := range values {
 		text := truncateRunes(v, maxValueRunes)
@@ -487,7 +447,7 @@ func analyzeColumn(
 		for e, sc := range bestPerEntity {
 			a := byEntity[e]
 			if a == nil {
-				a = &agg{}
+				a = &entityTally{}
 				byEntity[e] = a
 			}
 			a.count++
@@ -495,25 +455,37 @@ func analyzeColumn(
 		}
 	}
 
-	// Entité dominante = présente dans le plus de VALEURS, PARMI les entités
-	// mappables vers un transformer. On ignore le bruit non exploitable
-	// (URL, DATE_TIME...). Départage par nom d'entité pour un résultat déterministe.
+	best := dominantEntity(byEntity)
+	if best == "" {
+		return columnEntity{}, refused, nil
+	}
+	return columnEntity{entity: best, avgScore: byEntity[best].mean(), matchCount: byEntity[best].count}, refused, nil
+}
+
+// entityTally is how many values an entity was found in, and the sum of its best scores in them.
+type entityTally struct {
+	count    int
+	scoreSum float64
+}
+
+func (t *entityTally) mean() float64 { return t.scoreSum / float64(t.count) }
+
+// dominantEntity is the entity found in the most values, among those that map to a transformer:
+// the noise with no use (URL, DATE_TIME...) is ignored. Of entities found in as many values, the
+// first by name, for a deterministic result. It is empty when none maps to a transformer.
+func dominantEntity(byEntity map[string]*entityTally) string {
 	best := ""
-	for e, a := range byEntity {
+	for e, tally := range byEntity {
 		if _, ok := piidetect.SuggestionForEntity(e, ""); !ok {
 			continue
 		}
 		if best == "" ||
-			a.count > byEntity[best].count ||
-			(a.count == byEntity[best].count && e < best) {
+			tally.count > byEntity[best].count ||
+			(tally.count == byEntity[best].count && e < best) {
 			best = e
 		}
 	}
-	if best == "" {
-		return columnEntity{}, refused, nil
-	}
-	a := byEntity[best]
-	return columnEntity{entity: best, avgScore: a.scoreSum / float64(a.count), matchCount: a.count}, refused, nil
+	return best
 }
 
 func valueToText(v any) string {
