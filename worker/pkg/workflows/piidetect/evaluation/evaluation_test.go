@@ -146,12 +146,25 @@ func (db *database) builder(t *testing.T) connectiondata.ConnectionDataBuilder {
 				if uint(i) >= limit {
 					break
 				}
-				var encoded bytes.Buffer
-				if err := gob.NewEncoder(&encoded).Encode(row); err != nil {
+				if err := sendRow(stream, row); err != nil {
 					return err
 				}
-				if err := stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: encoded.Bytes()}); err != nil {
-					return err
+			}
+			return nil
+		}).Maybe()
+	// The filled values of one column, each as a row whose only key is the column.
+	data.EXPECT().SampleColumn(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, stream connectiondata.SampleDataStream, schema, name, column string, limit uint) error {
+			sent := uint(0)
+			for _, row := range db.tables[name+"@"+schema].Rows() {
+				if sent >= limit {
+					break
+				}
+				if value := row[column]; value != nil && value != "" {
+					if err := sendRow(stream, map[string]any{column: value}); err != nil {
+						return err
+					}
+					sent++
 				}
 			}
 			return nil
@@ -159,6 +172,14 @@ func (db *database) builder(t *testing.T) connectiondata.ConnectionDataBuilder {
 	builder := connectiondata.NewMockConnectionDataBuilder(t)
 	builder.EXPECT().NewDataConnection(mock.Anything, mock.Anything).Return(data, nil).Maybe()
 	return builder
+}
+
+func sendRow(stream connectiondata.SampleDataStream, row map[string]any) error {
+	var encoded bytes.Buffer
+	if err := gob.NewEncoder(&encoded).Encode(row); err != nil {
+		return err
+	}
+	return stream.Send(&mgmtv1alpha1.GetConnectionDataStreamResponse{RowBytes: encoded.Bytes()})
 }
 
 type silent struct{}

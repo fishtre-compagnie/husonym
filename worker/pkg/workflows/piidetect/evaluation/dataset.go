@@ -8,7 +8,8 @@
 // addresses come from the documentation ranges. It holds no data of a customer.
 //
 // The detection by rules is measured on every run of the tests and held to a baseline:
-// see the tests. The detection by a model is measured on demand.
+// see the tests. The detection by a model is measured on demand, and so is the content
+// analysis of free text, which takes an analyzer.
 package evaluation
 
 import (
@@ -40,12 +41,27 @@ type Column struct {
 	Type     string `json:"type"`
 	Expected string `json:"expected"`
 	Values   []any  `json:"values"`
+	// Persons are the positions of the values that name a person, in a column of free
+	// text: the values that make the column personal.
+	Persons []int `json:"persons,omitempty"`
 }
 
 // Load reads the data sets of a directory, one file per language, in the order of their
 // languages.
 func Load(dir string) ([]Dataset, error) {
-	files, err := filepath.Glob(filepath.Join(dir, "??.json"))
+	return load(dir, "??.json")
+}
+
+// LoadFreeText reads the data sets of free text of a directory, one file per language, in
+// the order of their languages. Each holds one table of columns of sentences: some name
+// persons in a few of their values, the others hold what business text holds and no
+// person.
+func LoadFreeText(dir string) ([]Dataset, error) {
+	return load(dir, "free-text-??.json")
+}
+
+func load(dir, pattern string) ([]Dataset, error) {
+	files, err := filepath.Glob(filepath.Join(dir, pattern))
 	if err != nil {
 		return nil, err
 	}
