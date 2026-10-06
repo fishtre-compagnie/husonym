@@ -10,14 +10,22 @@ This is the internal reference. Customer-facing wording lives in
 A license is a JSON payload signed with **Ed25519**, base64-encoded, handed to the
 customer, and installed on the backend and the worker: either as the `EE_LICENSE`
 environment variable, or in a file whose path is given by `EE_LICENSE_FILE`. When both are
-set, the file wins. `EE_LICENSE` is read once, when the process starts; the file is read
-again at most once a minute, on demand, so a renewed license is picked up without a
-restart. A value that cannot be read or verified is logged and never replaces the key
-already in place; the process starts either way.
+set, the file wins.
 
-The license is a `license.Provider` that answers from the clock on every call: it is
-checked per request, not when the process starts, so an expiry takes effect without a
-restart. What the API and the worker wire at startup follows configuration only.
+The license is a `license.Provider`. It holds the last key that a `license.Loader` gave
+it: `Refresh` asks the loader, verifies what comes back and replaces the key in place.
+The API and the worker refresh once when they start, then once a minute in the
+background (`RefreshEvery`), so a renewed license in the file is picked up without a
+restart. A value that cannot be loaded or verified is logged, kept as `Problem()`, and
+never replaces the key already in place; a loader that has nothing to give does not take
+the key away either. The process starts either way.
+
+Only `Refresh` calls the loader. Every read (`IsValid`, `HasFeature`, `Limits`, `State`,
+`Describe`…) answers from memory and from the clock, without any I/O: workflow code calls
+them from the workflow thread, where a blocking call trips Temporal's deadlock detector.
+Because the clock is read on every call, the license is checked per request, not when the
+process starts, and an expiry takes effect without a restart or a refresh. What the API
+and the worker wire at startup follows configuration only.
 
 The verifying public keys are **embedded in the binary** (one `keys/<kid>.pem` per key, via
 `go:embed`). The envelope may carry a `kid` naming the key to verify with; without one, the
@@ -195,8 +203,8 @@ refused with no indication why.
 
 In tests, use `testutil.NewFakeEELicense(testutil.WithIsValid())` — and
 `testutil.WithLimits(...)` to exercise caps; `SetValid(false)` makes it lapse mid-test.
-Production code builds one `license.NewProvider(license.SourceFromEnv(), logger)` and hands
-it down as a `license.EEInterface`.
+Production code builds one `license.NewProvider(license.LoaderFromEnv(), logger)`, refreshes
+it, and hands it down as a `license.EEInterface`.
 
 ## The signing key
 

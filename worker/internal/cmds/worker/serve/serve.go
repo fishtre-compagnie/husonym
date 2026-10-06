@@ -84,9 +84,12 @@ func serve(ctx context.Context) error {
 		logger,
 	) // set default logger for methods that can't easily access the configured logger
 
-	// Building the provider never fails: a license that cannot be read is logged and
-	// leaves the instance without one.
-	eelicense := license.NewProvider(license.SourceFromEnv(), logger)
+	// The license never stops the start: a key that cannot be read is logged by the
+	// refresh and leaves the instance without one. The key is then read again in the
+	// background, so that a renewed one is picked up without a restart.
+	eelicense := license.NewProvider(license.LoaderFromEnv(), logger)
+	_ = eelicense.Refresh(ctx)
+	go eelicense.RefreshEvery(ctx, time.Minute)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	// The settings of PII detection are read before anything is dialed: a setting that

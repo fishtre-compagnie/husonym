@@ -1,20 +1,13 @@
 package license
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/spf13/viper"
 )
-
-// fileRecheckInterval bounds how often the license file is read again. It is measured
-// on the Provider's clock, and the check runs on demand: there is no background goroutine.
-const fileRecheckInterval = time.Minute
 
 // EEInterface is what the rest of the code asks of a license.
 type EEInterface interface {
@@ -25,50 +18,43 @@ type EEInterface interface {
 	HasFeature(Feature) bool
 }
 
-// Source says where the license value comes from. When both fields are set, the file
-// wins.
-type Source struct {
-	// Value is the license key itself, read once.
-	Value string
-	// File is the path of a file holding the license key, read again on demand.
-	File string
-}
+// Loader gives the value of the license key in force, or an empty string when it has
+// none to give.
+type Loader func(ctx context.Context) (string, error)
 
-// SourceFromEnv reads the source from EE_LICENSE and EE_LICENSE_FILE.
-func SourceFromEnv() Source {
-	return Source{
-		Value: viper.GetString("EE_LICENSE"),
-		File:  viper.GetString("EE_LICENSE_FILE"),
-	}
-}
-
-// fileObservation is what the last read of the license file saw, so that the same
-// content is neither verified nor logged twice.
-type fileObservation struct {
-	content string
-	// readFailed means the file could not be read at all, whatever content says.
-	readFailed bool
-}
-
-// Provider holds the last verified license key and answers from the clock on every
-// call. It is safe for concurrent use.
+// Provider holds the last key its loader gave and answers from the clock on every call.
+// It is safe for concurrent use.
+//
+// Only Refresh calls the loader. Every other method answers from memory and never does
+// I/O: workflow code calls them from the workflow thread, where a call that blocks trips
+// the deadlock detector of Temporal.
 type Provider struct {
+	load   Loader
 	ring   Keyring
 	now    func() time.Time
 	logger *slog.Logger
-	file   string
 
-	mu        sync.Mutex
-	key       *Key
-	problem   error
-	lastCheck time.Time
-	lastSeen  *fileObservation
+	// refreshing lets one Refresh run at a time, so that two of them cannot apply what
+	// they loaded in the wrong order. It is held across the loader call and guards the
+	// two fields below; the reads never take it.
+	refreshing sync.Mutex
+	// applied is the last value that became the key in place.
+	applied string
+	// reported is the text of the last problem logged, so that a problem that lasts is
+	// logged once.
+	reported string
+
+	// mu guards what the reads answer from. It is never held across the loader call.
+	mu      sync.Mutex
+	key     *Key
+	problem error
 }
 
 var _ EEInterface = (*Provider)(nil)
 
-// NewProvider builds a Provider that verifies keys against the embedded public keys.
-func NewProvider(src Source, logger *slog.Logger) *Provider {
+// NewProvider builds a Provider that verifies keys against the embedded public keys. It
+// holds no key until Refresh is called.
+func NewProvider(load Loader, logger *slog.Logger) *Provider {
 	ring, err := EmbeddedKeyring()
 	if err != nil {
 		// The embedded keys are part of the binary; a failure here is a build defect.
@@ -78,92 +64,95 @@ func NewProvider(src Source, logger *slog.Logger) *Provider {
 			logger.Error("unable to load the embedded license public keys", "error", err)
 		}
 	}
-	return newProvider(src, ring, time.Now, logger)
+	return newProvider(load, ring, time.Now, logger)
 }
 
-func newProvider(src Source, ring Keyring, now func() time.Time, logger *slog.Logger) *Provider {
+func newProvider(load Loader, ring Keyring, now func() time.Time, logger *slog.Logger) *Provider {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	p := &Provider{ring: ring, now: now, logger: logger, file: src.File}
-
-	switch {
-	case src.File != "":
-		if src.Value != "" {
-			logger.Warn("both EE_LICENSE and EE_LICENSE_FILE are set: the file wins")
-		}
-		p.mu.Lock()
-		p.lastCheck = now()
-		p.readFile()
-		p.mu.Unlock()
-	case src.Value != "":
-		key, err := ParseWith(strings.TrimSpace(src.Value), ring)
-		if err != nil {
-			p.problem = err
-			logger.Error("the license key is not usable", "error", err)
-		} else {
-			p.key = key
-		}
-	}
-	return p
+	return &Provider{load: load, ring: ring, now: now, logger: logger}
 }
 
-// readFile reads the license file and applies what it holds. The caller holds p.mu.
+// Refresh asks the loader for the key in force and applies what it gives.
 //
-// A key that cannot be trusted never replaces the one in place: the error is kept in
-// problem and logged once per faulty content. A well-signed key replaces it whatever
-// its dates say, so that the file is the single source of truth.
-func (p *Provider) readFile() {
-	var seen fileObservation
-	raw, err := os.ReadFile(p.file)
-	if err != nil {
-		seen.readFailed = true
-	} else {
-		seen.content = strings.TrimSpace(string(raw))
-	}
-	if p.lastSeen != nil && *p.lastSeen == seen {
-		return
-	}
-	p.lastSeen = &seen
+// A key that cannot be loaded or trusted never replaces the one in place: the reason is
+// returned, kept for Problem and logged once for as long as it lasts. A well-signed key
+// replaces the one in place whatever its dates say, so that the loader is the single
+// source of truth. A loader with nothing to give leaves the key in place: a store that
+// answers nothing does not take a license away.
+func (p *Provider) Refresh(ctx context.Context) error {
+	p.refreshing.Lock()
+	defer p.refreshing.Unlock()
 
-	var key *Key
-	switch {
-	case seen.readFailed:
-		err = fmt.Errorf("the license file cannot be read: %w", unwrapPathError(err))
-	case seen.content == "":
-		err = errors.New("the license file is empty")
-	default:
-		key, err = ParseWith(seen.content, p.ring)
-	}
+	value, err := p.load(ctx)
 	if err != nil {
-		p.problem = err
-		p.logger.Error("the license file is not usable, keeping the previous key", "error", err)
-		return
+		return p.refuse(fmt.Errorf("the license key cannot be loaded: %w", err))
 	}
+	value = strings.TrimSpace(value)
+	if value == "" || value == p.applied {
+		p.settle()
+		return nil
+	}
+
+	key, err := ParseWith(value, p.ring)
+	if err != nil {
+		return p.refuse(err)
+	}
+	p.mu.Lock()
 	p.key = key
 	p.problem = nil
+	p.mu.Unlock()
+	p.applied = value
+	p.reported = ""
+	p.logger.Info("the license key in force was replaced", "licenseId", key.Id, "expiresAt", key.ExpiresAt)
+	return nil
 }
 
-// unwrapPathError drops the path from a file error, keeping the operation's cause.
-func unwrapPathError(err error) error {
-	var pathErr *os.PathError
-	if errors.As(err, &pathErr) {
-		return pathErr.Err
+// refuse keeps the key in place and records why the load was refused. The caller holds
+// p.refreshing.
+func (p *Provider) refuse(problem error) error {
+	p.mu.Lock()
+	p.problem = problem
+	p.mu.Unlock()
+	if text := problem.Error(); text != p.reported {
+		p.reported = text
+		p.logger.Error("the license key is not usable, keeping the key in place", "error", problem)
 	}
-	return err
+	return problem
 }
 
-// snapshot reads the file again when due, then returns the key and the clock under one
-// lock, so that an answer always comes from a single key.
+// settle records that the loader answered and that the key in place stands. The caller
+// holds p.refreshing.
+func (p *Provider) settle() {
+	p.mu.Lock()
+	p.problem = nil
+	p.mu.Unlock()
+	p.reported = ""
+}
+
+// RefreshEvery refreshes at the given interval until ctx is done. It does not refresh on
+// entry: the caller does the first Refresh itself. A refresh that fails is not reported
+// here, Refresh already recorded and logged it.
+func (p *Provider) RefreshEvery(ctx context.Context, every time.Duration) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			_ = p.Refresh(ctx)
+		}
+	}
+}
+
+// snapshot returns the key, the problem and the clock under one lock, so that an answer
+// always comes from a single key.
 func (p *Provider) snapshot() snapshot {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	now := p.now()
-	if p.file != "" && now.Sub(p.lastCheck) >= fileRecheckInterval {
-		p.lastCheck = now
-		p.readFile()
-	}
-	return snapshot{key: p.key, problem: p.problem, now: now}
+	return snapshot{key: p.key, problem: p.problem, now: p.now()}
 }
 
 // snapshot is one consistent answer: the key, the problem and the instant all come from
@@ -186,6 +175,23 @@ func (s snapshot) state() State {
 func (s snapshot) inForce() bool {
 	state := s.state()
 	return state != StateNone && state != StateFrozen
+}
+
+// Description is what the Provider holds at one instant.
+type Description struct {
+	State State
+	// Key is the key in place, or nil without one. It is the Provider's own: the caller
+	// must not modify it.
+	Key *Key
+	// Problem is why the last refresh was refused, or nil.
+	Problem error
+}
+
+// Describe returns the state, the key and the problem from one snapshot, so that the
+// three never come from two keys or two instants.
+func (p *Provider) Describe() Description {
+	snap := p.snapshot()
+	return Description{State: snap.state(), Key: snap.key, Problem: snap.problem}
 }
 
 // State is where the current key stands in its lifecycle, or StateNone without a key.
@@ -232,8 +238,7 @@ func (p *Provider) Limits() *Limits {
 	return snap.key.Limits
 }
 
-// Problem is the reason the last read of the license was refused, or nil once a good
-// read happens.
+// Problem is the reason the last refresh was refused, or nil once a refresh goes through.
 func (p *Provider) Problem() error {
 	return p.snapshot().problem
 }
