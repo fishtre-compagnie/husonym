@@ -28,7 +28,10 @@ worker of the previous version picks it up.
 ### License
 
 The API and the worker start whatever the license, and read it on every request. The
-worker no longer reads a license variable: it asks the API for the key. See
+worker no longer reads a license variable: it asks the API for the key. If `EE_LICENSE` or
+`EE_LICENSE_FILE` was set only on the worker, it must now be set on the API, because the
+worker takes the key from the API; the worker keeps running without a license until then.
+See
 [Licensing](/deploy/licensing) for what a valid license is needed for, and for
 `EE_LICENSE_FILE`, which lets a renewed license take effect without a restart.
 

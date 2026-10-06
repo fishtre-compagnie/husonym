@@ -199,9 +199,9 @@ infisical run --env=prod -- go run ./internal/license/cmd/husonym-license issue 
 
 Then set `EE_LICENSE=<value>` in `.env.api.local`. Both compose files read that path with
 `required: false`, so the license reaches the container without being committed. The
-worker needs nothing: it asks the API. `compose.yml` did not read them until it was fixed alongside this
-document: the license was documented here long before anything injected it, and the stack
-refused with no indication why.
+worker needs nothing: it asks the API. `compose.yml` did not read `.env.api.local` until
+it was fixed alongside this document: the license was documented here long before anything
+injected it, and the stack refused with no indication why.
 
 In tests, use `testutil.NewFakeEELicense(testutil.WithIsValid())` — and
 `testutil.WithLimits(...)` to exercise caps; `SetValid(false)` makes it lapse mid-test.
