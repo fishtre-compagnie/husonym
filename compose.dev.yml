@@ -208,6 +208,10 @@ services:
   # L'image officielle ne connaît que l'anglais et n'a aucun reconnaisseur
   # français : les téléphones FR passent inaperçus et un NIR ressort en carte
   # bancaire. Voir docker/presidio-fr/README.md pour les mesures.
+  #
+  # La configuration (nlp.yaml, recognizers.yaml, analyzer.yaml) est dans
+  # l'image : après une modification, reconstruire avec
+  # `docker compose -f compose.dev.yml build presidio-analyzer`.
   presidio-analyzer:
     container_name: husonym-presidio-analyzer
     build:
@@ -215,16 +219,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - 5002:3000
-    environment:
-      # Les trois fichiers vont ensemble : le moteur d'analyse refuse de démarrer
-      # si ses langues ne correspondent pas à celles du registre.
-      - NLP_CONF_FILE=/app/conf/fr/nlp.yaml
-      - RECOGNIZER_REGISTRY_CONF_FILE=/app/conf/fr/recognizers.yaml
-      - ANALYZER_CONF_FILE=/app/conf/fr/analyzer.yaml
-    volumes:
-      - ./docker/presidio-fr/nlp.yaml:/app/conf/fr/nlp.yaml:ro
-      - ./docker/presidio-fr/recognizers.yaml:/app/conf/fr/recognizers.yaml:ro
-      - ./docker/presidio-fr/analyzer.yaml:/app/conf/fr/analyzer.yaml:ro
     networks:
       - husonym-network
 

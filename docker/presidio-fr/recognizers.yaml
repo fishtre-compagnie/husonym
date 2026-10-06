@@ -49,6 +49,36 @@ recognizers:
   - name: MacAddressRecognizer
     type: predefined
 
+  # --- Personnes en français : CamemBERT, et non spaCy ------------------------
+  # spaCy reste le moteur NLP des deux langues (tokens, lemmes des mots de contexte).
+  # Anglais : rien n'est déclaré, Presidio ajoute son SpacyRecognizer comme avant.
+  # Français : le SpacyRecognizer est déclaré SANS PERSON ; fr_core_news_md donne
+  # toujours LOCATION (dont l'affinage côté Go a besoin), DATE_TIME et NRP.
+  # Ne pas le désactiver par « enabled: false » : cela le retire aussi de l'anglais.
+  - name: SpacyRecognizer
+    type: predefined
+    supported_languages:
+      - fr
+    supported_entities: [LOCATION, DATE_TIME, NRP]
+
+  # MappedLabelsNerRecognizer (mapped_ner_recognizer.py, dans l'image) est le
+  # HuggingFaceNerRecognizer de Presidio, moins les étiquettes absentes de
+  # label_mapping (LOC, ORG et MISC du modèle ne sortent pas), et avec des morceaux
+  # de chunk_size caractères au plus.
+  # threshold : en dessous de 0,8 une personne n'est pas rendue.
+  - name: MappedLabelsNerRecognizer
+    type: predefined
+    supported_languages:
+      - fr
+    model_name: /app/models/camembert-ner
+    supported_entities: [PERSON]
+    label_mapping:
+      PER: PERSON
+    aggregation_strategy: simple
+    threshold: 0.8
+    chunk_size: 400
+    chunk_overlap: 40
+
   # --- Reconnaisseurs francais (absents de Presidio) --------------------------
 
   # NIR (numero de securite sociale) : 15 chiffres.
