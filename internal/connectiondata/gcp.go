@@ -53,6 +53,15 @@ func (s *GcpConnectionDataService) SampleData(
 ) error {
 	return errors.ErrUnsupported
 }
+
+func (s *GcpConnectionDataService) SampleColumn(
+	ctx context.Context,
+	stream SampleDataStream,
+	schema, table, column string,
+	numRows uint,
+) error {
+	return errors.ErrUnsupported
+}
 func (s *GcpConnectionDataService) StreamData(
 	ctx context.Context,
 	stream *connect.ServerStream[mgmtv1alpha1.GetConnectionDataStreamResponse],

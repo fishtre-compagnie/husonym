@@ -105,13 +105,13 @@ func Test_BuildSampledSelectLimitQuery_NamesAreWrittenAsOneIdentifier(t *testing
 	}
 	for _, n := range oddEngines {
 		t.Run(n.driver, func(t *testing.T) {
-			sql, err := BuildSampledSelectLimitQuery(n.driver, n.schema, n.table, 10)
+			sql, err := BuildSampledSelectLimitQuery(n.driver, n.schema, n.table, 10, nil)
 			require.NoError(t, err)
 			require.Equal(t, expected[n.driver], sql)
 		})
 	}
 	t.Run("a dot in the schema does not separate", func(t *testing.T) {
-		sql, err := BuildSampledSelectLimitQuery("mysql", "a.b", "t", 10)
+		sql, err := BuildSampledSelectLimitQuery("mysql", "a.b", "t", 10, nil)
 		require.NoError(t, err)
 		require.Equal(t,
 			"SELECT * FROM (SELECT * FROM `a.b`.`t` LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10", sql)
@@ -127,14 +127,14 @@ func Test_BuildTableSampleQuery_NamesAreWrittenAsOneIdentifier(t *testing.T) {
 	}
 	for _, n := range []oddNames{oddPostgres, oddSqlServer} {
 		t.Run(n.driver, func(t *testing.T) {
-			sql, ok, err := BuildTableSampleQuery(n.driver, n.schema, n.table, size, 10)
+			sql, ok, err := BuildTableSampleQuery(n.driver, n.schema, n.table, size, 10, nil)
 			require.NoError(t, err)
 			require.True(t, ok)
 			require.Equal(t, expected[n.driver], sql)
 		})
 	}
 	t.Run("a dot in the schema does not separate", func(t *testing.T) {
-		sql, ok, err := BuildTableSampleQuery("postgres", "a.b", "t", size, 10)
+		sql, ok, err := BuildTableSampleQuery("postgres", "a.b", "t", size, 10, nil)
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Equal(t,
@@ -152,7 +152,7 @@ func Test_BuildKeySlicesQueries_NamesAreWrittenAsOneIdentifier(t *testing.T) {
 	n := oddMysql
 
 	t.Run("sample", func(t *testing.T) {
-		sql, err := BuildKeySlicesSampleQuery(n.driver, n.schema, n.table, n.column, ranges, 10)
+		sql, err := BuildKeySlicesSampleQuery(n.driver, n.schema, n.table, n.column, ranges, 10, nil)
 		require.NoError(t, err)
 		require.Equal(t,
 			"SELECT * FROM (SELECT * FROM (SELECT * "+first+") AS `t1` "+
@@ -175,7 +175,7 @@ func Test_BuildKeySlicesQueries_NamesAreWrittenAsOneIdentifier(t *testing.T) {
 			sql)
 	})
 	t.Run("ordinary names", func(t *testing.T) {
-		sql, err := BuildKeySlicesSampleQuery("mysql", "db", "accounts", "id", ranges, 10)
+		sql, err := BuildKeySlicesSampleQuery("mysql", "db", "accounts", "id", ranges, 10, nil)
 		require.NoError(t, err)
 		require.Equal(t,
 			"SELECT * FROM (SELECT * FROM (SELECT * FROM `db`.`accounts` WHERE ((`id` >= 5) AND (`id` <= 8999)) ORDER BY `id` ASC LIMIT 100) AS `t1` "+
@@ -521,15 +521,15 @@ func Test_Builders_RefuseANameNoEngineTakes(t *testing.T) {
 			return err
 		},
 		"BuildSampledSelectLimitQuery": func(schema, table string) error {
-			_, err := BuildSampledSelectLimitQuery("sqlserver", schema, table, 1)
+			_, err := BuildSampledSelectLimitQuery("sqlserver", schema, table, 1, nil)
 			return err
 		},
 		"BuildTableSampleQuery": func(schema, table string) error {
-			_, _, err := BuildTableSampleQuery("postgres", schema, table, size, 1)
+			_, _, err := BuildTableSampleQuery("postgres", schema, table, size, 1, nil)
 			return err
 		},
 		"BuildKeySlicesSampleQuery": func(schema, table string) error {
-			_, err := BuildKeySlicesSampleQuery("mysql", schema, table, "id", ranges, 1)
+			_, err := BuildKeySlicesSampleQuery("mysql", schema, table, "id", ranges, 1, nil)
 			return err
 		},
 		"BuildKeySlicesCountQuery": func(schema, table string) error {
@@ -583,7 +583,7 @@ func Test_Builders_RefuseANameNoEngineTakes(t *testing.T) {
 			return err
 		},
 		"BuildKeySlicesSampleQuery": func(column string) error {
-			_, err := BuildKeySlicesSampleQuery("mysql", "public", "users", column, ranges, 1)
+			_, err := BuildKeySlicesSampleQuery("mysql", "public", "users", column, ranges, 1, nil)
 			return err
 		},
 		"BuildKeySlicesCountQuery": func(column string) error {
@@ -639,9 +639,9 @@ func Test_Builders_RefuseAnUnknownDriver(t *testing.T) {
 	require.Error(t, err)
 	_, err = BuildSelectLimitQuery("oracle", "s", "t", 1)
 	require.Error(t, err)
-	_, err = BuildSampledSelectLimitQuery("oracle", "s", "t", 1)
+	_, err = BuildSampledSelectLimitQuery("oracle", "s", "t", 1, nil)
 	require.Error(t, err)
-	_, err = BuildKeySlicesSampleQuery("oracle", "s", "t", "id", []KeyRange{{From: 1, To: 2}}, 1)
+	_, err = BuildKeySlicesSampleQuery("oracle", "s", "t", "id", []KeyRange{{From: 1, To: 2}}, 1, nil)
 	require.Error(t, err)
 	_, err = BuildKeySlicesCountQuery("oracle", "s", "t", "id", []KeyRange{{From: 1, To: 2}})
 	require.Error(t, err)

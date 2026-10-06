@@ -91,10 +91,47 @@ func BuildSelectLimitQuery(
 // nothing.
 const SampleWindowSize = 1000
 
+// ColumnFilter makes a sampling query select one column and keep the filled values of
+// it only. A nil filter leaves a sampling query as it is: whole rows.
+type ColumnFilter struct {
+	// Column is the one column selected. Its values are never NULL.
+	Column string
+	// NonEmpty also leaves out the empty string. It is for text columns only.
+	NonEmpty bool
+}
+
+// check refuses a column name that no engine takes.
+func (f *ColumnFilter) check() error {
+	if f == nil {
+		return nil
+	}
+	return checkColumns([]string{f.Column})
+}
+
+// conditions gives the conditions that keep the filled values of the column.
+func (f *ColumnFilter) conditions(d sqlident.Dialect) []exp.Expression {
+	col := d.Col(f.Column)
+	conditions := []exp.Expression{col.IsNotNull()}
+	if f.NonEmpty {
+		conditions = append(conditions, goqu.L("(? <> '')", col))
+	}
+	return conditions
+}
+
+// restrict makes a select of the table read the column of the filter, filled values
+// only. A nil filter gives the select as it is.
+func (f *ColumnFilter) restrict(d sqlident.Dialect, rows *goqu.SelectDataset) *goqu.SelectDataset {
+	if f == nil {
+		return rows
+	}
+	return rows.Select(d.Col(f.Column)).Where(f.conditions(d)...)
+}
+
 // BuildSampledSelectLimitQuery builds a query that returns a random sample of a table.
 // The draw is made over a bounded window, the first SampleWindowSize rows of the table,
 // not over the whole table. It is the query that answers when a draw spread across the
-// table is not possible.
+// table is not possible. With a filter, the window is made of the first SampleWindowSize
+// filled values of the column.
 //
 // The cost is bounded by the window. An `ORDER BY RAND() LIMIT n` applied straight to
 // the table makes the database read every row and sort all of them to return n, so its
@@ -105,9 +142,13 @@ const SampleWindowSize = 1000
 // The sample is therefore not uniform over the table.
 func BuildSampledSelectLimitQuery(
 	driver, schema, table string, limit uint,
+	filter *ColumnFilter,
 ) (string, error) {
 	d, err := tableDialect(driver, schema, table)
 	if err != nil {
+		return "", err
+	}
+	if err := filter.check(); err != nil {
 		return "", err
 	}
 
@@ -124,7 +165,8 @@ func BuildSampledSelectLimitQuery(
 	builder := getGoquDialect(driver)
 
 	// The window is read without a sort: the database stops as soon as it has its rows.
-	window := builder.From(d.Table(schema, table)).Limit(SampleWindowSize).As("husonym_sample")
+	window := filter.restrict(d, builder.From(d.Table(schema, table))).
+		Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
 		From(window).
@@ -177,6 +219,10 @@ type TableSize struct {
 // random order come from every page read. SQL Server orders every row of the pages it
 // reads.
 //
+// With a filter, the pages are the same and only the filled values of the column are
+// kept. The rows are not thinned first: a thinning made before the filter would leave a
+// sparse column with a fraction of its values.
+//
 // It supports PostgreSQL and SQL Server. ok is false when the driver has no table
 // sample, when the size is unknown (no row or no page) and when the table has no more
 // rows than SampleWindowSize: the window query serves it.
@@ -184,8 +230,12 @@ func BuildTableSampleQuery(
 	driver, schema, table string,
 	size TableSize,
 	limit uint,
+	filter *ColumnFilter,
 ) (sql string, ok bool, err error) {
 	if err := checkTable(schema, table); err != nil {
+		return "", false, err
+	}
+	if err := filter.check(); err != nil {
 		return "", false, err
 	}
 	if size.Rows <= SampleWindowSize || size.Pages <= 0 {
@@ -205,8 +255,8 @@ func BuildTableSampleQuery(
 	var inner *goqu.SelectDataset
 	var randStmt string
 	if driver == sqlmanager_shared.GoquPostgresDriver {
-		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", sqltable, percent))
-		if keep < 1 {
+		inner = filter.restrict(d, builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", sqltable, percent)))
+		if keep < 1 && filter == nil {
 			inner = inner.Where(goqu.L("RANDOM() < ?", keep))
 		}
 		inner = inner.Limit(SampleRowsBound)
@@ -214,7 +264,7 @@ func BuildTableSampleQuery(
 	} else {
 		// No bound here: a TOP on a table sample keeps the first pages read. No thinning
 		// either: a random filter that names no column is computed once for the query.
-		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", sqltable, percent))
+		inner = filter.restrict(d, builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", sqltable, percent)))
 		randStmt = "NEWID()"
 	}
 
@@ -252,13 +302,15 @@ func roundTo4(v float64) float64 {
 // BuildKeySlicesSampleQuery builds a MySQL query that reads up to SampleSliceRows rows
 // in key order from each range, and draws limit rows at random from their union. The
 // ranges must not overlap, so no row comes twice. Each slice is a bounded range read
-// on the key, so the cost does not grow with the table.
+// on the key, so the cost does not grow with the table. With a filter, a slice holds the
+// filled values of the column found in its range, in key order.
 func BuildKeySlicesSampleQuery(
 	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 	limit uint,
+	filter *ColumnFilter,
 ) (string, error) {
-	union, err := keySlices(driver, schema, table, keyColumn, ranges, false)
+	union, err := keySlices(driver, schema, table, keyColumn, ranges, false, filter)
 	if err != nil {
 		return "", err
 	}
@@ -281,7 +333,7 @@ func BuildKeySlicesCountQuery(
 	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 ) (string, error) {
-	union, err := keySlices(driver, schema, table, keyColumn, ranges, true)
+	union, err := keySlices(driver, schema, table, keyColumn, ranges, true, nil)
 	if err != nil {
 		return "", err
 	}
@@ -297,11 +349,12 @@ func BuildKeySlicesCountQuery(
 
 // keySlices is the union of the slices of a table: for each range, its first
 // SampleSliceRows rows in key order. A slice holds the whole row, or the key column
-// alone when keyOnly is set.
+// alone when keyOnly is set, or the filled values of the column of the filter.
 func keySlices(
 	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 	keyOnly bool,
+	filter *ColumnFilter,
 ) (*goqu.SelectDataset, error) {
 	if len(ranges) == 0 {
 		return nil, errors.New("at least one key range is required")
@@ -313,6 +366,9 @@ func keySlices(
 	if err := checkColumns([]string{keyColumn}); err != nil {
 		return nil, err
 	}
+	if err := filter.check(); err != nil {
+		return nil, err
+	}
 	builder := getGoquDialect(driver)
 	sqltable := d.Table(schema, table)
 	key := d.Col(keyColumn)
@@ -322,8 +378,7 @@ func keySlices(
 		if keyOnly {
 			rows = rows.Select(key)
 		}
-		return rows.
-			Where(key.Gte(r.From), key.Lte(r.To)).
+		return filter.restrict(d, rows.Where(key.Gte(r.From), key.Lte(r.To))).
 			Order(key.Asc()).
 			Limit(SampleSliceRows)
 	}

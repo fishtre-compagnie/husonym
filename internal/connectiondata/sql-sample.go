@@ -56,6 +56,26 @@ var mysqlIntegerTypes = map[string]struct{}{
 	"tinyint": {}, "smallint": {}, "mediumint": {}, "int": {}, "bigint": {},
 }
 
+// textTypes are the catalogue names of the types that hold text, whatever their length,
+// in lower case.
+var textTypes = map[string]struct{}{
+	// PostgreSQL
+	"text": {}, "character varying": {}, "character": {}, "citext": {},
+	// MySQL and MariaDB
+	"char": {}, "varchar": {}, "tinytext": {}, "mediumtext": {}, "longtext": {},
+	// SQL Server
+	"nchar": {}, "nvarchar": {}, "ntext": {},
+}
+
+// holdsText tells whether a column of the catalogue type dataType holds text, whose empty
+// value is the empty string. The type is matched without its length (varchar(255)) and in
+// any case.
+func holdsText(dataType string) bool {
+	name, _, _ := strings.Cut(dataType, "(")
+	_, ok := textTypes[strings.ToLower(strings.TrimSpace(name))]
+	return ok
+}
+
 // sampleQuerier is the part of a database handle that sampling needs.
 type sampleQuerier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -120,7 +140,8 @@ func logSampleFailure(ctx context.Context, logger *slog.Logger, msg string, err 
 // spreadSampleQuery returns a query that draws rows across the whole table, or false
 // when the database cannot do it cheaply. It never fails: the reason is logged at debug
 // level and the caller reads the window instead. pick draws a value in [lo, hi], both
-// ends included.
+// ends included. A filter makes the query select one column and keep its filled values;
+// nil reads whole rows.
 func spreadSampleQuery(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -128,6 +149,7 @@ func spreadSampleQuery(
 	driver, schema, table string,
 	numRows uint,
 	pick func(lo, hi int64) int64,
+	filter *querybuilder.ColumnFilter,
 ) (string, bool) {
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
@@ -135,15 +157,15 @@ func spreadSampleQuery(
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows)
+		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows, filter)
 	case sqlmanager_shared.MssqlDriver:
 		size, ok := sqlServerSize(ctx, logger, db, schema, table)
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows)
+		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows, filter)
 	case sqlmanager_shared.MysqlDriver:
-		return mysqlKeySlicesQuery(ctx, logger, db, schema, table, numRows, pick)
+		return mysqlKeySlicesQuery(ctx, logger, db, schema, table, numRows, pick, filter)
 	default:
 		return "", false
 	}
@@ -155,8 +177,9 @@ func tableSampleQuery(
 	driver, schema, table string,
 	size querybuilder.TableSize,
 	numRows uint,
+	filter *querybuilder.ColumnFilter,
 ) (string, bool) {
-	query, ok, err := querybuilder.BuildTableSampleQuery(driver, schema, table, size, numRows)
+	query, ok, err := querybuilder.BuildTableSampleQuery(driver, schema, table, size, numRows, filter)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
@@ -240,6 +263,7 @@ func mysqlKeySlicesQuery(
 	schema, table string,
 	numRows uint,
 	pick func(lo, hi int64) int64,
+	filter *querybuilder.ColumnFilter,
 ) (string, bool) {
 	key, err := mysqlIntegerKey(ctx, db, schema, table)
 	if err != nil {
@@ -290,7 +314,7 @@ func mysqlKeySlicesQuery(
 	}
 
 	query, err := querybuilder.BuildKeySlicesSampleQuery(
-		sqlmanager_shared.MysqlDriver, schema, table, key, slices, numRows,
+		sqlmanager_shared.MysqlDriver, schema, table, key, slices, numRows, filter,
 	)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)

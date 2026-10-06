@@ -18,6 +18,19 @@ import (
 // are matched as exact text, in the order they are expected.
 func namesService(t *testing.T) (*SQLConnectionDataService, sqlmock.Sqlmock) {
 	t.Helper()
+	return catalogService(t, []*sqlmanager_shared.DatabaseSchemaRow{
+		{TableSchema: "sch", TableName: "tbl", ColumnName: "id", DataType: "integer"},
+	}, true)
+}
+
+// catalogService is namesService for a catalogue of the given columns. The service is
+// expected to open its own connection when connects is set, and never to when it is not.
+func catalogService(
+	t *testing.T,
+	columns []*sqlmanager_shared.DatabaseSchemaRow,
+	connects bool,
+) (*SQLConnectionDataService, sqlmock.Sqlmock) {
+	t.Helper()
 	db, dbMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -29,22 +42,23 @@ func namesService(t *testing.T) (*SQLConnectionDataService, sqlmock.Sqlmock) {
 	database := sqlmanager.NewMockSqlDatabase(t)
 	database.EXPECT().
 		GetDatabaseTableSchemasBySchemasAndTables(mock.Anything, mock.Anything).
-		Return([]*sqlmanager_shared.DatabaseSchemaRow{
-			{TableSchema: "sch", TableName: "tbl", ColumnName: "id", DataType: "integer"},
-		}, nil)
+		Return(columns, nil)
 	database.EXPECT().Close().Return()
 	manager := sqlmanager.NewMockSqlManagerClient(t)
 	manager.EXPECT().
 		NewSqlConnection(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(sqlmanager.NewPostgresSqlConnection(database), nil)
 
-	container := sqlconnect.NewMockSqlDbContainer(t)
-	container.EXPECT().Open().Return(db, nil)
-	container.EXPECT().Close().Return(nil)
+	// Without an expectation, the mock refuses any call: no connection is opened.
 	connector := sqlconnect.NewMockSqlConnector(t)
-	connector.EXPECT().
-		NewDbFromConnectionConfig(mock.Anything, mock.Anything, mock.Anything).
-		Return(container, nil)
+	if connects {
+		container := sqlconnect.NewMockSqlDbContainer(t)
+		container.EXPECT().Open().Return(db, nil)
+		container.EXPECT().Close().Return(nil)
+		connector.EXPECT().
+			NewDbFromConnectionConfig(mock.Anything, mock.Anything, mock.Anything).
+			Return(container, nil)
+	}
 
 	connection := &mgmtv1alpha1.Connection{
 		ConnectionConfig: &mgmtv1alpha1.ConnectionConfig{

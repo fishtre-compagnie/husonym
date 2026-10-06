@@ -54,6 +54,15 @@ func (s *AwsDynamodbConnectionDataService) SampleData(
 	return errors.ErrUnsupported
 }
 
+func (s *AwsDynamodbConnectionDataService) SampleColumn(
+	ctx context.Context,
+	stream SampleDataStream,
+	schema, table, column string,
+	numRows uint,
+) error {
+	return errors.ErrUnsupported
+}
+
 func (s *AwsDynamodbConnectionDataService) StreamData(
 	ctx context.Context,
 	stream *connect.ServerStream[mgmtv1alpha1.GetConnectionDataStreamResponse],

@@ -638,7 +638,7 @@ func Test_SampleData_IntegerShare(t *testing.T) {
 
 		query, ok, err := querybuilder.BuildTableSampleQuery(
 			sqlmanager_shared.GoquPostgresDriver, f.schema, table,
-			querybuilder.TableSize{Rows: 5000, Pages: 250}, 100)
+			querybuilder.TableSize{Rows: 5000, Pages: 250}, 100, nil)
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Contains(t, query, "SYSTEM (20) LIMIT")
@@ -749,7 +749,7 @@ func Test_SampleData_SqlServerSampledQuery(t *testing.T) {
 		require.Equal(t, int64(bigRows), size.Rows)
 
 		query, ok, err := querybuilder.BuildTableSampleQuery(
-			sqlmanager_shared.MssqlDriver, f.schema, table, size, 100)
+			sqlmanager_shared.MssqlDriver, f.schema, table, size, 100, nil)
 		require.NoError(t, err)
 		require.True(t, ok)
 		require.Contains(t, query, "PERCENT))")

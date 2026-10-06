@@ -50,6 +50,15 @@ func (s *MongoDbConnectionDataService) SampleData(
 	return errors.ErrUnsupported
 }
 
+func (s *MongoDbConnectionDataService) SampleColumn(
+	ctx context.Context,
+	stream SampleDataStream,
+	schema, table, column string,
+	numRows uint,
+) error {
+	return errors.ErrUnsupported
+}
+
 func (s *MongoDbConnectionDataService) StreamData(
 	ctx context.Context,
 	stream *connect.ServerStream[mgmtv1alpha1.GetConnectionDataStreamResponse],

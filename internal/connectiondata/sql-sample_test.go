@@ -102,7 +102,7 @@ func spread(
 ) (string, bool) {
 	t.Helper()
 	logger, _ := capturedLogger()
-	return spreadSampleQuery(t.Context(), logger, db, driver, "public", "users", 20, pick)
+	return spreadSampleQuery(t.Context(), logger, db, driver, "public", "users", 20, pick, nil)
 }
 
 func Test_spreadSampleQuery_PostgresUsesTheEstimate(t *testing.T) {
@@ -181,7 +181,7 @@ func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
 		logger, _ := capturedLogger()
 
 		query, ok := spreadSampleQuery(
-			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange)
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange, nil)
 
 		require.True(t, ok)
 		require.Equal(t,
@@ -197,7 +197,7 @@ func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
 		logger, _ := capturedLogger()
 
 		query, ok := spreadSampleQuery(
-			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange)
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, `pu"blic`, `us"ers`, 20, firstOfRange, nil)
 
 		require.True(t, ok)
 		require.Contains(t, query, `FROM "pu""blic"."us""ers" TABLESAMPLE SYSTEM (0.5) LIMIT 4000`)
@@ -208,7 +208,7 @@ func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
 		logger, _ := capturedLogger()
 
 		query, ok := spreadSampleQuery(
-			t.Context(), logger, db, sqlmanager_shared.MssqlDriver, `pu"b]lic`, `us"e]rs`, 20, firstOfRange)
+			t.Context(), logger, db, sqlmanager_shared.MssqlDriver, `pu"b]lic`, `us"e]rs`, 20, firstOfRange, nil)
 
 		require.True(t, ok)
 		require.Equal(t,
@@ -249,7 +249,7 @@ func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
 		logger, _ := capturedLogger()
 
 		query, ok := spreadSampleQuery(
-			t.Context(), logger, db, sqlmanager_shared.MysqlDriver, "pu`blic", "us`ers", 20, firstOfRange)
+			t.Context(), logger, db, sqlmanager_shared.MysqlDriver, "pu`blic", "us`ers", 20, firstOfRange, nil)
 
 		require.True(t, ok)
 		require.Equal(t,
@@ -265,7 +265,7 @@ func Test_spreadSampleQuery_NameHoldingAQuoteCharacter(t *testing.T) {
 		logger, _ := capturedLogger()
 
 		query, ok := spreadSampleQuery(
-			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, "pu`blic", "us[e]rs", 20, firstOfRange)
+			t.Context(), logger, db, sqlmanager_shared.GoquPostgresDriver, "pu`blic", "us[e]rs", 20, firstOfRange, nil)
 
 		require.True(t, ok)
 		require.Contains(t, query, "FROM \"pu`blic\".\"us[e]rs\" TABLESAMPLE SYSTEM (0.5) LIMIT 4000")
