@@ -1,16 +1,13 @@
 package v1alpha1_connectiondataservice
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"maps"
 	"math"
 	"regexp"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -84,28 +81,11 @@ func (s *Service) DetectPiiInConnectionData(
 		sampleSize = defaultSampleSize
 	}
 
-	// A deadline of its own for sampling: past it, the error is explicit and
-	// actionable. Without it the client gives up first, and the server only reports
-	// a "context canceled" that the UI surfaces as an opaque HTTP 500.
-	sampleCtx, cancelSample := context.WithTimeout(ctx, sampleTimeout)
-	defer cancelSample()
-
-	collector := &rowCollector{}
-	if err := dataconn.SampleData(
-		sampleCtx,
-		collector,
-		req.Msg.GetSchema(),
-		req.Msg.GetTable(),
-		uint(sampleSize),
-	); err != nil {
-		if errors.Is(sampleCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
-			return nil, connect.NewError(connect.CodeDeadlineExceeded, fmt.Errorf(
-				"l'échantillonnage de %s.%s a dépassé %s : table volumineuse ou base surchargée. "+
-					"Décochez cette table ou relancez le scan hors période de charge",
-				req.Msg.GetSchema(), req.Msg.GetTable(), sampleTimeout,
-			))
-		}
-		return nil, fmt.Errorf("unable to sample data for pii scan: %w", err)
+	colValues, err := s.sampledValues(
+		ctx, dataconn, req.Msg.GetSchema(), req.Msg.GetTable(), req.Msg.GetColumns(), uint(sampleSize),
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	// Type SQL de chaque colonne : il décide de la variante du transformer suggéré
@@ -132,32 +112,8 @@ func (s *Service) DetectPiiInConnectionData(
 		}
 	}
 
-	// Regroupe les valeurs par colonne (ordre stable des colonnes).
-	colValues := map[string][]string{}
-	var colOrder []string
-	for _, rowbytes := range collector.rows {
-		row := map[string]any{}
-		if err := gob.NewDecoder(bytes.NewReader(rowbytes)).Decode(&row); err != nil {
-			logger.Warn(fmt.Sprintf("skipping undecodable sampled row: %v", err))
-			continue
-		}
-		for col, v := range row {
-			if wanted != nil {
-				if _, ok := wanted[col]; !ok {
-					continue
-				}
-			}
-			text := valueToText(v)
-			if text == "" {
-				continue
-			}
-			if _, seen := colValues[col]; !seen {
-				colOrder = append(colOrder, col)
-			}
-			colValues[col] = append(colValues[col], text)
-		}
-	}
-	sort.Strings(colOrder)
+	// Ordre stable des colonnes.
+	colOrder := slices.Sorted(maps.Keys(colValues))
 
 	threshold := float64(req.Msg.GetScoreThreshold())
 	if threshold <= 0 {

@@ -1,6 +1,8 @@
 package v1alpha1_connectiondataservice
 
 import (
+	"time"
+
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
@@ -17,6 +19,8 @@ type Service struct {
 	analyze presidio.Analyzer
 	// transformers runs a transformer on sampled values for the column preview.
 	transformers Transformers
+	// sampleTimeout bounds each read of a sample for the PII scan; zero stands for the default.
+	sampleTimeout time.Duration
 }
 
 type Config struct {
