@@ -426,13 +426,15 @@ func Test_GetTablesToPiiScan_Fingerprint(t *testing.T) {
 
 	// The columns in the order of their names, each with its type.
 	plain := fingerprint(&GetTablesToPiiScanRequest{}, nil)
-	require.Equal(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "5", "false"), plain)
+	require.Equal(t, fingerprintOf("v3", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "5", "false"), plain)
+	// The version is part of the fingerprint: the same table under "v2" is another one.
+	require.NotEqual(t, fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "5", "false"), plain)
 
 	full := fingerprint(
 		&GetTablesToPiiScanRequest{Sampling: true, ModelInput: "values", UserPrompt: "notes", MarksIncomplete: true}, classifier,
 	)
 	require.Equal(t,
-		fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "5", "true"),
+		fingerprintOf("v3", "public", "users", "email", "text", "id", "uuid", "true", "values", "notes", "local-model", "5", "true"),
 		full,
 	)
 
@@ -573,6 +575,22 @@ func Test_GetTablesToPiiScan_Incremental(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, response.Tables, 3, "a fingerprint computed another way matches none: every table is scanned")
 		require.Equal(t, []string{"public.users@run-0"}, previous(response))
+	})
+
+	t.Run("a table whose entry holds a fingerprint of the earlier version is scanned again", func(t *testing.T) {
+		v2 := fingerprintOf("v2", "public", "users", "email", "text", "id", "uuid", "false", "", "", "", "5", "false")
+		require.NotEqual(t, v2, current["public.users"])
+		index, err := json.Marshal(&report.JobReport{SuccessfulTableReports: []*report.TableEntry{
+			earlierEntry("public", "users", v2, false),
+			earlierEntry("public", "orders", current["public.orders"], false),
+			earlierEntry("sales", "items", current["sales.items"], false),
+		}})
+		require.NoError(t, err)
+		run := listing(t, &fakeJobs{contexts: map[string][]byte{indexKey("run-0"): index}}, nil)
+
+		response, _, err := execute[GetTablesToPiiScanResponse](t, run, "GetTablesToPiiScan", request(nil))
+		require.NoError(t, err)
+		require.Equal(t, []string{"public.users"}, listed(response))
 	})
 
 	t.Run("no index under the earlier run: every table is scanned", func(t *testing.T) {
