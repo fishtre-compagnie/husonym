@@ -35,7 +35,7 @@ func generateKeyring(t *testing.T) (Keyring, ed25519.PrivateKey, ed25519.Private
 func Test_Parse_PicksTheKeyByKid(t *testing.T) {
 	ring, _, privB := generateKeyring(t)
 
-	key, err := parseWith(encodeWithKid(t, keyringTestContent, privB, "k2"), ring)
+	key, err := ParseWith(encodeWithKid(t, keyringTestContent, privB, "k2"), ring)
 	require.NoError(t, err)
 	require.Equal(t, "a", key.Id)
 }
@@ -43,11 +43,11 @@ func Test_Parse_PicksTheKeyByKid(t *testing.T) {
 func Test_Parse_WithoutKidUsesTheLegacyKey(t *testing.T) {
 	ring, privA, privB := generateKeyring(t)
 
-	key, err := parseWith(encode(t, keyringTestContent, privA), ring)
+	key, err := ParseWith(encode(t, keyringTestContent, privA), ring)
 	require.NoError(t, err)
 	require.Equal(t, "a", key.Id)
 
-	_, err = parseWith(encode(t, keyringTestContent, privB), ring)
+	_, err = ParseWith(encode(t, keyringTestContent, privB), ring)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signature")
 }
@@ -57,7 +57,7 @@ func Test_Parse_WithoutKidRefusesWhenTheRingHasNoLegacyKey(t *testing.T) {
 	pubB, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	_, err = parseWith(encode(t, keyringTestContent, privA), Keyring{"k2": pubB})
+	_, err = ParseWith(encode(t, keyringTestContent, privA), Keyring{"k2": pubB})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "does not know (kid)")
 }
@@ -65,7 +65,7 @@ func Test_Parse_WithoutKidRefusesWhenTheRingHasNoLegacyKey(t *testing.T) {
 func Test_Parse_RefusesAnUnknownKid(t *testing.T) {
 	ring, _, privB := generateKeyring(t)
 
-	key, err := parseWith(encodeWithKid(t, keyringTestContent, privB, "k9"), ring)
+	key, err := ParseWith(encodeWithKid(t, keyringTestContent, privB, "k9"), ring)
 	require.Error(t, err)
 	require.Nil(t, key)
 	require.Contains(t, err.Error(), "license key was signed with a key this version does not know (kid)")
@@ -74,7 +74,7 @@ func Test_Parse_RefusesAnUnknownKid(t *testing.T) {
 func Test_Parse_ATamperedKidOnlyFailsVerification(t *testing.T) {
 	ring, privA, _ := generateKeyring(t)
 
-	_, err := parseWith(encodeWithKid(t, keyringTestContent, privA, "k2"), ring)
+	_, err := ParseWith(encodeWithKid(t, keyringTestContent, privA, "k2"), ring)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signature")
 }

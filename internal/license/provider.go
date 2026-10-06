@@ -97,7 +97,7 @@ func newProvider(src Source, ring Keyring, now func() time.Time, logger *slog.Lo
 		p.readFile()
 		p.mu.Unlock()
 	case src.Value != "":
-		key, err := parseWith(strings.TrimSpace(src.Value), ring)
+		key, err := ParseWith(strings.TrimSpace(src.Value), ring)
 		if err != nil {
 			p.problem = err
 			logger.Error("the license key is not usable", "error", err)
@@ -133,7 +133,7 @@ func (p *Provider) readFile() {
 	case seen.content == "":
 		err = errors.New("the license file is empty")
 	default:
-		key, err = parseWith(seen.content, p.ring)
+		key, err = ParseWith(seen.content, p.ring)
 	}
 	if err != nil {
 		p.problem = err

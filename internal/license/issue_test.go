@@ -18,7 +18,7 @@ func Test_Issue(t *testing.T) {
 	require.NoError(t, err)
 	ring := Keyring{LegacyKid: pub}
 
-	// The property that matters: whatever Issue mints, parseWith must accept and read
+	// The property that matters: whatever Issue mints, ParseWith must accept and read
 	// back identically. Issuing and verifying share their structures precisely so this
 	// cannot drift.
 	t.Run("round-trips through verification", func(t *testing.T) {
@@ -34,7 +34,7 @@ func Test_Issue(t *testing.T) {
 		require.NotEmpty(t, issued.Encoded)
 		require.NotEmpty(t, issued.Id)
 
-		got, err := parseWith(issued.Encoded, Keyring{LegacyKid: pub})
+		got, err := ParseWith(issued.Encoded, Keyring{LegacyKid: pub})
 		require.NoError(t, err)
 		require.Equal(t, "Acme Co.", got.IssuedTo)
 		require.Equal(t, "cust-001", got.CustomerId)
@@ -101,7 +101,7 @@ func Test_Issue(t *testing.T) {
 		}, otherPriv, Keyring{LegacyKid: otherPub})
 		require.NoError(t, err)
 
-		got, err := parseWith(issued.Encoded, Keyring{LegacyKid: pub})
+		got, err := ParseWith(issued.Encoded, Keyring{LegacyKid: pub})
 		require.Error(t, err)
 		require.Nil(t, got)
 	})
@@ -253,7 +253,7 @@ func Test_Issue_WildcardCannotBeMixedWithNames(t *testing.T) {
 
 	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{"*"} }), priv, ring)
 	require.NoError(t, err)
-	got, err := parseWith(issued.Encoded, ring)
+	got, err := ParseWith(issued.Encoded, ring)
 	require.NoError(t, err)
 	require.True(t, got.HasFeature(FeatureSso))
 }
@@ -275,7 +275,7 @@ func Test_Issue_CarriesTheKidOfTheSigningKey(t *testing.T) {
 	require.NoError(t, json.Unmarshal(outer, &env))
 	require.Equal(t, "k2", env.Kid)
 
-	_, err = parseWith(issued.Encoded, ring)
+	_, err = ParseWith(issued.Encoded, ring)
 	require.NoError(t, err)
 }
 
@@ -315,7 +315,7 @@ func Test_Issue_WritesTheNewFieldsAndTheyReadBack(t *testing.T) {
 	require.Equal(t, []string{"job_hooks", "sso"}, issued.Features)
 	require.Equal(t, "offline_report", issued.Telemetry)
 
-	got, err := parseWith(issued.Encoded, ring)
+	got, err := ParseWith(issued.Encoded, ring)
 	require.NoError(t, err)
 	require.Equal(t, "Team", got.Plan)
 	require.True(t, got.HasFeature(FeatureSso))
@@ -330,7 +330,7 @@ func Test_Issue_AnExplicitEmptyFeatureListIsWritten(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, signedContent(t, issued.Encoded), "features")
 
-	got, err := parseWith(issued.Encoded, ring)
+	got, err := ParseWith(issued.Encoded, ring)
 	require.NoError(t, err)
 	require.False(t, got.HasFeature(FeatureJobHooks))
 }

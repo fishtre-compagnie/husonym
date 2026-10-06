@@ -52,13 +52,13 @@ func Parse(value string) (*Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseWith(value, ring)
+	return ParseWith(value, ring)
 }
 
-// parseWith reads a key value and verifies its signature against the key of ring that its
+// ParseWith reads a key value and verifies its signature against the key of ring that its
 // kid names, or LegacyKid without one. Errors name the stage that failed and never echo
 // the key material.
-func parseWith(value string, ring Keyring) (*Key, error) {
+func ParseWith(value string, ring Keyring) (*Key, error) {
 	raw, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
 		return nil, errors.New("license key is not valid base64 (decoding)")
