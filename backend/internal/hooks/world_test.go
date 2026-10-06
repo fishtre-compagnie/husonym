@@ -412,6 +412,10 @@ func (p *papers) IsValid() bool {
 func (*papers) ExpiresAt() time.Time    { return time.Time{} }
 func (*papers) Limits() *license.Limits { return nil }
 
+// HasFeature leaves nothing on the trail: a valid license allows every feature, an invalid one
+// none.
+func (p *papers) HasFeature(license.Feature) bool { return p.valid }
+
 var (
 	adminGrants = map[string]bool{
 		"account:view": true, "account:edit": true,
