@@ -68,15 +68,39 @@ func ofType(findings []finding, entityType string) []finding {
 	return kept
 }
 
-// fromPatterns drops the findings of the two recognizers that run a model.
+// byModel tells whether a finding comes from one of the two recognizers that run a model.
+func byModel(f finding) bool {
+	return f.Explanation.Recognizer == spacyRecognizer || f.Explanation.Recognizer == personRecognizer
+}
+
+// fromPatterns keeps the findings of the pattern recognizers, fromModels the others.
 func fromPatterns(findings []finding) []finding {
 	var kept []finding
 	for _, f := range findings {
-		if f.Explanation.Recognizer != spacyRecognizer && f.Explanation.Recognizer != personRecognizer {
+		if !byModel(f) {
 			kept = append(kept, f)
 		}
 	}
 	return kept
+}
+
+func fromModels(findings []finding) []finding {
+	var kept []finding
+	for _, f := range findings {
+		if byModel(f) {
+			kept = append(kept, f)
+		}
+	}
+	return kept
+}
+
+// requireDeclaredEntities checks that no finding has an entity type the analyzer does not
+// declare: a label of the model that is not mapped must not come out.
+func requireDeclaredEntities(t *testing.T, findings []finding) {
+	t.Helper()
+	for _, f := range findings {
+		require.Containsf(t, declaredEntities, f.EntityType, "finding: %+v", f)
+	}
 }
 
 // requirePerson checks that the persons found are exactly one, covering name, returned by the
@@ -126,9 +150,18 @@ func Test_Analyzer_French_ProductAndCompanyNames(t *testing.T) {
 	findings := analyze(t, baseURL, langFr, "Commande de Tondeuse Verdia livrée par Batiloire.")
 
 	require.Empty(t, ofType(findings, entityPerson))
-	for _, f := range findings {
-		require.Contains(t, declaredEntities, f.EntityType)
-	}
+	requireDeclaredEntities(t, findings)
+}
+
+func Test_Analyzer_French_PersonCityAndCompany(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	// The model labels a city and a company too; only the person is mapped.
+	text := "Hélène Marchand travaille chez Batiloire à Besançon."
+
+	findings := analyze(t, baseURL, langFr, text)
+
+	requirePerson(t, text, "Hélène Marchand", findings)
+	requireDeclaredEntities(t, findings)
 }
 
 func Test_Analyzer_English_Findings(t *testing.T) {
@@ -179,13 +212,17 @@ func Test_Analyzer_English_Findings(t *testing.T) {
 	}
 }
 
+// The findings of the pattern recognizers are compared apart from those of the two recognizers
+// that run a model: on these texts the models return nothing, but for the email address, which
+// the French spaCy model labels as a location.
 func Test_Analyzer_French_PatternRecognizers(t *testing.T) {
 	baseURL := startAnalyzer(t)
 
 	cases := []struct {
-		name string
-		text string
-		want []expected
+		name       string
+		text       string
+		want       []expected
+		wantModels []expected
 	}{
 		{
 			name: "NIR",
@@ -222,6 +259,7 @@ func Test_Analyzer_French_PatternRecognizers(t *testing.T) {
 				{"EMAIL_ADDRESS", 11, 38, 1.0},
 				{"URL", 19, 38, 0.5},
 			},
+			wantModels: []expected{{"LOCATION", 11, 38, 0.85}},
 		},
 	}
 	for _, tc := range cases {
@@ -229,6 +267,7 @@ func Test_Analyzer_French_PatternRecognizers(t *testing.T) {
 			findings := analyze(t, baseURL, langFr, tc.text)
 
 			requireFindings(t, tc.want, fromPatterns(findings))
+			requireFindings(t, tc.wantModels, fromModels(findings))
 		})
 	}
 }
@@ -241,6 +280,7 @@ func Test_Analyzer_French_CharacterPositions(t *testing.T) {
 
 	findings := analyze(t, baseURL, langFr, text)
 
+	requireDeclaredEntities(t, findings)
 	persons := ofType(findings, entityPerson)
 	require.Lenf(t, persons, 1, "persons: %+v", persons)
 	require.Equal(t, "Maëlys Guével", persons[0].text(text))
@@ -286,6 +326,25 @@ func Test_Analyzer_French_TextWithoutWhitespace_PersonAtTheEnd(t *testing.T) {
 	findings := analyze(t, baseURL, langFr, text)
 
 	requirePerson(t, text, "Mathilde.Rousseau", findings)
+}
+
+func Test_Analyzer_French_NameOfSeveralWords_AroundAChunkBoundary(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	// The only spaces of the text are those of the name: a chunk boundary falls inside it for
+	// some of the offsets.
+	name := "Corentin Le Guével"
+	references := strings.Repeat("ref-0001;", 120)
+
+	for _, offset := range []int{351, 369, 387, 390, 396, 405} {
+		t.Run(fmt.Sprintf("name at %d", offset), func(t *testing.T) {
+			text := references[:offset] + name + ";" + references[:600]
+
+			findings := analyze(t, baseURL, langFr, text)
+
+			person := requirePerson(t, text, name, findings)
+			require.Equal(t, offset, person.Start)
+		})
+	}
 }
 
 func Test_Analyzer_French_CharactersOfSeveralTokens_PersonAtTheEnd(t *testing.T) {

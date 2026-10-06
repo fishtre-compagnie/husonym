@@ -31,6 +31,7 @@ précision 73 % → 83 %) et supprime le seul faux positif.
 | `analyzer.yaml` | langues du moteur d'analyse |
 | `mapped_ner_recognizer.py` | le reconnaisseur des personnes en français (sous-classe de celui de Presidio) |
 | `analyzer_app.py` | point d'entrée du serveur : importe le reconnaisseur, puis lance l'application de Presidio |
+| `recognizer_check.py` | contrôles du reconnaisseur sans PyTorch ni modèle, exécutés à la construction |
 
 **Les trois fichiers de configuration sont requis ensemble.** Le moteur refuse
 de démarrer si ses langues ne correspondent pas exactement à celles du registre
@@ -61,23 +62,29 @@ Hugging Face à chaque langue. Désactiver le `SpacyRecognizer` en français par
 
 ### Pourquoi une sous-classe Python
 
-`MappedLabelsNerRecognizer` est le `HuggingFaceNerRecognizer` de Presidio, à deux
+`MappedLabelsNerRecognizer` est le `HuggingFaceNerRecognizer` de Presidio, à trois
 différences près :
 
 1. **Seules les étiquettes de `label_mapping` sortent.** Presidio rend une
    étiquette non mappée sous le nom que lui donne le modèle ; `LOC`, `ORG` et
    `MISC` deviendraient des types d'entité hors de la liste déclarée.
-2. **Tout le texte est lu par le modèle.** Le modèle lit 512 tokens à la fois et
-   ce qui dépasse est tronqué. Le découpeur de Presidio ne coupe que sur une
-   espace ou un saut de ligne, aussi loin soient-ils : un long texte sans blanc
-   part d'un seul bloc. Ici :
+2. **Aucun morceau donné au modèle ne dépasse sa fenêtre.** Le modèle lit
+   512 tokens à la fois et ce qui dépasse est tronqué. Le découpeur de Presidio
+   ne coupe que sur une espace ou un saut de ligne, aussi loin soient-ils : un
+   long texte sans blanc part d'un seul bloc. Ici :
    - un morceau fait au plus `chunk_size` caractères (400). Il se termine sur le
-     dernier blanc trouvé dans cette limite, sinon à 400 caractères ; le suivant
-     reprend au premier mot du recouvrement (`chunk_overlap`, 40 caractères),
-     sinon 40 caractères avant la coupe ;
+     dernier blanc trouvé dans cette limite, sinon à 400 caractères ;
+   - le suivant commence `chunk_overlap` caractères (40) avant cette fin, ou sur
+     le début de mot le plus proche avant ce point, cherché sur 40 caractères de
+     plus. Deux morceaux consécutifs partagent donc toujours au moins
+     40 caractères (80 au plus) : un nom de 40 caractères ou moins est entier
+     dans l'un des deux ;
    - un morceau dont les tokens dépassent encore la fenêtre (certains caractères
      valent plusieurs tokens : « ½ », « ﷺ ») est redécoupé en deux, autant de
      fois qu'il le faut.
+3. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
+   « aucune trouvaille » pour le morceau ; ici l'erreur remonte, et le serveur
+   répond par une erreur au lieu d'une liste incomplète.
 
 La classe doit aussi s'inscrire dans `CONFIG_MODEL_MAP` : Presidio valide le
 fichier de reconnaisseurs par nom de classe, et sans cela les champs du
@@ -85,6 +92,20 @@ reconnaisseur Hugging Face (`model_name`, `label_mapping`, `threshold`…) sont
 ignorés pour une sous-classe. Enfin, le fichier de reconnaisseurs ne peut nommer
 qu'une classe déjà importée : c'est le rôle de `analyzer_app.py`, qui remplace
 `app` dans la commande de démarrage de l'image de base.
+
+Ces points s'appuient sur des noms internes de Presidio. Le module les vérifie à
+l'import : s'il en manque un, la construction échoue et l'image ne démarre pas.
+
+`recognizer_check.py` contrôle le découpage (sur des textes aléatoires avec et
+sans blancs, et sur des noms de plusieurs mots placés autour des coupes), le
+filtre des étiquettes et l'erreur d'inférence, avec un faux modèle. La
+construction l'exécute. Pour le lancer seul, sans construire l'image :
+
+```bash
+docker run --rm --network none -e PYTHONPATH=/app \
+  -v "$PWD/docker/presidio-fr":/src:ro -w /src --entrypoint python \
+  mcr.microsoft.com/presidio-analyzer:2.2.362 -B recognizer_check.py
+```
 
 ## Reconnaisseurs français ajoutés
 
@@ -98,11 +119,16 @@ s'exécute **avant** Presidio : elle distingue « ressemble à » de « est un �
 
 ## Construire et lancer
 
-Le service est déclaré dans `compose.dev.yml` et se construit automatiquement :
+Le service est déclaré dans `compose.dev.yml` :
 
 ```bash
-docker compose -f compose.dev.yml up -d presidio-analyzer
+docker compose -f compose.dev.yml up -d --build presidio-analyzer
 ```
+
+`--build` compte : sans lui, `docker compose up` ne construit l'image que si
+elle n'existe pas. Une image locale construite avant l'arrivée de CamemBERT, ou
+avant une modification de ce dossier, serait relancée telle quelle — sans la
+configuration, qui n'est plus montée.
 
 La langue par défaut du backend doit suivre : `PRESIDIO_DEFAULT_LANGUAGE=fr`.
 
@@ -121,7 +147,7 @@ Le modèle est chargé au démarrage : `/health` ne répond qu'une fois l'image 
 
 ## Versions épinglées
 
-Tout est fixé dans le `Dockerfile` :
+Ce que le `Dockerfile` installe nommément y est fixé :
 
 | Élément | Valeur | Où |
 |---|---|---|
@@ -132,8 +158,12 @@ Tout est fixé dans le `Dockerfile` :
 | sentencepiece, protobuf | `0.2.2`, `7.36.2` | `ARG SENTENCEPIECE_VERSION`, `ARG PROTOBUF_VERSION` |
 | Modèle CamemBERT | `Jean-Baptiste/camembert-ner`, commit `ef35fe7767c1dad71f5c853838cdd80d0b3441ed`, poids au seul format safetensors | `ARG CAMEMBERT_REVISION` |
 
-Les dépendances que ces paquets entraînent (`huggingface_hub`, `tokenizers`,
-`safetensors`…) ne sont pas épinglées une à une.
+**Ce qui ne l'est pas** : les dépendances que ces paquets entraînent
+(`huggingface_hub`, `hf_xet`, `tokenizers`, `safetensors`, `fsspec`, `networkx`,
+`sympy`, `mpmath`) prennent la version que pip résout le jour de la
+construction. Deux paquets de l'image de base sont aussi montés par ces
+dépendances (`click`, `idna`). Deux constructions à des dates différentes
+peuvent donc différer sur ces paquets.
 
 Pour faire évoluer une version :
 
@@ -185,18 +215,33 @@ sur demande :
 PRESIDIO_IMAGE_TESTS=1 go test ./internal/integration-tests/presidio/... -count=1 -timeout 30m
 ```
 
-L'image construite reste sur la machine sous le nom
-`husonym-presidio-analyzer-test:latest` (3,9 Go), pour que le lancement suivant
-réutilise ses couches.
+**Ce qu'un lancement laisse sur la machine.** L'image construite reste sous le
+nom `husonym-presidio-analyzer-test:latest` (3,9 Go), pour que le lancement
+suivant réutilise ses couches. Un lancement fait après une modification de ce
+dossier construit une nouvelle image sous ce nom et laisse la précédente sans
+nom : jusqu'à 3,9 Go de plus à chaque fois si les premières couches ont changé.
+Pour les retirer :
 
-## Licences de ce que l'image ajoute
+```bash
+docker rmi husonym-presidio-analyzer-test:latest
+docker images -a --filter dangling=true   # celles restées sans nom
+docker rmi <id>                           # pour chacune de celles-là
+```
+
+## Licences
+
+Ce que cette image ajoute à l'image de base, d'après les métadonnées des paquets
+installés :
 
 | Composant | Licence |
 |---|---|
-| Presidio Analyzer (image de base) | MIT |
-| spaCy | MIT |
 | `fr_core_news_md` | LGPL-LR |
-| PyTorch | Apache-2.0 (et BSD, MIT, BSL-1.0 pour ses composants) |
-| transformers, tokenizers, safetensors, huggingface_hub, sentencepiece | Apache-2.0 |
-| protobuf | BSD-3-Clause |
+| PyTorch (`torch`) | Apache-2.0, Apache-2.0 avec exception LLVM, BSD-2-Clause, BSD-3-Clause, BSL-1.0 et MIT |
+| `transformers`, `tokenizers`, `safetensors`, `huggingface_hub`, `hf_xet`, `sentencepiece` | Apache-2.0 |
+| `protobuf`, `fsspec`, `networkx` | BSD-3-Clause |
+| `sympy`, `mpmath` | BSD |
+| `click`, `idna` (déjà dans l'image de base, montés ici) | BSD-3-Clause |
 | `Jean-Baptiste/camembert-ner` | MIT (fiche du modèle, copiée dans l'image) |
+
+L'image de base apporte Presidio Analyzer (MIT), spaCy (MIT) et le modèle
+`en_core_web_lg` (MIT), avec leurs propres dépendances.
