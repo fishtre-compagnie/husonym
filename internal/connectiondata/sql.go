@@ -141,7 +141,11 @@ func (s *SQLConnectionDataService) SampleColumn(
 	if found == nil {
 		return connect.NewError(connect.CodeNotFound, errors.New("the table has no such column"))
 	}
-	filter := &querybuilder.ColumnFilter{Column: column, NonEmpty: holdsText(found.DataType)}
+	goquDriver, err := querybuilder.GetGoquDriverFromConnection(s.connection)
+	if err != nil {
+		return err
+	}
+	filter := &querybuilder.ColumnFilter{Column: column, NonEmpty: holdsText(goquDriver, found.DataType)}
 	return s.sample(ctx, stream, schema, table, numRows, filter)
 }
 

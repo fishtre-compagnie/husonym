@@ -75,15 +75,29 @@ func Test_SampleColumn_TableAbsentFromTheCatalogue(t *testing.T) {
 func Test_HoldsText(t *testing.T) {
 	for _, dataType := range []string{
 		"text", "character varying", "character", "citext", "CHARACTER VARYING",
-		"char", "varchar", "tinytext", "mediumtext", "longtext", "varchar(255)", "char(3)", "Varchar(40)",
-		"nchar", "nvarchar", "ntext", "nvarchar(max)", "nvarchar(50)",
 	} {
-		require.True(t, holdsText(dataType), dataType)
+		require.True(t, holdsText(sqlmanager_shared.GoquPostgresDriver, dataType), dataType)
+	}
+	for _, dataType := range []string{
+		"char", "varchar", "tinytext", "text", "mediumtext", "longtext", "varchar(255)", "char(3)", "Varchar(40)",
+	} {
+		require.True(t, holdsText(sqlmanager_shared.MysqlDriver, dataType), dataType)
+	}
+	for _, dataType := range []string{"varchar", "nvarchar(max)", "char(10)", "nchar", "NVARCHAR(50)"} {
+		require.True(t, holdsText(sqlmanager_shared.MssqlDriver, dataType), dataType)
+	}
+	// SQL Server refuses <> on its legacy text types: they are filtered on NULL only.
+	for _, dataType := range []string{"text", "ntext", "NTEXT"} {
+		require.False(t, holdsText(sqlmanager_shared.MssqlDriver, dataType), dataType)
 	}
 	for _, dataType := range []string{
 		"integer", "bigint", "uuid", "json", "jsonb", "bytea", "boolean", "timestamp without time zone",
 		"enum", "enum('a','b')", "set('x')", "varbinary(20)", "binary", "blob", "int", "date", "xml", "", "name",
 	} {
-		require.False(t, holdsText(dataType), dataType)
+		for _, driver := range []string{
+			sqlmanager_shared.GoquPostgresDriver, sqlmanager_shared.MysqlDriver, sqlmanager_shared.MssqlDriver,
+		} {
+			require.False(t, holdsText(driver, dataType), "%s %s", driver, dataType)
+		}
 	}
 }

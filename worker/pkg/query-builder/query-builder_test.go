@@ -411,7 +411,7 @@ func Test_BuildKeySlicesSampleQuery(t *testing.T) {
 	ranges := []KeyRange{{From: 5, To: 8999}, {From: 9000, To: 20000}}
 	sql, err := BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10, nil)
 	require.NoError(t, err)
-	require.Equal(t, 2,strings.Count(sql, "LIMIT 100"))
+	require.Equal(t, 2, strings.Count(sql, "LIMIT 100"))
 	require.Contains(t, sql, "`id` >= 5")
 	require.Contains(t, sql, "`id` <= 8999")
 	require.Contains(t, sql, "`id` >= 9000")

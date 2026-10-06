@@ -64,15 +64,25 @@ var textTypes = map[string]struct{}{
 	// MySQL and MariaDB
 	"char": {}, "varchar": {}, "tinytext": {}, "mediumtext": {}, "longtext": {},
 	// SQL Server
-	"nchar": {}, "nvarchar": {}, "ntext": {},
+	"nchar": {}, "nvarchar": {},
 }
 
-// holdsText tells whether a column of the catalogue type dataType holds text, whose empty
-// value is the empty string. The type is matched without its length (varchar(255)) and in
-// any case.
-func holdsText(dataType string) bool {
+// sqlServerLegacyTextTypes are the SQL Server types that hold text but take no comparison
+// with the empty string; their values are filtered on NULL only.
+var sqlServerLegacyTextTypes = map[string]struct{}{"text": {}, "ntext": {}}
+
+// holdsText tells whether a column of the catalogue type dataType holds text that the
+// empty string can be compared with, on the database of the goqu driver. The type is
+// matched without its length (varchar(255)) and in any case.
+func holdsText(driver, dataType string) bool {
 	name, _, _ := strings.Cut(dataType, "(")
-	_, ok := textTypes[strings.ToLower(strings.TrimSpace(name))]
+	name = strings.ToLower(strings.TrimSpace(name))
+	if driver == sqlmanager_shared.MssqlDriver {
+		if _, legacy := sqlServerLegacyTextTypes[name]; legacy {
+			return false
+		}
+	}
+	_, ok := textTypes[name]
 	return ok
 }
 

@@ -152,3 +152,29 @@ func Test_SampleColumn_ColumnNameHoldingAQuoteCharacter(t *testing.T) {
 		}
 	})
 }
+
+// The legacy text and ntext types of SQL Server take no comparison with the empty string: their
+// values are read, filtered on NULL only.
+func Test_SampleColumn_SqlServerLegacyTextTypes(t *testing.T) {
+	forEachEngine(t, sqlServerOnly, func(t *testing.T, f *sampleFixture) {
+		for _, dataType := range []string{"TEXT", "NTEXT"} {
+			name := "legacy_" + strings.ToLower(dataType)
+			table := f.dataset(t, name, func() {
+				f.exec(t, fmt.Sprintf(
+					"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, %s INT NOT NULL, label VARCHAR(40) NOT NULL, body %s NULL)",
+					f.qualified(name), f.quote("rank"), dataType))
+				f.load(t, name, 1, 300, 1)
+				f.exec(t, fmt.Sprintf("UPDATE %s SET body = label WHERE %s %% 30 = 0", f.qualified(name), f.quote("rank")))
+				f.analyze(t, name)
+			})
+
+			rows, err := f.sampleColumn(t, table, "body", 5)
+
+			require.NoError(t, err, dataType)
+			require.Len(t, rows, 5, dataType)
+			for _, row := range rows {
+				require.True(t, strings.HasPrefix(sampledText(t, row["body"]), "row-"), dataType)
+			}
+		}
+	})
+}
