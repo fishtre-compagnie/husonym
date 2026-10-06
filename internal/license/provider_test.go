@@ -55,7 +55,7 @@ func (f *providerFixture) issue(t *testing.T, expiresIn time.Duration, maxJobs i
 		ExpiresAt:  time.Now().UTC().Add(expiresIn),
 		GraceDays:  ptr(14),
 		Limits:     &Limits{MaxJobs: ptr(maxJobs)},
-	}, f.priv)
+	}, f.priv, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
 	return issued.Encoded
 }
@@ -176,13 +176,13 @@ func Test_Provider_File_KeepsTheKeyInPlace(t *testing.T) {
 			writeLicenseFile(t, path, "garbage")
 		},
 		"bad signature": func(t *testing.T, _ *providerFixture, path string) {
-			_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
+			otherPub, otherPriv, err := ed25519.GenerateKey(rand.Reader)
 			require.NoError(t, err)
 			issued, err := Issue(&IssueRequest{
 				IssuedTo:   "Mallory",
 				CustomerId: "cus_mallory",
 				ExpiresAt:  time.Now().UTC().Add(90 * day),
-			}, otherPriv)
+			}, otherPriv, Keyring{LegacyKid: otherPub})
 			require.NoError(t, err)
 			writeLicenseFile(t, path, issued.Encoded)
 		},

@@ -3,6 +3,8 @@ package license
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,6 +16,7 @@ import (
 func Test_Issue(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
+	ring := Keyring{LegacyKid: pub}
 
 	// The property that matters: whatever Issue mints, parseWith must accept and read
 	// back identically. Issuing and verifying share their structures precisely so this
@@ -26,7 +29,7 @@ func Test_Issue(t *testing.T) {
 			ExpiresAt:  expires,
 			GraceDays:  ptr(30),
 			Limits:     &Limits{MaxJobs: ptr(10), AllowedConnectionTypes: []string{"postgres"}},
-		}, priv)
+		}, priv, ring)
 		require.NoError(t, err)
 		require.NotEmpty(t, issued.Encoded)
 		require.NotEmpty(t, issued.Id)
@@ -45,9 +48,9 @@ func Test_Issue(t *testing.T) {
 
 	t.Run("generates a distinct id when none is given", func(t *testing.T) {
 		req := IssueRequest{IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour)}
-		first, err := Issue(&req, priv)
+		first, err := Issue(&req, priv, ring)
 		require.NoError(t, err)
-		second, err := Issue(&req, priv)
+		second, err := Issue(&req, priv, ring)
 		require.NoError(t, err)
 		require.NotEqual(t, first.Id, second.Id)
 	})
@@ -56,7 +59,7 @@ func Test_Issue(t *testing.T) {
 		issued, err := Issue(&IssueRequest{
 			Id: "contract-42", IssuedTo: "A", CustomerId: "c",
 			ExpiresAt: time.Now().UTC().Add(time.Hour),
-		}, priv)
+		}, priv, ring)
 		require.NoError(t, err)
 		require.Equal(t, "contract-42", issued.Id)
 	})
@@ -73,7 +76,7 @@ func Test_Issue(t *testing.T) {
 		}
 		for name, req := range cases {
 			t.Run(name, func(t *testing.T) {
-				issued, err := Issue(&req, priv)
+				issued, err := Issue(&req, priv, ring)
 				require.Error(t, err)
 				require.Nil(t, issued)
 			})
@@ -83,7 +86,7 @@ func Test_Issue(t *testing.T) {
 	t.Run("rejects a missing key", func(t *testing.T) {
 		issued, err := Issue(&IssueRequest{
 			IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour),
-		}, nil)
+		}, nil, ring)
 		require.Error(t, err)
 		require.Nil(t, issued)
 	})
@@ -91,11 +94,11 @@ func Test_Issue(t *testing.T) {
 	// A license minted with the wrong key is the failure mode that would only surface at
 	// the customer's site, so it must be impossible to miss.
 	t.Run("a license from another key does not verify", func(t *testing.T) {
-		_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
+		otherPub, otherPriv, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(t, err)
 		issued, err := Issue(&IssueRequest{
 			IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour),
-		}, otherPriv)
+		}, otherPriv, Keyring{LegacyKid: otherPub})
 		require.NoError(t, err)
 
 		got, err := parseWith(issued.Encoded, Keyring{LegacyKid: pub})
@@ -199,4 +202,181 @@ func Test_Registry(t *testing.T) {
 		require.Equal(t, StateGrace, newEntry("c", -time.Hour, nil).State())
 		require.Equal(t, StateFrozen, newEntry("d", -60*24*time.Hour, nil).State())
 	})
+}
+
+func newIssueRequest(mutate func(*IssueRequest)) *IssueRequest {
+	req := &IssueRequest{IssuedTo: "A", CustomerId: "c", ExpiresAt: time.Now().UTC().Add(time.Hour)}
+	if mutate != nil {
+		mutate(req)
+	}
+	return req
+}
+
+func issueTestKeys(t *testing.T) (Keyring, ed25519.PrivateKey) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	return Keyring{LegacyKid: pub}, priv
+}
+
+func Test_Issue_RefusesAnUnknownFeatureName(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{"job_hook"} }), priv, ring)
+	require.ErrorContains(t, err, "job_hook")
+	require.Nil(t, issued)
+}
+
+func Test_Issue_RefusesADuplicateFeature(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	_, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{"job_hooks", "job_hooks"} }), priv, ring)
+	require.ErrorContains(t, err, "job_hooks")
+}
+
+func Test_Issue_RefusesAnUnknownTelemetryMode(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Telemetry = "offline" }), priv, ring)
+	require.ErrorContains(t, err, "offline")
+	require.Nil(t, issued)
+}
+
+func Test_Issue_RefusesANegativeSourceCap(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Limits = &Limits{MaxSources: ptr(-1)} }), priv, ring)
+	require.ErrorContains(t, err, "limits.max_sources cannot be negative")
+	require.Nil(t, issued)
+}
+
+func Test_Issue_WildcardCannotBeMixedWithNames(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	_, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{"*", "job_hooks"} }), priv, ring)
+	require.Error(t, err)
+
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{"*"} }), priv, ring)
+	require.NoError(t, err)
+	got, err := parseWith(issued.Encoded, ring)
+	require.NoError(t, err)
+	require.True(t, got.HasFeature(FeatureSso))
+}
+
+func Test_Issue_CarriesTheKidOfTheSigningKey(t *testing.T) {
+	pubA, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	pubB, privB, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	ring := Keyring{LegacyKid: pubA, "k2": pubB}
+
+	issued, err := Issue(newIssueRequest(nil), privB, ring)
+	require.NoError(t, err)
+	require.Equal(t, "k2", issued.Kid)
+
+	outer, err := base64.StdEncoding.DecodeString(issued.Encoded)
+	require.NoError(t, err)
+	var env envelope
+	require.NoError(t, json.Unmarshal(outer, &env))
+	require.Equal(t, "k2", env.Kid)
+
+	_, err = parseWith(issued.Encoded, ring)
+	require.NoError(t, err)
+}
+
+func Test_Issue_RefusesASigningKeyOutsideTheRing(t *testing.T) {
+	ring, _ := issueTestKeys(t)
+	_, stranger, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	issued, err := Issue(newIssueRequest(nil), stranger, ring)
+	require.Nil(t, issued)
+	require.ErrorContains(t, err, PublicKeyFingerprint(stranger.Public().(ed25519.PublicKey)))
+	require.ErrorContains(t, err, PublicKeyFingerprint(ring[LegacyKid]))
+}
+
+func Test_Issue_WithoutFeaturesWritesNoFeaturesField(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(nil), priv, ring)
+	require.NoError(t, err)
+
+	fields := signedContent(t, issued.Encoded)
+	require.NotContains(t, fields, "features")
+	require.NotContains(t, fields, "plan")
+	require.NotContains(t, fields, "telemetry")
+	require.Equal(t, "v1", fields["version"])
+}
+
+func Test_Issue_WritesTheNewFieldsAndTheyReadBack(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) {
+		r.Plan = "Team"
+		r.Features = []string{"job_hooks", "sso"}
+		r.Telemetry = string(TelemetryOfflineReport)
+		r.Limits = &Limits{MaxSources: ptr(5)}
+	}), priv, ring)
+	require.NoError(t, err)
+	require.Equal(t, "Team", issued.Plan)
+	require.Equal(t, []string{"job_hooks", "sso"}, issued.Features)
+	require.Equal(t, "offline_report", issued.Telemetry)
+
+	got, err := parseWith(issued.Encoded, ring)
+	require.NoError(t, err)
+	require.Equal(t, "Team", got.Plan)
+	require.True(t, got.HasFeature(FeatureSso))
+	require.False(t, got.HasFeature(FeatureMcp))
+	require.Equal(t, TelemetryOfflineReport, got.TelemetryMode())
+	require.Equal(t, 5, *got.Limits.MaxSources)
+}
+
+func Test_Issue_AnExplicitEmptyFeatureListIsWritten(t *testing.T) {
+	ring, priv := issueTestKeys(t)
+	issued, err := Issue(newIssueRequest(func(r *IssueRequest) { r.Features = []string{} }), priv, ring)
+	require.NoError(t, err)
+	require.Contains(t, signedContent(t, issued.Encoded), "features")
+
+	got, err := parseWith(issued.Encoded, ring)
+	require.NoError(t, err)
+	require.False(t, got.HasFeature(FeatureJobHooks))
+}
+
+// signedContent returns the top-level fields of the signed JSON of a key value.
+func signedContent(t *testing.T, encoded string) map[string]any {
+	t.Helper()
+	outer, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	var env envelope
+	require.NoError(t, json.Unmarshal(outer, &env))
+	content, err := base64.StdEncoding.DecodeString(env.License)
+	require.NoError(t, err)
+	var fields map[string]any
+	require.NoError(t, json.Unmarshal(content, &fields))
+	return fields
+}
+
+func Test_Registry_KeepsTheNewFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "registry.json")
+	r, err := LoadRegistry(path)
+	require.NoError(t, err)
+	require.NoError(t, r.Add(&RegistryEntry{
+		Id: "a", IssuedTo: "A", CustomerId: "c", Encoded: "e",
+		Kid: "k2", Plan: "Team", Features: []string{"job_hooks"}, Telemetry: "none",
+	}))
+	require.NoError(t, r.Add(&RegistryEntry{Id: "b", IssuedTo: "B", CustomerId: "c", Encoded: "e", Features: []string{}}))
+	require.NoError(t, r.Save(path))
+
+	reloaded, err := LoadRegistry(path)
+	require.NoError(t, err)
+	require.Equal(t, "k2", reloaded.Entries[0].Kid)
+	require.Equal(t, "Team", reloaded.Entries[0].Plan)
+	require.Equal(t, []string{"job_hooks"}, reloaded.Entries[0].Features)
+	require.Equal(t, "none", reloaded.Entries[0].Telemetry)
+	require.NotNil(t, reloaded.Entries[1].Features, "an explicit empty list must survive")
+}
+
+func Test_Registry_LoadsAFileWrittenBeforeTheNewFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "registry.json")
+	old := `{"version":"v1","entries":[{"id":"a","issued_to":"A","customer_id":"c","issued_at":"2026-01-01T00:00:00Z","expires_at":"2027-01-01T00:00:00Z","encoded":"e","key_fingerprint":"abcd"}]}`
+	require.NoError(t, os.WriteFile(path, []byte(old), 0o600))
+
+	r, err := LoadRegistry(path)
+	require.NoError(t, err)
+	require.Len(t, r.Entries, 1)
+	require.Nil(t, r.Entries[0].Features)
+	require.Empty(t, r.Entries[0].Kid)
 }

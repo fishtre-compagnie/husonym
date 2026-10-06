@@ -32,6 +32,10 @@ type RegistryEntry struct {
 	GraceDays  *int      `json:"grace_days,omitempty"`
 	Limits     *Limits   `json:"limits,omitempty"`
 	Encoded    string    `json:"encoded"`
+	Kid        string    `json:"kid,omitempty"`
+	Plan       string    `json:"plan,omitempty"`
+	Features   []string  `json:"features,omitzero"`
+	Telemetry  string    `json:"telemetry,omitempty"`
 	// Which signing key minted this, so a key rotation is visible rather than inferred.
 	KeyFingerprint string `json:"key_fingerprint"`
 	// Free-form note: contract reference, ticket, whatever makes it findable later.

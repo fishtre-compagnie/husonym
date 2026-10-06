@@ -15,14 +15,13 @@
 package main
 
 import (
-	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -120,6 +119,13 @@ func runIssue(args []string) error {
 	fs.Var(maxJobs, "max-jobs", "maximum jobs (omit for unlimited)")
 	maxConns := &intFlag{}
 	fs.Var(maxConns, "max-connections", "maximum connections (omit for unlimited)")
+	maxSources := &intFlag{}
+	fs.Var(maxSources, "max-sources", "maximum sources (omit for unlimited)")
+	plan := fs.String("plan", "", "label shown to the customer (nothing is decided from it)")
+	features := fs.String("features", "",
+		"comma-separated features the license allows, or * for all (omit to carry no list, which allows all)")
+	telemetry := fs.String("telemetry", "",
+		"telemetry mode: online, offline_report or none (omit to carry none, which means online)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -134,39 +140,35 @@ func runIssue(args []string) error {
 		return fmt.Errorf("signing key from %s: %w", source, err)
 	}
 
-	// Catch the failure that would otherwise only surface at the customer's site: a
-	// license minted with a key this build does not verify against.
-	pub, ok := priv.Public().(ed25519.PublicKey)
-	if !ok {
-		return fmt.Errorf("signing key does not expose an ed25519 public key")
-	}
+	// Issue refuses a key this build does not verify against, the failure that would
+	// otherwise only surface at the customer's site.
 	ring, err := license.EmbeddedKeyring()
 	if err != nil {
 		return fmt.Errorf("unable to read the embedded public keys: %w", err)
 	}
-	if _, ok := ring.KidOf(pub); !ok {
-		embedded := make([]string, 0, len(ring))
-		for _, key := range ring {
-			embedded = append(embedded, license.PublicKeyFingerprint(key))
-		}
-		sort.Strings(embedded)
-		return fmt.Errorf(
-			"signing key does not match any key embedded in this build\n"+
-				"  signing key : %s\n"+
-				"  embedded    : %s\n"+
-				"licenses minted with it would be rejected by the product",
-			license.PublicKeyFingerprint(pub), strings.Join(embedded, ", "))
-	}
 
 	var limits *license.Limits
 	types := splitList(*connTypes)
-	if maxJobs.v != nil || maxConns.v != nil || len(types) > 0 {
+	if maxJobs.v != nil || maxConns.v != nil || maxSources.v != nil || len(types) > 0 {
 		limits = &license.Limits{
 			MaxJobs:                maxJobs.v,
 			MaxConnections:         maxConns.v,
+			MaxSources:             maxSources.v,
 			AllowedConnectionTypes: types,
 		}
 	}
+
+	// Left nil when the flag is not given: the key then carries no list and allows everything.
+	// A flag given but empty is an explicit empty list, which allows no optional feature.
+	var featureList []string
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "features" {
+			featureList = splitList(*features)
+			if featureList == nil {
+				featureList = []string{}
+			}
+		}
+	})
 
 	issued, err := license.Issue(&license.IssueRequest{
 		Id:         *id,
@@ -175,7 +177,10 @@ func runIssue(args []string) error {
 		ExpiresAt:  time.Now().UTC().Add(time.Duration(*days) * 24 * time.Hour),
 		GraceDays:  grace.v,
 		Limits:     limits,
-	}, priv)
+		Plan:       *plan,
+		Features:   featureList,
+		Telemetry:  *telemetry,
+	}, priv, ring)
 	if err != nil {
 		return err
 	}
@@ -194,7 +199,11 @@ func runIssue(args []string) error {
 			GraceDays:      issued.GraceDays,
 			Limits:         issued.Limits,
 			Encoded:        issued.Encoded,
-			KeyFingerprint: license.PublicKeyFingerprint(pub),
+			Kid:            issued.Kid,
+			Plan:           issued.Plan,
+			Features:       issued.Features,
+			Telemetry:      issued.Telemetry,
+			KeyFingerprint: license.PublicKeyFingerprint(ring[issued.Kid]),
 			Note:           *note,
 		}); err != nil {
 			return err
@@ -208,6 +217,9 @@ func runIssue(args []string) error {
 	fmt.Fprintf(os.Stdout, "  expires    %s\n", issued.ExpiresAt.Format(time.RFC3339))
 	fmt.Fprintf(os.Stdout, "  grace      %s\n", graceLabel(issued.GraceDays))
 	fmt.Fprintf(os.Stdout, "  limits     %s\n", limitsLabel(issued.Limits))
+	fmt.Fprintf(os.Stdout, "  plan       %s\n", planLabel(issued.Plan))
+	fmt.Fprintf(os.Stdout, "  features   %s\n", featuresLabel(issued.Features))
+	fmt.Fprintf(os.Stdout, "  telemetry  %s\n", telemetryLabel(issued.Telemetry))
 	if *dryRun {
 		fmt.Fprintf(os.Stdout, "  registry   not written (--dry-run)\n")
 	} else {
@@ -302,6 +314,9 @@ func runShow(args []string) error {
 	fmt.Fprintf(os.Stdout, "  expires    %s (%s)\n", entry.ExpiresAt.Format(time.RFC3339), humanDays(entry.ExpiresAt))
 	fmt.Fprintf(os.Stdout, "  grace      %s\n", graceLabel(entry.GraceDays))
 	fmt.Fprintf(os.Stdout, "  limits     %s\n", limitsLabel(entry.Limits))
+	fmt.Fprintf(os.Stdout, "  plan       %s\n", planLabel(entry.Plan))
+	fmt.Fprintf(os.Stdout, "  features   %s\n", featuresLabel(entry.Features))
+	fmt.Fprintf(os.Stdout, "  telemetry  %s\n", telemetryLabel(entry.Telemetry))
 	fmt.Fprintf(os.Stdout, "  signed by  %s\n", entry.KeyFingerprint)
 	if entry.Note != "" {
 		fmt.Fprintf(os.Stdout, "  note       %s\n", entry.Note)
@@ -330,6 +345,9 @@ func runVerify(args []string) error {
 	fmt.Fprintf(os.Stdout, "  grace to %s\n", key.GraceEndsAt().Format(time.RFC3339))
 	fmt.Fprintf(os.Stdout, "  usable   %t\n", state != license.StateFrozen)
 	fmt.Fprintf(os.Stdout, "  limits   %s\n", limitsLabel(key.Limits))
+	fmt.Fprintf(os.Stdout, "  plan     %s\n", planLabel(key.Plan))
+	fmt.Fprintf(os.Stdout, "  features %s\n", featuresLabel(key.Features))
+	fmt.Fprintf(os.Stdout, "  telemetry %s\n", key.TelemetryMode())
 	return nil
 }
 
@@ -353,6 +371,29 @@ func graceLabel(days *int) string {
 	return fmt.Sprintf("%d days", *days)
 }
 
+func planLabel(plan string) string {
+	if plan == "" {
+		return "none"
+	}
+	return plan
+}
+
+// featuresLabel reads a feature list the way the product does: no list and the wildcard both
+// mean every feature, an empty list means none.
+func featuresLabel(features []string) string {
+	if features == nil || slices.Contains(features, license.FeatureWildcard) {
+		return "all"
+	}
+	if len(features) == 0 {
+		return "none"
+	}
+	return strings.Join(features, ",")
+}
+
+func telemetryLabel(telemetry string) string {
+	return string((&license.Key{Telemetry: telemetry}).TelemetryMode())
+}
+
 func limitsLabel(l *license.Limits) string {
 	if l == nil {
 		return "unlimited"
@@ -363,6 +404,9 @@ func limitsLabel(l *license.Limits) string {
 	}
 	if l.MaxConnections != nil {
 		parts = append(parts, fmt.Sprintf("connections=%d", *l.MaxConnections))
+	}
+	if l.MaxSources != nil {
+		parts = append(parts, fmt.Sprintf("sources=%d", *l.MaxSources))
 	}
 	if len(l.AllowedConnectionTypes) > 0 {
 		parts = append(parts, "types="+strings.Join(l.AllowedConnectionTypes, "|"))

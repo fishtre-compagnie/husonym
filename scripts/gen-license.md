@@ -49,6 +49,17 @@ go run ./internal/license/cmd/husonym-license issue \
 It prints the `EE_LICENSE` value to give the customer, and appends an entry to the
 registry. Add `--dry-run` to validate without recording anything.
 
+Four options say what the license carries:
+
+- `--plan "Team"` is a label shown to the customer. Nothing is decided from it.
+- `--features job_hooks,sso` lists the features the license allows, by name; `--features '*'`
+  allows every one, including those added later. Without the option the license carries no
+  list, which allows everything, as every license issued before the list existed does. A name
+  the tool does not know is refused.
+- `--max-sources 5` caps the number of sources; without it the number is not capped.
+- `--telemetry online|offline_report|none` is the mode the license asks of the instance;
+  without it the license says nothing and the instance reports online.
+
 By default both the signing key and the registry are read from
 `~/.husonym/ee-signing/` (`husonym_ee_ca.key` and `registry.json`); override with `--key`
 and `--registry`. **Neither belongs in this repository.** The key is the one asset that
