@@ -129,6 +129,53 @@ func Test_Provider_NoKey(t *testing.T) {
 	require.Equal(t, f.clock.Now(), p.GracePeriodEndsAt())
 }
 
+func Test_Provider_HasFeature(t *testing.T) {
+	f := newProviderFixture(t)
+	issueWith := func(features []string) string {
+		issued, err := Issue(&IssueRequest{
+			IssuedTo:   "Acme",
+			CustomerId: "cus_acme",
+			ExpiresAt:  time.Now().UTC().Add(60 * day),
+			GraceDays:  ptr(14),
+			Features:   features,
+		}, f.priv, Keyring{LegacyKid: f.pub})
+		require.NoError(t, err)
+		return issued.Encoded
+	}
+
+	t.Run("an explicit list allows what it names and nothing else", func(t *testing.T) {
+		p := f.newProvider(Source{Value: issueWith([]string{string(FeatureMcp)})})
+		require.True(t, p.HasFeature(FeatureMcp))
+		require.False(t, p.HasFeature(FeatureSso))
+	})
+
+	t.Run("a key without a list allows every feature", func(t *testing.T) {
+		p := f.newProvider(Source{Value: issueWith(nil)})
+		require.True(t, p.HasFeature(FeatureSso))
+	})
+
+	t.Run("no key allows nothing", func(t *testing.T) {
+		p := f.newProvider(Source{})
+		require.False(t, p.HasFeature(FeatureMcp))
+	})
+
+	t.Run("the grace period allows what the list names, a frozen key nothing", func(t *testing.T) {
+		clock := newTestClock(time.Now().UTC())
+		p := newProvider(
+			Source{Value: issueWith([]string{string(FeatureMcp)})},
+			Keyring{LegacyKid: f.pub}, clock.Now, nil,
+		)
+		clock.Advance(61 * day)
+		require.Equal(t, StateGrace, p.State())
+		require.True(t, p.HasFeature(FeatureMcp))
+		require.False(t, p.HasFeature(FeatureSso))
+
+		clock.Advance(14 * day)
+		require.Equal(t, StateFrozen, p.State())
+		require.False(t, p.HasFeature(FeatureMcp))
+	})
+}
+
 func Test_Provider_UnreadableValue(t *testing.T) {
 	f := newProviderFixture(t)
 	p := f.newProvider(Source{Value: "not-a-key"})

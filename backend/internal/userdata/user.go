@@ -63,6 +63,27 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 	return nil
 }
 
+// EnforceFeature refuses unless the license is in force for the account and includes the
+// feature. A license that is not in force is refused as EnforceLicense refuses it.
+func (u *User) EnforceFeature(ctx context.Context, accountId string, f license.Feature) error {
+	if err := u.EnforceLicense(ctx, accountId); err != nil {
+		return err
+	}
+	if !u.HasFeature(f) {
+		return husonymerrors.NewForbidden("this license does not include " + string(f))
+	}
+	return nil
+}
+
+// HasFeature tells whether the license includes the feature. It does not check access to an
+// account: it is for callers that have already done so.
+func (u *User) HasFeature(f license.Feature) bool {
+	if u.license == nil {
+		return false
+	}
+	return u.license.HasFeature(f)
+}
+
 // LicenseLimits returns the usage caps carried by the active license, or nil when the
 // license names none — which means uncapped, never zero.
 //

@@ -21,6 +21,8 @@ type EEInterface interface {
 	IsValid() bool
 	ExpiresAt() time.Time
 	Limits() *Limits
+	// HasFeature is true when the license is in force and allows the feature.
+	HasFeature(Feature) bool
 }
 
 // Source says where the license value comes from. When both fields are set, the file
@@ -172,19 +174,35 @@ type snapshot struct {
 	now     time.Time
 }
 
-// State is where the current key stands in its lifecycle, or StateNone without a key.
-func (p *Provider) State() State {
-	snap := p.snapshot()
-	if snap.key == nil {
+// state is where the snapshot's key stands in its lifecycle, or StateNone without a key.
+func (s snapshot) state() State {
+	if s.key == nil {
 		return StateNone
 	}
-	return snap.key.StateAt(snap.now)
+	return s.key.StateAt(s.now)
+}
+
+// inForce is true up to the end of the grace period.
+func (s snapshot) inForce() bool {
+	state := s.state()
+	return state != StateNone && state != StateFrozen
+}
+
+// State is where the current key stands in its lifecycle, or StateNone without a key.
+func (p *Provider) State() State {
+	return p.snapshot().state()
 }
 
 // IsValid is true up to the end of the grace period.
 func (p *Provider) IsValid() bool {
-	state := p.State()
-	return state != StateNone && state != StateFrozen
+	return p.snapshot().inForce()
+}
+
+// HasFeature is true when the license is in force and its key allows the feature. Both come
+// from one snapshot, so the answer never mixes two keys or two instants.
+func (p *Provider) HasFeature(f Feature) bool {
+	snap := p.snapshot()
+	return snap.inForce() && snap.key.HasFeature(f)
 }
 
 // ExpiresAt is when the key stops being in force, or the current time without a key.

@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -96,6 +97,8 @@ type FakeEELicense struct {
 	mu      sync.RWMutex
 	isValid bool
 	limits  *license.Limits
+	// features is nil when the fake allows every feature.
+	features []license.Feature
 }
 
 type Option func(*FakeEELicense)
@@ -112,6 +115,19 @@ func WithLimits(limits *license.Limits) Option {
 	return func(f *FakeEELicense) {
 		f.limits = limits
 	}
+}
+
+// WithFeatures restricts the fake to exactly these features. Without it a valid fake allows
+// every feature; with no argument it allows none.
+func WithFeatures(features ...license.Feature) Option {
+	return func(f *FakeEELicense) {
+		f.features = featureList(features)
+	}
+}
+
+// featureList keeps an empty list non-nil, because nil means every feature.
+func featureList(features []license.Feature) []license.Feature {
+	return append([]license.Feature{}, features...)
 }
 
 func NewFakeEELicense(opts ...Option) *FakeEELicense {
@@ -133,6 +149,24 @@ func (f *FakeEELicense) SetValid(valid bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.isValid = valid
+}
+
+// SetFeatures restricts the fake to exactly these features from now on; with no argument it
+// allows none. It is safe for concurrent use.
+func (f *FakeEELicense) SetFeatures(features ...license.Feature) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.features = featureList(features)
+}
+
+// HasFeature is false whenever the fake is not valid, like the real license.
+func (f *FakeEELicense) HasFeature(feature license.Feature) bool {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if !f.isValid {
+		return false
+	}
+	return f.features == nil || slices.Contains(f.features, feature)
 }
 
 func (f *FakeEELicense) ExpiresAt() time.Time {
