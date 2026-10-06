@@ -39,6 +39,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   gender: 'Gender',
   birth_date: 'Date of birth',
   date: 'Date',
+  free_text_pii: 'Personal data in free text',
 };
 
 // Moteur de reconnaissance qui a identifié la colonne. Nommé du point de vue de

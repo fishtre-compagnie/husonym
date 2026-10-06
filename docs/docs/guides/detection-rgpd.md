@@ -322,8 +322,13 @@ python3 scripts/testdata/bench-presidio.py
 
 ## Limites connues
 
-- **Texte libre multi-PII** — une colonne de commentaires contenant à la fois un nom
-  et un téléphone ne remonte qu'une seule catégorie, la plus fréquente.
+- **Texte libre multi-PII** — une colonne de commentaires où aucune donnée ne couvre
+  un tiers des valeurs est tout de même signalée, à relire, dès que deux valeurs
+  échantillonnées contiennent une donnée personnelle reconnue, quelle qu'elle soit. Le
+  transformer `TransformPiiText` est alors suggéré. Reste une limite : le scan du web
+  et le MCP lisent 20 lignes entières, si bien qu'une colonne renseignée dans peu de
+  lignes peut rester inaperçue, et deux scans d'une colonne clairsemée peuvent
+  différer.
 - **Prénom vs nom sur un mot seul** — indistinguables par le contenu sans dictionnaire
   INSEE. Le nom de colonne, lui, tranche sans ambiguïté.
 - **Code postal par le contenu** — volontairement absent : « 5 chiffres, département
