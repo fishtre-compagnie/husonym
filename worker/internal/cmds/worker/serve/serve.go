@@ -89,7 +89,12 @@ func serve(ctx context.Context) error {
 	// background, so that a renewed one is picked up without a restart.
 	eelicense := license.NewProvider(license.LoaderFromEnv(), logger)
 	_ = eelicense.Refresh(ctx)
-	go eelicense.RefreshEvery(ctx, time.Minute)
+	// The context of the command never ends, so the background refresh gets its own. It
+	// is ended as soon as the interrupt is received, before anything a loader may use is
+	// closed; the defer covers the early returns.
+	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
+	defer stopLicenseRefresh()
+	go eelicense.RefreshEvery(refreshCtx, time.Minute)
 	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	// The settings of PII detection are read before anything is dialed: a setting that
@@ -513,6 +518,7 @@ func serve(ctx context.Context) error {
 
 	<-worker.InterruptCh()
 	logger.Info("received interrupt, stopping worker...")
+	stopLicenseRefresh()
 	w.Stop()
 	logger.Info("temporal worker shut down, proceeding to shutting down http server")
 	ctx, cancelHandler := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))

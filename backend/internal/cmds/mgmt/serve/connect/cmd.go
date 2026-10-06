@@ -126,7 +126,11 @@ func serve(ctx context.Context) error {
 	// background, so that a renewed one is picked up without a restart.
 	eelicense := license.NewProvider(license.LoaderFromEnv(), slogger)
 	_ = eelicense.Refresh(ctx)
-	go eelicense.RefreshEvery(ctx, time.Minute)
+	// The context of the command never ends, so the background refresh gets its own,
+	// which ends when serve returns.
+	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
+	defer stopLicenseRefresh()
+	go eelicense.RefreshEvery(refreshCtx, time.Minute)
 
 	cloudIdentity := cloudidentity.FromEnvironment()
 

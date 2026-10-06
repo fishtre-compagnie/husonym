@@ -156,6 +156,7 @@ func Test_Provider_RefreshTakesTheLoadedKey(t *testing.T) {
 		parsed, err := ParseWith(value, Keyring{LegacyKid: f.pub})
 		require.NoError(t, err)
 		require.Contains(t, f.logs.String(), "level=INFO")
+		require.Contains(t, f.logs.String(), "a license key is now in force")
 		require.Contains(t, f.logs.String(), parsed.Id)
 		require.NotContains(t, f.logs.String(), value)
 	})

@@ -105,7 +105,7 @@ func (p *Provider) Refresh(ctx context.Context) error {
 	p.mu.Unlock()
 	p.applied = value
 	p.reported = ""
-	p.logger.Info("the license key in force was replaced", "licenseId", key.Id, "expiresAt", key.ExpiresAt)
+	p.logger.Info("a license key is now in force", "licenseId", key.Id, "expiresAt", key.ExpiresAt)
 	return nil
 }
 
