@@ -49,12 +49,12 @@ func newContentAnalysis(analyzer presidio.Analyzer) *contentAnalysis {
 func Test_contentAnalysis_TellsWhatTheAnalyzerFinds(t *testing.T) {
 	content := newContentAnalysis(&scriptedAnalyzer{})
 
-	told, ok := content.detect(context.Background(), "full_name", names)
+	entity, score, matches, ok := content.column(context.Background(), "full_name", names)
 
 	require.True(t, ok)
-	require.Equal(t, "PERSON", told.entity)
-	require.InDelta(t, 0.9, told.avgScore, 0.001)
-	require.Equal(t, len(names), told.matchCount)
+	require.Equal(t, "PERSON", entity)
+	require.InDelta(t, 0.9, score, 0.001)
+	require.Equal(t, len(names), matches)
 	require.Empty(t, content.notAnalyzed)
 }
 
@@ -64,10 +64,10 @@ func Test_contentAnalysis_AsksAgainAValueThatIsRefused(t *testing.T) {
 	analyzer := &scriptedAnalyzer{failures: map[string]int{"Alan Turing": 1}, failure: refused}
 	content := newContentAnalysis(analyzer)
 
-	told, ok := content.detect(context.Background(), "full_name", names)
+	_, _, matches, ok := content.column(context.Background(), "full_name", names)
 
 	require.True(t, ok)
-	require.Equal(t, len(names), told.matchCount)
+	require.Equal(t, len(names), matches)
 	require.Empty(t, content.notAnalyzed)
 	require.Len(t, analyzer.asked, len(names)+1)
 }
@@ -78,11 +78,11 @@ func Test_contentAnalysis_AValueItRefusesDoesNotCostTheColumn(t *testing.T) {
 	analyzer := &scriptedAnalyzer{failures: map[string]int{"Alan Turing": 2}, failure: refused}
 	content := newContentAnalysis(analyzer)
 
-	told, ok := content.detect(context.Background(), "full_name", names)
+	entity, _, matches, ok := content.column(context.Background(), "full_name", names)
 
 	require.True(t, ok)
-	require.Equal(t, "PERSON", told.entity)
-	require.Equal(t, len(names)-1, told.matchCount)
+	require.Equal(t, "PERSON", entity)
+	require.Equal(t, len(names)-1, matches)
 	require.Empty(t, content.notAnalyzed)
 }
 
@@ -93,15 +93,15 @@ func Test_contentAnalysis_AColumnItCannotAnalyzeDoesNotCostTheOthers(t *testing.
 	analyzer := &scriptedAnalyzer{failures: map[string]int{"Ada Lovelace": 2, "Alan Turing": 2}, failure: refused}
 	content := newContentAnalysis(analyzer)
 
-	_, ok := content.detect(context.Background(), "full_name", names)
+	_, _, _, ok := content.column(context.Background(), "full_name", names)
 	require.False(t, ok)
 	require.Equal(t, map[string]struct{}{"full_name": {}}, content.notAnalyzed)
 	require.Equal(t, []string{"Ada Lovelace", "Ada Lovelace", "Alan Turing", "Alan Turing"}, analyzer.asked,
 		"the column was analyzed past the values it was given up on")
 
-	told, ok := content.detect(context.Background(), "city", cities)
+	_, _, matches, ok := content.column(context.Background(), "city", cities)
 	require.True(t, ok)
-	require.Equal(t, len(cities), told.matchCount)
+	require.Equal(t, len(cities), matches)
 	require.Equal(t, map[string]struct{}{"full_name": {}}, content.notAnalyzed)
 }
 
@@ -109,7 +109,7 @@ func Test_contentAnalysis_AColumnItCannotAnalyzeDoesNotCostTheOthers(t *testing.
 func Test_contentAnalysis_AColumnWithoutEntityIsAnalyzed(t *testing.T) {
 	content := newContentAnalysis(nothingFound{})
 
-	_, ok := content.detect(context.Background(), "label", names)
+	_, _, _, ok := content.column(context.Background(), "label", names)
 
 	require.False(t, ok)
 	require.Empty(t, content.notAnalyzed)
@@ -120,7 +120,7 @@ func Test_contentAnalysis_AColumnWithoutEntityIsAnalyzed(t *testing.T) {
 func Test_contentAnalysis_AnEntityOfTooFewValuesIsNotTold(t *testing.T) {
 	content := newContentAnalysis(findsIn{"Ada Lovelace"})
 
-	_, ok := content.detect(context.Background(), "label", names)
+	_, _, _, ok := content.column(context.Background(), "label", names)
 
 	require.False(t, ok)
 	require.Empty(t, content.notAnalyzed)
@@ -201,9 +201,9 @@ func Test_contentAnalysis_AnAnalyzerThatDoesNotAnswerIsNotAskedAgain(t *testing.
 	analyzer := &scriptedAnalyzer{failures: map[string]int{"Ada Lovelace": 10}, failure: silence}
 	content := newContentAnalysis(analyzer)
 
-	_, ok := content.detect(context.Background(), "full_name", names)
+	_, _, _, ok := content.column(context.Background(), "full_name", names)
 	require.False(t, ok)
-	_, ok = content.detect(context.Background(), "city", cities)
+	_, _, _, ok = content.column(context.Background(), "city", cities)
 	require.False(t, ok)
 
 	require.Equal(t, map[string]struct{}{"full_name": {}, "city": {}}, content.notAnalyzed)

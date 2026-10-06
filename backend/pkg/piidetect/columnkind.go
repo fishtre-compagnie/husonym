@@ -140,21 +140,6 @@ func SuggestionForBirthDate(dataType string) mgmtv1alpha1.TransformerSource {
 	return suggestionFor(dataType, scrambleText, unspecified, generateMoment)
 }
 
-// SuggestionForText is the transformer suggested for a column whose values are text of
-// free form: transformer when the column holds text or its type is not given, none for a
-// column of any other type, which no text transformer writes.
-func SuggestionForText(dataType string, transformer mgmtv1alpha1.TransformerSource) mgmtv1alpha1.TransformerSource {
-	switch kindOf(dataType) {
-	case kindText:
-		return transformer
-	case kindAny:
-		if strings.TrimSpace(dataType) == "" {
-			return transformer
-		}
-	}
-	return unspecified
-}
-
 // suggestionFor picks the transformer to suggest for a column of a type: one that takes
 // the type, or none. text is the one of the datum, for a column that holds text or whose
 // type is not given; integer and moment are the ones of the datum for an integer and for

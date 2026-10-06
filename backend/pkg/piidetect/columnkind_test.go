@@ -229,27 +229,3 @@ func TestClassify_ANarrowIntegerGetsTheGeneratorOfIntegers(t *testing.T) {
 		}
 	}
 }
-
-// A text transformer is suggested for a column of text or of a type that is not given, and for
-// no other.
-func TestSuggestionForText(t *testing.T) {
-	text := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
-	for dataType, want := range map[string]mgmtv1alpha1.TransformerSource{
-		"":                       text,
-		"  ":                     text,
-		"text":                   text,
-		"character varying(255)": text,
-		"jsonb":                  unspecified,
-		"json":                   unspecified,
-		"bytea":                  unspecified,
-		"character varying[]":    unspecified,
-		"integer":                unspecified,
-		"timestamp":              unspecified,
-		"uuid":                   unspecified,
-		"my_enum":                unspecified,
-	} {
-		if got := SuggestionForText(dataType, text); got != want {
-			t.Errorf("SuggestionForText(%q) = %s, want %s", dataType, got, want)
-		}
-	}
-}
