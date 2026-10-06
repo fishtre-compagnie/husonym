@@ -3,6 +3,8 @@ package schema
 import (
 	"fmt"
 	"strings"
+
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 )
 
 // MySQLRenderer writes MySQL 8 DDL.
@@ -11,7 +13,7 @@ type MySQLRenderer struct{}
 func (MySQLRenderer) Dialect() Dialect { return MySQL }
 
 func (MySQLRenderer) QuoteIdent(name string) string {
-	return "`" + strings.ReplaceAll(name, "`", "``") + "`"
+	return sqlident.MySQL.Quote(name)
 }
 
 func (MySQLRenderer) Placeholder(int) string { return "?" }

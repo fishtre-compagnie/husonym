@@ -24,7 +24,7 @@ func Test_BuildMysqlTruncateStatement(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		`TRUNCATE "public"."users";`,
+		"TRUNCATE `public`.`users`;",
 		actual,
 	)
 }
@@ -198,12 +198,12 @@ func Test_IdempotentWrappers_AreConcurrencySafe(t *testing.T) {
 }
 
 // procedureNameOf reads the name back out of a generated statement, which starts with
-// "DROP PROCEDURE IF EXISTS <name>;".
+// "DROP PROCEDURE IF EXISTS `<name>`;".
 func procedureNameOf(t *testing.T, stmt string) string {
 	t.Helper()
-	_, rest, found := strings.Cut(stmt, "DROP PROCEDURE IF EXISTS ")
+	_, rest, found := strings.Cut(stmt, "DROP PROCEDURE IF EXISTS `")
 	require.True(t, found)
-	name, _, found := strings.Cut(rest, ";")
+	name, _, found := strings.Cut(rest, "`;")
 	require.True(t, found)
 	return name
 }

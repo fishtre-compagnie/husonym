@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
+	"github.com/doug-martin/goqu/v9"
+	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	tsqlparser "github.com/fishtre-compagnie/husonym/internal/tsqlparser"
 )
 
@@ -49,6 +52,42 @@ Updates columns names in where clause to be fully qualified
 (primitive_constant 'John')))))))))))) <EOF>)
 */
 func QualifyWhereCondition(sql string) (string, error) {
+	return qualifyWhereCondition(sql, newTSqlListener())
+}
+
+// QualifyWhereConditionAs is QualifyWhereCondition for a statement whose where clause
+// filters a table the caller names: the columns of the clause are named by table, written
+// as one identifier, whatever table or alias the from clause of the statement names. A
+// subquery still names its columns by its own table.
+func QualifyWhereConditionAs(sql, table string) (string, error) {
+	if err := sqlident.Check(table); err != nil {
+		return "", fmt.Errorf("table name: %w", err)
+	}
+	filteredTable, err := quoted(table)
+	if err != nil {
+		return "", err
+	}
+	listener := newTSqlListener()
+	listener.filteredTable = filteredTable
+	return qualifyWhereCondition(sql, listener)
+}
+
+// quoted writes name as one identifier the way goqu writes the statements of SQL Server:
+// between double quotes.
+func quoted(name string) (string, error) {
+	const head = "SELECT "
+	sql, _, err := goqu.Dialect("sqlserver").Select(sqlident.SQLServer.Col(name)).ToSQL()
+	if err != nil {
+		return "", fmt.Errorf("unable to write the name %s: %w", name, err)
+	}
+	identifier, ok := strings.CutPrefix(sql, head)
+	if !ok {
+		return "", fmt.Errorf("unable to write the name %s", name)
+	}
+	return identifier, nil
+}
+
+func qualifyWhereCondition(sql string, listener *tsqlListener) (string, error) {
 	inputStream := antlr.NewInputStream(sql)
 
 	// create the lexer
@@ -61,7 +100,6 @@ func QualifyWhereCondition(sql string) (string, error) {
 	errorListener := newTSqlErrorListener()
 	parser.AddErrorListener(errorListener)
 
-	listener := newTSqlListener()
 	tree := parser.Tsql_file()
 	// walk tree and listen to events
 	antlr.ParseTreeWalkerDefault.Walk(listener, tree)
@@ -104,6 +142,13 @@ type tsqlListener struct {
 	inSearchCondition bool     // tracks when we enter where clause in the tree
 	sqlStack          []string // rebuilds new sql string
 	Errors            []string
+	// filteredTable, when set, stands for the table of the first from clause of the
+	// statement: the caller names the table its where clause filters, already quoted.
+	filteredTable string
+	// fromClauses counts the from clauses entered, and inFirstFromClause tells that the
+	// first one is being walked.
+	fromClauses       int
+	inFirstFromClause bool
 }
 
 func newTSqlListener() *tsqlListener {
@@ -194,12 +239,26 @@ func (l *tsqlListener) EnterSelect_statement(ctx *tsqlparser.Select_statementCon
 
 // sets current table found in from clause
 func (l *tsqlListener) EnterTable_sources(ctx *tsqlparser.Table_sourcesContext) {
+	l.fromClauses++
+	if l.filteredTable != "" && l.fromClauses == 1 {
+		l.inFirstFromClause = true
+		l.currentTable = l.filteredTable
+		return
+	}
 	table := ctx.GetText()
-	l.currentTable = qualifyTableName(table)
+	l.currentTable = l.qualifyTableName(table)
+}
+
+func (l *tsqlListener) ExitTable_sources(ctx *tsqlparser.Table_sourcesContext) {
+	l.inFirstFromClause = false
 }
 
 // sets current table if alias found
 func (l *tsqlListener) EnterTable_alias(ctx *tsqlparser.Table_aliasContext) {
+	if l.inFirstFromClause {
+		// the caller named the table
+		return
+	}
 	l.currentTable = ctx.GetText()
 }
 
@@ -216,7 +275,7 @@ func (l *tsqlListener) EnterFull_table_name(ctx *tsqlparser.Full_table_nameConte
 		return
 	}
 	// creates new token with table name
-	newToken := l.setToken(ctx.GetStart(), ctx.GetStop(), ensureQuoted(l.currentTable))
+	newToken := l.setToken(ctx.GetStart(), ctx.GetStop(), l.ensureQuoted(l.currentTable))
 	ctx.RemoveLastChild()
 	ctx.AddTokenNode(newToken)
 }
@@ -231,9 +290,9 @@ func (l *tsqlListener) EnterFull_column_name(ctx *tsqlparser.Full_column_nameCon
 
 	var text string
 	if !isTableTokenSet(ctx) {
-		text = fmt.Sprintf("%s.%s", ensureQuoted(l.currentTable), parseColumnName(ctx.GetText()))
+		text = fmt.Sprintf("%s.%s", l.ensureQuoted(l.currentTable), l.parseColumnName(ctx.GetText()))
 	} else {
-		text = parseColumnName(ctx.GetText())
+		text = l.parseColumnName(ctx.GetText())
 	}
 
 	newToken := l.setToken(ctx.GetStart(), ctx.GetStop(), text)
@@ -241,33 +300,39 @@ func (l *tsqlListener) EnterFull_column_name(ctx *tsqlparser.Full_column_nameCon
 	ctx.AddTokenNode(newToken)
 }
 
-func parseColumnName(colText string) string {
+func (l *tsqlListener) parseColumnName(colText string) string {
 	split := strings.Split(colText, ".")
 	if len(split) == 1 {
-		return ensureQuoted(split[0])
+		return l.ensureQuoted(split[0])
 	}
 	if len(split) == 2 {
-		return ensureQuoted(split[1])
+		return l.ensureQuoted(split[1])
 	}
-	return ensureQuoted(colText)
+	return l.ensureQuoted(colText)
 }
 
-func ensureQuoted(str string) string {
+// ensureQuoted leaves a text already between double quotes as it is, and writes any other
+// as one identifier.
+func (l *tsqlListener) ensureQuoted(str string) string {
 	if strings.HasPrefix(str, `"`) && strings.HasSuffix(str, `"`) {
 		return str
 	}
-	return fmt.Sprintf("%q", str)
+	identifier, err := quoted(str)
+	if err != nil {
+		l.Errors = append(l.Errors, err.Error())
+	}
+	return identifier
 }
 
 // adds quotes around schema and table
-func qualifyTableName(table string) string {
+func (l *tsqlListener) qualifyTableName(table string) string {
 	if strings.HasPrefix(table, `"`) && strings.HasSuffix(table, `"`) {
 		return table
 	}
 	split := strings.Split(table, ".")
 	qualifiedName := []string{}
 	for _, piece := range split {
-		qualifiedName = append(qualifiedName, fmt.Sprintf("%q", piece))
+		qualifiedName = append(qualifiedName, l.ensureQuoted(piece))
 	}
 	return strings.Join(qualifiedName, ".")
 }

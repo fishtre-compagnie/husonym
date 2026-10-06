@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strings"
 
 	"github.com/doug-martin/goqu/v9"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 
 	// import the dialect
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
@@ -37,18 +37,24 @@ func getGoquDialect(driver string) goqu.DialectWrapper {
 }
 
 func BuildSelectQuery(
-	driver, table string,
+	driver, schema, table string,
 	columns []string,
 	whereClause *string,
 ) (string, error) {
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
+	}
+	if err := checkColumns(columns); err != nil {
+		return "", err
+	}
 	builder := getGoquDialect(driver)
-	sqltable := goqu.I(table)
 
 	selectColumns := make([]any, len(columns))
 	for i, col := range columns {
-		selectColumns[i] = col
+		selectColumns[i] = d.Col(col)
 	}
-	query := builder.From(sqltable).Select(selectColumns...)
+	query := builder.From(d.Table(schema, table)).Select(selectColumns...)
 
 	if whereClause != nil && *whereClause != "" {
 		query = query.Where(goqu.L(*whereClause))
@@ -66,12 +72,14 @@ func formatSqlQuery(sql string) string {
 }
 
 func BuildSelectLimitQuery(
-	driver, table string,
+	driver, schema, table string,
 	limit uint,
 ) (string, error) {
-	builder := getGoquDialect(driver)
-	sqltable := goqu.I(table)
-	sql, _, err := builder.From((sqltable)).Limit(limit).ToSQL()
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
+	}
+	sql, _, err := getGoquDialect(driver).From(d.Table(schema, table)).Limit(limit).ToSQL()
 	if err != nil {
 		return "", err
 	}
@@ -96,8 +104,13 @@ const SampleWindowSize = 1000
 //
 // The sample is therefore not uniform over the table.
 func BuildSampledSelectLimitQuery(
-	driver, table string, limit uint,
+	driver, schema, table string, limit uint,
 ) (string, error) {
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
+	}
+
 	var randStmt string
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
@@ -109,10 +122,9 @@ func BuildSampledSelectLimitQuery(
 	}
 
 	builder := getGoquDialect(driver)
-	sqltable := goqu.I(table)
 
 	// The window is read without a sort: the database stops as soon as it has its rows.
-	window := builder.From(sqltable).Limit(SampleWindowSize).As("husonym_sample")
+	window := builder.From(d.Table(schema, table)).Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
 		From(window).
@@ -169,33 +181,41 @@ type TableSize struct {
 // sample, when the size is unknown (no row or no page) and when the table has no more
 // rows than SampleWindowSize: the window query serves it.
 func BuildTableSampleQuery(
-	driver, table string,
+	driver, schema, table string,
 	size TableSize,
 	limit uint,
 ) (sql string, ok bool, err error) {
+	if err := checkTable(schema, table); err != nil {
+		return "", false, err
+	}
 	if size.Rows <= SampleWindowSize || size.Pages <= 0 {
 		return "", false, nil
 	}
+	if driver != sqlmanager_shared.GoquPostgresDriver && driver != sqlmanager_shared.MssqlDriver {
+		return "", false, nil
+	}
+	d, err := sqlident.ForDriver(driver)
+	if err != nil {
+		return "", false, err
+	}
 	percent, keep := tableSampleShare(size)
+	sqltable := d.Table(schema, table)
 
 	builder := getGoquDialect(driver)
 	var inner *goqu.SelectDataset
 	var randStmt string
-	switch driver {
-	case sqlmanager_shared.GoquPostgresDriver:
-		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", goqu.I(table), percent))
+	if driver == sqlmanager_shared.GoquPostgresDriver {
+		inner = builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", sqltable, percent))
 		if keep < 1 {
 			inner = inner.Where(goqu.L("RANDOM() < ?", keep))
 		}
 		inner = inner.Limit(SampleRowsBound)
 		randStmt = "RANDOM()"
-	case sqlmanager_shared.MssqlDriver:
+	} else {
 		// No bound here: a TOP on a table sample keeps the first pages read. No thinning
 		// either: a random filter that names no column is computed once for the query.
-		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", goqu.I(table), percent))
+		inner = builder.From(goqu.L("? TABLESAMPLE (? PERCENT)", sqltable, percent))
 		randStmt = "NEWID()"
-	default:
-		return "", false, nil
 	}
 
 	sql, _, err = builder.
@@ -234,16 +254,15 @@ func roundTo4(v float64) float64 {
 // ranges must not overlap, so no row comes twice. Each slice is a bounded range read
 // on the key, so the cost does not grow with the table.
 func BuildKeySlicesSampleQuery(
-	driver, table, keyColumn string,
+	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 	limit uint,
 ) (string, error) {
-	builder := getGoquDialect(driver)
-	union, err := keySlices(builder, table, keyColumn, ranges, false)
+	union, err := keySlices(driver, schema, table, keyColumn, ranges, false)
 	if err != nil {
 		return "", err
 	}
-	sql, _, err := builder.
+	sql, _, err := getGoquDialect(driver).
 		From(union.As("husonym_sample")).
 		Order(goqu.L("RAND()").Asc()).
 		Limit(limit).
@@ -259,15 +278,14 @@ func BuildKeySlicesSampleQuery(
 // the count is answered from the key: SampleSliceRows entries of it at most for each
 // range.
 func BuildKeySlicesCountQuery(
-	driver, table, keyColumn string,
+	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 ) (string, error) {
-	builder := getGoquDialect(driver)
-	union, err := keySlices(builder, table, keyColumn, ranges, true)
+	union, err := keySlices(driver, schema, table, keyColumn, ranges, true)
 	if err != nil {
 		return "", err
 	}
-	sql, _, err := builder.
+	sql, _, err := getGoquDialect(driver).
 		From(union.As("husonym_sample")).
 		Select(goqu.COUNT(goqu.Star())).
 		ToSQL()
@@ -281,16 +299,23 @@ func BuildKeySlicesCountQuery(
 // SampleSliceRows rows in key order. A slice holds the whole row, or the key column
 // alone when keyOnly is set.
 func keySlices(
-	builder goqu.DialectWrapper,
-	table, keyColumn string,
+	driver, schema, table, keyColumn string,
 	ranges []KeyRange,
 	keyOnly bool,
 ) (*goqu.SelectDataset, error) {
 	if len(ranges) == 0 {
 		return nil, errors.New("at least one key range is required")
 	}
-	sqltable := goqu.I(table)
-	key := goqu.I(keyColumn)
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkColumns([]string{keyColumn}); err != nil {
+		return nil, err
+	}
+	builder := getGoquDialect(driver)
+	sqltable := d.Table(schema, table)
+	key := d.Col(keyColumn)
 
 	slice := func(r KeyRange) *goqu.SelectDataset {
 		rows := builder.From(sqltable)
@@ -314,9 +339,10 @@ func BuildInsertQuery(
 	records []goqu.Record,
 	onConflictDoNothing *bool,
 ) (sql string, args []any, err error) {
-	builder := getGoquDialect(driver)
-	sqltable := goqu.S(schema).Table(table)
-	insert := builder.Insert(sqltable).Prepared(true).Rows(records)
+	insert, d, err := insertInto(driver, schema, table, records)
+	if err != nil {
+		return "", nil, err
+	}
 	// adds on conflict do nothing to insert query
 	// len(records[0]) > 0: the conflict clause names a column of the record, and a record
 	// without one gives none.
@@ -328,10 +354,8 @@ func BuildInsertQuery(
 		// also downgrades every other error to a warning: values too long are truncated,
 		// NULL in a NOT NULL column becomes the implicit default, invalid ENUM values become
 		// ''. Assigning a column to itself on a duplicate key skips the row and nothing else.
-		column := firstColumn(records[0])
-		insert = insert.OnConflict(goqu.DoUpdate("", goqu.Record{
-			column: exp.NewIdentifierExpression("", "", column),
-		}))
+		column := d.Col(sortedColumns(records[0])[0])
+		insert = insert.OnConflict(goqu.DoUpdate("", column.Set(column)))
 	case *onConflictDoNothing:
 		insert = insert.OnConflict(goqu.DoNothing())
 	}
@@ -351,40 +375,31 @@ func BuildInsertQuery(
 	return query, args, nil
 }
 
-// firstColumn returns the first column of a record in name order, so the same rows
-// always build the same query.
-func firstColumn(record goqu.Record) string {
-	columns := make([]string, 0, len(record))
-	for column := range record {
-		columns = append(columns, column)
-	}
-	slices.Sort(columns)
-	return columns[0]
-}
-
 func BuildUpdateQuery(
 	driver, schema, table string,
 	insertColumns []string,
 	whereColumns []string,
 	columnValueMap map[string]any,
 ) (string, error) {
-	builder := getGoquDialect(driver)
-	sqltable := goqu.S(schema).Table(table)
-
-	updateRecord := goqu.Record{}
-	for _, col := range insertColumns {
-		val := columnValueMap[col]
-		updateRecord[col] = val
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
 	}
+	if err := checkColumns(insertColumns); err != nil {
+		return "", err
+	}
+	if err := checkColumns(whereColumns); err != nil {
+		return "", err
+	}
+	value := func(column string) any { return columnValueMap[column] }
 
 	where := []exp.Expression{}
 	for _, col := range whereColumns {
-		val := columnValueMap[col]
-		where = append(where, goqu.Ex{col: val})
+		where = append(where, d.Col(col).Eq(value(col)))
 	}
 
-	update := builder.Update(sqltable).
-		Set(updateRecord).
+	update := getGoquDialect(driver).Update(d.Table(schema, table)).
+		Set(setColumns(d, insertColumns, value)).
 		Where(where...)
 
 	query, _, err := update.ToSQL()
@@ -399,12 +414,13 @@ func BuildUpdateQuery(
 }
 
 func BuildTruncateQuery(
-	driver, table string,
+	driver, schema, table string,
 ) (string, error) {
-	builder := getGoquDialect(driver)
-	sqltable := goqu.I(table)
-	truncate := builder.Truncate(sqltable)
-	query, _, err := truncate.ToSQL()
+	d, err := tableDialect(driver, schema, table)
+	if err != nil {
+		return "", err
+	}
+	query, _, err := getGoquDialect(driver).Truncate(d.Table(schema, table)).ToSQL()
 	if err != nil {
 		return "", err
 	}

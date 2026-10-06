@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	"github.com/fishtre-compagnie/husonym/internal/tableplan"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/log"
@@ -92,12 +93,81 @@ func Test_orphanCondition(t *testing.T) {
 	require.Equal(t,
 		"`shop`.`LIGNE`.`commande_id` IS NOT NULL AND `shop`.`LIGNE`.`commande_id` <> '0' AND "+
 			"NOT EXISTS (SELECT 1 FROM `shop`.`COMMANDE` p WHERE p.`id` = `shop`.`LIGNE`.`commande_id`)",
-		orphanCondition(sqlmanager_shared.MysqlDriver, all[0], all[0].ForeignKeys[0]))
+		orphanCondition(sqlident.MySQL, all[0], all[0].ForeignKeys[0]))
 
 	// MySQL cannot modify a table it reads in a plain subquery: a self-reference goes
 	// through a derived table.
-	require.Contains(t, orphanCondition(sqlmanager_shared.MysqlDriver, all[1], all[1].ForeignKeys[0]),
+	require.Contains(t, orphanCondition(sqlident.MySQL, all[1], all[1].ForeignKeys[0]),
 		"FROM (SELECT * FROM `shop`.`COMMANDE`) p WHERE")
-	require.Contains(t, orphanCondition(sqlmanager_shared.PostgresDriver, all[1], all[1].ForeignKeys[0]),
+	require.Contains(t, orphanCondition(sqlident.Postgres, all[1], all[1].ForeignKeys[0]),
 		`FROM "shop"."COMMANDE" p WHERE`)
+}
+
+// The "no parent" value is the default of the column as the source catalog gives it: it is
+// written as one string literal of the engine, whatever it holds.
+func Test_orphanCondition_NoParentValueIsOneLiteral(t *testing.T) {
+	type engine struct {
+		dialect  sqlident.Dialect
+		table    string
+		column   string
+		parent   string
+		parentID string
+		literals map[string]string
+	}
+	engines := map[string]engine{
+		"postgres": {
+			dialect: sqlident.Postgres, table: `"shop"."line"`, column: `"kind"`, parent: `"shop"."it's"`, parentID: `p."code"`,
+			literals: map[string]string{
+				`none`:       `'none'`,
+				`o'clock`:    `'o''clock'`,
+				`none\`:      `E'none\\'`,
+				`back\slash`: `E'back\\slash'`,
+				`0`:          `'0'`,
+			},
+		},
+		"mysql": {
+			dialect: sqlident.MySQL, table: "`shop`.`line`", column: "`kind`", parent: "`shop`.`it's`", parentID: "p.`code`",
+			literals: map[string]string{
+				`none`:       `'none'`,
+				`o'clock`:    `'o''clock'`,
+				`none\`:      `_utf8mb4 0x6E6F6E655C`,
+				`back\slash`: `_utf8mb4 0x6261636B5C736C617368`,
+				`0`:          `'0'`,
+			},
+		},
+		"sqlserver": {
+			dialect: sqlident.SQLServer, table: `[shop].[line]`, column: `[kind]`, parent: `[shop].[it's]`, parentID: `p.[code]`,
+			literals: map[string]string{
+				`none`:       `N'none'`,
+				`o'clock`:    `N'o''clock'`,
+				`none\`:      `N'none\'`,
+				`back\slash`: `N'back\slash'`,
+				`0`:          `N'0'`,
+			},
+		},
+	}
+	for name, e := range engines {
+		for value, literal := range e.literals {
+			table := &TableForeignKeys{Schema: "shop", Table: "line", ForeignKeys: []*tableplan.ForeignKey{{
+				Columns: []string{"kind"}, NotNull: []bool{true},
+				ParentSchema: "shop", ParentTable: "it's", ParentColumns: []string{"code"}, NoParentValue: &value,
+			}}}
+			child := e.table + "." + e.column
+			condition := child + " IS NOT NULL AND " + child + " <> " + literal + " AND " +
+				"NOT EXISTS (SELECT 1 FROM " + e.parent + " p WHERE " + e.parentID + " = " + child + ")"
+			require.Equal(t, condition, orphanCondition(e.dialect, table, table.ForeignKeys[0]), "%s, %q", name, value)
+			require.Equal(t, "DELETE FROM "+e.table+" WHERE "+condition,
+				repairStatement(e.dialect, table, table.ForeignKeys[0]), "%s, %q", name, value)
+		}
+	}
+}
+
+// A driver the product has no dialect for is refused before anything is read.
+func Test_checkForeignKeys_UnknownDriver(t *testing.T) {
+	db := &fakeDb{counts: map[string][]int64{"LIGNE": {3}}}
+	_, err := checkForeignKeys(context.Background(), db, "oracle", tables(),
+		policy{skipViolations: true, emptiedByRun: true}, nopLogger{})
+	require.ErrorContains(t, err, `no SQL dialect for driver "oracle"`)
+	require.Empty(t, db.repairs)
+	require.Equal(t, []int64{3}, db.counts["LIGNE"])
 }

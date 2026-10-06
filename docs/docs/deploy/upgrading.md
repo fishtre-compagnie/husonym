@@ -81,6 +81,52 @@ and MySQL, a column held by a CHECK constraint is copied as is, and the run log 
 After the first run that follows the upgrade, review the mappings the run has written into
 the job. See [New Column Addition Strategies](/guides/new-column-addition-strategies).
 
+### Virtual foreign keys
+
+Before upgrading, review the virtual foreign keys of your jobs. A job whose virtual
+foreign key references a table or a column that the source does not hold fails at the
+start of the run, with an error that names the table of the key, the table it references
+and, for a column, the column. The [pre-flight check](/guides/preflight) stops with the
+same error instead of listing it among its findings.
+
+The names are compared exactly as the catalog of the source writes them. A key that names
+its referenced table or column in another case than the catalog ran before on a server
+that compares names without regard to case; it now stops the run. Spell the names as the
+catalog does. See [Virtual Foreign Keys](/table-constraints/virtual-foreign-keys).
+
+### Names and text copied from the source
+
+Tables, columns and other objects whose names hold a quote character, an apostrophe, a
+backslash, a space or upper-case letters, and column defaults and enum labels that hold
+an apostrophe or a backslash, are copied as they are by schema initialization on
+PostgreSQL, MySQL, MariaDB and SQL Server, and by a sync run by the Athanor engine from
+PostgreSQL, MySQL or MariaDB.
+
+On MySQL, a check constraint whose expression holds a backslash, a line break or a
+character outside ASCII is recreated as on the source, and so is a column default that is
+a plain string holding an apostrophe or a backslash. On PostgreSQL, the labels of an enum
+type are created in the order of the source; a type created by an earlier version in
+another order is not reordered.
+
+Known limits:
+
+- A schema or table name that holds a dot is not supported.
+- On PostgreSQL, a column default or a check constraint whose text holds a backslash is
+  copied as it is only between a source and a destination that have the same
+  `standard_conforming_strings` setting.
+- On MySQL and MariaDB, a column comment that holds a backslash is not copied.
+- On MySQL, a function whose parameter names need quoting is not created.
+- On SQL Server, a column whose collation name is not made of letters, digits and
+  underscores takes the default collation of the destination database, and the run
+  reports it.
+
+### Sampled rows
+
+The rows read to recognize personal data (the PII content scan, the column preview and
+the PII detection job) are drawn from the whole table where the database allows it, so
+two scans of the same table can read different rows. See
+[Data sampling](/guides/pii-detection-job#data-sampling).
+
 ### PII detection jobs
 
 See [Upgrading](/guides/pii-detection-job#upgrading) in the guide of the PII detection job.

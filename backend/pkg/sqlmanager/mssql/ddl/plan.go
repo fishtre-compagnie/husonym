@@ -213,8 +213,11 @@ func (b *builder) table(table *Table) {
 			"created under ANSI_NULLS OFF at the source: it is created under ANSI_NULLS ON")
 	}
 
-	followers := 0
+	followers, unwritten := 0, 0
 	for _, column := range table.Columns {
+		if takesCollation(column) && !writesCollation(column) {
+			unwritten++
+		}
 		if !isAliasTyped(column) {
 			continue
 		}
@@ -227,6 +230,12 @@ func (b *builder) table(table *Table) {
 	if followers > 0 {
 		b.skip(sqlmanager_shared.CreateTablesLabel, name, fmt.Sprintf(
 			"collation of %d alias-typed column(s) follows the default of the destination database", followers,
+		))
+	}
+	if unwritten > 0 {
+		b.skip(sqlmanager_shared.CreateTablesLabel, name, fmt.Sprintf(
+			"collation of %d column(s) is not written, its name not being made of letters, digits and underscores: "+
+				"it follows the default of the destination database", unwritten,
 		))
 	}
 

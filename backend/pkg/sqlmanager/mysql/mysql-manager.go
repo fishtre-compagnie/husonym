@@ -15,6 +15,7 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	mysql_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/mysql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	mysqlgrants "github.com/fishtre-compagnie/husonym/internal/mysql-grants"
 	"golang.org/x/sync/errgroup"
@@ -706,6 +707,9 @@ func (m *MysqlManager) GetTableInitStatements(
 		columns := make([]string, 0, len(tableData))
 		for _, record := range tableData {
 			record := record
+			if err := checkNames("column", record.ColumnName); err != nil {
+				return nil, err
+			}
 			var identityType *string
 			if record.IdentityGeneration.Valid {
 				identityType = &record.IdentityGeneration.String
@@ -743,13 +747,16 @@ func (m *MysqlManager) GetTableInitStatements(
 			}))
 		}
 
+		createTable, err := buildCreateTableStatement(
+			tableData[0].SchemaName,
+			tableData[0].TableName,
+			columns,
+		)
+		if err != nil {
+			return nil, err
+		}
 		info := &sqlmanager_shared.TableInitStatement{
-			CreateTableStatement: fmt.Sprintf(
-				"CREATE TABLE IF NOT EXISTS `%s`.`%s` (%s);",
-				tableData[0].SchemaName,
-				tableData[0].TableName,
-				strings.Join(columns, ", "),
-			),
+			CreateTableStatement: createTable,
 			AlterTableStatements: []*sqlmanager_shared.AlterTableStatement{},
 			IndexStatements:      []string{},
 		}
@@ -765,10 +772,15 @@ func (m *MysqlManager) GetTableInitStatements(
 		}
 		if tableIndices, ok := indexmap[key]; ok {
 			for _, idxInfo := range tableIndices {
-				info.IndexStatements = append(
-					info.IndexStatements,
-					wrapIdempotentIndex(schematable.Schema, schematable.Table, idxInfo),
+				indexStmt, err := buildIdempotentIndexStatement(
+					schematable.Schema,
+					schematable.Table,
+					idxInfo,
 				)
+				if err != nil {
+					return nil, err
+				}
+				info.IndexStatements = append(info.IndexStatements, indexStmt)
 			}
 		}
 		output = append(output, info)
@@ -935,6 +947,12 @@ func buildColumnStatement(keyword string, column *sqlmanager_shared.TableColumn)
 		col = buildTableColForCreate(colReq)
 	}
 
+	if err := checkQualifiedTable(column.Schema, column.Table); err != nil {
+		return "", err
+	}
+	if err := checkNames("column", column.Name); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf(
 		"ALTER TABLE %s.%s %s COLUMN %s;",
 		EscapeMysqlColumn(column.Schema),
@@ -1046,11 +1064,8 @@ func buildTableCol(record *buildTableColRequest, isModifyColumn bool) string {
 		}
 	}
 
-	if record.Comment != nil && *record.Comment != "" {
-		pieces = append(
-			pieces,
-			fmt.Sprintf("COMMENT '%s'", strings.ReplaceAll(*record.Comment, "'", `\'`)),
-		)
+	if comment := buildColumnComment(record.Comment); comment != "" {
+		pieces = append(pieces, comment)
 	}
 
 	return strings.Join(pieces, " ")
@@ -1078,12 +1093,28 @@ func buildAlterStatementByConstraint(
 	if err != nil {
 		return nil, err
 	}
+	if err := checkQualifiedTable(c.SchemaName, c.TableName); err != nil {
+		return nil, err
+	}
+	// A primary key is not written by its name, and a CHECK constraint may have none: an
+	// empty name is refused where the statement writes one.
+	if c.ConstraintName != "" {
+		if err := checkNames("constraint", c.ConstraintName); err != nil {
+			return nil, err
+		}
+	}
+	// The catalog gives no column name for a key part that is an expression, nor for a key
+	// column the user cannot see: the statement of such a constraint is still handed over,
+	// for the server to answer it alone.
+	table := my.Qualified(c.SchemaName, c.TableName)
 	switch c.ConstraintType {
 	case "PRIMARY KEY":
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
+			return nil, err
+		}
 		stmt := fmt.Sprintf(
-			"ALTER TABLE `%s`.`%s` ADD PRIMARY KEY (%s);",
-			c.SchemaName,
-			c.TableName,
+			"ALTER TABLE %s ADD PRIMARY KEY (%s);",
+			table,
 			strings.Join(escapeMysqlColumnsWithPrefixes(constraintCols, columnPrefixes), ","),
 		)
 		return &sqlmanager_shared.AlterTableStatement{
@@ -1096,11 +1127,16 @@ func buildAlterStatementByConstraint(
 			ConstraintType: sqlmanager_shared.PrimaryConstraintType,
 		}, nil
 	case "UNIQUE":
+		if err := checkNames("constraint", c.ConstraintName); err != nil {
+			return nil, err
+		}
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
+			return nil, err
+		}
 		stmt := fmt.Sprintf(
-			"ALTER TABLE `%s`.`%s` ADD CONSTRAINT `%s` UNIQUE (%s);",
-			c.SchemaName,
-			c.TableName,
-			c.ConstraintName,
+			"ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s);",
+			table,
+			my.Quote(c.ConstraintName),
 			strings.Join(escapeMysqlColumnsWithPrefixes(constraintCols, columnPrefixes), ","),
 		)
 		return &sqlmanager_shared.AlterTableStatement{
@@ -1113,14 +1149,24 @@ func buildAlterStatementByConstraint(
 			ConstraintType: sqlmanager_shared.UniqueConstraintType,
 		}, nil
 	case "FOREIGN KEY":
+		if err := checkNames("constraint", c.ConstraintName); err != nil {
+			return nil, err
+		}
+		if err := checkQualifiedTable(c.ReferencedSchemaName, c.ReferencedTableName); err != nil {
+			return nil, err
+		}
+		if err := checkNamesIfPresent("column", constraintCols...); err != nil {
+			return nil, err
+		}
+		if err := checkNamesIfPresent("referenced column", referencedCols...); err != nil {
+			return nil, err
+		}
 		stmt := fmt.Sprintf(
-			"ALTER TABLE `%s`.`%s` ADD CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s`.`%s`(%s) ON DELETE %s ON UPDATE %s;",
-			c.SchemaName,
-			c.TableName,
-			c.ConstraintName,
+			"ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE %s ON UPDATE %s;",
+			table,
+			my.Quote(c.ConstraintName),
 			strings.Join(EscapeMysqlColumns(constraintCols), ","),
-			c.ReferencedSchemaName,
-			c.ReferencedTableName,
+			my.Qualified(c.ReferencedSchemaName, c.ReferencedTableName),
 			strings.Join(EscapeMysqlColumns(referencedCols), ","),
 			c.DeleteRule.String,
 			c.UpdateRule.String,
@@ -1139,11 +1185,15 @@ func buildAlterStatementByConstraint(
 		if err != nil {
 			return nil, err
 		}
+		// Without a name the statement keeps its form, and the server names the constraint.
+		constraintName := ""
+		if c.ConstraintName != "" {
+			constraintName = my.Quote(c.ConstraintName)
+		}
 		stmt := fmt.Sprintf(
-			"ALTER TABLE `%s`.`%s` ADD CONSTRAINT %s CHECK (%s);",
-			c.SchemaName,
-			c.TableName,
-			c.ConstraintName,
+			"ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s);",
+			table,
+			constraintName,
 			checkStr,
 		)
 		return &sqlmanager_shared.AlterTableStatement{
@@ -1253,21 +1303,25 @@ func (m *MysqlManager) GetSchemaTableTriggers(
 		for _, row := range rows {
 			row.SchemaName, row.TableName = names.table(row.SchemaName, row.TableName)
 			row.TriggerSchema = names.schema(row.TriggerSchema)
+			definition, err := buildIdempotentTriggerStatement(
+				row.SchemaName,
+				row.TableName,
+				row.TriggerName,
+				row.TriggerSchema,
+				row.Timing,
+				row.EventType,
+				row.Orientation,
+				row.Statement,
+			)
+			if err != nil {
+				return nil, err
+			}
 			trigger := &sqlmanager_shared.TableTrigger{
 				Schema:        row.SchemaName,
 				Table:         row.TableName,
 				TriggerSchema: &row.TriggerSchema,
 				TriggerName:   row.TriggerName,
-				Definition: wrapIdempotentTrigger(
-					row.SchemaName,
-					row.TableName,
-					row.TriggerName,
-					row.TriggerSchema,
-					row.Timing,
-					row.EventType,
-					row.Orientation,
-					row.Statement,
-				),
+				Definition:    definition,
 				Mysql: &sqlmanager_shared.MysqlTrigger{
 					Timing:              row.Timing,
 					Event:               row.EventType,
@@ -1300,10 +1354,11 @@ func (m *MysqlManager) GetSchemaInitStatements(
 			uniqueSchemas[table.Schema] = struct{}{}
 		}
 		for schema := range uniqueSchemas {
-			schemaStmts = append(
-				schemaStmts,
-				fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS `%s`;", schema),
-			)
+			stmt, err := buildCreateSchemaStatement(schema)
+			if err != nil {
+				return err
+			}
+			schemaStmts = append(schemaStmts, stmt)
 		}
 		return nil
 	})
@@ -1391,17 +1446,21 @@ func (m *MysqlManager) getFunctionsBySchemas(
 		if err != nil {
 			return nil, err
 		}
+		definition, err := buildIdempotentFunctionStatement(
+			row.SchemaName,
+			row.FunctionName,
+			functionSignatureStr,
+			row.ReturnDataType,
+			row.Definition,
+			row.IsDeterministic == 1,
+		)
+		if err != nil {
+			return nil, err
+		}
 		function := &sqlmanager_shared.DataType{
-			Schema: row.SchemaName,
-			Name:   row.FunctionName,
-			Definition: wrapIdempotentFunction(
-				row.SchemaName,
-				row.FunctionName,
-				functionSignatureStr,
-				row.ReturnDataType,
-				row.Definition,
-				row.IsDeterministic == 1,
-			),
+			Schema:     row.SchemaName,
+			Name:       row.FunctionName,
+			Definition: definition,
 		}
 		function.Fingerprint = sqlmanager_shared.BuildFingerprint(
 			function.Schema,
@@ -1434,10 +1493,11 @@ func wrapIdempotentConstraint(
 	constraintname,
 	constraintStmt string,
 ) string {
-	procedureName := buildProcedureName(
+	procedureName := my.Quote(buildProcedureName(
 		"HusonymAddConstraint_",
 		hashInput(schema, table, constraintname),
-	)
+	))
+	// The names are compared as values here, and written as identifiers in constraintStmt.
 	stmt := fmt.Sprintf(`
 DROP PROCEDURE IF EXISTS %[1]s;
 
@@ -1447,9 +1507,9 @@ BEGIN
 
     SELECT COUNT(*) INTO constraint_exists
     FROM information_schema.TABLE_CONSTRAINTS
-    WHERE CONSTRAINT_SCHEMA = '%[2]s'
-    AND TABLE_NAME = '%[3]s'
-    AND CONSTRAINT_NAME = '%[4]s';
+    WHERE CONSTRAINT_SCHEMA = %[2]s
+    AND TABLE_NAME = %[3]s
+    AND CONSTRAINT_NAME = %[4]s;
 
     IF constraint_exists = 0 THEN
         %[5]s
@@ -1458,7 +1518,7 @@ END;
 
 CALL %[1]s();
 DROP PROCEDURE %[1]s;
-`, procedureName, schema, table, constraintname, constraintStmt)
+`, procedureName, my.Literal(schema), my.Literal(table), my.Literal(constraintname), constraintStmt)
 	return strings.TrimSpace(stmt)
 }
 
@@ -1557,8 +1617,9 @@ func wrapIdempotentIndex(
 			columnInput = append(columnInput, escapeMysqlColumnWithPrefix(col, prefixes))
 		}
 	}
-	procedureName := buildProcedureName("HusonymAddIndex_", hashInput(hashParams...))
+	procedureName := my.Quote(buildProcedureName("HusonymAddIndex_", hashInput(hashParams...)))
 	indexStmt := createIndexStmt(schema, table, idxInfo, columnInput)
+	// The names are compared as values here, and written as identifiers in indexStmt.
 	stmt := fmt.Sprintf(`
 DROP PROCEDURE IF EXISTS %[1]s;
 
@@ -1568,9 +1629,9 @@ BEGIN
 
     SELECT COUNT(*) INTO index_exists
     FROM information_schema.statistics
-    WHERE table_schema = '%[2]s'
-    AND table_name = '%[3]s'
-    AND index_name = '%[4]s';
+    WHERE table_schema = %[2]s
+    AND table_name = %[3]s
+    AND index_name = %[4]s;
 
     IF index_exists = 0 THEN
         %s
@@ -1579,8 +1640,69 @@ END;
 
 CALL %[1]s();
 DROP PROCEDURE %[1]s;
-`, procedureName, schema, table, idxInfo.indexName, indexStmt)
+`, procedureName, my.Literal(schema), my.Literal(table), my.Literal(idxInfo.indexName), indexStmt)
 	return strings.TrimSpace(stmt)
+}
+
+// buildIdempotentIndexStatement refuses the names no engine takes, then writes the index. A
+// key part is the name of a column or, between parentheses, an expression, which is not a name
+// and cannot hold a NUL byte either.
+func buildIdempotentIndexStatement(schema, table string, idxInfo *indexInfo) (string, error) {
+	if err := checkQualifiedTable(schema, table); err != nil {
+		return "", err
+	}
+	if err := checkNames("index", idxInfo.indexName); err != nil {
+		return "", err
+	}
+	if err := checkNames("index key part", idxInfo.columns...); err != nil {
+		return "", err
+	}
+	return wrapIdempotentIndex(schema, table, idxInfo), nil
+}
+
+// buildIdempotentFunctionStatement refuses the names no engine takes, then writes the function.
+func buildIdempotentFunctionStatement(
+	schema,
+	funcName,
+	functionSignature,
+	returnDataType,
+	definition string,
+	isDeterministic bool,
+) (string, error) {
+	if err := checkNames("schema", schema); err != nil {
+		return "", err
+	}
+	if err := checkNames("function", funcName); err != nil {
+		return "", err
+	}
+	return wrapIdempotentFunction(
+		schema, funcName, functionSignature, returnDataType, definition, isDeterministic,
+	), nil
+}
+
+// buildIdempotentTriggerStatement refuses the names no engine takes, then writes the trigger.
+func buildIdempotentTriggerStatement(
+	schema,
+	tableName,
+	triggerName,
+	triggerSchema,
+	timing,
+	eventType,
+	orientation,
+	actionStmt string,
+) (string, error) {
+	if err := checkQualifiedTable(schema, tableName); err != nil {
+		return "", err
+	}
+	if err := checkNames("trigger schema", triggerSchema); err != nil {
+		return "", err
+	}
+	if err := checkNames("trigger", triggerName); err != nil {
+		return "", err
+	}
+	return wrapIdempotentTrigger(
+		schema, tableName, triggerName, triggerSchema, timing, eventType, orientation, actionStmt,
+	), nil
 }
 
 func wrapIdempotentFunction(
@@ -1653,15 +1775,7 @@ func (m *MysqlManager) GetTableRowCount(
 	schema, table string,
 	whereClause *string,
 ) (int64, error) {
-	tableName := sqlmanager_shared.BuildTable(schema, table)
-	builder := goqu.Dialect(sqlmanager_shared.MysqlDriver)
-	sqltable := goqu.I(tableName)
-
-	query := builder.From(sqltable).Select(goqu.COUNT("*"))
-	if whereClause != nil && *whereClause != "" {
-		query = query.Where(goqu.L(*whereClause))
-	}
-	sqlStr, _, err := query.ToSQL()
+	sqlStr, err := buildTableRowCountSql(schema, table, whereClause)
 	if err != nil {
 		return 0, err
 	}
@@ -1691,9 +1805,11 @@ func BuildMysqlTruncateStatement(
 	schema string,
 	table string,
 ) (string, error) {
+	if err := checkTableName(schema, table); err != nil {
+		return "", err
+	}
 	builder := goqu.Dialect("mysql")
-	sqltable := goqu.S(schema).Table(table)
-	truncateStmt := builder.From(sqltable).Truncate()
+	truncateStmt := builder.From(my.Table(schema, table)).Truncate()
 	stmt, _, err := truncateStmt.ToSQL()
 	if err != nil {
 		return "", err
@@ -1711,9 +1827,12 @@ func EscapeMysqlColumns(cols []string) []string {
 
 // EscapeMysqlColumn quotes an identifier: a backtick inside it is doubled, as MySQL reads it.
 func EscapeMysqlColumn(col string) string {
-	return "`" + strings.ReplaceAll(col, "`", "``") + "`"
+	return sqlident.MySQL.Quote(col)
 }
 
+// EscapeMysqlDefaultColumn writes the default of a column for a DEFAULT clause: a default read
+// from the catalog as a plain string value is written as one string literal, and a default read
+// as an expression is put between parentheses as it was read.
 func EscapeMysqlDefaultColumn(
 	defaultColumnValue string,
 	defaultColumnType *string,
@@ -1723,7 +1842,7 @@ func EscapeMysqlDefaultColumn(
 		return defaultColumnValue, nil
 	}
 	if *defaultColumnType == columnDefaultString {
-		return fmt.Sprintf("'%s'", defaultColumnValue), nil
+		return my.Literal(defaultColumnValue), nil
 	}
 	if *defaultColumnType == columnDefaultDefault {
 		return fmt.Sprintf("(%s)", defaultColumnValue), nil

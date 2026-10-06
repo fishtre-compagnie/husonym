@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mssql/ddl"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
 
@@ -71,7 +71,7 @@ type PostgresDialect struct{}
 
 func (PostgresDialect) Placeholder(n int) string { return "$" + strconv.Itoa(n) }
 func (PostgresDialect) QuoteIdent(s string) string {
-	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+	return sqlident.Postgres.Quote(s)
 }
 func (PostgresDialect) Driver() string { return sqlmanager_shared.PostgresDriver }
 
@@ -104,7 +104,7 @@ type MySQLDialect struct{}
 
 func (MySQLDialect) Placeholder(int) string { return "?" }
 func (MySQLDialect) QuoteIdent(s string) string {
-	return "`" + strings.ReplaceAll(s, "`", "``") + "`"
+	return sqlident.MySQL.Quote(s)
 }
 func (MySQLDialect) Driver() string { return sqlmanager_shared.MysqlDriver }
 
@@ -145,7 +145,7 @@ func (MySQLDialect) DiscardSessionStatement() (string, bool) {
 type MSSQLDialect struct{}
 
 func (MSSQLDialect) Placeholder(n int) string   { return "@p" + strconv.Itoa(n) }
-func (MSSQLDialect) QuoteIdent(s string) string { return ddl.QuoteIdentifier(s) }
+func (MSSQLDialect) QuoteIdent(s string) string { return sqlident.SQLServer.Quote(s) }
 func (MSSQLDialect) Driver() string             { return sqlmanager_shared.MssqlDriver }
 
 // SQL Server : max 2100 paramètres par requête ET max 1000 tuples par clause

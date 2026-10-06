@@ -490,6 +490,44 @@ func Test_Build_Skips(t *testing.T) {
 		}}, plan.Skipped)
 	})
 
+	t.Run("a collation whose name has the shape of one", func(t *testing.T) {
+		t.Parallel()
+		for _, name := range []string{"Latin1_General_100_CS_AS", "SQL_Latin1_General_CP1_CI_AS", "Japanese_XJIS_140_BIN2"} {
+			table := plainTable(1, "dbo", "t")
+			table.Columns = append(table.Columns, &Column{
+				ColumnID: 2, Name: "label", TypeSchema: "sys", TypeName: "nvarchar", BaseTypeName: "nvarchar",
+				MaxLength: 80, Collation: name, IsAnsiPadded: true,
+			})
+			plan, err := Build(&Snapshot{Tables: []*Table{table}})
+			require.NoError(t, err)
+			require.Contains(t, plan.Tables[0].CreateTableStatement, "    [label] nvarchar(40) COLLATE "+name+" NOT NULL\n")
+			require.Empty(t, plan.Skipped)
+		}
+	})
+
+	t.Run("a collation whose name has not the shape of one", func(t *testing.T) {
+		t.Parallel()
+		for _, name := range []string{"Latin1 General", "Latin1_General'", `Latin1_"General"`, "Latin1_General;", "[Latin1_General]", "Latin1-General", "Latin1_Général"} {
+			table := plainTable(1, "dbo", "t")
+			for i, column := range []string{"label", "other"} {
+				table.Columns = append(table.Columns, &Column{
+					ColumnID: i + 2, Name: column, TypeSchema: "sys", TypeName: "nvarchar", BaseTypeName: "nvarchar",
+					MaxLength: 80, Collation: name, IsAnsiPadded: true,
+				})
+			}
+			plan, err := Build(&Snapshot{Tables: []*Table{table}})
+			require.NoError(t, err)
+			require.Contains(t, plan.Tables[0].CreateTableStatement,
+				"    [label] nvarchar(40) NOT NULL,\n    [other] nvarchar(40) NOT NULL\n", name)
+			require.NotContains(t, plan.Tables[0].CreateTableStatement, "COLLATE", name)
+			require.Equal(t, []*Skipped{{
+				Label: sqlmanager_shared.CreateTablesLabel, Object: "[dbo].[t]",
+				Reason: "collation of 2 column(s) is not written, its name not being made of letters, digits and underscores: " +
+					"it follows the default of the destination database",
+			}}, plan.Skipped, name)
+		}
+	})
+
 	t.Run("a requested name that is a view", func(t *testing.T) {
 		t.Parallel()
 		plan, err := Build(&Snapshot{

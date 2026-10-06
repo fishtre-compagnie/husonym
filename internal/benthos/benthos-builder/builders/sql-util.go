@@ -375,6 +375,19 @@ func groupSqlJobSourceOptionsByTable(
 	return groupedMappings
 }
 
+// sourceColumn returns the column of a table of the source, nil when the table does not hold it,
+// and whether the source holds the table.
+func sourceColumn(
+	colInfoMap map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow,
+	table, column string,
+) (row *sqlmanager_shared.DatabaseSchemaRow, tableFound bool) {
+	columns, tableFound := colInfoMap[table]
+	return columns[column], tableFound
+}
+
+// mergeVirtualForeignKeys adds the virtual foreign keys of a job to the foreign keys of the
+// source. Both sides of a virtual key must be in the source: the columns of the child table and
+// those of the table it references.
 func mergeVirtualForeignKeys(
 	dbForeignKeys map[string][]*sqlmanager_shared.ForeignConstraint,
 	virtualForeignKeys []*mgmtv1alpha1.VirtualForeignConstraint,
@@ -391,15 +404,28 @@ func mergeVirtualForeignKeys(
 		fkTable := sqlmanager_shared.BuildTable(fk.GetForeignKey().Schema, fk.GetForeignKey().Table)
 		notNullable := []bool{}
 		for _, c := range fk.GetColumns() {
-			colMap, ok := colInfoMap[tn]
-			if !ok {
+			colInfo, tableFound := sourceColumn(colInfoMap, tn, c)
+			if !tableFound {
 				return nil, fmt.Errorf("virtual foreign key source table not found: %s", tn)
 			}
-			colInfo, ok := colMap[c]
-			if !ok {
+			if colInfo == nil {
 				return nil, fmt.Errorf("virtual foreign key source column not found: %s.%s", tn, c)
 			}
 			notNullable = append(notNullable, !colInfo.IsNullable)
+		}
+		// The columns a key references are columns of the source too: they are read by name.
+		if _, tableFound := colInfoMap[fkTable]; !tableFound {
+			return nil, fmt.Errorf(
+				"virtual foreign key of %s references table %s, which the source does not hold", tn, fkTable,
+			)
+		}
+		for _, c := range fk.GetForeignKey().GetColumns() {
+			if colInfo, _ := sourceColumn(colInfoMap, fkTable, c); colInfo == nil {
+				return nil, fmt.Errorf(
+					"virtual foreign key of %s references column %s of %s, which the source does not hold",
+					tn, c, fkTable,
+				)
+			}
 		}
 		fks[tn] = append(fks[tn], &sqlmanager_shared.ForeignConstraint{
 			Columns:     fk.GetColumns(),

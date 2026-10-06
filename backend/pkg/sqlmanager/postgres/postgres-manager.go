@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/doug-martin/goqu/v9"
 	pg_queries "github.com/fishtre-compagnie/husonym/backend/gen/go/db/dbschemas/postgresql"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -942,11 +941,13 @@ func (p *PostgresManager) GetTableInitStatements(
 			// of the schema are not told, and one of them dropped meanwhile would fail the read.
 			if !record.IsPartitioned && slices.Contains(combined, key.String()) {
 				ks := key.String()
+				// The server parses the argument as a relation name (regclass): it is given quoted.
+				relation := pg.Qualified(key.Schema, key.Table)
 				errgrp.Go(func() error {
 					partitionhierarchy, err := p.querier.GetPartitionHierarchyByTable(
 						errctx,
 						p.db,
-						ks,
+						relation,
 					)
 					if err != nil {
 						return err
@@ -1012,9 +1013,8 @@ func (p *PostgresManager) GetTableInitStatements(
 		}
 		info := &sqlmanager_shared.TableInitStatement{
 			CreateTableStatement: fmt.Sprintf(
-				"CREATE TABLE IF NOT EXISTS %q.%q (%s)%s;",
-				tableData[0].SchemaName,
-				tableData[0].TableName,
+				"CREATE TABLE IF NOT EXISTS %s (%s)%s;",
+				pg.Qualified(tableData[0].SchemaName, tableData[0].TableName),
 				strings.Join(columns, ", "),
 				partitionKey,
 			),
@@ -1079,11 +1079,9 @@ func (p *PostgresManager) GetTableInitStatements(
 			info.PartitionStatements = append(
 				info.PartitionStatements,
 				fmt.Sprintf(
-					"CREATE TABLE IF NOT EXISTS %q.%q PARTITION OF %q.%q %s %s;",
-					partition.SchemaName,
-					partition.TableName,
-					partition.ParentSchemaName.String,
-					partition.ParentTableName.String,
+					"CREATE TABLE IF NOT EXISTS %s PARTITION OF %s %s %s;",
+					pg.Qualified(partition.SchemaName, partition.TableName),
+					pg.Qualified(partition.ParentSchemaName.String, partition.ParentTableName.String),
 					partition.PartitionBound,
 					partitionKey,
 				),
@@ -1111,10 +1109,7 @@ func (p *PostgresManager) GetSchemaInitStatements(
 	schemaStmts := []string{}
 	errgrp.Go(func() error {
 		for schema := range uniqueSchemas {
-			schemaStmts = append(
-				schemaStmts,
-				fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %q;", schema),
-			)
+			schemaStmts = append(schemaStmts, buildCreateSchemaStatement(schema))
 		}
 		return nil
 	})
@@ -1260,15 +1255,7 @@ func (p *PostgresManager) GetTableRowCount(
 	schema, table string,
 	whereClause *string,
 ) (int64, error) {
-	tableName := sqlmanager_shared.BuildTable(schema, table)
-	builder := getGoquDialect()
-	sqltable := goqu.I(tableName)
-
-	query := builder.From(sqltable).Select(goqu.COUNT("*"))
-	if whereClause != nil && *whereClause != "" {
-		query = query.Where(goqu.L(*whereClause))
-	}
-	compiledSql, _, err := query.ToSQL()
+	compiledSql, err := buildTableRowCountSql(schema, table, whereClause)
 	if err != nil {
 		return 0, err
 	}

@@ -196,15 +196,15 @@ func startMssqlFixture(ctx context.Context) (*sampleFixture, error) {
 	}, nil
 }
 
-// quote quotes one identifier the way the engine does.
+// quote quotes one identifier the way the engine does: the closing character is doubled.
 func (f *sampleFixture) quote(name string) string {
 	switch f.engine.family {
 	case familyMysql:
-		return "`" + name + "`"
+		return "`" + strings.ReplaceAll(name, "`", "``") + "`"
 	case familyMssql:
-		return "[" + name + "]"
+		return "[" + strings.ReplaceAll(name, "]", "]]") + "]"
 	default:
-		return `"` + name + `"`
+		return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 	}
 }
 

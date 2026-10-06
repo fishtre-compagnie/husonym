@@ -9,9 +9,8 @@ import (
 	"math/rand/v2"
 	"strings"
 
-	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
-	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	querybuilder "github.com/fishtre-compagnie/husonym/worker/pkg/query-builder"
 )
@@ -56,10 +55,6 @@ ORDER BY s.SEQ_IN_INDEX`
 var mysqlIntegerTypes = map[string]struct{}{
 	"tinyint": {}, "smallint": {}, "mediumint": {}, "int": {}, "bigint": {},
 }
-
-// identifierQuotes are the characters that open or close a quoted identifier in one of
-// the supported dialects.
-const identifierQuotes = "\"`[]"
 
 // sampleQuerier is the part of a database handle that sampling needs.
 type sampleQuerier interface {
@@ -124,8 +119,8 @@ func logSampleFailure(ctx context.Context, logger *slog.Logger, msg string, err 
 
 // spreadSampleQuery returns a query that draws rows across the whole table, or false
 // when the database cannot do it cheaply. It never fails: the reason is logged at debug
-// level and the caller reads the window instead. A name holding a quote character is
-// read from the window. pick draws a value in [lo, hi], both ends included.
+// level and the caller reads the window instead. pick draws a value in [lo, hi], both
+// ends included.
 func spreadSampleQuery(
 	ctx context.Context,
 	logger *slog.Logger,
@@ -134,24 +129,19 @@ func spreadSampleQuery(
 	numRows uint,
 	pick func(lo, hi int64) int64,
 ) (string, bool) {
-	if strings.ContainsAny(schema, identifierQuotes) || strings.ContainsAny(table, identifierQuotes) {
-		logger.DebugContext(ctx, "no spread sample query: the schema or the table name holds a quote character")
-		return "", false
-	}
-	qualified := sqlmanager_shared.BuildTable(schema, table)
 	switch driver {
 	case sqlmanager_shared.GoquPostgresDriver:
 		size, ok := postgresSize(ctx, logger, db, schema, table)
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, logger, driver, qualified, size, numRows)
+		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows)
 	case sqlmanager_shared.MssqlDriver:
 		size, ok := sqlServerSize(ctx, logger, db, schema, table)
 		if !ok {
 			return "", false
 		}
-		return tableSampleQuery(ctx, logger, driver, qualified, size, numRows)
+		return tableSampleQuery(ctx, logger, driver, schema, table, size, numRows)
 	case sqlmanager_shared.MysqlDriver:
 		return mysqlKeySlicesQuery(ctx, logger, db, schema, table, numRows, pick)
 	default:
@@ -162,11 +152,11 @@ func spreadSampleQuery(
 func tableSampleQuery(
 	ctx context.Context,
 	logger *slog.Logger,
-	driver, qualified string,
+	driver, schema, table string,
 	size querybuilder.TableSize,
 	numRows uint,
 ) (string, bool) {
-	query, ok, err := querybuilder.BuildTableSampleQuery(driver, qualified, size, numRows)
+	query, ok, err := querybuilder.BuildTableSampleQuery(driver, schema, table, size, numRows)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
@@ -187,7 +177,8 @@ func postgresSize(
 	db sampleQuerier,
 	schema, table string,
 ) (querybuilder.TableSize, bool) {
-	name := sqlmanager_postgres.EscapePgColumn(schema) + "." + sqlmanager_postgres.EscapePgColumn(table)
+	// to_regclass reads its argument as a name written in SQL: each part is quoted.
+	name := sqlident.Postgres.Qualified(schema, table)
 	var reltuples float64
 	var relpages, pages sql.NullInt64
 	var partitioned bool
@@ -250,7 +241,6 @@ func mysqlKeySlicesQuery(
 	numRows uint,
 	pick func(lo, hi int64) int64,
 ) (string, bool) {
-	qualified := sqlmanager_shared.BuildTable(schema, table)
 	key, err := mysqlIntegerKey(ctx, db, schema, table)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
@@ -259,10 +249,9 @@ func mysqlKeySlicesQuery(
 
 	var lo, hi sql.NullInt64
 	bounds := fmt.Sprintf(
-		"SELECT MIN(%[1]s), MAX(%[1]s) FROM %s.%s",
-		sqlmanager_mysql.EscapeMysqlColumn(key),
-		sqlmanager_mysql.EscapeMysqlColumn(schema),
-		sqlmanager_mysql.EscapeMysqlColumn(table),
+		"SELECT MIN(%[1]s), MAX(%[1]s) FROM %s",
+		sqlident.MySQL.Quote(key),
+		sqlident.MySQL.Qualified(schema, table),
 	)
 	// The error of this scan may quote a key value, so only its kind is logged.
 	if err := db.QueryRowContext(ctx, bounds).Scan(&lo, &hi); err != nil {
@@ -285,7 +274,7 @@ func mysqlKeySlicesQuery(
 
 	// The rows of the slices are counted on the key first: when they hold fewer than
 	// SampleSlicesMinRows, the window is read.
-	countQuery, err := querybuilder.BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, qualified, key, slices)
+	countQuery, err := querybuilder.BuildKeySlicesCountQuery(sqlmanager_shared.MysqlDriver, schema, table, key, slices)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
 		return "", false
@@ -301,7 +290,7 @@ func mysqlKeySlicesQuery(
 	}
 
 	query, err := querybuilder.BuildKeySlicesSampleQuery(
-		sqlmanager_shared.MysqlDriver, qualified, key, slices, numRows,
+		sqlmanager_shared.MysqlDriver, schema, table, key, slices, numRows,
 	)
 	if err != nil {
 		logger.DebugContext(ctx, "no spread sample query", "error", err)
@@ -325,7 +314,7 @@ func splitKeySpan(lo, hi int64, count int) []querybuilder.KeyRange {
 }
 
 // mysqlIntegerKey returns the name of the primary key when it is a single column of an
-// integer type, whose name goqu can quote.
+// integer type, whose name holds no dot.
 func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string) (string, error) {
 	rows, err := db.QueryContext(ctx, mysqlPrimaryKeyQuery, schema, table)
 	if err != nil {
@@ -350,8 +339,8 @@ func mysqlIntegerKey(ctx context.Context, db sampleQuerier, schema, table string
 	if _, ok := mysqlIntegerTypes[strings.ToLower(dataType)]; !ok {
 		return "", fmt.Errorf("the primary key is of type %s, an integer is needed", dataType)
 	}
-	if strings.ContainsAny(column, "`.") {
-		return "", errors.New("the primary key column name cannot be quoted")
+	if strings.Contains(column, ".") {
+		return "", errors.New("the primary key column name holds a dot")
 	}
 	return column, nil
 }

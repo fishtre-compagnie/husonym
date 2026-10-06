@@ -37,6 +37,7 @@ import (
 	sqlmanager_mysql "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/mysql"
 	sqlmanager_postgres "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/postgres"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 )
 
 // Trigger is a destination trigger taken out of the way, with what puts it back.
@@ -202,7 +203,7 @@ var (
 // collation — which holds neither a quote nor a backslash; a doubled quote reads the same
 // under every sql_mode, a backslash would not.
 func quoteMysqlString(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+	return sqlident.MySQL.Literal(s)
 }
 
 // tablesOf turns the tables of the job into what the sql manager reads triggers for.

@@ -12,6 +12,7 @@ import (
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlserver"
 	"github.com/doug-martin/goqu/v9/exp"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
+	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared/sqlident"
 	"github.com/fishtre-compagnie/husonym/internal/runconfigs"
 	tsql_parser "github.com/fishtre-compagnie/husonym/worker/pkg/select-query-builder/tsql"
 	pg_query "github.com/pganalyze/pg_query_go/v6"
@@ -26,6 +27,10 @@ type QueryBuilder struct {
 	subsetByForeignKeyConstraints bool
 	aliasCounter                  int
 	pageLimit                     uint
+	// ident writes the names of the driver's engine; identErr tells that the driver has no
+	// dialect, and is what BuildQuery then returns.
+	ident    sqlident.Dialect
+	identErr error
 	// configsByTable gives the run config of every table of the job, to read how a
 	// referenced table is itself selected.
 	configsByTable map[string]*runconfigs.RunConfig
@@ -53,12 +58,15 @@ func NewSelectQueryBuilder(
 	if pageLimit > 0 {
 		limit = uint(pageLimit)
 	}
+	ident, identErr := sqlident.ForDriver(driver)
 	return &QueryBuilder{
 		defaultSchema:                 defaultSchema,
 		driver:                        driver,
 		subsetByForeignKeyConstraints: subsetByForeignKeyConstraints,
 		aliasCounter:                  0,
 		pageLimit:                     limit,
+		ident:                         ident,
+		identErr:                      identErr,
 	}
 }
 
@@ -77,15 +85,18 @@ func (qb *QueryBuilder) getDialect() goqu.DialectWrapper {
 func (qb *QueryBuilder) BuildQuery(
 	runconfig *runconfigs.RunConfig,
 ) (sqlstatement string, args []any, pagesql string, isNotForeignKeySafeSubset bool, err error) {
+	if qb.identErr != nil {
+		return "", nil, "", false, qb.identErr
+	}
 	query, pageQuery, notFkSafe, err := qb.buildFlattenedQuery(runconfig)
+	if err != nil {
+		return "", nil, "", false, err
+	}
 	if query == nil {
 		return "", nil, "", false, fmt.Errorf(
 			"received no error, but query was nil for %s",
 			runconfig.Id(),
 		)
-	}
-	if err != nil {
-		return "", nil, "", false, err
 	}
 
 	// Without order columns the table cannot be paged: it is read in a single pass, so
@@ -131,11 +142,16 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 	rootTable *runconfigs.RunConfig,
 ) (sql, pageSql *goqu.SelectDataset, isNotForeignKeySafeSubset bool, err error) {
 	dialect := qb.getDialect()
-	rootAlias := rootTable.SchemaTable().Table
-	rootAliasExpression := goqu.S(rootTable.SchemaTable().Schema).
-		Table(rootTable.SchemaTable().Table).
-		As(rootAlias)
-	query := dialect.From(rootAliasExpression)
+	root := rootTable.SchemaTable()
+	if err := checkTable(root.Schema, root.Table); err != nil {
+		return nil, nil, false, err
+	}
+	if err := checkColumns(rootTable.SelectColumns(), rootTable.OrderByColumns()); err != nil {
+		return nil, nil, false, err
+	}
+	// The root table is named by its own name in the rest of the query.
+	rootAlias := root.Table
+	query := dialect.From(qb.table(root.Schema, root.Table, rootAlias))
 
 	// Select columns for the root table
 	projections, err := qb.nullableForeignKeyProjections(rootTable, rootAlias)
@@ -147,7 +163,7 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 		if projection, ok := projections[col]; ok {
 			cols[i] = projection
 		} else {
-			cols[i] = rootAliasExpression.Col(col)
+			cols[i] = qb.ident.TableCol(rootAlias, col)
 		}
 	}
 	query = query.Select(toAnySlice(cols)...)
@@ -156,7 +172,7 @@ func (qb *QueryBuilder) buildFlattenedQuery(
 	if len(rootTable.OrderByColumns()) > 0 {
 		orderByExpressions := make([]exp.OrderedExpression, len(rootTable.OrderByColumns()))
 		for i, col := range rootTable.OrderByColumns() {
-			orderByExpressions[i] = rootAliasExpression.Col(col).Asc()
+			orderByExpressions[i] = qb.ident.TableCol(rootAlias, col).Asc()
 		}
 		query = query.Order(orderByExpressions...)
 	}
@@ -198,13 +214,13 @@ func (qb *QueryBuilder) buildPageQuery(
 			for j := 0; j < i; j++ {
 				subConditions = append(
 					subConditions,
-					goqu.T(rootAlias).Col(orderByColumns[j]).Eq(goqu.L("?", 0)),
+					qb.ident.TableCol(rootAlias, orderByColumns[j]).Eq(goqu.L("?", 0)),
 				)
 			}
 			// Add greater than condition for current column
 			subConditions = append(
 				subConditions,
-				goqu.T(rootAlias).Col(orderByColumns[i]).Gt(goqu.L("?", 0)),
+				qb.ident.TableCol(rootAlias, orderByColumns[i]).Gt(goqu.L("?", 0)),
 			)
 			conditions = append(conditions, goqu.And(subConditions...))
 		}
@@ -282,9 +298,12 @@ func (qb *QueryBuilder) addSubsetJoins(
 				childAlias = qb.generateUniqueAlias(prefix, childTable)
 				tableAliasMap[step.ToKey] = childAlias
 			}
+			if err := checkColumns(step.ForeignKey.Columns, step.ForeignKey.ReferenceColumns); err != nil {
+				return nil, false, err
+			}
 			for i, col := range step.ForeignKey.Columns {
 				if i < len(step.ForeignKey.NotNullable) && !step.ForeignKey.NotNullable[i] {
-					keyIsNull = append(keyIsNull, goqu.T(parentAlias).Col(col).IsNull())
+					keyIsNull = append(keyIsNull, qb.ident.TableCol(parentAlias, col).IsNull())
 				}
 			}
 
@@ -292,14 +311,17 @@ func (qb *QueryBuilder) addSubsetJoins(
 				// Build join conditions based on the foreign key.
 				joinConditions := make([]exp.Expression, len(step.ForeignKey.Columns))
 				for i, col := range step.ForeignKey.Columns {
-					joinConditions[i] = goqu.T(childAlias).
-						Col(step.ForeignKey.ReferenceColumns[i]).
-						Eq(goqu.T(parentAlias).Col(col))
+					joinConditions[i] = qb.ident.TableCol(childAlias, step.ForeignKey.ReferenceColumns[i]).
+						Eq(qb.ident.TableCol(parentAlias, col))
+				}
+				joined, err := qb.tableOfKey(childTable, childAlias)
+				if err != nil {
+					return nil, false, err
 				}
 				if leftJoins[edgeKey] {
-					query = query.LeftJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+					query = query.LeftJoin(joined, goqu.On(joinConditions...))
 				} else {
-					query = query.InnerJoin(goqu.I(childTable).As(childAlias), goqu.On(joinConditions...))
+					query = query.InnerJoin(joined, goqu.On(joinConditions...))
 				}
 				addedJoins[edgeKey] = true
 			}
@@ -345,6 +367,9 @@ func (qb *QueryBuilder) nullableForeignKeyProjections(
 		if !ok || !qb.isReduced(parent) {
 			continue
 		}
+		if err := checkColumns(fk.Columns, fk.ReferenceColumns); err != nil {
+			return nil, err
+		}
 		parentSelected, err := qb.parentRowIsSelected(parent, fk, rootAlias)
 		if err != nil {
 			return nil, err
@@ -354,13 +379,13 @@ func (qb *QueryBuilder) nullableForeignKeyProjections(
 		referencesNothing := []exp.Expression{}
 		for i, col := range fk.Columns {
 			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
-				referencesNothing = append(referencesNothing, goqu.T(rootAlias).Col(col).IsNull())
+				referencesNothing = append(referencesNothing, qb.ident.TableCol(rootAlias, col).IsNull())
 			}
 		}
 		keep := goqu.Or(append(referencesNothing, parentSelected)...)
 		for i, col := range fk.Columns {
 			if i < len(fk.NotNullable) && !fk.NotNullable[i] {
-				projections[col] = goqu.Case().When(keep, goqu.T(rootAlias).Col(col)).As(col)
+				projections[col] = goqu.Case().When(keep, qb.ident.TableCol(rootAlias, col)).As(qb.ident.Col(col))
 			}
 		}
 	}
@@ -384,8 +409,11 @@ func (qb *QueryBuilder) parentRowIsSelected(
 	rootAlias string,
 ) (exp.Expression, error) {
 	alias := qb.generateUniqueAlias("fk_", parent.Table())
-	parentTable := goqu.S(parent.SchemaTable().Schema).Table(parent.SchemaTable().Table).As(alias)
-	selection := qb.getDialect().From(parentTable).Select(goqu.L("1"))
+	table := parent.SchemaTable()
+	if err := checkTable(table.Schema, table.Table); err != nil {
+		return nil, err
+	}
+	selection := qb.getDialect().From(qb.table(table.Schema, table.Table, alias)).Select(goqu.L("1"))
 
 	switch {
 	case qb.subsetByForeignKeyConstraints:
@@ -401,7 +429,9 @@ func (qb *QueryBuilder) parentRowIsSelected(
 		selection = selection.Where(goqu.L(condition))
 	}
 	for i, col := range fk.Columns {
-		selection = selection.Where(goqu.T(alias).Col(fk.ReferenceColumns[i]).Eq(goqu.T(rootAlias).Col(col)))
+		selection = selection.Where(
+			qb.ident.TableCol(alias, fk.ReferenceColumns[i]).Eq(qb.ident.TableCol(rootAlias, col)),
+		)
 	}
 	return goqu.L("EXISTS ?", selection), nil
 }
@@ -429,8 +459,21 @@ func getClippedHash(input string) string {
 	return hex.EncodeToString(hash[:][:8])
 }
 
+// whereStandIn stands for the filtered table in the statement handed to the parsers.
+const whereStandIn = "t"
+
+// qualifyWhereCondition names every column of a where clause by table: the name, or the
+// alias, the query gives the table the clause filters.
+//
+// The clause is parsed inside a statement that selects from a stand-in table, and the
+// parser of each engine writes it again with table before its columns. The name does not
+// travel through the text that is parsed: each parser is given it apart, and writes it as
+// one identifier.
 func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, error) {
-	query := qb.getDialect().From(goqu.T(table)).Select(goqu.Star()).Where(goqu.L(condition))
+	if err := sqlident.Check(table); err != nil {
+		return "", fmt.Errorf("table name: %w", err)
+	}
+	query := qb.getDialect().From(goqu.T(whereStandIn)).Select(goqu.Star()).Where(goqu.L(condition))
 	sql, _, err := query.ToSQL()
 	if err != nil {
 		return "", fmt.Errorf("unable to build where condition: %w", err)
@@ -451,7 +494,7 @@ func (qb *QueryBuilder) qualifyWhereCondition(table, condition string) (string, 
 		}
 		updatedSql = sql
 	case sqlmanager_shared.MssqlDriver:
-		sql, err := tsql_parser.QualifyWhereCondition(sql)
+		sql, err := tsql_parser.QualifyWhereConditionAs(sql, table)
 		if err != nil {
 			return "", err
 		}
@@ -591,7 +634,45 @@ func qualifyMysqlWhereColumnNames(sql, table string) (string, error) {
 		}
 	}
 
-	return sqlparser.String(stmt), nil
+	dialect, err := sqlident.ForDriver(sqlmanager_shared.MysqlDriver)
+	if err != nil {
+		return "", err
+	}
+	buf := sqlparser.NewTrackedBuffer(mysqlQualifierFormatter(table, dialect))
+	buf.Myprintf("%v", stmt)
+	return buf.String(), nil
+}
+
+// mysqlQualifierFormatter writes a statement the way the parser does, except for the table
+// that names a column: that name is written as one identifier. The parser leaves a name
+// bare when it holds only letters, digits, underscores and at signs, and for a name that
+// starts with two at signs also dots and quotes. A name of ASCII letters, digits and
+// underscores is still written by the parser; any other is quoted by the dialect. The
+// columns and the rest of the clause are written by the parser.
+func mysqlQualifierFormatter(table string, dialect sqlident.Dialect) sqlparser.NodeFormatter {
+	return func(buf *sqlparser.TrackedBuffer, node sqlparser.SQLNode) {
+		if col, ok := node.(*sqlparser.ColName); ok &&
+			col.Qualifier.Qualifier.IsEmpty() && col.Qualifier.Name.String() == table && !isPlainName(table) {
+			buf.WriteString(dialect.Quote(table))
+			buf.WriteByte('.')
+			buf.Myprintf("%v", col.Name)
+			return
+		}
+		node.Format(buf)
+	}
+}
+
+// isPlainName tells a name made only of ASCII letters, digits and underscores.
+func isPlainName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, c := range name {
+		if c != '_' && (c < '0' || c > '9') && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 func toAnySlice[T any](input []T) []any {
