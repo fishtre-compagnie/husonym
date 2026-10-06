@@ -22,6 +22,18 @@ func Test_Key_HasFeature(t *testing.T) {
 	require.False(t, empty.HasFeature(FeatureJobHooks))
 }
 
+func Test_Key_AllowsEveryFeature(t *testing.T) {
+	require.True(t, (&Key{}).AllowsEveryFeature())
+	require.True(t, (&Key{Features: []string{"*"}}).AllowsEveryFeature())
+	// Naming the thirteen is not allowing every feature: a fourteenth would be left out.
+	named := make([]string, 0, len(AllFeatures()))
+	for _, f := range AllFeatures() {
+		named = append(named, string(f))
+	}
+	require.False(t, (&Key{Features: named}).AllowsEveryFeature())
+	require.False(t, (&Key{Features: []string{}}).AllowsEveryFeature())
+}
+
 func Test_Key_AnExplicitEmptyFeatureListSurvivesBeingWritten(t *testing.T) {
 	raw, err := json.Marshal(Key{Features: []string{}})
 	require.NoError(t, err)

@@ -81,6 +81,12 @@ const (
 	// UserAccountServiceGetSystemInformationProcedure is the fully-qualified name of the
 	// UserAccountService's GetSystemInformation RPC.
 	UserAccountServiceGetSystemInformationProcedure = "/mgmt.v1alpha1.UserAccountService/GetSystemInformation"
+	// UserAccountServiceSetSystemLicenseProcedure is the fully-qualified name of the
+	// UserAccountService's SetSystemLicense RPC.
+	UserAccountServiceSetSystemLicenseProcedure = "/mgmt.v1alpha1.UserAccountService/SetSystemLicense"
+	// UserAccountServiceGetSystemLicenseKeyProcedure is the fully-qualified name of the
+	// UserAccountService's GetSystemLicenseKey RPC.
+	UserAccountServiceGetSystemLicenseKeyProcedure = "/mgmt.v1alpha1.UserAccountService/GetSystemLicenseKey"
 	// UserAccountServiceGetAccountOnboardingConfigProcedure is the fully-qualified name of the
 	// UserAccountService's GetAccountOnboardingConfig RPC.
 	UserAccountServiceGetAccountOnboardingConfigProcedure = "/mgmt.v1alpha1.UserAccountService/GetAccountOnboardingConfig"
@@ -150,6 +156,10 @@ type UserAccountServiceClient interface {
 	AcceptTeamAccountInvite(context.Context, *connect.Request[v1alpha1.AcceptTeamAccountInviteRequest]) (*connect.Response[v1alpha1.AcceptTeamAccountInviteResponse], error)
 	// Retrieves the system information.
 	GetSystemInformation(context.Context, *connect.Request[v1alpha1.GetSystemInformationRequest]) (*connect.Response[v1alpha1.GetSystemInformationResponse], error)
+	// Gives the system a license key. It is taken when it is newer than the one in force.
+	SetSystemLicense(context.Context, *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error)
+	// Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
+	GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error)
 	// Retrieves the onboarding config for the account.
 	GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error)
 	// Sets the onboarding config for the account.
@@ -287,6 +297,19 @@ func NewUserAccountServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		setSystemLicense: connect.NewClient[v1alpha1.SetSystemLicenseRequest, v1alpha1.SetSystemLicenseResponse](
+			httpClient,
+			baseURL+UserAccountServiceSetSystemLicenseProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("SetSystemLicense")),
+			connect.WithClientOptions(opts...),
+		),
+		getSystemLicenseKey: connect.NewClient[v1alpha1.GetSystemLicenseKeyRequest, v1alpha1.GetSystemLicenseKeyResponse](
+			httpClient,
+			baseURL+UserAccountServiceGetSystemLicenseKeyProcedure,
+			connect.WithSchema(userAccountServiceMethods.ByName("GetSystemLicenseKey")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getAccountOnboardingConfig: connect.NewClient[v1alpha1.GetAccountOnboardingConfigRequest, v1alpha1.GetAccountOnboardingConfigResponse](
 			httpClient,
 			baseURL+UserAccountServiceGetAccountOnboardingConfigProcedure,
@@ -380,6 +403,8 @@ type userAccountServiceClient struct {
 	removeTeamAccountInvite          *connect.Client[v1alpha1.RemoveTeamAccountInviteRequest, v1alpha1.RemoveTeamAccountInviteResponse]
 	acceptTeamAccountInvite          *connect.Client[v1alpha1.AcceptTeamAccountInviteRequest, v1alpha1.AcceptTeamAccountInviteResponse]
 	getSystemInformation             *connect.Client[v1alpha1.GetSystemInformationRequest, v1alpha1.GetSystemInformationResponse]
+	setSystemLicense                 *connect.Client[v1alpha1.SetSystemLicenseRequest, v1alpha1.SetSystemLicenseResponse]
+	getSystemLicenseKey              *connect.Client[v1alpha1.GetSystemLicenseKeyRequest, v1alpha1.GetSystemLicenseKeyResponse]
 	getAccountOnboardingConfig       *connect.Client[v1alpha1.GetAccountOnboardingConfigRequest, v1alpha1.GetAccountOnboardingConfigResponse]
 	setAccountOnboardingConfig       *connect.Client[v1alpha1.SetAccountOnboardingConfigRequest, v1alpha1.SetAccountOnboardingConfigResponse]
 	getAccountStatus                 *connect.Client[v1alpha1.GetAccountStatusRequest, v1alpha1.GetAccountStatusResponse]
@@ -473,6 +498,16 @@ func (c *userAccountServiceClient) GetSystemInformation(ctx context.Context, req
 	return c.getSystemInformation.CallUnary(ctx, req)
 }
 
+// SetSystemLicense calls mgmt.v1alpha1.UserAccountService.SetSystemLicense.
+func (c *userAccountServiceClient) SetSystemLicense(ctx context.Context, req *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error) {
+	return c.setSystemLicense.CallUnary(ctx, req)
+}
+
+// GetSystemLicenseKey calls mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey.
+func (c *userAccountServiceClient) GetSystemLicenseKey(ctx context.Context, req *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error) {
+	return c.getSystemLicenseKey.CallUnary(ctx, req)
+}
+
 // GetAccountOnboardingConfig calls mgmt.v1alpha1.UserAccountService.GetAccountOnboardingConfig.
 func (c *userAccountServiceClient) GetAccountOnboardingConfig(ctx context.Context, req *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error) {
 	return c.getAccountOnboardingConfig.CallUnary(ctx, req)
@@ -564,6 +599,10 @@ type UserAccountServiceHandler interface {
 	AcceptTeamAccountInvite(context.Context, *connect.Request[v1alpha1.AcceptTeamAccountInviteRequest]) (*connect.Response[v1alpha1.AcceptTeamAccountInviteResponse], error)
 	// Retrieves the system information.
 	GetSystemInformation(context.Context, *connect.Request[v1alpha1.GetSystemInformationRequest]) (*connect.Response[v1alpha1.GetSystemInformationResponse], error)
+	// Gives the system a license key. It is taken when it is newer than the one in force.
+	SetSystemLicense(context.Context, *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error)
+	// Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
+	GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error)
 	// Retrieves the onboarding config for the account.
 	GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error)
 	// Sets the onboarding config for the account.
@@ -697,6 +736,19 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	userAccountServiceSetSystemLicenseHandler := connect.NewUnaryHandler(
+		UserAccountServiceSetSystemLicenseProcedure,
+		svc.SetSystemLicense,
+		connect.WithSchema(userAccountServiceMethods.ByName("SetSystemLicense")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userAccountServiceGetSystemLicenseKeyHandler := connect.NewUnaryHandler(
+		UserAccountServiceGetSystemLicenseKeyProcedure,
+		svc.GetSystemLicenseKey,
+		connect.WithSchema(userAccountServiceMethods.ByName("GetSystemLicenseKey")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	userAccountServiceGetAccountOnboardingConfigHandler := connect.NewUnaryHandler(
 		UserAccountServiceGetAccountOnboardingConfigProcedure,
 		svc.GetAccountOnboardingConfig,
@@ -803,6 +855,10 @@ func NewUserAccountServiceHandler(svc UserAccountServiceHandler, opts ...connect
 			userAccountServiceAcceptTeamAccountInviteHandler.ServeHTTP(w, r)
 		case UserAccountServiceGetSystemInformationProcedure:
 			userAccountServiceGetSystemInformationHandler.ServeHTTP(w, r)
+		case UserAccountServiceSetSystemLicenseProcedure:
+			userAccountServiceSetSystemLicenseHandler.ServeHTTP(w, r)
+		case UserAccountServiceGetSystemLicenseKeyProcedure:
+			userAccountServiceGetSystemLicenseKeyHandler.ServeHTTP(w, r)
 		case UserAccountServiceGetAccountOnboardingConfigProcedure:
 			userAccountServiceGetAccountOnboardingConfigHandler.ServeHTTP(w, r)
 		case UserAccountServiceSetAccountOnboardingConfigProcedure:
@@ -896,6 +952,14 @@ func (UnimplementedUserAccountServiceHandler) AcceptTeamAccountInvite(context.Co
 
 func (UnimplementedUserAccountServiceHandler) GetSystemInformation(context.Context, *connect.Request[v1alpha1.GetSystemInformationRequest]) (*connect.Response[v1alpha1.GetSystemInformationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.GetSystemInformation is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) SetSystemLicense(context.Context, *connect.Request[v1alpha1.SetSystemLicenseRequest]) (*connect.Response[v1alpha1.SetSystemLicenseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.SetSystemLicense is not implemented"))
+}
+
+func (UnimplementedUserAccountServiceHandler) GetSystemLicenseKey(context.Context, *connect.Request[v1alpha1.GetSystemLicenseKeyRequest]) (*connect.Response[v1alpha1.GetSystemLicenseKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("mgmt.v1alpha1.UserAccountService.GetSystemLicenseKey is not implemented"))
 }
 
 func (UnimplementedUserAccountServiceHandler) GetAccountOnboardingConfig(context.Context, *connect.Request[v1alpha1.GetAccountOnboardingConfigRequest]) (*connect.Response[v1alpha1.GetAccountOnboardingConfigResponse], error) {

@@ -2,6 +2,8 @@ package integrationtests_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +17,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	connectionmanager "github.com/fishtre-compagnie/husonym/internal/connection-manager"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	neomigrate "github.com/fishtre-compagnie/husonym/internal/migrate"
 	promapiv1mock "github.com/fishtre-compagnie/husonym/internal/mocks/github.com/prometheus/client_golang/api/prometheus/v1"
 	clientmanager "github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
@@ -65,6 +68,15 @@ type HusonymApiTestClient struct {
 	// OSS, Unauthenticated, Licensed with small usage caps — for exercising limit
 	// enforcement
 	OSSUnauthenticatedLimitedClients *HusonymClients
+	// OSS, Authenticated, with the license key the database holds: none until a test gives
+	// one through SetSystemLicense
+	OSSAuthenticatedStoredLicenseClients *HusonymClients
+
+	// LicenseSigningKey signs the license keys the OSSAuthenticatedStoredLicenseClients mode
+	// accepts, and LicenseKeyring is what that mode verifies them against. They are drawn
+	// for the test: no key issued for real is accepted there.
+	LicenseSigningKey ed25519.PrivateKey
+	LicenseKeyring    license.Keyring
 
 	Mocks *Mocks
 }
@@ -116,6 +128,13 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		Prometheusclient:       promapiv1mock.NewMockAPI(t),
 		Presidio:               presidiotest.New(t),
 	}
+
+	licensePublicKey, licenseSigningKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("unable to draw the license signing key of the test: %w", err)
+	}
+	s.LicenseSigningKey = licenseSigningKey
+	s.LicenseKeyring = license.Keyring{license.LegacyKid: licensePublicKey}
 
 	err = s.InitializeTest(ctx, t)
 	if err != nil {
@@ -171,6 +190,15 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 		http.StripPrefix(openSourceUnauthenticatedLimitedPostfix, ossLimitedMux),
 	)
 
+	ossAuthStoredLicenseMux, err := s.setupOssStoredLicenseAuthMux(ctx, pgcontainer, logger)
+	if err != nil {
+		return fmt.Errorf("unable to setup oss authenticated stored license mux: %w", err)
+	}
+	rootmux.Handle(
+		openSourceAuthenticatedStoredLicensePostfix+"/",
+		http.StripPrefix(openSourceAuthenticatedStoredLicensePostfix, ossAuthStoredLicenseMux),
+	)
+
 	s.httpsrv = startHTTPServer(t, rootmux)
 	rootmux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t.Logf("404 for URL: %s\n", r.URL.Path)
@@ -191,6 +219,9 @@ func (s *HusonymApiTestClient) Setup(ctx context.Context, t testing.TB) error {
 	)
 	s.OSSUnauthenticatedLimitedClients = newHusonymClients(
 		s.httpsrv.URL + openSourceUnauthenticatedLimitedPostfix,
+	)
+	s.OSSAuthenticatedStoredLicenseClients = newHusonymClients(
+		s.httpsrv.URL + openSourceAuthenticatedStoredLicensePostfix,
 	)
 
 	return nil

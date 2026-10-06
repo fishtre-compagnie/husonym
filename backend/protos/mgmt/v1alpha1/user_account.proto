@@ -229,6 +229,57 @@ message SystemLicense {
   google.protobuf.Timestamp expires_at = 2;
   // Whether or not the license is for HusonymCloud
   bool is_husonym_cloud = 3;
+  // Where the license key stands in its lifecycle: none, valid, expiring, grace or frozen
+  string state = 4;
+  // The label the license key carries for humans. Nothing is decided from it
+  string plan = 5;
+  // Whether the license key allows every feature, including the ones this version does not know yet
+  bool all_features = 6;
+  // The features the license key allows, among the ones this version knows. This is what the key says, whether or not it is in force
+  repeated string features = 7;
+  // What the license key caps. Unset when the key caps nothing
+  LicenseLimits limits = 8;
+  // What the license key asks of the system about reporting its usage: online, offline_report or none
+  string telemetry = 9;
+  // How the license key reached the system: interface, environment, file or renewal
+  string origin = 10;
+  // The time when the license key was stored by the system
+  google.protobuf.Timestamp installed_at = 11;
+  // The time when the grace period that follows the expiry runs out
+  google.protobuf.Timestamp grace_ends_at = 12;
+  // Who the license key was issued to
+  string issued_to = 13;
+  // Why the license key could not be read the last time the system tried. Unset when it could
+  optional string problem = 14;
+}
+
+// What a license key caps. An unset field is uncapped, which is distinct from a cap of zero
+message LicenseLimits {
+  // The maximum number of sources
+  optional int32 max_sources = 1;
+  // The maximum number of jobs
+  optional int32 max_jobs = 2;
+  // The maximum number of connections
+  optional int32 max_connections = 3;
+  // The connection types that are allowed. Empty when every type is
+  repeated string allowed_connection_types = 4;
+}
+
+message SetSystemLicenseRequest {
+  // The unique identifier of the account whose permissions allow the caller to set the license key.
+  string account_id = 1 [(buf.validate.field).string.uuid = true];
+  // The license key, as it was handed over.
+  string key = 2 [(buf.validate.field).string.min_len = 1];
+}
+message SetSystemLicenseResponse {
+  // The license information for the system, once the key was taken.
+  SystemLicense license = 1;
+}
+
+message GetSystemLicenseKeyRequest {}
+message GetSystemLicenseKeyResponse {
+  // The license key in force, as it was signed. Empty when the system has none.
+  string key = 1;
 }
 
 message GetAccountOnboardingConfigRequest {
@@ -544,6 +595,17 @@ service UserAccountService {
 
   // Retrieves the system information.
   rpc GetSystemInformation(GetSystemInformationRequest) returns (GetSystemInformationResponse) {
+    option (mgmt.v1alpha1.requires) = {none: true};
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Gives the system a license key. It is taken when it is newer than the one in force.
+  rpc SetSystemLicense(SetSystemLicenseRequest) returns (SetSystemLicenseResponse) {
+    option (mgmt.v1alpha1.requires) = {
+      all_of: [PERMISSION_ACCOUNT_EDIT]
+    };
+  }
+  // Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
+  rpc GetSystemLicenseKey(GetSystemLicenseKeyRequest) returns (GetSystemLicenseKeyResponse) {
     option (mgmt.v1alpha1.requires) = {none: true};
     option idempotency_level = NO_SIDE_EFFECTS;
   }

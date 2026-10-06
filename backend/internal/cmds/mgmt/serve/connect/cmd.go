@@ -49,6 +49,7 @@ import (
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -89,6 +90,10 @@ import (
 	promconfig "github.com/prometheus/common/config"
 )
 
+// licenseRefreshInterval is how often an instance reads the license key in force again, and
+// how often it looks at the license file for a new one.
+const licenseRefreshInterval = time.Minute
+
 func NewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "connect",
@@ -120,17 +125,6 @@ func serve(ctx context.Context) error {
 	slog.SetDefault(
 		slogger,
 	) // set default logger for methods that can't easily access the configured logger
-
-	// The license never stops the start: a key that cannot be read is logged by the
-	// refresh and leaves the instance without one. The key is then read again in the
-	// background, so that a renewed one is picked up without a restart.
-	eelicense := license.NewProvider(license.LoaderFromEnv(), slogger)
-	_ = eelicense.Refresh(ctx)
-	// The context of the command never ends, so the background refresh gets its own,
-	// which ends when serve returns.
-	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
-	defer stopLicenseRefresh()
-	go eelicense.RefreshEvery(refreshCtx, time.Minute)
 
 	cloudIdentity := cloudidentity.FromEnvironment()
 
@@ -228,6 +222,43 @@ func serve(ctx context.Context) error {
 		); err != nil {
 			return fmt.Errorf("unable to complete database migrationss: %w", err)
 		}
+	}
+
+	// The license key in force is the one the database holds, which every instance of the API
+	// reads. It comes after the migrations, which create its table.
+	licenseRing, err := license.EmbeddedKeyring()
+	if err != nil {
+		// The embedded keys are part of the binary; a failure here is a build defect.
+		// Verification then fails for every key, which leaves the instance without one.
+		licenseRing = nil
+		slogger.Error("unable to load the embedded license public keys", "error", err)
+	}
+	licenseStore := licensestore.New(db, licenseRing)
+	// The variables no longer hold the key in force: what they name is offered to the
+	// database, which keeps it when it is newer than the one it holds.
+	licensestore.OfferFromEnvironment(ctx, licenseStore, slogger)
+
+	// The license never stops the start: a key that cannot be read is logged by the
+	// refresh and leaves the instance without one. The key is then read again in the
+	// background, so that a key stored by another instance is picked up without a restart.
+	eelicense := license.NewProvider(licenseStore.Current, slogger)
+	_ = eelicense.Refresh(ctx)
+	// The context of the command never ends, so the background work gets its own,
+	// which ends when serve returns.
+	licenseCtx, stopLicenseRefresh := context.WithCancel(ctx)
+	defer stopLicenseRefresh()
+	go eelicense.RefreshEvery(licenseCtx, licenseRefreshInterval)
+	if licenseFile := viper.GetString("EE_LICENSE_FILE"); licenseFile != "" {
+		// A key written to the file is offered without a restart, and is in force in this
+		// instance as soon as the database took it.
+		go licensestore.WatchFile(
+			licenseCtx,
+			licenseStore,
+			licenseFile,
+			licenseRefreshInterval,
+			func() { _ = eelicense.Refresh(licenseCtx) },
+			slogger,
+		)
 	}
 
 	rbacclient, err := newRbacClient(ctx, pool, querier, db, slogger)
@@ -494,7 +525,8 @@ func serve(ctx context.Context) error {
 		IsAuthEnabled:            isAuthEnabled,
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense)
+		WorkerOnly:               workerOnly,
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,

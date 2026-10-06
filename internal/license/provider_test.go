@@ -276,6 +276,27 @@ func Test_Provider_ALoaderErrorWithoutAKey(t *testing.T) {
 	require.NoError(t, p.Problem())
 }
 
+// A refresh cut short because the process shuts down fails for a reason that says nothing
+// about the key: it is neither kept as the problem nor logged.
+func Test_Provider_ALoaderErrorUnderADoneContextIsNotAProblem(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	f.loader.fails(context.Canceled)
+
+	require.ErrorIs(t, p.Refresh(ctx), context.Canceled)
+	require.NoError(t, p.Problem())
+	require.Zero(t, f.errorLogs())
+	require.Equal(t, StateValid, p.State())
+
+	// The same failure under a context that still runs is a problem like any other.
+	require.Error(t, p.Refresh(t.Context()))
+	require.Error(t, p.Problem())
+	require.Equal(t, 1, f.errorLogs())
+}
+
 func Test_Provider_AnInvalidKeyKeepsTheKeyInPlace(t *testing.T) {
 	cases := map[string]func(t *testing.T) string{
 		"unreadable content": func(*testing.T) string {

@@ -150,3 +150,22 @@ func (s *Store) Current(ctx context.Context) (string, error) {
 	}
 	return current.Key, nil
 }
+
+// Installation is how the key in force reached the instance and when it was stored.
+type Installation struct {
+	Origin Origin
+	At     time.Time
+}
+
+// Installation tells how the key in force was stored, or gives nothing when the instance has
+// none.
+func (s *Store) Installation(ctx context.Context) (*Installation, error) {
+	current, err := s.db.Q.GetCurrentLicenseKey(ctx, s.db.Db)
+	if husonymdb.IsNoRows(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Installation{Origin: Origin(current.Origin), At: current.CreatedAt.Time}, nil
+}

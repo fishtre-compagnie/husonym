@@ -325,14 +325,72 @@ class GetSystemInformationResponse(_message.Message):
     def __init__(self, version: _Optional[str] = ..., commit: _Optional[str] = ..., compiler: _Optional[str] = ..., platform: _Optional[str] = ..., build_date: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., license: _Optional[_Union[SystemLicense, _Mapping]] = ...) -> None: ...
 
 class SystemLicense(_message.Message):
-    __slots__ = ("is_valid", "expires_at", "is_husonym_cloud")
+    __slots__ = ("is_valid", "expires_at", "is_husonym_cloud", "state", "plan", "all_features", "features", "limits", "telemetry", "origin", "installed_at", "grace_ends_at", "issued_to", "problem")
     IS_VALID_FIELD_NUMBER: _ClassVar[int]
     EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
     IS_HUSONYM_CLOUD_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    PLAN_FIELD_NUMBER: _ClassVar[int]
+    ALL_FEATURES_FIELD_NUMBER: _ClassVar[int]
+    FEATURES_FIELD_NUMBER: _ClassVar[int]
+    LIMITS_FIELD_NUMBER: _ClassVar[int]
+    TELEMETRY_FIELD_NUMBER: _ClassVar[int]
+    ORIGIN_FIELD_NUMBER: _ClassVar[int]
+    INSTALLED_AT_FIELD_NUMBER: _ClassVar[int]
+    GRACE_ENDS_AT_FIELD_NUMBER: _ClassVar[int]
+    ISSUED_TO_FIELD_NUMBER: _ClassVar[int]
+    PROBLEM_FIELD_NUMBER: _ClassVar[int]
     is_valid: bool
     expires_at: _timestamp_pb2.Timestamp
     is_husonym_cloud: bool
-    def __init__(self, is_valid: _Optional[bool] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., is_husonym_cloud: _Optional[bool] = ...) -> None: ...
+    state: str
+    plan: str
+    all_features: bool
+    features: _containers.RepeatedScalarFieldContainer[str]
+    limits: LicenseLimits
+    telemetry: str
+    origin: str
+    installed_at: _timestamp_pb2.Timestamp
+    grace_ends_at: _timestamp_pb2.Timestamp
+    issued_to: str
+    problem: str
+    def __init__(self, is_valid: _Optional[bool] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., is_husonym_cloud: _Optional[bool] = ..., state: _Optional[str] = ..., plan: _Optional[str] = ..., all_features: _Optional[bool] = ..., features: _Optional[_Iterable[str]] = ..., limits: _Optional[_Union[LicenseLimits, _Mapping]] = ..., telemetry: _Optional[str] = ..., origin: _Optional[str] = ..., installed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., grace_ends_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., issued_to: _Optional[str] = ..., problem: _Optional[str] = ...) -> None: ...
+
+class LicenseLimits(_message.Message):
+    __slots__ = ("max_sources", "max_jobs", "max_connections", "allowed_connection_types")
+    MAX_SOURCES_FIELD_NUMBER: _ClassVar[int]
+    MAX_JOBS_FIELD_NUMBER: _ClassVar[int]
+    MAX_CONNECTIONS_FIELD_NUMBER: _ClassVar[int]
+    ALLOWED_CONNECTION_TYPES_FIELD_NUMBER: _ClassVar[int]
+    max_sources: int
+    max_jobs: int
+    max_connections: int
+    allowed_connection_types: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, max_sources: _Optional[int] = ..., max_jobs: _Optional[int] = ..., max_connections: _Optional[int] = ..., allowed_connection_types: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class SetSystemLicenseRequest(_message.Message):
+    __slots__ = ("account_id", "key")
+    ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    account_id: str
+    key: str
+    def __init__(self, account_id: _Optional[str] = ..., key: _Optional[str] = ...) -> None: ...
+
+class SetSystemLicenseResponse(_message.Message):
+    __slots__ = ("license",)
+    LICENSE_FIELD_NUMBER: _ClassVar[int]
+    license: SystemLicense
+    def __init__(self, license: _Optional[_Union[SystemLicense, _Mapping]] = ...) -> None: ...
+
+class GetSystemLicenseKeyRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class GetSystemLicenseKeyResponse(_message.Message):
+    __slots__ = ("key",)
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    key: str
+    def __init__(self, key: _Optional[str] = ...) -> None: ...
 
 class GetAccountOnboardingConfigRequest(_message.Message):
     __slots__ = ("account_id",)

@@ -281,3 +281,38 @@ func Test_Current(t *testing.T) {
 		require.ErrorContains(t, err, "connection reset")
 	})
 }
+
+func Test_Installation(t *testing.T) {
+	t.Run("is where the key in force came from and when it was stored", func(t *testing.T) {
+		f := newFixture(t, false)
+		storedAt := time.Now().UTC().Truncate(time.Second)
+		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).Return(db_queries.HusonymApiLicenseKey{
+			Key:       "the-value",
+			Origin:    "file",
+			CreatedAt: pgtype.Timestamptz{Time: storedAt, Valid: true},
+		}, nil)
+
+		installation, err := f.store.Installation(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, &Installation{Origin: OriginFile, At: storedAt}, installation)
+	})
+
+	t.Run("is nothing when the instance has no key", func(t *testing.T) {
+		f := newFixture(t, false)
+		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).
+			Return(db_queries.HusonymApiLicenseKey{}, pgx.ErrNoRows)
+
+		installation, err := f.store.Installation(context.Background())
+		require.NoError(t, err)
+		require.Nil(t, installation)
+	})
+
+	t.Run("fails when the database does", func(t *testing.T) {
+		f := newFixture(t, false)
+		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).
+			Return(db_queries.HusonymApiLicenseKey{}, errors.New("connection reset"))
+
+		_, err := f.store.Installation(context.Background())
+		require.ErrorContains(t, err, "connection reset")
+	})
+}

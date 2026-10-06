@@ -95,6 +95,16 @@ class UserAccountServiceStub:
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationRequest.SerializeToString,
                 response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationResponse.FromString,
                 _registered_method=True)
+        self.SetSystemLicense = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/SetSystemLicense',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseResponse.FromString,
+                _registered_method=True)
+        self.GetSystemLicenseKey = channel.unary_unary(
+                '/mgmt.v1alpha1.UserAccountService/GetSystemLicenseKey',
+                request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.SerializeToString,
+                response_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.FromString,
+                _registered_method=True)
         self.GetAccountOnboardingConfig = channel.unary_unary(
                 '/mgmt.v1alpha1.UserAccountService/GetAccountOnboardingConfig',
                 request_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetAccountOnboardingConfigRequest.SerializeToString,
@@ -268,6 +278,20 @@ class UserAccountServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SetSystemLicense(self, request, context):
+        """Gives the system a license key. It is taken when it is newer than the one in force.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSystemLicenseKey(self, request, context):
+        """Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetAccountOnboardingConfig(self, request, context):
         """Retrieves the onboarding config for the account.
         """
@@ -427,6 +451,16 @@ def add_UserAccountServiceServicer_to_server(servicer, server):
                     servicer.GetSystemInformation,
                     request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationRequest.FromString,
                     response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationResponse.SerializeToString,
+            ),
+            'SetSystemLicense': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetSystemLicense,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseResponse.SerializeToString,
+            ),
+            'GetSystemLicenseKey': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSystemLicenseKey,
+                    request_deserializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.FromString,
+                    response_serializer=mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.SerializeToString,
             ),
             'GetAccountOnboardingConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAccountOnboardingConfig,
@@ -917,6 +951,60 @@ class UserAccountService:
             '/mgmt.v1alpha1.UserAccountService/GetSystemInformation',
             mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationRequest.SerializeToString,
             mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemInformationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetSystemLicense(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/SetSystemLicense',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.SetSystemLicenseResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSystemLicenseKey(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mgmt.v1alpha1.UserAccountService/GetSystemLicenseKey',
+            mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyRequest.SerializeToString,
+            mgmt_dot_v1alpha1_dot_user__account__pb2.GetSystemLicenseKeyResponse.FromString,
             options,
             channel_credentials,
             insecure,

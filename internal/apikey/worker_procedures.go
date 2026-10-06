@@ -20,6 +20,7 @@ var WorkerProcedures = []string{
 	mgmtv1alpha1connect.UserAccountServiceIsAccountStatusValidProcedure,
 	mgmtv1alpha1connect.UserAccountServiceGetBillingAccountsProcedure,
 	mgmtv1alpha1connect.UserAccountServiceSetBillingMeterEventProcedure,
+	mgmtv1alpha1connect.UserAccountServiceGetSystemLicenseKeyProcedure,
 	mgmtv1alpha1connect.AccountSettingServiceGetAccountConsistencyKeyProcedure,
 	mgmtv1alpha1connect.MetricsServiceGetDailyMetricCountProcedure,
 	mgmtv1alpha1connect.AnonymizationServiceAnonymizeSingleProcedure,

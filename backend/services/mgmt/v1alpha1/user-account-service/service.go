@@ -1,13 +1,17 @@
 package v1alpha1_useraccountservice
 
 import (
+	"context"
+
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/internal/authmgmt"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Service struct {
@@ -18,11 +22,36 @@ type Service struct {
 	authadminclient        authmgmt.Interface
 	rbacClient             rbac.Interface
 	licenseclient          license.EEInterface
+	licensedescriber       LicenseDescriber
+	licenses               LicenseStore
+	refreshLicense         func(ctx context.Context) error
+}
+
+// LicenseDescriber tells what the process holds as its license at one instant. The provider
+// of the process is one.
+type LicenseDescriber interface {
+	Describe() license.Description
+}
+
+// LicenseStore is what the service asks of the place the instance keeps its license keys in.
+// *licensestore.Store is one.
+type LicenseStore interface {
+	Offer(
+		ctx context.Context,
+		value string,
+		origin licensestore.Origin,
+		userId *pgtype.UUID,
+	) (*licensestore.Result, error)
+	Current(ctx context.Context) (string, error)
+	Installation(ctx context.Context) (*licensestore.Installation, error)
 }
 
 type Config struct {
 	IsAuthEnabled            bool
 	DefaultMaxAllowedRecords *int64
+
+	// WorkerOnly guards the license key as it was signed, which the worker alone reads.
+	WorkerOnly userdata.WorkerOnly
 
 	// DeploymentIssuer is the issuer the deployment is configured with
 	// (AUTH_EXPECTED_ISS, falling back to AUTH_BASEURL). It is the only issuer allowed
@@ -42,6 +71,11 @@ func New(
 	authadminclient authmgmt.Interface,
 	rbacClient rbac.Interface,
 	licenseclient license.EEInterface,
+	licensedescriber LicenseDescriber,
+	licenses LicenseStore,
+	// refreshLicense makes the process read its license key again, so that a key that was
+	// just stored is in force when the call that stored it answers.
+	refreshLicense func(ctx context.Context) error,
 ) *Service {
 	return &Service{
 		cfg:                    cfg,
@@ -51,6 +85,9 @@ func New(
 		authadminclient:        authadminclient,
 		rbacClient:             rbacClient,
 		licenseclient:          licenseclient,
+		licensedescriber:       licensedescriber,
+		licenses:               licenses,
+		refreshLicense:         refreshLicense,
 	}
 }
 

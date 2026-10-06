@@ -53,10 +53,13 @@ func ParseFeature(name string) (Feature, bool) {
 // key is in force is the provider's concern. A key that does not list features, issued before the
 // list existed, allows everything; a key that lists none allows no optional feature.
 func (k *Key) HasFeature(f Feature) bool {
-	if k.Features == nil {
-		return true
-	}
-	return slices.Contains(k.Features, FeatureWildcard) || slices.Contains(k.Features, string(f))
+	return k.AllowsEveryFeature() || slices.Contains(k.Features, string(f))
+}
+
+// AllowsEveryFeature reports whether the key's content allows every feature, the ones a later
+// version adds included: it lists none, or lists the wildcard.
+func (k *Key) AllowsEveryFeature() bool {
+	return k.Features == nil || slices.Contains(k.Features, FeatureWildcard)
 }
 
 // TelemetryMode is what a key asks of the instance about reporting its usage.

@@ -67,6 +67,12 @@ func NewProvider(load Loader, logger *slog.Logger) *Provider {
 	return newProvider(load, ring, time.Now, logger)
 }
 
+// NewProviderWithKeyring is NewProvider verifying keys against ring instead of the embedded
+// public keys. It is for tests that sign keys of their own.
+func NewProviderWithKeyring(load Loader, ring Keyring, logger *slog.Logger) *Provider {
+	return newProvider(load, ring, time.Now, logger)
+}
+
 func newProvider(load Loader, ring Keyring, now func() time.Time, logger *slog.Logger) *Provider {
 	if logger == nil {
 		logger = slog.Default()
@@ -77,7 +83,8 @@ func newProvider(load Loader, ring Keyring, now func() time.Time, logger *slog.L
 // Refresh asks the loader for the key in force and applies what it gives.
 //
 // A key that cannot be loaded or trusted never replaces the one in place: the reason is
-// returned, kept for Problem and logged once for as long as it lasts. A well-signed key
+// returned, kept for Problem and logged once for as long as it lasts. A load that fails
+// once ctx is done is only returned. A well-signed key
 // replaces the one in place whatever its dates say, so that the loader is the single
 // source of truth. A loader with nothing to give leaves the key in place: a store that
 // answers nothing does not take a license away.
@@ -87,7 +94,13 @@ func (p *Provider) Refresh(ctx context.Context) error {
 
 	value, err := p.load(ctx)
 	if err != nil {
-		return p.refuse(fmt.Errorf("the license key cannot be loaded: %w", err))
+		err = fmt.Errorf("the license key cannot be loaded: %w", err)
+		// A refresh in flight when its context ends, as at shutdown, was told to stop: that
+		// says nothing about the key, so it is neither kept as the problem nor logged.
+		if ctx.Err() != nil {
+			return err
+		}
+		return p.refuse(err)
 	}
 	value = strings.TrimSpace(value)
 	if value == "" || value == p.applied {

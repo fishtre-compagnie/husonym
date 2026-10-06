@@ -839,17 +839,17 @@ func (s *Service) GetSystemInformation(
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse build date: %w", err)
 	}
+	systemLicense, err := s.systemLicense(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&mgmtv1alpha1.GetSystemInformationResponse{
 		Version:   versionInfo.GitVersion,
 		Commit:    versionInfo.GitCommit,
 		Compiler:  versionInfo.Compiler,
 		Platform:  versionInfo.Platform,
 		BuildDate: timestamppb.New(builtDate),
-		License: &mgmtv1alpha1.SystemLicense{
-			IsValid:        s.licenseclient.IsValid(),
-			ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
-			IsHusonymCloud: false,
-		},
+		License:   systemLicense,
 	}), nil
 }
 
