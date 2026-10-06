@@ -44,6 +44,9 @@ type DatabaseSchemaRow struct {
 	// generated columns are an example of columns that do not allow updates.
 	UpdateAllowed bool
 	Comment       *string
+	// DefaultBackslashTwice is set by PostgreSQL only: the session that read ColumnDefault
+	// has standard_conforming_strings off, and writes each backslash of a string in it twice.
+	DefaultBackslashTwice bool
 }
 
 func (d *DatabaseSchemaRow) NullableString() string {

@@ -331,7 +331,14 @@ SELECT
    CAST(IF(c.DATA_TYPE IN ('decimal', 'numeric'), c.NUMERIC_SCALE, 0)AS SIGNED) AS numeric_scale,
    c.ORDINAL_POSITION AS ordinal_position,
    c.EXTRA AS identity_generation,
-   IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(c.GENERATION_EXPRESSION, '_utf8mb4\\\'', '_utf8mb4\''), '_utf8mb3\\\'', '_utf8mb3\''), '\\\'', '\''), '\\\'', '\''), '') AS generation_exp, -- hack to fix this bug https://bugs.mysql.com/
+   -- hack to fix this bug https://bugs.mysql.com/
+   -- A backslash followed by an apostrophe (0x5C27) becomes an apostrophe (0x27). The two are
+   -- written by their bytes, which read the same under every sql_mode.
+   IFNULL(REPLACE(REPLACE(REPLACE(REPLACE(c.GENERATION_EXPRESSION,
+       CONCAT('_utf8mb4', _utf8mb4 0x5C27), CONCAT('_utf8mb4', _utf8mb4 0x27)),
+       CONCAT('_utf8mb3', _utf8mb4 0x5C27), CONCAT('_utf8mb3', _utf8mb4 0x27)),
+       _utf8mb4 0x5C27, _utf8mb4 0x27),
+       _utf8mb4 0x5C27, _utf8mb4 0x27), '') AS generation_exp,
    t.AUTO_INCREMENT as auto_increment_start_value,
    c.COLUMN_COMMENT as comment
 FROM

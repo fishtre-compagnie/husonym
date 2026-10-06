@@ -207,6 +207,8 @@ func Test_noParentValue(t *testing.T) {
 		{sqlmanager_shared.PostgresDriver, `'XX'::text`, "XX", true},
 		{sqlmanager_shared.PostgresDriver, `'XX'::character varying`, "XX", true},
 		{sqlmanager_shared.PostgresDriver, `'it''s'::text`, "it's", true},
+		{sqlmanager_shared.PostgresDriver, `'none\'::text`, `none\`, true},
+		{sqlmanager_shared.PostgresDriver, `'a\\b'::text`, `a\\b`, true},
 		{sqlmanager_shared.PostgresDriver, `0`, "0", true},
 		{sqlmanager_shared.PostgresDriver, `-1`, "-1", true},
 		{sqlmanager_shared.PostgresDriver, `nextval('t_id_seq'::regclass)`, "", false},
@@ -221,9 +223,79 @@ func Test_noParentValue(t *testing.T) {
 		{sqlmanager_shared.MssqlDriver, `(getdate())`, "", false},
 	}
 	for _, c := range cases {
-		got, ok := noParentValue(c.driver, c.columnDefault)
+		got, ok := noParentValue(c.driver, c.columnDefault, false)
 		require.Equal(t, c.ok, ok, "%s %q", c.driver, c.columnDefault)
 		require.Equal(t, c.want, got, "%s %q", c.driver, c.columnDefault)
+	}
+}
+
+// A PostgreSQL session that has standard_conforming_strings off reports a string default
+// with each backslash written twice: the value is the text with one.
+func Test_noParentValue_BackslashWrittenTwice(t *testing.T) {
+	cases := []struct {
+		driver, columnDefault, want string
+		ok                          bool
+	}{
+		{sqlmanager_shared.PostgresDriver, `'none\\'::text`, `none\`, true},
+		{sqlmanager_shared.PostgresDriver, `'a\\\\b'::text`, `a\\b`, true},
+		{sqlmanager_shared.PostgresDriver, `'it''s\\x'::text`, `it's\x`, true},
+		{sqlmanager_shared.PostgresDriver, `'\\'''::text`, `\'`, true},
+		{sqlmanager_shared.PostgresDriver, `'XX'::text`, "XX", true},
+		{sqlmanager_shared.PostgresDriver, `0`, "0", true},
+		{sqlmanager_shared.PostgresDriver, `nextval('t_id_seq'::regclass)`, "", false},
+	}
+	for _, c := range cases {
+		got, ok := noParentValue(c.driver, c.columnDefault, true)
+		require.Equal(t, c.ok, ok, "%s %q", c.driver, c.columnDefault)
+		require.Equal(t, c.want, got, "%s %q", c.driver, c.columnDefault)
+	}
+}
+
+// The plan reads the "no parent" value of a key with what the schema row says of the
+// session that read the default.
+func Test_planForeignKeys_NoParentValueFollowsTheStringSetting(t *testing.T) {
+	declared := map[string][]*sqlmanager_shared.ForeignConstraint{
+		"app.child": {{
+			Columns:     []string{"parent_code"},
+			NotNullable: []bool{true},
+			ForeignKey:  &sqlmanager_shared.ForeignKey{Table: "app.parent", Columns: []string{"code"}},
+		}},
+	}
+	runConfigs, err := rc.BuildRunConfigs(
+		declared,
+		map[string]string{},
+		map[string][]string{"app.parent": {"code"}, "app.child": {"id"}},
+		map[string][]string{"app.parent": {"code"}, "app.child": {"id", "parent_code"}},
+		map[string][][]string{},
+		map[string][][]string{},
+	)
+	require.NoError(t, err)
+
+	cases := []struct {
+		columnDefault string
+		writtenTwice  bool
+	}{
+		{`'none\'::text`, false},
+		{`'none\\'::text`, true},
+	}
+	for _, c := range cases {
+		columnInfo := map[string]map[string]*sqlmanager_shared.DatabaseSchemaRow{
+			"app.child": {"parent_code": {
+				ColumnDefault:         c.columnDefault,
+				DefaultBackslashTwice: c.writtenTwice,
+			}},
+		}
+		planned := planForeignKeys(sqlmanager_shared.PostgresDriver, runConfigs, false, columnInfo, declared,
+			func(table, column string) string { return "" })
+
+		var values []string
+		for _, keys := range planned {
+			for _, key := range keys {
+				require.NotNil(t, key.NoParentValue, "%q", c.columnDefault)
+				values = append(values, *key.NoParentValue)
+			}
+		}
+		require.Equal(t, []string{`none\`}, values, "%q", c.columnDefault)
 	}
 }
 
