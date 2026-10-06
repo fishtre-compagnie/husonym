@@ -9,7 +9,7 @@ slug: /deploy/licensing
 ## Installing your license
 
 Your license is a single base64 value. Set it as the `EE_LICENSE` environment variable on
-**both** the API and the worker:
+the API:
 
 ```yaml
 environment:
@@ -41,10 +41,15 @@ Verification happens entirely offline. Husonym never contacts us to check your l
 it works in an air-gapped environment, and we collect nothing about how you use it.
 
 :::note
-The license must be set on the worker as well as the API. With it missing from the worker,
+The worker needs no license variable. It obtains the key from the API, with its API key,
+when it starts and then once a minute, and verifies it itself. A renewed license therefore
+reaches the worker without a restart. An `EE_LICENSE` or `EE_LICENSE_FILE` variable left in
+place on the worker is ignored and does no harm.
+
+While the worker has no license, for instance when the API does not answer at its start,
 data-sync job runs still execute, but their job hooks and the account-hook notifications
 are skipped, and initializing the schema of a Microsoft SQL Server destination fails. A
-PII detection job run fails.
+PII detection job run fails. The worker obtains the license as soon as the API answers.
 :::
 
 ## What the license covers
@@ -123,9 +128,9 @@ Reaching a limit never affects anything already running.
 ## Renewing, or asking a question
 
 Write to [contact@husonym.com](mailto:contact@husonym.com). Renewing means replacing the
-license value: with `EE_LICENSE_FILE`, replace the content of the file and the API and the
-worker pick it up on their own; with `EE_LICENSE`, change the value and restart the API
-and the worker. Nothing else changes.
+license value: with `EE_LICENSE_FILE`, replace the content of the file and the API picks it
+up on its own; with `EE_LICENSE`, change the value and restart the API. The worker follows
+the API on its own. Nothing else changes.
 
 If you have lost your license value, ask us rather than assuming a new one is needed: we
 keep a record of what was issued and can re-send it.

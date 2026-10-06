@@ -130,9 +130,8 @@ services:
       - HUSONYM_URL=http://api:8080
       - REDIS_URL=redis://default:foofar@redis:6379
       - TABLESYNC_MAX_CONCURRENCY=3
-    # The worker checks the license too: IsAccountStatusValid gates scheduled runs, which
-    # never pass through the API. Without it here, manual runs would work and scheduled
-    # ones would not.
+    # The worker needs no license variable: it asks the API for the key in force. A
+    # variable left in this file is ignored.
     env_file:
       - path: ./.env.worker.local
         required: false

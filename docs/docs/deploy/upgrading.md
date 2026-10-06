@@ -27,7 +27,8 @@ worker of the previous version picks it up.
 
 ### License
 
-The API and the worker start whatever the license, and read it on every request. See
+The API and the worker start whatever the license, and read it on every request. The
+worker no longer reads a license variable: it asks the API for the key. See
 [Licensing](/deploy/licensing) for what a valid license is needed for, and for
 `EE_LICENSE_FILE`, which lets a renewed license take effect without a restart.
 

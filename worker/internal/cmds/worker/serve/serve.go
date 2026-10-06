@@ -37,6 +37,7 @@ import (
 	husonymotel "github.com/fishtre-compagnie/husonym/internal/otel"
 	pyroscope_env "github.com/fishtre-compagnie/husonym/internal/pyroscope"
 	husonym_redis "github.com/fishtre-compagnie/husonym/internal/redis"
+	"github.com/fishtre-compagnie/husonym/worker/internal/licenseloader"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/consistencykey"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/accounthooks/webhook"
@@ -83,19 +84,6 @@ func serve(ctx context.Context) error {
 	slog.SetDefault(
 		logger,
 	) // set default logger for methods that can't easily access the configured logger
-
-	// The license never stops the start: a key that cannot be read is logged by the
-	// refresh and leaves the instance without one. The key is then read again in the
-	// background, so that a renewed one is picked up without a restart.
-	eelicense := license.NewProvider(license.LoaderFromEnv(), logger)
-	_ = eelicense.Refresh(ctx)
-	// The context of the command never ends, so the background refresh gets its own. It
-	// is ended as soon as the interrupt is received, before anything a loader may use is
-	// closed; the defer covers the early returns.
-	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
-	defer stopLicenseRefresh()
-	go eelicense.RefreshEvery(refreshCtx, time.Minute)
-	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	// The settings of PII detection are read before anything is dialed: a setting that
 	// cannot work is then the error an operator sees.
@@ -376,6 +364,22 @@ func serve(ctx context.Context) error {
 		husonymurl,
 		connectInterceptorOption,
 	)
+
+	// The key is the one the API holds, which the provider verifies itself. It never stops
+	// the start: when the API does not answer, the refresh logs it and the worker starts
+	// without a license; the key is then asked again in the background, which also picks up
+	// a renewed one without a restart.
+	eelicense := license.NewProvider(licenseloader.FromAPI(userclient), logger)
+	firstRefreshCtx, stopFirstRefresh := context.WithTimeout(ctx, 10*time.Second)
+	_ = eelicense.Refresh(firstRefreshCtx)
+	stopFirstRefresh()
+	// The context of the command never ends, so the background refresh gets its own. It
+	// is ended as soon as the interrupt is received, before anything a loader may use is
+	// closed; the defer covers the early returns.
+	refreshCtx, stopLicenseRefresh := context.WithCancel(ctx)
+	defer stopLicenseRefresh()
+	go eelicense.RefreshEvery(refreshCtx, time.Minute)
+	logger.Debug(fmt.Sprintf("ee license enabled: %t", eelicense.IsValid()))
 
 	sqlConnector := &sqlconnect.SqlOpenConnector{}
 	sqlconnmanager := connectionmanager.NewConnectionManager(sqlprovider.NewProvider(sqlConnector))

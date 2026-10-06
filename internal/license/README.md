@@ -8,9 +8,11 @@ This is the internal reference. Customer-facing wording lives in
 ## The mechanism
 
 A license is a JSON payload signed with **Ed25519**, base64-encoded, handed to the
-customer, and installed on the backend and the worker: either as the `EE_LICENSE`
-environment variable, or in a file whose path is given by `EE_LICENSE_FILE`. When both are
-set, the file wins.
+customer, and installed on the backend: either as the `EE_LICENSE` environment variable,
+or in a file whose path is given by `EE_LICENSE_FILE`. When both are set, the file wins.
+The worker needs no license variable: it asks the API for the key in force with its API
+key (`UserAccountService.GetSystemLicenseKey`) and verifies it itself against the embedded
+public keys. A variable left in place on the worker is ignored and harmless.
 
 The license is a `license.Provider`. It holds the last key that a `license.Loader` gave
 it: `Refresh` asks the loader, verifies what comes back and replaces the key in place.
@@ -195,16 +197,16 @@ infisical run --env=prod -- go run ./internal/license/cmd/husonym-license issue 
   --to "Development" --customer-id dev --days 3650 --note "local dev"
 ```
 
-Then set `EE_LICENSE=<value>` in `.env.api.local` and `.env.worker.local`. Both compose
-files read those two paths with `required: false`, so the license reaches the containers
-without being committed. `compose.yml` did not read them until it was fixed alongside this
+Then set `EE_LICENSE=<value>` in `.env.api.local`. Both compose files read that path with
+`required: false`, so the license reaches the container without being committed. The
+worker needs nothing: it asks the API. `compose.yml` did not read them until it was fixed alongside this
 document: the license was documented here long before anything injected it, and the stack
 refused with no indication why.
 
 In tests, use `testutil.NewFakeEELicense(testutil.WithIsValid())` — and
 `testutil.WithLimits(...)` to exercise caps; `SetValid(false)` makes it lapse mid-test.
-Production code builds one `license.NewProvider(license.LoaderFromEnv(), logger)`, refreshes
-it, and hands it down as a `license.EEInterface`.
+Production code builds one `license.NewProvider(loader, logger)`, refreshes it, and hands it
+down as a `license.EEInterface`. The worker's loader is `licenseloader.FromAPI`.
 
 ## The signing key
 
