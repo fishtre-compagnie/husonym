@@ -20,3 +20,12 @@ INSERT INTO husonym_api.license_keys (
   $1, $2, $3, $4, $5
 )
 RETURNING *;
+
+-- The row of one license, by the id its key carries. A license stored twice under two values
+-- has two rows: the latest stored is the one told.
+-- name: GetLicenseKeyByLicenseId :one
+SELECT *
+FROM husonym_api.license_keys
+WHERE license_id = $1
+ORDER BY created_at DESC
+LIMIT 1;

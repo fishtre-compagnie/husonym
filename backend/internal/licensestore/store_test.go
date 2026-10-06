@@ -283,36 +283,38 @@ func Test_Current(t *testing.T) {
 }
 
 func Test_Installation(t *testing.T) {
-	t.Run("is where the key in force came from and when it was stored", func(t *testing.T) {
+	t.Run("is where the key of that license came from and when it was stored", func(t *testing.T) {
 		f := newFixture(t, false)
 		storedAt := time.Now().UTC().Truncate(time.Second)
-		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).Return(db_queries.HusonymApiLicenseKey{
+		// Asked by the id of the license: the double answers for that id alone.
+		f.querier.On("GetLicenseKeyByLicenseId", mock.Anything, mock.Anything, "lic-1").Return(db_queries.HusonymApiLicenseKey{
 			Key:       "the-value",
+			LicenseID: "lic-1",
 			Origin:    "file",
 			CreatedAt: pgtype.Timestamptz{Time: storedAt, Valid: true},
 		}, nil)
 
-		installation, err := f.store.Installation(context.Background())
+		installation, err := f.store.Installation(context.Background(), "lic-1")
 		require.NoError(t, err)
 		require.Equal(t, &Installation{Origin: OriginFile, At: storedAt}, installation)
 	})
 
-	t.Run("is nothing when the instance has no key", func(t *testing.T) {
+	t.Run("is nothing when the instance holds no key of that license", func(t *testing.T) {
 		f := newFixture(t, false)
-		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).
+		f.querier.On("GetLicenseKeyByLicenseId", mock.Anything, mock.Anything, "lic-1").
 			Return(db_queries.HusonymApiLicenseKey{}, pgx.ErrNoRows)
 
-		installation, err := f.store.Installation(context.Background())
+		installation, err := f.store.Installation(context.Background(), "lic-1")
 		require.NoError(t, err)
 		require.Nil(t, installation)
 	})
 
 	t.Run("fails when the database does", func(t *testing.T) {
 		f := newFixture(t, false)
-		f.querier.On("GetCurrentLicenseKey", mock.Anything, mock.Anything).
+		f.querier.On("GetLicenseKeyByLicenseId", mock.Anything, mock.Anything, "lic-1").
 			Return(db_queries.HusonymApiLicenseKey{}, errors.New("connection reset"))
 
-		_, err := f.store.Installation(context.Background())
+		_, err := f.store.Installation(context.Background(), "lic-1")
 		require.ErrorContains(t, err, "connection reset")
 	})
 }

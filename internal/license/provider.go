@@ -2,6 +2,7 @@ package license
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -21,6 +22,11 @@ type EEInterface interface {
 // Loader gives the value of the license key in force, or an empty string when it has
 // none to give.
 type Loader func(ctx context.Context) (string, error)
+
+// ErrKeyNotLoaded is the problem of a refresh whose loader failed. The loader's own error
+// is wrapped next to it: it may name a host, a user or a database, so a caller that shows
+// the problem to someone tells this one apart and keeps the detail for the log.
+var ErrKeyNotLoaded = errors.New("the license key could not be loaded")
 
 // Provider holds the last key its loader gave and answers from the clock on every call.
 // It is safe for concurrent use.
@@ -67,8 +73,9 @@ func NewProvider(load Loader, logger *slog.Logger) *Provider {
 	return newProvider(load, ring, time.Now, logger)
 }
 
-// NewProviderWithKeyring is NewProvider verifying keys against ring instead of the embedded
-// public keys. It is for tests that sign keys of their own.
+// NewProviderWithKeyring builds a Provider that verifies keys against ring. A process that
+// also verifies keys elsewhere gives every verifier the one ring it loaded; a test gives the
+// ring of the keys it signs. It holds no key until Refresh is called.
 func NewProviderWithKeyring(load Loader, ring Keyring, logger *slog.Logger) *Provider {
 	return newProvider(load, ring, time.Now, logger)
 }
@@ -94,7 +101,7 @@ func (p *Provider) Refresh(ctx context.Context) error {
 
 	value, err := p.load(ctx)
 	if err != nil {
-		err = fmt.Errorf("the license key cannot be loaded: %w", err)
+		err = fmt.Errorf("%w: %w", ErrKeyNotLoaded, err)
 		// A refresh in flight when its context ends, as at shutdown, was told to stop: that
 		// says nothing about the key, so it is neither kept as the problem nor logged.
 		if ctx.Err() != nil {
@@ -186,7 +193,11 @@ func (s snapshot) state() State {
 
 // inForce is true up to the end of the grace period.
 func (s snapshot) inForce() bool {
-	state := s.state()
+	return inForce(s.state())
+}
+
+// inForce is true for the states of a key that still allows what it says.
+func inForce(state State) bool {
 	return state != StateNone && state != StateFrozen
 }
 
@@ -198,6 +209,11 @@ type Description struct {
 	Key *Key
 	// Problem is why the last refresh was refused, or nil.
 	Problem error
+}
+
+// InForce is true up to the end of the grace period, as Provider.IsValid is.
+func (d Description) InForce() bool {
+	return inForce(d.State)
 }
 
 // Describe returns the state, the key and the problem from one snapshot, so that the

@@ -232,6 +232,8 @@ func Test_Provider_ALoaderErrorKeepsTheKeyInPlace(t *testing.T) {
 
 	require.ErrorIs(t, err, unreachable)
 	require.ErrorIs(t, p.Problem(), unreachable)
+	// It is told apart from a key that was loaded and refused, which is not one.
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
 	require.Equal(t, err, p.Problem())
 	require.Equal(t, 1, maxJobsOf(t, p))
 	require.Equal(t, StateValid, p.State())
@@ -479,6 +481,29 @@ func Test_Provider_Describe(t *testing.T) {
 	require.Equal(t, StateGrace, described.State)
 	require.Equal(t, parsed, described.Key)
 	require.Equal(t, refused, described.Problem)
+	// A key that was loaded and refused is not a key that could not be loaded.
+	require.NotErrorIs(t, described.Problem, ErrKeyNotLoaded)
+}
+
+// InForce says of a description what IsValid says of the provider: true through grace.
+func Test_Description_InForce(t *testing.T) {
+	for state, want := range map[State]bool{
+		StateNone:     false,
+		StateValid:    true,
+		StateExpiring: true,
+		StateGrace:    true,
+		StateFrozen:   false,
+	} {
+		require.Equal(t, want, Description{State: state}.InForce(), state)
+	}
+
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+	for _, elapsed := range []time.Duration{0, 80 * day, 15 * day, 20 * day} {
+		f.clock.Advance(elapsed)
+		require.Equal(t, p.IsValid(), p.Describe().InForce(), p.State())
+	}
+	require.Equal(t, StateFrozen, p.State())
 }
 
 func Test_Provider_ReadsNeverCallTheLoader(t *testing.T) {

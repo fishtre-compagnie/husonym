@@ -241,7 +241,7 @@ func serve(ctx context.Context) error {
 	// The license never stops the start: a key that cannot be read is logged by the
 	// refresh and leaves the instance without one. The key is then read again in the
 	// background, so that a key stored by another instance is picked up without a restart.
-	eelicense := license.NewProvider(licenseStore.Current, slogger)
+	eelicense := license.NewProviderWithKeyring(licenseStore.Current, licenseRing, slogger)
 	_ = eelicense.Refresh(ctx)
 	// The context of the command never ends, so the background work gets its own,
 	// which ends when serve returns.

@@ -25,6 +25,7 @@ type Service struct {
 	licensedescriber       LicenseDescriber
 	licenses               LicenseStore
 	refreshLicense         func(ctx context.Context) error
+	installations          installationMemory
 }
 
 // LicenseDescriber tells what the process holds as its license at one instant. The provider
@@ -43,7 +44,7 @@ type LicenseStore interface {
 		userId *pgtype.UUID,
 	) (*licensestore.Result, error)
 	Current(ctx context.Context) (string, error)
-	Installation(ctx context.Context) (*licensestore.Installation, error)
+	Installation(ctx context.Context, licenseId string) (*licensestore.Installation, error)
 }
 
 type Config struct {

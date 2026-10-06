@@ -2,6 +2,8 @@ package v1alpha1_useraccountservice_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"testing"
 	"time"
 
@@ -62,13 +64,23 @@ func (w *licenseWorld) issue(t *testing.T, issuedAt time.Time, shape func(*licen
 	return issued.Encoded
 }
 
+// set gives a key through the team account of the world.
 func (w *licenseWorld) set(
 	ctx context.Context,
 	client mgmtv1alpha1connect.UserAccountServiceClient,
 	key string,
 ) (*connect.Response[mgmtv1alpha1.SetSystemLicenseResponse], error) {
+	return setThrough(ctx, client, w.accountId, key)
+}
+
+// setThrough gives a key through the account the caller names.
+func setThrough(
+	ctx context.Context,
+	client mgmtv1alpha1connect.UserAccountServiceClient,
+	accountId, key string,
+) (*connect.Response[mgmtv1alpha1.SetSystemLicenseResponse], error) {
 	return client.SetSystemLicense(ctx, connect.NewRequest(&mgmtv1alpha1.SetSystemLicenseRequest{
-		AccountId: w.accountId,
+		AccountId: accountId,
 		Key:       key,
 	}))
 }
@@ -118,8 +130,9 @@ func Test_SetSystemLicense(t *testing.T) {
 		require.False(t, described.GetIsValid())
 	})
 
+	viewer := w.viewer(ctx, t)
 	t.Run("a job viewer is refused, and nothing is stored", func(t *testing.T) {
-		_, err := w.set(ctx, w.viewer(ctx, t), key)
+		_, err := w.set(ctx, viewer, key)
 		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 		require.Equal(t, "none", w.described(ctx, t).GetState())
 	})
@@ -175,6 +188,45 @@ func Test_SetSystemLicense(t *testing.T) {
 		resp, err := w.set(ctx, w.admin, key)
 		require.NoError(t, err)
 		require.Equal(t, "valid", resp.Msg.GetLicense().GetState())
+	})
+
+	// The accepted behaviour, stated as it is: the account of the request is the caller's
+	// choice, and everyone administers their own personal account. Someone who only views
+	// the team account therefore gets through with their own. What they can do with it is
+	// what anyone can: put a key its issuer signed, newer than the one in force.
+	t.Run("the viewer of the team sets the license through their own personal account", func(t *testing.T) {
+		personalAccountId := tchusonymapi.CreatePersonalAccount(ctx, t, viewer)
+
+		_, err := setThrough(ctx, viewer, personalAccountId, older)
+		require.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+
+		_, err = setThrough(ctx, viewer, personalAccountId, "not-a-key")
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		// Signed by someone else than the issuer the instance trusts.
+		_, foreignSigningKey, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
+		forged, err := license.Issue(&license.IssueRequest{
+			IssuedTo:   "Acme Co.",
+			CustomerId: "cust-001",
+			ExpiresAt:  time.Now().UTC().Add(90 * 24 * time.Hour),
+		}, foreignSigningKey, license.Keyring{license.LegacyKid: foreignSigningKey.Public().(ed25519.PublicKey)})
+		require.NoError(t, err)
+		_, err = setThrough(ctx, viewer, personalAccountId, forged.Encoded)
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+		stored, err := w.api.HusonymQuerier.GetCurrentLicenseKey(ctx, w.api.Pgcontainer.DB)
+		require.NoError(t, err)
+		require.Equal(t, key, stored.Key, "none of the three replaced the key in force")
+
+		newer := w.issue(t, now, nil)
+		resp, err := setThrough(ctx, viewer, personalAccountId, newer)
+		require.NoError(t, err)
+		require.True(t, resp.Msg.GetLicense().GetIsValid())
+
+		stored, err = w.api.HusonymQuerier.GetCurrentLicenseKey(ctx, w.api.Pgcontainer.DB)
+		require.NoError(t, err)
+		require.Equal(t, newer, stored.Key)
 	})
 }
 

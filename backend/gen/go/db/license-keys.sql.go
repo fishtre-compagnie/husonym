@@ -35,6 +35,31 @@ func (q *Queries) GetCurrentLicenseKey(ctx context.Context, db DBTX) (HusonymApi
 	return i, err
 }
 
+const getLicenseKeyByLicenseId = `-- name: GetLicenseKeyByLicenseId :one
+SELECT id, key, license_id, issued_at, origin, created_at, created_by_user_id
+FROM husonym_api.license_keys
+WHERE license_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+// The row of one license, by the id its key carries. A license stored twice under two values
+// has two rows: the latest stored is the one told.
+func (q *Queries) GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error) {
+	row := db.QueryRow(ctx, getLicenseKeyByLicenseId, licenseID)
+	var i HusonymApiLicenseKey
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.LicenseID,
+		&i.IssuedAt,
+		&i.Origin,
+		&i.CreatedAt,
+		&i.CreatedByUserID,
+	)
+	return i, err
+}
+
 const insertLicenseKey = `-- name: InsertLicenseKey :one
 INSERT INTO husonym_api.license_keys (
   key, license_id, issued_at, origin, created_by_user_id

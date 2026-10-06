@@ -151,21 +151,22 @@ func (s *Store) Current(ctx context.Context) (string, error) {
 	return current.Key, nil
 }
 
-// Installation is how the key in force reached the instance and when it was stored.
+// Installation is how a key reached the instance and when it was stored.
 type Installation struct {
 	Origin Origin
 	At     time.Time
 }
 
-// Installation tells how the key in force was stored, or gives nothing when the instance has
-// none.
-func (s *Store) Installation(ctx context.Context) (*Installation, error) {
-	current, err := s.db.Q.GetCurrentLicenseKey(ctx, s.db.Db)
+// Installation tells how the key of the license with this id was stored, or gives nothing when
+// the instance holds no such key. It is asked by id, not for the key in force, so that the
+// answer describes the key the caller holds even when a newer one was stored since.
+func (s *Store) Installation(ctx context.Context, licenseId string) (*Installation, error) {
+	row, err := s.db.Q.GetLicenseKeyByLicenseId(ctx, s.db.Db, licenseId)
 	if husonymdb.IsNoRows(err) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &Installation{Origin: Origin(current.Origin), At: current.CreatedAt.Time}, nil
+	return &Installation{Origin: Origin(row.Origin), At: row.CreatedAt.Time}, nil
 }

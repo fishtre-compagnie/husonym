@@ -109,6 +109,9 @@ type Querier interface {
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
+	// The row of one license, by the id its key carries. A license stored twice under two values
+	// has two rows: the latest stored is the one told.
+	GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error)
 	GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error)
 	GetPendingJobMappingChangesByJob(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)
 	GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error)

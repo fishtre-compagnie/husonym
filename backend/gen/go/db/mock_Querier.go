@@ -4907,6 +4907,78 @@ func (_c *MockQuerier_GetJobsByAccount_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// GetLicenseKeyByLicenseId provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error) {
+	ret := _mock.Called(ctx, db, licenseID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLicenseKeyByLicenseId")
+	}
+
+	var r0 HusonymApiLicenseKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, string) (HusonymApiLicenseKey, error)); ok {
+		return returnFunc(ctx, db, licenseID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, string) HusonymApiLicenseKey); ok {
+		r0 = returnFunc(ctx, db, licenseID)
+	} else {
+		r0 = ret.Get(0).(HusonymApiLicenseKey)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, string) error); ok {
+		r1 = returnFunc(ctx, db, licenseID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetLicenseKeyByLicenseId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLicenseKeyByLicenseId'
+type MockQuerier_GetLicenseKeyByLicenseId_Call struct {
+	*mock.Call
+}
+
+// GetLicenseKeyByLicenseId is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - licenseID string
+func (_e *MockQuerier_Expecter) GetLicenseKeyByLicenseId(ctx any, db any, licenseID any) *MockQuerier_GetLicenseKeyByLicenseId_Call {
+	return &MockQuerier_GetLicenseKeyByLicenseId_Call{Call: _e.mock.On("GetLicenseKeyByLicenseId", ctx, db, licenseID)}
+}
+
+func (_c *MockQuerier_GetLicenseKeyByLicenseId_Call) Run(run func(ctx context.Context, db DBTX, licenseID string)) *MockQuerier_GetLicenseKeyByLicenseId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetLicenseKeyByLicenseId_Call) Return(husonymApiLicenseKey HusonymApiLicenseKey, err error) *MockQuerier_GetLicenseKeyByLicenseId_Call {
+	_c.Call.Return(husonymApiLicenseKey, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetLicenseKeyByLicenseId_Call) RunAndReturn(run func(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error)) *MockQuerier_GetLicenseKeyByLicenseId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPendingJobMappingChangesByAccount provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error) {
 	ret := _mock.Called(ctx, db, accountid)

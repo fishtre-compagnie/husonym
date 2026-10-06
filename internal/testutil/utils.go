@@ -173,12 +173,22 @@ func (f *FakeEELicense) ExpiresAt() time.Time {
 	return time.Now().Add(time.Hour * 24 * 365)
 }
 
-// Describe tells whether the fake is valid and nothing more: it holds no key.
+// Describe gives a valid fake the key that says what the fake answers: its expiry, its caps
+// and its features. A fake that is not valid holds no key.
 func (f *FakeEELicense) Describe() license.Description {
-	if f.IsValid() {
-		return license.Description{State: license.StateValid}
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if !f.isValid {
+		return license.Description{State: license.StateNone}
 	}
-	return license.Description{State: license.StateNone}
+	key := &license.Key{ExpiresAt: f.ExpiresAt(), Limits: f.limits}
+	if f.features != nil {
+		key.Features = make([]string, 0, len(f.features))
+		for _, feature := range f.features {
+			key.Features = append(key.Features, string(feature))
+		}
+	}
+	return license.Description{State: license.StateValid, Key: key}
 }
 
 // Limits lets the fake exercise cap enforcement.

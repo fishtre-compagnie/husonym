@@ -2,11 +2,14 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
@@ -22,6 +25,12 @@ import (
 // The license belongs to the instance, not to an account: the account of the request only
 // says whose permissions let the caller do this. It is not gated by the license itself, since
 // it is how an instance without a valid one gets one.
+//
+// The caller chooses that account, and everyone administers their own personal account, so
+// this check does not single out who may set the license of the instance. That is accepted:
+// a key is only taken when its issuer signed it and it is newer than the one in force, so no
+// caller can widen the license or bring an older one back. It gets narrower once an instance
+// belongs to a single organization.
 //
 // The key value is a secret of the customer: it never goes into an answer, an error or a log.
 func (s *Service) SetSystemLicense(
@@ -48,6 +57,19 @@ func (s *Service) SetSystemLicense(
 	if err != nil {
 		return nil, fmt.Errorf("unable to store the license key: %w", err)
 	}
+	systemLicense, err := s.licenseAfterOffer(ctx, result)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mgmtv1alpha1.SetSystemLicenseResponse{License: systemLicense}), nil
+}
+
+// licenseAfterOffer turns what the store decided about an offered key into the answer: an
+// error for a refusal, the description of the license otherwise.
+func (s *Service) licenseAfterOffer(
+	ctx context.Context,
+	result *licensestore.Result,
+) (*mgmtv1alpha1.SystemLicense, error) {
 	switch result.Outcome {
 	case licensestore.RefusedInvalid:
 		return nil, husonymerrors.NewBadRequest(result.Reason)
@@ -55,18 +77,19 @@ func (s *Service) SetSystemLicense(
 		return nil, husonymerrors.NewFailedPrecondition(result.Reason)
 	case licensestore.Accepted:
 		// The key is in force in this process when the call answers, without waiting for the
-		// background refresh.
+		// background refresh. When it cannot be read back the key is stored all the same, so
+		// the call does not fail: giving the key again would then be answered as unchanged,
+		// against a first answer that said it was not taken.
 		if err := s.refreshLicense(ctx); err != nil {
-			return nil, fmt.Errorf("the license key was stored but could not be read back: %w", err)
+			logger_interceptor.GetLoggerFromContextOrDefault(ctx).ErrorContext(
+				ctx,
+				"the license key is stored, and is in force on this instance once it is read again",
+				"error", err,
+			)
 		}
 	case licensestore.Unchanged:
 	}
-
-	systemLicense, err := s.systemLicense(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&mgmtv1alpha1.SetSystemLicenseResponse{License: systemLicense}), nil
+	return s.systemLicense(ctx), nil
 }
 
 // GetSystemLicenseKey returns the license key in force as it was signed, so that the worker
@@ -95,23 +118,34 @@ func (s *Service) GetSystemLicenseKey(
 }
 
 // systemLicense describes the license of the instance, without the key value.
-func (s *Service) systemLicense(ctx context.Context) (*mgmtv1alpha1.SystemLicense, error) {
+//
+// Everything comes from one description of what the process holds, so that the answer never
+// mixes two keys or two instants. It never fails: the system information that carries it is
+// asked by every page, license or not.
+func (s *Service) systemLicense(ctx context.Context) *mgmtv1alpha1.SystemLicense {
 	desc := s.licensedescriber.Describe()
 	dto := &mgmtv1alpha1.SystemLicense{
-		IsValid:        s.licenseclient.IsValid(),
-		ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
+		IsValid:        desc.InForce(),
 		IsHusonymCloud: false,
 		State:          string(desc.State),
 	}
 	if desc.Problem != nil {
 		problem := desc.Problem.Error()
+		// What failed while loading may name a host, a user or a database, and this is told
+		// to callers that hold no permission: they get the fact, the log has the detail.
+		if errors.Is(desc.Problem, license.ErrKeyNotLoaded) {
+			problem = license.ErrKeyNotLoaded.Error()
+		}
 		dto.Problem = &problem
 	}
 
 	key := desc.Key
 	if key == nil {
-		return dto, nil
+		// Without a key the expiry is the present instant, as it always was.
+		dto.ExpiresAt = timestamppb.Now()
+		return dto
 	}
+	dto.ExpiresAt = timestamppb.New(key.ExpiresAt)
 	dto.Plan = key.Plan
 	dto.IssuedTo = key.IssuedTo
 	dto.Telemetry = string(key.TelemetryMode())
@@ -125,18 +159,55 @@ func (s *Service) systemLicense(ctx context.Context) (*mgmtv1alpha1.SystemLicens
 		}
 	}
 
-	// These two come from the database while the rest comes from what this process holds. A
-	// replica that has not refreshed since a key was stored elsewhere tells, for up to a
-	// minute, where and when the newer key arrived next to the description of the older one.
-	installation, err := s.licenses.Installation(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read how the license key was stored: %w", err)
-	}
-	if installation != nil {
+	if installation := s.installationOf(ctx, key.Id); installation != nil {
 		dto.Origin = string(installation.Origin)
 		dto.InstalledAt = timestamppb.New(installation.At)
 	}
-	return dto, nil
+	return dto
+}
+
+// installationMemory remembers how the key of one license was stored. It is safe for
+// concurrent use.
+type installationMemory struct {
+	mu sync.Mutex
+	// known is false until an answer of the store was remembered.
+	known     bool
+	licenseId string
+	// installation is nil when the store holds no key of that license.
+	installation *licensestore.Installation
+}
+
+// installationOf tells how the key of the license with this id was stored, or nothing when
+// that is not known.
+//
+// The store is asked once per key the process holds, not once per call: the answer is
+// remembered for as long as the id stays the same. A store that does not answer is logged and
+// leaves the answer unknown for this call; the next call asks again.
+func (s *Service) installationOf(ctx context.Context, licenseId string) *licensestore.Installation {
+	memory := &s.installations
+	memory.mu.Lock()
+	if memory.known && memory.licenseId == licenseId {
+		defer memory.mu.Unlock()
+		return memory.installation
+	}
+	memory.mu.Unlock()
+
+	// Asked outside the lock: calls that arrive together each ask, and none waits behind a
+	// slow database for an answer it could do without.
+	installation, err := s.licenses.Installation(ctx, licenseId)
+	if err != nil {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).ErrorContext(
+			ctx,
+			"unable to read how the license key was stored",
+			"licenseId", licenseId, "error", err,
+		)
+		return nil
+	}
+
+	memory.mu.Lock()
+	defer memory.mu.Unlock()
+	memory.known, memory.licenseId, memory.installation = true, licenseId, installation
+	return installation
 }
 
 func toLicenseLimitsDto(limits *license.Limits) *mgmtv1alpha1.LicenseLimits {
