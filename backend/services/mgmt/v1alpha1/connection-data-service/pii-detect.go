@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"math"
 	"regexp"
 	"slices"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/piidetect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/internal/license"
@@ -325,7 +325,7 @@ func (a *contentAnalysis) detection(
 		Score:                      float32(avgScore),
 		SuggestedTransformerSource: suggestion.Suggested,
 		IsSensitive:                suggestion.Sensitive,
-		MatchCount:                 clampUint32(matchCount),
+		MatchCount:                 utils.ClampUint32(matchCount),
 		SampledCount:               sampleCount(values),
 		DataCategory:               suggestion.Category,
 		PiiConfidence:              mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW,
@@ -513,18 +513,7 @@ func valueToText(v any) string {
 // sampleCount convertit une taille d'échantillon vers le type du proto. La borne
 // est explicite : l'échantillon vaut quelques dizaines de valeurs, mais une
 // conversion nue depuis un int laisserait un dépassement possible sans le dire.
-func sampleCount(values []string) uint32 { return clampUint32(len(values)) }
-
-// clampUint32 ramène un compteur positif dans les bornes du type du proto.
-func clampUint32(n int) uint32 {
-	if n < 0 {
-		return 0
-	}
-	if n > math.MaxUint32 {
-		return math.MaxUint32
-	}
-	return uint32(n)
-}
+func sampleCount(values []string) uint32 { return utils.ClampUint32(len(values)) }
 
 func truncateRunes(s string, limit int) string {
 	r := []rune(s)

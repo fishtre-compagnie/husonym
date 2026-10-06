@@ -16771,6 +16771,66 @@
               "isoneof": true,
               "oneofdecl": "_llm_report",
               "defaultValue": ""
+            },
+            {
+              "name": "analyzer_report",
+              "description": "The analyzer report. Will be empty if the content analyzer found nothing in the values of the column.",
+              "label": "optional",
+              "type": "Analyzer",
+              "longType": "PiiDetectionReport.TableReport.ColumnReport.Analyzer",
+              "fullType": "mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Analyzer",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_analyzer_report",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "Analyzer",
+          "longName": "PiiDetectionReport.TableReport.ColumnReport.Analyzer",
+          "fullName": "mgmt.v1alpha1.PiiDetectionReport.TableReport.ColumnReport.Analyzer",
+          "description": "The analyzer report",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "category",
+              "description": "The category of the column",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "match_count",
+              "description": "The number of sampled values in which the analyzer found an entity",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sampled_count",
+              "description": "The number of values the analyzer was given",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
             }
           ]
         },
