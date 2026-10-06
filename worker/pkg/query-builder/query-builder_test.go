@@ -465,22 +465,23 @@ func Test_BuildSampledSelectLimitQuery_WithColumnFilter(t *testing.T) {
 	filled := &ColumnFilter{Column: "email"}
 	text := &ColumnFilter{Column: "email", NonEmpty: true}
 
-	t.Run("postgres keeps the filled values of the window", func(t *testing.T) {
+	t.Run("postgres keeps the filled values of the first rows of the table", func(t *testing.T) {
+		require.Equal(t, 20000, SampleColumnScanRows)
 		require.Equal(t,
-			`SELECT * FROM (SELECT "email" FROM "public"."accounts" WHERE ("email" IS NOT NULL) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			`SELECT * FROM (SELECT "email" FROM (SELECT "email" FROM "public"."accounts" LIMIT 20000) AS "husonym_scan" WHERE ("email" IS NOT NULL) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
 			build(t, sqlmanager_shared.GoquPostgresDriver, filled))
 		require.Equal(t,
-			`SELECT * FROM (SELECT "email" FROM "public"."accounts" WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			`SELECT * FROM (SELECT "email" FROM (SELECT "email" FROM "public"."accounts" LIMIT 20000) AS "husonym_scan" WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
 			build(t, sqlmanager_shared.GoquPostgresDriver, text))
 	})
-	t.Run("mysql keeps the filled values of the window", func(t *testing.T) {
+	t.Run("mysql keeps the filled values of the first rows of the table", func(t *testing.T) {
 		require.Equal(t,
-			"SELECT * FROM (SELECT `email` FROM `public`.`accounts` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
+			"SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `public`.`accounts` LIMIT 20000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 1000) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
 			build(t, sqlmanager_shared.MysqlDriver, text))
 	})
-	t.Run("sqlserver keeps the filled values of the window", func(t *testing.T) {
+	t.Run("sqlserver keeps the filled values of the first rows of the table", func(t *testing.T) {
 		require.Equal(t,
-			`SELECT  TOP (10) * FROM (SELECT  TOP (1000) "email" FROM "public"."accounts" WHERE (("email" IS NOT NULL) AND ("email" <> ''))) AS "husonym_sample" ORDER BY NEWID() ASC`,
+			`SELECT  TOP (10) * FROM (SELECT  TOP (1000) "email" FROM (SELECT  TOP (20000) "email" FROM "public"."accounts") AS "husonym_scan" WHERE (("email" IS NOT NULL) AND ("email" <> ''))) AS "husonym_sample" ORDER BY NEWID() ASC`,
 			build(t, sqlmanager_shared.MssqlDriver, text))
 	})
 	t.Run("the column name is written as one identifier", func(t *testing.T) {
@@ -505,10 +506,12 @@ func Test_BuildTableSampleQuery_WithColumnFilter(t *testing.T) {
 		return sql
 	}
 
-	t.Run("postgres filters the rows of the pages it draws and does not thin them", func(t *testing.T) {
-		// Thinning the rows before the filter would leave a sparse column without values.
+	t.Run("postgres shuffles the filled rows of the pages it draws before the cap, and does not thin them", func(t *testing.T) {
+		// Thinning the rows before the filter would leave a sparse column without values. The
+		// pages come in physical order: a cap applied before the shuffle would keep the first
+		// pages only.
 		require.Equal(t,
-			`SELECT * FROM (SELECT "email" FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			`SELECT * FROM (SELECT "email" FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE (("email" IS NOT NULL) AND ("email" <> '')) ORDER BY RANDOM() ASC LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
 			build(t, pg, TableSize{Rows: 200_000, Pages: 1870}, filter))
 	})
 	t.Run("sqlserver filters the rows of the pages it draws", func(t *testing.T) {
@@ -518,6 +521,11 @@ func Test_BuildTableSampleQuery_WithColumnFilter(t *testing.T) {
 	})
 	t.Run("the share of pages is that of a whole-row sample", func(t *testing.T) {
 		require.Contains(t, build(t, pg, TableSize{Rows: 200_000, Pages: 100_000}, filter), "TABLESAMPLE SYSTEM (0.5) WHERE")
+	})
+	t.Run("the unfiltered postgres query is unchanged", func(t *testing.T) {
+		require.Equal(t,
+			`SELECT * FROM (SELECT * FROM "public"."accounts" TABLESAMPLE SYSTEM (2.6738) WHERE RANDOM() < 0.187 LIMIT 4000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 10`,
+			build(t, pg, TableSize{Rows: 200_000, Pages: 1870}, nil))
 	})
 	t.Run("a column name no engine takes is refused", func(t *testing.T) {
 		_, _, err := BuildTableSampleQuery(pg, "s", "t", TableSize{Rows: 200_000, Pages: 1870}, 1, &ColumnFilter{Column: "a\x00"})
@@ -533,9 +541,10 @@ func Test_BuildKeySlicesSampleQuery_WithColumnFilter(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t,
-		"SELECT * FROM (SELECT * FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 5) AND (`id` <= 8999) AND (`email` IS NOT NULL) AND (`email` <> '')) ORDER BY `id` ASC LIMIT 100) AS `t1` "+
-			"UNION ALL (SELECT * FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 9000) AND (`id` <= 20000) AND (`email` IS NOT NULL) AND (`email` <> '')) ORDER BY `id` ASC LIMIT 100) AS `t1`)) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
+		"SELECT * FROM (SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 5) AND (`id` <= 8999)) ORDER BY `id` ASC LIMIT 2000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 100) AS `t1` "+
+			"UNION ALL (SELECT * FROM (SELECT `email` FROM (SELECT `email` FROM `db`.`accounts` WHERE ((`id` >= 9000) AND (`id` <= 20000)) ORDER BY `id` ASC LIMIT 2000) AS `husonym_scan` WHERE ((`email` IS NOT NULL) AND (`email` <> '')) LIMIT 100) AS `t1`)) AS `husonym_sample` ORDER BY RAND() ASC LIMIT 10",
 		sql)
+	require.Equal(t, 2000, SampleColumnSliceScanRows)
 
 	_, err = BuildKeySlicesSampleQuery(sqlmanager_shared.MysqlDriver, "db", "accounts", "id", ranges, 10, &ColumnFilter{Column: ""})
 	require.Error(t, err)

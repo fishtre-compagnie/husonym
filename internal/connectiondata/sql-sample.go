@@ -56,33 +56,29 @@ var mysqlIntegerTypes = map[string]struct{}{
 	"tinyint": {}, "smallint": {}, "mediumint": {}, "int": {}, "bigint": {},
 }
 
-// textTypes are the catalogue names of the types that hold text, whatever their length,
-// in lower case.
-var textTypes = map[string]struct{}{
-	// PostgreSQL
-	"text": {}, "character varying": {}, "character": {}, "citext": {},
-	// MySQL and MariaDB
-	"char": {}, "varchar": {}, "tinytext": {}, "mediumtext": {}, "longtext": {},
-	// SQL Server
-	"nchar": {}, "nvarchar": {},
+// textTypes are, for each engine, the catalogue names of the types that hold text the empty
+// string can be compared with, whatever their length, in lower case. The legacy text and
+// ntext types of SQL Server take no such comparison and are left out: their values are
+// filtered on NULL only.
+var textTypes = map[string]map[string]struct{}{
+	sqlmanager_shared.GoquPostgresDriver: {
+		"text": {}, "character varying": {}, "character": {}, "citext": {},
+	},
+	sqlmanager_shared.MysqlDriver: {
+		"char": {}, "varchar": {}, "tinytext": {}, "text": {}, "mediumtext": {}, "longtext": {},
+	},
+	sqlmanager_shared.MssqlDriver: {
+		"char": {}, "varchar": {}, "nchar": {}, "nvarchar": {},
+	},
 }
-
-// sqlServerLegacyTextTypes are the SQL Server types that hold text but take no comparison
-// with the empty string; their values are filtered on NULL only.
-var sqlServerLegacyTextTypes = map[string]struct{}{"text": {}, "ntext": {}}
 
 // holdsText tells whether a column of the catalogue type dataType holds text that the
 // empty string can be compared with, on the database of the goqu driver. The type is
-// matched without its length (varchar(255)) and in any case.
+// matched without its length (varchar(255)) and in any case. On MySQL the comparison also
+// leaves out the values made of spaces only under a PAD SPACE collation.
 func holdsText(driver, dataType string) bool {
 	name, _, _ := strings.Cut(dataType, "(")
-	name = strings.ToLower(strings.TrimSpace(name))
-	if driver == sqlmanager_shared.MssqlDriver {
-		if _, legacy := sqlServerLegacyTextTypes[name]; legacy {
-			return false
-		}
-	}
-	_, ok := textTypes[name]
+	_, ok := textTypes[driver][strings.ToLower(strings.TrimSpace(name))]
 	return ok
 }
 

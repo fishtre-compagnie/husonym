@@ -178,3 +178,80 @@ func Test_SampleColumn_SqlServerLegacyTextTypes(t *testing.T) {
 		}
 	})
 }
+
+// requireColumnCoversTheTable draws samples of the values of an integer column that holds the
+// rank of its row, until values from the lowest and from the highest quarter of the rank range
+// have been seen, and fails when maxCoverageDraws draws have not shown both. It is
+// requireCoversTheTable for a column sample, with quarters: a sample that keeps the rows of the
+// first pages it reads stops about the middle of the table, which halves would not tell.
+func requireColumnCoversTheTable(t *testing.T, f *sampleFixture, table, column string, numRows uint, lastRank int64) {
+	t.Helper()
+	var low, high bool
+	for draw := 0; draw < maxCoverageDraws && !(low && high); draw++ {
+		rows, err := f.sampleColumn(t, table, column, numRows)
+		require.NoError(t, err)
+		require.Len(t, rows, int(numRows))
+		for _, row := range rows {
+			rank := intColumn(t, row, column)
+			low = low || rank <= lastRank/4
+			high = high || rank > lastRank/4*3
+		}
+	}
+	require.True(t, low, "no sampled value in the lowest quarter of the table")
+	require.True(t, high, "no sampled value in the highest quarter of the table")
+}
+
+// A column filled in every row of a large table of narrow rows gives values from across the
+// table: the rows of the pages drawn are shuffled before any cap is applied to them.
+func Test_SampleColumn_ADenseColumnCoversTheTable(t *testing.T) {
+	forEachEngine(t, allFamilies, func(t *testing.T, f *sampleFixture) {
+		requireColumnCoversTheTable(t, f, f.bigTable(t), "rank", 100, bigRows)
+	})
+}
+
+const (
+	// lateRows is the size of the table whose column is filled beyond the rows a window reads.
+	lateRows = 25000
+	// lateFrom is the first rank that holds a value: past the 20000 rows of the window.
+	lateFrom = 20001
+)
+
+// lateTable builds, once, a table of lateRows rows whose column nick is NULL in the first 20000
+// rows and filled in the others. It is not analyzed in the background either.
+func (f *sampleFixture) lateTable(t *testing.T, name string, withStatistics bool) string {
+	t.Helper()
+	return f.dataset(t, name, func() {
+		options := ""
+		if f.engine.family == familyPostgres && !withStatistics {
+			options = " WITH (autovacuum_enabled = false)"
+		}
+		f.exec(t, fmt.Sprintf(
+			"CREATE TABLE %s (id BIGINT NOT NULL PRIMARY KEY, %s INT NOT NULL, label VARCHAR(40) NOT NULL, nick VARCHAR(40) NULL)%s",
+			f.qualified(name), f.quote("rank"), options))
+		f.load(t, name, 1, lateRows, 1)
+		f.exec(t, fmt.Sprintf("UPDATE %s SET nick = label WHERE %s >= %d", f.qualified(name), f.quote("rank"), lateFrom))
+		if withStatistics {
+			f.analyze(t, name)
+		}
+	})
+}
+
+// The window of a column reads the first 20000 rows of the table and filters those: values that
+// lie beyond them are not looked for, and the call ends without an error and without a value.
+// The table is read by the window query alone: on PostgreSQL it was never analyzed, on MySQL
+// and MariaDB it is read through a view, which has no key to slice on.
+func Test_SampleColumn_TheWindowReadsABoundedNumberOfRows(t *testing.T) {
+	forEachEngine(t, []string{familyPostgres, familyMysql}, func(t *testing.T, f *sampleFixture) {
+		table := f.lateTable(t, "late_values", f.engine.family != familyPostgres)
+		if f.engine.family == familyMysql {
+			table = f.dataset(t, "late_view", func() {
+				f.exec(t, fmt.Sprintf("CREATE VIEW %s AS SELECT * FROM %s", f.qualified("late_view"), f.qualified("late_values")))
+			})
+		}
+
+		rows, err := f.sampleColumn(t, table, "nick", 50)
+
+		require.NoError(t, err)
+		require.Empty(t, rows)
+	})
+}

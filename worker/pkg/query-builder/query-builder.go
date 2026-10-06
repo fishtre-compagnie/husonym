@@ -91,6 +91,17 @@ func BuildSelectLimitQuery(
 // nothing.
 const SampleWindowSize = 1000
 
+const (
+	// SampleColumnScanRows is the number of rows, the first of the table, that the window
+	// query of a column reads to find its filled values. The filter is applied to these rows
+	// only, so a sparse column costs the same as a dense one and may give fewer values, or
+	// none.
+	SampleColumnScanRows = 20000
+	// SampleColumnSliceScanRows is the most rows read, in key order from its lower bound, in
+	// each key slice of a column sample. The filter is applied to these rows only.
+	SampleColumnSliceScanRows = 2000
+)
+
 // ColumnFilter makes a sampling query select one column and keep the filled values of
 // it only. A nil filter leaves a sampling query as it is: whole rows.
 type ColumnFilter struct {
@@ -127,11 +138,19 @@ func (f *ColumnFilter) restrict(d sqlident.Dialect, rows *goqu.SelectDataset) *g
 	return rows.Select(d.Col(f.Column)).Where(f.conditions(d)...)
 }
 
+// over keeps the filled values of the column among the rows of a bounded read of it. The
+// read is an inner select, so the filter never makes the database read further than it.
+func (f *ColumnFilter) over(
+	d sqlident.Dialect, builder goqu.DialectWrapper, read *goqu.SelectDataset,
+) *goqu.SelectDataset {
+	return f.restrict(d, builder.From(read.As("husonym_scan")))
+}
+
 // BuildSampledSelectLimitQuery builds a query that returns a random sample of a table.
 // The draw is made over a bounded window, the first SampleWindowSize rows of the table,
 // not over the whole table. It is the query that answers when a draw spread across the
 // table is not possible. With a filter, the window is made of the first SampleWindowSize
-// filled values of the column.
+// filled values found among the first SampleColumnScanRows rows of the table.
 //
 // The cost is bounded by the window. An `ORDER BY RAND() LIMIT n` applied straight to
 // the table makes the database read every row and sort all of them to return n, so its
@@ -165,8 +184,12 @@ func BuildSampledSelectLimitQuery(
 	builder := getGoquDialect(driver)
 
 	// The window is read without a sort: the database stops as soon as it has its rows.
-	window := filter.restrict(d, builder.From(d.Table(schema, table))).
-		Limit(SampleWindowSize).As("husonym_sample")
+	rows := builder.From(d.Table(schema, table))
+	if filter != nil {
+		// The filter is applied to the first SampleColumnScanRows rows only.
+		rows = filter.over(d, builder, rows.Select(d.Col(filter.Column)).Limit(SampleColumnScanRows))
+	}
+	window := rows.Limit(SampleWindowSize).As("husonym_sample")
 
 	sql, _, err := builder.
 		From(window).
@@ -221,7 +244,8 @@ type TableSize struct {
 //
 // With a filter, the pages are the same and only the filled values of the column are
 // kept. The rows are not thinned first: a thinning made before the filter would leave a
-// sparse column with a fraction of its values.
+// sparse column with a fraction of its values. On PostgreSQL the filled rows are shuffled
+// before the bound is applied; SQL Server has no bound before its random order.
 //
 // It supports PostgreSQL and SQL Server. ok is false when the driver has no table
 // sample, when the size is unknown (no row or no page) and when the table has no more
@@ -258,6 +282,12 @@ func BuildTableSampleQuery(
 		inner = filter.restrict(d, builder.From(goqu.L("? TABLESAMPLE SYSTEM (?)", sqltable, percent)))
 		if keep < 1 && filter == nil {
 			inner = inner.Where(goqu.L("RANDOM() < ?", keep))
+		}
+		if filter != nil {
+			// The pages come in physical order: the filled rows are shuffled before the bound,
+			// or the bound would keep the first pages only. The work stays bounded by the
+			// pages read.
+			inner = inner.Order(goqu.L("RANDOM()").Asc())
 		}
 		inner = inner.Limit(SampleRowsBound)
 		randStmt = "RANDOM()"
@@ -378,9 +408,13 @@ func keySlices(
 		if keyOnly {
 			rows = rows.Select(key)
 		}
-		return filter.restrict(d, rows.Where(key.Gte(r.From), key.Lte(r.To))).
-			Order(key.Asc()).
-			Limit(SampleSliceRows)
+		rows = rows.Where(key.Gte(r.From), key.Lte(r.To))
+		if filter == nil {
+			return rows.Order(key.Asc()).Limit(SampleSliceRows)
+		}
+		// The filter is applied to the first SampleColumnSliceScanRows rows of the range only.
+		scan := rows.Select(d.Col(filter.Column)).Order(key.Asc()).Limit(SampleColumnSliceScanRows)
+		return filter.over(d, builder, scan).Limit(SampleSliceRows)
 	}
 	union := slice(ranges[0])
 	for _, r := range ranges[1:] {

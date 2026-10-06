@@ -33,7 +33,7 @@ func columnCatalog() []*sqlmanager_shared.DatabaseSchemaRow {
 
 func Test_SampleColumn_ReadsTheFilledValuesOfATextColumn(t *testing.T) {
 	service, dbMock := catalogService(t, columnCatalog(), true)
-	dbMock.ExpectQuery(`SELECT * FROM (SELECT "email" FROM "sch"."tbl" WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 5`).
+	dbMock.ExpectQuery(`SELECT * FROM (SELECT "email" FROM (SELECT "email" FROM "sch"."tbl" LIMIT 20000) AS "husonym_scan" WHERE (("email" IS NOT NULL) AND ("email" <> '')) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 5`).
 		WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow("a@example.com").AddRow("b@example.com"))
 	stream := &rowCollector{}
 
@@ -45,7 +45,7 @@ func Test_SampleColumn_ReadsTheFilledValuesOfATextColumn(t *testing.T) {
 
 func Test_SampleColumn_LeavesOutNullOnlyForAColumnThatIsNotText(t *testing.T) {
 	service, dbMock := catalogService(t, columnCatalog(), true)
-	dbMock.ExpectQuery(`SELECT * FROM (SELECT "id" FROM "sch"."tbl" WHERE ("id" IS NOT NULL) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 5`).
+	dbMock.ExpectQuery(`SELECT * FROM (SELECT "id" FROM (SELECT "id" FROM "sch"."tbl" LIMIT 20000) AS "husonym_scan" WHERE ("id" IS NOT NULL) LIMIT 1000) AS "husonym_sample" ORDER BY RANDOM() ASC LIMIT 5`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 	err := service.SampleColumn(t.Context(), &rowCollector{}, "sch", "tbl", "id", 5)
@@ -90,6 +90,15 @@ func Test_HoldsText(t *testing.T) {
 	for _, dataType := range []string{"text", "ntext", "NTEXT"} {
 		require.False(t, holdsText(sqlmanager_shared.MssqlDriver, dataType), dataType)
 	}
+	// A type name of one engine is no text type of another.
+	require.False(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "varchar"))
+	require.False(t, holdsText(sqlmanager_shared.GoquPostgresDriver, "nvarchar"))
+	require.False(t, holdsText(sqlmanager_shared.MysqlDriver, "character varying"))
+	require.False(t, holdsText(sqlmanager_shared.MysqlDriver, "citext"))
+	require.False(t, holdsText(sqlmanager_shared.MysqlDriver, "nvarchar"))
+	require.False(t, holdsText(sqlmanager_shared.MssqlDriver, "citext"))
+	require.False(t, holdsText(sqlmanager_shared.MssqlDriver, "character varying"))
+	require.False(t, holdsText(sqlmanager_shared.MssqlDriver, "longtext"))
 	for _, dataType := range []string{
 		"integer", "bigint", "uuid", "json", "jsonb", "bytea", "boolean", "timestamp without time zone",
 		"enum", "enum('a','b')", "set('x')", "varbinary(20)", "binary", "blob", "int", "date", "xml", "", "name",
