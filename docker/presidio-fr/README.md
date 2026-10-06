@@ -62,7 +62,7 @@ Hugging Face à chaque langue. Désactiver le `SpacyRecognizer` en français par
 
 ### Pourquoi une sous-classe Python
 
-`MappedLabelsNerRecognizer` est le `HuggingFaceNerRecognizer` de Presidio, à trois
+`MappedLabelsNerRecognizer` est le `HuggingFaceNerRecognizer` de Presidio, à quatre
 différences près :
 
 1. **Seules les étiquettes de `label_mapping` sortent.** Presidio rend une
@@ -82,7 +82,15 @@ différences près :
    - un morceau dont les tokens dépassent encore la fenêtre (certains caractères
      valent plusieurs tokens : « ½ », « ﷺ ») est redécoupé en deux, autant de
      fois qu'il le faut.
-3. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
+3. **Le nom entier l'emporte sur un nom coupé.** Quand une coupe tombe dans un
+   nom, le morceau qui s'arrête là en rend le début (« Corentin Le »), parfois
+   avec un meilleur score que le nom entier vu par le morceau voisin, et
+   Presidio départage deux trouvailles qui se chevauchent par le score seul.
+   Ici, une trouvaille qui touche le bord où son morceau a été coupé n'est
+   gardée que si aucune trouvaille du même type, vue entière par un autre
+   morceau, ne la chevauche. Les autres doublons restent départagés par le
+   score.
+4. **Une inférence qui échoue fait échouer la requête.** Presidio rend alors
    « aucune trouvaille » pour le morceau ; ici l'erreur remonte, et le serveur
    répond par une erreur au lieu d'une liste incomplète.
 
@@ -198,10 +206,10 @@ Une observation par cas, sur un hôte à 16 cœurs, pour un texte français de
 | Taille de l'image, décompressée | 3,9 Go | 1,69 Go |
 | Taille de l'image, compressée | 1,31 Go | 614 Mo |
 | Mémoire après démarrage | 1,31 Gio | 1,12 Gio |
-| Démarrage jusqu'à `/health` | 9 à 10 s | 6,5 s |
-| 2 000 caractères, sans quota | 0,55 s | 0,07 s |
-| 2 000 caractères, `--cpus 2` | 0,55 s | — |
-| 2 000 caractères, `--cpus 2` et `OMP_NUM_THREADS` non fixé | 1,85 s | — |
+| Démarrage jusqu'à `/health` | 8 à 10 s | 6,5 s |
+| 2 000 caractères, sans quota | 0,56 s | 0,07 s |
+| 2 000 caractères, `--cpus 2` | 0,53 s | — |
+| 2 000 caractères, `--cpus 2` et `OMP_NUM_THREADS` non fixé | 1,66 s | — |
 
 Un texte de 5 000 caractères sans aucun blanc prend environ 3 s sans quota.
 

@@ -333,17 +333,51 @@ func Test_Analyzer_French_NameOfSeveralWords_AroundAChunkBoundary(t *testing.T) 
 	// The only spaces of the text are those of the name: a chunk boundary falls inside it for
 	// some of the offsets.
 	name := "Corentin Le Guével"
-	references := strings.Repeat("ref-0001;", 120)
 
-	for _, offset := range []int{351, 369, 387, 390, 396, 405} {
-		t.Run(fmt.Sprintf("name at %d", offset), func(t *testing.T) {
-			text := references[:offset] + name + ";" + references[:600]
+	cases := []struct {
+		name          string
+		filler        string
+		before, after string
+	}{
+		{name: "references", filler: "ref-0001;", before: "", after: ";"},
+		{name: "compact JSON", filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`},
+	}
+	for _, tc := range cases {
+		filler := strings.Repeat(tc.filler, 120)
+		for _, offset := range []int{351, 369, 387, 390, 396, 405} {
+			t.Run(fmt.Sprintf("%s, name at %d", tc.name, offset), func(t *testing.T) {
+				prefix := filler[:offset-len(tc.before)] + tc.before
+				text := prefix + name + tc.after + filler[:600]
 
-			findings := analyze(t, baseURL, langFr, text)
+				findings := analyze(t, baseURL, langFr, text)
 
-			person := requirePerson(t, text, name, findings)
-			require.Equal(t, offset, person.Start)
-		})
+				person := requirePerson(t, text, name, findings)
+				require.Equal(t, offset, person.Start)
+			})
+		}
+	}
+}
+
+func Test_Analyzer_French_Names_InProse_AroundAChunkBoundary(t *testing.T) {
+	baseURL := startAnalyzer(t)
+	sentence := "Le colis a été déposé au guichet avant midi. "
+	// Whole sentences of several lengths move the name across the end of the first chunk.
+	shifts := []string{"", "Vu. ", "Bien reçu. ", "Dossier complet. ", "Rien à signaler ce jour. "}
+	names := []string{"Corentin Delaunay", "Mathilde Rousseau", "Corentin Le Guével", "Anne Sophie Marchand"}
+
+	for _, name := range names {
+		for _, shift := range shifts {
+			prefix := strings.Repeat(sentence, 8) + shift + "Le dossier a été validé par "
+			offset := utf8.RuneCountInString(prefix)
+			t.Run(fmt.Sprintf("%s at %d", name, offset), func(t *testing.T) {
+				text := prefix + name + " hier soir. " + strings.Repeat(sentence, 12)
+
+				findings := analyze(t, baseURL, langFr, text)
+
+				person := requirePerson(t, text, name, findings)
+				require.Equal(t, offset, person.Start)
+			})
+		}
 	}
 }
 

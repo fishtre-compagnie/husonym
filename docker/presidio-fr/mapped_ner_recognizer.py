@@ -1,6 +1,6 @@
 """A Hugging Face NER recognizer that returns only mapped labels, in bounded chunks.
 
-Three things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
+Four things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
 
 - A label absent from `label_mapping` is returned by Presidio under the model's own name.
   Here it is dropped: the image declares a fixed list of entity types.
@@ -8,6 +8,8 @@ Three things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
   the model reads a fixed number of tokens and the pipeline truncates what exceeds it. Here
   a chunk never exceeds `chunk_size` characters, and a chunk whose tokens still exceed the
   model's window is split again before it is handed to the model.
+- Presidio settles two overlapping findings of two chunks by score alone. Here a finding
+  that touches the edge where its chunk was cut first yields to one another chunk saw whole.
 - Presidio returns no finding for a chunk the pipeline raises on. Here the error is raised.
 """
 
@@ -67,6 +69,47 @@ class BoundedTextChunker(CharacterBasedTextChunker):
 
     def _last_boundary(self, text: str, low: int, high: int) -> int:
         return max(text.rfind(char, low, high) for char in self.boundary_chars)
+
+    def predict_with_chunking(self, text, predict_func) -> List[RecognizerResult]:
+        """Predict each chunk and merge the findings, at their positions in the text.
+
+        A finding that touches an edge where its chunk was cut may be a part of a longer
+        one: it is kept only if no finding of its type seen whole by another chunk overlaps
+        it. Other duplicates are settled by score, as Presidio does.
+        """
+        chunks = self.chunk(text)
+        if len(chunks) <= 1:
+            return predict_func(text) if chunks else []
+
+        whole, touching_a_cut = [], []
+        for chunk in chunks:
+            for found in predict_func(chunk.text):
+                at_cut = (found.start == 0 and chunk.start > 0) or (
+                    found.end == len(chunk.text) and chunk.end < len(text)
+                )
+                (touching_a_cut if at_cut else whole).append(
+                    RecognizerResult(
+                        entity_type=found.entity_type,
+                        start=found.start + chunk.start,
+                        end=found.end + chunk.start,
+                        score=found.score,
+                        analysis_explanation=found.analysis_explanation,
+                        recognition_metadata=found.recognition_metadata,
+                    )
+                )
+
+        kept = self.deduplicate_overlapping_entities(whole)
+        kept += [
+            cut
+            for cut in self.deduplicate_overlapping_entities(touching_a_cut)
+            if not any(
+                cut.entity_type == seen.entity_type
+                and cut.start < seen.end
+                and seen.start < cut.end
+                for seen in kept
+            )
+        ]
+        return sorted(kept, key=lambda found: found.start)
 
 
 class MappedLabelsNerRecognizer(HuggingFaceNerRecognizer):
@@ -148,8 +191,9 @@ _require(
     "the text_chunker parameter of HuggingFaceNerRecognizer",
 )
 _require(
-    callable(getattr(BaseTextChunker, "predict_with_chunking", None)),
-    "BaseTextChunker.predict_with_chunking",
+    callable(getattr(BaseTextChunker, "predict_with_chunking", None))
+    and callable(getattr(BaseTextChunker, "deduplicate_overlapping_entities", None)),
+    "BaseTextChunker.predict_with_chunking and deduplicate_overlapping_entities",
 )
 _require(
     all(

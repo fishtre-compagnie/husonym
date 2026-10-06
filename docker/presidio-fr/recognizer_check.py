@@ -105,7 +105,11 @@ class FakeTokenizer:
 
 
 class FakePipeline:
-    """Finds the names as PER, « Besançon » as LOC and « Faible » as a PER of low score."""
+    """Finds the names as PER, « Besançon » as LOC and « Faible » as a PER of low score.
+
+    The first or last words of a name, where the text it is given ends or starts within the
+    name, are found as a PER of a higher score than the whole name.
+    """
 
     tokenizer = FakeTokenizer()
 
@@ -129,6 +133,16 @@ class FakePipeline:
                     {"entity_group": label, "score": score, "start": position, "end": position + len(word)}
                 )
                 position = text.find(word, position + 1)
+        for name in NAMES:
+            words = name.split(" ")
+            for count in range(1, len(words)):
+                first, last = " ".join(words[:count]), " ".join(words[count:])
+                if text.endswith(first):
+                    found.append(
+                        {"entity_group": "PER", "score": 0.999, "start": len(text) - len(first), "end": len(text)}
+                    )
+                if text.startswith(last):
+                    found.append({"entity_group": "PER", "score": 0.999, "start": 0, "end": len(last)})
         return found
 
 
@@ -160,10 +174,15 @@ def check_predictions() -> None:
     assert [(r.entity_type, text[r.start : r.end], r.score) for r in results] == [("PERSON", name, 0.99)]
     assert results[0].analysis_explanation.recognizer == recognizer.name
 
-    # A name around a cut is returned once, whole, at its position in the text.
-    for offset in range(280, 480, 7):
-        text = ("ref-0001;" * 60)[:offset] + name + ";" + "ref-0002;" * 60
-        assert found(recognizer, text) == [("PERSON", name)], offset
+    # A name around a cut is returned once and whole, although the chunk that holds a part
+    # of it scores that part higher.
+    for several_words in NAMES:
+        for offset in range(280, 480):
+            text = ("ref-0001;" * 60)[:offset] + several_words + ";" + "ref-0002;" * 60
+            assert found(recognizer, text) == [("PERSON", several_words)], (several_words, offset)
+            text = "Le colis est arrivé. " * 60
+            text = text[:offset] + several_words + " " + text
+            assert found(recognizer, text) == [("PERSON", several_words)], (several_words, offset)
 
     # A chunk of more tokens than the model's window is split before the pipeline reads it.
     text = "½" * 800 + " " + name + "."
