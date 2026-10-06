@@ -29,7 +29,8 @@ type Key struct {
 	// Plan is a label for humans; nothing is decided from it.
 	Plan string `json:"plan,omitempty"`
 	// Nil means the key does not list features and allows all of them; an empty list allows none.
-	Features []string `json:"features,omitempty"`
+	// omitzero, unlike omitempty, keeps an empty list when the key is written.
+	Features []string `json:"features,omitzero"`
 	// Telemetry is read through TelemetryMode, which gives unknown values a meaning.
 	Telemetry string `json:"telemetry,omitempty"`
 }

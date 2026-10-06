@@ -1,6 +1,7 @@
 package license
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,29 @@ func Test_Key_HasFeature(t *testing.T) {
 	require.False(t, explicit.HasFeature(FeaturePiiText))
 	// An explicit empty list is a key that allows no optional feature.
 	require.False(t, empty.HasFeature(FeatureJobHooks))
+}
+
+func Test_Key_AnExplicitEmptyFeatureListSurvivesBeingWritten(t *testing.T) {
+	raw, err := json.Marshal(Key{Features: []string{}})
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"features":[]`)
+
+	var back Key
+	require.NoError(t, json.Unmarshal(raw, &back))
+	require.NotNil(t, back.Features)
+	for _, f := range AllFeatures() {
+		require.False(t, back.HasFeature(f), f)
+	}
+}
+
+func Test_Key_AnAbsentFeatureListIsNotWritten(t *testing.T) {
+	raw, err := json.Marshal(Key{})
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "features")
+
+	var back Key
+	require.NoError(t, json.Unmarshal(raw, &back))
+	require.Nil(t, back.Features)
 }
 
 func Test_AllFeatures_AreThirteenDistinctParsableNames(t *testing.T) {
