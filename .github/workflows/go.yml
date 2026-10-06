@@ -10,6 +10,7 @@ on:
       - go.sum
       - tools/go.mod
       - tools/go.sum
+      - .github/workflows/go.yml
   push:
     branches:
       - main
@@ -231,6 +232,8 @@ jobs:
 
   benchmark:
     name: benchmarks
+    # Un comparatif n'a de sens que sur une PR : il lui faut une base.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     # Le job publie le comparatif benchstat en commentaire de la PR : sans ce
     # droit, l'étape échoue sur « Resource not accessible by integration » alors
@@ -251,28 +254,15 @@ jobs:
       - name: Install benchstat
         run: go install golang.org/x/perf/cmd/benchstat@latest
 
-      - name: Restore benchmark cache
-        id: cache-restore
-        uses: actions/cache/restore@v6
-        with:
-          path: main-benchmark.txt
-          key: benchmarks-main
-          restore-keys: benchmarks-main
-
-      - name: Run benchmarks on main if cache miss
-        if: steps.cache-restore.outputs.cache-hit != 'true'
+      # La base de la PR est mesurée dans ce job, sur la même machine que la
+      # branche : deux mesures prises sur deux machines ne se comparent pas.
+      - name: Run base benchmark
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          git fetch origin main
-          git checkout origin/main
-          go test -run=^$ -bench=. -benchmem -count=6 ./... | grep -E "Benchmark" | tee main-benchmark.txt
-          git checkout -
-
-      - name: Cache main branch benchmark results
-        if: steps.cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: main-benchmark.txt
-          key: benchmarks-main
+          git fetch --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/base" FETCH_HEAD
+          (cd "$RUNNER_TEMP/base" && go test -run=^$ -bench=. -benchmem -count=6 ./... | grep -E "Benchmark") | tee base-benchmark.txt
 
       - name: Run branch benchmark
         run: go test -run=^$ -bench=. -benchmem -count=6 ./... | grep -E "Benchmark" | tee branch-benchmark.txt
@@ -280,7 +270,7 @@ jobs:
       - name: Compare benchmarks
         run: |
           # Run benchstat and save output
-          benchstat main-benchmark.txt branch-benchmark.txt | tee benchstat-output.txt
+          benchstat base-benchmark.txt branch-benchmark.txt | tee benchstat-output.txt
 
           echo "### Benchstat Geomean Results" > benchstat-results.txt
           if grep -q "geomean" benchstat-output.txt; then
@@ -304,17 +294,8 @@ jobs:
           echo -e "\n<details>\n<summary>Benchstat results</summary>\n\n\`\`\`\n$(cat benchstat-output.txt)\n\`\`\`\n</details>\n" >> benchstat-results.txt
 
       - name: Comment Benchstat Results on PR
-        if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
         with:
           file-path: benchstat-results.txt
           comment-tag: benchmark-results
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # if this is main branch, cache the results
-      - name: Cache main branch benchmark results
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v6
-        with:
-          path: branch-benchmark.txt
-          key: benchmarks-main
