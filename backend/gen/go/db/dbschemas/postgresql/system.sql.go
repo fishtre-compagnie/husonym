@@ -762,7 +762,9 @@ SELECT
     ic.start_value as seq_start_value,
     ic.cache_value as seq_cache_value,
     ic.cycle_option as seq_cycle_option,
-    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment
+    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment,
+    -- With standard_conforming_strings off, column_default holds each backslash of a string twice.
+    (pg_catalog.current_setting('standard_conforming_strings') = 'off')::boolean AS default_writes_backslash_twice
 FROM
     column_defaults cd
 LEFT JOIN linked_to_serial ls
@@ -777,27 +779,28 @@ ORDER BY
 `
 
 type GetDatabaseSchemaRow struct {
-	SchemaName             string
-	TableName              string
-	ColumnName             string
-	DataType               string
-	ColumnDefault          string
-	IsNullable             string
-	CharacterMaximumLength int32
-	NumericPrecision       int32
-	NumericScale           int32
-	OrdinalPosition        int16
-	GeneratedType          string
-	IdentityGeneration     string
-	TableOid               interface{}
-	SequenceType           string
-	SeqIncrementBy         sql.NullInt64
-	SeqMinValue            sql.NullInt64
-	SeqMaxValue            sql.NullInt64
-	SeqStartValue          sql.NullInt64
-	SeqCacheValue          sql.NullInt64
-	SeqCycleOption         sql.NullBool
-	ColumnComment          string
+	SchemaName                  string
+	TableName                   string
+	ColumnName                  string
+	DataType                    string
+	ColumnDefault               string
+	IsNullable                  string
+	CharacterMaximumLength      int32
+	NumericPrecision            int32
+	NumericScale                int32
+	OrdinalPosition             int16
+	GeneratedType               string
+	IdentityGeneration          string
+	TableOid                    interface{}
+	SequenceType                string
+	SeqIncrementBy              sql.NullInt64
+	SeqMinValue                 sql.NullInt64
+	SeqMaxValue                 sql.NullInt64
+	SeqStartValue               sql.NullInt64
+	SeqCacheValue               sql.NullInt64
+	SeqCycleOption              sql.NullBool
+	ColumnComment               string
+	DefaultWritesBackslashTwice bool
 }
 
 func (q *Queries) GetDatabaseSchema(ctx context.Context, db DBTX) ([]*GetDatabaseSchemaRow, error) {
@@ -831,6 +834,7 @@ func (q *Queries) GetDatabaseSchema(ctx context.Context, db DBTX) ([]*GetDatabas
 			&i.SeqCacheValue,
 			&i.SeqCycleOption,
 			&i.ColumnComment,
+			&i.DefaultWritesBackslashTwice,
 		); err != nil {
 			return nil, err
 		}
@@ -965,7 +969,9 @@ SELECT
     ic.start_value as seq_start_value,
     ic.cache_value as seq_cache_value,
     ic.cycle_option as seq_cycle_option,
-    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment
+    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment,
+    -- With standard_conforming_strings off, column_default holds each backslash of a string twice.
+    (pg_catalog.current_setting('standard_conforming_strings') = 'off')::boolean AS default_writes_backslash_twice
 FROM
     column_defaults cd
 LEFT JOIN linked_to_serial ls
@@ -980,27 +986,28 @@ ORDER BY
 `
 
 type GetDatabaseTableSchemasBySchemasAndTablesRow struct {
-	SchemaName             string
-	TableName              string
-	ColumnName             string
-	DataType               string
-	ColumnDefault          string
-	IsNullable             string
-	CharacterMaximumLength int32
-	NumericPrecision       int32
-	NumericScale           int32
-	OrdinalPosition        int16
-	GeneratedType          string
-	IdentityGeneration     string
-	TableOid               interface{}
-	SequenceType           string
-	SeqIncrementBy         sql.NullInt64
-	SeqMinValue            sql.NullInt64
-	SeqMaxValue            sql.NullInt64
-	SeqStartValue          sql.NullInt64
-	SeqCacheValue          sql.NullInt64
-	SeqCycleOption         sql.NullBool
-	ColumnComment          string
+	SchemaName                  string
+	TableName                   string
+	ColumnName                  string
+	DataType                    string
+	ColumnDefault               string
+	IsNullable                  string
+	CharacterMaximumLength      int32
+	NumericPrecision            int32
+	NumericScale                int32
+	OrdinalPosition             int16
+	GeneratedType               string
+	IdentityGeneration          string
+	TableOid                    interface{}
+	SequenceType                string
+	SeqIncrementBy              sql.NullInt64
+	SeqMinValue                 sql.NullInt64
+	SeqMaxValue                 sql.NullInt64
+	SeqStartValue               sql.NullInt64
+	SeqCacheValue               sql.NullInt64
+	SeqCycleOption              sql.NullBool
+	ColumnComment               string
+	DefaultWritesBackslashTwice bool
 }
 
 func (q *Queries) GetDatabaseTableSchemasBySchemasAndTables(ctx context.Context, db DBTX, schematables []string) ([]*GetDatabaseTableSchemasBySchemasAndTablesRow, error) {
@@ -1034,6 +1041,7 @@ func (q *Queries) GetDatabaseTableSchemasBySchemasAndTables(ctx context.Context,
 			&i.SeqCacheValue,
 			&i.SeqCycleOption,
 			&i.ColumnComment,
+			&i.DefaultWritesBackslashTwice,
 		); err != nil {
 			return nil, err
 		}

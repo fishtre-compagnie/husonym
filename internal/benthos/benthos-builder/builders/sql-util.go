@@ -1087,7 +1087,7 @@ func planForeignKeys(
 			// parent_id NOT NULL DEFAULT 0: the default stands for "no parent".
 			if len(fk.Columns) == 1 && planned.IsMandatory() {
 				if info, ok := columnInfo[config.Table()][fk.Columns[0]]; ok {
-					if value, ok := noParentValue(driver, info.ColumnDefault); ok {
+					if value, ok := noParentValue(driver, info.ColumnDefault, info.DefaultBackslashTwice); ok {
 						planned.NoParentValue = &value
 					}
 				}
@@ -1144,7 +1144,9 @@ var noParentDefaultCast = regexp.MustCompile(`::\s*[A-Za-z_][A-Za-z0-9_. ]*(\[\]
 //
 // Each database reports a default in its own way: MySQL gives the value itself, PostgreSQL
 // the expression it parsed back ('XX'::text), SQL Server the same in parentheses (('XX')).
-func noParentValue(driver, columnDefault string) (string, bool) {
+// A PostgreSQL session that has standard_conforming_strings off writes each backslash of
+// that expression twice: backslashWrittenTwice says the default was read by such a session.
+func noParentValue(driver, columnDefault string, backslashWrittenTwice bool) (string, bool) {
 	literal := strings.TrimSpace(columnDefault)
 	if literal == "" {
 		return "", false
@@ -1163,7 +1165,11 @@ func noParentValue(driver, columnDefault string) (string, bool) {
 	}
 	literal = strings.TrimSpace(noParentDefaultCast.ReplaceAllString(literal, ""))
 	if strings.HasPrefix(literal, "'") && strings.HasSuffix(literal, "'") && len(literal) >= 2 {
-		return strings.ReplaceAll(literal[1:len(literal)-1], "''", "'"), true
+		value := strings.ReplaceAll(literal[1:len(literal)-1], "''", "'")
+		if backslashWrittenTwice {
+			value = strings.ReplaceAll(value, `\\`, `\`)
+		}
+		return value, true
 	}
 	if noParentNumeric.MatchString(literal) {
 		return literal, true

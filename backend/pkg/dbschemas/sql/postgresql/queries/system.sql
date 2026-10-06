@@ -118,7 +118,9 @@ SELECT
     ic.start_value as seq_start_value,
     ic.cache_value as seq_cache_value,
     ic.cycle_option as seq_cycle_option,
-    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment
+    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment,
+    -- With standard_conforming_strings off, column_default holds each backslash of a string twice.
+    (pg_catalog.current_setting('standard_conforming_strings') = 'off')::boolean AS default_writes_backslash_twice
 FROM
     column_defaults cd
 LEFT JOIN linked_to_serial ls
@@ -251,7 +253,9 @@ SELECT
     ic.start_value as seq_start_value,
     ic.cache_value as seq_cache_value,
     ic.cycle_option as seq_cycle_option,
-    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment
+    COALESCE(pg_catalog.col_description(cd.table_oid, cd.ordinal_position), '')::text AS column_comment,
+    -- With standard_conforming_strings off, column_default holds each backslash of a string twice.
+    (pg_catalog.current_setting('standard_conforming_strings') = 'off')::boolean AS default_writes_backslash_twice
 FROM
     column_defaults cd
 LEFT JOIN linked_to_serial ls
