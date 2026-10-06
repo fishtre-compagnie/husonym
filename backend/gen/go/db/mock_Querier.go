@@ -4043,6 +4043,72 @@ func (_c *MockQuerier_GetConnectionsByIds_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// GetCurrentLicenseKey provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetCurrentLicenseKey(ctx context.Context, db DBTX) (HusonymApiLicenseKey, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCurrentLicenseKey")
+	}
+
+	var r0 HusonymApiLicenseKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (HusonymApiLicenseKey, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) HusonymApiLicenseKey); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(HusonymApiLicenseKey)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetCurrentLicenseKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCurrentLicenseKey'
+type MockQuerier_GetCurrentLicenseKey_Call struct {
+	*mock.Call
+}
+
+// GetCurrentLicenseKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetCurrentLicenseKey(ctx any, db any) *MockQuerier_GetCurrentLicenseKey_Call {
+	return &MockQuerier_GetCurrentLicenseKey_Call{Call: _e.mock.On("GetCurrentLicenseKey", ctx, db)}
+}
+
+func (_c *MockQuerier_GetCurrentLicenseKey_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetCurrentLicenseKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetCurrentLicenseKey_Call) Return(husonymApiLicenseKey HusonymApiLicenseKey, err error) *MockQuerier_GetCurrentLicenseKey_Call {
+	_c.Call.Return(husonymApiLicenseKey, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetCurrentLicenseKey_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (HusonymApiLicenseKey, error)) *MockQuerier_GetCurrentLicenseKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetDeclaredIssuers provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetDeclaredIssuers(ctx context.Context, db DBTX) ([]string, error) {
 	ret := _mock.Called(ctx, db)
@@ -6281,6 +6347,78 @@ func (_c *MockQuerier_InsertJobSourceColumns_Call) RunAndReturn(run func(ctx con
 	return _c
 }
 
+// InsertLicenseKey provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) InsertLicenseKey(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error) {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertLicenseKey")
+	}
+
+	var r0 HusonymApiLicenseKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertLicenseKeyParams) (HusonymApiLicenseKey, error)); ok {
+		return returnFunc(ctx, db, arg)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertLicenseKeyParams) HusonymApiLicenseKey); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Get(0).(HusonymApiLicenseKey)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, InsertLicenseKeyParams) error); ok {
+		r1 = returnFunc(ctx, db, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_InsertLicenseKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertLicenseKey'
+type MockQuerier_InsertLicenseKey_Call struct {
+	*mock.Call
+}
+
+// InsertLicenseKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg InsertLicenseKeyParams
+func (_e *MockQuerier_Expecter) InsertLicenseKey(ctx any, db any, arg any) *MockQuerier_InsertLicenseKey_Call {
+	return &MockQuerier_InsertLicenseKey_Call{Call: _e.mock.On("InsertLicenseKey", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_InsertLicenseKey_Call) Run(run func(ctx context.Context, db DBTX, arg InsertLicenseKeyParams)) *MockQuerier_InsertLicenseKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 InsertLicenseKeyParams
+		if args[2] != nil {
+			arg2 = args[2].(InsertLicenseKeyParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_InsertLicenseKey_Call) Return(husonymApiLicenseKey HusonymApiLicenseKey, err error) *MockQuerier_InsertLicenseKey_Call {
+	_c.Call.Return(husonymApiLicenseKey, err)
+	return _c
+}
+
+func (_c *MockQuerier_InsertLicenseKey_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)) *MockQuerier_InsertLicenseKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsAccountHookNameAvailable provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -6979,6 +7117,63 @@ func (_c *MockQuerier_LockIdentityProviderSubject_Call) Return(err error) *MockQ
 }
 
 func (_c *MockQuerier_LockIdentityProviderSubject_Call) RunAndReturn(run func(ctx context.Context, db DBTX, providersub string) error) *MockQuerier_LockIdentityProviderSubject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LockLicenseKeys provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) LockLicenseKeys(ctx context.Context, db DBTX) error {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockLicenseKeys")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) error); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_LockLicenseKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockLicenseKeys'
+type MockQuerier_LockLicenseKeys_Call struct {
+	*mock.Call
+}
+
+// LockLicenseKeys is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) LockLicenseKeys(ctx any, db any) *MockQuerier_LockLicenseKeys_Call {
+	return &MockQuerier_LockLicenseKeys_Call{Call: _e.mock.On("LockLicenseKeys", ctx, db)}
+}
+
+func (_c *MockQuerier_LockLicenseKeys_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_LockLicenseKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_LockLicenseKeys_Call) Return(err error) *MockQuerier_LockLicenseKeys_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_LockLicenseKeys_Call) RunAndReturn(run func(ctx context.Context, db DBTX) error) *MockQuerier_LockLicenseKeys_Call {
 	_c.Call.Return(run)
 	return _c
 }

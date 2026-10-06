@@ -180,6 +180,17 @@ type HusonymApiJobSourceColumn struct {
 	DataType    string
 }
 
+// Stores the license keys of the instance, not of an account: the one in force is the latest issued
+type HusonymApiLicenseKey struct {
+	ID              pgtype.UUID
+	Key             string
+	LicenseID       string
+	IssuedAt        pgtype.Timestamptz
+	Origin          string
+	CreatedAt       pgtype.Timestamptz
+	CreatedByUserID pgtype.UUID
+}
+
 type HusonymApiRuncontext struct {
 	WorkflowID  string
 	ExternalID  string

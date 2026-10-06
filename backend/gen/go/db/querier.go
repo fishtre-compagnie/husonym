@@ -85,6 +85,9 @@ type Querier interface {
 	GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error)
 	GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiConnection, error)
 	GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiConnection, error)
+	// The key in force: the latest one issued, the latest one stored when two were issued at the
+	// same instant. No row means the instance has no key.
+	GetCurrentLicenseKey(ctx context.Context, db DBTX) (HusonymApiLicenseKey, error)
 	// Every issuer an account has declared, for the resolver the token validator calls.
 	//
 	// The issuer is read straight out of the jsonb and never decrypted, because it is not a
@@ -129,6 +132,7 @@ type Querier interface {
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
+	InsertLicenseKey(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)
 	IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error)
 	IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConnectionInAccountParams) (int64, error)
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
@@ -150,6 +154,10 @@ type Querier interface {
 	// The subject alone is the key, without its issuer, because a row recorded before issuers
 	// were is found by its subject under any of them.
 	LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error
+	// The license keys belong to the instance: there is no account here.
+	// Held until the transaction ends, so that two keys given at the same moment, wherever they
+	// are asked, are looked at one after the other: the second sees what the first wrote.
+	LockLicenseKeys(ctx context.Context, db DBTX) error
 	// Holds a user for the rest of the transaction, so that what is created once per user is
 	// decided by one transaction at a time: a second one waits here until the first is done.
 	//
