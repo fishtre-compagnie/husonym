@@ -305,6 +305,56 @@ func Test_contentAnalysis_detection_FreeText(t *testing.T) {
 	require.Equal(t, "texte libre : 2/50 valeurs contiennent PERSON", got.GetPiiEvidence())
 }
 
+// The free-text verdict is kept for a column of any type; the transformer that writes text is
+// suggested only for a column that takes one.
+func Test_contentAnalysis_detection_FreeTextTransformerFollowsTheColumnType(t *testing.T) {
+	values := withFirst("Rappeler Marie avant midi svp", "Client Marie satisfait du service")
+	piiText := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT
+	none := mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_UNSPECIFIED
+	cases := map[string]mgmtv1alpha1.TransformerSource{
+		"text":              piiText,
+		"character varying": piiText,
+		"":                  piiText,
+		"jsonb":             none,
+		"JSON":              none,
+		"bytea":             none,
+		"text[]":            none,
+		"integer":           none,
+	}
+	for dataType, want := range cases {
+		t.Run("type "+dataType, func(t *testing.T) {
+			content := newContentAnalysis(entitiesIn(t, textMarkers))
+
+			got := content.detection(t.Context(), "public", "tickets", "comment", dataType, values)
+
+			require.NotNil(t, got)
+			require.Equal(t, piidetect.FreeTextCategory, got.GetDataCategory())
+			require.Equal(t, "PERSON", got.GetEntityType())
+			require.Equal(t, uint32(2), got.GetMatchCount())
+			require.Equal(t, mgmtv1alpha1.PiiConfidence_PII_CONFIDENCE_NEEDS_REVIEW, got.GetPiiConfidence())
+			require.Equal(t, "texte libre : 2/50 valeurs contiennent PERSON", got.GetPiiEvidence())
+			require.Equal(t, want, got.GetSuggestedTransformerSource())
+		})
+	}
+}
+
+// The data type of the column reaches the suggestion of the rule of the third: phone numbers in
+// an integer column are given the generator of integer phone numbers.
+func Test_contentAnalysis_detection_PhoneNumbersInAnIntegerColumn(t *testing.T) {
+	values := make([]string, 6)
+	for i := range values {
+		values[i] = fmt.Sprintf("06123456%02d", i)
+	}
+	content := newContentAnalysis(entitiesIn(t, map[string]found{"0612": {"PHONE_NUMBER", 0.9}}))
+
+	got := content.detection(t.Context(), "public", "clients", "contact", "bigint", values)
+
+	require.NotNil(t, got)
+	require.Equal(t, "PHONE_NUMBER", got.GetEntityType())
+	require.Equal(t,
+		mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_GENERATE_INT64_PHONE_NUMBER, got.GetSuggestedTransformerSource())
+}
+
 func Test_contentAnalysis_detection_NothingFound(t *testing.T) {
 	content := newContentAnalysis(entitiesIn(t, textMarkers))
 
@@ -316,7 +366,7 @@ func Test_freeTextDetection(t *testing.T) {
 		entity: "PERSON", avgScore: 0.75, matchCount: 3, names: []string{"LOCATION", "PERSON"}, freeText: true,
 	}
 
-	got := freeTextDetection("public", "tickets", "comment", sentences(50), told)
+	got := freeTextDetection("public", "tickets", "comment", "text", sentences(50), told)
 
 	require.Equal(t, "texte libre : 3/50 valeurs contiennent LOCATION, PERSON", got.GetPiiEvidence())
 	require.Equal(t, uint32(3), got.GetMatchCount())

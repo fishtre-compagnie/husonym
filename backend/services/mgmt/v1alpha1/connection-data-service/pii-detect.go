@@ -299,7 +299,7 @@ func (a *contentAnalysis) detection(
 		return nil
 	}
 	if told.freeText {
-		return freeTextDetection(schema, table, column, values, told)
+		return freeTextDetection(schema, table, column, dataType, values, told)
 	}
 	suggestion, ok := piidetect.SuggestionForEntity(told.entity, dataType)
 	if !ok {
@@ -368,19 +368,6 @@ func (a *contentAnalysis) detect(ctx context.Context, name string, values []stri
 	return columnVerdict{}, false
 }
 
-// column is detect for a column the rule of the third alone judges: the entity, its mean score
-// and how many values carry it.
-//
-//nolint:unused // the rule of the third, as the tests of this package pin it; detect carries it
-func (a *contentAnalysis) column(
-	ctx context.Context,
-	name string,
-	values []string,
-) (entity string, avgScore float64, matchCount int, ok bool) {
-	told, ok := a.detect(ctx, name, values)
-	return told.entity, told.avgScore, told.matchCount, ok
-}
-
 // examine analyzes the values of a column, once. ok is false when the column could not be
 // analyzed, which is kept.
 func (a *contentAnalysis) examine(
@@ -416,19 +403,23 @@ type columnVerdict struct {
 	freeText   bool
 }
 
-// freeTextDetection is the detection of a free-text column found to hold personal data.
+// freeTextDetection is the detection of a free-text column found to hold personal data. The
+// transformer that writes text is suggested for a column that takes one.
 func freeTextDetection(
-	schema, table, column string,
+	schema, table, column, dataType string,
 	values []string,
 	told columnVerdict,
 ) *mgmtv1alpha1.ColumnPiiDetection {
+	suggested := piidetect.SuggestionForText(
+		dataType, mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT,
+	)
 	return &mgmtv1alpha1.ColumnPiiDetection{
 		Schema:                     schema,
 		Table:                      table,
 		Column:                     column,
 		EntityType:                 told.entity,
 		Score:                      float32(told.avgScore),
-		SuggestedTransformerSource: mgmtv1alpha1.TransformerSource_TRANSFORMER_SOURCE_TRANSFORM_PII_TEXT,
+		SuggestedTransformerSource: suggested,
 		IsSensitive:                true,
 		MatchCount:                 clampUint32(told.matchCount),
 		SampledCount:               sampleCount(values),
