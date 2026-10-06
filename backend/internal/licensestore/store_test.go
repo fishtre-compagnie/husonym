@@ -24,6 +24,12 @@ import (
 // (such as refusing a key that has already expired): the acceptance rule does not look at expiry.
 func signedKey(t *testing.T, priv ed25519.PrivateKey, issuedAt, expiresAt time.Time) string {
 	t.Helper()
+	return signedKeyWithKid(t, priv, "", issuedAt, expiresAt)
+}
+
+// signedKeyWithKid is signedKey with the kid written in the envelope; none when empty.
+func signedKeyWithKid(t *testing.T, priv ed25519.PrivateKey, kid string, issuedAt, expiresAt time.Time) string {
+	t.Helper()
 	content, err := json.Marshal(license.Key{
 		Version:    "v1",
 		Id:         "lic-" + issuedAt.Format(time.RFC3339),
@@ -33,10 +39,14 @@ func signedKey(t *testing.T, priv ed25519.PrivateKey, issuedAt, expiresAt time.T
 		ExpiresAt:  expiresAt,
 	})
 	require.NoError(t, err)
-	envelope, err := json.Marshal(map[string]string{
+	fields := map[string]string{
 		"license":   base64.StdEncoding.EncodeToString(content),
 		"signature": base64.StdEncoding.EncodeToString(ed25519.Sign(priv, content)),
-	})
+	}
+	if kid != "" {
+		fields["kid"] = kid
+	}
+	envelope, err := json.Marshal(fields)
 	require.NoError(t, err)
 	return base64.StdEncoding.EncodeToString(envelope)
 }
@@ -52,6 +62,7 @@ type fixture struct {
 	store   *Store
 	querier *db_queries.MockQuerier
 	priv    ed25519.PrivateKey
+	ring    license.Keyring
 }
 
 // newFixture gives a store whose database is a double. With inTransaction, the double allows
@@ -69,10 +80,12 @@ func newFixture(t *testing.T, inTransaction bool) *fixture {
 		tx.On("Rollback", mock.Anything).Return(nil)
 		querier.On("LockLicenseKeys", mock.Anything, tx).Return(nil)
 	}
+	ring := license.Keyring{license.LegacyKid: pub}
 	return &fixture{
-		store:   New(husonymdb.New(dbtx, querier), license.Keyring{license.LegacyKid: pub}),
+		store:   New(husonymdb.New(dbtx, querier), ring),
 		querier: querier,
 		priv:    priv,
+		ring:    ring,
 	}
 }
 
@@ -106,6 +119,9 @@ func Test_Offer_RefusesWhatIsNotAValidKeyBeforeTouchingTheDatabase(t *testing.T)
 		{"signed by a key the ring does not hold", func(*fixture) string {
 			return signedKey(t, otherPriv, now, now.Add(time.Hour))
 		}},
+		{"names a kid the ring does not hold", func(f *fixture) string {
+			return signedKeyWithKid(t, f.priv, "k-unknown", now, now.Add(time.Hour))
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -116,6 +132,11 @@ func Test_Offer_RefusesWhatIsNotAValidKeyBeforeTouchingTheDatabase(t *testing.T)
 			require.NoError(t, err)
 			require.Equal(t, RefusedInvalid, res.Outcome)
 			require.NotEmpty(t, res.Reason)
+			if cleaned := Clean(value); cleaned != "" {
+				_, parseErr := license.ParseWith(cleaned, f.ring)
+				require.Error(t, parseErr)
+				require.Equal(t, parseErr.Error(), res.Reason)
+			}
 			require.NotContains(t, res.Reason, value)
 			require.Nil(t, res.Key)
 			// The doubles fail the test on any call: nothing was read or written.
