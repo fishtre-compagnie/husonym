@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -73,7 +74,8 @@ func columnNames(count int) []string {
 	return names
 }
 
-// analyzed answers a request with a verdict per column and nothing found.
+// analyzed answers a request with a verdict per column and nothing found. The verdicts
+// come in the reverse of the order of the names: the API owes no order.
 func analyzed(request *mgmtv1alpha1.DetectPiiInConnectionDataRequest) *mgmtv1alpha1.DetectPiiInConnectionDataResponse {
 	response := &mgmtv1alpha1.DetectPiiInConnectionDataResponse{}
 	for _, column := range request.GetColumns() {
@@ -81,7 +83,17 @@ func analyzed(request *mgmtv1alpha1.DetectPiiInConnectionDataRequest) *mgmtv1alp
 			Schema: request.GetSchema(), Table: request.GetTable(), Column: column,
 		})
 	}
+	slices.Reverse(response.Verdicts)
 	return response
+}
+
+// notAnalyzed marks the verdicts of the named columns as not analyzed.
+func notAnalyzed(response *mgmtv1alpha1.DetectPiiInConnectionDataResponse, columns ...string) {
+	for _, verdict := range response.GetVerdicts() {
+		if slices.Contains(columns, verdict.GetColumn()) {
+			verdict.ContentNotAnalyzed = true
+		}
+	}
 }
 
 func freeText(column, entity string, matches, sampled uint32) *mgmtv1alpha1.ColumnPiiDetection {
@@ -103,15 +115,16 @@ func notesRequest(columns ...string) *DetectPiiContentRequest {
 }
 
 // The API is asked about the named columns of the table, 50 values of each, with its own
-// language and threshold; what it found in free text is kept, by column.
-func Test_DetectPiiContent_KeepsWhatWasFoundInFreeText(t *testing.T) {
+// language and threshold; every detection it gives for one of those columns is kept, by
+// column, with the category it gave. A detection for a column that was not asked is ignored.
+func Test_DetectPiiContent_KeepsEveryDetectionOfTheAskedColumns(t *testing.T) {
 	api := &fakeContent{answer: func(_ int, request *mgmtv1alpha1.DetectPiiInConnectionDataRequest) (*mgmtv1alpha1.DetectPiiInConnectionDataResponse, error) {
 		response := analyzed(request)
 		response.Detections = []*mgmtv1alpha1.ColumnPiiDetection{
 			freeText("comment", "PERSON", 7, 50),
-			// A detection of another kind is not a finding in free text.
 			{Column: "label", EntityType: "LOCATION", MatchCount: 30, SampledCount: 50, DataCategory: "city"},
 			freeText("remarks", "", 2, 12),
+			freeText("stranger", "PERSON", 9, 50),
 		}
 		return response, nil
 	}}
@@ -122,6 +135,7 @@ func Test_DetectPiiContent_KeepsWhatWasFoundInFreeText(t *testing.T) {
 	require.Equal(t, &DetectPiiContentResponse{
 		PiiColumns: map[string]report.AnalyzerFinding{
 			"comment": {Category: "free_text_pii", Entity: "PERSON", Matches: 7, Sampled: 50},
+			"label":   {Category: "city", Entity: "LOCATION", Matches: 30, Sampled: 50},
 			"remarks": {Category: "free_text_pii", Matches: 2, Sampled: 12},
 		},
 		Status: report.AnalyzerAnswered,
@@ -129,6 +143,7 @@ func Test_DetectPiiContent_KeepsWhatWasFoundInFreeText(t *testing.T) {
 	require.JSONEq(t, `{
 		"PiiColumns": {
 			"comment": {"category": "free_text_pii", "entity": "PERSON", "matches": 7, "sampled": 50},
+			"label": {"category": "city", "entity": "LOCATION", "matches": 30, "sampled": 50},
 			"remarks": {"category": "free_text_pii", "matches": 2, "sampled": 12}
 		},
 		"Status": "answered"
@@ -190,10 +205,9 @@ func Test_DetectPiiContent_ColumnsNotAnalyzed(t *testing.T) {
 		response := analyzed(request)
 		if call == 1 {
 			response.Detections = []*mgmtv1alpha1.ColumnPiiDetection{freeText("column_03", "PERSON", 4, 50)}
-			response.Verdicts[17].ContentNotAnalyzed = true
-			response.Verdicts[5].ContentNotAnalyzed = true
+			notAnalyzed(response, "column_17", "column_05")
 		} else {
-			response.Verdicts[1].ContentNotAnalyzed = true
+			notAnalyzed(response, "column_21")
 		}
 		return response, nil
 	}}
@@ -234,7 +248,7 @@ func Test_DetectPiiContent_AFailedCallIsAttemptedAgain(t *testing.T) {
 			var appErr *temporal.ApplicationError
 			require.ErrorAs(t, err, &appErr)
 			require.False(t, appErr.NonRetryable())
-			require.ErrorContains(t, err, failure.Error())
+			require.ErrorContains(t, err, "the API could not analyze the content of the columns: "+connect.CodeOf(failure).String())
 			require.Len(t, api.sent(), 2, "the columns that follow are not asked")
 			require.Contains(t, run.logs.all(), "WARN a request to analyze the content of columns failed")
 		})
@@ -256,7 +270,8 @@ func Test_DetectPiiContent_ARefusedCallIsNotRetried(t *testing.T) {
 
 			_, _, err := execute[DetectPiiContentResponse](t, run, "DetectPiiContent", notesRequest(columnNames(45)...))
 			appErr := requireNotRetried(t, err, "AnalyzerRefused")
-			require.Equal(t, "the API refused to analyze the content of the columns", appErr.Message())
+			require.Equal(t, "the API refused to analyze the content of the columns: "+code.String(), appErr.Message())
+			require.NoError(t, errors.Unwrap(appErr), "no cause is attached")
 			require.Len(t, api.sent(), 1)
 			// The activity's own log line gives the code, not what the API said. (The
 			// error the SDK logs afterwards carries its cause, as for any activity.)
@@ -273,6 +288,34 @@ func Test_DetectPiiContent_ARefusedCallIsNotRetried(t *testing.T) {
 	}
 }
 
+// What the API says of a failed call may quote a value of a row it read. None of it is
+// returned, serialized as the failure of the activity, or logged: the error holds a fixed
+// message and the code.
+func Test_DetectPiiContent_ARefusedOrFailedCallRecordsNoTextOfTheAPI(t *testing.T) {
+	const marker = "VALUEMARKER"
+	for name, code := range map[string]connect.Code{
+		"an ordinary code": connect.CodeInternal,
+		"unavailable":      connect.CodeUnavailable,
+		"permission":       connect.CodePermissionDenied,
+		"unauthenticated":  connect.CodeUnauthenticated,
+	} {
+		t.Run(name, func(t *testing.T) {
+			api := &fakeContent{answer: func(int, *mgmtv1alpha1.DetectPiiInConnectionDataRequest) (*mgmtv1alpha1.DetectPiiInConnectionDataResponse, error) {
+				return nil, connect.NewError(code, fmt.Errorf("unable to sample column %q: failed to parse row values: %s", "note", marker))
+			}}
+			run := contentRun(t, api)
+
+			_, _, err := execute[DetectPiiContentResponse](t, run, "DetectPiiContent", notesRequest("note"))
+			require.Error(t, err)
+			require.NotContains(t, fmt.Sprintf("%v %+v", err, err), marker)
+			failure := temporal.GetDefaultFailureConverter().ErrorToFailure(err)
+			require.NotContains(t, failure.String(), marker)
+			require.Contains(t, failure.String(), code.String())
+			require.NotContains(t, run.logs.all(), marker)
+		})
+	}
+}
+
 // The columns are asked 20 per call, in their order; a heartbeat follows each answer and
 // counts what was asked and found so far.
 func Test_DetectPiiContent_AsksInCallsOfTwentyColumns(t *testing.T) {
@@ -280,7 +323,7 @@ func Test_DetectPiiContent_AsksInCallsOfTwentyColumns(t *testing.T) {
 		response := analyzed(request)
 		response.Detections = []*mgmtv1alpha1.ColumnPiiDetection{freeText(request.GetColumns()[0], "PERSON", 3, 50)}
 		if call == 2 {
-			response.Verdicts[4].ContentNotAnalyzed = true
+			notAnalyzed(response, "column_24")
 		}
 		return response, nil
 	}}

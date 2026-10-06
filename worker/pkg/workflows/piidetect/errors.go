@@ -69,18 +69,20 @@ func modelError(err error) error {
 	return fmt.Errorf("the model could not be asked: %w", err)
 }
 
-// contentError is the error of the content activity for a call that failed. A call the
-// API refuses to the worker is not retried: a new attempt would be refused as well. Its
-// message does not repeat what the API said, which the cause holds. Any other error is
-// returned as it is, for the retry policy of the activity to attempt the call again.
+// contentError is the error of the content activity for a call that failed. It holds a
+// fixed message and the code of the call, and nothing of what the API said: that text may
+// quote a value of a row. A call the API refuses to the worker is not retried: a new
+// attempt would be refused as well. Any other error is an ordinary one, for the retry
+// policy of the activity to attempt the call again.
 func contentError(err error) error {
-	switch connect.CodeOf(err) {
+	code := connect.CodeOf(err)
+	switch code {
 	case connect.CodePermissionDenied, connect.CodeUnauthenticated:
 		return temporal.NewNonRetryableApplicationError(
-			"the API refused to analyze the content of the columns",
+			"the API refused to analyze the content of the columns: "+code.String(),
 			errorTypeAnalyzerRefused,
-			err,
+			nil,
 		)
 	}
-	return err
+	return fmt.Errorf("the API could not analyze the content of the columns: %s", code)
 }

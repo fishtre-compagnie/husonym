@@ -59,8 +59,8 @@ type DetectPiiContentRequest struct {
 }
 
 type DetectPiiContentResponse struct {
-	// PiiColumns holds what the analyzer found, for each column whose free text it found
-	// personal data in.
+	// PiiColumns holds what the analyzer found, for each column it detected something in,
+	// under the category it gave.
 	PiiColumns map[string]report.AnalyzerFinding
 	// NotAnalyzed are the columns the analyzer could not analyze, in name order.
 	NotAnalyzed []string `json:",omitempty"`
@@ -79,16 +79,18 @@ type contentProgress struct {
 
 // DetectPiiContent asks the API to analyze the content of columns of a table, 20 columns
 // per call. The API reads the values from the source and has them analyzed: no value
-// comes to the worker. Of its answer the activity keeps, per column, the category, the
-// entity type and the counts of what was found in free text, and the names of the columns
-// that could not be analyzed.
+// comes to the worker. Of its answer the activity keeps, for each column it asked about,
+// the category the API gave, the entity type and the counts of what was found, and the
+// names of the columns that could not be analyzed. A detection for another column is
+// ignored.
 //
 // An API that has no analyzer says so at the first call: the activity then asks nothing
 // more, and answers that there is none.
 //
 // The activity says that it is alive at a steady pace, also while a call is in flight.
-// Nothing of what the API answers is logged, and neither is the error of a call, which may
-// name the place the API is reached at.
+// Nothing of what the API answers is logged. A call that fails gives an error that holds a
+// fixed message and the code of the call, never the text of the API's error, which may
+// quote a value of a row.
 func (a *Activities) DetectPiiContent(ctx context.Context, req *DetectPiiContentRequest) (*DetectPiiContentResponse, error) {
 	logger := log.With(activity.GetLogger(ctx), "tableSchema", req.TableSchema, "tableName", req.TableName)
 	response := &DetectPiiContentResponse{PiiColumns: map[string]report.AnalyzerFinding{}, Status: report.AnalyzerAnswered}
@@ -123,6 +125,9 @@ func (a *Activities) DetectPiiContent(ctx context.Context, req *DetectPiiContent
 			return &DetectPiiContentResponse{PiiColumns: map[string]report.AnalyzerFinding{}, Status: report.AnalyzerNone}, nil
 		}
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			logger.Warn(
 				"a request to analyze the content of columns failed",
 				"call", call, "calls", calls, "columns", len(columns), "code", connect.CodeOf(err).String(),
@@ -137,7 +142,7 @@ func (a *Activities) DetectPiiContent(ctx context.Context, req *DetectPiiContent
 		)
 
 		for _, detection := range answer.Msg.GetDetections() {
-			if detection.GetDataCategory() != contentscan.FreeTextCategory {
+			if !slices.Contains(columns, detection.GetColumn()) {
 				continue
 			}
 			response.PiiColumns[detection.GetColumn()] = report.AnalyzerFinding{
