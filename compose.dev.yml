@@ -206,15 +206,19 @@ services:
   # bancaire. Voir docker/presidio-fr/README.md pour les mesures.
   #
   # La configuration (nlp.yaml, recognizers.yaml, analyzer.yaml) est dans
-  # l'image, et `docker compose up` ne reconstruit pas une image qui existe
-  # déjà : après une modification de docker/presidio-fr, ou si l'image locale
-  # date d'avant ce changement, lancer une fois
-  # `docker compose -f compose.dev.yml up -d --build presidio-analyzer`.
+  # l'image et n'est plus montée. `pull_policy: build` fait construire l'image
+  # à chaque `docker compose up`, même sans `--build` : les couches inchangées
+  # viennent du cache, et une modification de docker/presidio-fr est prise.
+  # Sans cela, une image locale construite quand la configuration était encore
+  # montée serait relancée telle quelle : elle démarre, répond sur /health, et
+  # rend une erreur 500 « No matching recognizers were found » à chaque appel
+  # en français.
   presidio-analyzer:
     container_name: husonym-presidio-analyzer
     build:
       context: ./docker/presidio-fr
       dockerfile: Dockerfile
+    pull_policy: build
     ports:
       - 5002:3000
     networks:
