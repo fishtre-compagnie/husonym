@@ -1,9 +1,10 @@
-import { isFeatureAllowed } from '@/libs/license/license';
+import { isFeatureAvailable } from '@/libs/license/license';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
 
-// Whether the license of the instance allows a feature. While the license is being
-// read the feature counts as allowed: a pending request never greys out the interface.
+// Whether the license of the instance allows a feature, as far as the interface knows.
+// Until the license was read — the request is pending, or it failed — the feature
+// counts as allowed: neither greys out the interface.
 export function useLicenseFeature(name: string): {
   allowed: boolean;
   isLoading: boolean;
@@ -12,7 +13,7 @@ export function useLicenseFeature(name: string): {
     UserAccountService.method.getSystemInformation
   );
   return {
-    allowed: isLoading || isFeatureAllowed(data?.license, name),
+    allowed: isFeatureAvailable(data !== undefined, data?.license, name),
     isLoading,
   };
 }

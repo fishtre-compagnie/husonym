@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { sourceUsage } from '@/libs/license/license';
+import { SourceUsage, sourceUsage } from '@/libs/license/license';
 import { getErrorMessage } from '@/util/util';
 import {
   GetLicenseUsageResponse,
@@ -82,16 +82,19 @@ function Sources({
   license,
   usage,
 }: Pick<Props, 'license' | 'usage'>): ReactElement {
-  const { used, cap, over } = sourceUsage(license, usage);
+  const { used, cap, over, limit } = sourceUsage(license, usage);
   const sources = usage?.sourcesInAccount ?? [];
+  const count: Record<SourceUsage['limit'], string> = {
+    'none-in-force': `${used}`,
+    capped: `${used} of ${cap}`,
+    uncapped: `${used}, no limit`,
+  };
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-row items-baseline gap-2">
         <span className="text-sm font-medium">Sources</span>
-        <span className="text-sm">
-          {cap === undefined ? `${used}, no limit` : `${used} of ${cap}`}
-        </span>
+        <span className="text-sm">{count[limit]}</span>
       </div>
       <p className="text-muted-foreground text-sm">
         The count covers the whole instance, every account included.

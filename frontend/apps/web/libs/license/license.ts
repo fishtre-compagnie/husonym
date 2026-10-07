@@ -57,6 +57,17 @@ export function isFeatureAllowed(
   return license.allFeatures || license.features.includes(name);
 }
 
+// Whether the interface offers a feature. It greys an action only on what it has
+// actually read: while the license is pending, or when it could not be read, the
+// feature stays offered, and the API, which enforces the license, has the last word.
+export function isFeatureAvailable(
+  wasRead: boolean,
+  license: SystemLicense | undefined,
+  name: string
+): boolean {
+  return !wasRead || isFeatureAllowed(license, name);
+}
+
 export type FeatureRow = {
   name: string;
   allowed: boolean;
@@ -78,15 +89,30 @@ export function featureRows(
   });
 }
 
+export type SourceUsage = {
+  used: number;
+  cap?: number;
+  over: boolean;
+  // What the count is set against. A key that is not in force neither caps nor
+  // uncaps anything: there is only a count to show then, and no claim about a limit.
+  limit: 'none-in-force' | 'capped' | 'uncapped';
+};
+
 // The sources the instance counts, against the cap of its license key. An unset cap is
 // no cap, which is distinct from a cap of zero.
 export function sourceUsage(
   license: SystemLicense | undefined,
   usage: GetLicenseUsageResponse | undefined
-): { used: number; cap?: number; over: boolean } {
+): SourceUsage {
   const used = usage?.sourcesInInstance ?? 0;
-  const cap = license?.limits?.maxSources;
-  return { used, cap, over: cap !== undefined && used > cap };
+  if (!license?.isValid) {
+    return { used, cap: undefined, over: false, limit: 'none-in-force' };
+  }
+  const cap = license.limits?.maxSources;
+  if (cap === undefined) {
+    return { used, cap, over: false, limit: 'uncapped' };
+  }
+  return { used, cap, over: used > cap, limit: 'capped' };
 }
 
 // Mirrors the backend lifecycle in internal/license.

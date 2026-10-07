@@ -9,6 +9,7 @@ import {
   featureLabel,
   featureRows,
   isFeatureAllowed,
+  isFeatureAvailable,
   LICENSE_FEATURES,
   licenseState,
   sourceUsage,
@@ -103,6 +104,40 @@ describe('isFeatureAllowed', () => {
   });
 });
 
+describe('isFeatureAvailable', () => {
+  it('is available while the license is being read', () => {
+    expect(isFeatureAvailable(false, undefined, 'subsetting')).toBe(true);
+  });
+
+  it('is available when the license could not be read', () => {
+    // A failed request leaves nothing read, exactly as a pending one does: the API
+    // enforces the license, the interface only greys what it knows to be refused.
+    expect(isFeatureAvailable(false, undefined, 'job_hooks')).toBe(true);
+  });
+
+  it('is available when the license read includes the feature', () => {
+    expect(
+      isFeatureAvailable(true, listLicense(['subsetting']), 'subsetting')
+    ).toBe(true);
+  });
+
+  it('is not available when the license read does not include the feature', () => {
+    expect(
+      isFeatureAvailable(true, listLicense(['subsetting']), 'job_hooks')
+    ).toBe(false);
+  });
+
+  it('is not available when what was read holds no license in force', () => {
+    expect(isFeatureAvailable(true, undefined, 'subsetting')).toBe(false);
+    const frozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+      allFeatures: true,
+    });
+    expect(isFeatureAvailable(true, frozen, 'subsetting')).toBe(false);
+  });
+});
+
 describe('featureRows', () => {
   it('gives one row per feature, in the order asked', () => {
     const rows = featureRows(LICENSE_FEATURES, undefined, []);
@@ -159,13 +194,45 @@ describe('sourceUsage', () => {
     });
   }
 
-  it('has no cap when the key sets none', () => {
+  it('claims no limit without a license: only the count is known', () => {
+    expect(sourceUsage(undefined, usageOf(7))).toEqual({
+      used: 7,
+      cap: undefined,
+      over: false,
+      limit: 'none-in-force',
+    });
+  });
+
+  it('claims no limit for a key that is no longer in force, whatever it caps', () => {
+    const frozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+      limits: { maxSources: 5 },
+    });
+    expect(sourceUsage(frozen, usageOf(7))).toEqual({
+      used: 7,
+      cap: undefined,
+      over: false,
+      limit: 'none-in-force',
+    });
+    const uncappedFrozen = create(SystemLicenseSchema, {
+      isValid: false,
+      state: 'frozen',
+    });
+    expect(sourceUsage(uncappedFrozen, usageOf(7)).limit).toBe('none-in-force');
+  });
+
+  it('is capped by a key in force that sets a cap', () => {
+    expect(sourceUsage(cappedAt(5), usageOf(3)).limit).toBe('capped');
+  });
+
+  it('is uncapped under a key in force that sets no cap', () => {
     expect(sourceUsage(listLicense([]), usageOf(7))).toEqual({
       used: 7,
       cap: undefined,
       over: false,
+      limit: 'uncapped',
     });
-    expect(sourceUsage(undefined, usageOf(7)).over).toBe(false);
   });
 
   it('is not over under the cap, nor at it', () => {
@@ -173,6 +240,7 @@ describe('sourceUsage', () => {
       used: 3,
       cap: 5,
       over: false,
+      limit: 'capped',
     });
     expect(sourceUsage(cappedAt(5), usageOf(5)).over).toBe(false);
   });
@@ -182,6 +250,7 @@ describe('sourceUsage', () => {
       used: 6,
       cap: 5,
       over: true,
+      limit: 'capped',
     });
   });
 
@@ -190,6 +259,7 @@ describe('sourceUsage', () => {
       used: 1,
       cap: 0,
       over: true,
+      limit: 'capped',
     });
   });
 
@@ -198,6 +268,7 @@ describe('sourceUsage', () => {
       used: 0,
       cap: 5,
       over: false,
+      limit: 'capped',
     });
   });
 });

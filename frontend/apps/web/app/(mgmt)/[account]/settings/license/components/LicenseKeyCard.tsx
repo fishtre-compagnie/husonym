@@ -41,18 +41,24 @@ export default function LicenseKeyCard(props: Props): ReactElement {
 
   async function onInstall(): Promise<void> {
     setRefusal(undefined);
+    let installed: SystemLicense | undefined;
     try {
-      const resp = await setLicense({ accountId, key: key.trim() });
-      setKey('');
-      await onInstalled();
-      toast.success('License key installed', {
-        description: installedDescription(resp.license),
-      });
+      // Sent as it was typed: the API cleans a key of what a paste adds around it.
+      const resp = await setLicense({ accountId, key });
+      installed = resp.license;
     } catch (err) {
       // Kept on the page rather than in a toast: a refusal gives a reason, dates
       // included, that is worth reading twice.
       setRefusal(refusalMessage(err));
+      return;
     }
+    setKey('');
+    toast.success('License key installed', {
+      description: installedDescription(installed),
+    });
+    // Outside of what catches a refusal: the key is installed by now, and a page that
+    // fails to read itself again must not say it was not.
+    await onInstalled();
   }
 
   return (
