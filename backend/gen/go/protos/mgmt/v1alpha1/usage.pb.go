@@ -88,7 +88,7 @@ const (
 	UsageReportingMode_USAGE_REPORTING_MODE_ONLINE UsageReportingMode = 1
 	// The report is prepared and kept, to be given as a file.
 	UsageReportingMode_USAGE_REPORTING_MODE_OFFLINE_REPORT UsageReportingMode = 2
-	// No report is prepared nor sent.
+	// The report is prepared and kept. Nothing is sent.
 	UsageReportingMode_USAGE_REPORTING_MODE_NONE UsageReportingMode = 3
 )
 

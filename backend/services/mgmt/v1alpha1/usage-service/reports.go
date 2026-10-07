@@ -263,6 +263,7 @@ func licenseModeOf(mode license.TelemetryMode) mgmtv1alpha1.UsageReportingMode {
 	case license.TelemetryOnline:
 		return mgmtv1alpha1.UsageReportingMode_USAGE_REPORTING_MODE_ONLINE
 	}
+	// An unknown mode of the key reads as online, as license.Key.TelemetryMode and telemetry.EffectiveMode do.
 	return mgmtv1alpha1.UsageReportingMode_USAGE_REPORTING_MODE_ONLINE
 }
 

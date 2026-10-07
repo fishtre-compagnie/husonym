@@ -481,7 +481,7 @@ export enum UsageReportingMode {
   OFFLINE_REPORT = 2,
 
   /**
-   * No report is prepared nor sent.
+   * The report is prepared and kept. Nothing is sent.
    *
    * @generated from enum value: USAGE_REPORTING_MODE_NONE = 3;
    */

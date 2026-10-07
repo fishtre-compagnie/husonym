@@ -95,6 +95,7 @@ services:
       - AUTH_ENABLED=false
 
       - HUSONYM_INSTALL_KIND=compose
+      # - HUSONYM_TELEMETRY=offline # what the instance does with its usage report: offline or off (not set: what the license provides)
 
       # Mot de passe de chiffrement des secrets d'un réglage de compte. De
       # développement uniquement : en production, fournir un secret propre.

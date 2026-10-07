@@ -22719,7 +22719,7 @@
             {
               "name": "USAGE_REPORTING_MODE_NONE",
               "number": "3",
-              "description": "No report is prepared nor sent."
+              "description": "The report is prepared and kept. Nothing is sent."
             }
           ]
         }

@@ -62,7 +62,7 @@ enum UsageReportingMode {
   USAGE_REPORTING_MODE_ONLINE = 1;
   // The report is prepared and kept, to be given as a file.
   USAGE_REPORTING_MODE_OFFLINE_REPORT = 2;
-  // No report is prepared nor sent.
+  // The report is prepared and kept. Nothing is sent.
   USAGE_REPORTING_MODE_NONE = 3;
 }
 

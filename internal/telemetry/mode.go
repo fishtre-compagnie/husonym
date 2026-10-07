@@ -6,7 +6,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/internal/license"
 )
 
-// Mode is how the usage report of the instance is handled.
+// Mode is how the usage report of the instance is handled. The report is prepared and kept in
+// every mode: only what becomes of it depends on the mode.
 type Mode string
 
 const (
@@ -14,7 +15,7 @@ const (
 	ModeOnline Mode = "online"
 	// ModeOfflineReport prepares the report and keeps it to be handed over by hand.
 	ModeOfflineReport Mode = "offline_report"
-	// ModeNone neither prepares nor sends anything.
+	// ModeNone prepares the report and keeps it: nothing is sent.
 	ModeNone Mode = "none"
 )
 
