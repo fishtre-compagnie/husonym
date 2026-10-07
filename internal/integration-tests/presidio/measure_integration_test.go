@@ -18,8 +18,9 @@ import (
 // This measure sends the values of two data sets of business text to the analyzer, one value per
 // request, and counts what it returns for PERSON, per span of text.
 //
-// The data sets (testdata/free-text-fr.json and free-text-en.json) hold 12 columns of 50 values
-// each, all invented: 6 columns name persons in some of their values, 6 name none. For the
+// The data sets (testdata/free-text-fr.json, free-text-fr-holdout.json and free-text-en.json)
+// hold 12 columns of 50 values each, all invented: 6 columns name persons in some of their
+// values, 6 name none. For the
 // columns that name persons, "persons" lists the positions of the values that do, and "names"
 // gives, for each of them, the names exactly as written in the value, every occurrence, in
 // order. A title ("Mme", "M.", "Madame", "Monsieur", "Dr", "Mr", "Mrs", "Ms") is not part of an
@@ -46,6 +47,8 @@ const (
 	taggedColumnMinValues = 2
 	noPersonColumn        = "none"
 	testdataDir           = "testdata"
+	// A French data set kept apart from the one the image's settings were chosen on.
+	heldOutFrenchDataset = "fr-holdout"
 )
 
 // notSensitive are the entity types that are not counted as sensitive.
@@ -71,9 +74,10 @@ type textColumn struct {
 	Values []string         `json:"values"`
 }
 
-func loadTextDataset(t *testing.T, language string) []textColumn {
+// loadTextDataset reads testdata/free-text-<name>.json, a data set written in language.
+func loadTextDataset(t *testing.T, name, language string) []textColumn {
 	t.Helper()
-	content, err := os.ReadFile(filepath.Join(testdataDir, "free-text-"+language+".json"))
+	content, err := os.ReadFile(filepath.Join(testdataDir, "free-text-"+name+".json"))
 	require.NoError(t, err)
 	var dataset textDataset
 	require.NoError(t, json.Unmarshal(content, &dataset))
@@ -170,11 +174,11 @@ func firstCharacters(s string, n int) string {
 	return s
 }
 
-// measurePersons sends every value of the data set of dataLanguage to the analyzer in language.
-func measurePersons(t *testing.T, baseURL, dataLanguage, language string) measure {
+// measurePersons sends every value of the data set of that name to the analyzer in language.
+func measurePersons(t *testing.T, baseURL, dataset, language string) measure {
 	t.Helper()
 	result := measure{language: language, sensitiveTypes: map[string]int{}}
-	for _, column := range loadTextDataset(t, dataLanguage) {
+	for _, column := range loadTextDataset(t, dataset, language) {
 		hasPersons := column.Expected != noPersonColumn
 		var wrong, missed []string
 		taggedValues, sensitiveValues := 0, 0
@@ -294,6 +298,23 @@ func Test_Measure_PersonsPerSpan_French(t *testing.T) {
 	baseURL := startAnalyzer(t)
 
 	result := measurePersons(t, baseURL, langFr, langFr)
+
+	result.log(t)
+	assert.GreaterOrEqual(t, result.precision(), 0.90, "precision per span")
+	assert.GreaterOrEqual(t, result.recall(), 0.90, "recall per name")
+	assert.LessOrEqual(t, result.noPersonColumnsTagged, 1,
+		"columns that name none with %d values tagged or more", taggedColumnMinValues)
+	assert.Equal(t, 6, result.personColumnsTagged,
+		"columns that name persons with %d values tagged or more", taggedColumnMinValues)
+}
+
+// The second French data set was written without running a model, and the threshold of the
+// image's person recognizer was not chosen on it: it tells what the first one cannot, how the
+// image does on text its settings were not tuned on.
+func Test_Measure_PersonsPerSpan_French_HeldOut(t *testing.T) {
+	baseURL := startAnalyzer(t)
+
+	result := measurePersons(t, baseURL, heldOutFrenchDataset, langFr)
 
 	result.log(t)
 	assert.GreaterOrEqual(t, result.precision(), 0.90, "precision per span")

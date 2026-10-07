@@ -3,9 +3,11 @@
 // They build the image, which downloads PyTorch and a model: they run only when
 // PRESIDIO_IMAGE_TESTS=1.
 //
-// What a run leaves on the machine: the image husonym-presidio-analyzer-test:latest (3.9 GB),
+// What a run leaves on the machine: the image husonym-presidio-analyzer-test:latest (1.95 GB),
 // kept so that the next run reuses its layers. A run after a change to docker/presidio-fr builds
-// a new image under that name and leaves the previous one without a name. To remove them:
+// a new image under that name and leaves the previous one without a name. The build also leaves
+// its first stage, the one that holds PyTorch, as an image without a name (3.7 GB observed). To
+// remove them:
 //
 //	docker rmi husonym-presidio-analyzer-test:latest
 //	docker images -a --filter dangling=true   # the unnamed ones, each removed by `docker rmi <id>`

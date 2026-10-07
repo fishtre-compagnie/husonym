@@ -2,8 +2,8 @@
 
 The image build runs this file after the configuration and the modules are in place, without
 network: the application is created as gunicorn creates it, one French sentence is posted to it,
-and the person must come back from the recognizer of this image. A name of Presidio or of
-transformers that changed fails here, and so fails the build.
+and the person must come back from the recognizer of this image. A name of Presidio, of ONNX
+Runtime or of tokenizers that changed fails here, and so fails the build.
 """
 
 from analyzer_app import create_app
@@ -13,8 +13,8 @@ DECLARED_ENTITIES = {
     "FR_POSTAL_CODE", "FR_SIRET", "IBAN_CODE", "IP_ADDRESS", "LOCATION", "MAC_ADDRESS", "NRP",
     "PERSON", "PHONE_NUMBER", "URL",
 }  # fmt: skip
-PERSON_RECOGNIZER = "MappedLabelsNerRecognizer"
-PERSON_THRESHOLD = 0.8
+PERSON_RECOGNIZER = "OnnxNerRecognizer"
+PERSON_THRESHOLD = 0.6
 # The model labels the company and the city too: only the person is mapped.
 TEXT = "Hélène Marchand travaille chez Batiloire à Besançon."
 NAME = "Hélène Marchand"

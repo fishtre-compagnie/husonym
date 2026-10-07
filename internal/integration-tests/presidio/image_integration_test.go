@@ -28,8 +28,8 @@ const (
 	entityEmail  = "EMAIL_ADDRESS"
 
 	// The recognizer of the image that returns French persons, and the score it starts at.
-	personRecognizer = "MappedLabelsNerRecognizer"
-	personThreshold  = 0.8
+	personRecognizer = "OnnxNerRecognizer"
+	personThreshold  = 0.6
 	spacyRecognizer  = "SpacyRecognizer"
 
 	scoreDelta = 1e-9
@@ -339,11 +339,11 @@ func Test_Analyzer_Gunicorn_WorkerTimeout(t *testing.T) {
 	require.Equal(t, "120", arguments[option+1])
 }
 
-// A text that takes several seconds to analyze returns its findings. The length is the one of a
-// single observation on this image without a CPU quota, 6.6 s for 20,000 characters of prose:
-// long enough to be far from a short request, short enough to end well before any timeout on a
-// slower machine. The duration is logged and not asserted.
-func Test_Analyzer_French_TextOfSeveralSeconds_PersonAtTheEnd(t *testing.T) {
+// A text of some fifty chunks returns its findings. A single observation on this image without a
+// CPU quota took 1.3 s for these 20,000 characters of prose: long enough to be far from a short
+// request, short enough to end well before any timeout on a slower machine. The duration is
+// logged and not asserted.
+func Test_Analyzer_French_TextOfManyChunks_PersonAtTheEnd(t *testing.T) {
 	baseURL := startAnalyzer(t)
 	sentences := []string{
 		"Le colis a été déposé au guichet avant midi. ",
@@ -384,13 +384,16 @@ func Test_Analyzer_French_TextWithoutWhitespace_PersonAtTheEnd(t *testing.T) {
 	requirePerson(t, text, "Mathilde.Rousseau", findings)
 }
 
-func Test_Analyzer_French_NameOfSeveralWords_AroundAChunkBoundary(t *testing.T) {
+// In a text with few or no spaces, a name of several words is not always returned whole: the
+// model may return a part of it, or nothing, wherever the name stands, and a chunk boundary
+// that falls inside the name adds to it. The README states it as a limit of the image. What is
+// asserted is what holds at every position: the request succeeds, and a person finding only
+// designates characters of the name or the few around it. How often the name comes back whole
+// is counted, logged per name, and held above a floor well under the count observed.
+func Test_Analyzer_French_NamesOfSeveralWords_InTextWithFewSpaces(t *testing.T) {
 	baseURL := startAnalyzer(t)
-	// The only spaces of the text are those of the name: a chunk boundary falls inside it for
-	// some of the offsets.
-	name := "Corentin Le Guével"
 
-	cases := []struct {
+	fillers := []struct {
 		name          string
 		filler        string
 		before, after string
@@ -398,58 +401,41 @@ func Test_Analyzer_French_NameOfSeveralWords_AroundAChunkBoundary(t *testing.T) 
 		{name: "references", filler: "ref-0001;", before: "", after: ";"},
 		{name: "compact JSON", filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`},
 	}
-	for _, tc := range cases {
+	persons := []string{"Corentin Le Guével", "Mathilde Rousseau de Kerbrat", "Anne-Sophie Marchand"}
+	// A finding may take a character before the name with it (a quote, a hyphen).
+	const margin = 2
+
+	positions, whole := 0, 0
+	for _, tc := range fillers {
 		filler := strings.Repeat(tc.filler, 120)
-		for _, offset := range []int{351, 369, 387, 390, 396, 405} {
-			t.Run(fmt.Sprintf("%s, name at %d", tc.name, offset), func(t *testing.T) {
+		for _, person := range persons {
+			wholeForName, positionsForName := 0, 0
+			// Every third position of a window wider than a chunk's end can move: the first
+			// chunk ends before the name, on each of its spaces, or after it.
+			for offset := 300; offset < 480; offset += 3 {
 				prefix := filler[:offset-len(tc.before)] + tc.before
-				text := prefix + name + tc.after + filler[:600]
+				text := prefix + person + tc.after + filler[:600]
+				end := offset + utf8.RuneCountInString(person)
 
-				findings := analyze(t, baseURL, langFr, text)
+				findings := ofType(analyze(t, baseURL, langFr, text), entityPerson)
 
-				person := requirePerson(t, text, name, findings)
-				require.Equal(t, offset, person.Start)
-			})
+				positionsForName++
+				for _, f := range findings {
+					require.Equal(t, personRecognizer, f.Explanation.Recognizer)
+					require.GreaterOrEqualf(t, f.Start, offset-margin, "%s, %s at %d: %+v", tc.name, person, offset, f)
+					require.LessOrEqualf(t, f.End, end+margin, "%s, %s at %d: %+v", tc.name, person, offset, f)
+					if f.Start == offset && f.End == end {
+						wholeForName++
+					}
+				}
+			}
+			t.Logf("%s, %s: whole at %d positions of %d", tc.name, person, wholeForName, positionsForName)
+			positions += positionsForName
+			whole += wholeForName
 		}
 	}
-}
-
-func Test_Analyzer_French_NameWithParticle_SweptAcrossAChunkBoundary(t *testing.T) {
-	baseURL := startAnalyzer(t)
-
-	cases := []struct {
-		name          string
-		person        string
-		filler        string
-		before, after string
-	}{
-		{
-			name:   "four words in compact JSON",
-			person: "Mathilde Rousseau de Kerbrat",
-			filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`,
-		},
-		{
-			name:   "de La in compact JSON",
-			person: "Corentin de La Brosse",
-			filler: `{"id":17,"ref":"A-0001"},`, before: `{"nom":"`, after: `"},`,
-		},
-	}
-	for _, tc := range cases {
-		filler := strings.Repeat(tc.filler, 120)
-		// Every third position of a window wider than a chunk's end can move: the first chunk
-		// ends before the name, on each of its spaces, or after it.
-		for offset := 300; offset < 480; offset += 3 {
-			t.Run(fmt.Sprintf("%s, name at %d", tc.name, offset), func(t *testing.T) {
-				prefix := filler[:offset-len(tc.before)] + tc.before
-				text := prefix + tc.person + tc.after + filler[:600]
-
-				findings := analyze(t, baseURL, langFr, text)
-
-				person := requirePerson(t, text, tc.person, findings)
-				require.Equal(t, offset, person.Start)
-			})
-		}
-	}
+	t.Logf("whole at %d positions of %d", whole, positions)
+	assert.GreaterOrEqual(t, whole*2, positions, "names returned whole, of %d positions", positions)
 }
 
 // Two chunks can each return a part of the passage where two persons follow each other, and

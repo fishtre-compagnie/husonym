@@ -1,16 +1,19 @@
-"""Checks of mapped_ner_recognizer.py that need neither PyTorch nor the model.
+"""Checks of onnx_ner_recognizer.py that do not need the model.
 
-The image build runs this file: a failed check fails the build. It also runs alone in the
-base image, see the README.
+The image build runs this file: a failed check fails the build. It also runs in a built
+image, see the README.
 """
 
+import math
 import random
 from typing import Dict, List, Set, Tuple
 
+import numpy as np
 from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.chunkers import TextChunk
+from presidio_analyzer.input_validation import yaml_recognizer_models
 
-from mapped_ner_recognizer import BoundedTextChunker, MappedLabelsNerRecognizer
+from onnx_ner_recognizer import BoundedTextChunker, OnnxNerRecognizer, grouped
 
 CHUNK_SIZE = 400
 CHUNK_OVERLAP = 40
@@ -98,46 +101,77 @@ def check_named_texts() -> None:
     check_chunks("é " * 400)
 
 
+MAX_TOKENS = 512
+SPECIAL_TOKEN, SECOND_TOKEN, FIRST_CHARACTER = 0, 1, 2
+
+
+class FakeEncoding:
+    """One token per character, two for a fraction sign, between the two special tokens."""
+
+    def __init__(self, text: str) -> None:
+        self.ids = [SPECIAL_TOKEN]
+        self.offsets = [(0, 0)]
+        self.special_tokens_mask = [1]
+        for position, character in enumerate(text):
+            tokens = [FIRST_CHARACTER + ord(character)] + [SECOND_TOKEN] * (character == "½")
+            self.ids.extend(tokens)
+            self.offsets.extend([(position, position + 1)] * len(tokens))
+            self.special_tokens_mask.extend([0] * len(tokens))
+        self.ids.append(SPECIAL_TOKEN)
+        self.offsets.append((0, 0))
+        self.special_tokens_mask.append(1)
+
+
 class FakeTokenizer:
-    """One token per character, two for a fraction sign, plus the two special tokens."""
-
-    model_max_length = 512
-
-    def __call__(self, text: str, truncation: bool) -> Dict[str, List[int]]:
-        assert truncation is False
-        return {"input_ids": [0] * (len(text) + text.count("½") + 2)}
+    def encode(self, text: str) -> FakeEncoding:
+        return FakeEncoding(text)
 
 
-class FakePipeline:
-    """Finds the names as PER, « Besançon » as LOC and « Faible » as a PER of low score.
+class FakeSession:
+    """Labels the names as PER, « Besançon » as LOC and « Faible » as a PER of low score.
 
-    Where the text it is given ends or starts within a name, a part of the name is found as
-    a PER of a higher score than the whole name: its last words at the start of the text; at
-    the end of the text its first word, or its first words without the last one the text
+    Where the text it is given ends or starts within a name, a part of the name is labelled
+    as a PER of a higher score than the whole name: its last words at the start of the text;
+    at the end of the text its first word, or its first words without the last one the text
     holds, which then stops short of the end of the text.
     """
 
-    tokenizer = FakeTokenizer()
+    labels = ["O", "I-LOC", "I-PER"]
 
     def __init__(self) -> None:
         self.largest_input = 0
+        self.runs = 0
 
-    def __call__(self, text: str) -> List[dict]:
-        tokens = len(self.tokenizer(text, truncation=False)["input_ids"])
-        assert tokens <= self.tokenizer.model_max_length, tokens
-        self.largest_input = max(self.largest_input, tokens)
+    def run(self, outputs: List[str], inputs: Dict[str, np.ndarray]) -> List[np.ndarray]:
+        assert outputs == ["logits"], outputs
+        ids = inputs["input_ids"]
+        assert ids.dtype == np.int64 and ids.shape[0] == 1, (ids.dtype, ids.shape)
+        assert inputs["attention_mask"].shape == ids.shape and inputs["attention_mask"].all()
+        tokens = [int(token) for token in ids[0]]
+        assert len(tokens) <= MAX_TOKENS, len(tokens)
+        self.largest_input = max(self.largest_input, len(tokens))
+        self.runs += 1
+        # The token of each character of the text, and the text.
+        token_of = [index for index, token in enumerate(tokens) if token >= FIRST_CHARACTER]
+        text = "".join(chr(tokens[index] - FIRST_CHARACTER) for index in token_of)
         if "panne" in text:
             raise RuntimeError("inference failed")
-        found = []
-        for word, label, score in [(n, "PER", 0.99) for n in NAMES] + [
-            ("Besançon", "LOC", 0.99),
-            ("Faible", "PER", 0.5),
+
+        logits = np.zeros((1, len(tokens), len(self.labels)))
+        logits[0, :, 0] = self.logit(0.99)
+
+        def label(start: int, end: int, name: str, score: float) -> None:
+            for index in token_of[start:end]:
+                logits[0, index] = 0.0
+                logits[0, index, self.labels.index(name)] = self.logit(score)
+
+        for word, name, score in [(n, "I-PER", 0.99) for n in NAMES] + [
+            ("Besançon", "I-LOC", 0.99),
+            ("Faible", "I-PER", 0.5),
         ]:
             position = text.find(word)
             while position != -1:
-                found.append(
-                    {"entity_group": label, "score": score, "start": position, "end": position + len(word)}
-                )
+                label(position, position + len(word), name, score)
                 position = text.find(word, position + 1)
         for name in NAMES:
             words = name.split(" ")
@@ -146,28 +180,115 @@ class FakePipeline:
                 if text.endswith(first):
                     part = " ".join(words[: max(count - 1, 1)])
                     start = len(text) - len(first)
-                    found.append({"entity_group": "PER", "score": 0.999, "start": start, "end": start + len(part)})
+                    label(start, start + len(part), "I-PER", 0.999)
                 if text.startswith(last):
-                    found.append({"entity_group": "PER", "score": 0.999, "start": 0, "end": len(last)})
-        return found
+                    label(0, len(last), "I-PER", 0.999)
+        return [logits]
+
+    def logit(self, probability: float) -> float:
+        """The logit of a label that gives it this probability when the others are at zero."""
+        return math.log(probability * (len(self.labels) - 1) / (1 - probability))
 
 
-def fake_recognizer() -> MappedLabelsNerRecognizer:
-    """The recognizer without its constructor, which needs transformers and PyTorch."""
-    recognizer = MappedLabelsNerRecognizer.__new__(MappedLabelsNerRecognizer)
-    recognizer.name = "MappedLabelsNerRecognizer"
+def fake_recognizer() -> OnnxNerRecognizer:
+    """The recognizer without its constructor, which loads the model."""
+    recognizer = OnnxNerRecognizer.__new__(OnnxNerRecognizer)
+    recognizer.name = "OnnxNerRecognizer"
     recognizer.model_name = "fake"
     recognizer.supported_entities = ["PERSON"]
     recognizer.label_mapping = {"PER": "PERSON"}
-    recognizer.label_prefixes = ["B-", "I-"]
     recognizer.threshold = 0.8
+    recognizer.labels = FakeSession.labels
+    recognizer.max_tokens = MAX_TOKENS
     recognizer.text_chunker = BoundedTextChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
-    recognizer.ner_pipeline = FakePipeline()
+    recognizer.tokenizer = FakeTokenizer()
+    recognizer.session = FakeSession()
     return recognizer
 
 
-def found(recognizer: MappedLabelsNerRecognizer, text: str) -> List[tuple]:
+def found(recognizer: OnnxNerRecognizer, text: str) -> List[tuple]:
     return [(r.entity_type, text[r.start : r.end]) for r in recognizer.analyze(text, ["PERSON"])]
+
+
+def close(a: float, b: float) -> bool:
+    return abs(a - b) < 1e-9
+
+
+def check_groups() -> None:
+    """Tokens become entities as the "simple" strategy of transformers groups them."""
+    offsets = [(0, 0), (0, 6), (7, 15), (15, 16), (17, 25), (26, 34), (0, 0)]
+    special = [1, 0, 0, 0, 0, 0, 1]
+
+    def groups(labels: List[str], scores: List[float]) -> List[tuple]:
+        return [(tag, start, end, round(score, 9)) for tag, start, end, score in grouped(labels, scores, offsets, special)]
+
+    scores = [0.9, 0.9, 0.7, 0.99, 0.8, 0.6, 0.9]
+    # Consecutive tokens of a tag are one entity, of the mean score; « O » separates.
+    assert groups(["O", "I-PER", "I-PER", "O", "I-LOC", "I-LOC", "O"], scores) == [
+        ("PER", 0, 15, 0.8),
+        ("LOC", 17, 34, 0.7),
+    ]
+    # Two tags side by side are two entities; a tag is read with or without its prefix.
+    assert groups(["O", "I-PER", "PER", "LOC", "I-LOC", "O", "O"], scores) == [
+        ("PER", 0, 15, 0.8),
+        ("LOC", 15, 25, 0.895),
+    ]
+    # « B- » starts an entity.
+    assert groups(["O", "B-PER", "B-PER", "I-PER", "O", "O", "O"], scores) == [
+        ("PER", 0, 6, 0.9),
+        ("PER", 7, 16, 0.845),
+    ]
+    # A special token is skipped whatever its label: it neither is nor separates an entity.
+    assert groups(["I-PER", "O", "O", "O", "O", "I-PER", "I-PER"], scores) == [("PER", 26, 34, 0.6)]
+    assert groups(["O"] * 7, scores) == []
+    assert grouped([], [], [], []) == []
+
+
+def check_configuration() -> None:
+    """The fields of the registry file: those of the recognizer, and no other."""
+    fields = {
+        "name": "OnnxNerRecognizer",
+        "type": "predefined",
+        "supported_languages": ["fr"],
+        "supported_entities": ["PERSON"],
+        "model_name": "/app/models/model",
+        "label_mapping": {"PER": "PERSON"},
+        "threshold": 0.5,
+    }
+    config = yaml_recognizer_models.CONFIG_MODEL_MAP["OnnxNerRecognizer"]
+    # What the registry hands over: the fields of the file, and None for those it does not set.
+    handed = config(**fields).model_dump()
+    assert {key: handed[key] for key in fields} == fields, handed
+    # A field the file misspells is refused by the validation of the registry.
+    try:
+        config(**{**fields, "model_path": "/app/models/model"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an unknown field was accepted")
+
+    # The constructor refuses, before it loads anything, a setting it needs and does not
+    # have, a setting it does not take, and entity types that are not those it returns.
+    settings = {"model_name": "/nowhere", "label_mapping": {"PER": "PERSON"}, "threshold": 0.5}
+    for wrong in (
+        {key: value for key, value in settings.items() if key != "threshold"},
+        {key: value for key, value in settings.items() if key != "model_name"},
+        {**settings, "label_mapping": None},
+        {**settings, "aggregation_strategy": "simple"},
+        {**settings, "supported_entities": ["PERSON", "LOCATION"]},
+    ):
+        try:
+            OnnxNerRecognizer(**wrong)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted: {wrong}")
+    # The settings it does not take are accepted unset, as the registry hands them over.
+    try:
+        OnnxNerRecognizer(**settings, aggregation_strategy=None, device=None, tokenizer_name=None)
+    except FileNotFoundError:
+        pass
+    else:
+        raise AssertionError("a model directory that does not exist was loaded")
 
 
 def check_predictions() -> None:
@@ -177,8 +298,19 @@ def check_predictions() -> None:
     # Only mapped labels at or above the threshold, under the recognizer's name.
     text = f"Faible. {name} travaille à Besançon."
     results = recognizer.analyze(text, ["PERSON"])
-    assert [(r.entity_type, text[r.start : r.end], r.score) for r in results] == [("PERSON", name, 0.99)]
+    assert [(r.entity_type, text[r.start : r.end]) for r in results] == [("PERSON", name)]
+    assert close(results[0].score, 0.99), results[0].score
     assert results[0].analysis_explanation.recognizer == recognizer.name
+    recognizer.threshold = 0.4
+    assert found(recognizer, text) == [("PERSON", "Faible"), ("PERSON", name)]
+    recognizer.threshold = 0.8
+
+    # The model is not run for an empty text, nor when no entity of the recognizer is asked.
+    runs = recognizer.session.runs
+    assert recognizer.analyze("", ["PERSON"]) == []
+    assert recognizer.analyze(text, ["LOCATION", "EMAIL_ADDRESS"]) == []
+    assert recognizer.session.runs == runs
+    assert found(recognizer, " \n ") == []
 
     # A name around a cut is returned once and whole, although the chunk that holds a part
     # of it scores that part higher, whether the part reaches the end of its chunk or not.
@@ -193,7 +325,7 @@ def check_predictions() -> None:
     # A chunk of more tokens than the model's window is split before the pipeline reads it.
     text = "½" * 800 + " " + name + "."
     assert found(recognizer, text) == [("PERSON", name)]
-    assert recognizer.ner_pipeline.largest_input <= FakeTokenizer.model_max_length
+    assert MAX_TOKENS // 2 < recognizer.session.largest_input <= MAX_TOKENS
 
     # An inference that fails is an error, in the first chunk as in a later one.
     for text in ("En panne.", "x" * 900 + " en panne."):
@@ -405,6 +537,8 @@ if __name__ == "__main__":
     merges = check_random_merges()
     compared = check_merge_against_reference()
     check_merge_of_many_findings()
+    check_groups()
+    check_configuration()
     check_predictions()
     print(
         f"recognizer checks passed: {random_texts} random texts, {names} name positions, "

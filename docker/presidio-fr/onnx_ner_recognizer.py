@@ -1,29 +1,40 @@
-"""A Hugging Face NER recognizer that returns only mapped labels, in bounded chunks.
+"""A recognizer that runs a token classification model under ONNX Runtime, in bounded chunks.
 
-Four things differ from Presidio's HuggingFaceNerRecognizer (2.2.362):
+The model directory holds what `export_model.py` wrote at build time: the quantized model,
+its tokenizer and its labels. Nothing here needs PyTorch nor transformers.
 
-- A label absent from `label_mapping` is returned by Presidio under the model's own name.
-  Here it is dropped: the image declares a fixed list of entity types.
+What it guarantees to a caller:
+
+- Only the labels of `label_mapping` are returned, under the entity type they map to: the
+  image declares a fixed list of entity types.
 - Presidio's chunker ends a chunk on a space or a new line only, however far that is, while
-  the model reads a fixed number of tokens and the pipeline truncates what exceeds it. Here
-  a chunk never exceeds `chunk_size` characters, and a chunk whose tokens still exceed the
-  model's window is split again before it is handed to the model.
+  the model reads a fixed number of tokens. Here a chunk never exceeds `chunk_size`
+  characters, and a chunk whose tokens still exceed the model's window is split again
+  before it is handed to the model: nothing is truncated.
 - Presidio keeps, of two overlapping findings of two chunks, the one of the higher score.
   Here they become one finding that covers both.
-- Presidio returns no finding for a chunk the pipeline raises on. Here the error is raised.
+- An inference that fails is an error of the request, not an empty answer.
 """
 
-import inspect
-from typing import Dict, List, Tuple
+import json
+import os
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from presidio_analyzer import AnalysisExplanation, RecognizerResult
+import numpy as np
+import onnxruntime
+from presidio_analyzer import AnalysisExplanation, LocalRecognizer, RecognizerResult
 from presidio_analyzer.chunkers import (
     BaseTextChunker,
     CharacterBasedTextChunker,
     TextChunk,
 )
 from presidio_analyzer.input_validation import yaml_recognizer_models
-from presidio_analyzer.predefined_recognizers import HuggingFaceNerRecognizer
+from tokenizers import Tokenizer
+
+# The number of threads of one inference. ONNX Runtime sizes its pool on the cores of the
+# host, not on the CPU quota of the container: the image sets this variable.
+THREADS_VARIABLE = "OMP_NUM_THREADS"
 
 
 class BoundedTextChunker(CharacterBasedTextChunker):
@@ -173,42 +184,176 @@ def _span(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
     )
 
 
-class MappedLabelsNerRecognizer(HuggingFaceNerRecognizer):
-    """Keep the findings whose label is in `label_mapping`; read the text in bounded chunks."""
+def grouped(
+    labels: Sequence[str],
+    scores: Sequence[float],
+    offsets: Sequence[Tuple[int, int]],
+    special: Sequence[int],
+) -> List[Tuple[str, int, int, float]]:
+    """Group the tokens of a text into entities, as the "simple" strategy of transformers.
 
-    def __init__(self, chunk_size: int = 400, chunk_overlap: int = 40, **kwargs):
+    Consecutive tokens of one tag are one entity: from the start of the first token to the
+    end of the last, with the mean of their scores. A `B-` label starts a new entity. The
+    tokens labelled `O` separate entities and are not returned; special tokens are skipped.
+
+    :param labels: the label of each token (`O`, `PER`, `I-PER`, `B-PER`...).
+    :param scores: the probability of that label for each token.
+    :param offsets: the start and end of each token, in characters of the text.
+    :param special: for each token, whether it is a special token of the tokenizer.
+    :return: tag, start, end and score of each entity, in the order of the text.
+    """
+    groups: List[Tuple[str, int, int, List[float]]] = []
+    for label, score, (start, end), is_special in zip(labels, scores, offsets, special):
+        if is_special:
+            continue
+        begins = label.startswith("B-")
+        tag = label[2:] if label[:2] in ("B-", "I-") else label
+        if groups and groups[-1][0] == tag and not begins:
+            _, first_start, _, token_scores = groups[-1]
+            token_scores.append(float(score))
+            groups[-1] = (tag, first_start, end, token_scores)
+        else:
+            groups.append((tag, start, end, [float(score)]))
+    return [
+        (tag, start, end, sum(token_scores) / len(token_scores))
+        for tag, start, end, token_scores in groups
+        if tag != "O"
+    ]
+
+
+class OnnxNerRecognizer(LocalRecognizer):
+    """Find the entities of `label_mapping` with a model run by ONNX Runtime.
+
+    The registry file is validated with the fields of Presidio's Hugging Face recognizer,
+    the only ones its registry hands over. This recognizer takes five of them and refuses
+    the others when they are set.
+
+    :param model_name: directory of `model.onnx`, `tokenizer.json` and `ner.json`.
+    :param label_mapping: the model's tags that are returned, and the entity type of each.
+    :param threshold: the score below which an entity is not returned.
+    :param chunk_size: the most characters handed to the model at once.
+    :param chunk_overlap: the least characters two consecutive chunks share.
+    :param other_settings: the fields of the registry file this recognizer does not take.
+    """
+
+    CHUNK_SIZE = 400
+    CHUNK_OVERLAP = 40
+
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        label_mapping: Optional[Dict[str, str]] = None,
+        threshold: Optional[float] = None,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        supported_entities: Optional[List[str]] = None,
+        supported_language: str = "fr",
+        name: Optional[str] = None,
+        context: Optional[List[str]] = None,
+        **other_settings,
+    ):
+        missing = [
+            setting
+            for setting, value in (
+                ("model_name", model_name),
+                ("label_mapping", label_mapping),
+                ("threshold", threshold),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError(f"{type(self).__name__} needs {', '.join(missing)}")
+        unknown = sorted(setting for setting, value in other_settings.items() if value is not None)
+        if unknown:
+            raise ValueError(f"{type(self).__name__} has no setting {', '.join(unknown)}")
+
+        self.model_path = Path(model_name)
+        self.label_mapping = dict(label_mapping)
+        self.threshold = threshold
+        self.text_chunker = BoundedTextChunker(
+            chunk_size=self.CHUNK_SIZE if chunk_size is None else chunk_size,
+            chunk_overlap=self.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
+        )
+        mapped = sorted(set(self.label_mapping.values()))
+        if supported_entities is not None and sorted(supported_entities) != mapped:
+            raise ValueError(
+                f"supported_entities {supported_entities} are not the entity types of "
+                f"label_mapping {mapped}"
+            )
         super().__init__(
-            text_chunker=BoundedTextChunker(
-                chunk_size=chunk_size, chunk_overlap=chunk_overlap
-            ),
-            **kwargs,
+            supported_entities=mapped,
+            supported_language=supported_language,
+            name=name,
+            context=context,
         )
 
+    def load(self) -> None:
+        """Load the tokenizer, the labels and the model."""
+        described = json.loads((self.model_path / "ner.json").read_text(encoding="utf-8"))
+        self.model_name: str = described["source"]
+        self.labels: List[str] = described["labels"]
+        self.max_tokens: int = described["max_tokens"]
+
+        self.tokenizer = Tokenizer.from_file(str(self.model_path / "tokenizer.json"))
+        # The chunks are bounded here: a text the tokenizer would cut is split instead.
+        self.tokenizer.no_truncation()
+        self.tokenizer.no_padding()
+
+        options = onnxruntime.SessionOptions()
+        options.intra_op_num_threads = int(os.environ.get(THREADS_VARIABLE, "0"))
+        options.inter_op_num_threads = 1
+        self.session = onnxruntime.InferenceSession(
+            str(self.model_path / "model.onnx"), options, providers=["CPUExecutionProvider"]
+        )
+
+    def analyze(
+        self, text: str, entities: List[str], nlp_artifacts=None
+    ) -> List[RecognizerResult]:
+        """Return the entities of the text among those asked for."""
+        if not text or not set(entities) & set(self.supported_entities):
+            return []
+        results = self.text_chunker.predict_with_chunking(text, self._predict_chunk)
+        return [result for result in results if result.entity_type in entities]
+
     def _predict_chunk(self, chunk_text: str) -> List[RecognizerResult]:
-        tokenizer = self.ner_pipeline.tokenizer
-        tokens = tokenizer(chunk_text, truncation=False)["input_ids"]
-        if len(tokens) > tokenizer.model_max_length:
+        encoding = self.tokenizer.encode(chunk_text)
+        if len(encoding.ids) > self.max_tokens:
             return self._predict_in_halves(chunk_text)
 
+        logits = self.session.run(
+            ["logits"],
+            {
+                "input_ids": np.array([encoding.ids], dtype=np.int64),
+                "attention_mask": np.ones((1, len(encoding.ids)), dtype=np.int64),
+            },
+        )[0][0]
+        exponentials = np.exp(logits - logits.max(axis=-1, keepdims=True))
+        probabilities = exponentials / exponentials.sum(axis=-1, keepdims=True)
+        best = probabilities.argmax(axis=-1)
+        entities = grouped(
+            [self.labels[index] for index in best],
+            probabilities[np.arange(len(best)), best],
+            encoding.offsets,
+            encoding.special_tokens_mask,
+        )
+
         results = []
-        for prediction in self.ner_pipeline(chunk_text):
-            label = prediction.get("entity_group") or prediction["entity"]
-            entity_type = self.label_mapping.get(self._normalize_label(label))
-            score = float(prediction["score"])
+        for tag, start, end, score in entities:
+            entity_type = self.label_mapping.get(tag)
             if entity_type is None or score < self.threshold:
                 continue
             explanation = AnalysisExplanation(
                 recognizer=self.name,
                 original_score=score,
                 textual_explanation=(
-                    f"Identified as {entity_type} by {self.model_name} (label: {label})"
+                    f"Identified as {entity_type} by {self.model_name} (label: {tag})"
                 ),
             )
             results.append(
                 RecognizerResult(
                     entity_type=entity_type,
-                    start=prediction["start"],
-                    end=prediction["end"],
+                    start=start,
+                    end=end,
                     score=score,
                     analysis_explanation=explanation,
                 )
@@ -240,18 +385,6 @@ def _require(present: bool, what: str) -> None:
 # What this module overrides or calls in Presidio is not a public interface. A name that is
 # gone would leave an override unused without an error: the module refuses to load instead.
 _require(
-    callable(getattr(HuggingFaceNerRecognizer, "_predict_chunk", None)),
-    "HuggingFaceNerRecognizer._predict_chunk",
-)
-_require(
-    callable(getattr(HuggingFaceNerRecognizer, "_normalize_label", None)),
-    "HuggingFaceNerRecognizer._normalize_label",
-)
-_require(
-    "text_chunker" in inspect.signature(HuggingFaceNerRecognizer.__init__).parameters,
-    "the text_chunker parameter of HuggingFaceNerRecognizer",
-)
-_require(
     callable(getattr(BaseTextChunker, "predict_with_chunking", None)),
     "BaseTextChunker.predict_with_chunking",
 )
@@ -265,14 +398,14 @@ _require(
 _hugging_face_config = getattr(yaml_recognizer_models, "HuggingFaceRecognizerConfig", None)
 _require(
     _hugging_face_config is not None
-    and getattr(yaml_recognizer_models, "CONFIG_MODEL_MAP", {}).get(
-        HuggingFaceNerRecognizer.__name__
-    )
-    is _hugging_face_config,
-    "yaml_recognizer_models.CONFIG_MODEL_MAP with HuggingFaceRecognizerConfig",
+    and isinstance(getattr(yaml_recognizer_models, "CONFIG_MODEL_MAP", None), dict)
+    and {"model_name", "label_mapping", "threshold", "chunk_size", "chunk_overlap"}
+    <= set(getattr(_hugging_face_config, "model_fields", {})),
+    "yaml_recognizer_models.CONFIG_MODEL_MAP and the fields of HuggingFaceRecognizerConfig",
 )
 
-# The registry file is validated per class name: without this line the fields of the
-# Hugging Face recognizer (model_name, label_mapping, threshold...) are dropped for a
-# subclass, which is validated as a plain predefined recognizer.
-yaml_recognizer_models.CONFIG_MODEL_MAP[MappedLabelsNerRecognizer.__name__] = _hugging_face_config
+# The registry file is validated per class name, and the registry only hands over the fields
+# of the configuration models Presidio declares itself. Without this line a class of this
+# image is validated as a plain predefined recognizer, and model_name, label_mapping and
+# threshold are dropped before the recognizer is built.
+yaml_recognizer_models.CONFIG_MODEL_MAP[OnnxNerRecognizer.__name__] = _hugging_face_config
