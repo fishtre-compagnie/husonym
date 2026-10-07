@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
+	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,11 @@ func Test_JobStatus(t *testing.T) {
 
 	t.Run("a refusal is recognised by its type, wherever it is wrapped", func(t *testing.T) {
 		ctx, _ := logged()
-		refusal := &licensegate.Refusal{Missing: []license.Feature{license.FeatureJobHooks, license.FeatureSubsetting}}
+		refusal := license.NewRefusal(
+			"an-account",
+			husonymerrors.NewForbidden(licensegate.RefusalMessage([]license.Feature{license.FeatureJobHooks, license.FeatureSubsetting})),
+			license.FeatureGate(license.FeatureJobHooks), license.FeatureGate(license.FeatureSubsetting),
+		)
 		s := &Service{jobgate: answeringGate{answer: fmt.Errorf("checking the job: %w", refusal)}}
 
 		refused, err := s.jobStatus(ctx, "an-account", "a-job")

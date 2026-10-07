@@ -58,9 +58,14 @@ func (u *User) EnforceLicense(ctx context.Context, accountId string) error {
 		return err
 	}
 	if !ok {
-		return husonymerrors.NewUnauthorized(license.NotInForceMessage)
+		return notInForce(accountId)
 	}
 	return nil
+}
+
+// notInForce refuses the account because no license is in force for it.
+func notInForce(accountId string) error {
+	return license.NewRefusal(accountId, husonymerrors.NewUnauthorized(license.NotInForceMessage), license.GateNotInForce)
 }
 
 // EnforceFeature refuses unless the license is in force for the account and includes the
@@ -70,21 +75,26 @@ func (u *User) EnforceFeature(ctx context.Context, accountId string, f license.F
 		return err
 	}
 	if !u.HasFeature(f) {
-		return husonymerrors.NewForbidden(license.NotIncludedMessage(f))
+		return notIncluded(accountId, f)
 	}
 	return nil
 }
 
+// notIncluded refuses the account because the license in force does not include the feature.
+func notIncluded(accountId string, f license.Feature) error {
+	return license.NewRefusal(accountId, husonymerrors.NewForbidden(license.NotIncludedMessage(f)), license.FeatureGate(f))
+}
+
 // FeatureRefusal is what EnforceFeature answers, for a service that holds the license and no
 // user to ask about an account: nil when the license is in force and includes the feature.
-func FeatureRefusal(lic license.EEInterface, f license.Feature) error {
+func FeatureRefusal(lic license.EEInterface, accountId string, f license.Feature) error {
 	switch reason := license.FeatureRefusal(lic, f); reason {
 	case "":
 		return nil
 	case license.NotInForceMessage:
-		return husonymerrors.NewUnauthorized(reason)
+		return notInForce(accountId)
 	default:
-		return husonymerrors.NewForbidden(reason)
+		return notIncluded(accountId, f)
 	}
 }
 

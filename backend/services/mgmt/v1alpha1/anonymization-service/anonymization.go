@@ -227,13 +227,13 @@ func (s *Service) AnonymizeSingle(
 
 	licensed := s.license.HasFeature(license.FeaturePiiText)
 	if !licensed && carriesPiiText(req.Msg) {
-		return nil, userdata.FeatureRefusal(s.license, license.FeaturePiiText)
+		return nil, userdata.FeatureRefusal(s.license, req.Msg.GetAccountId(), license.FeaturePiiText)
 	}
 	// The worker calls this during a run for a PII text whose anonymizers may be user-defined.
 	// Such a job does not start without custom_transformers (the job gate counts what the
 	// anonymizers of a PII text run), so a licensed run is never refused here.
 	if s.customTransformersRefusal(req.Msg) != "" {
-		return nil, userdata.FeatureRefusal(s.license, license.FeatureCustomTransformers)
+		return nil, userdata.FeatureRefusal(s.license, req.Msg.GetAccountId(), license.FeatureCustomTransformers)
 	}
 
 	for cfg := range getTransformerConfigsToValidate(req.Msg) {

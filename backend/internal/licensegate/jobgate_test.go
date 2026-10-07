@@ -147,16 +147,16 @@ func requireRefusal(t *testing.T, err error, features string) {
 	require.ErrorAs(t, err, &answered)
 	require.Equal(t, "this job uses features the license does not include: "+features, answered.Message())
 	// What starts a run tells it apart by its type, and reads the features from it.
-	var refusal *Refusal
+	var refusal *license.Refusal
 	require.ErrorAs(t, err, &refusal)
-	require.Equal(t, features, joinFeatures(refusal.Missing))
+	require.Equal(t, features, joinGates(refusal.Gates))
 	require.Equal(t, "this job uses features the license does not include: "+features, refusal.Message())
 }
 
-func joinFeatures(features []license.Feature) string {
-	names := make([]string, 0, len(features))
-	for _, feature := range features {
-		names = append(names, string(feature))
+func joinGates(gates []license.Gate) string {
+	names := make([]string, 0, len(gates))
+	for _, gate := range gates {
+		names = append(names, string(gate))
 	}
 	return strings.Join(names, ", ")
 }

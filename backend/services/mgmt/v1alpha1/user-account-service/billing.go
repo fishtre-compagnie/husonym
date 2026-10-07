@@ -15,6 +15,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -105,7 +106,7 @@ func (s *Service) jobStatus(
 	accountId, jobId string,
 ) (*mgmtv1alpha1.IsAccountStatusValidResponse, error) {
 	err := s.jobgate.CheckStored(ctx, accountId, jobId)
-	var refusal *licensegate.Refusal
+	var refusal *license.Refusal
 	switch {
 	case err == nil:
 		return nil, nil

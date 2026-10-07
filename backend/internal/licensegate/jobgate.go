@@ -16,30 +16,6 @@ import (
 // refusal: nothing was decided about the job.
 var ErrJobNotFound = errors.New("job not found in this account")
 
-// Refusal is the error of a job that uses features the license does not include. It is told
-// apart from every other error by its type: an error that is not a Refusal means the question
-// could not be answered, whatever code it carries.
-type Refusal struct {
-	// Missing lists the features the job uses and the license lacks, in the order of
-	// license.AllFeatures.
-	Missing []license.Feature
-}
-
-// Message is the sentence a person is told, which names every missing feature.
-func (r *Refusal) Message() string {
-	return RefusalMessage(r.Missing)
-}
-
-func (r *Refusal) Error() string {
-	return r.Unwrap().Error()
-}
-
-// Unwrap gives the answer of a handler that returns the refusal to its caller: permission
-// denied, with the sentence.
-func (r *Refusal) Unwrap() error {
-	return husonymerrors.NewForbidden(r.Message())
-}
-
 // JobGate decides whether a job may start under the license, from the job's definition and
 // from what only the database knows about it.
 type JobGate struct {
@@ -55,7 +31,7 @@ func NewJobGate(db *husonymdb.HusonymDb, lic license.EEInterface) *JobGate {
 // feature. A job is never started without one of them: it starts whole or not at all.
 //
 // It does not ask whether the license is in force: its callers have, and refuse first. The
-// refusal is a *Refusal; any other error means the question could not be answered.
+// refusal is a *license.Refusal; any other error means the question could not be answered.
 //
 // The job may be one that is not stored yet, without an id: it is checked on its definition
 // alone, since a job being created has no hook.
@@ -75,7 +51,15 @@ func (g *JobGate) CheckIn(ctx context.Context, dbtx husonymdb.BaseDBTX, job *mgm
 	if len(missing) == 0 {
 		return nil
 	}
-	return &Refusal{Missing: missing}
+	gates := make([]license.Gate, len(missing))
+	for i, feature := range missing {
+		gates[i] = license.FeatureGate(feature)
+	}
+	return license.NewRefusal(
+		job.GetAccountId(),
+		husonymerrors.NewForbidden(RefusalMessage(missing)),
+		gates...,
+	)
 }
 
 // featuresOfJob lists the licensed features a job uses, from its definition and from what only

@@ -2,6 +2,7 @@ package bookend_logging_interceptor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -74,8 +75,8 @@ func (i *Interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 
 		if err != nil {
 			fields = append(fields, "error", fmt.Sprintf("%v", err))
-			connectErr, ok := err.(*connect.Error)
-			if ok {
+			var connectErr *connect.Error
+			if errors.As(err, &connectErr) {
 				fields = append(fields, "connect.code", connectErr.Code().String())
 			} else {
 				fields = append(fields, "connect.code", connect.CodeInternal.String())
@@ -163,8 +164,8 @@ func (i *Interceptor) WrapStreamingHandler(
 		}
 		if err != nil {
 			fields = append(fields, "error", fmt.Sprintf("%v", err))
-			connectErr, ok := err.(*connect.Error)
-			if ok {
+			var connectErr *connect.Error
+			if errors.As(err, &connectErr) {
 				fields = append(fields, "connect.code", connectErr.Code().String())
 			}
 
