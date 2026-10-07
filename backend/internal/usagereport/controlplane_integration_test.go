@@ -12,42 +12,25 @@ import (
 	"github.com/fishtre-compagnie/husonym/controlplane/cptest"
 	"github.com/fishtre-compagnie/husonym/controlplane/intake"
 	"github.com/fishtre-compagnie/husonym/controlplane/publicapi"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/telemetry"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
-// sealedByTheProduct builds the report of an instance for a day, marshals and seals it with the
-// functions of the product, as the stored report the sender posts.
-func sealedByTheProduct(t *testing.T, key string, day time.Time) *usagestore.StoredReport {
+// builtByTheProduct has the builder of the product make and seal the report of reportDay for the
+// instance of the fixture, and gives it as the preparer keeps it for the sender.
+func builtByTheProduct(t *testing.T, f *fixture) *usagestore.StoredReport {
 	t.Helper()
-	fingerprint := telemetry.KeyFingerprint(key)
-	report := &telemetry.Report{
-		SchemaVersion: telemetry.SchemaVersion,
-		Day:           day.UTC().Format(time.DateOnly),
-		GeneratedAt:   day.UTC().Format(time.RFC3339),
-		Identification: telemetry.Identification{
-			KeyFingerprint: fingerprint,
-			// The licenses of this test have an id someone chose.
-			LicenseID:    telemetry.LicenseId("lic-1"),
-			InstanceID:   "123e4567-e89b-12d3-a456-426614174000",
-			LicenseState: "valid",
-			DaysToExpiry: 212,
-		},
-		Version: telemetry.Version{Husonym: "v0.3.0"},
-		Sources: telemetry.Sources{Count: 3},
-	}
-	document, err := report.Marshal()
-	require.NoError(t, err)
-	seal, err := telemetry.Seal(key, document)
+	sealed, err := f.builder().Build(t.Context(), reportDay, reportNow)
 	require.NoError(t, err)
 	return &usagestore.StoredReport{
-		Day:            day.UTC().Truncate(24 * time.Hour),
-		Document:       document,
-		Seal:           seal,
-		KeyFingerprint: fingerprint,
-		PreparedAt:     day,
+		Day:            reportDay,
+		Document:       sealed.Document,
+		Seal:           sealed.Seal,
+		KeyFingerprint: sealed.KeyFingerprint,
+		PreparedAt:     reportNow,
 	}
 }
 
@@ -58,36 +41,65 @@ func countRows(t *testing.T, pool *pgxpool.Pool, table string) int {
 	return n
 }
 
-// A report built, sealed and posted by the code of the product is stored by the real handler of
-// the control plane, byte for byte; the same report under a key nobody issued is kept pending.
-func Test_Post_AReportOfTheProductIsAcceptedByTheControlPlane(t *testing.T) {
+// A report built and sealed by the builder of the product, with its diagnostics, and posted by
+// its transport is stored by the real handler of the control plane, byte for byte; the same
+// instance under a key nobody recorded is kept pending.
+func Test_Post_AReportBuiltByTheProductIsAcceptedByTheControlPlane(t *testing.T) {
 	if !testutil.ShouldRunIntegrationTest() {
 		return
 	}
+	ctx := t.Context()
+	f := newFixture(t)
+	require.True(t, f.facts.Diagnostics)
+	key, err := license.ParseWith(f.keys.value, f.ring)
+	require.NoError(t, err)
+
 	pool := cptest.NewDatabase(t)
 	store := cpstore.New(pool)
-	issuer := cptest.NewIssuer(t)
-	known := issuer.Entry("lic-1", "cust-1", "Acme")
-	unknown := issuer.Entry("lic-2", "cust-2", "Globex")
-	added, err := store.AddLicense(t.Context(), issuer.Key(&known), &known, "registry")
+	added, err := store.AddLicense(ctx, key, &license.RegistryEntry{Id: key.Id, Encoded: f.keys.value, Kid: testKid}, "registry")
 	require.NoError(t, err)
 	require.True(t, added)
-	server := httptest.NewServer(publicapi.NewHandler(intake.New(store, time.Now),
-		slog.New(slog.NewTextHandler(io.Discard, nil))))
+	// The control plane receives at the moment the fixture prepares its report.
+	receiver := intake.New(store, func() time.Time { return reportNow })
+	server := httptest.NewServer(publicapi.NewHandler(receiver, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(server.Close)
 	transport := transportTo(t, server.URL+"/v1/usage-reports")
-	today := time.Now().UTC()
 
-	report := sealedByTheProduct(t, known.Encoded, today)
-	require.NoError(t, transport.Post(t.Context(), report))
+	report := builtByTheProduct(t, f)
+	require.Contains(t, tree(t, report.Document), "diagnostics")
+	require.NoError(t, transport.Post(ctx, report))
 
 	require.Equal(t, 1, countRows(t, pool, "usage_reports"))
-	require.Equal(t, 1, countRows(t, pool, "instances"))
-	var stored string
-	require.NoError(t, pool.QueryRow(t.Context(), `SELECT document FROM controlplane.usage_reports`).Scan(&stored))
-	require.Equal(t, string(report.Document), stored)
+	require.Zero(t, countRows(t, pool, "pending_reports"))
+	var document, seal, licenseID, instanceID, day string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT document, seal, license_id, instance_id, day::text FROM controlplane.usage_reports`,
+	).Scan(&document, &seal, &licenseID, &instanceID, &day))
+	require.Equal(t, string(report.Document), document) //nolint:testifylint // the exact bytes sent, not their meaning
+	require.Equal(t, report.Seal, seal)
+	require.Equal(t, testLicense, licenseID)
+	require.Equal(t, testInstance, instanceID)
+	require.Equal(t, "2026-10-06", day)
 
-	require.NoError(t, transport.Post(t.Context(), sealedByTheProduct(t, unknown.Encoded, today)))
+	var installKind, version, lastDay string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT install_kind, husonym_version, last_report_day::text FROM controlplane.instances
+		 WHERE license_id = $1 AND instance_id = $2`, testLicense, testInstance,
+	).Scan(&installKind, &version, &lastDay))
+	require.Equal(t, "helm", installKind)
+	require.Equal(t, "v0.3.0", version)
+	require.Equal(t, "2026-10-06", lastDay)
+
+	// The same report again is a repeat: the transport is told it went well, nothing is added.
+	require.NoError(t, transport.Post(ctx, report))
+	require.Equal(t, 1, countRows(t, pool, "usage_reports"))
+
+	// The key of a renewal the control plane has not recorded yet.
+	renewed := newFixture(t)
+	renewed.keys.value, renewed.ring = mintKey(t, keyExpiring(testExpiry.AddDate(1, 0, 0)))
+	pending := builtByTheProduct(t, renewed)
+	require.NotEqual(t, telemetry.KeyFingerprint(f.keys.value), pending.KeyFingerprint)
+	require.NoError(t, transport.Post(ctx, pending))
 	require.Equal(t, 1, countRows(t, pool, "usage_reports"))
 	require.Equal(t, 1, countRows(t, pool, "pending_reports"))
 }
