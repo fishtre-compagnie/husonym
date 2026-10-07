@@ -57,6 +57,23 @@ func carriesPiiText(msg transformerMsgToValidate) bool {
 	return false
 }
 
+// countRefusal counts the refusal of the feature that AnonymizeMany answers as not implemented,
+// and so not as a license refusal that an interceptor would see. The gate is the one the reason
+// says: no license in force, or the feature the license does not include. A count that fails is
+// logged: it never changes the answer.
+func (s *Service) countRefusal(ctx context.Context, accountId string, f license.Feature, reason string) {
+	gate := license.FeatureGate(f)
+	if reason == license.NotInForceMessage {
+		gate = license.GateNotInForce
+	}
+	if err := s.refusals.CountRefusal(context.WithoutCancel(ctx), accountId, []license.Gate{gate}, time.Now()); err != nil {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).Warn(
+			"unable to count a license refusal",
+			"error", err.Error(),
+		)
+	}
+}
+
 func (s *Service) AnonymizeMany(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.AnonymizeManyRequest],
@@ -77,9 +94,11 @@ func (s *Service) AnonymizeMany(
 	// A license that is not in force is said as such, as every gated call says it: it includes
 	// no feature, and naming one as missing would name the wrong cause.
 	if reason := license.FeatureRefusal(s.license, license.FeaturePiiText); reason != "" {
+		s.countRefusal(ctx, req.Msg.GetAccountId(), license.FeaturePiiText, reason)
 		return nil, notImplemented(reason)
 	}
 	if reason := s.customTransformersRefusal(req.Msg); reason != "" {
+		s.countRefusal(ctx, req.Msg.GetAccountId(), license.FeatureCustomTransformers, reason)
 		return nil, notImplemented(reason)
 	}
 

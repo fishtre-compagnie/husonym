@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
@@ -70,6 +71,7 @@ func (s *Service) IsAccountStatusValid(
 	//
 	// IsValid() spans the grace period, so this only bites once grace is over.
 	if s.licenseclient != nil && !s.licenseclient.IsValid() {
+		s.countRefusal(ctx, req.Msg.GetAccountId(), license.GateNotInForce)
 		reason := "License has expired. Renew it to resume running jobs; existing configuration and run history remain available."
 		return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{
 			IsValid:       false,
@@ -111,6 +113,7 @@ func (s *Service) jobStatus(
 	case err == nil:
 		return nil, nil
 	case errors.As(err, &refusal):
+		s.countRefusal(ctx, accountId, refusal.Gates...)
 		reason := refusal.Message()
 		return &mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: false, Reason: &reason}, nil
 	case errors.Is(err, licensegate.ErrJobNotFound):
@@ -126,6 +129,17 @@ func (s *Service) jobStatus(
 		return nil, connect.NewError(
 			connect.CodeUnavailable,
 			fmt.Errorf("unable to check the job against the license: %w", err),
+		)
+	}
+}
+
+// countRefusal counts a refusal that is answered as a status and not as an error, so that no
+// interceptor sees it. A count that fails is logged: it never changes the answer.
+func (s *Service) countRefusal(ctx context.Context, accountId string, gates ...license.Gate) {
+	if err := s.refusals.CountRefusal(context.WithoutCancel(ctx), accountId, gates, time.Now()); err != nil {
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).Warn(
+			"unable to count a license refusal",
+			"error", err.Error(),
 		)
 	}
 }

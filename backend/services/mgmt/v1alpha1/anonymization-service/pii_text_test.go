@@ -3,6 +3,7 @@ package v1alpha_anonymizationservice
 import (
 	"bytes"
 	"context"
+	"time"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -72,7 +73,18 @@ func service(
 		engine,
 		nil,
 		eelicense,
+		&refusalLog{},
 	)
+}
+
+// refusalLog is a counter that remembers the gates it was asked to count, with their account.
+type refusalLog struct{ counted []string }
+
+func (l *refusalLog) CountRefusal(_ context.Context, accountId string, gates []license.Gate, _ time.Time) error {
+	for _, gate := range gates {
+		l.counted = append(l.counted, accountId+" "+string(gate))
+	}
+	return nil
 }
 
 func licensed() *testutil.FakeEELicense {
@@ -302,29 +314,34 @@ func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
 	for name, tc := range map[string]struct {
 		eelicense *testutil.FakeEELicense
 		refusal   string
+		gate      license.Gate
 	}{
 		"a license that lacks pii_text": {
 			eelicense: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
 			refusal:   "this license does not include pii_text",
+			gate:      license.FeatureGate(license.FeaturePiiText),
 		},
 		// No feature is included then: the refusal says that no license is in force, not that
 		// this one is missing from it.
 		"a license that is not in force": {
 			eelicense: testutil.NewFakeEELicense(),
 			refusal:   "account does not have an active license",
+			gate:      license.GateNotInForce,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := service(t, tc.eelicense, presidiotest.New(t), nil)
+			accountId := uuid.NewString()
 
 			resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
-				AccountId: uuid.NewString(),
+				AccountId: accountId,
 			}))
 
 			require.Nil(t, resp)
 			require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
 			require.ErrorContains(t, err, tc.refusal)
 			require.Equal(t, 1, strings.Count(err.Error(), "license"), "one cause is told: %v", err)
+			require.Equal(t, []string{accountId + " " + string(tc.gate)}, s.refusals.(*refusalLog).counted)
 		})
 	}
 }

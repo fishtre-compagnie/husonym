@@ -4,6 +4,7 @@ import (
 	"context"
 
 	auth_client "github.com/fishtre-compagnie/husonym/backend/internal/auth/client"
+	"github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/licenserefusal"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
@@ -29,6 +30,8 @@ type Service struct {
 	installations          installationMemory
 	jobgate                JobGate
 	licenseusage           LicenseUsage
+	// refusals counts the refusals that are answered as a status and not as an error.
+	refusals licenserefusal.Counter
 }
 
 // JobGate tells whether a job of an account may start under the license.
@@ -97,6 +100,7 @@ func New(
 	refreshLicense func(ctx context.Context) error,
 	jobgate JobGate,
 	licenseusage LicenseUsage,
+	refusals licenserefusal.Counter,
 ) *Service {
 	return &Service{
 		cfg:                    cfg,
@@ -111,6 +115,7 @@ func New(
 		refreshLicense:         refreshLicense,
 		jobgate:                jobgate,
 		licenseusage:           licenseusage,
+		refusals:               refusals,
 	}
 }
 

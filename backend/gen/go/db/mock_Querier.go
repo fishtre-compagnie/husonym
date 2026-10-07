@@ -4177,6 +4177,72 @@ func (_c *MockQuerier_GetDeclaredIssuers_Call) RunAndReturn(run func(ctx context
 	return _c
 }
 
+// GetInstanceId provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetInstanceId(ctx context.Context, db DBTX) (pgtype.UUID, error) {
+	ret := _mock.Called(ctx, db)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInstanceId")
+	}
+
+	var r0 pgtype.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) (pgtype.UUID, error)); ok {
+		return returnFunc(ctx, db)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX) pgtype.UUID); ok {
+		r0 = returnFunc(ctx, db)
+	} else {
+		r0 = ret.Get(0).(pgtype.UUID)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX) error); ok {
+		r1 = returnFunc(ctx, db)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetInstanceId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInstanceId'
+type MockQuerier_GetInstanceId_Call struct {
+	*mock.Call
+}
+
+// GetInstanceId is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+func (_e *MockQuerier_Expecter) GetInstanceId(ctx any, db any) *MockQuerier_GetInstanceId_Call {
+	return &MockQuerier_GetInstanceId_Call{Call: _e.mock.On("GetInstanceId", ctx, db)}
+}
+
+func (_c *MockQuerier_GetInstanceId_Call) Run(run func(ctx context.Context, db DBTX)) *MockQuerier_GetInstanceId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetInstanceId_Call) Return(uUID pgtype.UUID, err error) *MockQuerier_GetInstanceId_Call {
+	_c.Call.Return(uUID, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetInstanceId_Call) RunAndReturn(run func(ctx context.Context, db DBTX) (pgtype.UUID, error)) *MockQuerier_GetInstanceId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJobById provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetJobById(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiJob, error) {
 	ret := _mock.Called(ctx, db, id)
@@ -6293,6 +6359,69 @@ func (_c *MockQuerier_GetUserIdentityByUserId_Call) RunAndReturn(run func(ctx co
 	return _c
 }
 
+// IncrementGateRefusal provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) IncrementGateRefusal(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IncrementGateRefusal")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, IncrementGateRefusalParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_IncrementGateRefusal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementGateRefusal'
+type MockQuerier_IncrementGateRefusal_Call struct {
+	*mock.Call
+}
+
+// IncrementGateRefusal is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg IncrementGateRefusalParams
+func (_e *MockQuerier_Expecter) IncrementGateRefusal(ctx any, db any, arg any) *MockQuerier_IncrementGateRefusal_Call {
+	return &MockQuerier_IncrementGateRefusal_Call{Call: _e.mock.On("IncrementGateRefusal", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_IncrementGateRefusal_Call) Run(run func(ctx context.Context, db DBTX, arg IncrementGateRefusalParams)) *MockQuerier_IncrementGateRefusal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 IncrementGateRefusalParams
+		if args[2] != nil {
+			arg2 = args[2].(IncrementGateRefusalParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_IncrementGateRefusal_Call) Return(err error) *MockQuerier_IncrementGateRefusal_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_IncrementGateRefusal_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg IncrementGateRefusalParams) error) *MockQuerier_IncrementGateRefusal_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InsertJobMappingChange provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error {
 	ret := _mock.Called(ctx, db, arg)
@@ -6487,6 +6616,69 @@ func (_c *MockQuerier_InsertLicenseKey_Call) Return(husonymApiLicenseKey Husonym
 }
 
 func (_c *MockQuerier_InsertLicenseKey_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)) *MockQuerier_InsertLicenseKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InsertRunUsageStarted provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) InsertRunUsageStarted(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertRunUsageStarted")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, InsertRunUsageStartedParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_InsertRunUsageStarted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertRunUsageStarted'
+type MockQuerier_InsertRunUsageStarted_Call struct {
+	*mock.Call
+}
+
+// InsertRunUsageStarted is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg InsertRunUsageStartedParams
+func (_e *MockQuerier_Expecter) InsertRunUsageStarted(ctx any, db any, arg any) *MockQuerier_InsertRunUsageStarted_Call {
+	return &MockQuerier_InsertRunUsageStarted_Call{Call: _e.mock.On("InsertRunUsageStarted", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_InsertRunUsageStarted_Call) Run(run func(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams)) *MockQuerier_InsertRunUsageStarted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 InsertRunUsageStartedParams
+		if args[2] != nil {
+			arg2 = args[2].(InsertRunUsageStartedParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_InsertRunUsageStarted_Call) Return(err error) *MockQuerier_InsertRunUsageStarted_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_InsertRunUsageStarted_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg InsertRunUsageStartedParams) error) *MockQuerier_InsertRunUsageStarted_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7131,6 +7323,80 @@ func (_c *MockQuerier_ListJobSourcesOfInstance_Call) Return(listJobSourcesOfInst
 }
 
 func (_c *MockQuerier_ListJobSourcesOfInstance_Call) RunAndReturn(run func(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)) *MockQuerier_ListJobSourcesOfInstance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListOpenRunUsageStartedBefore provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListOpenRunUsageStartedBefore(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error) {
+	ret := _mock.Called(ctx, db, startedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListOpenRunUsageStartedBefore")
+	}
+
+	var r0 []ListOpenRunUsageStartedBeforeRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)); ok {
+		return returnFunc(ctx, db, startedAt)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, pgtype.Timestamptz) []ListOpenRunUsageStartedBeforeRow); ok {
+		r0 = returnFunc(ctx, db, startedAt)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ListOpenRunUsageStartedBeforeRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, DBTX, pgtype.Timestamptz) error); ok {
+		r1 = returnFunc(ctx, db, startedAt)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListOpenRunUsageStartedBefore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListOpenRunUsageStartedBefore'
+type MockQuerier_ListOpenRunUsageStartedBefore_Call struct {
+	*mock.Call
+}
+
+// ListOpenRunUsageStartedBefore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - startedAt pgtype.Timestamptz
+func (_e *MockQuerier_Expecter) ListOpenRunUsageStartedBefore(ctx any, db any, startedAt any) *MockQuerier_ListOpenRunUsageStartedBefore_Call {
+	return &MockQuerier_ListOpenRunUsageStartedBefore_Call{Call: _e.mock.On("ListOpenRunUsageStartedBefore", ctx, db, startedAt)}
+}
+
+func (_c *MockQuerier_ListOpenRunUsageStartedBefore_Call) Run(run func(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz)) *MockQuerier_ListOpenRunUsageStartedBefore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 pgtype.Timestamptz
+		if args[2] != nil {
+			arg2 = args[2].(pgtype.Timestamptz)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListOpenRunUsageStartedBefore_Call) Return(listOpenRunUsageStartedBeforeRows []ListOpenRunUsageStartedBeforeRow, err error) *MockQuerier_ListOpenRunUsageStartedBefore_Call {
+	_c.Call.Return(listOpenRunUsageStartedBeforeRows, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListOpenRunUsageStartedBefore_Call) RunAndReturn(run func(ctx context.Context, db DBTX, startedAt pgtype.Timestamptz) ([]ListOpenRunUsageStartedBeforeRow, error)) *MockQuerier_ListOpenRunUsageStartedBefore_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -9045,6 +9311,69 @@ func (_c *MockQuerier_SetTransactionLockTimeout_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// SettleRunUsage provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) SettleRunUsage(ctx context.Context, db DBTX, arg SettleRunUsageParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SettleRunUsage")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, SettleRunUsageParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_SettleRunUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SettleRunUsage'
+type MockQuerier_SettleRunUsage_Call struct {
+	*mock.Call
+}
+
+// SettleRunUsage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg SettleRunUsageParams
+func (_e *MockQuerier_Expecter) SettleRunUsage(ctx any, db any, arg any) *MockQuerier_SettleRunUsage_Call {
+	return &MockQuerier_SettleRunUsage_Call{Call: _e.mock.On("SettleRunUsage", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_SettleRunUsage_Call) Run(run func(ctx context.Context, db DBTX, arg SettleRunUsageParams)) *MockQuerier_SettleRunUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 SettleRunUsageParams
+		if args[2] != nil {
+			arg2 = args[2].(SettleRunUsageParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_SettleRunUsage_Call) Return(err error) *MockQuerier_SettleRunUsage_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_SettleRunUsage_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg SettleRunUsageParams) error) *MockQuerier_SettleRunUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateAccountApiKeyValue provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error) {
 	ret := _mock.Called(ctx, db, arg)
@@ -10193,6 +10522,69 @@ func (_c *MockQuerier_UpsertAccountSetting_Call) Return(husonymApiAccountSetting
 }
 
 func (_c *MockQuerier_UpsertAccountSetting_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertAccountSettingParams) (HusonymApiAccountSetting, error)) *MockQuerier_UpsertAccountSetting_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertRunUsageEnded provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) UpsertRunUsageEnded(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error {
+	ret := _mock.Called(ctx, db, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertRunUsageEnded")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, DBTX, UpsertRunUsageEndedParams) error); ok {
+		r0 = returnFunc(ctx, db, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockQuerier_UpsertRunUsageEnded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertRunUsageEnded'
+type MockQuerier_UpsertRunUsageEnded_Call struct {
+	*mock.Call
+}
+
+// UpsertRunUsageEnded is a helper method to define mock.On call
+//   - ctx context.Context
+//   - db DBTX
+//   - arg UpsertRunUsageEndedParams
+func (_e *MockQuerier_Expecter) UpsertRunUsageEnded(ctx any, db any, arg any) *MockQuerier_UpsertRunUsageEnded_Call {
+	return &MockQuerier_UpsertRunUsageEnded_Call{Call: _e.mock.On("UpsertRunUsageEnded", ctx, db, arg)}
+}
+
+func (_c *MockQuerier_UpsertRunUsageEnded_Call) Run(run func(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams)) *MockQuerier_UpsertRunUsageEnded_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 DBTX
+		if args[1] != nil {
+			arg1 = args[1].(DBTX)
+		}
+		var arg2 UpsertRunUsageEndedParams
+		if args[2] != nil {
+			arg2 = args[2].(UpsertRunUsageEndedParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_UpsertRunUsageEnded_Call) Return(err error) *MockQuerier_UpsertRunUsageEnded_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockQuerier_UpsertRunUsageEnded_Call) RunAndReturn(run func(ctx context.Context, db DBTX, arg UpsertRunUsageEndedParams) error) *MockQuerier_UpsertRunUsageEnded_Call {
 	_c.Call.Return(run)
 	return _c
 }

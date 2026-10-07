@@ -19,6 +19,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -289,6 +290,7 @@ func (s *HusonymApiTestClient) setupMux(
 		licensing.refresh,
 		jobGate,
 		licensegate.NewUsageReader(husonymDb, rbacClient),
+		usagestore.New(husonymDb),
 	)
 	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 
@@ -370,6 +372,7 @@ func (s *HusonymApiTestClient) setupMux(
 		piiText,
 		husonymDb,
 		eelicense,
+		usagestore.New(husonymDb),
 	)
 
 	connectionDataService := v1alpha1_connectiondataservice.New(

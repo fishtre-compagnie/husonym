@@ -47,10 +47,12 @@ import (
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
 	authlogging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth_logging"
 	bookend_logging_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/bookend"
+	"github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/licenserefusal"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
+	"github.com/fishtre-compagnie/husonym/backend/internal/usagestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymlogger "github.com/fishtre-compagnie/husonym/backend/pkg/logger"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -204,6 +206,7 @@ func serve(ctx context.Context) error {
 
 	querier := db_queries.New()
 	db := husonymdb.New(pool, querier)
+	usageStore := usagestore.New(db)
 
 	if viper.GetBool("DB_AUTO_MIGRATE") {
 		schemaDir := viper.GetString("DB_SCHEMA_DIR")
@@ -393,6 +396,9 @@ func serve(ctx context.Context) error {
 		loggerInterceptor,
 		validateInterceptor,
 		loggerAccountIdInterceptor,
+		// Last of the standard ones, so that it sees what the services and the auth interceptors
+		// below it answer.
+		licenserefusal.NewInterceptor(usageStore),
 	)
 
 	// standard auth interceptors that should be applied to most services
@@ -550,7 +556,7 @@ func serve(ctx context.Context) error {
 		DefaultMaxAllowedRecords: getDefaultMaxAllowedRecords(),
 		DeploymentIssuer:         getDeploymentIssuer(),
 		WorkerOnly:               workerOnly,
-	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient))
+	}, db, temporalConfigProvider, authclient, authadminclient, rbacclient, eelicense, eelicense, licenseStore, eelicense.Refresh, jobGate, licensegate.NewUsageReader(db, rbacclient), usageStore)
 	api.Handle(
 		mgmtv1alpha1connect.NewUserAccountServiceHandler(
 			useraccountService,
@@ -723,7 +729,7 @@ func serve(ctx context.Context) error {
 	anonymizationService := v1alpha1_anonymizationservice.New(&v1alpha1_anonymizationservice.Config{
 		IsAuthEnabled: isAuthEnabled,
 		WorkerOnly:    workerOnly,
-	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense)
+	}, anonymizerMeter, userdataclient, useraccountService, transformerService, presidioClients.piiText, db, eelicense, usageStore)
 	api.Handle(
 		mgmtv1alpha1connect.NewAnonymizationServiceHandler(
 			anonymizationService,

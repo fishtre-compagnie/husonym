@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
@@ -20,6 +21,16 @@ import (
 type answeringGate struct{ answer error }
 
 func (g answeringGate) CheckStored(context.Context, string, string) error { return g.answer }
+
+// refusalLog is a counter that remembers the gates it was asked to count, with their account.
+type refusalLog struct{ counted []string }
+
+func (l *refusalLog) CountRefusal(_ context.Context, accountId string, gates []license.Gate, _ time.Time) error {
+	for _, gate := range gates {
+		l.counted = append(l.counted, accountId+" "+string(gate))
+	}
+	return nil
+}
 
 // What the check a run makes when it starts answers for its job. The run is started on a gate
 // that answered, and on that alone.
@@ -48,7 +59,8 @@ func Test_JobStatus(t *testing.T) {
 			husonymerrors.NewForbidden(licensegate.RefusalMessage([]license.Feature{license.FeatureJobHooks, license.FeatureSubsetting})),
 			license.FeatureGate(license.FeatureJobHooks), license.FeatureGate(license.FeatureSubsetting),
 		)
-		s := &Service{jobgate: answeringGate{answer: fmt.Errorf("checking the job: %w", refusal)}}
+		counter := &refusalLog{}
+		s := &Service{jobgate: answeringGate{answer: fmt.Errorf("checking the job: %w", refusal)}, refusals: counter}
 
 		refused, err := s.jobStatus(ctx, "an-account", "a-job")
 
@@ -56,6 +68,18 @@ func Test_JobStatus(t *testing.T) {
 		require.NotNil(t, refused)
 		require.False(t, refused.GetIsValid())
 		require.Equal(t, "this job uses features the license does not include: job_hooks, subsetting", refused.GetReason())
+		require.Equal(t, []string{"an-account job_hooks", "an-account subsetting"}, counter.counted)
+	})
+
+	t.Run("a job the license allows counts nothing", func(t *testing.T) {
+		ctx, _ := logged()
+		counter := &refusalLog{}
+		s := &Service{jobgate: answeringGate{}, refusals: counter}
+
+		_, err := s.jobStatus(ctx, "an-account", "a-job")
+
+		require.NoError(t, err)
+		require.Empty(t, counter.counted)
 	})
 
 	t.Run("an error that only carries the code of a refusal is not one", func(t *testing.T) {
