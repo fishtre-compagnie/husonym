@@ -441,12 +441,14 @@ class GetAccountStatusResponse(_message.Message):
     def __init__(self, used_record_count: _Optional[int] = ..., allowed_record_count: _Optional[int] = ..., subscription_status: _Optional[_Union[BillingStatus, str]] = ...) -> None: ...
 
 class IsAccountStatusValidRequest(_message.Message):
-    __slots__ = ("account_id", "requested_record_count")
+    __slots__ = ("account_id", "requested_record_count", "job_id")
     ACCOUNT_ID_FIELD_NUMBER: _ClassVar[int]
     REQUESTED_RECORD_COUNT_FIELD_NUMBER: _ClassVar[int]
+    JOB_ID_FIELD_NUMBER: _ClassVar[int]
     account_id: str
     requested_record_count: int
-    def __init__(self, account_id: _Optional[str] = ..., requested_record_count: _Optional[int] = ...) -> None: ...
+    job_id: str
+    def __init__(self, account_id: _Optional[str] = ..., requested_record_count: _Optional[int] = ..., job_id: _Optional[str] = ...) -> None: ...
 
 class IsAccountStatusValidResponse(_message.Message):
     __slots__ = ("is_valid", "reason", "should_poll", "account_status", "trial_expires_at")

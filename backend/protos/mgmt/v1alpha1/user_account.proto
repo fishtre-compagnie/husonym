@@ -345,6 +345,9 @@ message IsAccountStatusValidRequest {
   string account_id = 1 [(buf.validate.field).string.uuid = true];
   // An optional count of records to be added to the current usage for validation.
   optional uint64 requested_record_count = 2;
+  // The job about to run, when the question is asked for a run. The answer is then not valid
+  // either when the job uses a feature the license does not include.
+  optional string job_id = 3 [(buf.validate.field).string.uuid = true];
 }
 
 message IsAccountStatusValidResponse {

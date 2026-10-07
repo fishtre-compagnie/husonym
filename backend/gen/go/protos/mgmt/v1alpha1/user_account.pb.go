@@ -2961,8 +2961,11 @@ type IsAccountStatusValidRequest struct {
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	// An optional count of records to be added to the current usage for validation.
 	RequestedRecordCount *uint64 `protobuf:"varint,2,opt,name=requested_record_count,json=requestedRecordCount,proto3,oneof" json:"requested_record_count,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The job about to run, when the question is asked for a run. The answer is then not valid
+	// either when the job uses a feature the license does not include.
+	JobId         *string `protobuf:"bytes,3,opt,name=job_id,json=jobId,proto3,oneof" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *IsAccountStatusValidRequest) Reset() {
@@ -3007,6 +3010,13 @@ func (x *IsAccountStatusValidRequest) GetRequestedRecordCount() uint64 {
 		return *x.RequestedRecordCount
 	}
 	return 0
+}
+
+func (x *IsAccountStatusValidRequest) GetJobId() string {
+	if x != nil && x.JobId != nil {
+		return *x.JobId
+	}
+	return ""
 }
 
 type IsAccountStatusValidResponse struct {
@@ -4016,12 +4026,14 @@ const file_mgmt_v1alpha1_user_account_proto_rawDesc = "" +
 	"\x11used_record_count\x18\x01 \x01(\x04R\x0fusedRecordCount\x125\n" +
 	"\x14allowed_record_count\x18\x02 \x01(\x04H\x00R\x12allowedRecordCount\x88\x01\x01\x12M\n" +
 	"\x13subscription_status\x18\x03 \x01(\x0e2\x1c.mgmt.v1alpha1.BillingStatusR\x12subscriptionStatusB\x17\n" +
-	"\x15_allowed_record_count\"\x9c\x01\n" +
+	"\x15_allowed_record_count\"\xcd\x01\n" +
 	"\x1bIsAccountStatusValidRequest\x12'\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\taccountId\x129\n" +
-	"\x16requested_record_count\x18\x02 \x01(\x04H\x00R\x14requestedRecordCount\x88\x01\x01B\x19\n" +
-	"\x17_requested_record_count\"\xb3\x02\n" +
+	"\x16requested_record_count\x18\x02 \x01(\x04H\x00R\x14requestedRecordCount\x88\x01\x01\x12$\n" +
+	"\x06job_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\x05jobId\x88\x01\x01B\x19\n" +
+	"\x17_requested_record_countB\t\n" +
+	"\a_job_id\"\xb3\x02\n" +
 	"\x1cIsAccountStatusValidResponse\x12\x19\n" +
 	"\bis_valid\x18\x01 \x01(\bR\aisValid\x12\x1b\n" +
 	"\x06reason\x18\x02 \x01(\tH\x00R\x06reason\x88\x01\x01\x12\x1f\n" +
