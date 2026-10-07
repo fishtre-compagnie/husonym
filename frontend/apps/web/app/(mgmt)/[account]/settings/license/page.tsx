@@ -6,12 +6,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getErrorMessage } from '@/util/util';
 import { useQuery } from '@connectrpc/connect-query';
-import { UserAccountService } from '@husonym/sdk';
+import { UsageService, UserAccountService } from '@husonym/sdk';
 import { ReactElement } from 'react';
 import LicenseFeaturesCard from './components/LicenseFeaturesCard';
 import LicenseKeyCard from './components/LicenseKeyCard';
 import LicenseLimitsCard from './components/LicenseLimitsCard';
 import LicenseStatusCard from './components/LicenseStatusCard';
+import UsageReportCard from './components/UsageReportCard';
 
 export default function Page(): ReactElement {
   const { account } = useAccount();
@@ -19,6 +20,12 @@ export default function Page(): ReactElement {
   const systemInfo = useQuery(UserAccountService.method.getSystemInformation);
   const usage = useQuery(
     UserAccountService.method.getLicenseUsage,
+    { accountId },
+    { enabled: !!accountId, retry: false }
+  );
+
+  const reporting = useQuery(
+    UsageService.method.getUsageReporting,
     { accountId },
     { enabled: !!accountId, retry: false }
   );
@@ -51,6 +58,7 @@ export default function Page(): ReactElement {
           <LicenseStatusCard
             license={license}
             isLoading={systemInfo.isLoading}
+            licenseReportingMode={reporting.data?.licenseMode}
           />
           <LicenseFeaturesCard
             license={license}
@@ -69,7 +77,19 @@ export default function Page(): ReactElement {
       <LicenseKeyCard
         accountId={accountId}
         current={license}
-        onInstalled={() => Promise.all([systemInfo.refetch(), usage.refetch()])}
+        onInstalled={() =>
+          Promise.all([
+            systemInfo.refetch(),
+            usage.refetch(),
+            reporting.refetch(),
+          ])
+        }
+      />
+      <UsageReportCard
+        accountId={accountId}
+        reporting={reporting.data}
+        isLoading={reporting.isLoading}
+        error={reporting.error}
       />
     </div>
   );
