@@ -402,6 +402,8 @@ func (r *role) Enforce(ctx context.Context, user rbac.User, account rbac.Account
 // papers is the license of the deployment. Asking it leaves "license" on the trail.
 type papers struct {
 	valid bool
+	// lacks are the features a valid license does not include.
+	lacks []license.Feature
 	trail *[]string
 }
 
@@ -412,9 +414,11 @@ func (p *papers) IsValid() bool {
 func (*papers) ExpiresAt() time.Time    { return time.Time{} }
 func (*papers) Limits() *license.Limits { return nil }
 
-// HasFeature leaves nothing on the trail: a valid license allows every feature, an invalid one
-// none.
-func (p *papers) HasFeature(license.Feature) bool { return p.valid }
+// HasFeature leaves nothing on the trail: a valid license allows every feature it does not
+// lack, an invalid one none.
+func (p *papers) HasFeature(f license.Feature) bool {
+	return p.valid && !slices.Contains(p.lacks, f)
+}
 
 var (
 	adminGrants = map[string]bool{

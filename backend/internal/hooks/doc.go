@@ -15,7 +15,8 @@
 //  3. the caller holds each permission the operation asks;
 //  4. the object does not refuse the operation: a kind that is retired is neither created
 //     nor turned on;
-//  5. the account holds a license, where the operation creates, changes or turns on.
+//  5. the account holds a license that includes the feature of the hook's kind, where the
+//     operation creates, changes or turns on.
 //
 // What the request carries is validated after these, and then written. What each operation
 // asks is data (rules), one entry per procedure of the contract.
