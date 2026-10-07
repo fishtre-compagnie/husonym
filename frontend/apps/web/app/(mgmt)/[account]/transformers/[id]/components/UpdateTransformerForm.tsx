@@ -1,5 +1,6 @@
 'use client';
 import TransformerForm from '@/app/(mgmt)/[account]/new/transformer/TransformerForms/TransformerForm';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import LearnMoreLink from '@/components/labels/LearnMoreLink';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage, getTransformerSourceString } from '@/util/util';
 import {
   convertTransformerConfigSchemaToTransformerConfig,
@@ -37,6 +39,7 @@ interface Props {
 export default function UpdateTransformerForm(props: Props): ReactElement {
   const { currentTransformer, onUpdated } = props;
   const { account } = useAccount();
+  const { allowed } = useLicenseFeature('custom_transformers');
   const { mutateAsync: isTransformerNameAvailableAsync } = useMutation(
     TransformersService.method.isTransformerNameAvailable
   );
@@ -94,6 +97,7 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
+        <LicenseFeatureNotice feature="custom_transformers" className="mb-4" />
         <FormField
           name="source"
           render={() => (
@@ -186,7 +190,9 @@ export default function UpdateTransformerForm(props: Props): ReactElement {
           <NextLink href={`/${account?.name}/transformers?tab=ud`}>
             <Button type="button">Back</Button>
           </NextLink>
-          <Button type="submit">Save</Button>
+          <Button type="submit" disabled={!allowed}>
+            Save
+          </Button>
         </div>
       </form>
     </Form>

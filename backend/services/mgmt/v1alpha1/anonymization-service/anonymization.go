@@ -16,7 +16,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/metrics"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 	"github.com/google/uuid"
@@ -31,21 +33,54 @@ const (
 	outputErrorCounterStr = "output_error"
 )
 
+// customTransformersRefusal gives the reason the license does not let the request run a
+// transformer it carries, or nothing: JavaScript, to transform or to generate, or a
+// user-defined transformer, in a mapping, as a default transformer or among the anonymizers of
+// a PII text. The request executes what it carries, so it is refused whole: a user-defined
+// transformer is not even resolved.
+func (s *Service) customTransformersRefusal(msg transformerMsgToValidate) string {
+	for cfg := range getTransformerConfigsToValidate(msg) {
+		if job_util.RunsCustomTransformer(cfg) {
+			return license.FeatureRefusal(s.license, license.FeatureCustomTransformers)
+		}
+	}
+	return ""
+}
+
+// carriesPiiText tells whether a mapping or a default transformer of the request is a PII text.
+func carriesPiiText(msg transformerMsgToValidate) bool {
+	for cfg := range getTransformerConfigsToValidate(msg) {
+		if cfg.GetTransformPiiTextConfig() != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) AnonymizeMany(
 	ctx context.Context,
 	req *connect.Request[mgmtv1alpha1.AnonymizeManyRequest],
 ) (*connect.Response[mgmtv1alpha1.AnonymizeManyResponse], error) {
 	logger := logger_interceptor.GetLoggerFromContextOrDefault(ctx)
-	if !s.license.IsValid() {
-		return nil, husonymerrors.NewNotImplemented(
+	notImplemented := func(reason string) error {
+		return husonymerrors.NewNotImplemented(
 			fmt.Sprintf(
-				"%s is not implemented in the OSS version of Husonym.",
+				"%s is not implemented: %s",
 				strings.TrimPrefix(
 					mgmtv1alpha1connect.AnonymizationServiceAnonymizeManyProcedure,
 					"/",
 				),
+				reason,
 			),
 		)
+	}
+	// A license that is not in force is said as such, as every gated call says it: it includes
+	// no feature, and naming one as missing would name the wrong cause.
+	if reason := license.FeatureRefusal(s.license, license.FeaturePiiText); reason != "" {
+		return nil, notImplemented(reason)
+	}
+	if reason := s.customTransformersRefusal(req.Msg); reason != "" {
+		return nil, notImplemented(reason)
 	}
 
 	user, err := s.userdataclient.GetUser(ctx)
@@ -190,23 +225,15 @@ func (s *Service) AnonymizeSingle(
 		return nil, err
 	}
 
-	licensed := s.license.IsValid()
-	if !licensed {
-		for _, mapping := range req.Msg.GetTransformerMappings() {
-			if mapping.GetTransformer().GetTransformPiiTextConfig() != nil {
-				return nil, husonymerrors.NewForbidden(
-					"TransformPiiText is not available for use. Please contact us about upgrading your account.",
-				)
-			}
-		}
-		defaultTransforms := req.Msg.GetDefaultTransformers()
-		if defaultTransforms.GetBoolean().GetTransformPiiTextConfig() != nil ||
-			defaultTransforms.GetN().GetTransformPiiTextConfig() != nil ||
-			defaultTransforms.GetS().GetTransformPiiTextConfig() != nil {
-			return nil, husonymerrors.NewForbidden(
-				"TransformPiiText is not available for use. Please contact us about upgrading your account.",
-			)
-		}
+	licensed := s.license.HasFeature(license.FeaturePiiText)
+	if !licensed && carriesPiiText(req.Msg) {
+		return nil, userdata.FeatureRefusal(s.license, license.FeaturePiiText)
+	}
+	// The worker calls this during a run for a PII text whose anonymizers may be user-defined.
+	// Such a job does not start without custom_transformers (the job gate counts what the
+	// anonymizers of a PII text run), so a licensed run is never refused here.
+	if s.customTransformersRefusal(req.Msg) != "" {
+		return nil, userdata.FeatureRefusal(s.license, license.FeatureCustomTransformers)
 	}
 
 	for cfg := range getTransformerConfigsToValidate(req.Msg) {

@@ -23,6 +23,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/fishtre-compagnie/husonym/internal/temporal/clientmanager"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
@@ -539,6 +540,11 @@ func (s *Service) CreateJobRun(
 	if err := user.EnforceLicense(ctx, job.GetAccountId()); err != nil {
 		return nil, err
 	}
+	// A job never runs without a feature it uses: it is refused here, before its schedule is
+	// triggered. The run checks again when it starts, which is what holds a scheduled run.
+	if err := s.jobgate.Check(ctx, job); err != nil {
+		return nil, err
+	}
 
 	logger.Debug("creating job run by triggering temporal schedule")
 	jobRunId, err := s.temporalmgr.StartScheduledRun(ctx, job.GetAccountId(), job.GetId(), logger)
@@ -815,6 +821,18 @@ func (s *Service) streamLogs(
 	}
 	if err := user.EnforceJob(ctx, userdata.NewDomainEntity(req.GetAccountId(), jobRun.GetJobId()), rbac.JobAction_View); err != nil {
 		return err
+	}
+	// The one read the license can close: serving the logs of a run is the feature, while the
+	// run itself, its status and its events stay readable. Only a license in force that does
+	// not include it closes it. A license that has lapsed, or an instance without one, still
+	// allows consulting, the logs like the rest: this does not go through EnforceFeature, which
+	// asks for a license in force first.
+	licensed, err := user.IsLicensed(ctx, req.GetAccountId())
+	if err != nil {
+		return err
+	}
+	if licensed && !user.HasFeature(license.FeatureRunLogs) {
+		return husonymerrors.NewForbidden(license.NotIncludedMessage(license.FeatureRunLogs))
 	}
 
 	switch *s.cfg.RunLogConfig.RunLogType {

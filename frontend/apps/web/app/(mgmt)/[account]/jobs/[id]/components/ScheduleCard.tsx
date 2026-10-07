@@ -1,4 +1,5 @@
 'use client';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -16,6 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { yupResolver } from '@/util/yup-form-resolver';
@@ -25,8 +27,6 @@ import { ReactElement } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
-
-export const DEFAULT_CRON_STRING = '0 0 1 1 *';
 
 const SCHEDULE_FORM_SCHEMA = Yup.object({
   cronSchedule: Yup.string()
@@ -57,6 +57,7 @@ interface Props {
 }
 
 export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
+  const { allowed } = useLicenseFeature('scheduling');
   const form = useForm({
     mode: 'onChange',
     resolver: yupResolver(SCHEDULE_FORM_SCHEMA),
@@ -93,6 +94,7 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
     <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle>Schedule</CardTitle>
+        <LicenseFeatureNotice feature="scheduling" />
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -120,7 +122,14 @@ export default function JobScheduleCard({ job, mutate }: Props): ReactElement {
           <CardFooter className="bg-muted flex py-2 justify-center">
             <div className="flex flex-row items-center justify-between w-full">
               <p className="text-muted-foreground text-sm">{msg}</p>
-              <Button type="submit" disabled={!form.formState.isDirty}>
+              {/* Without the feature a new or changed cron cannot be saved; a schedule is stopped with Pause. */}
+              <Button
+                type="submit"
+                disabled={
+                  !form.formState.isDirty ||
+                  (!allowed && !!form.watch('cronSchedule'))
+                }
+              >
                 Save
               </Button>
             </div>

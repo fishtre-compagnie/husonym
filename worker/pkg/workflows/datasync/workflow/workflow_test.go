@@ -896,10 +896,15 @@ func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 		Return(&destinationtriggers_activity.SuspendTriggersResponse{}, nil).Maybe()
 	env.OnActivity(triggersActivity.RestoreTriggers, mock.Anything, mock.Anything).
 		Return(&destinationtriggers_activity.RestoreTriggersResponse{}, nil).Maybe()
-	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+	// The check names the job each time it is made, at the start and while the run goes on.
+	jobId := uuid.NewString()
+	forTheJob := mock.MatchedBy(func(req *accountstatus_activity.CheckAccountStatusRequest) bool {
+		return req.JobId == jobId
+	})
+	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, forTheJob).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: true, ShouldPoll: true}, nil).
 		Once()
-	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, mock.Anything).
+	env.OnActivity(accStatsActivity.CheckAccountStatus, mock.Anything, forTheJob).
 		Return(&accountstatus_activity.CheckAccountStatusResponse{IsValid: false}, nil).Once()
 
 	env.OnWorkflow(accounthooks.ProcessAccountHook, mock.Anything, mock.Anything).
@@ -917,7 +922,7 @@ func Test_Workflow_Halts_Activities_On_InvalidAccountStatus(t *testing.T) {
 		})
 
 	datasyncWorkflow := New(testutil.NewFakeEELicense(testutil.WithIsValid()))
-	env.ExecuteWorkflow(datasyncWorkflow.Workflow, &WorkflowRequest{})
+	env.ExecuteWorkflow(datasyncWorkflow.Workflow, &WorkflowRequest{JobId: jobId})
 
 	require.True(t, env.IsWorkflowCompleted())
 
@@ -1201,6 +1206,8 @@ func Test_Workflow_Initial_AccountStatus(t *testing.T) {
 	var applicationErr *temporal.ApplicationError
 	assert.True(t, errors.As(err, &applicationErr))
 	assert.ErrorContains(t, applicationErr, errInvalidAccountStatusError.Error())
+	// The failure of the run tells why: a refusal that names features reaches the user.
+	assert.ErrorContains(t, applicationErr, "test failure")
 
 	env.AssertExpectations(t)
 }

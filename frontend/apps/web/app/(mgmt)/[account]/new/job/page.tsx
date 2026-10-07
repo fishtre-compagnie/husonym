@@ -1,6 +1,7 @@
 'use client';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useGetSystemAppConfig } from '@/libs/hooks/useGetSystemAppConfig';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { cn } from '@/libs/utils';
 import { MagicWandIcon, SymbolIcon } from '@radix-ui/react-icons';
 import { nanoid } from 'nanoid';
@@ -41,6 +43,11 @@ export default function NewJob(props: PageProps): ReactElement {
 
   const [href, setHref] = useState<string | undefined>(jobData[0].href);
 
+  const { allowed: isPiiDetectionAllowed } = useLicenseFeature('pii_detection');
+  // The job types the license does not include are shown, but cannot be picked.
+  const isLocked = (jobType: NewJobType) =>
+    jobType === 'pii-detection' && !isPiiDetectionAllowed;
+
   const handleJobSelection = (jobType: NewJobType, href: string) => {
     setSelectedJobType(jobType);
     setHref(href);
@@ -63,12 +70,18 @@ export default function NewJob(props: PageProps): ReactElement {
             <Card
               key={jd.name}
               className={cn(
-                'cursor-pointer',
+                isLocked(jd.type)
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer',
                 selectedJobType === jd.type
                   ? 'border border-black shadow-md dark:border-gray-400'
                   : 'hover:border hover:border-gray-500 dark:border-gray-700 dark:hover:border-gray-600'
               )}
-              onClick={() => handleJobSelection(jd.type, jd.href)}
+              onClick={() => {
+                if (!isLocked(jd.type)) {
+                  handleJobSelection(jd.type, jd.href);
+                }
+              }}
             >
               <CardHeader className="w-[300px] relative">
                 <div className="flex flex-col items-center text-left">
@@ -101,12 +114,18 @@ export default function NewJob(props: PageProps): ReactElement {
                     <CardDescription className="pt-2">
                       {jd.description}
                     </CardDescription>
+                    {jd.type === 'pii-detection' && (
+                      <div className="pt-2">
+                        <LicenseFeatureNotice feature="pii_detection" />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="absolute top-0 right-2">
                   <RadioGroupItem
                     value={jd.type}
                     id={jd.type}
+                    disabled={isLocked(jd.type)}
                     className={`${selectedJobType === jd.type ? 'bg-black dark:bg-white text-white dark:text-gray-900' : 'bg-white dark:bg-transparent text-black'}`}
                   />{' '}
                 </div>

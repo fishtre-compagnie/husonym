@@ -189,3 +189,43 @@ SELECT EXISTS (
         WHERE connection_id = sqlc.arg('connectionId')
     ) all_connections
 );
+
+-- Held until the transaction ends, so that two sources added at the same moment, wherever they
+-- are asked, are counted one after the other: the second sees what the first wrote.
+-- name: LockLicenseSources :exec
+SELECT pg_advisory_xact_lock(hashtextextended('license_sources', 0));
+
+-- Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+-- waits longer fails with lock_not_available instead of holding what the transaction has locked.
+-- name: SetTransactionLockTimeout :exec
+SELECT set_config('lock_timeout', (sqlc.arg('milliseconds')::bigint)::text, true);
+
+-- What is needed to count the sources of the instance: the source options, the job type and,
+-- for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
+-- first query of this file that crosses accounts, on purpose: the license covers the whole
+-- instance, so its cap on sources is counted over all of them.
+--
+-- The mappings themselves are not returned: they are the heavy part of a job and the count only
+-- needs their schema names. Other engines read one source per connection, so they get none.
+-- The JSON keys are the ones the Go models write: 'mysqlOptions' and 'mongoOptions' in the
+-- source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
+-- A mappings value that is null or not an array yields no schema rather than an error.
+-- name: ListJobSourcesOfInstance :many
+SELECT
+  j.id,
+  j.account_id,
+  j.connection_options,
+  j.jobtype_config,
+  CASE
+    WHEN (j.connection_options ? 'mysqlOptions' OR j.connection_options ? 'mongoOptions')
+      AND jsonb_typeof(j.mappings) = 'array'
+    THEN ARRAY(
+      SELECT DISTINCT m->>'schema'
+      FROM jsonb_array_elements(j.mappings) AS m
+      WHERE coalesce(m->>'schema', '') <> ''
+      ORDER BY 1
+    )::text[]
+    ELSE ARRAY[]::text[]
+  END AS schemas
+FROM husonym_api.jobs j
+ORDER BY j.id;

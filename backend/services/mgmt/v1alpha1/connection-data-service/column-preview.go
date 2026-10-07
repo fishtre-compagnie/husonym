@@ -12,7 +12,10 @@ import (
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
+	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	job_util "github.com/fishtre-compagnie/husonym/internal/job"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
 )
 
@@ -45,6 +48,15 @@ func (s *Service) PreviewColumnTransformer(
 	if err != nil {
 		return nil, err
 	}
+	// The preview executes the transformer it is given. JavaScript and a user-defined transformer,
+	// themselves or among the anonymizers of a PII text, are custom_transformers: without the
+	// feature the preview is refused before the transformer is even resolved, as the anonymization
+	// API refuses a request that carries one.
+	if job_util.RunsCustomTransformer(req.Msg.GetTransformer()) {
+		if err := userdata.FeatureRefusal(s.transformers.License, license.FeatureCustomTransformers); err != nil {
+			return nil, err
+		}
+	}
 	// The transformer is resolved before the source is read: what it turns out to be decides how
 	// many rows the preview may show. A user-defined one is taken from the connection's account.
 	userDefinedTransformers := transformer_executor.NewUserDefinedTransformerResolver(
@@ -53,6 +65,9 @@ func (s *Service) PreviewColumnTransformer(
 	)
 	config, err := resolveTransformer(ctx, userDefinedTransformers, req.Msg.GetTransformer())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.refusePiiTextPreview(config); err != nil {
 		return nil, err
 	}
 	// A javascript rule is shown over one trial, and a trial takes at most maxJavascriptTrialRows
@@ -93,12 +108,22 @@ func (s *Service) PreviewColumnTransformer(
 	return connect.NewResponse(resp), nil
 }
 
+// refusePiiTextPreview refuses the preview of a PII text that the license does not let run. A
+// deployment without the engine is another cause, which the anonymizer tells in its own words.
+func (s *Service) refusePiiTextPreview(resolved *mgmtv1alpha1.TransformerConfig) error {
+	if s.transformers.PiiText == nil || resolved.GetTransformPiiTextConfig() == nil {
+		return nil
+	}
+	return userdata.FeatureRefusal(s.transformers.License, license.FeaturePiiText)
+}
+
 // previewAnonymized runs the sampled values through the anonymizer AnonymizeMany uses.
 //
-// TransformPiiText is enabled only under a valid license, read here on every preview. Without
-// one it is not enabled, exactly as when Presidio is not configured; every other transformer
-// runs the same either way. A preview belongs to no run: the hashes it shows are computed under
-// the key the process keeps for the account, and are not those a run writes.
+// TransformPiiText is enabled only under a license that includes pii_text, read here on every
+// preview; the handler has already refused, naming the feature, a preview that the license does
+// not allow. Without Presidio it is not enabled either, which the anonymizer says. Every other
+// transformer runs the same either way. A preview belongs to no run: the hashes it shows are
+// computed under the key the process keeps for the account, and are not those a run writes.
 func (s *Service) previewAnonymized(
 	ctx context.Context,
 	accountId string,
@@ -115,7 +140,7 @@ func (s *Service) previewAnonymized(
 		}}),
 		jsonanonymizer.WithPiiText(
 			s.transformers.PiiText,
-			s.transformers.PiiText != nil && s.transformers.License.IsValid(),
+			s.transformers.PiiText != nil && s.transformers.License.HasFeature(license.FeaturePiiText),
 			s.transformers.PiiText.AccountHashKey(accountId),
 		),
 		jsonanonymizer.WithUserDefinedTransformerResolver(userDefinedTransformers),

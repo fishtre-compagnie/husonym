@@ -1,7 +1,9 @@
 'use client';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import RequiredLabel from '@/components/labels/RequiredLabel';
 import { useAccount } from '@/components/providers/account-provider';
 import { Button } from '@/components/ui/button';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { endOfDay, format, startOfDay } from 'date-fns';
 
 import { Calendar } from '@/components/ui/calendar';
@@ -45,6 +47,7 @@ export interface ApiKeyValueSessionStore {
 
 export default function NewApiKeyForm(): ReactElement {
   const { account } = useAccount();
+  const { allowed } = useLicenseFeature('api_keys');
   const router = useRouter();
   const form = useForm({
     mode: 'onChange',
@@ -98,6 +101,7 @@ export default function NewApiKeyForm(): ReactElement {
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-col gap-4"
       >
+        <LicenseFeatureNotice feature="api_keys" />
         <FormField
           control={form.control}
           name="name"
@@ -242,7 +246,9 @@ export default function NewApiKeyForm(): ReactElement {
           )}
         />
         <div className="flex flex-row justify-end">
-          <Button type="submit">Submit</Button>
+          <Button type="submit" disabled={!allowed}>
+            Submit
+          </Button>
         </div>
       </form>
     </Form>

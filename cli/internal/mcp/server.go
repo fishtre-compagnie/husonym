@@ -24,9 +24,12 @@ type Options struct {
 	Data        *novalues.Reader
 	Values      *rowvalues.Reader
 	Jobs        *jobs.Reader
-	AccountId   string
-	Version     string
-	Logger      *slog.Logger
+	// Allowed says whether the license of the instance includes the mcp feature. It is asked of
+	// each tool call. It answers ErrNoLicenseInForce for an instance without a license in force.
+	Allowed   func(ctx context.Context) (bool, error)
+	AccountId string
+	Version   string
+	Logger    *slog.Logger
 }
 
 // progressInterval is how often a client that asked is told a call is still worked on. A
@@ -35,17 +38,18 @@ type Options struct {
 const progressInterval = 15 * time.Second
 
 // New returns a server with every tool registered, ready to run on a transport.
-func New(opts Options) *mcp.Server {
+func New(opts *Options) *mcp.Server {
 	return newServer(opts, progressInterval)
 }
 
 // newServer is New, telling of a call still worked on as often as said.
-func newServer(opts Options, progressEvery time.Duration) *mcp.Server {
+func newServer(opts *Options, progressEvery time.Duration) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "husonym", Title: "Husonym", Version: opts.Version},
 		&mcp.ServerOptions{Logger: opts.Logger},
 	)
-	server.AddReceivingMiddleware(tellsProgress(progressEvery))
+	// The license is asked first: a call it refuses starts no progress reporting.
+	server.AddReceivingMiddleware(requiresFeature(opts.Allowed), tellsProgress(progressEvery))
 	addListConnections(server, opts.Connections, opts.AccountId)
 	addDescribeConnection(server, opts.Connections)
 	addCheckConnection(server, opts.Connections)

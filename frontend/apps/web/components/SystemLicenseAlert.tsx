@@ -1,3 +1,4 @@
+import { formatDate, licenseState } from '@/libs/license/license';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useQuery } from '@connectrpc/connect-query';
 import { UserAccountService } from '@husonym/sdk';
@@ -10,48 +11,11 @@ interface Props {
   description?: string;
 }
 
-// Mirrors the backend lifecycle in internal/license. Derived here rather than sent
-// over the wire: the backend already exposes isValid and expiresAt, and isValid stays
-// true throughout the grace period, so the two together pin down the state.
-type LicenseState = 'none' | 'valid' | 'expiring' | 'grace' | 'frozen';
-
-const EXPIRING_WINDOW_DAYS = 30;
-
-function resolveState(
-  isValid: boolean | undefined,
-  expiresAt: Date | undefined
-): LicenseState {
-  // No license at all: nothing to count down to.
-  if (!expiresAt || expiresAt.getTime() === 0) {
-    return isValid ? 'valid' : 'none';
-  }
-  // isValid covers the grace period, so a false here means grace is over too.
-  if (!isValid) {
-    return 'frozen';
-  }
-  const msLeft = expiresAt.getTime() - Date.now();
-  if (msLeft <= 0) {
-    return 'grace';
-  }
-  if (msLeft < EXPIRING_WINDOW_DAYS * 24 * 60 * 60 * 1000) {
-    return 'expiring';
-  }
-  return 'valid';
-}
-
 function daysUntil(date: Date): number {
   return Math.max(
     0,
     Math.ceil((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
   );
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 }
 
 // Displays a licensing alert whose urgency follows the license lifecycle. Silent while
@@ -65,7 +29,7 @@ export default function SystemLicenseAlert(props: Props): ReactElement | null {
   const expiresAt = license?.expiresAt
     ? timestampDate(license.expiresAt)
     : undefined;
-  const state = resolveState(license?.isValid, expiresAt);
+  const state = licenseState(license);
 
   if (state === 'valid') {
     return null;

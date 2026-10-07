@@ -27,9 +27,63 @@ worker of the previous version picks it up.
 
 ### License
 
-The API and the worker start whatever the license, and read it on every request. See
-[Licensing](/deploy/licensing) for what a valid license is needed for, and for
-`EE_LICENSE_FILE`, which lets a renewed license take effect without a restart.
+The API starts whatever the license, and reads it on every request. The worker asks the API
+for it, and takes no job run until the API has answered once.
+
+The key in force is now kept in the database of the API. At its first start, the API takes
+the key from `EE_LICENSE` or `EE_LICENSE_FILE` into the database, and from then on the
+database holds it. The variables stay useful as ways to install a newer key: the API
+offers what they hold at each start (and the file again when its content changes), and
+keeps a key only when it is newer than the one it holds. A key can also be installed from the
+License page of the settings. The upgrade adds one table to the database, through a
+migration that can be reversed.
+
+The worker no longer reads a license variable: it asks the API for the key. If `EE_LICENSE`
+or `EE_LICENSE_FILE` was set only on the worker, it must now be set on the API, because the
+worker takes the key from the API. Until then the instance has no license: the API starts no
+job run.
+
+A worker that starts takes no job run until the API has answered it once about the license
+(an API that holds no key has answered). If a run reaches its job hooks on a worker that
+holds no license in force, the run fails rather than skip them, with
+`the worker has not received the instance's license yet: job hooks were not run`.
+
+The logs of a run are readable without a license in force, as they were before this
+version. An account that has already declared its identity provider can replace it whatever
+the license.
+
+Keys that were issued before this version keep working and allow everything. See
+[Licensing](/deploy/licensing) for what a valid license is needed for, for the features and
+the sources a license may limit, and for `EE_LICENSE_FILE`, which lets a renewed license
+take effect without a restart.
+
+**Check after upgrading.**
+
+- Upgrade the API before the worker: a new worker asks the API for the license, and takes
+  no job run until the API has answered.
+- The License page shows the state you expect, and where the key came from (the
+  environment, a file, or the interface).
+- The log of the worker says that it obtained the license from the API. A worker that is
+  still waiting says so, and why.
+
+**Rolling back.** Once the new worker has started job runs, do not roll the **worker** back
+to the previous version while some of those runs are still open: their history holds
+entries that the previous version does not expect, so they cannot make progress until the
+worker is upgraded again. Let the open runs finish, or cancel them, before rolling a worker
+back.
+
+Rolling the **API** back keeps the license, with these cares:
+
+- The previous version only reads its environment. If a newer key was installed from the
+  License page since the upgrade, put that key into `EE_LICENSE` or `EE_LICENSE_FILE` on
+  the API before rolling it back.
+- The previous worker reads its own license variable. Keep `EE_LICENSE` or
+  `EE_LICENSE_FILE` set on the **worker** for as long as a rollback is intended, even though
+  the new worker ignores it.
+- A new worker in front of a rolled-back API obtains no key from it, and waits: it takes no
+  job run. Roll the worker back together with the API.
+
+The extra table is ignored by the previous version, or removed by the reverse migration.
 
 ### Roles
 

@@ -85,6 +85,9 @@ type Querier interface {
 	GetConnectionByNameAndAccount(ctx context.Context, db DBTX, arg GetConnectionByNameAndAccountParams) (HusonymApiConnection, error)
 	GetConnectionsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiConnection, error)
 	GetConnectionsByIds(ctx context.Context, db DBTX, dollar_1 []pgtype.UUID) ([]HusonymApiConnection, error)
+	// The key in force: the latest one issued, the latest one stored when two were issued at the
+	// same instant. No row means the instance has no key.
+	GetCurrentLicenseKey(ctx context.Context, db DBTX) (HusonymApiLicenseKey, error)
 	// Every issuer an account has declared, for the resolver the token validator calls.
 	//
 	// The issuer is read straight out of the jsonb and never decrypted, because it is not a
@@ -106,6 +109,9 @@ type Querier interface {
 	GetJobHooksByJob(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobHook, error)
 	GetJobSourceColumns(ctx context.Context, db DBTX, jobID pgtype.UUID) ([]HusonymApiJobSourceColumn, error)
 	GetJobsByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJob, error)
+	// The row of one license, by the id its key carries. A license stored twice under two values
+	// has two rows: the latest stored is the one told.
+	GetLicenseKeyByLicenseId(ctx context.Context, db DBTX, licenseID string) (HusonymApiLicenseKey, error)
 	GetPendingJobMappingChangesByAccount(ctx context.Context, db DBTX, accountid pgtype.UUID) ([]HusonymApiJobMappingChange, error)
 	GetPendingJobMappingChangesByJob(ctx context.Context, db DBTX, arg GetPendingJobMappingChangesByJobParams) ([]HusonymApiJobMappingChange, error)
 	GetPersonalAccountByUserId(ctx context.Context, db DBTX, userid pgtype.UUID) (HusonymApiAccount, error)
@@ -129,6 +135,7 @@ type Querier interface {
 	GetUserIdentityByUserId(ctx context.Context, db DBTX, userID pgtype.UUID) (HusonymApiUserIdentityProviderAssociation, error)
 	InsertJobMappingChange(ctx context.Context, db DBTX, arg InsertJobMappingChangeParams) error
 	InsertJobSourceColumns(ctx context.Context, db DBTX, arg InsertJobSourceColumnsParams) error
+	InsertLicenseKey(ctx context.Context, db DBTX, arg InsertLicenseKeyParams) (HusonymApiLicenseKey, error)
 	IsAccountHookNameAvailable(ctx context.Context, db DBTX, arg IsAccountHookNameAvailableParams) (bool, error)
 	IsConnectionInAccount(ctx context.Context, db DBTX, arg IsConnectionInAccountParams) (int64, error)
 	IsConnectionNameAvailable(ctx context.Context, db DBTX, arg IsConnectionNameAvailableParams) (int64, error)
@@ -137,6 +144,17 @@ type Querier interface {
 	IsTransformerNameAvailable(ctx context.Context, db DBTX, arg IsTransformerNameAvailableParams) (int64, error)
 	IsUserInAccount(ctx context.Context, db DBTX, arg IsUserInAccountParams) (int64, error)
 	IsUserInAccountApiKey(ctx context.Context, db DBTX, arg IsUserInAccountApiKeyParams) (int64, error)
+	// What is needed to count the sources of the instance: the source options, the job type and,
+	// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
+	// first query of this file that crosses accounts, on purpose: the license covers the whole
+	// instance, so its cap on sources is counted over all of them.
+	//
+	// The mappings themselves are not returned: they are the heavy part of a job and the count only
+	// needs their schema names. Other engines read one source per connection, so they get none.
+	// The JSON keys are the ones the Go models write: 'mysqlOptions' and 'mongoOptions' in the
+	// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
+	// A mappings value that is null or not an array yields no schema rather than an error.
+	ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error)
 	// The role a member holds in an account is a row of husonym_api.casbin_rule: 'g', the member,
 	// the role, the account. These two statements replace it, in one transaction.
 	// Held until the transaction ends, so that two changes of the role of one member in one
@@ -150,6 +168,13 @@ type Querier interface {
 	// The subject alone is the key, without its issuer, because a row recorded before issuers
 	// were is found by its subject under any of them.
 	LockIdentityProviderSubject(ctx context.Context, db DBTX, providersub string) error
+	// The license keys belong to the instance: there is no account here.
+	// Held until the transaction ends, so that two keys given at the same moment, wherever they
+	// are asked, are looked at one after the other: the second sees what the first wrote.
+	LockLicenseKeys(ctx context.Context, db DBTX) error
+	// Held until the transaction ends, so that two sources added at the same moment, wherever they
+	// are asked, are counted one after the other: the second sees what the first wrote.
+	LockLicenseSources(ctx context.Context, db DBTX) error
 	// Holds a user for the rest of the transaction, so that what is created once per user is
 	// decided by one transaction at a time: a second one waits here until the first is done.
 	//
@@ -202,6 +227,9 @@ type Querier interface {
 	SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJobWorkflowOptionsParams) (HusonymApiJob, error)
 	SetNewAccountStripeCustomerId(ctx context.Context, db DBTX, arg SetNewAccountStripeCustomerIdParams) (HusonymApiAccount, error)
 	SetRunContext(ctx context.Context, db DBTX, arg SetRunContextParams) error
+	// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+	// waits longer fails with lock_not_available instead of holding what the transaction has locked.
+	SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error
 	UpdateAccountApiKeyValue(ctx context.Context, db DBTX, arg UpdateAccountApiKeyValueParams) (HusonymApiAccountApiKey, error)
 	UpdateAccountHook(ctx context.Context, db DBTX, arg UpdateAccountHookParams) (HusonymApiAccountHook, error)
 	UpdateAccountInviteToAccepted(ctx context.Context, db DBTX, id pgtype.UUID) (HusonymApiAccountInvite, error)

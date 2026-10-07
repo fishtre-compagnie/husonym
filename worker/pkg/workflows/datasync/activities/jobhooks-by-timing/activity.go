@@ -56,6 +56,12 @@ type RunJobHooksByTimingResponse struct {
 	ExecCount uint
 }
 
+// errLicenseNotReceived fails the activity of a job that has hooks to run while the worker
+// holds no license in force.
+var errLicenseNotReceived = errors.New(
+	"the worker has not received the instance's license yet: job hooks were not run",
+)
+
 // Runs active job hooks by the provided timing value
 func (a *Activity) RunJobHooksByTiming(
 	ctx context.Context,
@@ -88,11 +94,6 @@ func (a *Activity) RunJobHooksByTiming(
 			}
 		}
 	}()
-	if !a.isLicensed(req) {
-		logger.Debug("skipping job hooks due to EE license not being active")
-		return &RunJobHooksByTimingResponse{ExecCount: 0}, nil
-	}
-
 	logger.Debug(fmt.Sprintf("retrieving job hooks by timing %q", req.Timing))
 
 	resp, err := a.jobclient.GetActiveJobHooksByTiming(
@@ -107,6 +108,13 @@ func (a *Activity) RunJobHooksByTiming(
 	}
 	hooks := resp.Msg.GetHooks()
 	logger.Debug(fmt.Sprintf("found %d active hooks", len(hooks)))
+
+	// The API does not start a run under a license that is not in force, so a run that gets
+	// here without one is a run whose worker had not received the license of the instance.
+	// Its hooks are not run, and a run never passes for whole without them: it fails.
+	if len(hooks) > 0 && !a.isLicensed(req) {
+		return nil, errLicenseNotReceived
+	}
 
 	connections := make(map[string]*sqlmanager.SqlConnection)
 	defer func() {
@@ -146,7 +154,7 @@ func (a *Activity) RunJobHooksByTiming(
 	return &RunJobHooksByTimingResponse{ExecCount: execCount}, nil
 }
 
-// isLicensed tells whether the hooks run: by the answer of the run when the request carries
+// isLicensed tells whether the hooks may run: by the answer of the run when the request carries
 // it, and by the license as it is now for a request scheduled before runs passed it.
 func (a *Activity) isLicensed(req *RunJobHooksByTimingRequest) bool {
 	if req.Licensed != nil {

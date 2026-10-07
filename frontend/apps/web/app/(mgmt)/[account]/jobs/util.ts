@@ -151,6 +151,7 @@ import {
 } from '../new/job/job-form-validations';
 import { setInitialFormStateFromJob } from '../new/job/piidetect/schema/stores';
 import { getConnectionIdFromSource } from './[id]/source/components/util';
+import { cronToClone } from './schedule';
 
 type GetConnectionById = (id: string) => Connection | undefined;
 
@@ -1192,7 +1193,7 @@ function setDefaultDefineFormValues(
 ): void {
   const values: DefineFormValues = {
     jobName: `${job.name}-copy`,
-    cronSchedule: job.cronSchedule,
+    cronSchedule: cronToClone(job.cronSchedule),
     initiateJobRun: false,
     syncActivityOptions: job.syncOptions
       ? {

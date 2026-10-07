@@ -20,6 +20,8 @@ Give the server a key of its own, with only the permissions it needs:
 - configuring jobs: `job:create` to create one, `job:view` and `job:edit` to change its mappings, `job:view` with `connection:view` and `connection:view_sensitive` to check one before it runs.
 - running jobs: `job:execute`. Leave it out, and the agent prepares jobs that only a person can run.
 
+The server also needs the license of the instance to include MCP. It asks the API for the license when a tool is called, and keeps the answer for a minute. A client can still connect and list the tools without it, but each tool call is refused with the error `this license does not include mcp`. If the server cannot read the license, for instance because the API does not answer, the call fails with `unable to read the license` and the reason, and is tried again at the next call.
+
 A tool the key does not allow is refused by the API, which names the permission missing. See [API key permissions](/deploy/authentication#permissions).
 
 ## Usage

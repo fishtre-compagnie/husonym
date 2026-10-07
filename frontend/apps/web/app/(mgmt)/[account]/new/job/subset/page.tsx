@@ -18,17 +18,20 @@ import {
 } from '@/components/jobs/subsets/SubsetTable/Columns';
 import SubsetTable from '@/components/jobs/subsets/SubsetTable/SubsetTable';
 import {
+  addsWhereClause,
   buildRowKey,
   buildTableRowData,
   getBulkColumnsForSqlAutocomplete,
   getColumnsForSqlAutocomplete,
   isValidSubsetType,
 } from '@/components/jobs/subsets/utils';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import { useAccount } from '@/components/providers/account-provider';
 import { PageProps } from '@/components/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getSingleOrUndefined } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
 import { SchemaFormValues } from '@/yup-validations/jobs';
@@ -65,6 +68,7 @@ export default function Page(props: PageProps): ReactElement {
   const searchParams = use(props.searchParams);
   const { account } = useAccount();
   const router = useRouter();
+  const { allowed } = useLicenseFeature('subsetting');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
@@ -386,6 +390,7 @@ export default function Page(props: PageProps): ReactElement {
               onSubmit={form.handleSubmit(onSubmit)}
               className="flex flex-col gap-2"
             >
+              <LicenseFeatureNotice feature="subsetting" />
               <div>
                 {showSubsetOptions(connectionType) && (
                   <SubsetOptionsForm maxColNum={2} />
@@ -454,7 +459,12 @@ export default function Page(props: PageProps): ReactElement {
                   >
                     Back
                   </Button>
-                  <Button key="submit" type="submit">
+                  {/* Creating the job with no WHERE clause stays possible. */}
+                  <Button
+                    key="submit"
+                    type="submit"
+                    disabled={!allowed && addsWhereClause(formSubsets)}
+                  >
                     Save
                   </Button>
                 </div>

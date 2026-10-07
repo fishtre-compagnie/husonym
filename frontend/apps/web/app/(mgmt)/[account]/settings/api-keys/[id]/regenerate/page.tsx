@@ -1,5 +1,6 @@
 'use client';
 import { ApiKeyValueSessionStore } from '@/app/(mgmt)/[account]/new/api-key/NewApiKeyForm';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import OverviewContainer from '@/components/containers/OverviewContainer';
 import PageHeader from '@/components/headers/PageHeader';
 import RequiredLabel from '@/components/labels/RequiredLabel';
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { cn } from '@/libs/utils';
 import { getErrorMessage } from '@/util/util';
 import { RegenerateApiKeyForm } from '@/yup-validations/apikey';
@@ -62,6 +64,7 @@ export default function RegenerateAccountApiKey(
   const id = params?.id ?? '';
   const router = useRouter();
   const { account } = useAccount();
+  const { allowed } = useLicenseFeature('api_keys');
   const { data, isLoading } = useQuery(
     ApiKeyService.method.getAccountApiKey,
     { id },
@@ -154,6 +157,7 @@ export default function RegenerateAccountApiKey(
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-8"
         >
+          <LicenseFeatureNotice feature="api_keys" />
           <FormField
             control={form.control}
             name="expiresAtSelect"
@@ -259,7 +263,9 @@ export default function RegenerateAccountApiKey(
             )}
           />
           <div className="flex flex-row justify-end">
-            <Button type="submit">Submit</Button>
+            <Button type="submit" disabled={!allowed}>
+              Submit
+            </Button>
           </div>
         </form>
       </Form>

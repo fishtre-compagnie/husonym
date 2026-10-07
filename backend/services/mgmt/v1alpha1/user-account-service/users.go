@@ -578,6 +578,11 @@ func (s *Service) InviteUserToTeamAccount(
 	if err := s.verifyTeamAccount(ctx, accountUuid); err != nil {
 		return nil, err
 	}
+	// An invitation that names no role is a plain invitation, and the member is given the
+	// viewer role when accepting it: only a role chosen at invitation time is the feature.
+	if err := enforceRbacForRole(ctx, user, req.Msg.GetAccountId(), req.Msg.GetRole()); err != nil {
+		return nil, err
+	}
 
 	tomorrow := time.Now().Add(24 * time.Hour)
 	expiresAt, err := husonymdb.ToTimestamp(tomorrow)
@@ -794,6 +799,10 @@ func (s *Service) SetUserRole(
 		return nil, err
 	}
 
+	if err := enforceRbacForRole(ctx, user, req.Msg.GetAccountId(), req.Msg.GetRole()); err != nil {
+		return nil, err
+	}
+
 	count, err := s.db.Q.IsUserInAccount(ctx, s.db.Db, db_queries.IsUserInAccountParams{
 		AccountId: accountUuid,
 		UserId:    requestingUserUuid,
@@ -845,11 +854,7 @@ func (s *Service) GetSystemInformation(
 		Compiler:  versionInfo.Compiler,
 		Platform:  versionInfo.Platform,
 		BuildDate: timestamppb.New(builtDate),
-		License: &mgmtv1alpha1.SystemLicense{
-			IsValid:        s.licenseclient.IsValid(),
-			ExpiresAt:      timestamppb.New(s.licenseclient.ExpiresAt()),
-			IsHusonymCloud: false,
-		},
+		License:   s.systemLicense(ctx),
 	}), nil
 }
 

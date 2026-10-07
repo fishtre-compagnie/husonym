@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { getErrorMessage } from '@/util/util';
 import { useMutation } from '@connectrpc/connect-query';
 import { AccountHookService, NewAccountHook } from '@husonym/sdk';
@@ -27,6 +28,7 @@ export default function NewHookButton(props: Props): ReactElement {
     AccountHookService.method.createAccountHook
   );
   const [open, setOpen] = useState(false);
+  const { allowed } = useLicenseFeature('account_hooks');
 
   async function onCreate(values: NewAccountHook): Promise<void> {
     try {
@@ -54,7 +56,7 @@ export default function NewHookButton(props: Props): ReactElement {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button">
+        <Button type="button" disabled={!allowed}>
           <ButtonText leftIcon={<PlusIcon />} text="New Hook" />
         </Button>
       </DialogTrigger>

@@ -58,9 +58,13 @@ func serve(ctx context.Context, apiKey string, debugMode bool) error {
 	}
 
 	options := readers(httpclient, auth.GetHusonymUrl(), accountId, connect.WithInterceptors(limits.interceptor()))
+	// The license is read with the client the readers use: same key, same limits.
+	options.Allowed = newLicenseGate(mgmtv1alpha1connect.NewUserAccountServiceClient(
+		httpclient, auth.GetHusonymUrl(), connect.WithInterceptors(limits.interceptor()),
+	)).Allowed
 	options.Version = version.Get().GitVersion
 	options.Logger = logger
-	return mcp_server.New(options).Run(ctx, &mcp.StdioTransport{})
+	return mcp_server.New(&options).Run(ctx, &mcp.StdioTransport{})
 }
 
 // signIn returns the client the server reaches the API with, and the account it answers for.

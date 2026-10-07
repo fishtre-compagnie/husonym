@@ -1,6 +1,7 @@
 import EmptyState from '@/components/EmptyState';
 import SubPageHeader from '@/components/headers/SubPageHeader';
 import { useAccount } from '@/components/providers/account-provider';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import Spinner from '@/components/Spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { create } from '@bufbuild/protobuf';
@@ -97,6 +98,8 @@ export default function HooksCard(props: Props): ReactElement {
           />
         }
       />
+
+      <LicenseFeatureNotice feature="job_hooks" />
 
       <div className="flex flex-col gap-5">
         {jobHooks.length === 0 && (

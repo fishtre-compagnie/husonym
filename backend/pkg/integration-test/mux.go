@@ -17,6 +17,8 @@ import (
 	auth_jwt "github.com/fishtre-compagnie/husonym/backend/internal/auth/jwt"
 	auth_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/auth"
 	"github.com/fishtre-compagnie/husonym/backend/internal/hooks"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensestore"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	"github.com/fishtre-compagnie/husonym/backend/internal/utils"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/mongoconnect"
@@ -90,6 +92,8 @@ const (
 	// OSS, Unauthenticated, Licensed with usage caps deliberately small enough for a test
 	// to reach them
 	openSourceUnauthenticatedLimitedPostfix = "/oss-unauthenticated-limited"
+	// OSS, Authenticated, with the license key the database holds
+	openSourceAuthenticatedStoredLicensePostfix = "/oss-authenticated-stored-license"
 )
 
 func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
@@ -107,7 +111,7 @@ func (s *HusonymApiTestClient) setupOssUnauthenticatedLicensedMux(
 		isAuthEnabled,
 		enforcedRbacClient,
 		logger,
-		testutil.NewFakeEELicense(testutil.WithIsValid()),
+		fakeLicense(testutil.NewFakeEELicense(testutil.WithIsValid())),
 	)
 }
 
@@ -126,7 +130,7 @@ func (s *HusonymApiTestClient) setupOssLicensedAuthMux(
 		isAuthEnabled,
 		enforcedRbacClient,
 		logger,
-		testutil.NewFakeEELicense(testutil.WithIsValid()),
+		fakeLicense(testutil.NewFakeEELicense(testutil.WithIsValid())),
 	)
 }
 
@@ -148,7 +152,7 @@ func (s *HusonymApiTestClient) setupOssExpiringAuthMux(
 		isAuthEnabled,
 		enforcedRbacClient,
 		logger,
-		s.Mocks.ExpiringLicense,
+		fakeLicense(s.Mocks.ExpiringLicense),
 	)
 }
 
@@ -167,7 +171,7 @@ func (s *HusonymApiTestClient) setupOssUnlicensedMux(
 		isAuthEnabled,
 		enforcedRbacClient,
 		logger,
-		testutil.NewFakeEELicense(),
+		fakeLicense(testutil.NewFakeEELicense()),
 	)
 }
 
@@ -191,15 +195,63 @@ func (s *HusonymApiTestClient) setupOssLimitedMux(
 		isAuthEnabled,
 		enforcedRbacClient,
 		logger,
-		testutil.NewFakeEELicense(
+		fakeLicense(testutil.NewFakeEELicense(
 			testutil.WithIsValid(),
 			testutil.WithLimits(&license.Limits{
 				MaxJobs:                &maxJobs,
 				MaxConnections:         &maxConnections,
 				AllowedConnectionTypes: []string{"postgres"},
 			}),
-		),
+		)),
 	)
+}
+
+// Licensed and authenticated, with the license an instance really runs with: the key in force
+// is the one the database holds, read by a provider that verifies it against
+// HusonymApiTestClient.LicenseKeyring. It starts without a key; a test gives it one through
+// SetSystemLicense, signed with LicenseSigningKey.
+func (s *HusonymApiTestClient) setupOssStoredLicenseAuthMux(
+	ctx context.Context,
+	pgcontainer *tcpostgres.PostgresTestContainer,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	isAuthEnabled := true
+	enforcedRbacClient, err := rbac.New(ctx, pgcontainer.DB, logger)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get enforced rbac client: %w", err)
+	}
+	provider := license.NewProviderWithKeyring(s.licenseStore(pgcontainer).Current, s.LicenseKeyring, logger)
+	return s.setupMux(
+		pgcontainer,
+		isAuthEnabled,
+		enforcedRbacClient,
+		logger,
+		muxLicense{license: provider, refresh: provider.Refresh},
+	)
+}
+
+// licenseStore gives the place the license keys are kept in, on the database of the test.
+func (s *HusonymApiTestClient) licenseStore(
+	pgcontainer *tcpostgres.PostgresTestContainer,
+) *licensestore.Store {
+	return licensestore.New(husonymdb.New(pgcontainer.DB, db_queries.New()), s.LicenseKeyring)
+}
+
+// muxLicense is the license every service of a mux reads, and how the mux reads it again once
+// a key was stored. Each mode has its own, so that a test can change one without touching the
+// others.
+type muxLicense struct {
+	license interface {
+		license.EEInterface
+		Describe() license.Description
+	}
+	refresh func(ctx context.Context) error
+}
+
+// fakeLicense is a license a test sets by hand: a key stored in the database does not change
+// it.
+func fakeLicense(fake *testutil.FakeEELicense) muxLicense {
+	return muxLicense{license: fake, refresh: func(context.Context) error { return nil }}
 }
 
 func (s *HusonymApiTestClient) setupMux(
@@ -207,22 +259,24 @@ func (s *HusonymApiTestClient) setupMux(
 	isAuthEnabled bool,
 	rbacClient rbac.Interface,
 	logger *slog.Logger,
-	// The license every service of this mux reads. Each mode has its own, so that a test
-	// can change one without touching the others.
-	eelicense *testutil.FakeEELicense,
+	licensing muxLicense,
 ) (*http.ServeMux, error) {
+	eelicense := licensing.license
+
 	// Presidio is wired the same way in every mode: the license is read per request.
 	isPresidioEnabled := true
 
 	maxAllowed := int64(10000)
 
 	husonymDb := husonymdb.New(pgcontainer.DB, db_queries.New())
+	jobGate := licensegate.NewJobGate(husonymDb, eelicense)
 
 	userService := v1alpha1_useraccountservice.New(
 		&v1alpha1_useraccountservice.Config{
 			IsAuthEnabled:            isAuthEnabled,
 			DeploymentIssuer:         TestIssuer,
 			DefaultMaxAllowedRecords: &maxAllowed,
+			WorkerOnly:               userdata.WorkerOnly{IsAuthEnabled: isAuthEnabled},
 		},
 		husonymdb.New(pgcontainer.DB, db_queries.New()),
 		s.Mocks.TemporalConfigProvider,
@@ -230,6 +284,11 @@ func (s *HusonymApiTestClient) setupMux(
 		s.Mocks.Authmanagerclient,
 		rbacClient, // rbac client
 		eelicense,
+		eelicense,
+		s.licenseStore(pgcontainer),
+		licensing.refresh,
+		jobGate,
+		licensegate.NewUsageReader(husonymDb, rbacClient),
 	)
 	userclient := userdata.NewClient(userService, rbacClient, eelicense)
 
@@ -289,6 +348,7 @@ func (s *HusonymApiTestClient) setupMux(
 		jobhookService,
 		userclient,
 		connectiondatabuilder,
+		jobGate,
 	)
 
 	// Free text is analyzed by the Presidio of the test, which answers what the test tells it

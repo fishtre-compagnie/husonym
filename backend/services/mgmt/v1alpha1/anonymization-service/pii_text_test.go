@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -17,6 +18,7 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	"github.com/fishtre-compagnie/husonym/internal/apikey"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/google/uuid"
@@ -232,6 +234,119 @@ func Test_AnonymizeSingle_PiiTextNeedsALicenseOnEveryPath(t *testing.T) {
 			out, err := anonymized(context.Background(), s, account, config, nil)
 			require.Error(t, err)
 			require.Empty(t, out)
+		})
+	}
+}
+
+// A license in force that lacks pii_text refuses the PII text on every path, and says which
+// feature. The refusal is an error: the value is never handed back as it came, so a run that
+// reaches PII text through a script fails rather than writing text that was not anonymized.
+func Test_AnonymizeSingle_PiiTextNeedsItsOwnFeature(t *testing.T) {
+	account := uuid.NewString()
+	withoutPiiText := func() *testutil.FakeEELicense {
+		return testutil.NewFakeEELicense(
+			testutil.WithIsValid(),
+			testutil.WithFeatures(license.FeatureCustomTransformers, license.FeaturePiiDetection),
+		)
+	}
+	script := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{
+			Code: `return husonym.transformPiiText(value, {});`,
+		},
+	}}
+
+	for name, config := range map[string]*mgmtv1alpha1.TransformerConfig{
+		"a mapping":              piiTextConfig(&mgmtv1alpha1.TransformPiiText{}),
+		"a script that calls it": script,
+	} {
+		t.Run(name, func(t *testing.T) {
+			// No answer set on Presidio: a call to it fails the test.
+			s := service(t, withoutPiiText(), presidiotest.New(t), nil)
+
+			out, err := anonymized(asTheWorker(), s, account, config, nil)
+
+			// The script fails in the engine that runs it, which does not name a feature: what
+			// counts is that the call fails and returns nothing.
+			require.Error(t, err)
+			require.Empty(t, out, "the input is never passed through")
+		})
+	}
+
+	t.Run("a transformer that is not PII text is served without the feature", func(t *testing.T) {
+		s := service(t, withoutPiiText(), presidiotest.New(t), nil)
+		passthrough := &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_PassthroughConfig{PassthroughConfig: &mgmtv1alpha1.Passthrough{}},
+		}
+
+		out, err := anonymized(asTheWorker(), s, account, passthrough, nil)
+
+		require.NoError(t, err)
+		require.Equal(t, "appeler Zoé demain", out)
+	})
+}
+
+// A mapping that is a PII text is refused with the code the refusal always had, and the message
+// names the feature.
+func Test_AnonymizeSingle_PiiTextRefusalCode(t *testing.T) {
+	s := service(t, testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures()), presidiotest.New(t), nil)
+
+	_, err := anonymized(asTheWorker(), s, uuid.NewString(), piiTextConfig(&mgmtv1alpha1.TransformPiiText{}), nil)
+
+	require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+	require.ErrorContains(t, err, "this license does not include pii_text")
+}
+
+// AnonymizeMany is refused whole to a license without pii_text, with the code it always had, and
+// the message names the feature.
+func Test_AnonymizeMany_NeedsThePiiTextFeature(t *testing.T) {
+	for name, tc := range map[string]struct {
+		eelicense *testutil.FakeEELicense
+		refusal   string
+	}{
+		"a license that lacks pii_text": {
+			eelicense: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureMcp)),
+			refusal:   "this license does not include pii_text",
+		},
+		// No feature is included then: the refusal says that no license is in force, not that
+		// this one is missing from it.
+		"a license that is not in force": {
+			eelicense: testutil.NewFakeEELicense(),
+			refusal:   "account does not have an active license",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := service(t, tc.eelicense, presidiotest.New(t), nil)
+
+			resp, err := s.AnonymizeMany(context.Background(), connect.NewRequest(&mgmtv1alpha1.AnonymizeManyRequest{
+				AccountId: uuid.NewString(),
+			}))
+
+			require.Nil(t, resp)
+			require.Equal(t, connect.CodeUnimplemented, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, tc.refusal)
+			require.Equal(t, 1, strings.Count(err.Error(), "license"), "one cause is told: %v", err)
+		})
+	}
+}
+
+// Under a license that is not in force, AnonymizeSingle answers what every gated call answers
+// then, whichever feature the request would have needed.
+func Test_AnonymizeSingle_WithoutALicenseInForceSaysSo(t *testing.T) {
+	script := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{Code: `return "x";`},
+	}}
+	for name, config := range map[string]*mgmtv1alpha1.TransformerConfig{
+		"a PII text":           piiTextConfig(&mgmtv1alpha1.TransformPiiText{}),
+		"a custom transformer": script,
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := service(t, testutil.NewFakeEELicense(), presidiotest.New(t), nil)
+
+			_, err := anonymized(asTheWorker(), s, uuid.NewString(), config, nil)
+
+			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, "account does not have an active license")
+			require.NotContains(t, err.Error(), "does not include")
 		})
 	}
 }

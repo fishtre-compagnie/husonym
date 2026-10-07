@@ -1,7 +1,10 @@
 import ButtonText from '@/components/ButtonText';
 import FormErrorMessage from '@/components/FormErrorMessage';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import Spinner from '@/components/Spinner';
 import { Button } from '@/components/ui/button';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
+import { isRoleSelectable } from '@/libs/license/license';
 import { BaseHookStore } from '@/util/zustand.stores.util';
 import { UpdateMemberRoleFormValues } from '@/yup-validations/invite-members';
 import { AccountRole, AccountUser } from '@husonym/sdk';
@@ -59,6 +62,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
     isSubmitting,
     setSubmitting,
   } = useStore();
+  const { allowed } = useLicenseFeature('rbac');
 
   useEffect(() => {
     // Initialize form with hook data
@@ -101,6 +105,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <LicenseFeatureNotice feature="rbac" />
       <AccountRoleField
         error={errors.role}
         value={formData.role}
@@ -119,7 +124,7 @@ export default function UpdateMemberRoleForm(props: Props): ReactElement {
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isRoleSelectable(allowed, formData.role)}
           className="w-full sm:w-auto"
         >
           <ButtonText

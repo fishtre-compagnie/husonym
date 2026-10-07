@@ -44,7 +44,8 @@ type admission struct {
 }
 
 // admit checks the caller against the rule of the procedure, in the order of the package:
-// seeing the owner, each permission, what the object refuses, the license.
+// seeing the owner, each permission, what the object refuses, the license and the feature of
+// the hook's kind in it.
 func (g gate) admit(ctx context.Context, procedure string, t target, in intent) (*admission, error) {
 	r, ok := rules[procedure]
 	if !ok {
@@ -93,8 +94,8 @@ func (g gate) admit(ctx context.Context, procedure string, t target, in intent) 
 			return nil, err
 		}
 	}
-	if r.needsLicense(in.arming) {
-		if err := caller.EnforceLicense(ctx, t.accountID); err != nil {
+	if r.needsFeature(in.arming) {
+		if err := caller.EnforceFeature(ctx, t.accountID, r.feature); err != nil {
 			return nil, err
 		}
 	}

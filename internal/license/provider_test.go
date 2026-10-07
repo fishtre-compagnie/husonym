@@ -2,11 +2,11 @@ package license
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -27,11 +27,43 @@ func newTestClock(t time.Time) *testClock {
 func (c *testClock) Now() time.Time          { return time.Unix(0, c.nanos.Load()).UTC() }
 func (c *testClock) Advance(d time.Duration) { c.nanos.Add(int64(d)) }
 
+// memoryLoader is a Loader whose answer the test sets, and which counts its calls. It is
+// safe for concurrent use.
+type memoryLoader struct {
+	calls atomic.Int64
+
+	mu    sync.Mutex
+	value string
+	err   error
+}
+
+func (l *memoryLoader) load(context.Context) (string, error) {
+	l.calls.Add(1)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.value, l.err
+}
+
+// gives makes the loader answer the value from now on.
+func (l *memoryLoader) gives(value string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.value, l.err = value, nil
+}
+
+// fails makes the loader answer the error from now on.
+func (l *memoryLoader) fails(err error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.value, l.err = "", err
+}
+
 type providerFixture struct {
-	pub   ed25519.PublicKey
-	priv  ed25519.PrivateKey
-	clock *testClock
-	logs  *bytes.Buffer
+	pub    ed25519.PublicKey
+	priv   ed25519.PrivateKey
+	clock  *testClock
+	logs   *bytes.Buffer
+	loader *memoryLoader
 }
 
 func newProviderFixture(t *testing.T) *providerFixture {
@@ -39,10 +71,11 @@ func newProviderFixture(t *testing.T) *providerFixture {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	return &providerFixture{
-		pub:   pub,
-		priv:  priv,
-		clock: newTestClock(time.Now().UTC()),
-		logs:  &bytes.Buffer{},
+		pub:    pub,
+		priv:   priv,
+		clock:  newTestClock(time.Now().UTC()),
+		logs:   &bytes.Buffer{},
+		loader: &memoryLoader{},
 	}
 }
 
@@ -55,31 +88,30 @@ func (f *providerFixture) issue(t *testing.T, expiresIn time.Duration, maxJobs i
 		ExpiresAt:  time.Now().UTC().Add(expiresIn),
 		GraceDays:  ptr(14),
 		Limits:     &Limits{MaxJobs: ptr(maxJobs)},
-	}, f.priv)
+	}, f.priv, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
 	return issued.Encoded
 }
 
-// newLogger returns a logger writing to the fixture's buffer. The buffer is not safe for
-// concurrent use, which is fine: the Provider logs under its own lock.
-func (f *providerFixture) newProvider(src Source) *Provider {
+// newProvider returns a Provider fed by the fixture's loader and logging to the fixture's
+// buffer. The buffer is not safe for concurrent use, which is fine: the Provider only logs
+// from Refresh, and refreshes run one at a time.
+func (f *providerFixture) newProvider() *Provider {
 	logger := slog.New(slog.NewTextHandler(f.logs, nil))
-	return newProvider(src, f.pub, f.clock.Now, logger)
+	return newProvider(f.loader.load, Keyring{LegacyKid: f.pub}, f.clock.Now, logger)
 }
 
-// replaceFile swaps the content atomically and returns the error, so it is safe to call
-// from a goroutine other than the test's.
-func replaceFile(path, content string) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
-}
-
-func writeLicenseFile(t *testing.T, path, content string) {
+// newProviderWith returns a Provider that already took the given key value.
+func (f *providerFixture) newProviderWith(t *testing.T, value string) *Provider {
 	t.Helper()
-	require.NoError(t, replaceFile(path, content))
+	f.loader.gives(value)
+	p := f.newProvider()
+	require.NoError(t, p.Refresh(t.Context()))
+	return p
+}
+
+func (f *providerFixture) errorLogs() int {
+	return bytes.Count(f.logs.Bytes(), []byte("level=ERROR"))
 }
 
 func maxJobsOf(t *testing.T, p *Provider) int {
@@ -92,10 +124,316 @@ func maxJobsOf(t *testing.T, p *Provider) int {
 
 const day = 24 * time.Hour
 
-func Test_Provider_FollowsTheClock(t *testing.T) {
+func Test_Provider_StartsWithoutAKey(t *testing.T) {
 	f := newProviderFixture(t)
-	expiresIn := 60 * day
-	p := f.newProvider(Source{Value: f.issue(t, expiresIn, 1)})
+	f.loader.gives(f.issue(t, 90*day, 1))
+	p := f.newProvider()
+
+	// The loader has a key to give, but nothing was refreshed yet.
+	require.Equal(t, StateNone, p.State())
+	require.False(t, p.IsValid())
+	require.False(t, p.HasFeature(FeatureMcp))
+	require.Nil(t, p.Limits())
+	require.NoError(t, p.Problem())
+	require.Equal(t, f.clock.Now(), p.ExpiresAt())
+	require.Equal(t, f.clock.Now(), p.GracePeriodEndsAt())
+	require.Equal(t, Description{State: StateNone}, p.Describe())
+	require.Zero(t, f.loader.calls.Load())
+}
+
+func Test_Provider_RefreshTakesTheLoadedKey(t *testing.T) {
+	t.Run("the first key", func(t *testing.T) {
+		f := newProviderFixture(t)
+		value := f.issue(t, 90*day, 1)
+		p := f.newProviderWith(t, value)
+
+		require.Equal(t, StateValid, p.State())
+		require.True(t, p.IsValid())
+		require.Equal(t, 1, maxJobsOf(t, p))
+		require.NoError(t, p.Problem())
+
+		// The replacement is logged with what identifies the key, never with its value.
+		parsed, err := ParseWith(value, Keyring{LegacyKid: f.pub})
+		require.NoError(t, err)
+		require.Contains(t, f.logs.String(), "level=INFO")
+		require.Contains(t, f.logs.String(), "a license key is now in force")
+		require.Contains(t, f.logs.String(), parsed.Id)
+		require.NotContains(t, f.logs.String(), value)
+	})
+
+	t.Run("a newer key replaces it", func(t *testing.T) {
+		f := newProviderFixture(t)
+		p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+
+		f.loader.gives(f.issue(t, 90*day, 2))
+		require.Equal(t, 1, maxJobsOf(t, p), "nothing changes before the refresh")
+		require.NoError(t, p.Refresh(t.Context()))
+
+		require.Equal(t, 2, maxJobsOf(t, p))
+		require.NoError(t, p.Problem())
+	})
+
+	t.Run("a well-signed key replaces it whatever its dates say", func(t *testing.T) {
+		f := newProviderFixture(t)
+		p := f.newProviderWith(t, f.issue(t, 365*day, 1))
+		require.Equal(t, StateValid, p.State())
+
+		// B expires well before A, and the clock is already past its grace period.
+		f.loader.gives(f.issue(t, 30*day, 2))
+		f.clock.Advance(60 * day)
+		require.NoError(t, p.Refresh(t.Context()))
+
+		require.Equal(t, StateFrozen, p.State())
+		require.False(t, p.IsValid())
+		require.NoError(t, p.Problem())
+	})
+
+	t.Run("surrounding blanks are not part of the key", func(t *testing.T) {
+		f := newProviderFixture(t)
+		p := f.newProviderWith(t, f.issue(t, 90*day, 1)+"\n  ")
+
+		require.NoError(t, p.Problem())
+		require.Equal(t, StateValid, p.State())
+	})
+
+	t.Run("the same value is not parsed again", func(t *testing.T) {
+		f := newProviderFixture(t)
+		p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+		held := p.Describe().Key
+		require.NotNil(t, held)
+
+		require.NoError(t, p.Refresh(t.Context()))
+		require.NoError(t, p.Refresh(t.Context()))
+
+		// A second parse would have built another Key.
+		require.Same(t, held, p.Describe().Key)
+		require.Equal(t, 1, bytes.Count(f.logs.Bytes(), []byte("level=INFO")))
+	})
+
+	t.Run("nothing to load leaves the instance without a key", func(t *testing.T) {
+		f := newProviderFixture(t)
+		p := f.newProvider()
+
+		require.NoError(t, p.Refresh(t.Context()))
+
+		require.Equal(t, StateNone, p.State())
+		require.NoError(t, p.Problem())
+		require.Empty(t, f.logs.String())
+	})
+}
+
+func Test_Provider_ALoaderErrorKeepsTheKeyInPlace(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+	unreachable := errors.New("the store is unreachable")
+
+	f.loader.fails(unreachable)
+	err := p.Refresh(t.Context())
+
+	require.ErrorIs(t, err, unreachable)
+	require.ErrorIs(t, p.Problem(), unreachable)
+	// It is told apart from a key that was loaded and refused, which is not one.
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
+	require.Equal(t, err, p.Problem())
+	require.Equal(t, 1, maxJobsOf(t, p))
+	require.Equal(t, StateValid, p.State())
+
+	// The same problem is logged once, however often the refresh meets it.
+	require.Error(t, p.Refresh(t.Context()))
+	require.Error(t, p.Refresh(t.Context()))
+	require.Equal(t, 1, f.errorLogs())
+
+	// Another problem is another line.
+	refused := errors.New("the store refused the request")
+	f.loader.fails(refused)
+	require.Error(t, p.Refresh(t.Context()))
+	require.Error(t, p.Refresh(t.Context()))
+	require.Equal(t, 2, f.errorLogs())
+	require.Equal(t, 1, maxJobsOf(t, p))
+
+	// A good load clears the problem.
+	f.loader.gives(f.issue(t, 90*day, 3))
+	require.NoError(t, p.Refresh(t.Context()))
+	require.NoError(t, p.Problem())
+	require.Equal(t, 3, maxJobsOf(t, p))
+
+	// Once cleared, the same problem coming back is news again.
+	f.loader.fails(refused)
+	require.Error(t, p.Refresh(t.Context()))
+	require.Equal(t, 3, f.errorLogs())
+}
+
+func Test_Provider_ALoaderErrorWithoutAKey(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProvider()
+
+	f.loader.fails(errors.New("the store is unreachable"))
+	require.Error(t, p.Refresh(t.Context()))
+	require.Equal(t, StateNone, p.State())
+	require.Error(t, p.Problem())
+
+	f.loader.gives(f.issue(t, 90*day, 1))
+	require.NoError(t, p.Refresh(t.Context()))
+	require.Equal(t, StateValid, p.State())
+	require.NoError(t, p.Problem())
+}
+
+// A refresh cut short because the process shuts down fails for a reason that says nothing
+// about the key: it is neither kept as the problem nor logged.
+func Test_Provider_ALoaderErrorUnderADoneContextIsNotAProblem(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	f.loader.fails(context.Canceled)
+
+	require.ErrorIs(t, p.Refresh(ctx), context.Canceled)
+	require.NoError(t, p.Problem())
+	require.Zero(t, f.errorLogs())
+	require.Equal(t, StateValid, p.State())
+
+	// The same failure under a context that still runs is a problem like any other.
+	require.Error(t, p.Refresh(t.Context()))
+	require.Error(t, p.Problem())
+	require.Equal(t, 1, f.errorLogs())
+}
+
+// A deadline that runs out is not a shutdown: the loader did not answer in the time it was
+// given, which is what an operator needs to read when a process starts without its key.
+func Test_Provider_ALoaderErrorPastItsDeadlineIsAProblem(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProvider()
+
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+	f.loader.fails(context.DeadlineExceeded)
+
+	require.ErrorIs(t, p.Refresh(ctx), context.DeadlineExceeded)
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
+	require.ErrorIs(t, p.Problem(), context.DeadlineExceeded)
+	require.Equal(t, 1, f.errorLogs())
+}
+
+// A store that accepts the connection and says nothing must not hold a refresh for ever: the
+// load is cut at its deadline, which is recorded, and the next refresh is not behind it.
+func Test_LoadWithin_ALoadPastItsDeadlineIsAProblemAndDoesNotBlockTheNext(t *testing.T) {
+	f := newProviderFixture(t)
+	value := f.issue(t, 90*day, 1)
+	var hangs atomic.Bool
+	hangs.Store(true)
+	load := LoadWithin(func(ctx context.Context) (string, error) {
+		if hangs.Load() {
+			<-ctx.Done()
+			return "", ctx.Err()
+		}
+		return value, nil
+	}, 10*time.Millisecond)
+	logger := slog.New(slog.NewTextHandler(f.logs, nil))
+	p := newProvider(load, Keyring{LegacyKid: f.pub}, f.clock.Now, logger)
+
+	require.ErrorIs(t, p.Refresh(t.Context()), context.DeadlineExceeded)
+	require.ErrorIs(t, p.Problem(), ErrKeyNotLoaded)
+	require.Equal(t, 1, f.errorLogs())
+
+	hangs.Store(false)
+	require.NoError(t, p.Refresh(t.Context()))
+	require.NoError(t, p.Problem())
+	require.Equal(t, StateValid, p.State())
+}
+
+func Test_Provider_AnInvalidKeyKeepsTheKeyInPlace(t *testing.T) {
+	cases := map[string]func(t *testing.T) string{
+		"unreadable content": func(*testing.T) string {
+			return "not-a-key"
+		},
+		"bad signature": func(t *testing.T) string {
+			otherPub, otherPriv, err := ed25519.GenerateKey(rand.Reader)
+			require.NoError(t, err)
+			issued, err := Issue(&IssueRequest{
+				IssuedTo:   "Mallory",
+				CustomerId: "cus_mallory",
+				ExpiresAt:  time.Now().UTC().Add(90 * day),
+			}, otherPriv, Keyring{LegacyKid: otherPub})
+			require.NoError(t, err)
+			return issued.Encoded
+		},
+	}
+	for name, invalid := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newProviderFixture(t)
+			p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+			value := invalid(t)
+
+			f.loader.gives(value)
+			err := p.Refresh(t.Context())
+
+			require.Error(t, err)
+			require.Equal(t, err, p.Problem())
+			require.Equal(t, 1, maxJobsOf(t, p))
+			require.Equal(t, StateValid, p.State())
+
+			// The same faulty value is logged once, and never reproduced.
+			require.Error(t, p.Refresh(t.Context()))
+			require.Error(t, p.Refresh(t.Context()))
+			require.Equal(t, 1, f.errorLogs())
+			require.NotContains(t, f.logs.String(), value)
+
+			// A good key clears the problem.
+			f.loader.gives(f.issue(t, 90*day, 3))
+			require.NoError(t, p.Refresh(t.Context()))
+			require.NoError(t, p.Problem())
+			require.Equal(t, 3, maxJobsOf(t, p))
+		})
+	}
+
+	t.Run("without a key in place the instance stays without one", func(t *testing.T) {
+		f := newProviderFixture(t)
+		f.loader.gives("not-a-key")
+		p := f.newProvider()
+
+		require.Error(t, p.Refresh(t.Context()))
+
+		require.Equal(t, StateNone, p.State())
+		require.False(t, p.IsValid())
+		require.Nil(t, p.Limits())
+		require.Error(t, p.Problem())
+	})
+}
+
+func Test_Provider_AnEmptyLoadAfterAKeyKeepsIt(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+
+	f.loader.gives("")
+	require.NoError(t, p.Refresh(t.Context()))
+
+	require.Equal(t, 1, maxJobsOf(t, p))
+	require.Equal(t, StateValid, p.State())
+	require.NoError(t, p.Problem())
+	require.Zero(t, f.errorLogs())
+
+	// An empty answer also ends a problem: the store answered.
+	unreachable := errors.New("the store is unreachable")
+	f.loader.fails(unreachable)
+	require.Error(t, p.Refresh(t.Context()))
+	require.Error(t, p.Problem())
+	f.loader.gives("  \n")
+	require.NoError(t, p.Refresh(t.Context()))
+	require.NoError(t, p.Problem())
+	require.Equal(t, 1, maxJobsOf(t, p))
+
+	// The problem ended, so the same one coming back is logged again.
+	f.loader.fails(unreachable)
+	require.Error(t, p.Refresh(t.Context()))
+	require.Equal(t, 2, f.errorLogs())
+}
+
+func Test_Provider_FollowsTheClockBetweenRefreshes(t *testing.T) {
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 60*day, 1))
+	loads := f.loader.calls.Load()
 
 	steps := []struct {
 		advance time.Duration
@@ -114,207 +452,243 @@ func Test_Provider_FollowsTheClock(t *testing.T) {
 		f.clock.Advance(step.advance)
 		require.Equal(t, step.state, p.State())
 		require.Equal(t, step.valid, p.IsValid())
+		require.Equal(t, step.state, p.Describe().State)
 	}
+	require.Equal(t, loads, f.loader.calls.Load())
 }
 
-func Test_Provider_NoKey(t *testing.T) {
+func Test_Provider_HasFeature(t *testing.T) {
 	f := newProviderFixture(t)
-	p := f.newProvider(Source{})
-
-	require.Equal(t, StateNone, p.State())
-	require.False(t, p.IsValid())
-	require.Nil(t, p.Limits())
-	require.NoError(t, p.Problem())
-	require.Equal(t, f.clock.Now(), p.ExpiresAt())
-	require.Equal(t, f.clock.Now(), p.GracePeriodEndsAt())
-}
-
-func Test_Provider_UnreadableValue(t *testing.T) {
-	f := newProviderFixture(t)
-	p := f.newProvider(Source{Value: "not-a-key"})
-
-	require.Equal(t, StateNone, p.State())
-	require.False(t, p.IsValid())
-	require.Error(t, p.Problem())
-	require.Nil(t, p.Limits())
-	require.Contains(t, f.logs.String(), "level=ERROR")
-	require.NotContains(t, f.logs.String(), "not-a-key")
-}
-
-func Test_Provider_File_PicksUpANewKey(t *testing.T) {
-	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	writeLicenseFile(t, path, f.issue(t, 90*day, 1))
-	p := f.newProvider(Source{File: path})
-	require.Equal(t, 1, maxJobsOf(t, p))
-
-	writeLicenseFile(t, path, f.issue(t, 90*day, 2))
-	f.clock.Advance(61 * time.Second)
-
-	require.Equal(t, 2, maxJobsOf(t, p))
-	require.NoError(t, p.Problem())
-}
-
-func Test_Provider_File_RechecksAtMostOncePerMinute(t *testing.T) {
-	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	writeLicenseFile(t, path, f.issue(t, 90*day, 1))
-	p := f.newProvider(Source{File: path})
-	require.Equal(t, 1, maxJobsOf(t, p))
-
-	writeLicenseFile(t, path, f.issue(t, 90*day, 2))
-	f.clock.Advance(59 * time.Second)
-	require.Equal(t, 1, maxJobsOf(t, p))
-
-	f.clock.Advance(2 * time.Second)
-	require.Equal(t, 2, maxJobsOf(t, p))
-}
-
-func Test_Provider_File_KeepsTheKeyInPlace(t *testing.T) {
-	cases := map[string]func(t *testing.T, f *providerFixture, path string){
-		"unreadable content": func(t *testing.T, _ *providerFixture, path string) {
-			writeLicenseFile(t, path, "garbage")
-		},
-		"bad signature": func(t *testing.T, _ *providerFixture, path string) {
-			_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
-			require.NoError(t, err)
-			issued, err := Issue(&IssueRequest{
-				IssuedTo:   "Mallory",
-				CustomerId: "cus_mallory",
-				ExpiresAt:  time.Now().UTC().Add(90 * day),
-			}, otherPriv)
-			require.NoError(t, err)
-			writeLicenseFile(t, path, issued.Encoded)
-		},
-		"empty file": func(t *testing.T, _ *providerFixture, path string) {
-			writeLicenseFile(t, path, "")
-		},
-		"removed file": func(t *testing.T, _ *providerFixture, path string) {
-			require.NoError(t, os.Remove(path))
-		},
+	issueWith := func(features []string) string {
+		issued, err := Issue(&IssueRequest{
+			IssuedTo:   "Acme",
+			CustomerId: "cus_acme",
+			ExpiresAt:  time.Now().UTC().Add(60 * day),
+			GraceDays:  ptr(14),
+			Features:   features,
+		}, f.priv, Keyring{LegacyKid: f.pub})
+		require.NoError(t, err)
+		return issued.Encoded
 	}
-	for name, damage := range cases {
-		t.Run(name, func(t *testing.T) {
-			f := newProviderFixture(t)
-			path := filepath.Join(t.TempDir(), "license")
-			good := f.issue(t, 90*day, 1)
-			writeLicenseFile(t, path, good)
-			p := f.newProvider(Source{File: path})
-			require.NoError(t, p.Problem())
 
-			damage(t, f, path)
-			f.clock.Advance(61 * time.Second)
+	t.Run("an explicit list allows what it names and nothing else", func(t *testing.T) {
+		p := f.newProviderWith(t, issueWith([]string{string(FeatureMcp)}))
+		require.True(t, p.HasFeature(FeatureMcp))
+		require.False(t, p.HasFeature(FeatureSso))
+	})
 
-			require.Equal(t, 1, maxJobsOf(t, p))
-			require.Equal(t, StateValid, p.State())
-			require.Error(t, p.Problem())
+	t.Run("a key without a list allows every feature", func(t *testing.T) {
+		p := f.newProviderWith(t, issueWith(nil))
+		require.True(t, p.HasFeature(FeatureSso))
+	})
 
-			// The same faulty content is logged once, however often it is re-read.
-			f.clock.Advance(61 * time.Second)
-			require.Error(t, p.Problem())
-			f.clock.Advance(61 * time.Second)
-			require.Equal(t, 1, bytes.Count(f.logs.Bytes(), []byte("level=ERROR")))
+	t.Run("no key allows nothing", func(t *testing.T) {
+		p := f.newProviderWith(t, "")
+		require.False(t, p.HasFeature(FeatureMcp))
+	})
 
-			// Restoring a good key clears the problem.
-			writeLicenseFile(t, path, f.issue(t, 90*day, 3))
-			f.clock.Advance(61 * time.Second)
-			require.NoError(t, p.Problem())
-			require.Equal(t, 3, maxJobsOf(t, p))
-		})
-	}
+	t.Run("the grace period allows what the list names, a frozen key nothing", func(t *testing.T) {
+		g := newProviderFixture(t)
+		g.pub, g.priv = f.pub, f.priv
+		p := g.newProviderWith(t, issueWith([]string{string(FeatureMcp)}))
+
+		g.clock.Advance(61 * day)
+		require.Equal(t, StateGrace, p.State())
+		require.True(t, p.HasFeature(FeatureMcp))
+		require.False(t, p.HasFeature(FeatureSso))
+
+		g.clock.Advance(14 * day)
+		require.Equal(t, StateFrozen, p.State())
+		require.False(t, p.HasFeature(FeatureMcp))
+	})
 }
 
-func Test_Provider_File_AcceptsAnExpiredKey(t *testing.T) {
+func Test_Provider_Describe(t *testing.T) {
 	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	writeLicenseFile(t, path, f.issue(t, 365*day, 1))
-	p := f.newProvider(Source{File: path})
-	require.Equal(t, StateValid, p.State())
+	value := f.issue(t, 90*day, 1)
+	p := f.newProviderWith(t, value)
+	parsed, err := ParseWith(value, Keyring{LegacyKid: f.pub})
+	require.NoError(t, err)
 
-	// B expires well before A, and the clock is already past its grace period.
-	writeLicenseFile(t, path, f.issue(t, 30*day, 2))
-	f.clock.Advance(60 * day)
+	described := p.Describe()
+	require.Equal(t, StateValid, described.State)
+	require.Equal(t, parsed, described.Key)
+	require.NoError(t, described.Problem)
 
+	// A refused load shows next to the key it did not replace.
+	f.loader.gives("not-a-key")
+	refused := p.Refresh(t.Context())
+	require.Error(t, refused)
+	f.clock.Advance(91 * day)
+
+	described = p.Describe()
+	require.Equal(t, StateGrace, described.State)
+	require.Equal(t, parsed, described.Key)
+	require.Equal(t, refused, described.Problem)
+	// A key that was loaded and refused is not a key that could not be loaded.
+	require.NotErrorIs(t, described.Problem, ErrKeyNotLoaded)
+}
+
+// InForce says of a description what IsValid says of the provider: true through grace.
+func Test_Description_InForce(t *testing.T) {
+	for state, want := range map[State]bool{
+		StateNone:     false,
+		StateValid:    true,
+		StateExpiring: true,
+		StateGrace:    true,
+		StateFrozen:   false,
+	} {
+		require.Equal(t, want, Description{State: state}.InForce(), state)
+	}
+
+	f := newProviderFixture(t)
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+	for _, elapsed := range []time.Duration{0, 80 * day, 15 * day, 20 * day} {
+		f.clock.Advance(elapsed)
+		require.Equal(t, p.IsValid(), p.Describe().InForce(), p.State())
+	}
 	require.Equal(t, StateFrozen, p.State())
-	require.False(t, p.IsValid())
-	require.NoError(t, p.Problem())
 }
 
-func Test_Provider_File_TrailingNewline(t *testing.T) {
+func Test_Provider_ReadsNeverCallTheLoader(t *testing.T) {
 	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	writeLicenseFile(t, path, f.issue(t, 90*day, 1)+"\n  ")
+	p := f.newProviderWith(t, f.issue(t, 90*day, 1))
+	loads := f.loader.calls.Load()
+	require.EqualValues(t, 1, loads)
 
-	p := f.newProvider(Source{File: path})
+	for range 1000 {
+		p.IsValid()
+		p.HasFeature(FeatureMcp)
+		p.State()
+		p.Limits()
+		p.ExpiresAt()
+		p.GracePeriodEndsAt()
+		_ = p.Problem()
+		p.Describe()
+		// However long the process runs, a read stays a read.
+		f.clock.Advance(time.Hour)
+	}
 
-	require.NoError(t, p.Problem())
-	require.Equal(t, StateValid, p.State())
+	require.Equal(t, loads, f.loader.calls.Load())
 }
 
-func Test_Provider_File_MissingAtStart(t *testing.T) {
+// Test_Provider_ReadsDoNotWaitForTheLoader holds a refresh inside its loader and reads
+// meanwhile: a read that waited for the loader would never come back.
+func Test_Provider_ReadsDoNotWaitForTheLoader(t *testing.T) {
 	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	p := f.newProvider(Source{File: path})
+	value := f.issue(t, 90*day, 1)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	logger := slog.New(slog.NewTextHandler(f.logs, nil))
+	p := newProvider(func(context.Context) (string, error) {
+		close(entered)
+		<-release
+		return value, nil
+	}, Keyring{LegacyKid: f.pub}, f.clock.Now, logger)
 
-	require.Equal(t, StateNone, p.State())
-	require.Error(t, p.Problem())
+	refreshed := make(chan error, 1)
+	go func() { refreshed <- p.Refresh(context.Background()) }()
+	<-entered
 
-	writeLicenseFile(t, path, f.issue(t, 90*day, 1))
-	f.clock.Advance(61 * time.Second)
+	read := make(chan bool, 1)
+	go func() { read <- p.IsValid() }()
+	select {
+	case valid := <-read:
+		require.False(t, valid, "the key is not there before the loader answers")
+	case <-time.After(10 * time.Second):
+		t.Fatal("a read waited for the loader")
+	}
 
-	require.Equal(t, StateValid, p.State())
-	require.NoError(t, p.Problem())
+	close(release)
+	require.NoError(t, <-refreshed)
+	require.True(t, p.IsValid())
 }
 
-func Test_Provider_FileWinsOverValue(t *testing.T) {
-	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
-	writeLicenseFile(t, path, f.issue(t, 90*day, 2))
+func Test_Provider_RefreshEveryStopsWithItsContext(t *testing.T) {
+	t.Run("it refreshes until its context ends", func(t *testing.T) {
+		f := newProviderFixture(t)
+		f.loader.gives(f.issue(t, 90*day, 1))
+		p := f.newProvider()
+		ctx, cancel := context.WithCancel(t.Context())
+		returned := make(chan struct{})
+		go func() {
+			defer close(returned)
+			p.RefreshEvery(ctx, time.Millisecond)
+		}()
 
-	p := f.newProvider(Source{Value: f.issue(t, 90*day, 1), File: path})
+		require.Eventually(t, func() bool { return f.loader.calls.Load() >= 3 }, 10*time.Second, time.Millisecond)
+		require.Equal(t, 1, maxJobsOf(t, p))
 
-	require.Equal(t, 2, maxJobsOf(t, p))
-	require.Contains(t, f.logs.String(), "level=WARN")
+		cancel()
+		select {
+		case <-returned:
+		case <-time.After(10 * time.Second):
+			t.Fatal("RefreshEvery outlived its context")
+		}
+		loads := f.loader.calls.Load()
+		time.Sleep(20 * time.Millisecond)
+		require.Equal(t, loads, f.loader.calls.Load(), "nothing is loaded once it returned")
+	})
+
+	t.Run("it does not refresh on entry", func(t *testing.T) {
+		f := newProviderFixture(t)
+		f.loader.gives(f.issue(t, 90*day, 1))
+		p := f.newProvider()
+		ctx, cancel := context.WithCancel(t.Context())
+		returned := make(chan struct{})
+		go func() {
+			defer close(returned)
+			p.RefreshEvery(ctx, time.Hour)
+		}()
+
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+		<-returned
+
+		require.Zero(t, f.loader.calls.Load())
+		require.Equal(t, StateNone, p.State())
+	})
 }
 
 // Test_Provider_ConcurrentReads is meaningful under -race: each answer must come from
-// one key and one instant, whatever the file and the clock do meanwhile.
+// one key and one instant, whatever the refreshes and the clock do meanwhile.
 func Test_Provider_ConcurrentReads(t *testing.T) {
 	f := newProviderFixture(t)
-	path := filepath.Join(t.TempDir(), "license")
 	keyA := f.issue(t, 90*day, 1)
 	keyB := f.issue(t, 90*day, 2)
-	parsedA, err := parseWith(keyA, f.pub)
+	parsedA, err := ParseWith(keyA, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
-	parsedB, err := parseWith(keyB, f.pub)
+	parsedB, err := ParseWith(keyB, Keyring{LegacyKid: f.pub})
 	require.NoError(t, err)
-	writeLicenseFile(t, path, keyA)
-	p := f.newProvider(Source{File: path})
+	p := f.newProviderWith(t, keyA)
 
+	// Two refreshers swap the keys while the readers read; each one gives the loader a key
+	// and refreshes, so refreshes overlap.
 	stop := make(chan struct{})
-	var writer sync.WaitGroup
-	var writeErr error
-	lastWritten := 1
-	writer.Add(1)
-	go func() {
-		defer writer.Done()
-		for i := 0; ; i++ {
-			select {
-			case <-stop:
-				return
-			default:
+	var refreshers sync.WaitGroup
+	refreshErrs := make([]error, 2)
+	for n := range refreshErrs {
+		refreshers.Add(1)
+		go func() {
+			defer refreshers.Done()
+			for i := 0; ; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				key := keyB
+				if i%2 == 1 {
+					key = keyA
+				}
+				f.loader.gives(key)
+				if refreshErrs[n] = p.Refresh(context.Background()); refreshErrs[n] != nil {
+					return
+				}
+				f.clock.Advance(61 * time.Second)
 			}
-			key, maxJobs := keyB, 2
-			if i%2 == 1 {
-				key, maxJobs = keyA, 1
-			}
-			if writeErr = replaceFile(path, key); writeErr != nil {
-				return
-			}
-			lastWritten = maxJobs
-			f.clock.Advance(61 * time.Second)
-		}
-	}()
+		}()
+	}
 
 	var readers sync.WaitGroup
 	for range 50 {
@@ -346,10 +720,13 @@ func Test_Provider_ConcurrentReads(t *testing.T) {
 	}
 	readers.Wait()
 	close(stop)
-	writer.Wait()
-	require.NoError(t, writeErr)
+	refreshers.Wait()
+	for _, refreshErr := range refreshErrs {
+		require.NoError(t, refreshErr)
+	}
 
-	// Once everything is quiet, one more interval brings the last key written.
-	f.clock.Advance(61 * time.Second)
-	require.Equal(t, lastWritten, maxJobsOf(t, p))
+	// Once everything is quiet, one more refresh brings what the loader gives.
+	f.loader.gives(keyB)
+	require.NoError(t, p.Refresh(t.Context()))
+	require.Equal(t, 2, maxJobsOf(t, p))
 }

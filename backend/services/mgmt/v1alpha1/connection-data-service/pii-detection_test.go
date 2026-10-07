@@ -12,6 +12,8 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
 	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
+	"github.com/fishtre-compagnie/husonym/internal/license"
+	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -222,9 +224,22 @@ func Test_contentAnalysis_detection_ValuesTheAnalyzerRefuses(t *testing.T) {
 	})
 }
 
-// scanOf runs the scan of the columns of a table, the sampled column holding the given values.
+// scanOf runs the scan of the columns of a table, the sampled column holding the given values,
+// under a license that names no feature list: every feature is included.
 func scanOf(
 	t *testing.T,
+	column string,
+	values []string,
+	columns []string,
+) (*mgmtv1alpha1.DetectPiiInConnectionDataResponse, error) {
+	t.Helper()
+	return scanUnder(t, testutil.NewFakeEELicense(testutil.WithIsValid()), column, values, columns)
+}
+
+// scanUnder is scanOf under the given license.
+func scanUnder(
+	t *testing.T,
+	eelicense license.EEInterface,
 	column string,
 	values []string,
 	columns []string,
@@ -256,6 +271,7 @@ func scanOf(
 		connectionService:     connections,
 		connectiondatabuilder: builder,
 		analyze:               entitiesIn(t, textMarkers),
+		transformers:          Transformers{License: eelicense},
 	}
 
 	resp, err := service.DetectPiiInConnectionData(t.Context(), connect.NewRequest(
@@ -294,4 +310,62 @@ func Test_DetectPiiInConnectionData_ASingleFilledValue(t *testing.T) {
 	require.Empty(t, resp.GetDetections())
 	require.Len(t, resp.GetVerdicts(), 1)
 	require.False(t, resp.GetVerdicts()[0].GetContentNotAnalyzed())
+}
+
+// The scan of the content is a feature of the license: a license without it refuses the call
+// once the connection is known, and before the connection is opened or a value is sampled.
+func Test_DetectPiiInConnectionData_NeedsThePiiDetectionFeature(t *testing.T) {
+	for name, tc := range map[string]struct {
+		eelicense *testutil.FakeEELicense
+		refusal   string
+	}{
+		"a license that includes every other feature": {
+			eelicense: testutil.NewFakeEELicense(
+				testutil.WithIsValid(), testutil.WithFeatures(license.FeaturePiiText, license.FeatureCustomTransformers),
+			),
+			refusal: "this license does not include pii_detection",
+		},
+		// No feature is included then: the refusal says that no license is in force, not that
+		// this one is missing from it.
+		"a license that is not in force": {
+			eelicense: testutil.NewFakeEELicense(),
+			refusal:   "account does not have an active license",
+		},
+	} {
+		eelicense := tc.eelicense
+		t.Run("refused under "+name, func(t *testing.T) {
+			// The builder expects no call: opening the connection would fail the test. So would an
+			// analyzer call, since none is answered.
+			connections := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
+			connections.EXPECT().GetConnection(mock.Anything, mock.Anything).Return(
+				connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{Connection: &mgmtv1alpha1.Connection{Id: "c1"}}), nil,
+			)
+			fake := presidiotest.New(t)
+			service := &Service{
+				cfg:                   &Config{IsPresidioEnabled: true},
+				connectionService:     connections,
+				connectiondatabuilder: connectiondata.NewMockConnectionDataBuilder(t),
+				analyze:               fake,
+				transformers:          Transformers{License: eelicense},
+			}
+
+			resp, err := service.DetectPiiInConnectionData(t.Context(), connect.NewRequest(
+				&mgmtv1alpha1.DetectPiiInConnectionDataRequest{ConnectionId: "c1", Schema: "public", Table: "clients"},
+			))
+
+			require.Nil(t, resp)
+			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+			require.Equal(t, "permission_denied: "+tc.refusal, err.Error())
+			require.Equal(t, presidiotest.Calls{}, fake.Calls())
+		})
+	}
+
+	t.Run("served under a license that includes it and no other feature", func(t *testing.T) {
+		eelicense := testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeaturePiiDetection))
+
+		resp, err := scanUnder(t, eelicense, "name", numbered("Marie Dupont", 20), []string{"name"})
+
+		require.NoError(t, err)
+		require.Len(t, resp.GetDetections(), 1)
+	})
 }

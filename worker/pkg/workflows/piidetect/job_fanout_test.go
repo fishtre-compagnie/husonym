@@ -185,7 +185,7 @@ func Test_JobPiiDetect_TwoTablesOfTheSameIdAreBothScanned(t *testing.T) {
 	require.Regexp(t, `-public_orders-\d+$`, started.ids["orders"])
 	require.Len(t, (*saved).SuccessfulTableReports, 3)
 	require.Empty(t, (*saved).FailedTables)
-	require.Equal(t, []string{"license-read-recorded-1", "pii-detect-table-child-id-unique-1"}, versions.all())
+	require.Equal(t, []string{"license-read-recorded-1", "license-feature-read-recorded-1", "pii-detect-table-child-id-unique-1"}, versions.all())
 }
 
 // Runs started before the ids were made unique replay as they ran: the second table

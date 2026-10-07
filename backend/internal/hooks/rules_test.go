@@ -11,6 +11,7 @@ import (
 	auth_apikey "github.com/fishtre-compagnie/husonym/backend/internal/auth/apikey"
 	"github.com/fishtre-compagnie/husonym/backend/internal/auth/permission"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -104,6 +105,43 @@ func TestEveryRuleAsksWhatTheContractDeclares(t *testing.T) {
 		} else {
 			require.Empty(t, arming, procedure)
 		}
+	}
+}
+
+// Creating and changing a hook need the feature of its kind, turning one on or off needs it to
+// turn on only, and reading and deleting never need it: a rule that needs none names none.
+func TestEveryRuleNamesTheFeatureItNeeds(t *testing.T) {
+	type need struct {
+		feature         license.Feature
+		plainly, toTurn bool // of a request that turns nothing on, of one that turns a hook on
+	}
+	never := need{}
+	needs := map[string]need{
+		mgmtv1alpha1connect.JobServiceGetJobHooksProcedure:               never,
+		mgmtv1alpha1connect.JobServiceGetJobHookProcedure:                never,
+		mgmtv1alpha1connect.JobServiceIsJobHookNameAvailableProcedure:    never,
+		mgmtv1alpha1connect.JobServiceGetActiveJobHooksByTimingProcedure: never,
+		mgmtv1alpha1connect.JobServiceCreateJobHookProcedure:             {license.FeatureJobHooks, true, true},
+		mgmtv1alpha1connect.JobServiceUpdateJobHookProcedure:             {license.FeatureJobHooks, true, true},
+		mgmtv1alpha1connect.JobServiceSetJobHookEnabledProcedure:         {license.FeatureJobHooks, false, true},
+		mgmtv1alpha1connect.JobServiceDeleteJobHookProcedure:             never,
+
+		mgmtv1alpha1connect.AccountHookServiceGetAccountHooksProcedure:              never,
+		mgmtv1alpha1connect.AccountHookServiceGetAccountHookProcedure:               never,
+		mgmtv1alpha1connect.AccountHookServiceIsAccountHookNameAvailableProcedure:   never,
+		mgmtv1alpha1connect.AccountHookServiceGetActiveAccountHooksByEventProcedure: never,
+		mgmtv1alpha1connect.AccountHookServiceCreateAccountHookProcedure:            {license.FeatureAccountHooks, true, true},
+		mgmtv1alpha1connect.AccountHookServiceUpdateAccountHookProcedure:            {license.FeatureAccountHooks, true, true},
+		mgmtv1alpha1connect.AccountHookServiceSetAccountHookEnabledProcedure:        {license.FeatureAccountHooks, false, true},
+		mgmtv1alpha1connect.AccountHookServiceDeleteAccountHookProcedure:            never,
+	}
+	require.Len(t, needs, len(rules))
+	for procedure, r := range rules {
+		want, stated := needs[procedure]
+		require.True(t, stated, "the test says nothing of %s", procedure)
+		require.Equal(t, want.feature, r.feature, procedure)
+		require.Equal(t, want.plainly, r.needsFeature(false), procedure)
+		require.Equal(t, want.toTurn, r.needsFeature(true), procedure)
 	}
 }
 

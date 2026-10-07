@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useLicenseFeature } from '@/libs/hooks/useLicense';
 import { changeLabel, columnName, isPassthrough } from '@/util/mapping-changes';
 import {
   getFilterdTransformersByType,
@@ -60,6 +61,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
   const runChoice = change.transformer
     ? convertJobMappingTransformerToForm(change.transformer)
     : NO_TRANSFORMER;
+  const { allowed } = useLicenseFeature('mapping_review');
   const [draft, setDraft] = useState<JobMappingTransformerForm>(runChoice);
   const [note, setNote] = useState('');
   const [pending, setPending] = useState<'review' | 'apply' | null>(null);
@@ -120,7 +122,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
           <Button
             type="button"
             variant={changed ? 'outline' : 'default'}
-            disabled={pending !== null}
+            disabled={!allowed || pending !== null}
             onClick={() => act('review')}
           >
             <ButtonText
@@ -134,6 +136,7 @@ export default function ChangeDecisionPanel(props: Props): ReactElement {
             <Button
               type="button"
               disabled={
+                !allowed ||
                 !changed ||
                 !draft.config.case ||
                 !optionsValid ||

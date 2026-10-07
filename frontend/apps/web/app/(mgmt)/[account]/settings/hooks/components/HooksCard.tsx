@@ -1,5 +1,6 @@
 import EmptyState from '@/components/EmptyState';
 import SubPageHeader from '@/components/headers/SubPageHeader';
+import LicenseFeatureNotice from '@/components/LicenseFeatureNotice';
 import Spinner from '@/components/Spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
@@ -59,6 +60,8 @@ export default function HooksCard(props: Props): ReactElement {
           <NewHookButton accountId={accountId} onCreated={refetch} />
         }
       />
+
+      <LicenseFeatureNotice feature="account_hooks" />
 
       <div className="flex flex-col gap-5">
         {accountHooks.length === 0 && (

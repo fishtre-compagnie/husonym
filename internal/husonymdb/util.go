@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	PqUniqueViolationCode = "23505"
+	PqUniqueViolationCode  = "23505"
+	PqLockNotAvailableCode = "55P03"
 )
 
 func IsConflict(err error) bool {
@@ -34,6 +35,13 @@ func IsConflict(err error) bool {
 	}
 
 	return false
+}
+
+// IsLockNotAvailable tells whether a statement gave up waiting for a lock, as one does under a
+// lock timeout.
+func IsLockNotAvailable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == PqLockNotAvailableCode
 }
 
 func IsNoRows(err error) bool {

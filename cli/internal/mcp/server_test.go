@@ -385,6 +385,8 @@ type fakeAPI struct {
 	connections *fakeConnectionService
 	data        *fakeDataService
 	jobs        *fakeJobService
+	// allowed answers whether the license includes mcp; the license allows it when nil.
+	allowed func(ctx context.Context) (bool, error)
 }
 
 // connectAPI is connectClientWith on a whole fake API.
@@ -402,7 +404,12 @@ func connectAPI(t *testing.T, fakes fakeAPI, clientOptions *mcp.ClientOptions, p
 
 	connections := maskedconn.New(api.Client(), api.URL)
 	jobReader := jobs.New(api.Client(), api.URL, accountId, connections)
-	server := newServer(Options{
+	allowed := fakes.allowed
+	if allowed == nil {
+		allowed = func(context.Context) (bool, error) { return true, nil }
+	}
+	server := newServer(&Options{
+		Allowed:     allowed,
 		Connections: connections,
 		Data:        novalues.New(api.Client(), api.URL, accountId),
 		Values:      rowvalues.New(api.Client(), api.URL, accountId, connections, jobReader),

@@ -15,13 +15,22 @@ type CreateJobConnectionDestination struct {
 	Options      *pg_models.JobDestinationOptions
 }
 
+// CreateJob writes the job and its destinations in one transaction. The guard, when there is
+// one, runs first in that transaction: an error from it writes nothing, and what it locks stays
+// locked until the job is written.
 func (d *HusonymDb) CreateJob(
 	ctx context.Context,
 	cjParams *db_queries.CreateJobParams,
 	destinations []*CreateJobConnectionDestination,
+	guard func(ctx context.Context, dbtx BaseDBTX) error,
 ) (*db_queries.HusonymApiJob, error) {
 	var createdJob *db_queries.HusonymApiJob
 	if err := d.WithTx(ctx, nil, func(tx BaseDBTX) error {
+		if guard != nil {
+			if err := guard(ctx, tx); err != nil {
+				return err
+			}
+		}
 		job, err := d.Q.CreateJob(ctx, tx, *cjParams)
 		if err != nil {
 			return err
@@ -50,12 +59,18 @@ func (d *HusonymDb) CreateJob(
 func (d *HusonymDb) SetSourceSubsets(
 	ctx context.Context,
 	jobId pgtype.UUID,
+	accountId pgtype.UUID,
 	schemas *mgmtv1alpha1.JobSourceSqlSubetSchemas,
 	subsetByForeignKeyConstraints bool,
 	userUuid pgtype.UUID,
 ) error {
 	return d.WithTx(ctx, nil, func(dbtx BaseDBTX) error {
-		dbjob, err := d.Q.GetJobById(ctx, dbtx, jobId)
+		// The source options are read, changed and written back whole: the row is locked meanwhile,
+		// or a change of the source landing in between would be undone by the write.
+		dbjob, err := d.Q.GetJobForUpdate(ctx, dbtx, db_queries.GetJobForUpdateParams{
+			ID:        jobId,
+			AccountID: accountId,
+		})
 		if err != nil {
 			return err
 		}

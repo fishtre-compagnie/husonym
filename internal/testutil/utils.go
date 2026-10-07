@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -96,6 +97,8 @@ type FakeEELicense struct {
 	mu      sync.RWMutex
 	isValid bool
 	limits  *license.Limits
+	// features is nil when the fake allows every feature.
+	features []license.Feature
 }
 
 type Option func(*FakeEELicense)
@@ -112,6 +115,19 @@ func WithLimits(limits *license.Limits) Option {
 	return func(f *FakeEELicense) {
 		f.limits = limits
 	}
+}
+
+// WithFeatures restricts the fake to exactly these features. Without it a valid fake allows
+// every feature; with no argument it allows none.
+func WithFeatures(features ...license.Feature) Option {
+	return func(f *FakeEELicense) {
+		f.features = featureList(features)
+	}
+}
+
+// featureList keeps an empty list non-nil, because nil means every feature.
+func featureList(features []license.Feature) []license.Feature {
+	return append([]license.Feature{}, features...)
 }
 
 func NewFakeEELicense(opts ...Option) *FakeEELicense {
@@ -135,13 +151,67 @@ func (f *FakeEELicense) SetValid(valid bool) {
 	f.isValid = valid
 }
 
+// SetFeatures restricts the fake to exactly these features from now on; with no argument it
+// allows none. It is safe for concurrent use.
+func (f *FakeEELicense) SetFeatures(features ...license.Feature) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.features = featureList(features)
+}
+
+// ClearFeatures lifts the restriction: the fake allows every feature again, as one made without
+// WithFeatures does. It is safe for concurrent use.
+func (f *FakeEELicense) ClearFeatures() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.features = nil
+}
+
+// HasFeature is false whenever the fake is not valid, like the real license.
+func (f *FakeEELicense) HasFeature(feature license.Feature) bool {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if !f.isValid {
+		return false
+	}
+	return f.features == nil || slices.Contains(f.features, feature)
+}
+
 func (f *FakeEELicense) ExpiresAt() time.Time {
 	return time.Now().Add(time.Hour * 24 * 365)
 }
 
+// Describe gives a valid fake the key that says what the fake answers: its expiry, its caps
+// and its features. A fake that is not valid holds no key.
+func (f *FakeEELicense) Describe() license.Description {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if !f.isValid {
+		return license.Description{State: license.StateNone}
+	}
+	key := &license.Key{ExpiresAt: f.ExpiresAt(), Limits: f.limits}
+	if f.features != nil {
+		key.Features = make([]string, 0, len(f.features))
+		for _, feature := range f.features {
+			key.Features = append(key.Features, string(feature))
+		}
+	}
+	return license.Description{State: license.StateValid, Key: key}
+}
+
 // Limits lets the fake exercise cap enforcement.
 func (f *FakeEELicense) Limits() *license.Limits {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	return f.limits
+}
+
+// SetLimits changes the usage caps the fake reports from now on; nil lifts them all. It is safe
+// for concurrent use.
+func (f *FakeEELicense) SetLimits(limits *license.Limits) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.limits = limits
 }
 
 func GetConcurrentTestLogger(t testing.TB) *slog.Logger {

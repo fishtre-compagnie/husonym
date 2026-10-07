@@ -35,9 +35,10 @@ type Config struct {
 // engine that anonymizes free text, for TransformPiiText. The engine is nil in a deployment with
 // no Presidio analyzer, in which case that transformer reports the failure in the preview itself.
 //
-// TransformPiiText also needs a valid license, as it does in AnonymizeMany. License is read on
-// every preview, so a license that lapses or comes back is followed without a restart; the other
-// transformers never look at it.
+// TransformPiiText also needs a license that includes pii_text, as it does in AnonymizeMany.
+// License is read on every preview, so a license that lapses or comes back is followed without a
+// restart; the other transformers never look at it. The scan of the content of a connection reads
+// it too, for pii_detection.
 type Transformers struct {
 	Client  mgmtv1alpha1connect.TransformersServiceClient
 	PiiText *piitext.Engine

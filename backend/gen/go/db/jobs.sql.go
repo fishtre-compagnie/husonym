@@ -432,6 +432,82 @@ func (q *Queries) IsJobNameAvailable(ctx context.Context, db DBTX, arg IsJobName
 	return count, err
 }
 
+const listJobSourcesOfInstance = `-- name: ListJobSourcesOfInstance :many
+SELECT
+  j.id,
+  j.account_id,
+  j.connection_options,
+  j.jobtype_config,
+  CASE
+    WHEN (j.connection_options ? 'mysqlOptions' OR j.connection_options ? 'mongoOptions')
+      AND jsonb_typeof(j.mappings) = 'array'
+    THEN ARRAY(
+      SELECT DISTINCT m->>'schema'
+      FROM jsonb_array_elements(j.mappings) AS m
+      WHERE coalesce(m->>'schema', '') <> ''
+      ORDER BY 1
+    )::text[]
+    ELSE ARRAY[]::text[]
+  END AS schemas
+FROM husonym_api.jobs j
+ORDER BY j.id
+`
+
+type ListJobSourcesOfInstanceRow struct {
+	ID                pgtype.UUID
+	AccountID         pgtype.UUID
+	ConnectionOptions *pg_models.JobSourceOptions
+	JobtypeConfig     []byte
+	Schemas           []string
+}
+
+// What is needed to count the sources of the instance: the source options, the job type and,
+// for the jobs that read MySQL or MongoDB, the distinct schemas of their mappings. This is the
+// first query of this file that crosses accounts, on purpose: the license covers the whole
+// instance, so its cap on sources is counted over all of them.
+//
+// The mappings themselves are not returned: they are the heavy part of a job and the count only
+// needs their schema names. Other engines read one source per connection, so they get none.
+// The JSON keys are the ones the Go models write: 'mysqlOptions' and 'mongoOptions' in the
+// source options (pg_models.JobSourceOptions) and 'schema' in a mapping (pg_models.JobMapping).
+// A mappings value that is null or not an array yields no schema rather than an error.
+func (q *Queries) ListJobSourcesOfInstance(ctx context.Context, db DBTX) ([]ListJobSourcesOfInstanceRow, error) {
+	rows, err := db.Query(ctx, listJobSourcesOfInstance)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListJobSourcesOfInstanceRow
+	for rows.Next() {
+		var i ListJobSourcesOfInstanceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ConnectionOptions,
+			&i.JobtypeConfig,
+			&i.Schemas,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockLicenseSources = `-- name: LockLicenseSources :exec
+SELECT pg_advisory_xact_lock(hashtextextended('license_sources', 0))
+`
+
+// Held until the transaction ends, so that two sources added at the same moment, wherever they
+// are asked, are counted one after the other: the second sees what the first wrote.
+func (q *Queries) LockLicenseSources(ctx context.Context, db DBTX) error {
+	_, err := db.Exec(ctx, lockLicenseSources)
+	return err
+}
+
 const removeJobById = `-- name: RemoveJobById :exec
 DELETE FROM husonym_api.jobs WHERE id = $1
 `
@@ -551,6 +627,17 @@ func (q *Queries) SetJobWorkflowOptions(ctx context.Context, db DBTX, arg SetJob
 		&i.JobtypeConfig,
 	)
 	return i, err
+}
+
+const setTransactionLockTimeout = `-- name: SetTransactionLockTimeout :exec
+SELECT set_config('lock_timeout', ($1::bigint)::text, true)
+`
+
+// Bounds, until the transaction ends, how long each of its statements waits for a lock: one that
+// waits longer fails with lock_not_available instead of holding what the transaction has locked.
+func (q *Queries) SetTransactionLockTimeout(ctx context.Context, db DBTX, milliseconds int64) error {
+	_, err := db.Exec(ctx, setTransactionLockTimeout, milliseconds)
+	return err
 }
 
 const updateJobConnectionDestination = `-- name: UpdateJobConnectionDestination :one

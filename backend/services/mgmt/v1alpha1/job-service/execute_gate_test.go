@@ -55,7 +55,7 @@ func notAllowedToExecuteWith(
 	if temporal != nil {
 		manager = temporal
 	}
-	svc := New(&Config{}, husonymdb.New(husonymdb.NewMockDBTX(t), querier), manager, nil, nil, nil, users, nil)
+	svc := New(&Config{}, husonymdb.New(husonymdb.NewMockDBTX(t), querier), manager, nil, nil, nil, users, nil, nil)
 	return svc, querier, enforcer
 }
 

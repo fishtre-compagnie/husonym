@@ -4,14 +4,15 @@ import (
 	"slices"
 
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 )
 
-// licenseNeed says when an operation needs the account to hold a license.
+// licenseNeed says when an operation needs the license to include the feature of its hooks.
 type licenseNeed int
 
 const (
-	// licenseNever: reading, turning off and deleting never need a license.
+	// licenseNever: reading, turning off and deleting never need it.
 	licenseNever licenseNeed = iota
 	// licenseAlways: creating and changing always do.
 	licenseAlways
@@ -31,16 +32,19 @@ type rule struct {
 	// arming is asked in addition of a request that turns a hook on.
 	arming  []rbac.Action
 	license licenseNeed
+	// feature is what the license must include when the operation needs it: each kind of hook
+	// is a feature of its own. A rule that never needs the license names none.
+	feature license.Feature
 }
 
-func (r rule) asked(arming bool) []rbac.Action {
+func (r *rule) asked(arming bool) []rbac.Action {
 	if arming {
 		return slices.Concat(r.actions, r.arming)
 	}
 	return r.actions
 }
 
-func (r rule) needsLicense(arming bool) bool {
+func (r *rule) needsFeature(arming bool) bool {
 	return r.license == licenseAlways || (r.license == licenseToArm && arming)
 }
 
@@ -64,17 +68,20 @@ var rules = map[string]rule{
 		view:    rbac.JobAction_View,
 		actions: []rbac.Action{rbac.JobAction_Create, rbac.JobAction_Execute},
 		license: licenseAlways,
+		feature: license.FeatureJobHooks,
 	},
 	mgmtv1alpha1connect.JobServiceUpdateJobHookProcedure: {
 		view:    rbac.JobAction_View,
 		actions: []rbac.Action{rbac.JobAction_View, rbac.JobAction_Edit, rbac.JobAction_Execute},
 		license: licenseAlways,
+		feature: license.FeatureJobHooks,
 	},
 	mgmtv1alpha1connect.JobServiceSetJobHookEnabledProcedure: {
 		view:    rbac.JobAction_View,
 		actions: []rbac.Action{rbac.JobAction_View, rbac.JobAction_Edit},
 		arming:  []rbac.Action{rbac.JobAction_Execute},
 		license: licenseToArm,
+		feature: license.FeatureJobHooks,
 	},
 	mgmtv1alpha1connect.JobServiceDeleteJobHookProcedure: {
 		view:    rbac.JobAction_View,
@@ -90,16 +97,19 @@ var rules = map[string]rule{
 		view:    rbac.AccountAction_View,
 		actions: []rbac.Action{rbac.AccountAction_Edit},
 		license: licenseAlways,
+		feature: license.FeatureAccountHooks,
 	},
 	mgmtv1alpha1connect.AccountHookServiceUpdateAccountHookProcedure: {
 		view:    rbac.AccountAction_View,
 		actions: []rbac.Action{rbac.AccountAction_View, rbac.AccountAction_Edit},
 		license: licenseAlways,
+		feature: license.FeatureAccountHooks,
 	},
 	mgmtv1alpha1connect.AccountHookServiceSetAccountHookEnabledProcedure: {
 		view:    rbac.AccountAction_View,
 		actions: []rbac.Action{rbac.AccountAction_View, rbac.AccountAction_Edit},
 		license: licenseToArm,
+		feature: license.FeatureAccountHooks,
 	},
 	mgmtv1alpha1connect.AccountHookServiceDeleteAccountHookProcedure: {
 		view:    rbac.AccountAction_View,

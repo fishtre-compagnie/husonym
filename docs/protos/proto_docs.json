@@ -23601,6 +23601,78 @@
           ]
         },
         {
+          "name": "GetLicenseUsageRequest",
+          "longName": "GetLicenseUsageRequest",
+          "fullName": "mgmt.v1alpha1.GetLicenseUsageRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account whose usage is detailed.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetLicenseUsageResponse",
+          "longName": "GetLicenseUsageResponse",
+          "fullName": "mgmt.v1alpha1.GetLicenseUsageResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "sources_in_instance",
+              "description": "The number of sources the system counts, over every account. It is what the license key caps",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "sources_in_account",
+              "description": "The sources of this account, among the ones the system counts. The sources of other accounts are counted and never listed",
+              "label": "repeated",
+              "type": "LicenseSource",
+              "longType": "LicenseSource",
+              "fullType": "mgmt.v1alpha1.LicenseSource",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "features_in_use",
+              "description": "The licensed features this account uses, whatever the license key allows. mcp, mapping_review and run_logs leave nothing stored to tell their use by, and are never listed",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "GetSystemInformationRequest",
           "longName": "GetSystemInformationRequest",
           "fullName": "mgmt.v1alpha1.GetSystemInformationRequest",
@@ -23688,6 +23760,41 @@
               "type": "SystemLicense",
               "longType": "SystemLicense",
               "fullType": "mgmt.v1alpha1.SystemLicense",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "GetSystemLicenseKeyRequest",
+          "longName": "GetSystemLicenseKeyRequest",
+          "fullName": "mgmt.v1alpha1.GetSystemLicenseKeyRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "GetSystemLicenseKeyResponse",
+          "longName": "GetSystemLicenseKeyResponse",
+          "fullName": "mgmt.v1alpha1.GetSystemLicenseKeyResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "The license key in force, as it was signed. Empty when the system has none.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -24086,6 +24193,18 @@
               "isoneof": true,
               "oneofdecl": "_requested_record_count",
               "defaultValue": ""
+            },
+            {
+              "name": "job_id",
+              "description": "The job about to run, when the question is asked for a run. The answer is then not valid\neither when the job uses a feature the license does not include.",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_job_id",
+              "defaultValue": ""
             }
           ]
         },
@@ -24202,6 +24321,114 @@
               "type": "bool",
               "longType": "bool",
               "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "LicenseLimits",
+          "longName": "LicenseLimits",
+          "fullName": "mgmt.v1alpha1.LicenseLimits",
+          "description": "What a license key caps. An unset field is uncapped, which is distinct from a cap of zero",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "max_sources",
+              "description": "The maximum number of sources",
+              "label": "optional",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_max_sources",
+              "defaultValue": ""
+            },
+            {
+              "name": "max_jobs",
+              "description": "The maximum number of jobs",
+              "label": "optional",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_max_jobs",
+              "defaultValue": ""
+            },
+            {
+              "name": "max_connections",
+              "description": "The maximum number of connections",
+              "label": "optional",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_max_connections",
+              "defaultValue": ""
+            },
+            {
+              "name": "allowed_connection_types",
+              "description": "The connection types that are allowed. Empty when every type is",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "LicenseSource",
+          "longName": "LicenseSource",
+          "fullName": "mgmt.v1alpha1.LicenseSource",
+          "description": "A database that a synchronization job reads, as the license key counts it",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "connection_id",
+              "description": "The unique identifier of the connection the source is read through",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "connection_name",
+              "description": "The name of that connection. Empty when the connection no longer exists",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "database",
+              "description": "The database read through the connection. Empty for the engines counted per connection",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -24578,6 +24805,66 @@
           ]
         },
         {
+          "name": "SetSystemLicenseRequest",
+          "longName": "SetSystemLicenseRequest",
+          "fullName": "mgmt.v1alpha1.SetSystemLicenseRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "account_id",
+              "description": "The unique identifier of the account whose permissions allow the caller to set the license key.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "key",
+              "description": "The license key, as it was handed over.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SetSystemLicenseResponse",
+          "longName": "SetSystemLicenseResponse",
+          "fullName": "mgmt.v1alpha1.SetSystemLicenseResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "license",
+              "description": "The license information for the system, once the key was taken.",
+              "label": "",
+              "type": "SystemLicense",
+              "longType": "SystemLicense",
+              "fullType": "mgmt.v1alpha1.SystemLicense",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "SetUserRequest",
           "longName": "SetUserRequest",
           "fullName": "mgmt.v1alpha1.SetUserRequest",
@@ -24678,7 +24965,7 @@
           "description": "",
           "hasExtensions": false,
           "hasFields": true,
-          "hasOneofs": false,
+          "hasOneofs": true,
           "extensions": [],
           "fields": [
             {
@@ -24715,6 +25002,138 @@
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "state",
+              "description": "Where the license key stands in its lifecycle: none, valid, expiring, grace or frozen",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "plan",
+              "description": "The label the license key carries for humans. Nothing is decided from it",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "all_features",
+              "description": "Whether the license key allows every feature, including the ones this version does not know yet",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "features",
+              "description": "The features the license key allows, among the ones this version knows. This is what the key says, whether or not it is in force",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "limits",
+              "description": "What the license key caps. Unset when the key caps nothing",
+              "label": "",
+              "type": "LicenseLimits",
+              "longType": "LicenseLimits",
+              "fullType": "mgmt.v1alpha1.LicenseLimits",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "telemetry",
+              "description": "What the license key asks of the system about reporting its usage: online, offline_report or none",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "origin",
+              "description": "How the license key reached the system: interface, environment, file or renewal",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "installed_at",
+              "description": "The time when the license key was stored by the system",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "grace_ends_at",
+              "description": "The time when the grace period that follows the expiry runs out",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "issued_to",
+              "description": "Who the license key was issued to",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "problem",
+              "description": "Why the license key could not be read the last time the system tried. Unset when it could",
+              "label": "optional",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "_problem",
               "defaultValue": ""
             }
           ]
@@ -24992,6 +25411,48 @@
               "responseType": "GetSystemInformationResponse",
               "responseLongType": "GetSystemInformationResponse",
               "responseFullType": "mgmt.v1alpha1.GetSystemInformationResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "SetSystemLicense",
+              "description": "Gives the system a license key. It is taken when it is newer than the one in force.",
+              "requestType": "SetSystemLicenseRequest",
+              "requestLongType": "SetSystemLicenseRequest",
+              "requestFullType": "mgmt.v1alpha1.SetSystemLicenseRequest",
+              "requestStreaming": false,
+              "responseType": "SetSystemLicenseResponse",
+              "responseLongType": "SetSystemLicenseResponse",
+              "responseFullType": "mgmt.v1alpha1.SetSystemLicenseResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "GetSystemLicenseKey",
+              "description": "Retrieves the license key in force, as it was signed. Only the worker calls this, with its key.",
+              "requestType": "GetSystemLicenseKeyRequest",
+              "requestLongType": "GetSystemLicenseKeyRequest",
+              "requestFullType": "mgmt.v1alpha1.GetSystemLicenseKeyRequest",
+              "requestStreaming": false,
+              "responseType": "GetSystemLicenseKeyResponse",
+              "responseLongType": "GetSystemLicenseKeyResponse",
+              "responseFullType": "mgmt.v1alpha1.GetSystemLicenseKeyResponse",
+              "responseStreaming": false,
+              "options": {
+                "idempotency_level": "NO_SIDE_EFFECTS"
+              }
+            },
+            {
+              "name": "GetLicenseUsage",
+              "description": "Retrieves what the system uses of its license: how many sources it counts, which of them are the account's, and the licensed features the account uses.",
+              "requestType": "GetLicenseUsageRequest",
+              "requestLongType": "GetLicenseUsageRequest",
+              "requestFullType": "mgmt.v1alpha1.GetLicenseUsageRequest",
+              "requestStreaming": false,
+              "responseType": "GetLicenseUsageResponse",
+              "responseLongType": "GetLicenseUsageResponse",
+              "responseFullType": "mgmt.v1alpha1.GetLicenseUsageResponse",
               "responseStreaming": false,
               "options": {
                 "idempotency_level": "NO_SIDE_EFFECTS"

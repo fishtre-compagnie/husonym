@@ -2,13 +2,16 @@ package v1alpha1_useraccountservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
+	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
@@ -73,7 +76,57 @@ func (s *Service) IsAccountStatusValid(
 			Reason:        &reason,
 		}), nil
 	}
+
+	// A run names its job. A job that uses a feature the license does not include does not
+	// start, for the same reason as above: a scheduled run is only ever stopped here. The
+	// account itself is in none of the states AccountStatus names, so the answer says why in
+	// its reason alone.
+	if req.Msg.JobId != nil {
+		refused, err := s.jobStatus(ctx, req.Msg.GetAccountId(), req.Msg.GetJobId())
+		if err != nil {
+			return nil, err
+		}
+		if refused != nil {
+			return connect.NewResponse(refused), nil
+		}
+	}
 	return connect.NewResponse(&mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: true}), nil
+}
+
+// jobStatus asks the job gate about the job a run is about to start. It gives the answer that
+// refuses the run, or nothing when the job does not hold it back.
+//
+// A run is started on a gate that answered. A gate that could not, on a database that failed
+// while it read the hooks of the job for instance, is an unavailable error: the activity that
+// asks is tried again under its retry policy, and the run does not start ungated. CreateJobRun
+// fails on the same error.
+func (s *Service) jobStatus(
+	ctx context.Context,
+	accountId, jobId string,
+) (*mgmtv1alpha1.IsAccountStatusValidResponse, error) {
+	err := s.jobgate.CheckStored(ctx, accountId, jobId)
+	var refusal *licensegate.Refusal
+	switch {
+	case err == nil:
+		return nil, nil
+	case errors.As(err, &refusal):
+		reason := refusal.Message()
+		return &mgmtv1alpha1.IsAccountStatusValidResponse{IsValid: false, Reason: &reason}, nil
+	case errors.Is(err, licensegate.ErrJobNotFound):
+		// A job id the API cannot find must not block a run: nothing was decided about the
+		// job, and the license as a whole was checked before.
+		logger_interceptor.GetLoggerFromContextOrDefault(ctx).Warn(
+			"the job to check against the license was not found, answering for the account alone",
+			"jobId", jobId,
+			"accountId", accountId,
+		)
+		return nil, nil
+	default:
+		return nil, connect.NewError(
+			connect.CodeUnavailable,
+			fmt.Errorf("unable to check the job against the license: %w", err),
+		)
+	}
 }
 
 func (s *Service) GetAccountBillingCheckoutSession(

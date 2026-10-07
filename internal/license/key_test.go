@@ -49,8 +49,8 @@ func encodeEnvelope(t *testing.T, license, signature string) string {
 	return b64(envelope)
 }
 
-func Test_parseWith_AcceptsAKeyIssuedBeforeThisPackage(t *testing.T) {
-	key, err := parseWith(readTestdata(t, "issued-before.key"), readPublicKey(t, "issued-before.pub.pem"))
+func Test_ParseWith_AcceptsAKeyIssuedBeforeThisPackage(t *testing.T) {
+	key, err := ParseWith(readTestdata(t, "issued-before.key"), Keyring{LegacyKid: readPublicKey(t, "issued-before.pub.pem")})
 	require.NoError(t, err)
 	require.Equal(t, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), key.ExpiresAt)
 	require.Equal(t, 7, *key.GraceDays)
@@ -63,16 +63,50 @@ func Test_parseWith_AcceptsAKeyIssuedBeforeThisPackage(t *testing.T) {
 	require.NotEmpty(t, key.Id)
 }
 
-func Test_parseWith_DistinguishesAbsentFromZero(t *testing.T) {
+func Test_ParseWith_AKeyIssuedBeforeNamesNoFeatureAndUnlocksAll(t *testing.T) {
+	key, err := ParseWith(readTestdata(t, "issued-before.key"), Keyring{LegacyKid: readPublicKey(t, "issued-before.pub.pem")})
+	require.NoError(t, err)
+	require.Nil(t, key.Features)
+	require.Nil(t, key.Limits.MaxSources)
+	for _, f := range AllFeatures() {
+		require.True(t, key.HasFeature(f), f)
+	}
+}
+
+func Test_ParseWith_ReadsBackTheFeaturesAndSourceCapItCarries(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	bare, err := parseWith(encode(t, []byte(`{"version":"v1","id":"a","issued_to":"x","customer_id":"c","issued_at":"2026-01-01T00:00:00Z","expires_at":"2027-01-01T00:00:00Z"}`), priv), pub)
+	content, err := json.Marshal(Key{
+		Version:   "v1",
+		Id:        "a",
+		Plan:      "team",
+		Features:  []string{"job_hooks"},
+		Telemetry: "none",
+		Limits:    &Limits{MaxSources: ptr(3)},
+	})
+	require.NoError(t, err)
+
+	key, err := ParseWith(encode(t, content, priv), Keyring{LegacyKid: pub})
+	require.NoError(t, err)
+	require.Equal(t, []string{"job_hooks"}, key.Features)
+	require.Equal(t, "team", key.Plan)
+	require.Equal(t, TelemetryNone, key.TelemetryMode())
+	require.Equal(t, 3, *key.Limits.MaxSources)
+	require.True(t, key.HasFeature(FeatureJobHooks))
+	require.False(t, key.HasFeature(FeatureSso))
+}
+
+func Test_ParseWith_DistinguishesAbsentFromZero(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	bare, err := ParseWith(encode(t, []byte(`{"version":"v1","id":"a","issued_to":"x","customer_id":"c","issued_at":"2026-01-01T00:00:00Z","expires_at":"2027-01-01T00:00:00Z"}`), priv), Keyring{LegacyKid: pub})
 	require.NoError(t, err)
 	require.Nil(t, bare.GraceDays)
 	require.Nil(t, bare.Limits)
 
-	zero, err := parseWith(encode(t, []byte(`{"version":"v1","id":"a","issued_to":"x","customer_id":"c","issued_at":"2026-01-01T00:00:00Z","expires_at":"2027-01-01T00:00:00Z","grace_days":0,"limits":{"max_jobs":0}}`), priv), pub)
+	zero, err := ParseWith(encode(t, []byte(`{"version":"v1","id":"a","issued_to":"x","customer_id":"c","issued_at":"2026-01-01T00:00:00Z","expires_at":"2027-01-01T00:00:00Z","grace_days":0,"limits":{"max_jobs":0}}`), priv), Keyring{LegacyKid: pub})
 	require.NoError(t, err)
 	require.NotNil(t, zero.GraceDays)
 	require.Equal(t, 0, *zero.GraceDays)
@@ -81,7 +115,7 @@ func Test_parseWith_DistinguishesAbsentFromZero(t *testing.T) {
 	require.Nil(t, zero.Limits.MaxConnections)
 }
 
-func Test_parseWith_Refuses(t *testing.T) {
+func Test_ParseWith_Refuses(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
@@ -106,7 +140,7 @@ func Test_parseWith_Refuses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key, err := parseWith(tt.value, pub)
+			key, err := ParseWith(tt.value, Keyring{LegacyKid: pub})
 			require.Error(t, err)
 			require.Nil(t, key)
 			require.Contains(t, err.Error(), tt.message)
@@ -121,10 +155,4 @@ func Test_Parse_RefusesAKeyNotSignedByTheEmbeddedKey(t *testing.T) {
 	_, err := Parse(readTestdata(t, "issued-before.key"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signature")
-}
-
-func Test_EmbeddedPublicKey(t *testing.T) {
-	pub, err := EmbeddedPublicKey()
-	require.NoError(t, err)
-	require.Len(t, pub, ed25519.PublicKeySize)
 }

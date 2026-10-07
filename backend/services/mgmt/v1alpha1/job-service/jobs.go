@@ -13,6 +13,7 @@ import (
 	mgmtv1alpha1 "github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1"
 	logger_interceptor "github.com/fishtre-compagnie/husonym/backend/internal/connect/interceptors/logger"
 	"github.com/fishtre-compagnie/husonym/backend/internal/dtomaps"
+	"github.com/fishtre-compagnie/husonym/backend/internal/licensegate"
 	"github.com/fishtre-compagnie/husonym/backend/internal/userdata"
 	sqlmanager_shared "github.com/fishtre-compagnie/husonym/backend/pkg/sqlmanager/shared"
 	pg_models "github.com/fishtre-compagnie/husonym/backend/sql/postgresql/models"
@@ -20,6 +21,7 @@ import (
 	husonymerrors "github.com/fishtre-compagnie/husonym/internal/errors"
 	"github.com/fishtre-compagnie/husonym/internal/husonymdb"
 	job_util "github.com/fishtre-compagnie/husonym/internal/job"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/rbac"
 	datasync_workflow "github.com/fishtre-compagnie/husonym/worker/pkg/workflows/datasync/workflow"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/workflows/piidetect"
@@ -30,11 +32,13 @@ import (
 )
 
 const (
-	defaultCronStr = "0 0 1 1 *"
-
 	// createJobCleanupTimeout is how long the removal of a job whose schedule could not be
 	// created may take, once the call that created it has ended.
 	createJobCleanupTimeout = 15 * time.Second
+
+	// jobRowLockTimeout is how long a change of the source of a job waits for the row of the job
+	// while it holds the lock on the sources of the instance.
+	jobRowLockTimeout = 5 * time.Second
 )
 
 func (s *Service) GetJobs(
@@ -395,6 +399,21 @@ func (s *Service) CreateJob(
 	if err := s.enforceJobLimit(ctx, user, accountUuid); err != nil {
 		return nil, err
 	}
+	// The job is refused for what it would use once created, before anything is written. It has
+	// no id yet, and so no hook.
+	if err := s.jobgate.Check(ctx, &mgmtv1alpha1.Job{
+		AccountId: req.Msg.GetAccountId(),
+		Source:    req.Msg.GetSource(),
+		Mappings:  req.Msg.GetMappings(),
+		JobType:   req.Msg.GetJobType(),
+	}); err != nil {
+		return nil, err
+	}
+	if givesASchedule(req.Msg.GetCronSchedule()) {
+		if err := enforceScheduling(ctx, user, req.Msg.GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
 
 	connectionUuids := []pgtype.UUID{}
 	connectionIds := []string{}
@@ -486,7 +505,7 @@ func (s *Service) CreateJob(
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
-		cronStr = defaultCronStr
+		cronStr = job_util.UnscheduledCron
 	}
 	cronText := pgtype.Text{}
 	err = cronText.Scan(cronStr)
@@ -564,6 +583,15 @@ func (s *Service) CreateJob(
 		jobtypeBits = []byte("{}")
 	}
 
+	// Unlike the cap on the jobs of an account, checked above before anything is written, the cap
+	// on the sources of the instance is checked in the transaction that writes the job: two
+	// creations at once cannot both take the last room.
+	sourceGuard := s.jobgate.SourceGuard(&licensegate.SourceCandidate{
+		AccountId:         accountUuid,
+		ConnectionOptions: connectionOptions,
+		JobtypeConfig:     jobtypeBits,
+		Mappings:          mappings,
+	})
 	cj, err := s.db.CreateJob(ctx, &db_queries.CreateJobParams{
 		Name:               req.Msg.JobName,
 		AccountID:          accountUuid,
@@ -577,7 +605,7 @@ func (s *Service) CreateJob(
 		WorkflowOptions:    workflowOptions,
 		SyncOptions:        activitySyncOptions,
 		JobtypeConfig:      jobtypeBits,
-	}, connDestParams)
+	}, connDestParams, sourceGuard)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create job: %w", err)
 	}
@@ -865,10 +893,16 @@ func (s *Service) UpdateJobSchedule(
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
 	}
+	// Taking a schedule away stays possible without the feature.
+	if givesASchedule(req.Msg.GetCronSchedule()) {
+		if err := enforceScheduling(ctx, user, jobDto.GetAccountId()); err != nil {
+			return nil, err
+		}
+	}
 
 	cronStr := req.Msg.GetCronSchedule()
 	if cronStr == "" {
-		cronStr = defaultCronStr
+		cronStr = job_util.UnscheduledCron
 	}
 	cronText := pgtype.Text{}
 	err = cronText.Scan(cronStr)
@@ -955,12 +989,13 @@ func (s *Service) PauseJob(
 	// Only resuming is gated. Pausing stays available without a license: an account whose
 	// license lapsed must always be able to stop its schedules, and blocking that would
 	// leave it with jobs it can neither run nor quiet. Resuming lets the job run on its own
-	// again, so it takes what running it takes.
+	// again, so it takes what running it takes, and the feature that scheduling is.
 	if !req.Msg.Pause {
 		if err := user.EnforceJob(ctx, jobDto, rbac.JobAction_Execute); err != nil {
 			return nil, err
 		}
-		if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		// The license in force is checked first, by the same call.
+		if err := enforceScheduling(ctx, user, jobDto.GetAccountId()); err != nil {
 			return nil, err
 		}
 	}
@@ -1028,6 +1063,21 @@ func (s *Service) UpdateJobSourceConnection(
 		return nil, err
 	}
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
+		return nil, err
+	}
+	// The job is judged as this change would leave it: a change that keeps a feature the license
+	// does not include is refused, one that gives it up is not.
+	candidate := &mgmtv1alpha1.Job{
+		Id:        jobDto.GetId(),
+		AccountId: jobDto.GetAccountId(),
+		Source:    req.Msg.GetSource(),
+		Mappings:  req.Msg.GetMappings(),
+		JobType:   jobDto.GetJobType(),
+	}
+	if req.Msg.GetJobType() != nil {
+		candidate.JobType = req.Msg.GetJobType()
+	}
+	if err := s.jobgate.Check(ctx, candidate); err != nil {
 		return nil, err
 	}
 
@@ -1183,7 +1233,29 @@ func (s *Service) UpdateJobSourceConnection(
 		return nil, err
 	}
 
+	sourceGuard := s.jobgate.SourceGuard(&licensegate.SourceCandidate{
+		JobId:             jobUuid,
+		AccountId:         accountUuid,
+		ConnectionOptions: connectionOptions,
+		JobtypeConfig:     jobTypeConfigBits,
+		Mappings:          mappings,
+	})
+
 	if err := s.db.WithTx(ctx, nil, func(dbtx husonymdb.BaseDBTX) error {
+		// The guard of the cap on sources is the first statement of the transaction, before the
+		// row of the job is locked: every write that takes both locks then takes the one on the
+		// sources of the instance first, and two of them cannot wait on one another.
+		if sourceGuard != nil {
+			if err := sourceGuard(ctx, dbtx); err != nil {
+				return err
+			}
+			// The transaction now holds the lock every creation and source change of the instance
+			// takes. The row of the job may be held by another request for as long as that request
+			// lasts: this one waits for it a bounded time, then gives up and lets the others pass.
+			if err := s.db.Q.SetTransactionLockTimeout(ctx, dbtx, jobRowLockTimeout.Milliseconds()); err != nil {
+				return fmt.Errorf("unable to bound the wait for the job: %w", err)
+			}
+		}
 		if expected := req.Msg.GetExpectedUpdatedAt(); expected != nil {
 			// The row is locked until the update commits: a change landing between the check and
 			// the write waits, and the next caller expecting the old version is refused.
@@ -1245,7 +1317,7 @@ func (s *Service) UpdateJobSourceConnection(
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, sourceWriteError(err, sourceGuard != nil)
 	}
 
 	updatedJob, err := s.GetJob(ctx, connect.NewRequest(&mgmtv1alpha1.GetJobRequest{
@@ -1279,6 +1351,10 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err != nil {
 		return nil, err
 	}
+	accountUuid, err := husonymdb.ToUuid(jobDto.GetAccountId())
+	if err != nil {
+		return nil, err
+	}
 	user, err := s.userdataclient.GetUser(ctx)
 	if err != nil {
 		return nil, err
@@ -1289,6 +1365,13 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	}
 	if err := user.EnforceLicense(ctx, jobDto.GetAccountId()); err != nil {
 		return nil, err
+	}
+	// Only a request that sets a WHERE clause subsets: one that clears them all stays possible
+	// without the feature, and following the foreign keys alone is not subsetting.
+	if setsWhereClause(req.Msg.GetSchemas()) {
+		if err := user.EnforceFeature(ctx, jobDto.GetAccountId(), license.FeatureSubsetting); err != nil {
+			return nil, err
+		}
 	}
 
 	var connectionId *string
@@ -1330,6 +1413,7 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	if err := s.db.SetSourceSubsets(
 		ctx,
 		jobUuid,
+		accountUuid,
 		req.Msg.Schemas,
 		req.Msg.SubsetByForeignKeyConstraints,
 		user.PgId(),
@@ -1347,6 +1431,66 @@ func (s *Service) SetJobSourceSqlConnectionSubsets(
 	return connect.NewResponse(&mgmtv1alpha1.SetJobSourceSqlConnectionSubsetsResponse{
 		Job: updatedJobRes.Msg.Job,
 	}), nil
+}
+
+// setsWhereClause reports whether a request to set the subsets of a job gives any table a WHERE
+// clause that is not blank.
+func setsWhereClause(schemas *mgmtv1alpha1.JobSourceSqlSubetSchemas) bool {
+	var clauses []string
+	for _, schema := range schemas.GetPostgresSubset().GetPostgresSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, schema := range schemas.GetMysqlSubset().GetMysqlSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, schema := range schemas.GetMssqlSubset().GetMssqlSchemas() {
+		for _, table := range schema.GetTables() {
+			clauses = append(clauses, table.GetWhereClause())
+		}
+	}
+	for _, table := range schemas.GetDynamodbSubset().GetTables() {
+		clauses = append(clauses, table.GetWhereClause())
+	}
+	for _, clause := range clauses {
+		if strings.TrimSpace(clause) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// enforceScheduling refuses to give a job a schedule, or to resume one, under a license that does
+// not include scheduling.
+//
+// It is the only gate on scheduling. A schedule set while the license included the feature keeps
+// firing after it no longer does: a scheduled run and a manual one are the same action of the
+// orchestrator, so the start of a run cannot tell them apart.
+func enforceScheduling(ctx context.Context, user *userdata.User, accountId string) error {
+	return user.EnforceFeature(ctx, accountId, license.FeatureScheduling)
+}
+
+// sourceWriteError is what a failed change of the source of a job answers. A wait for a lock
+// that gave up means that the job is being changed by another request only when the guard of
+// the cap on sources was in play: it is the guard that bounds the wait for the row of the job.
+// Without it this write sets no bound, and the same error is whatever the database meant by it.
+func sourceWriteError(err error, guarded bool) error {
+	if guarded && husonymdb.IsLockNotAvailable(err) {
+		return connect.NewError(connect.CodeAborted, errors.New(
+			"the job is being changed by another request: try again in a moment",
+		))
+	}
+	return err
+}
+
+// givesASchedule tells whether a cron asks for a job to run on its own. A job without a schedule
+// is stored, and read back, with a placeholder cron: a client that sends back the job it read
+// gives it no schedule, and is not asked for the feature.
+func givesASchedule(cron string) bool {
+	return cron != "" && cron != job_util.UnscheduledCron
 }
 
 func (s *Service) UpdateJobDestinationConnection(

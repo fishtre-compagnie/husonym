@@ -12,7 +12,9 @@ import (
 	"github.com/fishtre-compagnie/husonym/backend/gen/go/protos/mgmt/v1alpha1/mgmtv1alpha1connect"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio"
 	"github.com/fishtre-compagnie/husonym/backend/pkg/presidio/presidiotest"
+	"github.com/fishtre-compagnie/husonym/internal/connectiondata"
 	jsonanonymizer "github.com/fishtre-compagnie/husonym/internal/json-anonymizer"
+	"github.com/fishtre-compagnie/husonym/internal/license"
 	"github.com/fishtre-compagnie/husonym/internal/piitext"
 	"github.com/fishtre-compagnie/husonym/internal/testutil"
 	"github.com/fishtre-compagnie/husonym/worker/pkg/benthos/transformer_executor"
@@ -120,6 +122,20 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 		require.ErrorContains(t, err, "TransformPiiText is not enabled")
 	})
 
+	t.Run("under a valid license that lacks pii_text the transformer is not enabled and Presidio is not called", func(t *testing.T) {
+		presidioFake := presidiotest.New(t)
+		s := &Service{cfg: &Config{}, transformers: Transformers{
+			PiiText: engineOf(t, presidioFake),
+			License: testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(license.FeatureCustomTransformers)),
+		}}
+
+		resp, err := s.previewAnonymized(context.Background(), "an-account", raws, piiText, nil, logger)
+
+		require.Nil(t, resp)
+		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		require.ErrorContains(t, err, "TransformPiiText is not enabled")
+	})
+
 	t.Run("under a valid license the transformer runs", func(t *testing.T) {
 		anonymized := "Hello, <PERSON>!"
 		presidioFake := presidiotest.Finding(t, "PERSON", "John Doe")
@@ -218,6 +234,107 @@ func Test_previewAnonymized_PiiTextNeedsAValidLicense(t *testing.T) {
 		require.Len(t, resp.GetValues(), 1)
 		require.Equal(t, "Hello, John Doe!", resp.GetValues()[0].GetOutput().GetValue())
 	})
+}
+
+// The preview runs the transformer it is given. Without the feature of that transformer the call
+// is refused, naming the feature, before a user-defined transformer is resolved and before a row
+// is read: the transformers client is nil and the builder expects no call, so either would fail
+// the test.
+func Test_PreviewColumnTransformer_NeedsTheFeatureOfItsTransformer(t *testing.T) {
+	javascript := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_TransformJavascriptConfig{
+		TransformJavascriptConfig: &mgmtv1alpha1.TransformJavascript{Code: `return "x";`},
+	}}
+	generate := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_GenerateJavascriptConfig{
+		GenerateJavascriptConfig: &mgmtv1alpha1.GenerateJavascript{Code: `return "x";`},
+	}}
+	userDefined := &mgmtv1alpha1.TransformerConfig{Config: &mgmtv1alpha1.TransformerConfig_UserDefinedTransformerConfig{
+		UserDefinedTransformerConfig: &mgmtv1alpha1.UserDefinedTransformerConfig{Id: "stored"},
+	}}
+	piiText := func(nested *mgmtv1alpha1.TransformerConfig) *mgmtv1alpha1.TransformerConfig {
+		config := &mgmtv1alpha1.TransformPiiText{}
+		if nested != nil {
+			config.DefaultAnonymizer = &mgmtv1alpha1.PiiAnonymizer{Config: &mgmtv1alpha1.PiiAnonymizer_Transform_{
+				Transform: &mgmtv1alpha1.PiiAnonymizer_Transform{Config: nested},
+			}}
+		}
+		return &mgmtv1alpha1.TransformerConfig{
+			Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{TransformPiiTextConfig: config},
+		}
+	}
+	inForceWith := func(features ...license.Feature) *testutil.FakeEELicense {
+		return testutil.NewFakeEELicense(testutil.WithIsValid(), testutil.WithFeatures(features...))
+	}
+
+	preview := func(
+		t *testing.T, eelicense license.EEInterface, engine *piitext.Engine, transformer *mgmtv1alpha1.TransformerConfig,
+	) error {
+		t.Helper()
+		connections := mgmtv1alpha1connect.NewMockConnectionServiceClient(t)
+		connections.EXPECT().GetConnection(mock.Anything, mock.Anything).Return(
+			connect.NewResponse(&mgmtv1alpha1.GetConnectionResponse{Connection: &mgmtv1alpha1.Connection{Id: "c1"}}), nil,
+		)
+		s := &Service{
+			cfg:                   &Config{},
+			connectionService:     connections,
+			connectiondatabuilder: connectiondata.NewMockConnectionDataBuilder(t),
+			transformers:          Transformers{PiiText: engine, License: eelicense},
+		}
+		resp, err := s.PreviewColumnTransformer(t.Context(), connect.NewRequest(
+			&mgmtv1alpha1.PreviewColumnTransformerRequest{
+				ConnectionId: "c1", Schema: "public", Table: "clients", Column: "name", Transformer: transformer,
+			},
+		))
+		require.Nil(t, resp)
+		return err
+	}
+
+	for name, transformer := range map[string]*mgmtv1alpha1.TransformerConfig{
+		"a JavaScript transform":                 javascript,
+		"a JavaScript generate":                  generate,
+		"a user-defined transformer":             userDefined,
+		"a PII text that hands to JavaScript":    piiText(javascript),
+		"a PII text that hands to a user's rule": piiText(userDefined),
+	} {
+		t.Run(name+" needs custom_transformers", func(t *testing.T) {
+			err := preview(t, inForceWith(license.FeaturePiiText), engineOf(t, presidiotest.New(t)), transformer)
+
+			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, "this license does not include custom_transformers")
+		})
+	}
+
+	t.Run("a PII text needs pii_text, and the refusal names it", func(t *testing.T) {
+		err := preview(t, inForceWith(license.FeatureCustomTransformers), engineOf(t, presidiotest.New(t)), piiText(nil))
+
+		require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+		require.ErrorContains(t, err, "this license does not include pii_text")
+	})
+
+	t.Run("under a license that is not in force the refusal says so, not that a feature is missing", func(t *testing.T) {
+		for _, transformer := range []*mgmtv1alpha1.TransformerConfig{javascript, piiText(nil)} {
+			err := preview(t, testutil.NewFakeEELicense(), engineOf(t, presidiotest.New(t)), transformer)
+
+			require.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%v", err)
+			require.ErrorContains(t, err, "account does not have an active license")
+			require.NotContains(t, err.Error(), "does not include")
+		}
+	})
+}
+
+// A deployment without the engine of PII text cannot run it whatever the license says: that
+// cause keeps its own message, which the license does not replace.
+func Test_previewAnonymized_PiiTextWithoutAnEngineSaysItIsNotEnabled(t *testing.T) {
+	piiText := &mgmtv1alpha1.TransformerConfig{
+		Config: &mgmtv1alpha1.TransformerConfig_TransformPiiTextConfig{TransformPiiTextConfig: &mgmtv1alpha1.TransformPiiText{}},
+	}
+	s := &Service{cfg: &Config{}, transformers: Transformers{License: testutil.NewFakeEELicense(testutil.WithIsValid())}}
+
+	require.NoError(t, s.refusePiiTextPreview(piiText), "the license is not the cause")
+	resp, err := s.previewAnonymized(t.Context(), "an-account", []any{"Hello"}, piiText, nil, testutil.GetTestLogger(t))
+
+	require.Nil(t, resp)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.ErrorContains(t, err, "TransformPiiText is not enabled")
 }
 
 // An age written as a JSON number — "age":28 — and not as a string — "age":"28".
