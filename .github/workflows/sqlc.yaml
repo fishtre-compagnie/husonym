@@ -3,6 +3,8 @@ on:
     paths:
       - sqlc.yaml
       - backend/sql/**
+      - controlplane/sql/**
+      - controlplane/migrations/**
       - SQLC_VERSION
 
 name: SQLC

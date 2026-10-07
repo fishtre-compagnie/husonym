@@ -6,6 +6,7 @@ on:
       - worker/**.go
       - internal/**.go
       - bench/**.go
+      - controlplane/**.go
       - go.mod
       - go.sum
       - tools/go.mod
@@ -20,6 +21,7 @@ on:
       - worker/**.go
       - internal/**.go
       - bench/**.go
+      - controlplane/**.go
       - go.mod
       - go.sum
 
